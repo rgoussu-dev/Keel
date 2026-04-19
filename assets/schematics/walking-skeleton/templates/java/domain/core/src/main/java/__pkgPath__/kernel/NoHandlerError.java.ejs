@@ -1,0 +1,20 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * Returned in {@link Result.Failure} when the {@link Mediator} receives
+ * an action whose concrete type has no registered handler. Typically
+ * indicates a wiring mistake; callers should surface it with enough
+ * context to identify the missing handler.
+ */
+public record NoHandlerError(Class<? extends Action<?>> actionType) implements Error {
+
+  @Override
+  public String code() {
+    return "kernel.no-handler";
+  }
+
+  @Override
+  public String message() {
+    return "no handler registered for action: " + actionType.getName();
+  }
+}

@@ -1,0 +1,11 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * Marker for every business operation dispatched through the {@link Mediator}.
+ * Actions are sealed to guarantee exhaustive pattern-matching on concrete
+ * subtypes in handlers.
+ *
+ * @param <R> type of the value returned inside {@link Result.Success} on
+ *            a successful dispatch.
+ */
+public sealed interface Action<R> permits Command, Query {}

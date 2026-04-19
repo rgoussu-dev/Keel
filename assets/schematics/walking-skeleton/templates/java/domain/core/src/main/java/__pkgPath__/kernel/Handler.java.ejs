@@ -1,0 +1,33 @@
+package <%= basePackage %>.kernel;
+
+import java.util.Set;
+
+/**
+ * A handler that processes one or more {@link Action}s sharing a common
+ * sealed base. Handlers self-declare the concrete action types they
+ * support via {@link #supports()}; the {@link Mediator} builds its own
+ * registry from the injected handler collection — callers never pass a
+ * {@code Map}.
+ *
+ * <p>Multi-action handlers are allowed only when every supported action
+ * descends from the same sealed base {@code B}. This keeps exhaustive
+ * pattern matching on concrete subtypes possible inside
+ * {@link #handle(Action)}.
+ *
+ * <p>Handlers return a {@link Result}; they never throw for expected
+ * failures. Only bugs or infrastructure outages propagate as exceptions.
+ *
+ * @param <B> sealed base {@link Action} type this handler covers.
+ */
+public interface Handler<B extends Action<?>> {
+
+  /** The concrete action classes this handler supports. */
+  Set<Class<? extends B>> supports();
+
+  /**
+   * Dispatches a single supported action. The returned result's erased
+   * type parameter matches the action's {@code R}; the centralised cast
+   * in {@link Mediator#dispatch(Action)} is the only cast callers need.
+   */
+  Result<?> handle(B action);
+}

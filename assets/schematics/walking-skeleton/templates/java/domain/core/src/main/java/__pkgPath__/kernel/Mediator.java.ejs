@@ -1,0 +1,57 @@
+package <%= basePackage %>.kernel;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Dispatches {@link Action}s to the registered {@link Handler}. Built
+ * from a single {@link Collection} of handlers; the registry is derived
+ * internally from each handler's {@link Handler#supports()} — the
+ * {@code Map} is never exposed.
+ *
+ * <p>Duplicate action registrations are rejected at construction time so
+ * the failure is surfaced at startup, not at runtime.
+ *
+ * <p>The mediator is immutable and safe to share across threads.
+ */
+public final class Mediator {
+
+  private final Map<Class<? extends Action<?>>, Handler<?>> registry;
+
+  /**
+   * Builds the mediator from a collection of handlers.
+   *
+   * @throws DuplicateHandlerException when two handlers declare support
+   *     for the same concrete action type.
+   */
+  public Mediator(Collection<Handler<?>> handlers) {
+    Map<Class<? extends Action<?>>, Handler<?>> map = new HashMap<>();
+    for (Handler<?> handler : handlers) {
+      for (Class<? extends Action<?>> type : handler.supports()) {
+        Handler<?> prior = map.put(type, handler);
+        if (prior != null) {
+          throw new DuplicateHandlerException(type);
+        }
+      }
+    }
+    this.registry = Map.copyOf(map);
+  }
+
+  /**
+   * Dispatches an action to its registered handler.
+   *
+   * @param <R> type of the successful value, inferred from the action.
+   * @param action the action to dispatch; must not be {@code null}.
+   * @return the handler's {@link Result}, or {@link Result#failure(Error)}
+   *     wrapping a {@link NoHandlerError} when no handler is registered.
+   */
+  @SuppressWarnings("unchecked")
+  public <R> Result<R> dispatch(Action<R> action) {
+    Handler<Action<R>> handler = (Handler<Action<R>>) registry.get(action.getClass());
+    if (handler == null) {
+      return Result.failure(new NoHandlerError(action.getClass()));
+    }
+    return (Result<R>) handler.handle(action);
+  }
+}

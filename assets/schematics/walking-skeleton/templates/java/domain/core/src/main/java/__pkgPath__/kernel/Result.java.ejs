@@ -1,0 +1,65 @@
+package <%= basePackage %>.kernel;
+
+import java.util.function.Function;
+
+/**
+ * Disjoint success / failure return value for any operation that may
+ * fail for domain reasons. Prefer throwing exceptions only for bugs or
+ * infrastructure outages; expected failures must be modelled as
+ * {@link Failure} carrying a sealed {@link Error}.
+ *
+ * @param <T> type of the value produced on success.
+ */
+public sealed interface Result<T> permits Result.Success, Result.Failure {
+
+  /** Successful outcome carrying a value. */
+  record Success<T>(T value) implements Result<T> {}
+
+  /** Failed outcome carrying a domain {@link Error}. */
+  record Failure<T>(Error cause) implements Result<T> {}
+
+  /** True when this is a {@link Success}. */
+  default boolean isSuccess() {
+    return this instanceof Success<T>;
+  }
+
+  /**
+   * Applies {@code f} to the success value and wraps the result; on
+   * failure the same failure is propagated unchanged.
+   */
+  default <U> Result<U> map(Function<? super T, ? extends U> f) {
+    return switch (this) {
+      case Success<T> s -> new Success<>(f.apply(s.value()));
+      case Failure<T> failure -> new Failure<>(failure.cause());
+    };
+  }
+
+  /**
+   * Chains {@code f} returning another {@link Result}. Useful for piping
+   * operations without unwrapping manually.
+   */
+  default <U> Result<U> flatMap(Function<? super T, ? extends Result<U>> f) {
+    return switch (this) {
+      case Success<T> s -> f.apply(s.value());
+      case Failure<T> failure -> new Failure<>(failure.cause());
+    };
+  }
+
+  /**
+   * Collapses the result to a single value using one function per branch.
+   */
+  default <U> U fold(
+      Function<? super T, ? extends U> onSuccess,
+      Function<? super Error, ? extends U> onFailure) {
+    return switch (this) {
+      case Success<T> s -> onSuccess.apply(s.value());
+      case Failure<T> failure -> onFailure.apply(failure.cause());
+    };
+  }
+
+  /** Shortcut for {@link Success}. */
+  static <T> Result<T> success(T value) { return new Success<>(value); }
+
+  /** Shortcut for {@link Failure}. */
+  static <T> Result<T> failure(Error cause) { return new Failure<>(cause); }
+}

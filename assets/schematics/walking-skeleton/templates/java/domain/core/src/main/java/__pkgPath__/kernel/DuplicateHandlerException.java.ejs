@@ -1,0 +1,15 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * Raised at {@link Mediator} construction when two handlers claim the same
+ * concrete {@link Action} type via {@link Handler#supports()}. Failing
+ * fast here makes the mis-wiring obvious at startup rather than at the
+ * first dispatch.
+ */
+public final class DuplicateHandlerException extends RuntimeException {
+
+  /** Creates a new exception referencing the offending action class. */
+  public DuplicateHandlerException(Class<? extends Action<?>> type) {
+    super("more than one handler registered for action: " + type.getName());
+  }
+}

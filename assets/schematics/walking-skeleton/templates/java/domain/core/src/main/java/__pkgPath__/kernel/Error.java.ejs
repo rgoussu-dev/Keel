@@ -1,0 +1,21 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * Root of the domain error hierarchy. Every aggregate defines its own
+ * sealed sub-interface (extending this type) whose variants are the
+ * canonical domain failures. The interface-layer adapter translates
+ * concrete {@link Error} subtypes to transport-appropriate shapes (RFC
+ * 9457 Problem Details for REST, structured stderr for CLI, and so on).
+ *
+ * <p>Failures that represent bugs or infrastructure outages — rather than
+ * expected domain outcomes — should propagate as exceptions instead of
+ * being modelled here.
+ */
+public interface Error {
+
+  /** Stable, machine-readable identifier for this error kind. */
+  String code();
+
+  /** Human-readable description. Must not leak PII. */
+  String message();
+}

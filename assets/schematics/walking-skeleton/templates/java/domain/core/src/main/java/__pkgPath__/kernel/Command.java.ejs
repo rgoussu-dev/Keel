@@ -1,0 +1,11 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * A write-side {@link Action}. Commands produce side effects; they are
+ * expected to mutate state or invoke external systems. Successful commands
+ * return a value (often an identifier or the mutated aggregate) wrapped in
+ * {@link Result.Success}.
+ *
+ * @param <R> type of the value returned on success.
+ */
+public non-sealed interface Command<R> extends Action<R> {}

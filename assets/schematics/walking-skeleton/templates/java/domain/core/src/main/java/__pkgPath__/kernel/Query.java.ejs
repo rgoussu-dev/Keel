@@ -1,0 +1,10 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * A read-side {@link Action}. Queries are pure: they must not mutate
+ * state. Queries return the requested value in {@link Result.Success} or
+ * a domain-level {@link Error} in {@link Result.Failure}.
+ *
+ * @param <R> type of the value returned on success.
+ */
+public non-sealed interface Query<R> extends Action<R> {}

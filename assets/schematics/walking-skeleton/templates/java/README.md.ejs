@@ -1,0 +1,25 @@
+# <%= projectName %>
+
+Walking skeleton scaffolded by `@rgoussu.dev/keel`. Trunk-based, hexagonal,
+Command/Query + Mediator, fakes-not-mocks, OpenTofu-deployed.
+
+## Layout
+
+```
+application/<channel>/{contract,executable}   # created by `keel g executable`
+domain/contract                               # ports + DTOs
+domain/core/kernel                            # Action / Command / Query / Result / Error / Handler / Mediator
+domain/core/<aggregate>                       # business logic
+infrastructure/<port>/{<impl>,fake}           # adapters + fake module
+infrastructure/iac                            # OpenTofu
+build-logic/                                  # gradle convention plugins
+gradle/libs.versions.toml                     # version catalog
+```
+
+## Next steps
+
+1. Pick a web / messaging framework for the first channel:
+   `keel g executable` (not yet shipped — see roadmap).
+2. Run the walking skeleton end-to-end:
+   `./gradlew check && tofu plan`
+3. Iterate in small trunk commits (`/commit`).
