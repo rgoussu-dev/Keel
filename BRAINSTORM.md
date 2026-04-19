@@ -179,6 +179,44 @@ Audits:
 - `test-scenario-pattern` — enforce Scenario+Factory+fakes.
 - `walking-skeleton-guide` — activate on init / brownfield.
 
+## Universality Principle — LOCKED
+
+**All hooks, skills, commands, and schematics apply the same patterns and
+principles regardless of language.** Only rendering differs. A single
+conventions table drives language-specific behavior.
+
+### Language Conventions (ships at `assets/conventions/languages.json`)
+
+| Concept | Java | Kotlin | TypeScript | Rust | Go |
+|---|---|---|---|---|---|
+| Public-API doc | JavaDoc `/** */` | KDoc `/** */` | TSDoc `/** */` | rustdoc `///` | doc comment |
+| Formatter | google-java-format | ktlint | prettier | rustfmt | gofmt |
+| Linter | ErrorProne | detekt | eslint | clippy | `go vet` + staticcheck |
+| Test runner | JUnit 5 + AssertJ | JUnit 5 + Kotest | vitest | built-in + proptest | built-in + testify |
+| Mutation | PIT | PIT (Gradle) | Stryker | cargo-mutants | go-mutesting |
+| Null safety | JSpecify + NullAway | non-null default | strict TS | built-in | explicit checks |
+| Result type | sealed `Result<T>` | sealed `Result<T>` | discriminated union | `std::Result<T,E>` | `(T, error)` |
+| Build tool | Gradle | Gradle | pnpm | Cargo | Go modules |
+
+All hooks, commands, skills, and schematics read this table; behavior is
+uniform, syntax is language-appropriate.
+
+### Schematic layout reflects universality
+
+```
+schematics/<name>/
+├── schematic.json
+├── factory.ts              # language-agnostic Rule chain
+└── templates/
+    ├── java/ kotlin/ typescript/ rust/ go/
+```
+
+Schematics take `--language <lang>` (auto-detected from project markers).
+
+### Naming cleanup
+- Skill `javadoc-public-api` → **`public-api-docs`** (language-agnostic).
+- Command `/javadoc-check` → **`/docs-check`** (language-agnostic).
+
 ## Java/Quarkus Proving Ground — LOCKED
 
 - **Java:** 25 LTS. Global principle: **always latest stable** (LTS for langs, latest for frameworks).
@@ -254,11 +292,11 @@ All architectural decisions resolved. Ready to build.
 2. **Homegrown schematics engine** behind `Engine` / `Schematic` / `Tree` / `Context` wrapper.
 3. **Global `CLAUDE.md`** encoding all architectural constraints (hex, DIP, mediator, walking-skeleton, IaC, XP/SOLID/12-factor, trunk-based, commit discipline, comment policy, always-latest).
 4. **Global `settings.json`** with pre-allowed permissions (toolchain + read-only).
-5. **Hooks** (.sh + .ps1 pairs):
-   - `PostToolUse` → auto-format on Edit/Write.
-   - `PreToolUse` on git commit → type-check + scoped tests + JavaDoc public-API check.
+5. **Hooks** (.sh + .ps1 pairs, language-aware via conventions table):
+   - `PostToolUse` → auto-format on Edit/Write (picks formatter by file extension).
+   - `PreToolUse` on git commit → type-check + scoped tests + public-API doc check (all language-aware).
    - `SessionStart` → context load.
    - `Stop` → commit-discipline reminder.
-6. **Schematics (Java/Quarkus proving ground):** `walking-skeleton`, `port`, `scenario`.
-7. **Slash commands:** `/commit`, `/javadoc-check`, `/sync`, `/diff-review`.
-8. **Skills:** `hexagonal-review`, `test-scenario-pattern`, `javadoc-public-api`, `walking-skeleton-guide`.
+6. **Schematics (Java/Quarkus proving ground first; templates added per language over time):** `walking-skeleton`, `port`, `scenario`.
+7. **Slash commands (language-agnostic):** `/commit`, `/docs-check`, `/sync`, `/diff-review`.
+8. **Skills (language-agnostic):** `hexagonal-review`, `test-scenario-pattern`, `public-api-docs`, `walking-skeleton-guide`.
