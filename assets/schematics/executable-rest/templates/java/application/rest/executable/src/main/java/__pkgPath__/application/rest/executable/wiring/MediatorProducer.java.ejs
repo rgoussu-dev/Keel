@@ -1,0 +1,35 @@
+package <%= basePackage %>.application.rest.executable.wiring;
+
+import <%= basePackage %>.kernel.Handler;
+import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.ping.PingHandler;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import java.util.List;
+
+/**
+ * Composition root for the REST executable. The mediator is built from a
+ * hand-authored handler list — no reflection, no annotation scanning, no
+ * service locator. Adding a new action means adding its handler here.
+ *
+ * <p>Per §1.1 of the conventions, this module is the <em>only</em>
+ * application-layer code allowed to import concrete {@code domain/core}
+ * classes. All other application code must work through
+ * {@code domain/contract} exclusively.
+ */
+@ApplicationScoped
+public class MediatorProducer {
+
+  /**
+   * Produces the single application-scoped {@link Mediator} instance used
+   * by every injected resource. The handler list is immutable after
+   * construction and safe to share across threads.
+   */
+  @Produces
+  @ApplicationScoped
+  public Mediator mediator() {
+    List<Handler<?>> handlers = List.of(new PingHandler());
+    return new Mediator(handlers);
+  }
+}

@@ -1,0 +1,42 @@
+package <%= basePackage %>.ping;
+
+import <%= basePackage %>.kernel.Handler;
+import <%= basePackage %>.kernel.Result;
+
+import java.time.Clock;
+import java.util.Set;
+
+/**
+ * Handler for the {@link PingQuery} action. The implementation is
+ * intentionally trivial — it proves the wiring from the JAX-RS resource,
+ * through the mediator, to a concrete handler and back. Extend it (or
+ * replace it with real probes) once the slice is deployed end-to-end.
+ *
+ * <p>The {@link Clock} is injected rather than calling {@code Instant.now()}
+ * directly so tests can exercise deterministic timestamps through a
+ * {@link Clock#fixed fixed clock} without touching the handler.
+ */
+public final class PingHandler implements Handler<PingQuery> {
+
+  private final Clock clock;
+
+  /** Uses the system clock by default; prefer the test constructor in specs. */
+  public PingHandler() {
+    this(Clock.systemUTC());
+  }
+
+  /** Constructor used by tests and by alternate composition roots. */
+  public PingHandler(Clock clock) {
+    this.clock = clock;
+  }
+
+  @Override
+  public Set<Class<? extends PingQuery>> supports() {
+    return Set.of(PingQuery.class);
+  }
+
+  @Override
+  public Result<?> handle(PingQuery action) {
+    return Result.success(new Ping("pong", clock.instant()));
+  }
+}

@@ -1,0 +1,14 @@
+package <%= basePackage %>.ping;
+
+import java.time.Instant;
+
+/**
+ * Domain-side value returned on a successful {@link PingQuery}. This is
+ * the shape the handler produces; the REST adapter maps it to the
+ * transport DTO {@code PingResponseDto} in
+ * {@code application/rest/contract}.
+ *
+ * @param message human-readable status token (defaults to {@code "pong"}).
+ * @param at server time when the handler built the response.
+ */
+public record Ping(String message, Instant at) {}

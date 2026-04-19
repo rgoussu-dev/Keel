@@ -1,5 +1,6 @@
 import type { Engine } from '../engine/types.js';
 import { HomegrownEngine } from '../engine/homegrown.js';
+import { executableRestSchematic } from './executable-rest/factory.js';
 import { gitInitSchematic } from './git-init/factory.js';
 import { gradleWrapperSchematic } from './gradle-wrapper/factory.js';
 import { portSchematic } from './port/factory.js';
@@ -13,6 +14,7 @@ import { walkingSkeletonSchematic } from './walking-skeleton/factory.js';
  */
 export function buildEngine(): Engine {
   const engine = new HomegrownEngine();
+  engine.register(executableRestSchematic);
   engine.register(gitInitSchematic);
   engine.register(gradleWrapperSchematic);
   engine.register(portSchematic);
