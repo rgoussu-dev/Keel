@@ -11,24 +11,24 @@ description: |
 
 A public symbol is one consumed by another module, another project, or an
 external caller. Every public symbol must carry a doc comment that
-describes *what* it does and *why* a caller would use it.
+describes _what_ it does and _why_ a caller would use it.
 
 ## Language format
 
-| Language | Format | Applies to |
-|---|---|---|
-| Java | JavaDoc `/** … */` | public and protected types, methods, fields |
-| Kotlin | KDoc `/** … */` | public and internal types, functions, properties |
-| TypeScript | TSDoc `/** … */` | exported types, functions, classes, consts |
-| Rust | rustdoc `///` (or `//!` for module-level) | `pub` items |
-| Go | doc comment `// Name …` | exported identifiers (capitalised) |
+| Language   | Format                                    | Applies to                                       |
+| ---------- | ----------------------------------------- | ------------------------------------------------ |
+| Java       | JavaDoc `/** … */`                        | public and protected types, methods, fields      |
+| Kotlin     | KDoc `/** … */`                           | public and internal types, functions, properties |
+| TypeScript | TSDoc `/** … */`                          | exported types, functions, classes, consts       |
+| Rust       | rustdoc `///` (or `//!` for module-level) | `pub` items                                      |
+| Go         | doc comment `// Name …`                   | exported identifiers (capitalised)               |
 
 ## Content rules
 
 A good doc comment:
 
 - Opens with a one-sentence summary that would be sensible in a doc index.
-- States *why* a caller would use this symbol, not just what it does.
+- States _why_ a caller would use this symbol, not just what it does.
 - Documents parameters, returns, and error conditions that affect caller
   code (`@param`, `@return`, `@throws` in JavaDoc/KDoc; `@param`, `@returns`,
   `@throws` in TSDoc; `# Arguments`, `# Returns`, `# Errors` in rustdoc;

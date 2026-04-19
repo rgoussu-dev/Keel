@@ -22,17 +22,17 @@ first order of business.
 
 ## Required elements
 
-| Element | Location | Must exist before features |
-|---|---|---|
-| Primary adapter (one channel) | `application/<channel>/executable` | yes |
-| Primary port + one `Command` or `Query` | `domain/contract` | yes |
-| One handler | `domain/core/<aggregate>` | yes |
-| Mediator wired by explicit factory | `domain/core/kernel` | yes |
-| One secondary port with a **fake** | `infrastructure/<port>/fake` | yes |
-| One **real** adapter for the same port | `infrastructure/<port>/<impl>` | yes |
-| One end-to-end test calling from the primary adapter down | test module | yes |
-| IaC (OpenTofu) deploying the runtime to a real environment | `infrastructure/iac` | yes |
-| CI pipeline that runs check + deploy on commit | repo | yes |
+| Element                                                    | Location                           | Must exist before features |
+| ---------------------------------------------------------- | ---------------------------------- | -------------------------- |
+| Primary adapter (one channel)                              | `application/<channel>/executable` | yes                        |
+| Primary port + one `Command` or `Query`                    | `domain/contract`                  | yes                        |
+| One handler                                                | `domain/core/<aggregate>`          | yes                        |
+| Mediator wired by explicit factory                         | `domain/core/kernel`               | yes                        |
+| One secondary port with a **fake**                         | `infrastructure/<port>/fake`       | yes                        |
+| One **real** adapter for the same port                     | `infrastructure/<port>/<impl>`     | yes                        |
+| One end-to-end test calling from the primary adapter down  | test module                        | yes                        |
+| IaC (OpenTofu) deploying the runtime to a real environment | `infrastructure/iac`               | yes                        |
+| CI pipeline that runs check + deploy on commit             | repo                               | yes                        |
 
 The slice should be trivial (e.g., one `/ping` endpoint returning a fake
 record) but **must be fully wired**.

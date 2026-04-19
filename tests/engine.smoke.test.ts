@@ -132,10 +132,7 @@ describe('HomegrownEngine', () => {
   it('renders a template directory with ejs and path substitution', async () => {
     const templateDir = path.join(workDir, '__tpl__');
     mkdirSync(templateDir, { recursive: true });
-    writeFileSync(
-      path.join(templateDir, '__name__.java.ejs'),
-      'public class <%= name %> {}',
-    );
+    writeFileSync(path.join(templateDir, '__name__.java.ejs'), 'public class <%= name %> {}');
 
     const engine = new HomegrownEngine();
     engine.register({

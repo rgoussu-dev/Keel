@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, existsSync, statSync, chmodSync } from 'node:fs';
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  mkdirSync,
+  existsSync,
+  statSync,
+  chmodSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { sha256 } from '../src/util/hash.js';
 import { update } from '../src/installer/update.js';
@@ -113,7 +122,9 @@ describe('update()', () => {
 
     expect(readFileSync(path.join(targetRoot, 'b.txt'), 'utf8')).toBe(userEdited);
 
-    const m = JSON.parse(readFileSync(path.join(targetRoot, '.keel-manifest.json'), 'utf8')) as Manifest;
+    const m = JSON.parse(
+      readFileSync(path.join(targetRoot, '.keel-manifest.json'), 'utf8'),
+    ) as Manifest;
     const entry = m.entries.find((e) => e.target === 'b.txt')!;
     expect(entry.sha256Shipped).toBe(sha256(newShipped));
     expect(entry.sha256Current).toBe(sha256(userEdited));
@@ -174,7 +185,9 @@ describe('update()', () => {
 
     expect(existsSync(path.join(targetRoot, 'orphan-clean.txt'))).toBe(false);
     expect(existsSync(path.join(targetRoot, 'orphan-mod.txt'))).toBe(true);
-    const m = JSON.parse(readFileSync(path.join(targetRoot, '.keel-manifest.json'), 'utf8')) as Manifest;
+    const m = JSON.parse(
+      readFileSync(path.join(targetRoot, '.keel-manifest.json'), 'utf8'),
+    ) as Manifest;
     expect(m.entries.map((e) => e.target)).not.toContain('orphan-clean.txt');
     expect(m.entries.map((e) => e.target)).not.toContain('orphan-mod.txt');
   });

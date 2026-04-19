@@ -8,13 +8,13 @@ produces an empty list.
 
 ## What "public" means per language
 
-| Language | Public surface |
-|---|---|
-| Java | `public` (and `protected`) classes, interfaces, methods, fields |
-| Kotlin | `public` / `internal` classes, functions, properties |
-| TypeScript | symbols exported from a module (including re-exports) |
-| Rust | `pub` items (not `pub(crate)` unless re-exported) |
-| Go | capitalised identifiers (package-exported) |
+| Language   | Public surface                                                  |
+| ---------- | --------------------------------------------------------------- |
+| Java       | `public` (and `protected`) classes, interfaces, methods, fields |
+| Kotlin     | `public` / `internal` classes, functions, properties            |
+| TypeScript | symbols exported from a module (including re-exports)           |
+| Rust       | `pub` items (not `pub(crate)` unless re-exported)               |
+| Go         | capitalised identifiers (package-exported)                      |
 
 ## Steps
 

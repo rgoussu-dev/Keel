@@ -45,7 +45,12 @@ describe('scenario schematic', () => {
 
     await engine.run(
       'scenario',
-      { name: 'SearchUsers', basePackage: 'com.example', aggregate: 'user', portName: 'UserQueries' },
+      {
+        name: 'SearchUsers',
+        basePackage: 'com.example',
+        aggregate: 'user',
+        portName: 'UserQueries',
+      },
       { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
     );
 

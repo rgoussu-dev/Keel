@@ -43,7 +43,10 @@ describe('port schematic', () => {
     expect(port).toContain('public interface UserRepository');
 
     const fake = readFileSync(
-      path.join(workDir, 'infrastructure/user-repository/fake/src/main/java/com/example/user/fake/UserRepositoryFake.java'),
+      path.join(
+        workDir,
+        'infrastructure/user-repository/fake/src/main/java/com/example/user/fake/UserRepositoryFake.java',
+      ),
       'utf8',
     );
     expect(fake).toContain('package com.example.user.fake;');

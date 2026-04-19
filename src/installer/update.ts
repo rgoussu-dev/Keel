@@ -201,7 +201,8 @@ function printDiff(current: string, shipped: string): void {
       printed++;
     }
   }
-  if (printed === 0) console.error(chalk.gray('(no line differences visible; may be whitespace/newline)'));
+  if (printed === 0)
+    console.error(chalk.gray('(no line differences visible; may be whitespace/newline)'));
   else if (printed >= limit) console.error(chalk.gray(`... diff truncated at ${limit} lines`));
 }
 

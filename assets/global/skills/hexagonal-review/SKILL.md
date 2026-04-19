@@ -15,12 +15,12 @@ dependency rule.
 
 ## Layers
 
-| Layer | Location | Allowed to depend on |
-|---|---|---|
-| Domain — contract | `domain/contract/` | nothing outside `domain/` |
-| Domain — core | `domain/core/` | `domain/contract` only |
-| Application (interface) | `application/<channel>/*` | `domain/contract` only |
-| Infrastructure (adapter) | `infrastructure/<port>/*` | `domain/contract` only |
+| Layer                    | Location                  | Allowed to depend on      |
+| ------------------------ | ------------------------- | ------------------------- |
+| Domain — contract        | `domain/contract/`        | nothing outside `domain/` |
+| Domain — core            | `domain/core/`            | `domain/contract` only    |
+| Application (interface)  | `application/<channel>/*` | `domain/contract` only    |
+| Infrastructure (adapter) | `infrastructure/<port>/*` | `domain/contract` only    |
 
 `domain/core` never imports from `application/*`, `infrastructure/*`, or any
 framework module. `infrastructure/*` and `application/*` never import from

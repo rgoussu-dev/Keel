@@ -61,46 +61,41 @@ export async function main(argv: string[]): Promise<void> {
     .description('Run a registered schematic (e.g. port, scenario, walking-skeleton).')
     .option('--dry-run', 'show the planned changes without writing', false)
     .option('--set <kv...>', 'set a parameter as key=value (repeatable)', [])
-    .action(
-      async (
-        schematic: string,
-        opts: { dryRun: boolean; set: string[] },
-      ): Promise<void> => {
-        const engine = buildEngine();
-        const target = engine.get(schematic);
-        if (!target) {
-          logger.error(`unknown schematic: ${schematic}`);
-          logger.info(`available: ${engine.names().join(', ')}`);
-          process.exit(1);
+    .action(async (schematic: string, opts: { dryRun: boolean; set: string[] }): Promise<void> => {
+      const engine = buildEngine();
+      const target = engine.get(schematic);
+      if (!target) {
+        logger.error(`unknown schematic: ${schematic}`);
+        logger.info(`available: ${engine.names().join(', ')}`);
+        process.exit(1);
+      }
+      const options: Record<string, unknown> = parseKv(opts.set);
+      for (const spec of target.parameters) {
+        if (options[spec.name] !== undefined) continue;
+        if (!spec.prompt) {
+          if (spec.required) {
+            logger.error(`missing required parameter: ${spec.name}`);
+            process.exit(1);
+          }
+          continue;
         }
-        const options: Record<string, unknown> = parseKv(opts.set);
-        for (const spec of target.parameters) {
-          if (options[spec.name] !== undefined) continue;
-          if (!spec.prompt) {
-            if (spec.required) {
-              logger.error(`missing required parameter: ${spec.name}`);
-              process.exit(1);
-            }
+        if (!spec.required) {
+          const def = 'default' in spec.prompt ? spec.prompt.default : undefined;
+          if (def !== undefined) {
+            options[spec.name] = def;
             continue;
           }
-          if (!spec.required) {
-            const def = 'default' in spec.prompt ? spec.prompt.default : undefined;
-            if (def !== undefined) {
-              options[spec.name] = def;
-              continue;
-            }
-            if (!process.stdin.isTTY) continue;
-          }
-          options[spec.name] = await cliPrompt(spec.prompt as PromptSchema<unknown>);
+          if (!process.stdin.isTTY) continue;
         }
-        await engine.run(
-          schematic,
-          options,
-          { logger, cwd: process.cwd(), prompt: cliPrompt, invoke: async () => {} },
-          { dryRun: opts.dryRun },
-        );
-      },
-    );
+        options[spec.name] = await cliPrompt(spec.prompt as PromptSchema<unknown>);
+      }
+      await engine.run(
+        schematic,
+        options,
+        { logger, cwd: process.cwd(), prompt: cliPrompt, invoke: async () => {} },
+        { dryRun: opts.dryRun },
+      );
+    });
 
   try {
     await program.parseAsync(argv);

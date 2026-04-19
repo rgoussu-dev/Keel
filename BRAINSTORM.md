@@ -29,6 +29,7 @@ version. **Engine is abstracted behind a wrapper interface** so the
 implementation can be swapped.
 
 ### Wrapper Interface (ports)
+
 ```ts
 interface Engine {
   register(s: Schematic): void;
@@ -48,12 +49,14 @@ interface Context {
 ```
 
 ### Default Engine: Homegrown (A) — LOCKED
+
 - Built on `ejs` (templates) + `inquirer` (prompts) + `fs-extra`.
 - ~500 LoC; zero impedance with wrapper.
 - Tree provides dry-run + diff + atomic write.
 - Migrations: `migrations/<version>.ts` in each schematic; `keel update` runs pending.
 
 ### Swappable adapters (future, to prove abstraction)
+
 - `PlopAdapter`, `NxDevkitAdapter`, `HygenAdapter` — shipped as optional packages.
 - Explicitly **not** `@angular-devkit/schematics` (rejected — avoid dependency unless overwhelming reason).
 
@@ -113,12 +116,14 @@ infrastructure/
 ## User Preferences — CAPTURED
 
 ### Languages & Tooling
+
 - **Languages:** Java, Kotlin, TypeScript, Rust, Go.
 - **Formatters/linters:** mainstream per language (prettier/eslint, ktlint, rustfmt+clippy, gofmt+go vet, google-java-format).
 - **Comments:** JavaDoc/JSDoc on public interfaces/methods/classes only. Otherwise none.
 - **Tests:** mainstream per language. Strict DIP (see Architecture).
 
 ### Workflow
+
 - **Branching:** none — trunk-based, XP, continuous integration; parallel work via feature flags + small commits + fast sync.
 - **Commits:** auto after each logical unit, Conventional Commits format.
 - **Hook — block commits to main:** NO (trunk-based requires committing to main).
@@ -130,6 +135,7 @@ infrastructure/
 - **Permissions (pre-allow):** full toolchain per language + all read-only tools.
 
 ### Environment
+
 - **Editors:** VS Code primary; cross-IDE standardized configs required.
 - **Shell:** native per OS — PowerShell on Windows, bash/sh on Linux. Hooks ship as `.sh` + `.ps1` pairs.
 
@@ -152,16 +158,20 @@ infrastructure/
 ## Components to Ship
 
 ### Hooks (cross-platform .sh + .ps1)
+
 - `PostToolUse` on Edit/Write → format touched file (language-detected).
 - `PreToolUse` on Bash `git commit` → type-check + scoped tests; fail on red. `--full` flag.
 - `SessionStart` → load context: diff, recent commits, failing tests, walking-skeleton status.
 - `Stop` → remind Claude to commit logical units in Conventional Commit format.
 
 ### Slash Commands / Schematics
+
 Workflow:
+
 - `/commit`, `/sync`, `/micro`, `/flag <name>`, `/tdd <behavior>`, `/spike [end]`, `/diff-review`, `/unblock`, `/context`.
 
 Schematic-backed:
+
 - `/walking-skeleton [init|check]` — composes: `/executable` + `/port` + `/handler` + `/adapter` + fake + `/iac`.
 - `/executable <channel>` — scaffold new runnable; prompts for framework.
 - `/port <name> [primary|secondary]` — port interface + fake module + factory registration.
@@ -171,10 +181,12 @@ Schematic-backed:
 - `/iac [module]` — OpenTofu module scaffolding.
 
 Audits:
+
 - `/hex-check` — domain→infra leaks, logic in dumb layers, missing fakes, mock usage (flag), bypasses of factory.
 - `/12factor-check` — config, deps, backing services, statelessness, logs.
 
 ### Skills (auto-activated knowledge)
+
 - `hexagonal-review` — nudge correct layer on edits.
 - `test-scenario-pattern` — enforce Scenario+Factory+fakes.
 - `walking-skeleton-guide` — activate on init / brownfield.
@@ -187,16 +199,16 @@ conventions table drives language-specific behavior.
 
 ### Language Conventions (ships at `assets/conventions/languages.json`)
 
-| Concept | Java | Kotlin | TypeScript | Rust | Go |
-|---|---|---|---|---|---|
-| Public-API doc | JavaDoc `/** */` | KDoc `/** */` | TSDoc `/** */` | rustdoc `///` | doc comment |
-| Formatter | google-java-format | ktlint | prettier | rustfmt | gofmt |
-| Linter | ErrorProne | detekt | eslint | clippy | `go vet` + staticcheck |
-| Test runner | JUnit 5 + AssertJ | JUnit 5 + Kotest | vitest | built-in + proptest | built-in + testify |
-| Mutation | PIT | PIT (Gradle) | Stryker | cargo-mutants | go-mutesting |
-| Null safety | JSpecify + NullAway | non-null default | strict TS | built-in | explicit checks |
-| Result type | sealed `Result<T>` | sealed `Result<T>` | discriminated union | `std::Result<T,E>` | `(T, error)` |
-| Build tool | Gradle | Gradle | pnpm | Cargo | Go modules |
+| Concept        | Java                | Kotlin             | TypeScript          | Rust                | Go                     |
+| -------------- | ------------------- | ------------------ | ------------------- | ------------------- | ---------------------- |
+| Public-API doc | JavaDoc `/** */`    | KDoc `/** */`      | TSDoc `/** */`      | rustdoc `///`       | doc comment            |
+| Formatter      | google-java-format  | ktlint             | prettier            | rustfmt             | gofmt                  |
+| Linter         | ErrorProne          | detekt             | eslint              | clippy              | `go vet` + staticcheck |
+| Test runner    | JUnit 5 + AssertJ   | JUnit 5 + Kotest   | vitest              | built-in + proptest | built-in + testify     |
+| Mutation       | PIT                 | PIT (Gradle)       | Stryker             | cargo-mutants       | go-mutesting           |
+| Null safety    | JSpecify + NullAway | non-null default   | strict TS           | built-in            | explicit checks        |
+| Result type    | sealed `Result<T>`  | sealed `Result<T>` | discriminated union | `std::Result<T,E>`  | `(T, error)`           |
+| Build tool     | Gradle              | Gradle             | pnpm                | Cargo               | Go modules             |
 
 All hooks, commands, skills, and schematics read this table; behavior is
 uniform, syntax is language-appropriate.
@@ -214,6 +226,7 @@ schematics/<name>/
 Schematics take `--language <lang>` (auto-detected from project markers).
 
 ### Naming cleanup
+
 - Skill `javadoc-public-api` → **`public-api-docs`** (language-agnostic).
 - Command `/javadoc-check` → **`/docs-check`** (language-agnostic).
 
@@ -268,6 +281,7 @@ public final class ReactiveMediator {
 - Mapping lives in `application/<channel>/executable`; domain stays transport-agnostic.
 
 ### Project skeleton
+
 ```
 <root>/
 ├── settings.gradle.kts            # includes modules + build-logic

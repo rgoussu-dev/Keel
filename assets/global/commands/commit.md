@@ -16,7 +16,7 @@ Run the full commit pipeline for the current diff:
    - Cargo: `cargo clippy -- -D warnings && cargo test`
    - Go: `go vet ./... && go test ./...`
    - OpenTofu: `tofu fmt -check && tofu validate`
-   Run every stack the repo contains. Fail the command on any red.
+     Run every stack the repo contains. Fail the command on any red.
 5. Draft a Conventional Commit message:
    - Format: `<type>(<scope>): <subject>`
    - Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `build`, `ci`,
@@ -24,7 +24,7 @@ Run the full commit pipeline for the current diff:
    - Scope: the module or aggregate touched (e.g. `domain/user`, `cli`,
      `infra/postgres`). Omit if the change is repo-wide.
    - Subject: imperative, lowercase, no trailing period, under 72 chars.
-   - Body (optional): explain *why*, not *what*. Wrap at 80.
+   - Body (optional): explain _why_, not _what_. Wrap at 80.
    - Never include task IDs, author tags, or session URLs.
 6. Show the proposed message; confirm with the user if any doubt.
 7. `git add` the staged files (never `git add -A` blindly — show a list first

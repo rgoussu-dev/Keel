@@ -116,7 +116,7 @@ Every project must begin with a **walking skeleton**: the thinnest end-to-end
 slice that exercises every architectural layer and every piece of
 infrastructure, from user input to deployed runtime.
 
-- **Greenfield:** build the walking skeleton *before* any feature.
+- **Greenfield:** build the walking skeleton _before_ any feature.
 - **Brownfield:** assess whether one exists. If not, building it is the first order of business. Features wait.
 - The walking skeleton includes: one primary adapter, one primary port, one handler, one secondary port (with fake), one real secondary adapter, **and an IaC deployment** via OpenTofu.
 - Run `/walking-skeleton init` or `/walking-skeleton check` to scaffold or audit.
@@ -173,19 +173,19 @@ infrastructure, from user input to deployed runtime.
 
 ## 8. Comments and documentation
 
-- **Public API only:** exported classes, interfaces, methods, functions, and types get doc comments describing *what* they do and *why* a caller would use them. Parameters, returns, errors, and invariants are documented.
+- **Public API only:** exported classes, interfaces, methods, functions, and types get doc comments describing _what_ they do and _why_ a caller would use them. Parameters, returns, errors, and invariants are documented.
 - **Private code:** no comments by default. If the "why" is non-obvious (workaround, subtle invariant, surprising behavior), a one-line comment is acceptable.
 - **Never** write comments that restate what well-named code already says.
 - **Never** reference task IDs, PR numbers, or authors in comments.
 - Language-specific rendering:
 
-| Language | Doc format |
-|---|---|
-| Java | JavaDoc `/** … */` |
-| Kotlin | KDoc `/** … */` |
-| TypeScript | TSDoc `/** … */` |
-| Rust | rustdoc `///` |
-| Go | doc comment (`// PackageName …` / `// ExportedName …`) |
+| Language   | Doc format                                             |
+| ---------- | ------------------------------------------------------ |
+| Java       | JavaDoc `/** … */`                                     |
+| Kotlin     | KDoc `/** … */`                                        |
+| TypeScript | TSDoc `/** … */`                                       |
+| Rust       | rustdoc `///`                                          |
+| Go         | doc comment (`// PackageName …` / `// ExportedName …`) |
 
 The `public-api-docs` skill nudges you to add docs on creation.
 The `/docs-check` command audits the full surface.

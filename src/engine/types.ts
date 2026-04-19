@@ -54,8 +54,19 @@ export type Options = Readonly<Record<string, unknown>>;
  * uses this to render a CLI prompt (or, eventually, an IDE UI).
  */
 export type PromptSchema<T> =
-  | { kind: 'input'; name: string; message: string; default?: string; validate?: (v: string) => true | string }
-  | { kind: 'select'; name: string; message: string; choices: readonly { name: string; value: T }[] }
+  | {
+      kind: 'input';
+      name: string;
+      message: string;
+      default?: string;
+      validate?: (v: string) => true | string;
+    }
+  | {
+      kind: 'select';
+      name: string;
+      message: string;
+      choices: readonly { name: string; value: T }[];
+    }
   | { kind: 'confirm'; name: string; message: string; default?: boolean };
 
 /**

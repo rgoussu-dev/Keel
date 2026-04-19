@@ -37,7 +37,8 @@ export class InMemoryTree implements Tree {
   write(filePath: string, content: Buffer | string): void {
     const key = this.key(filePath);
     const prior = this.entries.get(key);
-    const wasOnDisk = prior?.kind === 'present' ? prior.wasOnDisk : fs.pathExistsSync(path.join(this.root, key));
+    const wasOnDisk =
+      prior?.kind === 'present' ? prior.wasOnDisk : fs.pathExistsSync(path.join(this.root, key));
     this.entries.set(key, {
       kind: 'present',
       content: Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8'),
