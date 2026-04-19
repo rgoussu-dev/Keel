@@ -11,7 +11,7 @@ import { packageToPath, toPascalCase } from '../util.js';
  *   - `domain/contract` module (empty but wired)
  *   - `domain/core` with the roll-your-own mediator kernel
  *     (Action / Command / Query / Result / Handler / Mediator)
- *   - `infrastructure/iac/` OpenTofu stub
+ *   - `/iac/` OpenTofu stub (repo-root per conventions §5)
  * then invokes the `port` schematic for a starter port so the skeleton
  * ends with one real adapter slot and one fake.
  *

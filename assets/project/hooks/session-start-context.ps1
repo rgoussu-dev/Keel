@@ -24,7 +24,7 @@ Write-Output "--- walking skeleton markers ---"
   else                   { Write-Output "missing: $($_.path) ($($_.note))" }
 }
 
-$iac = @('infrastructure/iac','infra') | Where-Object { Test-Path $_ } | Select-Object -First 1
-if ($iac) { Write-Output "found: IaC at $iac" } else { Write-Output "missing: IaC (OpenTofu expected)" }
+$iac = @('iac','infrastructure/iac','infra') | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($iac) { Write-Output "found: IaC at $iac" } else { Write-Output "missing: IaC (OpenTofu expected at /iac/)" }
 
 exit 0

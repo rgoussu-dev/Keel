@@ -127,9 +127,16 @@ infrastructure, from user input to deployed runtime.
 
 - All infrastructure is defined in **OpenTofu** (Terraform-compatible, fully OSS).
 - No infrastructure lives outside IaC. No manual cloud-console changes.
-- IaC modules live in `infrastructure/iac/` or a sibling repo, depending on scope.
-- Every environment (dev, staging, prod) is a separate state.
+- IaC modules live at the **repo root** in `/iac/<target>/` (e.g. `/iac/cloudrun/`, `/iac/hetzner/`), or a sibling repo, depending on scope. IaC is **not** a hexagonal adapter, so it does **not** live under `infrastructure/` — that path is reserved for adapters implementing a `domain/contract` port.
+- Multiple `/iac/<target>/` modules may coexist; the walking skeleton picks a default at scaffold time.
+- Every environment (dev, staging, prod) is a separate state. State is remote by default (provider-native backend, e.g. GCS); the state bucket is provisioned by a one-shot `bootstrap.sh` so the chicken-and-egg is explicit.
 - Secrets never land in state files; use a secret manager.
+
+### 5.1 Container registry — first-class, orthogonal to deploy target
+
+- The container registry is a **separate choice** from the deploy target. A project may deploy to Cloud Run but push images to `ghcr.io`, or run on a VPS while publishing images via GitHub Container Registry.
+- Supported out of the box: `ghcr.io` (GitHub), `gar` (GCP Artifact Registry, auto-selected with `iac-cloudrun` so the WIF pool is reused), and `external` (Docker Hub, quay.io, self-hosted — username + token prompted and stored as a repo secret).
+- A project without an IaC target (`target=none`) still publishes to a registry; promoting the image **is** its release step.
 
 ---
 

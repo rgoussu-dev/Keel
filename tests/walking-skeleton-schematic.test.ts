@@ -62,8 +62,9 @@ describe('walking-skeleton schematic', () => {
       ).toBe(true);
     }
 
-    // IaC
-    expect(existsSync(path.join(workDir, 'infrastructure/iac/main.tf'))).toBe(true);
+    // IaC (repo-root per conventions §5)
+    expect(existsSync(path.join(workDir, 'iac/main.tf'))).toBe(true);
+    expect(existsSync(path.join(workDir, 'infrastructure/iac/main.tf'))).toBe(false);
 
     // Composed port
     expect(

@@ -19,7 +19,7 @@ echo "--- walking skeleton markers ---"
 [ -d "domain/contract" ]          && echo "found: domain/contract"           || echo "missing: domain/contract (ports expected here)"
 [ -d "application" ]              && echo "found: application"               || echo "missing: application (interface layer expected here)"
 [ -d "infrastructure" ]           && echo "found: infrastructure"            || echo "missing: infrastructure (adapters expected here)"
-INFRA_IAC=$(ls -d infrastructure/iac 2>/dev/null || ls -d infra 2>/dev/null || true)
-[ -n "$INFRA_IAC" ] && echo "found: IaC at $INFRA_IAC" || echo "missing: IaC (OpenTofu expected)"
+IAC_DIR=$(ls -d iac 2>/dev/null || ls -d infrastructure/iac 2>/dev/null || ls -d infra 2>/dev/null || true)
+[ -n "$IAC_DIR" ] && echo "found: IaC at $IAC_DIR" || echo "missing: IaC (OpenTofu expected at /iac/)"
 
 exit 0

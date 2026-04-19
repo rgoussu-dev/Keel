@@ -1,8 +1,12 @@
-# infrastructure/iac
+# iac
 
-Every piece of infrastructure lives in this directory (or a sibling repo,
-depending on scope). OpenTofu is the default; no infrastructure changes
-happen outside of IaC.
+Every piece of infrastructure lives at this repo-root `/iac/` directory (or
+a sibling repo, depending on scope). OpenTofu is the default; no
+infrastructure changes happen outside of IaC.
+
+This stub is a placeholder that `keel generate walking-skeleton` replaces
+with a concrete `/iac/<target>/` module (e.g. `/iac/cloudrun/`) once the
+deploy target is chosen.
 
 ## Workflow
 
