@@ -17,8 +17,8 @@ skills, slash commands, templates) that can be dropped into any project.
   - `--global` → `~/.claude/` (universal defaults)
   - default → `./.claude/` in current project (per-project overrides)
 - **Update/migration:**
-  - `.claude/.kit-manifest.json` tracks version + sha256 of each installed file.
-  - `kit update` compares user hash vs shipped-old vs shipped-new. Unchanged → overwrite. Modified → diff + prompt (keep/overwrite/merge).
+  - `.claude/.keel-manifest.json` tracks version + sha256 of each installed file.
+  - `keel update` compares user hash vs shipped-old vs shipped-new. Unchanged → overwrite. Modified → diff + prompt (keep/overwrite/merge).
   - Per-component `CHANGELOG.md` shipped with the package.
   - Schematics carry `migration-*.ts` Rules to auto-evolve projects across kit versions (Angular-schematics style).
 
