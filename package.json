@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json -w",
-    "lint": "eslint src",
+    "lint": "eslint src tests",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -49,12 +49,15 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.16.0",
     "@types/ejs": "^3.1.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.10.0",
     "eslint": "^9.16.0",
+    "globals": "^15.14.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0",
     "vitest": "^2.1.0"
   }
 }
