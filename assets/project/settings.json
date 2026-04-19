@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/format-on-edit.sh",
+            "platform": "linux|darwin"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/format-on-edit.ps1",
+            "platform": "win32"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-commit-verify.sh",
+            "platform": "linux|darwin"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-commit-verify.ps1",
+            "platform": "win32"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-start-context.sh",
+            "platform": "linux|darwin"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-start-context.ps1",
+            "platform": "win32"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/stop-commit-reminder.sh",
+            "platform": "linux|darwin"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/stop-commit-reminder.ps1",
+            "platform": "win32"
+          }
+        ]
+      }
+    ]
+  }
+}

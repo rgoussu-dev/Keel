@@ -54,6 +54,9 @@ export async function update(opts: UpdateOptions): Promise<void> {
       if (!opts.dryRun) {
         await fs.ensureDir(path.dirname(file.targetAbs));
         await fs.writeFile(file.targetAbs, shipped);
+        if (relPosix.endsWith('.sh') && process.platform !== 'win32') {
+          await fs.chmod(file.targetAbs, 0o755);
+        }
       }
       logger.success(`+ ${relPosix}`);
       newEntries.push({
@@ -85,7 +88,12 @@ export async function update(opts: UpdateOptions): Promise<void> {
 
     if (!userModified) {
       // User has not touched the file since install → safe to overwrite.
-      if (!opts.dryRun) await fs.writeFile(file.targetAbs, shipped);
+      if (!opts.dryRun) {
+        await fs.writeFile(file.targetAbs, shipped);
+        if (relPosix.endsWith('.sh') && process.platform !== 'win32') {
+          await fs.chmod(file.targetAbs, 0o755);
+        }
+      }
       logger.success(`~ ${relPosix} (upgraded)`);
       newEntries.push({
         source: path.posix.join(assetKind, relPosix),

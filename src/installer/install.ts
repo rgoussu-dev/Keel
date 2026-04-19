@@ -72,6 +72,9 @@ export async function install(opts: InstallOptions): Promise<void> {
       }
     }
     await fs.writeFile(file.targetAbs, content);
+    if (file.relative.endsWith('.sh') && process.platform !== 'win32') {
+      await fs.chmod(file.targetAbs, 0o755);
+    }
     const hash = sha256(content);
     entries.push({
       source: path.posix.join(assetKind, file.relative.split(path.sep).join('/')),
