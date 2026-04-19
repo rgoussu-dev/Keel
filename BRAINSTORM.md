@@ -9,7 +9,7 @@ skills, slash commands, templates) that can be dropped into any project.
 
 ## Distribution & Install Model — LOCKED
 
-- **npm scope:** `@rgoussu.dev/<name>` — name **OPEN** (candidates below).
+- **Package:** `@rgoussu.dev/keel` — LOCKED.
 - **Distribution:** npx-based CLI (Node.js). Cross-platform: Windows, macOS, Linux.
 - **CLI verbs:** `install`, `update`, `add <component>`, `remove <component>`, `doctor`, `generate <schematic>` (aka `g`).
 - **Install mode:** copy (not symlink), with migration/update path.
@@ -22,30 +22,40 @@ skills, slash commands, templates) that can be dropped into any project.
   - Per-component `CHANGELOG.md` shipped with the package.
   - Schematics carry `migration-*.ts` Rules to auto-evolve projects across kit versions (Angular-schematics style).
 
-### Name candidates (pick one)
-- **keel** — ship's spine; matches walking-skeleton philosophy (top pick).
-- **lodestone** — guiding principle.
-- **atelier** — craftsman's workshop.
-- **hexforge** — hexagonal + forge.
-- **cairn** — trail markers.
-- **portside** — ports & adapters pun.
-- **kernel** — matches mediator-in-domain-kernel.
+## Schematics Architecture — LOCKED
 
-## Schematics-Style Architecture — LOCKED (engine OPEN)
+Generators are composable, parameterized, and ship migration scripts per
+version. **Engine is abstracted behind a wrapper interface** so the
+implementation can be swapped.
 
-Each generator is a **schematic** (Angular-style): composable, parameterized,
-AST-aware where needed, with migration Rules shipped for version jumps.
+### Wrapper Interface (ports)
+```ts
+interface Engine {
+  register(s: Schematic): void;
+  run(name: string, opts: Options, ctx: Context): Promise<void>;
+}
+interface Schematic {
+  name: string; description: string;
+  parameters: ParamSchema;
+  run(tree: Tree, opts: Options, ctx: Context): Promise<void>;
+}
+interface Tree {                       // virtual FS; commits only after dry-run review
+  read|write|delete|exists|list
+}
+interface Context {
+  logger; prompt(schema); invoke(name, opts);  // composition
+}
+```
 
-- **Composition:** `/walking-skeleton` internally calls `/port`, `/handler`, `/adapter`, `/executable`, `/iac` schematics.
-- **Parameterization:** every schematic prompts for inputs (name, channel, tech, etc.).
-- **Templating:** EJS or Handlebars for file generation.
-- **AST:** ts-morph for TS; treesitter (or language-native) for Java/Kotlin/Rust/Go where modifications needed.
-- **Migration:** each schematic ships `migrations/<version>.ts`; `kit update` runs pending migrations in order.
-- **Engine choice — OPEN:**
-  - `@angular-devkit/schematics` — mature, Tree+Rule+composition built in, heavy.
-  - Nx generators — lighter, same model, optional.
-  - Homegrown minimal engine — max control, reinvents wheel.
-  - Leaning `@angular-devkit/schematics`.
+### Default Engine: Homegrown (A) — LOCKED
+- Built on `ejs` (templates) + `inquirer` (prompts) + `fs-extra`.
+- ~500 LoC; zero impedance with wrapper.
+- Tree provides dry-run + diff + atomic write.
+- Migrations: `migrations/<version>.ts` in each schematic; `keel update` runs pending.
+
+### Swappable adapters (future, to prove abstraction)
+- `PlopAdapter`, `NxDevkitAdapter`, `HygenAdapter` — shipped as optional packages.
+- Explicitly **not** `@angular-devkit/schematics` (rejected — avoid dependency unless overwhelming reason).
 
 ## Proposed Layout
 
@@ -169,25 +179,54 @@ Audits:
 - `test-scenario-pattern` — enforce Scenario+Factory+fakes.
 - `walking-skeleton-guide` — activate on init / brownfield.
 
+## Java/Quarkus Proving Ground — LOCKED
+
+- **Build tool:** Gradle (always). Kotlin DSL.
+- **Multi-module:** standard multi-project build + `build-logic/` included build (convention plugins) + `gradle/libs.versions.toml` version catalog.
+- **Test stack:** JUnit 5 + AssertJ + **ArchUnit** (hex boundary enforcement) + **PIT/pitest** (mutation testing, `pitest-junit5-plugin`, changed-classes scope by default).
+- **Mediator:** explicit DI at construction — handlers wired via `Map<Class<?>, Handler>` passed to `Mediator` constructor. No reflection, no annotation scanning. Lives in `domain/core/kernel/`.
+
+### Example mediator
+```java
+public final class Mediator {
+  private final Map<Class<?>, CommandHandler<?, ?>> commandHandlers;
+  private final Map<Class<?>, QueryHandler<?, ?>> queryHandlers;
+
+  public Mediator(Map<Class<?>, CommandHandler<?, ?>> cmds,
+                  Map<Class<?>, QueryHandler<?, ?>> qrys) { … }
+
+  public <C extends Command<R>, R> R send(C command) { … }
+  public <Q extends Query<R>, R> R ask(Q query) { … }
+}
+```
+
+### Project skeleton
+```
+<root>/
+├── settings.gradle.kts            # includes modules + build-logic
+├── gradle/libs.versions.toml
+├── build-logic/
+│   └── src/main/kotlin/
+│       ├── keel.java-conventions.gradle.kts
+│       ├── keel.test-conventions.gradle.kts
+│       └── keel.quality-conventions.gradle.kts
+├── application/rest/{contract,executable}/build.gradle.kts
+├── domain/{contract,core}/build.gradle.kts
+└── infrastructure/<port>/{<impl>,fake}/build.gradle.kts
+```
+
 ## Open Questions — RESUME HERE
 
-1. **Package name** — pick from candidates above (leaning `keel`).
-2. **Schematics engine** — `@angular-devkit/schematics` / Nx generators / homegrown (leaning `@angular-devkit/schematics`).
-3. **Executable/framework registry** — which first-class combos ship in the initial release? (Framework choice is deferred to scaffold-time, but we must implement schematics for *some* set first.)
-   - Java REST: Spring Boot? Micronaut? Quarkus?
-   - Kotlin REST: Ktor? Spring?
-   - TS REST: Nest? Fastify? Express?
-   - TS UI: React? Vue? Svelte?
-   - Rust REST: Axum? Actix?
-   - Go REST: stdlib? Echo? Gin?
+1. **Java version:** 21 LTS (Quarkus 3.x default) or 17?
+2. **Quality toolchain:** Spotless + google-java-format + Checkstyle + ArchUnit + PIT — all in? Or drop Checkstyle?
 
 ## Next Actions
 
-- Resolve open questions.
-- Decide MVP slice. Candidate:
-  - Global `CLAUDE.md` + settings.json with architectural constraints.
-  - Auto-format + pre-commit-tests hooks (bash + ps1).
-  - Schematics engine set up with 3 schematics: `/walking-skeleton`, `/port`, `/scenario` — for **one** language end-to-end (suggest TS as proving ground; easiest AST).
-  - `/commit` slash command.
-- Scaffold CLI (`bin/kit.js`), manifest, install/update.
-- Draft global `CLAUDE.md` encoding all architectural constraints.
+- Resolve the two open questions.
+- Build MVP:
+  1. Scaffold `keel` CLI (`bin/keel.js`) + manifest + install/update + update-migration runner.
+  2. Homegrown schematics engine behind `Engine` wrapper interface.
+  3. Global `CLAUDE.md` + `settings.json` encoding all architectural constraints.
+  4. Auto-format + pre-commit-tests hooks (.sh + .ps1).
+  5. First three schematics end-to-end for Java/Quarkus: `walking-skeleton`, `port`, `scenario`.
+  6. `/commit` slash command.
