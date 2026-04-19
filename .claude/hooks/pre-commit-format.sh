@@ -4,7 +4,13 @@
 set -euo pipefail
 
 input=$(cat)
-command=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
+# Node is already a hard requirement of this repo, so we use it rather than jq
+# to avoid another environment dependency.
+command=$(printf '%s' "$input" | node -e '
+  const d = require("fs").readFileSync(0, "utf8");
+  try { process.stdout.write(JSON.parse(d || "{}")?.tool_input?.command ?? ""); }
+  catch { /* malformed payload: treat as no-op */ }
+')
 
 case "$command" in
   *"git commit"*) ;;
@@ -18,7 +24,7 @@ staged=$(git diff --name-only --cached || true)
 pnpm format >/dev/null
 
 if [ -n "$staged" ]; then
-  printf '%s\n' "$staged" | xargs -r git add --
+  printf '%s\n' "$staged" | xargs git add --
 fi
 
 if ! pnpm lint >/dev/null 2>&1; then

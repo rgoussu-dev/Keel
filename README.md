@@ -39,7 +39,7 @@ Requirements: Node 20+ and pnpm 9+.
 
 ```sh
 pnpm install
-pnpm lint          # eslint (flat config)
+pnpm lint          # eslint (flat config) + prettier --check .
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
 pnpm test:watch    # vitest watch mode
