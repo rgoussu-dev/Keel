@@ -6,6 +6,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] — 2026-04-19
+
 ### Added
 
 - `CI` workflow (`.github/workflows/ci.yml`): lint, typecheck, test, build on
