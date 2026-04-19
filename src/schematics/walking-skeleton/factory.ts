@@ -1,30 +1,50 @@
 import path from 'node:path';
 import { paths } from '../../util/paths.js';
 import { renderTemplate } from '../../engine/template.js';
-import type { Options, Schematic, Tree } from '../../engine/types.js';
+import type { Context, Options, Schematic, Tree } from '../../engine/types.js';
 import { packageToPath, toPascalCase } from '../util.js';
 
+const SUPPORTED_APPLICATION_KINDS = ['rest'] as const;
+type ApplicationKind = (typeof SUPPORTED_APPLICATION_KINDS)[number];
+
+const SUPPORTED_DEPLOY_TARGETS = ['cloudrun'] as const;
+type DeployTarget = (typeof SUPPORTED_DEPLOY_TARGETS)[number];
+
 /**
- * Scaffolds the walking-skeleton shell for a new project:
- *   - root Gradle multi-project (settings.gradle.kts, version catalog)
- *   - `build-logic/` included build with java + test + quality conventions
- *   - `domain/contract` module (empty but wired)
- *   - `domain/core` as the home for business logic (aggregates, handlers)
- *   - `domain/contract/kernel` with the roll-your-own mediator kernel
- *     (Action / Command / Query / Result / Handler / Mediator) — kept in
- *     `domain/contract` so the `application/<channel>` layer can dispatch
- *     via the mediator without violating the §1.1 dependency rule.
- *   - `/iac/` OpenTofu stub (repo-root per conventions §5)
- * then invokes the `port` schematic for a starter port so the skeleton
- * ends with one real adapter slot and one fake.
+ * Orchestrator for a new project's walking skeleton. Emits the thinnest
+ * end-to-end slice that exercises every architectural layer — from the
+ * JAX-RS resource on the primary side to the real deploy target on the
+ * secondary side — then hands control back ready for feature work.
  *
- * Framework for any future `application/<channel>/executable` is chosen
- * later via a dedicated `executable` schematic — this step deliberately
- * does not pick a web framework.
+ * Composition order (each step a schematic that also runs standalone):
+ *
+ *   1. `git-init` — ensure the target directory is a git repo; set an
+ *      origin remote when provided.
+ *   2. `gradle-wrapper` — emit `gradlew`, `gradlew.bat`, and the wrapper
+ *      bootstrap jar so the skeleton is runnable without a system
+ *      Gradle.
+ *   3. own templates — root gradle multi-project, `build-logic/`
+ *      convention plugins, `domain/contract` with the mediator kernel,
+ *      `domain/core` as the business-logic home, the version catalog.
+ *   4. `port` — a starter secondary port + its fake module.
+ *   5. `executable-rest` — Quarkus REST channel with a `/ping` slice
+ *      wired through the mediator, OpenAPI + Swagger UI.
+ *   6. `iac-cloudrun` — tofu module + bootstrap.sh that provisions the
+ *      Cloud Run service, the Artifact Registry repo, and Workload
+ *      Identity Federation for GitHub Actions.
+ *   7. `ci-github` — GH Actions workflows implementing CD on `main` and
+ *      a workflow-dispatch release that promotes the last built image.
+ *
+ * Parameters surface only the project-specific bits; the rest are
+ * decided inside each sub-schematic. `applicationKind` and
+ * `deployTarget` are currently single-valued (the only supported combo
+ * ships in this release); additional kinds and targets will add
+ * branching here without changing the composition order.
  */
 export const walkingSkeletonSchematic: Schematic = {
   name: 'walking-skeleton',
-  description: 'Scaffold a greenfield walking skeleton (multi-module gradle + kernel + IaC).',
+  description:
+    'Greenfield walking skeleton: gradle + kernel + Quarkus REST + Cloud Run IaC + GitHub Actions CD.',
   parameters: [
     {
       name: 'basePackage',
@@ -37,6 +57,39 @@ export const walkingSkeletonSchematic: Schematic = {
       description: 'Gradle root project name, e.g. my-service',
       required: true,
       prompt: { kind: 'input', name: 'projectName', message: 'gradle root project name' },
+    },
+    {
+      name: 'applicationKind',
+      description: 'Primary adapter channel (rest supported in MVP).',
+      required: false,
+      prompt: {
+        kind: 'select',
+        name: 'applicationKind',
+        message: 'application kind',
+        choices: [{ name: 'rest (Quarkus)', value: 'rest' }],
+      },
+    },
+    {
+      name: 'deployTarget',
+      description: 'IaC target (cloudrun supported in MVP).',
+      required: false,
+      prompt: {
+        kind: 'select',
+        name: 'deployTarget',
+        message: 'deploy target',
+        choices: [{ name: 'cloudrun (GCP, scale-to-zero, ~$0)', value: 'cloudrun' }],
+      },
+    },
+    {
+      name: 'githubRemote',
+      description: 'Origin remote URL (leave empty to skip).',
+      required: false,
+      prompt: {
+        kind: 'input',
+        name: 'githubRemote',
+        message: 'origin remote URL (leave empty to skip)',
+        default: '',
+      },
     },
     {
       name: 'starterPort',
@@ -62,8 +115,12 @@ export const walkingSkeletonSchematic: Schematic = {
     },
   ],
 
-  async run(tree, options, ctx) {
+  async run(tree: Tree, options: Options, ctx: Context): Promise<void> {
     const vars = resolve(options);
+
+    await ctx.invoke('git-init', { remote: vars.githubRemote });
+    await ctx.invoke('gradle-wrapper', {});
+
     const templateRoot = path.join(
       paths.asset('schematics'),
       'walking-skeleton',
@@ -71,7 +128,7 @@ export const walkingSkeletonSchematic: Schematic = {
       'java',
     );
     await renderTemplate(tree, templateRoot, '', vars as unknown as Record<string, unknown>);
-    appendSettings(tree, vars);
+    appendStarterPortInclude(tree, vars);
 
     await ctx.invoke('port', {
       name: vars.StarterPort,
@@ -79,9 +136,21 @@ export const walkingSkeletonSchematic: Schematic = {
       aggregate: vars.starterAggregate,
     });
 
-    ctx.logger.info(
-      `walking skeleton ready for ${vars.projectName}. next: run a \`keel generate executable\` ` +
-        `to pick a web framework and wire the first primary adapter.`,
+    if (vars.applicationKind === 'rest') {
+      await ctx.invoke('executable-rest', {
+        basePackage: vars.basePackage,
+        projectName: vars.projectName,
+      });
+    }
+
+    if (vars.deployTarget === 'cloudrun') {
+      await ctx.invoke('iac-cloudrun', {});
+      await ctx.invoke('ci-github', { serviceName: vars.projectName });
+    }
+
+    ctx.logger.success(
+      `walking skeleton ready for ${vars.projectName}. ` +
+        `next: PROJECT_ID=… ./iac/bootstrap/bootstrap.sh, then push to main to trigger the first deploy.`,
     );
   },
 };
@@ -90,6 +159,9 @@ interface ResolvedVars {
   basePackage: string;
   pkgPath: string;
   projectName: string;
+  applicationKind: ApplicationKind;
+  deployTarget: DeployTarget;
+  githubRemote: string;
   StarterPort: string;
   starterAggregate: string;
 }
@@ -99,14 +171,48 @@ function resolve(options: Options): ResolvedVars {
   if (!basePackage) throw new Error('walking-skeleton: `basePackage` is required');
   const projectName = String(options['projectName'] ?? '').trim();
   if (!projectName) throw new Error('walking-skeleton: `projectName` is required');
+  if (!/^[a-z][a-z0-9-]{0,62}$/.test(projectName)) {
+    throw new Error(
+      `walking-skeleton: invalid projectName "${projectName}" (lowercase + digits + dashes; start with a letter; 63 chars max — same rule as Cloud Run service names)`,
+    );
+  }
+
+  const applicationKind = resolveUnion(
+    options['applicationKind'],
+    SUPPORTED_APPLICATION_KINDS,
+    'rest',
+    'applicationKind',
+  );
+  const deployTarget = resolveUnion(
+    options['deployTarget'],
+    SUPPORTED_DEPLOY_TARGETS,
+    'cloudrun',
+    'deployTarget',
+  );
 
   return {
     basePackage,
     pkgPath: packageToPath(basePackage),
     projectName,
+    applicationKind,
+    deployTarget,
+    githubRemote: String(options['githubRemote'] ?? '').trim(),
     StarterPort: toPascalCase(String(options['starterPort'] ?? 'UserRepository')),
     starterAggregate: String(options['starterAggregate'] ?? 'user').toLowerCase() || 'user',
   };
+}
+
+function resolveUnion<T extends string>(
+  raw: unknown,
+  allowed: readonly T[],
+  fallback: T,
+  field: string,
+): T {
+  const value = raw == null || String(raw).trim() === '' ? fallback : String(raw).trim();
+  if ((allowed as readonly string[]).includes(value)) return value as T;
+  throw new Error(
+    `walking-skeleton: ${field} "${value}" not supported (allowed: ${allowed.join(', ')})`,
+  );
 }
 
 /**
@@ -115,7 +221,7 @@ function resolve(options: Options): ResolvedVars {
  * with the shell modules already listed; we add the starter port fake
  * include line here so the project is fully wired after scaffold.
  */
-function appendSettings(tree: Tree, vars: ResolvedVars): void {
+function appendStarterPortInclude(tree: Tree, vars: ResolvedVars): void {
   const existing = tree.read('settings.gradle.kts');
   if (!existing) return;
   const kebabPort = vars.StarterPort.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();

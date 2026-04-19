@@ -1,44 +1,75 @@
 # <%= projectName %>
 
-Walking skeleton scaffolded by `@rgoussu.dev/keel`. Trunk-based, hexagonal,
-Command/Query + Mediator, fakes-not-mocks, OpenTofu-deployed.
+Walking skeleton scaffolded by `@rgoussu.dev/keel`. Trunk-based,
+hexagonal, Command/Query + Mediator, fakes-not-mocks, Quarkus REST,
+Cloud Run (native image) via OpenTofu, GitHub Actions CD.
 
 ## Layout
 
 ```
-application/<channel>/{contract,executable}   # created by `keel g executable`
+application/rest/contract                     # OpenAPI spec + transport DTOs
+application/rest/executable                   # Quarkus runnable (composition root)
 domain/contract                               # ports + DTOs + mediator kernel
 domain/contract/kernel                        # Action / Command / Query / Result / Error / Handler / Mediator
-domain/core/<aggregate>                       # business logic
+domain/core/<aggregate>                       # business logic (handlers)
 infrastructure/<port>/{<impl>,fake}           # adapters + fake module
-iac/<target>/                                 # OpenTofu (repo root)
+iac/cloudrun                                  # OpenTofu Cloud Run module
+iac/bootstrap                                 # one-shot: enable APIs + create state bucket
+.github/workflows                             # ci.yml (CD on main) + release.yml (manual promotion)
 build-logic/                                  # gradle convention plugins
 gradle/libs.versions.toml                     # version catalog
+gradlew / gradle/wrapper/                     # Gradle Wrapper (shipped — no system gradle needed)
 ```
 
-## Setup (one-time)
-
-The skeleton does not ship the Gradle Wrapper — generate it once with a
-system-installed Gradle, then commit the result:
+## First time: deploy to Cloud Run
 
 ```sh
-gradle wrapper --gradle-version 8.11
-git add gradle/wrapper/ gradlew gradlew.bat
+# 1) Bootstrap the GCP side (enables APIs, creates the tofu state bucket).
+PROJECT_ID=your-gcp-project ./iac/bootstrap/bootstrap.sh
+
+# 2) First apply from your workstation so GitHub Actions has something to assume.
+cd iac/cloudrun
+tofu init -backend-config=bucket=${PROJECT_ID}-tofu-state
+tofu plan \
+  -var project_id=${PROJECT_ID} \
+  -var service_name=<%= projectName %> \
+  -var image=${REGION}-docker.pkg.dev/${PROJECT_ID}/<%= projectName %>/rest:bootstrap \
+  -var github_repository=<owner>/<repo>
+tofu apply
+
+# 3) Copy the tofu outputs into GitHub Actions secrets (the bootstrap
+#    script prints the exact gcloud/tofu commands for the values):
+#    GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER,
+#    GCP_DEPLOYER_SA_EMAIL, GCP_ARTIFACT_REGISTRY_URL.
+
+# 4) Push to main. CI builds the native image, pushes, applies, smoke-
+#    tests /ping. You should see a 200 JSON with {"message": "pong", ...}
+#    at the service URL.
 ```
 
-Also set the Java package for {@code group} on the root project by
-editing `build.gradle.kts` and adding:
+## Day-to-day
+
+```sh
+./gradlew check build              # local sanity
+./gradlew :application:rest:executable:quarkusDev   # live-reload dev server on :8080
+# /ping          → JSON ping response
+# /openapi       → generated OpenAPI yaml
+# /swagger       → Swagger UI
+```
+
+## Package group
+
+Set the Java `group` on the root project by editing `build.gradle.kts`
+and adding:
 
 ```kotlin
 allprojects { group = "<%= basePackage %>" }
 ```
 
-Once the wrapper exists, the documented commands below work.
-
 ## Next steps
 
-1. Pick a web / messaging framework for the first channel:
-   `keel g executable` (not yet shipped — see roadmap).
-2. Run the walking skeleton end-to-end:
-   `./gradlew check && tofu plan`
-3. Iterate in small trunk commits (`/commit`).
+1. Replace the `/ping` slice with a real read-side action: extend the
+   starter port with the operations your aggregate needs, implement the
+   handler in `domain/core`, wire it in `MediatorProducer`.
+2. Release: `gh workflow run release.yml -f bump=patch` when you're
+   ready to promote the latest green build to `vX.Y.Z`.
