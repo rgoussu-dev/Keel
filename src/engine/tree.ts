@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import fs from 'fs-extra';
 import type { Tree, TreeChange } from './types.js';
 
@@ -9,7 +10,10 @@ type Entry =
 /**
  * In-memory tree rooted at an absolute path. Reads fall through to disk
  * lazily on first access; writes stage in memory. `commit()` materialises
- * staged changes to disk atomically per file.
+ * staged changes to disk, each file written atomically via write-to-temp
+ * + rename (see {@link atomicWrite}). If the process crashes mid-commit
+ * some files may be written and others not, but no file is observed in a
+ * half-written state.
  */
 export class InMemoryTree implements Tree {
   private readonly entries = new Map<string, Entry>();
@@ -81,7 +85,14 @@ export class InMemoryTree implements Tree {
     return out.sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  /** Materialises staged changes to disk. Returns the list of changes applied. */
+  /**
+   * Materialises staged changes to disk. Each file is written atomically
+   * (write-to-temp + rename on the same filesystem) so observers never
+   * see a half-written file; if an existing file is being replaced its
+   * permission bits are preserved across the rename.
+   *
+   * @returns the changes applied, in the same order as {@link changes}.
+   */
   async commit(): Promise<readonly TreeChange[]> {
     const changes = this.changes();
     for (const change of changes) {
@@ -93,7 +104,7 @@ export class InMemoryTree implements Tree {
       const entry = this.entries.get(change.path);
       if (entry?.kind !== 'present') continue;
       await fs.ensureDir(path.dirname(abs));
-      await fs.writeFile(abs, entry.content);
+      await atomicWrite(abs, entry.content);
     }
     return changes;
   }
@@ -102,5 +113,34 @@ export class InMemoryTree implements Tree {
     // Normalise to forward-slash, strip leading slashes / `./`.
     const normal = filePath.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
     return normal;
+  }
+}
+
+/**
+ * Writes a file atomically: the payload is written to a unique temp path
+ * in the same directory, then renamed onto the target. On POSIX systems
+ * rename is atomic when source and destination are on the same
+ * filesystem. If the target already exists its mode bits are preserved.
+ */
+async function atomicWrite(target: string, content: Buffer): Promise<void> {
+  const dir = path.dirname(target);
+  const base = path.basename(target);
+  const suffix = randomBytes(6).toString('hex');
+  const tmp = path.join(dir, `.${base}.keel.${suffix}`);
+
+  let priorMode: number | null = null;
+  try {
+    priorMode = (await fs.stat(target)).mode & 0o777;
+  } catch {
+    priorMode = null;
+  }
+
+  await fs.writeFile(tmp, content);
+  try {
+    if (priorMode !== null) await fs.chmod(tmp, priorMode);
+    await fs.rename(tmp, target);
+  } catch (err) {
+    await fs.remove(tmp).catch(() => {});
+    throw err;
   }
 }
