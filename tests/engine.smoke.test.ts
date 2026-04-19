@@ -70,6 +70,46 @@ describe('HomegrownEngine', () => {
     expect(existsSync(path.join(workDir, 'leaf.txt'))).toBe(true);
   });
 
+  it('propagates invoke through nested composition (grand-child writes via ctx.invoke)', async () => {
+    const engine = new HomegrownEngine();
+    engine.register({
+      name: 'grand',
+      description: 'leaf',
+      parameters: [],
+      async run(tree) {
+        tree.write('grand.txt', 'grand\n');
+      },
+    });
+    engine.register({
+      name: 'child',
+      description: 'middle',
+      parameters: [],
+      async run(tree, _opts, ctx) {
+        tree.write('child.txt', 'child\n');
+        await ctx.invoke('grand', {});
+      },
+    });
+    engine.register({
+      name: 'parent',
+      description: 'top',
+      parameters: [],
+      async run(tree, _opts, ctx) {
+        tree.write('parent.txt', 'parent\n');
+        await ctx.invoke('child', {});
+      },
+    });
+
+    await engine.run(
+      'parent',
+      {},
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+    );
+
+    for (const f of ['parent.txt', 'child.txt', 'grand.txt']) {
+      expect(existsSync(path.join(workDir, f))).toBe(true);
+    }
+  });
+
   it('does not write to disk on dry run', async () => {
     const engine = new HomegrownEngine();
     engine.register({

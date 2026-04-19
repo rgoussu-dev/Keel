@@ -1,8 +1,7 @@
 import chalk from 'chalk';
 import { confirm, input, select } from '@inquirer/prompts';
-import { logger } from '../util/log.js';
 import { InMemoryTree } from './tree.js';
-import type { Context, Engine, Options, PromptSchema, Schematic } from './types.js';
+import type { Context, Engine, Options, PromptSchema, Schematic, Tree } from './types.js';
 
 /**
  * Default in-process engine. Stores schematics in a map, drives them
@@ -34,38 +33,58 @@ export class HomegrownEngine implements Engine {
     context: Context,
     opts: { dryRun?: boolean } = {},
   ): Promise<void> {
-    const schematic = this.registry.get(name);
-    if (!schematic) throw new Error(`unknown schematic: ${name}`);
+    if (!this.registry.has(name)) throw new Error(`unknown schematic: ${name}`);
 
     const tree = new InMemoryTree(context.cwd);
-    await schematic.run(tree, options, {
-      ...context,
-      invoke: async (other, otherOpts) => {
-        const inner = this.registry.get(other);
-        if (!inner) throw new Error(`unknown schematic (invoke): ${other}`);
-        await inner.run(tree, otherOpts, context);
-      },
-    });
+    await this.runAgainstTree(name, options, tree, context);
 
     const changes = tree.changes();
     if (changes.length === 0) {
-      logger.info(`${name}: no changes`);
+      context.logger.info(`${name}: no changes`);
       return;
     }
-    logger.info(`${name}: planned changes`);
+    context.logger.info(`${name}: planned changes`);
     for (const c of changes) {
       const tag =
-        c.kind === 'create' ? chalk.green('+') : c.kind === 'modify' ? chalk.yellow('~') : chalk.red('-');
-      logger.info(`  ${tag} ${c.path}`);
+        c.kind === 'create'
+          ? chalk.green('+')
+          : c.kind === 'modify'
+            ? chalk.yellow('~')
+            : chalk.red('-');
+      context.logger.info(`  ${tag} ${c.path}`);
     }
 
     if (opts.dryRun) {
-      logger.info('dry run — tree not committed to disk');
+      context.logger.info('dry run — tree not committed to disk');
       return;
     }
 
     const applied = await tree.commit();
-    logger.success(`${name}: ${applied.length} file(s) written`);
+    context.logger.success(`${name}: ${applied.length} file(s) written`);
+  }
+
+  /**
+   * Runs a schematic against an existing tree with a context whose
+   * `invoke` recurses through the same tree. Used both at top level
+   * (from {@link run}) and recursively for composition, so nested
+   * `ctx.invoke` calls from inside invoked schematics also compose.
+   */
+  private async runAgainstTree(
+    name: string,
+    options: Options,
+    tree: Tree,
+    context: Context,
+  ): Promise<void> {
+    const schematic = this.registry.get(name);
+    if (!schematic) throw new Error(`unknown schematic (invoke): ${name}`);
+
+    const wrapped: Context = {
+      ...context,
+      invoke: async (other, otherOpts) => {
+        await this.runAgainstTree(other, otherOpts, tree, context);
+      },
+    };
+    await schematic.run(tree, options, wrapped);
   }
 }
 
