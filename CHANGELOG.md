@@ -24,6 +24,17 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 - `.github/dependabot.yml`: weekly grouped updates for `github-actions`.
 - README: CI/Release badges, `Development` section, `Release process`
   section.
+- `.prettierignore` so generated files (lockfile, `dist/`, schematic
+  templates, manifests) are excluded from the prettier check.
+- Claude `PreToolUse` hook (`.claude/hooks/pre-commit-format.sh`) that
+  auto-formats and re-stages before every `git commit`, and blocks the
+  commit if lint still fails after formatting.
+- `format:check` npm script that runs `prettier --check .`.
+
+### Changed
+
+- `pnpm lint` now also runs `prettier --check .` after eslint, so
+  formatting drift fails the same gate as code-style rules.
 
 ### Security
 

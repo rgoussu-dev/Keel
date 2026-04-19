@@ -111,13 +111,22 @@ Requirements: Node 20+, pnpm 9+.
 
 ```sh
 pnpm install
-pnpm lint          # eslint (flat config, src + tests)
+pnpm lint          # eslint (flat config, src + tests) + prettier --check .
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
 pnpm test:watch    # vitest watch
 pnpm build         # tsc -p tsconfig.build.json → dist/
 pnpm format        # prettier --write .
+pnpm format:check  # prettier --check .
 ```
+
+`pnpm lint` covers both eslint and prettier, so formatting drift fails the
+same gate as code-style rules. A Claude `PreToolUse` hook
+(`.claude/hooks/pre-commit-format.sh`) runs `pnpm format` and re-stages any
+previously-staged files before every Claude-issued `git commit`, then
+verifies `pnpm lint`. That means you almost never need to run `pnpm format`
+by hand; if lint fails after the hook's auto-correct, it blocks the commit
+and surfaces the error.
 
 Before claiming a task done: run `pnpm lint`, `pnpm typecheck`, and
 `pnpm test`. If the environment prevents running them, say so explicitly
