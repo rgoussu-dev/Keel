@@ -140,9 +140,9 @@ infrastructure, from user input to deployed runtime.
 
 ### 5.1 Container registry — first-class, orthogonal to deploy target
 
-- The container registry is a **separate choice** from the deploy target. A project may deploy to Cloud Run but push images to `ghcr.io`, or run on a VPS while publishing images via GitHub Container Registry.
-- Supported out of the box: `ghcr.io` (GitHub), `gar` (GCP Artifact Registry, auto-selected with `iac-cloudrun` so the WIF pool is reused), and `external` (Docker Hub, quay.io, self-hosted — username + token prompted and stored as a repo secret).
-- A project without an IaC target (`target=none`) still publishes to a registry; promoting the image **is** its release step.
+- The container registry is conceptually a **separate choice** from the deploy target. A project may deploy to Cloud Run but push images to `ghcr.io`, or run on a VPS while publishing images via GitHub Container Registry.
+- Currently scaffolded out of the box: `gar` (GCP Artifact Registry, wired automatically by `iac-cloudrun` so the WIF pool is reused). Other registries — `ghcr.io` (GitHub) and `external` (Docker Hub, quay.io, self-hosted) — are recognised concepts but require project-specific CI/CD customisation until explicit scaffold support lands.
+- A project without an IaC target (`target=none`) may still choose an image-publishing release flow, but that is not implied to be auto-scaffolded for every registry.
 
 ---
 

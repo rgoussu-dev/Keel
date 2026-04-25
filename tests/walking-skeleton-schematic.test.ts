@@ -62,10 +62,12 @@ describe('walking-skeleton schematic', () => {
       expect(existsSync(path.join(workDir, f))).toBe(true);
     }
 
-    // The release workflow reads `version=` from gradle.properties; the
-    // walking-skeleton template must ship it or the first release fails.
+    // The release workflow reads `projectVersion=` from gradle.properties
+    // (the same key the root build.gradle.kts reads via
+    // `providers.gradleProperty("projectVersion")`); the walking-skeleton
+    // template must ship it or the first release fails.
     const gradleProps = readFileSync(path.join(workDir, 'gradle.properties'), 'utf8');
-    expect(gradleProps).toMatch(/^version\s*=\s*\d+\.\d+\.\d+/m);
+    expect(gradleProps).toMatch(/^projectVersion\s*=\s*\d+\.\d+\.\d+/m);
 
     // Kernel lives in domain/contract, never domain/core.
     for (const cls of [

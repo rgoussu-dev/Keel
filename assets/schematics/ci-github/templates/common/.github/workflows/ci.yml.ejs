@@ -94,9 +94,10 @@ jobs:
         working-directory: iac/cloudrun
         run: |
           url=$(tofu output -raw service_url)
+          token=$(gcloud auth print-identity-token --audiences="$url")
           echo "Smoke-testing $url/ping"
           for i in {1..5}; do
-            if curl -fsS "$url/ping" | grep -q '"message":"pong"'; then
+            if curl -fsS -H "Authorization: Bearer $token" "$url/ping" | grep -q '"message":"pong"'; then
               echo "ok"; exit 0
             fi
             sleep 5

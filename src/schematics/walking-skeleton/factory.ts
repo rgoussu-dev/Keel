@@ -60,25 +60,15 @@ export const walkingSkeletonSchematic: Schematic = {
     },
     {
       name: 'applicationKind',
-      description: 'Primary adapter channel (rest supported in MVP).',
+      description:
+        'Primary adapter channel (rest supported in MVP). Defaults to `rest`; settable via --set.',
       required: false,
-      prompt: {
-        kind: 'select',
-        name: 'applicationKind',
-        message: 'application kind',
-        choices: [{ name: 'rest (Quarkus)', value: 'rest' }],
-      },
     },
     {
       name: 'deployTarget',
-      description: 'IaC target (cloudrun supported in MVP).',
+      description:
+        'IaC target (cloudrun supported in MVP). Defaults to `cloudrun`; settable via --set.',
       required: false,
-      prompt: {
-        kind: 'select',
-        name: 'deployTarget',
-        message: 'deploy target',
-        choices: [{ name: 'cloudrun (GCP, scale-to-zero, ~$0)', value: 'cloudrun' }],
-      },
     },
     {
       name: 'githubRemote',

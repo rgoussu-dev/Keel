@@ -37,6 +37,11 @@ variable "max_instances" {
 
 variable "allow_unauthenticated" {
   type        = bool
-  description = "When true, grants `roles/run.invoker` to `allUsers` so the service is public."
-  default     = true
+  description = <<-EOT
+    When true, grants `roles/run.invoker` to `allUsers` so the service is
+    publicly reachable on the open internet. Defaults to `false` (private
+    by default); flip to `true` explicitly only after confirming the
+    service is intended to be public.
+  EOT
+  default     = false
 }

@@ -105,6 +105,13 @@ function hasRemote(cwd: string, name: string): boolean {
 function runGit(cwd: string, args: string[]): void {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
   if (r.status === 0) return;
-  const stderr = (r.stderr ?? '').trim();
-  throw new Error(`git ${args.join(' ')} failed${stderr ? `: ${stderr}` : ''}`);
+  throw new Error(`git ${args.join(' ')} failed: ${describeFailure(r)}`);
+}
+
+function describeFailure(r: ReturnType<typeof spawnSync>): string {
+  if (r.error) return r.error.message;
+  const stderr = (r.stderr ?? '').toString().trim();
+  if (stderr) return stderr;
+  if (r.status === null) return 'git did not run (is it installed and on PATH?)';
+  return `exit ${r.status}`;
 }

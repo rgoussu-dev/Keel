@@ -7,6 +7,15 @@ import { packageToPath, resolveLanguage, type SupportedLanguage } from '../util.
 const DEFAULT_QUARKUS_VERSION = '3.15.0';
 
 /**
+ * Allowed shape for a Quarkus version: digits + dots, optionally followed
+ * by a hyphen-prefixed qualifier (e.g. `3.15.0`, `3.15.0-redhat-00001`,
+ * `999.999.999.Final`). The strict allowlist keeps the value safe to
+ * interpolate inside double-quotes in `gradle/libs.versions.toml` — a
+ * stray quote, backslash, or newline would otherwise produce invalid TOML.
+ */
+const QUARKUS_VERSION_PATTERN = /^[0-9]+(?:\.[0-9A-Za-z]+)*(?:-[0-9A-Za-z.-]+)?$/;
+
+/**
  * Scaffolds a Quarkus-based REST executable channel for the walking
  * skeleton:
  *
@@ -96,7 +105,13 @@ function resolve(options: Options): ResolvedVars {
   const projectName = String(options['projectName'] ?? '').trim();
   if (!projectName) throw new Error('executable-rest: `projectName` is required');
   const language = resolveLanguage(options['language'], 'executable-rest');
-  const quarkusVersion = String(options['quarkusVersion'] ?? DEFAULT_QUARKUS_VERSION).trim();
+  const rawQuarkusVersion = String(options['quarkusVersion'] ?? DEFAULT_QUARKUS_VERSION).trim();
+  if (!QUARKUS_VERSION_PATTERN.test(rawQuarkusVersion)) {
+    throw new Error(
+      `executable-rest: invalid quarkusVersion "${rawQuarkusVersion}" (expected digits/dots optionally followed by "-<qualifier>"; got something that would not be safe to embed in libs.versions.toml)`,
+    );
+  }
+  const quarkusVersion = rawQuarkusVersion;
   return {
     basePackage,
     pkgPath: packageToPath(basePackage),

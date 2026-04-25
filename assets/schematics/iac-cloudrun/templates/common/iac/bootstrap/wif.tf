@@ -28,8 +28,20 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   attribute_condition = "assertion.repository == \"${var.github_repository}\""
 }
 
+# GCP caps `account_id` at 30 chars; `service_name` is allowed up to 63
+# (Cloud Run's limit). When `<service_name>-deployer` would overflow, fall
+# back to a deterministic `<truncated>-<sha1-prefix>-deployer` so the ID
+# is stable across plans and won't collide for distinct service names.
+locals {
+  deployer_account_id = (
+    length("${var.service_name}-deployer") <= 30
+    ? "${var.service_name}-deployer"
+    : "${substr(var.service_name, 0, 14)}-${substr(sha1(var.service_name), 0, 6)}-deployer"
+  )
+}
+
 resource "google_service_account" "deployer" {
-  account_id   = "${var.service_name}-deployer"
+  account_id   = local.deployer_account_id
   display_name = "${var.service_name} GitHub Actions deployer"
   description  = "Service account CI impersonates to push images + deploy revisions."
 }

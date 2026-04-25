@@ -43,9 +43,9 @@ public class PingResource {
   public Response ping() {
     Result<Ping> result = mediator.dispatch(new PingQuery());
     return switch (result) {
-      case Result.Success<Ping> s ->
-          Response.ok(new PingResponseDto(s.value().message(), s.value().at())).build();
-      case Result.Failure<Ping> f -> ProblemDetails.respond(f.cause());
+      case Result.Success<Ping>(Ping ping) ->
+          Response.ok(new PingResponseDto(ping.message(), ping.at())).build();
+      case Result.Failure<Ping>(var cause) -> ProblemDetails.respond(cause);
     };
   }
 }

@@ -1,6 +1,7 @@
 package <%= basePackage %>.application.rest.executable.errors;
 
 import <%= basePackage %>.kernel.Error;
+import <%= basePackage %>.kernel.NoHandlerError;
 
 import jakarta.ws.rs.core.Response;
 import java.util.LinkedHashMap;
@@ -18,12 +19,17 @@ public final class ProblemDetails {
   private ProblemDetails() {}
 
   /**
-   * Builds a 400 Bad Request Problem Details response from a domain
-   * {@link Error}. The default status is 400 because most domain errors
-   * are client-correctable; override by calling the private builder when
-   * a specific error warrants 404 / 409 / etc.
+   * Builds a Problem Details response from a domain {@link Error}. Errors
+   * that represent server misconfiguration (e.g. {@link NoHandlerError},
+   * which means a wiring mistake) are mapped to 500 with a generic title
+   * and detail to avoid leaking internals; all other domain errors are
+   * treated as client-correctable and surface their {@code code} +
+   * {@code message} at 400.
    */
   public static Response respond(Error error) {
+    if (isServerError(error)) {
+      return internalError();
+    }
     return build(400, error.code(), error.message());
   }
 
@@ -34,6 +40,10 @@ public final class ProblemDetails {
    */
   public static Response internalError() {
     return build(500, "internal_error", "An unexpected error occurred.");
+  }
+
+  private static boolean isServerError(Error error) {
+    return error instanceof NoHandlerError;
   }
 
   private static Response build(int status, String title, String detail) {

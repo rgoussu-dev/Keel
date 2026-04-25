@@ -26,8 +26,8 @@ jobs:
       - id: version
         name: Compute next version
         run: |
-          current=$(grep -E '^version\s*=' gradle.properties | awk -F '=' '{print $2}' | tr -d ' ')
-          [ -n "$current" ] || { echo "version missing from gradle.properties" >&2; exit 1; }
+          current=$(grep -E '^projectVersion[[:space:]]*=' gradle.properties | awk -F '=' '{print $2}' | tr -d ' ')
+          [ -n "$current" ] || { echo "projectVersion missing from gradle.properties" >&2; exit 1; }
           IFS='.' read -r major minor patch <<< "$current"
           case "${{ inputs.bump }}" in
             major) next="$((major + 1)).0.0" ;;
@@ -58,7 +58,7 @@ jobs:
 
       - name: Bump version in gradle.properties
         run: |
-          sed -i "s/^version[[:space:]]*=.*/version=${{ steps.version.outputs.next }}/" gradle.properties
+          sed -i "s/^projectVersion[[:space:]]*=.*/projectVersion=${{ steps.version.outputs.next }}/" gradle.properties
 
       - name: Move [Unreleased] CHANGELOG entry under a dated heading
         run: |
