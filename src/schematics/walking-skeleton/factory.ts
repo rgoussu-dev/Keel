@@ -139,8 +139,11 @@ export const walkingSkeletonSchematic: Schematic = {
     }
 
     ctx.logger.success(
-      `walking skeleton ready for ${vars.projectName}. ` +
-        `next: PROJECT_ID=… ./iac/bootstrap/bootstrap.sh, then push to main to trigger the first deploy.`,
+      `walking skeleton ready for ${vars.projectName}. next:\n` +
+        `  1. PROJECT_ID=… REGION=… ./iac/bootstrap/bootstrap.sh\n` +
+        `  2. cd iac/bootstrap && tofu init -backend-config=bucket=\${PROJECT_ID}-tofu-state && tofu apply -var project_id=\${PROJECT_ID} -var region=\${REGION} -var service_name=${vars.projectName} -var github_repository=<owner>/<repo>\n` +
+        `  3. paste the six tofu outputs into GitHub Actions repo secrets (GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER, GCP_DEPLOYER_SA_EMAIL, GCP_RUNTIME_SA_EMAIL, GCP_ARTIFACT_REGISTRY_URL)\n` +
+        `  4. push to main — CI deploys the first revision.`,
     );
   },
 };

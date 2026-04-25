@@ -25,22 +25,26 @@ gradlew / gradle/wrapper/                     # Gradle Wrapper (shipped — no s
 
 ```sh
 # 1) Bootstrap the GCP side (enables APIs, creates the tofu state bucket).
-PROJECT_ID=your-gcp-project ./iac/bootstrap/bootstrap.sh
+PROJECT_ID=your-gcp-project REGION=europe-west1 ./iac/bootstrap/bootstrap.sh
 
-# 2) First apply from your workstation so GitHub Actions has something to assume.
-cd iac/cloudrun
+# 2) Provision Artifact Registry, WIF pool/provider, deployer SA, and
+#    runtime SA. (The Cloud Run service itself is created by CI on the
+#    first push to main — do NOT `tofu apply` /iac/cloudrun by hand.)
+cd iac/bootstrap
 tofu init -backend-config=bucket=${PROJECT_ID}-tofu-state
-tofu plan \
+tofu apply \
   -var project_id=${PROJECT_ID} \
+  -var region=${REGION} \
   -var service_name=<%= projectName %> \
-  -var image=${REGION}-docker.pkg.dev/${PROJECT_ID}/<%= projectName %>/rest:bootstrap \
   -var github_repository=<owner>/<repo>
-tofu apply
 
-# 3) Copy the tofu outputs into GitHub Actions secrets (the bootstrap
-#    script prints the exact gcloud/tofu commands for the values):
-#    GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER,
-#    GCP_DEPLOYER_SA_EMAIL, GCP_ARTIFACT_REGISTRY_URL.
+# 3) Copy the tofu outputs into GitHub Actions repo secrets:
+#      GCP_PROJECT_ID            = ${PROJECT_ID}
+#      GCP_REGION                = ${REGION}
+#      GCP_WIF_PROVIDER          = $(tofu output -raw wif_provider)
+#      GCP_DEPLOYER_SA_EMAIL     = $(tofu output -raw deployer_service_account_email)
+#      GCP_RUNTIME_SA_EMAIL      = $(tofu output -raw runtime_service_account_email)
+#      GCP_ARTIFACT_REGISTRY_URL = $(tofu output -raw artifact_registry_url)
 
 # 4) Push to main. CI builds the native image, pushes, applies, smoke-
 #    tests /ping. You should see a 200 JSON with {"message": "pong", ...}

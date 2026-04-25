@@ -64,7 +64,7 @@ cat <<NEXT
     -var service_name=<svc> \\
     -var github_repository=<owner>/<repo>
 
-  # 2. Copy the five values below into GitHub Actions repo secrets.
+  # 2. Copy the six values below into GitHub Actions repo secrets.
   #    After that, every push to main deploys itself — including the
   #    very first one.
 
@@ -72,6 +72,7 @@ cat <<NEXT
       GCP_REGION                = ${REGION}
       GCP_WIF_PROVIDER          = \$(tofu output -raw wif_provider)
       GCP_DEPLOYER_SA_EMAIL     = \$(tofu output -raw deployer_service_account_email)
+      GCP_RUNTIME_SA_EMAIL      = \$(tofu output -raw runtime_service_account_email)
       GCP_ARTIFACT_REGISTRY_URL = \$(tofu output -raw artifact_registry_url)
 
 NEXT

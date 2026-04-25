@@ -27,7 +27,8 @@ import type { Context, Options, Schematic, Tree } from '../../engine/types.js';
  * the repo after running `iac/bootstrap/bootstrap.sh` and the first
  * `tofu apply`:
  *   GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER,
- *   GCP_DEPLOYER_SA_EMAIL, GCP_ARTIFACT_REGISTRY_URL.
+ *   GCP_DEPLOYER_SA_EMAIL, GCP_RUNTIME_SA_EMAIL,
+ *   GCP_ARTIFACT_REGISTRY_URL.
  *
  * Parameters:
  *   - `serviceName` — used to inject the Cloud Run service name into
