@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "languages.schema.json",
+  "title": "Language convention registry",
+  "description": "Per-language tooling and documentation conventions used by keel skills and commands.",
+  "type": "object",
+  "required": ["version", "languages"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "languages": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/language" }
+    }
+  },
+  "$defs": {
+    "command": {
+      "type": "object",
+      "required": ["command", "args"],
+      "additionalProperties": false,
+      "properties": {
+        "command": { "type": "string" },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "scoped": { "type": "boolean" }
+      }
+    },
+    "docComment": {
+      "type": "object",
+      "required": ["style", "prefix", "suffix", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "style": { "type": "string", "enum": ["block", "line"] },
+        "prefix": { "type": "string" },
+        "suffix": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "language": {
+      "type": "object",
+      "required": [
+        "extensions",
+        "markers",
+        "docComment",
+        "formatter",
+        "formatterCheck",
+        "linter",
+        "typecheck",
+        "test",
+        "mutation",
+        "buildTool",
+        "resultType",
+        "nullSafety"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^\\." },
+          "minItems": 1
+        },
+        "markers": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "docComment": { "$ref": "#/$defs/docComment" },
+        "formatter": { "$ref": "#/$defs/command" },
+        "formatterCheck": { "$ref": "#/$defs/command" },
+        "linter": { "$ref": "#/$defs/command" },
+        "typecheck": { "$ref": "#/$defs/command" },
+        "test": { "$ref": "#/$defs/command" },
+        "testScoped": { "$ref": "#/$defs/command" },
+        "mutation": { "$ref": "#/$defs/command" },
+        "archCheck": { "$ref": "#/$defs/command" },
+        "buildTool": { "type": "string" },
+        "resultType": { "type": "string" },
+        "nullSafety": { "type": "string" }
+      }
+    }
+  }
+}
