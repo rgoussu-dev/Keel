@@ -23,8 +23,11 @@ npx @rgoussu.dev/keel generate <name>  # run a schematic
 
 ## Principles
 
-- Hexagonal always (domain / application / infrastructure / interface).
-- Command/Query + mediator in `domain/core/kernel`.
+- Hexagonal always (domain / application / infrastructure / interface),
+  three-module DAG: `domain/kernel ← domain/contract ← domain/core`.
+- Command/Query + Mediator: sealed bases and Mediator interface in
+  `domain/kernel`; concrete commands in `domain/contract`; Mediator
+  implementation (`RegistryMediator`) and handlers in `domain/core`.
 - Tests: Scenario + Factory + fakes (never mocks), DIP-strict.
 - Walking skeleton first. IaC via OpenTofu.
 - Trunk-based, Conventional Commits, XP, SOLID, 12-Factor.
@@ -89,6 +92,16 @@ The `Release` workflow then:
 Required repository secret: `NPM_TOKEN` (npm automation token with publish
 rights on `@rgoussu.dev/keel`).
 
+## Acknowledgments
+
+keel's TDD-first agent and skill methodology is being progressively informed
+by [`citypaul/.dotfiles`](https://github.com/citypaul/.dotfiles) by Paul
+Hammond, licensed under MIT. Each file derived from that work carries a
+provenance header pointing back to the upstream commit it was lifted from;
+the audit trail and the upstream license are kept under
+[`THIRD_PARTY_LICENSES/`](./THIRD_PARTY_LICENSES/).
+
 ## License
 
-MIT. See `package.json`.
+MIT. See [`LICENSE`](./LICENSE). Third-party material under
+[`THIRD_PARTY_LICENSES/`](./THIRD_PARTY_LICENSES/).

@@ -3,3 +3,4 @@ dist/
 pnpm-lock.yaml
 .keel-manifest.json
 assets/schematics/**/templates/
+assets/global/agents/

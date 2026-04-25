@@ -67,7 +67,10 @@ describe('executable-rest schematic', () => {
       'utf8',
     );
     expect(producer).toContain('List.of(new PingHandler())');
-    expect(producer).toContain('new Mediator(handlers)');
+    // Three-module split: producer constructs the impl (RegistryMediator)
+    // and exposes it via the Mediator interface from domain/kernel.
+    expect(producer).toContain('new RegistryMediator(handlers)');
+    expect(producer).toContain('public Mediator mediator()');
 
     const handler = readFileSync(
       path.join(workDir, 'domain/core/src/main/java/com/example/ping/PingHandler.java'),

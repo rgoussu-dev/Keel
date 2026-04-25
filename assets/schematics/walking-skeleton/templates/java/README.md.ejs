@@ -7,11 +7,12 @@ Cloud Run (native image) via OpenTofu, GitHub Actions CD.
 ## Layout
 
 ```
-application/rest/contract                     # OpenAPI spec + transport DTOs
+application/rest/contract                     # OpenAPI spec + transport DTOs (dumb adapter)
 application/rest/executable                   # Quarkus runnable (composition root)
-domain/contract                               # ports + DTOs + mediator kernel
-domain/contract/kernel                        # Action / Command / Query / Result / Error / Handler / Mediator
-domain/core/<aggregate>                       # business logic (handlers)
+domain/kernel                                 # Action / Command / Query / Result / Error / Handler iface / Mediator iface / NoHandlerError
+domain/contract                               # concrete Command/Query/Error subtypes + DTOs + ports
+domain/core/kernel                            # RegistryMediator (Mediator impl) + DuplicateHandlerException
+domain/core/<aggregate>                       # handlers + business logic
 infrastructure/<port>/{<impl>,fake}           # adapters + fake module
 iac/cloudrun                                  # OpenTofu Cloud Run module
 iac/bootstrap                                 # one-shot: enable APIs + create state bucket
