@@ -6,6 +6,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0-alpha] — 2026-04-25
+
 ### Removed
 
 - **Global install scope.** The `--global` flag is gone from
@@ -267,5 +269,7 @@ swappable `Engine` / `Schematic` / `Tree` / `Context` port interface.
 - Migration runner for `keel update` (scripts exist as a concept but are
   not yet executed).
 
-[Unreleased]: https://github.com/rgoussu-dev/Claude-workspace/compare/v0.1.0-alpha.1...HEAD
-[0.1.0-alpha.1]: https://github.com/rgoussu-dev/Claude-workspace/releases/tag/v0.1.0-alpha.1
+[Unreleased]: https://github.com/rgoussu-dev/Keel/compare/v0.2.0-alpha...HEAD
+[0.2.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.1.0-alpha.2...v0.2.0-alpha
+[0.1.0-alpha.2]: https://github.com/rgoussu-dev/Keel/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
+[0.1.0-alpha.1]: https://github.com/rgoussu-dev/Keel/releases/tag/v0.1.0-alpha.1
