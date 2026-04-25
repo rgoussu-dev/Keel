@@ -25,7 +25,7 @@ Changes from upstream:
   - MUTATE / KILL MUTANTS phase marked conditional on mutation tooling
     being wired (keel roadmap; many consumer projects don't have it yet).
   - Test-framework references made language-agnostic with per-language
-    pointers via assets/conventions/languages.json.
+    pointers via .claude/conventions/languages.json.
   - Anti-patterns restated against keel conventions: factory-not-let,
     fake-not-mock, no-escape-hatch types, no service locators in handlers.
   - Removed TypeScript-only assumptions (any, type/interface) from the
@@ -53,7 +53,7 @@ without explicit justification is a violation.
    demand. If a second test would be needed to drive a feature, write that
    second test first — don't speculatively implement.
 3. **MUTATE** — Run the project's mutation tester (Stryker, PIT,
-   cargo-mutants, go-mutesting — see `assets/conventions/languages.json`
+   cargo-mutants, go-mutesting — see `.claude/conventions/languages.json`
    for the canonical command per language) on the changed module. Produce
    the survivors report. **If the project has no mutation tooling wired
    yet** (keel roadmap; not all consumer projects have it), state so
@@ -149,7 +149,7 @@ run them, surface that to the user.
 ## Commands you typically run
 
 ```sh
-# Per language; canonical commands are in assets/conventions/languages.json
+# Per language; canonical commands are in .claude/conventions/languages.json
 # TS/JS:    pnpm test           pnpm typecheck    pnpm lint
 # Java:     ./gradlew test      ./gradlew check   ./gradlew pitest
 # Kotlin:   ./gradlew test      ./gradlew check   ./gradlew pitest

@@ -11,61 +11,64 @@ export interface DoctorOptions {
 }
 
 /**
- * Audits both scopes and reports drift between the manifest and the
- * filesystem. Three classes of finding:
+ * Audits the project install and reports drift between the manifest and
+ * the filesystem. Three classes of finding:
  *
  *  - missing   — file is tracked by the manifest but absent on disk.
  *  - modified  — file's sha256 no longer matches the manifest's record.
  *  - foreign   — file sits under a keel-managed directory (hooks/,
- *                commands/, skills/) but is not tracked by the manifest.
+ *                commands/, skills/, agents/, conventions/) but is not
+ *                tracked by the manifest.
  *
  * All three classes count as issues and cause a non-zero exit status.
- * A scope with no manifest is not an error; it just means nothing is
- * installed there.
+ * If no manifest is found, that's not an error — it just means keel is
+ * not installed in this project.
+ *
+ * The user's home directory (`~/.claude`) is never inspected.
  */
 export async function doctor(opts: DoctorOptions): Promise<number> {
+  const root = paths.project(opts.cwd);
+  const m = await readManifest(root);
+  if (!m) {
+    logger.info(`no installation at ${root}`);
+    return 0;
+  }
+
   let issues = 0;
-  for (const scope of ['global', 'project'] as const) {
-    const root = scope === 'global' ? paths.global : paths.project(opts.cwd);
-    const m = await readManifest(root);
-    if (!m) {
-      logger.info(`${scope}: no installation at ${root}`);
+  logger.info(`kit ${chalk.cyan(m.kitVersion)} (${m.entries.length} files) at ${root}`);
+  const tracked = new Set<string>();
+
+  for (const e of m.entries) {
+    tracked.add(e.target);
+    const abs = path.join(root, e.target);
+    if (!(await fs.pathExists(abs))) {
+      logger.error(`  missing: ${e.target}`);
+      issues++;
       continue;
     }
-    logger.info(`${scope}: kit ${chalk.cyan(m.kitVersion)} (${m.entries.length} files)`);
-    const tracked = new Set<string>();
-
-    for (const e of m.entries) {
-      tracked.add(e.target);
-      const abs = path.join(root, e.target);
-      if (!(await fs.pathExists(abs))) {
-        logger.error(`  missing: ${e.target}`);
-        issues++;
-        continue;
-      }
-      const current = await fs.readFile(abs);
-      if (sha256(current) !== e.sha256Current) {
-        logger.error(`  modified: ${e.target}`);
-        issues++;
-      }
+    const current = await fs.readFile(abs);
+    if (sha256(current) !== e.sha256Current) {
+      logger.error(`  modified: ${e.target}`);
+      issues++;
     }
-
-    issues += await scanForeign(root, tracked);
   }
+
+  issues += await scanForeign(root, tracked);
+
   if (issues > 0) logger.error(`${issues} issue(s) found`);
   else logger.success('no issues');
   return issues;
 }
 
 /**
- * Walks the managed subdirectories of a scope root looking for files
- * that are present on disk but absent from the manifest. Only
- * directories the kit ever installs into are scanned; user-added files
- * elsewhere in the scope root are ignored.
+ * Walks the managed subdirectories of the project root looking for files
+ * that are present on disk but absent from the manifest. Only directories
+ * the kit ever installs into are scanned; user-added files elsewhere in
+ * the project root are ignored.
  */
 async function scanForeign(root: string, tracked: Set<string>): Promise<number> {
   let foreign = 0;
-  const managed = ['hooks', 'commands', 'skills', 'agents'];
+  const managed = ['hooks', 'commands', 'skills', 'agents', 'conventions'];
   for (const dir of managed) {
     const abs = path.join(root, dir);
     if (!(await fs.pathExists(abs))) continue;

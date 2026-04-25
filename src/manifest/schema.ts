@@ -17,13 +17,13 @@ export const ManifestEntrySchema = z.object({
 export type ManifestEntry = z.infer<typeof ManifestEntrySchema>;
 
 /**
- * Top-level manifest written to `.claude/.keel-manifest.json` (or the
- * equivalent global path). Tracks the kit version that produced the
- * installation plus every file owned by keel in this scope.
+ * Top-level manifest written to `<project>/.claude/.keel-manifest.json`.
+ * Tracks the kit version that produced the installation plus every file
+ * owned by keel in this project. keel is project-scoped only — the user's
+ * home directory is never touched.
  */
 export const ManifestSchema = z.object({
   kitVersion: z.string(),
-  scope: z.enum(['global', 'project']),
   installedAt: z.string(),
   updatedAt: z.string(),
   entries: z.array(ManifestEntrySchema),

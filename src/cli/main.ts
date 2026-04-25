@@ -19,13 +19,11 @@ export async function main(argv: string[]): Promise<void> {
 
   program
     .command('install')
-    .description('Install keel assets into the current project or the user-global claude dir.')
-    .option('-g, --global', 'install to ~/.claude instead of <cwd>/.claude', false)
+    .description('Install keel assets into the current project (<cwd>/.claude/).')
     .option('-f, --force', 'overwrite existing files and manifest', false)
     .option('--dry-run', 'print the plan without writing any file', false)
-    .action(async (opts: { global: boolean; force: boolean; dryRun: boolean }) => {
+    .action(async (opts: { force: boolean; dryRun: boolean }) => {
       await install({
-        scope: opts.global ? 'global' : 'project',
         cwd: process.cwd(),
         force: opts.force,
         dryRun: opts.dryRun,
@@ -34,13 +32,11 @@ export async function main(argv: string[]): Promise<void> {
 
   program
     .command('update')
-    .description('Upgrade an existing installation to the current kit version.')
-    .option('-g, --global', 'update the global install at ~/.claude', false)
+    .description('Upgrade the current project install to the latest kit version.')
     .option('--dry-run', 'print the plan without writing any file', false)
     .option('-y, --yes', 'non-interactive; keep user-modified files', false)
-    .action(async (opts: { global: boolean; dryRun: boolean; yes: boolean }) => {
+    .action(async (opts: { dryRun: boolean; yes: boolean }) => {
       await update({
-        scope: opts.global ? 'global' : 'project',
         cwd: process.cwd(),
         dryRun: opts.dryRun,
         nonInteractive: opts.yes,
@@ -49,7 +45,7 @@ export async function main(argv: string[]): Promise<void> {
 
   program
     .command('doctor')
-    .description('Audit both global and project installations for drift.')
+    .description('Audit the current project install for drift.')
     .action(async () => {
       const issues = await doctor({ cwd: process.cwd() });
       if (issues > 0) process.exit(1);

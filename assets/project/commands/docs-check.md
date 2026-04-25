@@ -18,7 +18,7 @@ produces an empty list.
 
 ## Steps
 
-1. Detect the languages in the project via `assets/conventions/languages.json`
+1. Detect the languages in the project via `.claude/conventions/languages.json`
    markers (pom, gradle files, package.json, Cargo.toml, go.mod).
 2. For each detected language, locate the source roots and walk them.
 3. For each public symbol, check:

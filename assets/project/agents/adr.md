@@ -20,7 +20,7 @@ Adapted from citypaul/.dotfiles
   Type:             Adapted
 Modifications © 2026 Romain Goussu, MIT.
 Changes from upstream:
-  - Added "Standard patterns from assets/global/CLAUDE.md" to the
+  - Added "Standard patterns from assets/project/CLAUDE.md" to the
     DO-NOT-create list (universal keel conventions are already
     documented; do not write ADRs for them).
   - keel-flavoured examples in the DO-create list (mediator vs other
@@ -55,12 +55,12 @@ covers. ADRs capture **why** a decision was made; CLAUDE.md captures
 5. **Security architecture** — secret storage, token rotation, network
    isolation strategy.
 6. **Documented deviations from the keel binding spec** — if the
-   project has a justified reason to deviate from `assets/global/CLAUDE.md`
+   project has a justified reason to deviate from `assets/project/CLAUDE.md`
    (the keel repo itself does, for cloud-session reasons), write an ADR.
 
 ## When NOT to create an ADR — DO NOT
 
-1. **Standard patterns from `assets/global/CLAUDE.md`** — hexagonal
+1. **Standard patterns from `assets/project/CLAUDE.md`** — hexagonal
    layers, Mediator/Command/Query, Scenario+Factory+fakes, OpenTofu IaC,
    trunk-based + Conventional Commits. These are already documented;
    ADRs that restate them are noise.
@@ -82,7 +82,7 @@ Ask:
    consider ADR.
 4. **Will future developers wonder "why did they do it this way?"** →
    probably ADR.
-5. **Is this already covered by `assets/global/CLAUDE.md`, an ADR, or a
+5. **Is this already covered by `assets/project/CLAUDE.md`, an ADR, or a
    skill?** → no new ADR.
 
 If three or more answers favor an ADR, create one.
@@ -209,7 +209,7 @@ We will <decision statement>.
 
 ## Anti-patterns
 
-- **ADRs for things in `assets/global/CLAUDE.md`** — code-style
+- **ADRs for things in `assets/project/CLAUDE.md`** — code-style
   conventions, layering rules, the test pattern. Already documented;
   redundant.
 - **ADRs without alternatives** — if no alternatives were considered,
@@ -223,8 +223,8 @@ We will <decision statement>.
 
 ## Coordination with other keel agents
 
-- **`learn` agent** — captures *how to work with the chosen design*;
-  ADR captures *why we chose it*.
+- **`learn` agent** — captures _how to work with the chosen design_;
+  ADR captures _why we chose it_.
 - **`pr-reviewer` agent** — flags undocumented architectural choices;
   hand off to this agent for capture.
 - **`progress-guardian` agent** — if installed (keel roadmap), pauses
@@ -234,4 +234,4 @@ We will <decision statement>.
 
 Be selective. ADRs are valuable when sparse and damaging when noisy.
 Capture the foundational, one-way-door decisions; let the standard
-patterns from `assets/global/CLAUDE.md` and the skills carry the rest.
+patterns from `assets/project/CLAUDE.md` and the skills carry the rest.

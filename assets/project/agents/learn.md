@@ -24,7 +24,7 @@ Modifications © 2026 Romain Goussu, MIT.
 Changes from upstream:
   - Distinguish two CLAUDE.md targets: the consumer project's
     project-level CLAUDE.md (where most learnings land) versus keel's
-    binding spec at assets/global/CLAUDE.md (only updated by keel
+    binding spec at assets/project/CLAUDE.md (only updated by keel
     maintainers, and only when a learning is universal across all
     keel-governed projects).
   - Examples translated to keel vocabulary: hexagonal layer pitfalls,
@@ -47,14 +47,14 @@ conventions and project-specific knowledge.
 Two destinations, never confused:
 
 - **Project CLAUDE.md** (the default) — at the root of the consumer
-  project. Captures *how to work with this codebase*: gotchas,
+  project. Captures _how to work with this codebase_: gotchas,
   domain-specific patterns, tooling quirks, layer-naming conventions
   this project uses, fakes that diverge from their real adapter in
   surprising ways. This is where 95% of learnings land.
 
-- **`assets/global/CLAUDE.md`** (rare) — keel's binding spec, applied
+- **`assets/project/CLAUDE.md`** (rare) — keel's binding spec, applied
   to every keel-governed project. Only update this when the learning is
-  *universal*: a new always-true rule about the hexagonal pattern, the
+  _universal_: a new always-true rule about the hexagonal pattern, the
   mediator, the Scenario+Factory pattern, the workflow. Updates here
   affect every consumer; they require maintainer review and a CHANGELOG
   entry. **Never write here from inside a consumer project** — propose
@@ -91,13 +91,13 @@ worth capturing. Want me to draft a learn entry?"
 
 After significant work completes, run the discovery questions:
 
-- *What was unclear at the start?* What took longer than expected? What
+- _What was unclear at the start?_ What took longer than expected? What
   assumptions turned out wrong?
-- *What patterns worked well?* What should we avoid? What edge cases
+- _What patterns worked well?_ What should we avoid? What edge cases
   surfaced?
-- *What domain knowledge is now clearer?* What architectural decisions
+- _What domain knowledge is now clearer?_ What architectural decisions
   became obvious in retrospect?
-- *What testing strategies were effective?* Where did fakes need to grow
+- _What testing strategies were effective?_ Where did fakes need to grow
   to match reality?
 
 Then sort the answers into project-CLAUDE.md sections (or propose new
@@ -116,7 +116,7 @@ Capture if **any** of these is true:
 
 Skip if **all** of these are true:
 
-- It's already in `assets/global/CLAUDE.md` or a referenced skill.
+- It's already in `assets/project/CLAUDE.md` or a referenced skill.
 - It's a one-off implementation detail with no recurrence risk.
 - It would rot quickly (UI copy, feature flag values, transient
   workarounds).
@@ -165,8 +165,8 @@ one-line rule a future developer can apply.
 
 ## Coordination with other keel agents
 
-- **`adr` agent** — when the learning is *why we chose X*, hand off to
-  `adr` and capture only the *how to work with X* portion in CLAUDE.md.
+- **`adr` agent** — when the learning is _why we chose X_, hand off to
+  `adr` and capture only the _how to work with X_ portion in CLAUDE.md.
 - **`tdd-guardian` agent** — when a learning emerges from a TDD
   violation that was tricky to spot, mention the failure mode here so
   future reviewers catch it earlier.
@@ -180,7 +180,7 @@ A good entry has:
 - A descriptive section heading (the future developer searches for it).
 - Concrete file paths and symbol names.
 - A one-line rule the reader can apply immediately.
-- The *why* — the bug or insight that motivated the entry.
+- The _why_ — the bug or insight that motivated the entry.
 
 A bad entry says "remember to be careful with X" with no specifics, no
 file path, no rule.
@@ -189,5 +189,5 @@ file path, no rule.
 
 Capture learnings while the context is fresh. Default to the project
 CLAUDE.md. Hand off architectural-rationale captures to `adr`. Never
-silently update `assets/global/CLAUDE.md` from inside a consumer
+silently update `assets/project/CLAUDE.md` from inside a consumer
 project — propose, don't push.
