@@ -2,6 +2,7 @@ package <%= basePackage %>.application.rest.executable.wiring;
 
 import <%= basePackage %>.kernel.Handler;
 import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.kernel.RegistryMediator;
 import <%= basePackage %>.ping.PingHandler;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -13,10 +14,12 @@ import java.util.List;
  * hand-authored handler list — no reflection, no annotation scanning, no
  * service locator. Adding a new action means adding its handler here.
  *
- * <p>Per §1.1 of the conventions, this module is the <em>only</em>
- * application-layer code allowed to import concrete {@code domain/core}
- * classes. All other application code must work through
- * {@code domain/contract} exclusively.
+ * <p>Per the composition-root exception in {@code assets/global/CLAUDE.md}
+ * §1, this module is the <em>only</em> application-layer code allowed to
+ * import concrete {@code domain/core} classes (here: {@link RegistryMediator}
+ * and {@link PingHandler}). All other application code must work through
+ * {@code domain/kernel} (interfaces, sealed bases) and
+ * {@code domain/contract} (concrete commands, DTOs) exclusively.
  */
 @ApplicationScoped
 public class MediatorProducer {
@@ -30,6 +33,6 @@ public class MediatorProducer {
   @ApplicationScoped
   public Mediator mediator() {
     List<Handler<?>> handlers = List.of(new PingHandler());
-    return new Mediator(handlers);
+    return new RegistryMediator(handlers);
   }
 }

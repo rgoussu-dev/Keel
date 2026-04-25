@@ -69,7 +69,9 @@ describe('walking-skeleton schematic', () => {
     const gradleProps = readFileSync(path.join(workDir, 'gradle.properties'), 'utf8');
     expect(gradleProps).toMatch(/^projectVersion\s*=\s*\d+\.\d+\.\d+/m);
 
-    // Kernel lives in domain/contract, never domain/core.
+    // Three-module DAG: kernel lives in domain/kernel; mediator impl
+    // (RegistryMediator) and DuplicateHandlerException live in domain/core;
+    // nothing kernel-shaped lives in domain/contract.
     for (const cls of [
       'Action',
       'Command',
@@ -78,18 +80,29 @@ describe('walking-skeleton schematic', () => {
       'Error',
       'Handler',
       'Mediator',
-      'DuplicateHandlerException',
       'NoHandlerError',
     ]) {
       expect(
         existsSync(
-          path.join(workDir, `domain/contract/src/main/java/com/example/kernel/${cls}.java`),
+          path.join(workDir, `domain/kernel/src/main/java/com/example/kernel/${cls}.java`),
         ),
       ).toBe(true);
+      expect(
+        existsSync(
+          path.join(workDir, `domain/contract/src/main/java/com/example/kernel/${cls}.java`),
+        ),
+      ).toBe(false);
       expect(
         existsSync(path.join(workDir, `domain/core/src/main/java/com/example/kernel/${cls}.java`)),
       ).toBe(false);
     }
+    for (const cls of ['RegistryMediator', 'DuplicateHandlerException']) {
+      expect(
+        existsSync(path.join(workDir, `domain/core/src/main/java/com/example/kernel/${cls}.java`)),
+      ).toBe(true);
+    }
+    // The kernel module ships its own build.gradle.kts (Gradle module).
+    expect(existsSync(path.join(workDir, 'domain/kernel/build.gradle.kts'))).toBe(true);
 
     // port (starter secondary port + fake)
     expect(
@@ -144,6 +157,7 @@ describe('walking-skeleton schematic', () => {
     // Settings auto-amended by both walking-skeleton and executable-rest.
     const settings = readFileSync(path.join(workDir, 'settings.gradle.kts'), 'utf8');
     expect(settings).toContain('rootProject.name = "acme-svc"');
+    expect(settings).toContain('include(":domain:kernel")');
     expect(settings).toContain('include(":infrastructure:user-repository:fake")');
     expect(settings).toContain('include(":application:rest:contract")');
     expect(settings).toContain('include(":application:rest:executable")');

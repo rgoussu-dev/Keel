@@ -22,17 +22,20 @@ first order of business.
 
 ## Required elements
 
-| Element                                                    | Location                           | Must exist before features |
-| ---------------------------------------------------------- | ---------------------------------- | -------------------------- |
-| Primary adapter (one channel)                              | `application/<channel>/executable` | yes                        |
-| Primary port + one `Command` or `Query`                    | `domain/contract`                  | yes                        |
-| One handler                                                | `domain/core/<aggregate>`          | yes                        |
-| Mediator wired by explicit factory                         | `domain/contract/kernel`           | yes                        |
-| One secondary port with a **fake**                         | `infrastructure/<port>/fake`       | yes                        |
-| One **real** adapter for the same port                     | `infrastructure/<port>/<impl>`     | yes                        |
-| One end-to-end test calling from the primary adapter down  | test module                        | yes                        |
-| IaC (OpenTofu) deploying the runtime to a real environment | `/iac/<target>/` (repo root)       | yes                        |
-| CI pipeline that runs check + deploy on commit             | repo                               | yes                        |
+| Element                                                                                                | Location                                 | Must exist before features |
+| ------------------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------------------- |
+| Sealed `Action` / `Command` / `Query` / `Result` / `Error` bases + `Handler` and `Mediator` interfaces | `domain/kernel`                          | yes                        |
+| Primary port (interface)                                                                               | `domain/contract`                        | yes                        |
+| One concrete `Command` or `Query` (initial action subtype)                                             | `domain/contract`                        | yes                        |
+| One handler                                                                                            | `domain/core/<aggregate>`                | yes                        |
+| Mediator implementation wired by explicit factory                                                      | `domain/core`                            | yes                        |
+| Primary adapter (dumb interface, e.g. JAX-RS resource)                                                 | `application/<channel>/contract`         | yes                        |
+| Composition root (instantiates handlers + adapters + mediator)                                         | `application/<channel>/executable`       | yes                        |
+| One secondary port with a **fake**                                                                     | `infrastructure/<port>/fake`             | yes                        |
+| One **real** adapter for the same port                                                                 | `infrastructure/<port>/<impl>`           | yes                        |
+| One end-to-end test calling from the primary adapter down                                              | test module                              | yes                        |
+| IaC (OpenTofu) deploying the runtime to a real environment                                             | `/iac/<target>/` (e.g. `/iac/cloudrun/`) | yes                        |
+| CI pipeline that runs check + deploy on commit                                                         | repo                                     | yes                        |
 
 The slice should be trivial (e.g., one `/ping` endpoint returning a fake
 record) but **must be fully wired**.

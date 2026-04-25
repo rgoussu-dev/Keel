@@ -1,0 +1,27 @@
+package <%= basePackage %>.kernel;
+
+/**
+ * Dispatches {@link Action}s to the {@link Handler} that supports them.
+ *
+ * <p>Implementations are constructed at the composition root from a
+ * single {@code Collection<Handler<?>>} and build their own registry
+ * from each handler's {@link Handler#supports()} — callers never pass a
+ * {@code Map}.
+ *
+ * <p>Implementations must be immutable and safe to share across threads.
+ *
+ * <p>The default implementation, {@code RegistryMediator}, ships in the
+ * {@code domain/core} module.
+ */
+public interface Mediator {
+
+  /**
+   * Dispatches an action to its registered handler.
+   *
+   * @param <R> type of the successful value, inferred from the action.
+   * @param action the action to dispatch; must not be {@code null}.
+   * @return the handler's {@link Result}, or {@link Result#failure(Error)}
+   *     wrapping a {@link NoHandlerError} when no handler is registered.
+   */
+  <R> Result<R> dispatch(Action<R> action);
+}

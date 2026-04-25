@@ -13,6 +13,7 @@ dependencies {
   implementation("io.quarkus:quarkus-smallrye-openapi")
 
   implementation(project(":application:rest:contract"))
+  implementation(project(":domain:kernel"))
   implementation(project(":domain:contract"))
   implementation(project(":domain:core"))
 

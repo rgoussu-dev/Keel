@@ -5,5 +5,6 @@ plugins {
 }
 
 dependencies {
+  implementation(project(":domain:kernel"))
   implementation(project(":domain:contract"))
 }
