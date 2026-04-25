@@ -62,6 +62,21 @@ export const gitInitSchematic: Schematic = {
       return;
     }
 
+    // git-init shells out to `git` — those mutations bypass the Tree and
+    // would otherwise leak writes during a dry run. Honour ctx.dryRun by
+    // describing the would-be plan instead of executing it.
+    if (ctx.dryRun) {
+      if (!detection.inRepo) {
+        ctx.logger.info(`git: dry run — would initialise repo on branch "${defaultBranch}"`);
+      } else {
+        ctx.logger.info('git: dry run — repo already initialised; would not re-init');
+      }
+      if (remote && !hasRemote(cwd, 'origin')) {
+        ctx.logger.info(`git: dry run — would set origin to ${remote}`);
+      }
+      return;
+    }
+
     if (!detection.inRepo) {
       ctx.logger.info(`git: initialising repo on branch "${defaultBranch}"`);
       runGit(cwd, ['init', '-b', defaultBranch]);
@@ -70,7 +85,7 @@ export const gitInitSchematic: Schematic = {
     }
 
     if (!remote) {
-      ctx.logger.warn(
+      ctx.logger.info(
         'git: no remote configured. Add one later with `git remote add origin <url>`.',
       );
       return;

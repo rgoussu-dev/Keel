@@ -92,7 +92,7 @@ export async function main(argv: string[]): Promise<void> {
       await engine.run(
         schematic,
         options,
-        { logger, cwd: process.cwd(), prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: process.cwd(), prompt: cliPrompt, invoke: async () => {}, dryRun: false },
         { dryRun: opts.dryRun },
       );
     });

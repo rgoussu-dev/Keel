@@ -29,7 +29,7 @@ describe('walking-skeleton schematic', () => {
     await engine.run(
       'walking-skeleton',
       { basePackage: 'com.example', projectName: 'acme-svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     // git-init
@@ -164,7 +164,7 @@ describe('walking-skeleton schematic', () => {
       engine.run(
         'walking-skeleton',
         { projectName: 'x' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/basePackage.*required/);
   });
@@ -175,7 +175,7 @@ describe('walking-skeleton schematic', () => {
       engine.run(
         'walking-skeleton',
         { basePackage: 'com.example', projectName: 'Invalid_Name' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/invalid projectName/);
   });

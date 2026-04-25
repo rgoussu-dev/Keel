@@ -51,6 +51,17 @@ export interface Context {
   invoke(schematicName: string, options: Options): Promise<void>;
   /** Current working directory the schematic should treat as project root. */
   readonly cwd: string;
+  /**
+   * True when the engine is running in dry-run mode. Pure schematics
+   * (those that only mutate the {@link Tree}) can ignore this — the
+   * engine drops the staged tree without committing on dry-run.
+   * Side-effecting schematics (e.g. `git-init`, which shells out to
+   * `git`) **must** check this flag and skip their external side
+   * effects, otherwise dry-run leaks writes to the workspace. The
+   * engine guarantees this is set; user-supplied `Context` literals
+   * pass any value (the engine overrides it before invoking schematics).
+   */
+  readonly dryRun: boolean;
 }
 
 export type Options = Readonly<Record<string, unknown>>;

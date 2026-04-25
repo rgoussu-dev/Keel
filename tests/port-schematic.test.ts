@@ -24,7 +24,7 @@ describe('port schematic', () => {
     await engine.run(
       'port',
       { name: 'UserRepository', basePackage: 'com.example', aggregate: 'user' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const expected = [
@@ -67,7 +67,7 @@ describe('port schematic', () => {
       engine.run(
         'port',
         { basePackage: 'com.example', aggregate: 'user' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/name.*required/);
   });
@@ -79,7 +79,7 @@ describe('port schematic', () => {
       engine.run(
         'port',
         { name: 'X', basePackage: 'com.example', aggregate: 'u', language: 'rust' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/not supported/);
   });

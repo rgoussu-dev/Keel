@@ -24,7 +24,7 @@ describe('iac-cloudrun schematic', () => {
     await engine.run(
       'iac-cloudrun',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const expected = [
@@ -54,7 +54,7 @@ describe('iac-cloudrun schematic', () => {
     await engine.run(
       'iac-cloudrun',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     expect(existsSync(path.join(workDir, 'iac/cloudrun/wif.tf'))).toBe(false);
@@ -67,7 +67,7 @@ describe('iac-cloudrun schematic', () => {
     await engine.run(
       'iac-cloudrun',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const versions = readFileSync(path.join(workDir, 'iac/cloudrun/versions.tf'), 'utf8');
@@ -87,7 +87,7 @@ describe('iac-cloudrun schematic', () => {
     await engine.run(
       'iac-cloudrun',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const wif = readFileSync(path.join(workDir, 'iac/bootstrap/wif.tf'), 'utf8');
@@ -103,7 +103,7 @@ describe('iac-cloudrun schematic', () => {
     await engine.run(
       'iac-cloudrun',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const cloudrunVersions = readFileSync(path.join(workDir, 'iac/cloudrun/versions.tf'), 'utf8');
@@ -122,7 +122,7 @@ describe('iac-cloudrun schematic', () => {
       await engine.run(
         'iac-cloudrun',
         {},
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       );
 
       const mode = statSync(path.join(workDir, 'iac/bootstrap/bootstrap.sh')).mode & 0o111;

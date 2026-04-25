@@ -24,7 +24,7 @@ describe('gradle-wrapper schematic', () => {
     await engine.run(
       'gradle-wrapper',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     for (const f of [
@@ -51,7 +51,7 @@ describe('gradle-wrapper schematic', () => {
     await engine.run(
       'gradle-wrapper',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const jar = readFileSync(path.join(workDir, 'gradle/wrapper/gradle-wrapper.jar'));
@@ -68,7 +68,7 @@ describe('gradle-wrapper schematic', () => {
       await engine.run(
         'gradle-wrapper',
         {},
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       );
 
       const mode = statSync(path.join(workDir, 'gradlew')).mode & 0o111;
@@ -83,7 +83,7 @@ describe('gradle-wrapper schematic', () => {
     await engine.run(
       'gradle-wrapper',
       { gradleVersion: '8.12.0' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const props = readFileSync(
@@ -101,7 +101,7 @@ describe('gradle-wrapper schematic', () => {
       engine.run(
         'gradle-wrapper',
         { gradleVersion: '../evil' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/invalid gradleVersion/);
   });

@@ -35,8 +35,9 @@ export class HomegrownEngine implements Engine {
   ): Promise<void> {
     if (!this.registry.has(name)) throw new Error(`unknown schematic: ${name}`);
 
+    const dryRun = opts.dryRun ?? false;
     const tree = new InMemoryTree(context.cwd);
-    await this.runAgainstTree(name, options, tree, context);
+    await this.runAgainstTree(name, options, tree, { ...context, dryRun });
 
     const changes = tree.changes();
     if (changes.length === 0) {
@@ -54,7 +55,7 @@ export class HomegrownEngine implements Engine {
       context.logger.info(`  ${tag} ${c.path}`);
     }
 
-    if (opts.dryRun) {
+    if (dryRun) {
       context.logger.info('dry run — tree not committed to disk');
       return;
     }

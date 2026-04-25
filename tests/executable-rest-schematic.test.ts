@@ -31,7 +31,7 @@ describe('executable-rest schematic', () => {
     await engine.run(
       'executable-rest',
       { basePackage: 'com.example', projectName: 'acme-svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const expected = [
@@ -99,7 +99,7 @@ describe('executable-rest schematic', () => {
     await engine.run(
       'executable-rest',
       { basePackage: 'com.example', projectName: 'svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const settings = readFileSync(path.join(workDir, 'settings.gradle.kts'), 'utf8');
@@ -116,7 +116,7 @@ describe('executable-rest schematic', () => {
     await engine.run(
       'executable-rest',
       { basePackage: 'com.example', projectName: 'svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const catalog = readFileSync(path.join(workDir, 'gradle/libs.versions.toml'), 'utf8');
@@ -130,7 +130,7 @@ describe('executable-rest schematic', () => {
 
     const engine = new HomegrownEngine();
     engine.register(executableRestSchematic);
-    const ctx = { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} };
+    const ctx = { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false };
 
     await engine.run('executable-rest', { basePackage: 'com.example', projectName: 'svc' }, ctx);
     await engine.run('executable-rest', { basePackage: 'com.example', projectName: 'svc' }, ctx);
@@ -159,7 +159,7 @@ describe('executable-rest schematic', () => {
     await engine.run(
       'executable-rest',
       { basePackage: 'com.example', projectName: 'svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     expect(
@@ -181,7 +181,7 @@ describe('executable-rest schematic', () => {
       engine.run(
         'executable-rest',
         { projectName: 'svc' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/basePackage.*required/);
   });

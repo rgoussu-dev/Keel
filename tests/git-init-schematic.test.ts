@@ -29,7 +29,7 @@ describe('git-init schematic', () => {
     await engine.run(
       'git-init',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     expect(existsSync(path.join(workDir, '.git'))).toBe(true);
@@ -47,7 +47,7 @@ describe('git-init schematic', () => {
     await engine.run(
       'git-init',
       { remote: 'git@github.com:example/demo.git' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const remote = spawnSync('git', ['remote', 'get-url', 'origin'], {
@@ -71,7 +71,7 @@ describe('git-init schematic', () => {
     await engine.run(
       'git-init',
       { remote: 'https://example.com/b.git' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const remote = spawnSync('git', ['remote', 'get-url', 'origin'], {
@@ -79,6 +79,20 @@ describe('git-init schematic', () => {
       encoding: 'utf8',
     });
     expect(remote.stdout.trim()).toBe('https://example.com/a.git');
+  });
+
+  it('honours dry-run by leaving the working directory untouched', async () => {
+    const engine = new HomegrownEngine();
+    engine.register(gitInitSchematic);
+
+    await engine.run(
+      'git-init',
+      { remote: 'https://example.com/dry.git' },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
+      { dryRun: true },
+    );
+
+    expect(existsSync(path.join(workDir, '.git'))).toBe(false);
   });
 
   it('refuses to nest inside an enclosing repo', async () => {
@@ -92,7 +106,7 @@ describe('git-init schematic', () => {
     await engine.run(
       'git-init',
       { remote: 'https://example.com/x.git' },
-      { logger, cwd: nested, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: nested, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     expect(existsSync(path.join(nested, '.git'))).toBe(false);

@@ -24,7 +24,7 @@ describe('ci-github schematic', () => {
     await engine.run(
       'ci-github',
       { serviceName: 'acme-svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     expect(existsSync(path.join(workDir, '.github/workflows/ci.yml'))).toBe(true);
@@ -38,7 +38,7 @@ describe('ci-github schematic', () => {
     await engine.run(
       'ci-github',
       { serviceName: 'acme-svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const ci = readFileSync(path.join(workDir, '.github/workflows/ci.yml'), 'utf8');
@@ -59,7 +59,7 @@ describe('ci-github schematic', () => {
     await engine.run(
       'ci-github',
       { serviceName: 'acme-svc' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const release = readFileSync(path.join(workDir, '.github/workflows/release.yml'), 'utf8');
@@ -78,7 +78,7 @@ describe('ci-github schematic', () => {
       engine.run(
         'ci-github',
         { serviceName: 'Invalid_Name' },
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/invalid serviceName/);
   });
@@ -90,7 +90,7 @@ describe('ci-github schematic', () => {
       engine.run(
         'ci-github',
         {},
-        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+        { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       ),
     ).rejects.toThrow(/serviceName.*required/);
   });
