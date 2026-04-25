@@ -3,8 +3,9 @@ import { paths } from '../../util/paths.js';
 import { renderTemplate } from '../../engine/template.js';
 import type { Options, Schematic } from '../../engine/types.js';
 import { resolveLanguage, type SupportedLanguage } from '../util.js';
+import * as download from './download.js';
 
-const DEFAULT_GRADLE_VERSION = '8.11.1';
+const DEFAULT_GRADLE_VERSION = '9.4.1';
 
 /**
  * Gradle versions look like `8.11`, `8.11.1`, or `9.0-milestone-1`. The
@@ -20,7 +21,9 @@ const GRADLE_VERSION_PATTERN = /^\d+\.\d+(\.\d+)?(-[A-Za-z0-9.-]+)?$/;
  *
  *   - `gradlew` (POSIX launcher, kept executable)
  *   - `gradlew.bat` (Windows launcher)
- *   - `gradle/wrapper/gradle-wrapper.jar` (bootstrap jar)
+ *   - `gradle/wrapper/gradle-wrapper.jar` (bootstrap jar — downloaded
+ *     from services.gradle.org at install time and verified against the
+ *     published sha256 sidecar; see {@link download.downloadWrapperJar})
  *   - `gradle/wrapper/gradle-wrapper.properties` (distribution pointer)
  *
  * Parameters:
@@ -30,7 +33,10 @@ const GRADLE_VERSION_PATTERN = /^\d+\.\d+(\.\d+)?(-[A-Za-z0-9.-]+)?$/;
  *     `java` is supported.
  *
  * Composition: invoked by the walking-skeleton schematic; can also run
- * standalone via `keel generate gradle-wrapper`.
+ * standalone via `keel generate gradle-wrapper`. The download is
+ * unconditional (not gated on dryRun) so the planned-changes output
+ * accurately reflects the final tree; the engine itself avoids touching
+ * disk on dry-run.
  */
 export const gradleWrapperSchematic: Schematic = {
   name: 'gradle-wrapper',
@@ -63,6 +69,8 @@ export const gradleWrapperSchematic: Schematic = {
       vars.language,
     );
     await renderTemplate(tree, templateRoot, '', vars as unknown as Record<string, unknown>);
+    const jar = await download.downloadWrapperJar(vars.gradleVersion);
+    tree.write('gradle/wrapper/gradle-wrapper.jar', jar);
     ctx.logger.info(`gradle wrapper ${vars.gradleVersion} emitted.`);
   },
 };

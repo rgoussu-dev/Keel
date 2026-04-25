@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -7,6 +7,17 @@ import type { Env } from '../src/installer/env.js';
 import type { Prompt } from '../src/installer/profile.js';
 import type { PromptSchema } from '../src/engine/types.js';
 import type { Manifest } from '../src/manifest/schema.js';
+import * as download from '../src/schematics/gradle-wrapper/download.js';
+
+/**
+ * Stand-in for the real gradle-wrapper jar (which is itself a ZIP).
+ * Four-byte ZIP local-file-header magic + padding satisfies downstream
+ * size and shape checks without hitting the network.
+ */
+const FAKE_WRAPPER_JAR = Buffer.concat([
+  Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+  Buffer.alloc(20_000),
+]);
 
 interface ScriptedAnswer {
   match: (schema: PromptSchema<unknown>) => boolean;
@@ -64,9 +75,11 @@ describe('install()', () => {
 
   beforeEach(() => {
     workDir = mkdtempSync(path.join(tmpdir(), 'keel-install-'));
+    vi.spyOn(download, 'downloadWrapperJar').mockResolvedValue(FAKE_WRAPPER_JAR);
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     rmSync(workDir, { recursive: true, force: true });
   });
 
