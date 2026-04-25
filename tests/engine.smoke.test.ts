@@ -33,7 +33,7 @@ describe('HomegrownEngine', () => {
     await engine.run(
       'hello',
       { who: 'keel' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const out = readFileSync(path.join(workDir, 'greeting.txt'), 'utf8');
@@ -63,7 +63,7 @@ describe('HomegrownEngine', () => {
     await engine.run(
       'root',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     expect(existsSync(path.join(workDir, 'root.txt'))).toBe(true);
@@ -102,7 +102,7 @@ describe('HomegrownEngine', () => {
     await engine.run(
       'parent',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     for (const f of ['parent.txt', 'child.txt', 'grand.txt']) {
@@ -123,7 +123,7 @@ describe('HomegrownEngine', () => {
     await engine.run(
       'x',
       {},
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
       { dryRun: true },
     );
     expect(existsSync(path.join(workDir, 'dry.txt'))).toBe(false);
@@ -146,7 +146,7 @@ describe('HomegrownEngine', () => {
     await engine.run(
       'render',
       { name: 'UserRepository' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const produced = readFileSync(path.join(workDir, 'out', 'UserRepository.java'), 'utf8');

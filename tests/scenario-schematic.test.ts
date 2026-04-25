@@ -24,7 +24,7 @@ describe('scenario schematic', () => {
     await engine.run(
       'scenario',
       { name: 'CreateUser', basePackage: 'com.example', aggregate: 'user' },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const base = 'domain/core/src/test/java/com/example/user';
@@ -51,7 +51,7 @@ describe('scenario schematic', () => {
         aggregate: 'user',
         portName: 'UserQueries',
       },
-      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {} },
+      { logger, cwd: workDir, prompt: cliPrompt, invoke: async () => {}, dryRun: false },
     );
 
     const test = readFileSync(

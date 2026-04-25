@@ -1,0 +1,15 @@
+package <%= basePackage %>.application.rest.contract;
+
+import java.time.Instant;
+
+/**
+ * Transport DTO for {@code GET /ping}. Mirrors the OpenAPI
+ * {@code PingResponse} schema exactly — keep the two in sync. This record
+ * is framework-neutral and must not import any JAX-RS, Jackson, or
+ * validation annotation: it lives in {@code application/rest/contract},
+ * which is restricted to {@code domain/contract} dependencies only.
+ *
+ * @param message human-readable status token (defaults to {@code "pong"}).
+ * @param at server time when the response was produced.
+ */
+public record PingResponseDto(String message, Instant at) {}

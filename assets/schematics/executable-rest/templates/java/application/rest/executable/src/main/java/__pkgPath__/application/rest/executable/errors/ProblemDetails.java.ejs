@@ -1,0 +1,57 @@
+package <%= basePackage %>.application.rest.executable.errors;
+
+import <%= basePackage %>.kernel.Error;
+import <%= basePackage %>.kernel.NoHandlerError;
+
+import jakarta.ws.rs.core.Response;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Translates domain {@link Error}s to RFC 9457 Problem Details responses.
+ * Kept in the executable module (the interface layer) so the domain never
+ * learns about HTTP. The mapper is deliberately generic — each aggregate
+ * can extend it with error-specific status codes by adding {@code case}
+ * arms in the caller or a per-error mapping table.
+ */
+public final class ProblemDetails {
+
+  private ProblemDetails() {}
+
+  /**
+   * Builds a Problem Details response from a domain {@link Error}. Errors
+   * that represent server misconfiguration (e.g. {@link NoHandlerError},
+   * which means a wiring mistake) are mapped to 500 with a generic title
+   * and detail to avoid leaking internals; all other domain errors are
+   * treated as client-correctable and surface their {@code code} +
+   * {@code message} at 400.
+   */
+  public static Response respond(Error error) {
+    if (isServerError(error)) {
+      return internalError();
+    }
+    return build(400, error.code(), error.message());
+  }
+
+  /**
+   * Builds a 500 Internal Server Error Problem Details response. Use this
+   * for unreachable branches and defensive guards only — expected domain
+   * failures should flow through {@link #respond(Error)}.
+   */
+  public static Response internalError() {
+    return build(500, "internal_error", "An unexpected error occurred.");
+  }
+
+  private static boolean isServerError(Error error) {
+    return error instanceof NoHandlerError;
+  }
+
+  private static Response build(int status, String title, String detail) {
+    Map<String, Object> problem = new LinkedHashMap<>();
+    problem.put("type", "about:blank");
+    problem.put("title", title);
+    problem.put("status", status);
+    problem.put("detail", detail);
+    return Response.status(status).type("application/problem+json").entity(problem).build();
+  }
+}

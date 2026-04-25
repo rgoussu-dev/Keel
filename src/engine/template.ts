@@ -4,12 +4,19 @@ import { render } from 'ejs';
 import type { Tree } from './types.js';
 
 /**
- * Renders every file in a template directory (recursively) through EJS and
- * writes the result into the tree. File names may themselves contain EJS
- * placeholders like `__name__.java`, which are substituted from `vars`.
+ * Renders every file in a template directory (recursively) into the tree.
+ * File names may contain EJS placeholders like `__name__.java`, which are
+ * substituted from `vars`.
  *
- * Template files ending in `.ejs` are rendered and written without the
- * `.ejs` extension; other files are copied verbatim.
+ * Behaviour per file kind:
+ *   - `.ejs` → read as UTF-8, rendered through EJS, written without the
+ *     `.ejs` suffix.
+ *   - everything else → read as a binary `Buffer` and copied verbatim.
+ *     This keeps binary template assets (e.g. `gradle-wrapper.jar`)
+ *     byte-identical, and is also correct for text files.
+ *
+ * The executable bit of the source file is preserved on the target when
+ * set, so templates like `gradlew` retain `+x` after a commit.
  */
 export async function renderTemplate(
   tree: Tree,
@@ -27,9 +34,19 @@ export async function renderTemplate(
       targetRoot.replace(/\\/g, '/'),
       outRel.split(path.sep).join('/'),
     );
-    const content = await fs.readFile(absFile, 'utf8');
-    const rendered = isEjs ? render(content, vars, { async: false }) : content;
-    tree.write(outPath, rendered);
+    if (isEjs) {
+      const content = await fs.readFile(absFile, 'utf8');
+      const rendered = render(content, vars, { async: false });
+      tree.write(outPath, rendered);
+    } else {
+      const [content, stat] = await Promise.all([fs.readFile(absFile), fs.stat(absFile)]);
+      const srcMode = stat.mode & 0o777;
+      if ((srcMode & 0o111) !== 0) {
+        tree.write(outPath, content, { mode: srcMode });
+      } else {
+        tree.write(outPath, content);
+      }
+    }
   }
 }
 

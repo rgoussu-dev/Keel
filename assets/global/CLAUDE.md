@@ -13,14 +13,19 @@ Every project uses ports & adapters, **including frontends**.
 ```
 application/<channel>/contract   # DTOs, schemas (OpenAPI, GraphQL, CLI spec)
 application/<channel>/executable # runnable; framework chosen at walking-skeleton time
-domain/contract                  # ports (primary + secondary), domain DTOs
-domain/core/kernel               # mediator, Action/Command/Query/Result base types
-domain/core/<aggregate>          # business logic
+domain/contract                  # ports (primary + secondary), domain DTOs,
+                                 # and the mediator kernel (Action / Command /
+                                 # Query / Result / Error / Handler / Mediator) —
+                                 # kept here, not in domain/core, so
+                                 # application/* can dispatch without violating
+                                 # the dependency rule.
+domain/core/<aggregate>          # business logic (concrete commands, queries,
+                                 # handlers, errors)
 infrastructure/<port>/<impl>     # real adapter (e.g., postgres, kafka)
 infrastructure/<port>/fake       # fake module — test-dep always, prod-dep opt-in
 ```
 
-- **Interface layer (`application/<channel>`) is dumb.** It maps transport DTOs to actions, dispatches via the mediator, and maps the `Result` back. **Zero business logic.**
+- **Interface layer (`application/<channel>/contract`) is dumb.** It maps transport DTOs to actions, dispatches via the mediator, and maps the `Result` back. **Zero business logic.** Its sibling `application/<channel>/executable` is the channel's composition root and wires the runtime (see §1.1).
 - **Infrastructure is dumb.** Adapters only. **Zero business logic.**
 - Business logic lives exclusively in `domain/core`.
 - Multiple executables per project are expected (`rest`, `cli`, `worker`, `ui`, …).
@@ -28,9 +33,10 @@ infrastructure/<port>/fake       # fake module — test-dep always, prod-dep opt
 ### 1.1 Dependency rule
 
 - `domain/*` depends on **nothing outside `domain/`**.
-- `application/<channel>/*` depends on `domain/contract` (ports, DTOs) only — never on `domain/core` or `infrastructure/*`.
+- `application/<channel>/contract` depends on `domain/contract` (ports, DTOs, mediator kernel) only — never on `domain/core` or `infrastructure/*`.
+- `application/<channel>/executable` is the **composition root** for that channel: it may depend on `domain/contract`, `domain/core`, `application/<channel>/contract`, and any `infrastructure/<port>/*` strictly so it can instantiate concrete handlers and adapters and hand them to the mediator. **It must contain no logic** — it only wires and runs. Any non-wiring behaviour belongs in `domain/core`; any adapter behaviour belongs in the relevant `infrastructure/<port>/*`.
 - `infrastructure/<port>/*` depends on `domain/contract` (the port it implements) — never on other adapters, never on `domain/core`, never on `application/*`.
-- Enforced at build time (ArchUnit in Java, dependency-cruiser in TS, cargo-deny in Rust, etc.).
+- Enforced at build time (ArchUnit in Java, dependency-cruiser in TS, cargo-deny in Rust, etc.). The architecture rules pin the composition-root exception to `application/<channel>/executable` only — violating it from `application/<channel>/contract` is still a build failure.
 
 ### 1.2 Framework choice
 
@@ -127,9 +133,16 @@ infrastructure, from user input to deployed runtime.
 
 - All infrastructure is defined in **OpenTofu** (Terraform-compatible, fully OSS).
 - No infrastructure lives outside IaC. No manual cloud-console changes.
-- IaC modules live in `infrastructure/iac/` or a sibling repo, depending on scope.
-- Every environment (dev, staging, prod) is a separate state.
+- IaC modules live at the **repo root** in `/iac/<target>/` (e.g. `/iac/cloudrun/`, `/iac/hetzner/`), or a sibling repo, depending on scope. IaC is **not** a hexagonal adapter, so it does **not** live under `infrastructure/` — that path is reserved for adapters implementing a `domain/contract` port.
+- Multiple `/iac/<target>/` modules may coexist; the walking skeleton picks a default at scaffold time.
+- Every environment (dev, staging, prod) is a separate state. State is remote by default (provider-native backend, e.g. GCS); the state bucket is provisioned by a one-shot `bootstrap.sh` so the chicken-and-egg is explicit.
 - Secrets never land in state files; use a secret manager.
+
+### 5.1 Container registry — first-class, orthogonal to deploy target
+
+- The container registry is conceptually a **separate choice** from the deploy target. A project may deploy to Cloud Run but push images to `ghcr.io`, or run on a VPS while publishing images via GitHub Container Registry.
+- Currently scaffolded out of the box: `gar` (GCP Artifact Registry, wired automatically by `iac-cloudrun` so the WIF pool is reused). Other registries — `ghcr.io` (GitHub) and `external` (Docker Hub, quay.io, self-hosted) — are recognised concepts but require project-specific CI/CD customisation until explicit scaffold support lands.
+- A project without an IaC target (`target=none`) may still choose an image-publishing release flow, but that is not implied to be auto-scaffolded for every registry.
 
 ---
 

@@ -4,7 +4,13 @@ import fs from 'fs-extra';
 import type { Tree, TreeChange } from './types.js';
 
 type Entry =
-  | { kind: 'present'; content: Buffer; dirty: boolean; wasOnDisk: boolean }
+  | {
+      kind: 'present';
+      content: Buffer;
+      mode: number | null;
+      dirty: boolean;
+      wasOnDisk: boolean;
+    }
   | { kind: 'deleted'; wasOnDisk: boolean };
 
 /**
@@ -30,18 +36,27 @@ export class InMemoryTree implements Tree {
       return null;
     }
     const content = fs.readFileSync(abs);
-    this.entries.set(key, { kind: 'present', content, dirty: false, wasOnDisk: true });
+    this.entries.set(key, {
+      kind: 'present',
+      content,
+      mode: null,
+      dirty: false,
+      wasOnDisk: true,
+    });
     return content;
   }
 
-  write(filePath: string, content: Buffer | string): void {
+  write(filePath: string, content: Buffer | string, options?: { mode?: number }): void {
     const key = this.key(filePath);
     const prior = this.entries.get(key);
     const wasOnDisk =
       prior?.kind === 'present' ? prior.wasOnDisk : fs.pathExistsSync(path.join(this.root, key));
+    const explicitMode = options?.mode;
+    const priorMode = prior?.kind === 'present' ? prior.mode : null;
     this.entries.set(key, {
       kind: 'present',
       content: Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8'),
+      mode: explicitMode ?? priorMode ?? null,
       dirty: true,
       wasOnDisk,
     });
@@ -105,7 +120,7 @@ export class InMemoryTree implements Tree {
       const entry = this.entries.get(change.path);
       if (entry?.kind !== 'present') continue;
       await fs.ensureDir(path.dirname(abs));
-      await atomicWrite(abs, entry.content);
+      await atomicWrite(abs, entry.content, entry.mode);
     }
     return changes;
   }
@@ -121,9 +136,17 @@ export class InMemoryTree implements Tree {
  * Writes a file atomically: the payload is written to a unique temp path
  * in the same directory, then renamed onto the target. On POSIX systems
  * rename is atomic when source and destination are on the same
- * filesystem. If the target already exists its mode bits are preserved.
+ * filesystem. The effective mode precedence is:
+ *
+ *   1. `explicitMode` (e.g. the Tree entry's stored mode).
+ *   2. The target file's pre-existing mode (if overwriting).
+ *   3. The platform default (no explicit chmod).
  */
-async function atomicWrite(target: string, content: Buffer): Promise<void> {
+async function atomicWrite(
+  target: string,
+  content: Buffer,
+  explicitMode: number | null,
+): Promise<void> {
   const dir = path.dirname(target);
   const base = path.basename(target);
   const suffix = randomBytes(6).toString('hex');
@@ -135,10 +158,11 @@ async function atomicWrite(target: string, content: Buffer): Promise<void> {
   } catch {
     priorMode = null;
   }
+  const finalMode = explicitMode ?? priorMode;
 
   await fs.writeFile(tmp, content);
   try {
-    if (priorMode !== null) await fs.chmod(tmp, priorMode);
+    if (finalMode !== null) await fs.chmod(tmp, finalMode);
     await fs.rename(tmp, target);
   } catch (err) {
     await fs.remove(tmp).catch(() => {});

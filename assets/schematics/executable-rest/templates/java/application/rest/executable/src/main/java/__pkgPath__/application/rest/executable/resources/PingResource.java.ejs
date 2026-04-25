@@ -1,0 +1,51 @@
+package <%= basePackage %>.application.rest.executable.resources;
+
+import <%= basePackage %>.application.rest.contract.PingResponseDto;
+import <%= basePackage %>.application.rest.executable.errors.ProblemDetails;
+import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.kernel.Result;
+import <%= basePackage %>.ping.Ping;
+import <%= basePackage %>.ping.PingQuery;
+
+import jakarta.inject.Inject;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
+/**
+ * JAX-RS resource for {@code GET /ping}. Acts as the primary "dumb"
+ * adapter: it deserialises the (empty) request into a {@link PingQuery},
+ * dispatches via the injected {@link Mediator}, and maps the typed
+ * {@link Result} back to a transport shape. It contains no business
+ * logic: the {@code PingHandler} in {@code domain/core} owns the "what".
+ */
+@Path("/ping")
+public class PingResource {
+
+  private final Mediator mediator;
+
+  /** Constructor injection keeps the dependency explicit and test-friendly. */
+  @Inject
+  public PingResource(Mediator mediator) {
+    this.mediator = mediator;
+  }
+
+  /**
+   * Dispatches the query and branches on the {@link Result} union. On
+   * success the domain {@link Ping} is mapped to {@link PingResponseDto};
+   * on failure the domain {@code Error} is translated to an RFC 9457
+   * {@code application/problem+json} response via {@link ProblemDetails}.
+   */
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response ping() {
+    Result<Ping> result = mediator.dispatch(new PingQuery());
+    return switch (result) {
+      case Result.Success<Ping>(Ping ping) ->
+          Response.ok(new PingResponseDto(ping.message(), ping.at())).build();
+      case Result.Failure<Ping>(var cause) -> ProblemDetails.respond(cause);
+    };
+  }
+}

@@ -1,0 +1,10 @@
+package <%= basePackage %>.ping;
+
+import <%= basePackage %>.kernel.Query;
+
+/**
+ * Read-side action asking "is the service alive?". Carries no input. The
+ * successful result is a {@link Ping} describing when the service replied
+ * and with what status token.
+ */
+public record PingQuery() implements Query<Ping> {}

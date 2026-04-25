@@ -144,7 +144,7 @@ infrastructure/
 1. **Hexagonal architecture, always** — including frontend.
 2. **Interface (application/<channel>) = dumb:** map DTO → dispatch via mediator → map response.
 3. **Infrastructure = dumb:** adapters only. Zero business logic.
-4. **Command/Query + Mediator** for all business operations. Mediator lives in `domain/core/kernel/`.
+4. **Command/Query + Mediator** for all business operations. Mediator lives in `domain/contract/kernel/`.
 5. **Test pattern (strict DIP):**
    - **Scenario** — encapsulates data.
    - **Factory** — wires SUT with fakes (not mocks).
@@ -237,7 +237,7 @@ Schematics take `--language <lang>` (auto-detected from project markers).
 - **Multi-module:** standard multi-project build + `build-logic/` included build (convention plugins) + `gradle/libs.versions.toml` version catalog.
 - **Test stack:** JUnit 5 + AssertJ + **ArchUnit** (hex boundary enforcement) + **PIT/pitest** (mutation testing, `pitest-junit5-plugin`, changed-classes scope by default).
 - **Quality stack:** Spotless + google-java-format · ErrorProne · NullAway + JSpecify · ArchUnit · PIT. **No Checkstyle** — JavaDoc-on-public-API enforced via Claude skill/hook/command triad.
-- **Mediator:** explicit DI at construction; `Collection<Handler>` only; handlers self-declare supported actions via `supports()`. Lives in `domain/core/kernel/`.
+- **Mediator:** explicit DI at construction; `Collection<Handler>` only; handlers self-declare supported actions via `supports()`. Lives in `domain/contract/kernel/`.
 
 ### Mediator design (Java 25)
 
