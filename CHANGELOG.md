@@ -6,6 +6,44 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+
+- **Global install scope.** The `--global` flag is gone from
+  `keel install` and `keel update`, and `keel doctor` no longer audits
+  `~/.claude`. keel is now **project-scoped only**: the entire kit
+  (CLAUDE.md, skills, agents, slash commands, hooks, settings) installs
+  into `<project>/.claude/`, and the user's home directory is never
+  read, written, or otherwise touched. This is a breaking change for
+  anyone running `keel install --global` — the command now fails with
+  an unknown-option error. Existing `~/.claude/` installs are left
+  alone (no cleanup is performed); to migrate, run `keel install` in
+  each project that should have keel and remove the now-orphaned
+  `~/.claude/` files manually if desired.
+
+### Changed
+
+- **`assets/global/` collapsed into `assets/project/`.** The packaged
+  asset tree no longer distinguishes scopes: `CLAUDE.md`, `agents/`,
+  `commands/`, and `skills/` moved from `assets/global/` to
+  `assets/project/`, and the permissions / env block from
+  `assets/global/settings.json` was merged into
+  `assets/project/settings.json` alongside the existing hooks.
+  Consumers see the merged bundle land in `<project>/.claude/`.
+- **Manifest schema.** The `scope` field is now optional on read and is
+  no longer written. Existing project manifests (which carried
+  `"scope": "project"`) continue to parse; the field is silently
+  dropped on the next `keel update`.
+- **CLI help text** updated to describe the project-only behavior; the
+  `keel doctor` summary line now reports a single audit instead of one
+  per scope.
+- **README rewritten.** New sections: _Why keel_, _Quickstart_,
+  _CLI_ (full command table with flags and behavior), _What ships in
+  the kit_, _Customizing your install_. Drops every reference to
+  `--global`.
+- **Root `CLAUDE.md`** updated: §1 points the binding spec at
+  `assets/project/CLAUDE.md`; §6 layout shows a single `assets/project/`
+  bundle; §7 testing reference relinked.
+
 ### Added
 
 - `LICENSE` file at the repository root (MIT, © 2026 Romain Goussu).
@@ -19,14 +57,14 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   TypeScript, PowerShell, and JSON sidecars).
 - `README.md`: `Acknowledgments` section pointing to the
   `THIRD_PARTY_LICENSES/` audit trail.
-- Four specialised agents under `assets/global/agents/`, adapted from
+- Four specialised agents under `assets/project/agents/`, adapted from
   citypaul/.dotfiles (MIT, © 2024 Paul Hammond) at upstream commit
   `a4b6c469`: `tdd-guardian`, `pr-reviewer`, `learn`, `adr`. Each file
   carries a provenance header listing the substantive deltas; the
   audit trail is in
-  `THIRD_PARTY_LICENSES/citypaul-dotfiles.NOTICE.md`. Auto-distributed
-  to `~/.claude/agents/` by `keel install --global` (no installer
-  change required; the planner walks `assets/global/` recursively).
+  `THIRD_PARTY_LICENSES/citypaul-dotfiles.NOTICE.md`. Distributed to
+  `<project>/.claude/agents/` by `keel install` (no installer change
+  required; the planner walks `assets/project/` recursively).
 - Three new skills extracted from the binding spec, each with TRIGGER /
   SKIP guidance for Claude Code's on-demand loading:
   - `mediator-pattern`: Action/Command/Query/Result kernel, mediator
@@ -35,7 +73,7 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
     container-registry choice, anti-patterns.
   - `trunk-based-xp`: workflow, commit discipline, the "done"
     checklist.
-- GitHub MCP permissions in `assets/global/settings.json`: read tools
+- GitHub MCP permissions in `assets/project/settings.json`: read tools
   (`mcp__github__pull_request_read`,
   `mcp__github__list_pull_requests`,
   `mcp__github__get_file_contents`,
@@ -44,8 +82,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `mcp__github__add_issue_comment`, `mcp__github__create_pull_request`,
   `mcp__github__merge_pull_request`, etc.) are ask-listed. Same
   read-vs-write split as the existing git permissions.
-
-### Changed
 
 - **Domain split refined into a three-module DAG**:
   `domain/kernel ← domain/contract ← domain/core`. Builds on the
@@ -86,7 +122,9 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   now describes IaC modules at the repo root (`/iac/cloudrun/`,
   `/iac/hetzner/`, etc.) instead of `infrastructure/iac/`, matching
   #6's IaC-relocation; container-registry section added per the same.
-- **`assets/global/CLAUDE.md` trimmed from 214 to ~150 lines**: each
+- **`assets/project/CLAUDE.md` trimmed from 214 to ~150 lines** (file
+  was at `assets/global/CLAUDE.md` before the global-scope removal):
+  each
   major section keeps a 2–4 line summary and points to its skill
   (`§1` → `hexagonal-review`, `§2` → `mediator-pattern`, `§3` →
   `test-scenario-pattern`, `§4` → `walking-skeleton-guide`, `§5` →

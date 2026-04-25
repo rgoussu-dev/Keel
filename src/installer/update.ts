@@ -4,23 +4,22 @@ import { confirm, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { logger } from '../util/log.js';
 import { sha256 } from '../util/hash.js';
-import { paths, type AssetKind } from '../util/paths.js';
+import { paths } from '../util/paths.js';
 import type { Manifest, ManifestEntry } from '../manifest/schema.js';
 import { readManifest, writeManifest } from '../manifest/store.js';
 import { planInstall } from './plan.js';
 
 export interface UpdateOptions {
-  scope: 'global' | 'project';
   cwd: string;
   dryRun: boolean;
   nonInteractive: boolean;
 }
 
 /**
- * Upgrades an existing install to the current kit version. For each file,
- * compares three hashes — the user's current file, the hash shipped at
- * the last install, and the hash of the newly-packaged file — and applies
- * a three-way reconciliation.
+ * Upgrades an existing project install to the current kit version. For
+ * each file, compares three hashes — the user's current file, the hash
+ * shipped at the last install, and the hash of the newly-packaged file —
+ * and applies a three-way reconciliation.
  *
  * Unchanged user files are overwritten silently. User-modified files
  * prompt for keep / overwrite / show-diff unless `nonInteractive` is set,
@@ -33,11 +32,12 @@ export interface UpdateOptions {
  * Files that were previously kit-owned but are no longer in the shipped
  * assets become orphans: unmodified orphans are deleted; modified orphans
  * are kept but un-tracked and reported to the user.
+ *
+ * The user's home directory (`~/.claude`) is never touched.
  */
 export async function update(opts: UpdateOptions): Promise<void> {
-  const targetRoot = opts.scope === 'global' ? paths.global : paths.project(opts.cwd);
-  const assetKind: AssetKind = opts.scope;
-  const assetRoot = paths.asset(assetKind);
+  const targetRoot = paths.project(opts.cwd);
+  const assetRoot = paths.asset('project');
 
   const existing = await readManifest(targetRoot);
   if (!existing) {
@@ -45,7 +45,7 @@ export async function update(opts: UpdateOptions): Promise<void> {
     throw new Error('update refused: no manifest');
   }
 
-  logger.info(`updating ${opts.scope} install at ${targetRoot}`);
+  logger.info(`updating project install at ${targetRoot}`);
 
   const plan = await planInstall(assetRoot, targetRoot);
   const existingByTarget = new Map(existing.entries.map((e) => [e.target, e]));
@@ -68,7 +68,7 @@ export async function update(opts: UpdateOptions): Promise<void> {
         await restoreExecBit(file.targetAbs, relPosix);
       }
       logger.success(`+ ${relPosix}`);
-      newEntries.push(freshEntry(assetKind, relPosix, shippedHash, now));
+      newEntries.push(freshEntry(relPosix, shippedHash, now));
       continue;
     }
 
@@ -78,7 +78,7 @@ export async function update(opts: UpdateOptions): Promise<void> {
     if (currentHash === shippedHash) {
       // User file already matches the new shipped file — nothing to do.
       newEntries.push({
-        ...freshEntry(assetKind, relPosix, shippedHash, prior?.installedAt ?? now),
+        ...freshEntry(relPosix, shippedHash, prior?.installedAt ?? now),
       });
       continue;
     }
@@ -93,7 +93,7 @@ export async function update(opts: UpdateOptions): Promise<void> {
         await restoreExecBit(file.targetAbs, relPosix);
       }
       logger.success(`~ ${relPosix} (upgraded)`);
-      newEntries.push(freshEntry(assetKind, relPosix, shippedHash, prior?.installedAt ?? now));
+      newEntries.push(freshEntry(relPosix, shippedHash, prior?.installedAt ?? now));
       continue;
     }
 
@@ -112,7 +112,7 @@ export async function update(opts: UpdateOptions): Promise<void> {
       await restoreExecBit(file.targetAbs, relPosix);
     }
     newEntries.push({
-      source: path.posix.join(assetKind, relPosix),
+      source: path.posix.join('project', relPosix),
       target: relPosix,
       sha256Shipped: shippedHash,
       sha256Current: resolution === 'overwrite' ? shippedHash : currentHash,
@@ -212,14 +212,9 @@ async function restoreExecBit(absPath: string, relPosix: string): Promise<void> 
   await fs.chmod(absPath, 0o755);
 }
 
-function freshEntry(
-  assetKind: AssetKind,
-  relPosix: string,
-  hash: string,
-  installedAt: string,
-): ManifestEntry {
+function freshEntry(relPosix: string, hash: string, installedAt: string): ManifestEntry {
   return {
-    source: path.posix.join(assetKind, relPosix),
+    source: path.posix.join('project', relPosix),
     target: relPosix,
     sha256Shipped: hash,
     sha256Current: hash,

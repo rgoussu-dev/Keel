@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { logger } from '../util/log.js';
 import { sha256 } from '../util/hash.js';
-import { paths, type AssetKind } from '../util/paths.js';
+import { paths } from '../util/paths.js';
 import type { Manifest, ManifestEntry } from '../manifest/schema.js';
 import { readManifest, writeManifest } from '../manifest/store.js';
 import { planInstall } from './plan.js';
@@ -25,23 +25,24 @@ function kitVersion(): string {
 }
 
 export interface InstallOptions {
-  scope: 'global' | 'project';
   cwd: string;
   force: boolean;
   dryRun: boolean;
 }
 
 /**
- * Installs the kit assets for the requested scope into the target
- * directory. Refuses to overwrite existing non-keel files unless `force`
- * is set; refuses to reinstall over an existing manifest unless `force`.
+ * Installs the kit assets into the current project's `.claude/` directory.
+ * Refuses to overwrite existing non-keel files unless `force` is set;
+ * refuses to reinstall over an existing manifest unless `force`.
+ *
+ * The user's home directory (`~/.claude`) is never touched — keel is
+ * project-scoped only.
  */
 export async function install(opts: InstallOptions): Promise<void> {
-  const targetRoot = opts.scope === 'global' ? paths.global : paths.project(opts.cwd);
-  const assetKind: AssetKind = opts.scope;
-  const assetRoot = paths.asset(assetKind);
+  const targetRoot = paths.project(opts.cwd);
+  const assetRoot = paths.asset('project');
 
-  logger.info(`installing ${opts.scope} assets → ${targetRoot}`);
+  logger.info(`installing project assets → ${targetRoot}`);
 
   const existing = await readManifest(targetRoot);
   if (existing && !opts.force) {
@@ -77,7 +78,7 @@ export async function install(opts: InstallOptions): Promise<void> {
     }
     const hash = sha256(content);
     entries.push({
-      source: path.posix.join(assetKind, file.relative.split(path.sep).join('/')),
+      source: path.posix.join('project', file.relative.split(path.sep).join('/')),
       target: file.relative.split(path.sep).join('/'),
       sha256Shipped: hash,
       sha256Current: hash,
@@ -87,7 +88,6 @@ export async function install(opts: InstallOptions): Promise<void> {
 
   const manifest: Manifest = {
     kitVersion: kitVersion(),
-    scope: opts.scope,
     installedAt: existing?.installedAt ?? now,
     updatedAt: now,
     entries,

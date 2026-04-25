@@ -17,8 +17,8 @@ import { paths } from '../src/util/paths.js';
 import type { Manifest } from '../src/manifest/schema.js';
 
 /**
- * update() resolves asset paths via `paths.asset('global'|'project')`,
- * which is package-root relative. We override the resolver to point at a
+ * update() resolves asset paths via `paths.asset('project')`, which is
+ * package-root relative. We override the resolver to point at a
  * test-controlled fake asset directory so each case stages its own
  * scenario without touching the real shipped assets.
  */
@@ -90,7 +90,7 @@ describe('update()', () => {
       ],
     });
 
-    await update({ scope: 'project', cwd: projectCwd, dryRun: false, nonInteractive: true });
+    await update({ cwd: projectCwd, dryRun: false, nonInteractive: true });
 
     expect(readFileSync(path.join(targetRoot, 'a.txt'), 'utf8')).toBe(newContent);
   });
@@ -118,7 +118,7 @@ describe('update()', () => {
       ],
     });
 
-    await update({ scope: 'project', cwd: projectCwd, dryRun: false, nonInteractive: true });
+    await update({ cwd: projectCwd, dryRun: false, nonInteractive: true });
 
     expect(readFileSync(path.join(targetRoot, 'b.txt'), 'utf8')).toBe(userEdited);
 
@@ -144,7 +144,7 @@ describe('update()', () => {
       entries: [], // no prior entry for c.txt
     });
 
-    await update({ scope: 'project', cwd: projectCwd, dryRun: false, nonInteractive: true });
+    await update({ cwd: projectCwd, dryRun: false, nonInteractive: true });
 
     // Non-interactive defaults to 'keep' → user content preserved.
     expect(readFileSync(path.join(targetRoot, 'c.txt'), 'utf8')).toBe(preExisting);
@@ -181,7 +181,7 @@ describe('update()', () => {
     });
     // Asset dir has NO files → everything is an orphan.
 
-    await update({ scope: 'project', cwd: projectCwd, dryRun: false, nonInteractive: true });
+    await update({ cwd: projectCwd, dryRun: false, nonInteractive: true });
 
     expect(existsSync(path.join(targetRoot, 'orphan-clean.txt'))).toBe(false);
     expect(existsSync(path.join(targetRoot, 'orphan-mod.txt'))).toBe(true);
@@ -216,7 +216,7 @@ describe('update()', () => {
       ],
     });
 
-    await update({ scope: 'project', cwd: projectCwd, dryRun: false, nonInteractive: true });
+    await update({ cwd: projectCwd, dryRun: false, nonInteractive: true });
 
     const mode = statSync(targetAbs).mode & 0o777;
     expect(mode & 0o100).toBe(0o100); // owner exec set
@@ -224,8 +224,8 @@ describe('update()', () => {
 
   it('refuses to update without an existing manifest', async () => {
     rmSync(path.join(targetRoot, '.keel-manifest.json'), { force: true });
-    await expect(
-      update({ scope: 'project', cwd: projectCwd, dryRun: false, nonInteractive: true }),
-    ).rejects.toThrow(/no manifest/);
+    await expect(update({ cwd: projectCwd, dryRun: false, nonInteractive: true })).rejects.toThrow(
+      /no manifest/,
+    );
   });
 });

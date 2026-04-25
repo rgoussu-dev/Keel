@@ -3,19 +3,20 @@
 This is the source repository for `@rgoussu.dev/keel`, the universal Claude
 Code workflow kit. Everything in this file applies to **working on keel
 itself**. Projects that _consume_ keel get a different CLAUDE.md (see
-`assets/global/CLAUDE.md`).
+[`assets/project/CLAUDE.md`](assets/project/CLAUDE.md)).
 
-This file lives at the project root so the Claude Code cloud harness sees it
-on every session — the harness does not retain `~/.claude/CLAUDE.md` across
-runs.
+This file lives at the project root because keel is **project-scoped**: it
+installs only into `<project>/.claude/`, never into the user's home
+directory. Both this contributor guide and the consumer-facing binding
+spec are read by Claude Code from the repo itself.
 
 ---
 
 ## 1. Binding spec
 
 The universal engineering conventions are defined in
-[`assets/global/CLAUDE.md`](assets/global/CLAUDE.md) — the same file
-`keel install --global` copies into `~/.claude/CLAUDE.md` for consumers.
+[`assets/project/CLAUDE.md`](assets/project/CLAUDE.md) — the same file
+`keel install` copies into `<project>/.claude/CLAUDE.md` for consumers.
 
 **keel dogfoods those conventions.** Any change to this repo must conform to
 that document:
@@ -148,8 +149,8 @@ src/
   schematics/    # port, scenario, walking-skeleton
   util/
 assets/
-  global/        # → ~/.claude/
-  project/       # → <project>/.claude/
+  project/       # → <project>/.claude/ (CLAUDE.md, settings, hooks,
+                 #   commands, agents, skills — the entire kit)
   conventions/   # language toolchain matrix (languages.json)
   schematics/    # schematic templates (ejs)
 tests/           # vitest, Scenario + Factory + fakes
@@ -168,7 +169,7 @@ packages; they do **not** go under `src/engine/`.
 - Vitest, run via `pnpm test`. Test files live under `tests/` mirroring
   the `src/` structure.
 - Follow the Scenario + Factory + port pattern from
-  `assets/global/CLAUDE.md §3`. No mocking libraries — build fakes
+  `assets/project/CLAUDE.md §3`. No mocking libraries — build fakes
   directly.
 - Every public API change is accompanied by a test change.
 - Mutation testing is on the roadmap; not yet wired in this repo.
@@ -186,7 +187,7 @@ packages; they do **not** go under `src/engine/`.
   `[x.y.z] — YYYY-MM-DD` and a new empty `[Unreleased]` is added. Link
   references at the bottom compare against the previous tag.
 - **BRAINSTORM.md**: in-progress design notes. Not authoritative. Do not
-  treat it as a source of truth for behavior — only `assets/global/CLAUDE.md`
+  treat it as a source of truth for behavior — only `assets/project/CLAUDE.md`
   and code are.
 - **CLAUDE.md** (this file): conventions for contributors. Update when the
   workflow itself changes.

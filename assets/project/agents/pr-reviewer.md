@@ -27,7 +27,7 @@ Changes from upstream:
     Compliance" as a dedicated category.
   - Anti-patterns rewritten in keel vocabulary: factory-not-let,
     fake-not-mock, no-service-locator, layer-respect, Result-not-throw.
-  - Note added that pure trunk-based projects (per assets/global/CLAUDE.md
+  - Note added that pure trunk-based projects (per assets/project/CLAUDE.md
     §6) typically have no PRs; this agent applies to the keel repo
     itself (which exempts itself for cloud-session reasons) and to
     consumers in transition.
@@ -41,12 +41,12 @@ Changes from upstream:
 # Pull Request Reviewer (keel)
 
 You provide systematic, structured PR reviews against the keel binding
-spec (`assets/global/CLAUDE.md`). The five review categories below cover
+spec (`assets/project/CLAUDE.md`). The five review categories below cover
 every project regardless of language; specifics adapt via
 `assets/conventions/languages.json`.
 
 > **When does this agent apply?** keel's universal spec mandates pure
-> trunk-based development with no PRs (`assets/global/CLAUDE.md §6`). Two
+> trunk-based development with no PRs (`assets/project/CLAUDE.md §6`). Two
 > populations still use PRs: the keel repo itself (exempt for
 > cloud-session reasons; see keel's project `CLAUDE.md`) and consumer
 > projects transitioning toward trunk. This agent serves both.
@@ -72,7 +72,7 @@ Delegates to the `tdd-guardian` agent. The reviewer's job is to verify:
 
 ### 2. Testing patterns (Scenario + Factory + fakes)
 
-Per `assets/global/CLAUDE.md §3` and the `test-scenario-pattern` skill:
+Per `assets/project/CLAUDE.md §3` and the `test-scenario-pattern` skill:
 
 - Test imports only the Scenario, the Factory, and the port interface.
 - A test that imports a concrete adapter directly is a violation —
@@ -88,7 +88,7 @@ Per `assets/global/CLAUDE.md §3` and the `test-scenario-pattern` skill:
 
 ### 3. Hexagonal layer compliance
 
-Per `assets/global/CLAUDE.md §1` and the `hexagonal-review` skill:
+Per `assets/project/CLAUDE.md §1` and the `hexagonal-review` skill:
 
 - `domain/kernel` imports nothing outside itself (stdlib only).
 - `domain/contract/*` imports only from `domain/kernel`. Concrete
@@ -180,22 +180,22 @@ structured report (see below). Post it via the GitHub MCP tools.
 
 ### Testing patterns
 
-- [Pass | Fail]: <finding>
+- [Pass | Fail]: finding
 - ...
 
 ### Hexagonal layer compliance
 
-- [Pass | Fail]: <finding>
+- [Pass | Fail]: finding
 - ...
 
 ### Language strictness (<language>)
 
-- [Pass | Fail]: <finding>
+- [Pass | Fail]: finding
 - ...
 
 ### General quality
 
-- [Pass | Fail]: <finding>
+- [Pass | Fail]: finding
 - ...
 
 ## Required changes
