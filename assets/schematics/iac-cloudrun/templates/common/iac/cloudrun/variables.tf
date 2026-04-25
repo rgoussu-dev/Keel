@@ -14,6 +14,17 @@ variable "service_name" {
   description = "Cloud Run service name; must match the Artifact Registry repo id created by /iac/bootstrap."
 }
 
+variable "runtime_service_account" {
+  type        = string
+  description = <<-EOT
+    Email of the runtime service account the Cloud Run revision runs as.
+    Created in /iac/bootstrap and surfaced via the
+    `runtime_service_account_email` output. Pin to this SA so the
+    deployer's `iam.serviceAccountUser` binding stays scoped to just the
+    runtime identity — never grant `serviceAccountUser` project-wide.
+  EOT
+}
+
 variable "image" {
   type        = string
   description = <<-EOT

@@ -88,7 +88,8 @@ jobs:
             -var project_id=${{ secrets.GCP_PROJECT_ID }} \
             -var region=${{ secrets.GCP_REGION }} \
             -var service_name=<%= serviceName %> \
-            -var image="$IMAGE"
+            -var image="$IMAGE" \
+            -var runtime_service_account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
 
       - name: Smoke test /ping
         working-directory: iac/cloudrun

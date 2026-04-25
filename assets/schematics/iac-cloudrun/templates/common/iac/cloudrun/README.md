@@ -24,7 +24,8 @@ tofu init -backend-config=bucket=${PROJECT_ID}-tofu-state
 tofu apply \
   -var project_id=${PROJECT_ID} \
   -var service_name=<svc> \
-  -var image=${REGION}-docker.pkg.dev/${PROJECT_ID}/<svc>/rest:sha-<commit>
+  -var image=${REGION}-docker.pkg.dev/${PROJECT_ID}/<svc>/rest:sha-<commit> \
+  -var runtime_service_account=$(cd ../bootstrap && tofu output -raw runtime_service_account_email)
 ```
 
 ## Packaging
@@ -39,4 +40,4 @@ with a JVM-based build; the rest of the module is packaging-agnostic.
 
 ## Outputs worth capturing
 
-- `service_url` — public HTTPS URL. Smoke-tested after every deploy.
+- `service_url` — HTTPS URL for the Cloud Run service. Requires authentication unless `allow_unauthenticated` is set to `true` (default `false`); CI smoke-tests it after every deploy with an ID token.

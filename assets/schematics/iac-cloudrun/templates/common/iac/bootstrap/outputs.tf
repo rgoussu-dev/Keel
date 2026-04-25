@@ -17,3 +17,8 @@ output "deployer_service_account_email" {
   value       = google_service_account.deployer.email
   description = "Service account email CI impersonates via WIF. Paste into the `GCP_DEPLOYER_SA_EMAIL` GitHub Actions secret."
 }
+
+output "runtime_service_account_email" {
+  value       = google_service_account.runtime.email
+  description = "Service account email the Cloud Run service runs as. Paste into the `GCP_RUNTIME_SA_EMAIL` GitHub Actions secret."
+}

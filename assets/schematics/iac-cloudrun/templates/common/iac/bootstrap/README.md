@@ -47,6 +47,7 @@ Idempotent — running again reconciles without re-creating anything.
 | `GCP_REGION`                | the `REGION` you used (e.g. `europe-west1`)         |
 | `GCP_WIF_PROVIDER`          | `tofu output -raw wif_provider`                     |
 | `GCP_DEPLOYER_SA_EMAIL`     | `tofu output -raw deployer_service_account_email`   |
+| `GCP_RUNTIME_SA_EMAIL`      | `tofu output -raw runtime_service_account_email`    |
 | `GCP_ARTIFACT_REGISTRY_URL` | `tofu output -raw artifact_registry_url`            |
 
 The Cloud Run service itself is **not** created here — it is created
