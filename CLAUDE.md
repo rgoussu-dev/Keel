@@ -15,8 +15,10 @@ spec are read by Claude Code from the repo itself.
 ## 1. Binding spec
 
 The universal engineering conventions are defined in
-[`assets/project/CLAUDE.md`](assets/project/CLAUDE.md) — the same file
-`keel install` copies into `<project>/.claude/CLAUDE.md` for consumers.
+[`assets/schematics/claude-core/templates/CLAUDE.md`](assets/schematics/claude-core/templates/CLAUDE.md)
+— the same file the `claude-core` schematic renders into
+`<project>/.claude/CLAUDE.md` for consumers, with stack-specific
+addenda appended by `claude-<stack>` schematics on top.
 
 **keel dogfoods those conventions.** Any change to this repo must conform to
 that document:
@@ -144,14 +146,17 @@ trying the CLI locally.
 src/
   cli/           # commander entry points
   engine/        # Tree, templates, context — the schematics engine
-  installer/     # install / update / doctor / plan
+  installer/     # install / update / doctor / plan / env / profile
   manifest/      # .keel-manifest.json
-  schematics/    # port, scenario, walking-skeleton
+  schematics/    # claude-core, claude-quarkus, port, scenario,
+                 #   walking-skeleton, gradle-wrapper, executable-rest, …
   util/
 assets/
-  project/       # → <project>/.claude/ (CLAUDE.md, settings, hooks,
-                 #   commands, agents, skills, conventions — the kit)
   schematics/    # schematic templates (ejs)
+                 #   claude-core/templates/      → <project>/.claude/
+                 #   claude-quarkus/templates/   → stack runbook skills
+                 #   walking-skeleton/templates/ → project skeleton
+                 #   …
 tests/           # vitest, Scenario + Factory + fakes
 bin/keel.js      # npm bin entry
 ```

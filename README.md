@@ -44,8 +44,14 @@ That writes the kit into `<cwd>/.claude/`:
 ├── commands/              # /commit, /sync, /diff-review, /docs-check
 ├── conventions/           # languages.json — per-language toolchain matrix
 ├── hooks/                 # format-on-edit, pre-commit-verify, …
-└── skills/                # hexagonal-review, mediator-pattern, …
+└── skills/                # actionable runbooks for the chosen stack —
+                           # build, test, run, format, troubleshoot
 ```
+
+Skill content is contextualised to the stack you pick at install time.
+Pick `java-quarkus` and the runbooks describe `./gradlew quarkusDev`,
+GraalVM native packaging, ArchUnit/Pitest invocations; pick another
+stack later and the verbs stay, the body changes.
 
 Commit the directory. Open the project in Claude Code. Done — Claude now
 operates under the keel conventions.
@@ -54,19 +60,44 @@ operates under the keel conventions.
 
 ## CLI
 
-| Command                                 | What it does                                                                            |
-| --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `keel install`                          | Install the kit into `<cwd>/.claude/`. Refuses if a manifest already exists.            |
-| `keel install --force`                  | Reinstall, overwriting any kit-owned files (and the manifest).                          |
-| `keel install --dry-run`                | Print every file the install would create. Writes nothing.                              |
-| `keel update`                           | Upgrade an existing install to the latest kit version. Prompts on conflict.             |
-| `keel update --yes`                     | Non-interactive update. User-modified files are kept; the rest is upgraded silently.    |
-| `keel update --dry-run`                 | Print the update plan. Writes nothing.                                                  |
-| `keel doctor`                           | Audit `<cwd>/.claude/` for drift (missing, modified, foreign files). Non-zero on issue. |
-| `keel generate <schematic>` (alias `g`) | Run a registered schematic. See `Schematics` below.                                     |
+| Command                                 | What it does                                                                                                                                                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keel install`                          | Greenfield install: asks language → framework → native?, runs an env preflight, lays down `.claude/` plus a runnable walking-skeleton. Refuses if a manifest already exists or the cwd is non-empty (anything beyond `.git`). |
+| `keel install --force`                  | Override the existing-manifest / brownfield refusals. Overwrites kit-owned files.                                                                                                                                             |
+| `keel install --dry-run`                | Print every file the install would create. Writes nothing; no network I/O.                                                                                                                                                    |
+| `keel update`                           | Upgrade an existing install to the latest kit version. Prompts on conflict.                                                                                                                                                   |
+| `keel update --yes`                     | Non-interactive update. User-modified files are kept; the rest is upgraded silently.                                                                                                                                          |
+| `keel update --dry-run`                 | Print the update plan. Writes nothing.                                                                                                                                                                                        |
+| `keel doctor`                           | Audit `<cwd>/.claude/` for drift (missing, modified, foreign files). Non-zero on issue.                                                                                                                                       |
+| `keel generate <schematic>` (alias `g`) | Run a registered schematic. See `Schematics` below.                                                                                                                                                                           |
 
 All commands operate on the current working directory's `.claude/`.
 There is no `--global` flag and no path under `$HOME` is ever touched.
+
+### What `keel install` does
+
+Greenfield-only in this release. The flow:
+
+1. **Detect** — refuses unless the cwd is empty or only contains `.git`.
+2. **Pick a stack** — progressive prompts: language, framework, native
+   packaging? Currently shipped: **Java → Quarkus 3.33 LTS / Gradle 9.4 /
+   Java 25**, with optional GraalVM CE 25 native packaging. Adding a
+   stack means adding a profile in `src/installer/profile.ts`; no other
+   call site changes.
+3. **Env preflight** — `git` is required (fatal if missing); the
+   Quarkus stack additionally checks for a JDK on PATH at major ≥ 25
+   (warning if absent or older — Gradle toolchains still bail out on
+   first build); native opt-in adds a check for GraalVM's
+   `native-image` (warning).
+4. **Compose** — runs `claude-core` (universal scaffold under
+   `.claude/`), then `claude-<framework>` (stack-tailored runbook
+   skills + a sentinel-marked CLAUDE.md addendum), then
+   `walking-skeleton` (the project itself, at the repo root). Files
+   under `.claude/` are tracked in the manifest; the walking-skeleton
+   output is your project code from the moment it lands.
+
+Brownfield-aware install (running on an existing project) is on the
+roadmap.
 
 ### Updates and conflicts
 
@@ -93,12 +124,24 @@ hand-edit it.
 `keel generate <name>` (alias `keel g`) runs a registered schematic.
 Currently shipped:
 
+- `claude-core` — the universal Claude scaffold (`CLAUDE.md`,
+  `settings.json`, hooks, commands, agents, conventions) into
+  `<project>/.claude/`. Runs unconditionally as the first step of
+  `keel install`; can also be re-run standalone.
+- `claude-quarkus` — Quarkus-tailored runbook skills (`build`, `test`,
+  `run`, `format`, `troubleshoot`) plus a sentinel-marked addendum
+  appended to `CLAUDE.md` describing the project layout, default
+  endpoints, and a quick command reference. Idempotent.
 - `port` — secondary port + fake module + contract test (4 files).
 - `scenario` — Scenario + Factory + Test triad in the domain test tree.
 - `walking-skeleton` — multi-module Gradle shell, kernel + contract +
   core split, IaC stub, composes `port` for a starter secondary port.
 - `git-init`, `gradle-wrapper`, `executable-rest`, `iac-cloudrun`,
-  `ci-github` — supporting fragments.
+  `ci-github` — supporting fragments. `gradle-wrapper` downloads the
+  official `gradle-<v>-wrapper.jar` from services.gradle.org and
+  verifies it against the published `.sha256` sidecar (no committed
+  binary in the repo); the walking-skeleton ships Java 25 + Gradle
+  9.4.1 + Quarkus 3.33.1 LTS by default.
 
 Pass parameters with `--set k=v` (repeatable). Use `--dry-run` to preview.
 
