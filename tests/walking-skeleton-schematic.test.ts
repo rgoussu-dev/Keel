@@ -1,10 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { cliPrompt } from '../src/engine/homegrown.js';
 import { buildEngine } from '../src/schematics/registry.js';
+import * as wrapperDownload from '../src/schematics/gradle-wrapper/download.js';
 import { logger } from '../src/util/log.js';
+
+const FAKE_WRAPPER_JAR = Buffer.concat([
+  Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+  Buffer.alloc(20_000),
+]);
 
 /**
  * End-to-end integration test for the walking-skeleton orchestrator.
@@ -17,9 +23,11 @@ describe('walking-skeleton schematic', () => {
 
   beforeEach(() => {
     workDir = mkdtempSync(path.join(tmpdir(), 'keel-ws-'));
+    vi.spyOn(wrapperDownload, 'downloadWrapperJar').mockResolvedValue(FAKE_WRAPPER_JAR);
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     rmSync(workDir, { recursive: true, force: true });
   });
 

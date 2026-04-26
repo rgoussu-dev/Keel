@@ -4,11 +4,11 @@ import { renderTemplate } from '../../engine/template.js';
 import type { Context, Options, Schematic, Tree } from '../../engine/types.js';
 import { packageToPath, resolveLanguage, type SupportedLanguage } from '../util.js';
 
-const DEFAULT_QUARKUS_VERSION = '3.15.0';
+const DEFAULT_QUARKUS_VERSION = '3.33.1';
 
 /**
  * Allowed shape for a Quarkus version: digits + dots, optionally followed
- * by a hyphen-prefixed qualifier (e.g. `3.15.0`, `3.15.0-redhat-00001`,
+ * by a hyphen-prefixed qualifier (e.g. `3.33.1`, `3.33.1-redhat-00001`,
  * `999.999.999.Final`). The strict allowlist keeps the value safe to
  * interpolate inside double-quotes in `gradle/libs.versions.toml` — a
  * stray quote, backslash, or newline would otherwise produce invalid TOML.

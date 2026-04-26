@@ -1,10 +1,11 @@
 # Universal engineering conventions (keel)
 
-These are **non-negotiable** defaults installed by `@rgoussu.dev/keel`. The
-text below is a navigable summary of the binding spec; each section points
-to a skill that holds the deep content and auto-loads when relevant. Project
-`CLAUDE.md` may extend these conventions; it must not contradict them
-without an explicit, documented reason.
+These are **non-negotiable** defaults installed by `@rgoussu.dev/keel`. They
+are the binding spec for any project keel scaffolds. Project `CLAUDE.md`
+may extend these conventions; it must not contradict them without an
+explicit, documented reason. Stack-specific runbooks (build, test, run,
+format, troubleshoot) ship as **skills** alongside this file when the
+matching stack profile is installed.
 
 ---
 
@@ -51,9 +52,6 @@ cargo-deny, …); the composition-root exception is pinned to
 `application/<channel>/executable` only — violating it from
 `application/<channel>/contract` is still a build failure.
 
-**Skill:** `hexagonal-review` covers the three-module DAG, the
-composition-root exception, and per-layer dependency rules in detail.
-
 ---
 
 ## 2. Business logic — Command/Query + Mediator
@@ -71,9 +69,6 @@ Adapters at the application layer map domain `Error` to transport-shaped
 representations (RFC 9457 for REST, exit code + stderr for CLI, etc.);
 domain code never knows about transport.
 
-**Skill:** `mediator-pattern` covers core types, rules, error mapping,
-and anti-patterns.
-
 ---
 
 ## 3. Tests — DIP-strict, fakes not mocks
@@ -87,9 +82,6 @@ contract. Mutation testing runs on every domain module; a regression of
 the mutation-score threshold (defined in `build-logic`/equivalent) fails
 the build.
 
-**Skill:** `test-scenario-pattern` covers shape, factory recipes, and
-DIP-strict enforcement.
-
 ---
 
 ## 4. Walking skeleton first
@@ -101,10 +93,6 @@ it before any feature. Brownfield: assess; if missing, build it before
 shipping more features. The skeleton includes one primary adapter, one
 primary port, one handler, one secondary port (with fake), one real
 secondary adapter, and an IaC deployment.
-
-**Skill:** `walking-skeleton-guide` covers greenfield scaffolding and
-brownfield assessment.
-**Commands:** `/walking-skeleton init`, `/walking-skeleton check`.
 
 ---
 
@@ -122,9 +110,6 @@ state files; use a secret manager. Container registry is a separate
 choice from the deploy target (e.g. Cloud Run + GAR is the scaffolded
 default; ghcr.io and external are recognised concepts).
 
-**Skill:** `iac-opentofu` covers rules, walking-skeleton checkpoints,
-and anti-patterns.
-
 ---
 
 ## 6. Workflow — Trunk-based + XP
@@ -134,9 +119,6 @@ flags ship incomplete work dark. Conventional Commits for every commit.
 Frequent `git pull --rebase`. Pair/mob programming is the default for
 non-trivial work. One commit = one logical unit; every commit passes
 format, typecheck, lint, unit tests, and public-API docs check.
-
-**Skill:** `trunk-based-xp` covers commit discipline, the "done"
-checklist, and anti-patterns.
 
 ---
 
@@ -165,7 +147,6 @@ checklist, and anti-patterns.
 - **Never** restate what well-named code already says. **Never** reference
   task IDs, PR numbers, or authors in comments.
 
-**Skill:** `public-api-docs` nudges you to add docs on creation.
 **Command:** `/docs-check` audits the full surface.
 
 ---

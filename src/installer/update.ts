@@ -37,7 +37,7 @@ export interface UpdateOptions {
  */
 export async function update(opts: UpdateOptions): Promise<void> {
   const targetRoot = paths.project(opts.cwd);
-  const assetRoot = paths.asset('project');
+  const assetRoot = paths.claudeCoreTemplates();
 
   const existing = await readManifest(targetRoot);
   if (!existing) {
@@ -112,7 +112,7 @@ export async function update(opts: UpdateOptions): Promise<void> {
       await restoreExecBit(file.targetAbs, relPosix);
     }
     newEntries.push({
-      source: path.posix.join('project', relPosix),
+      source: path.posix.join('claude-core', relPosix),
       target: relPosix,
       sha256Shipped: shippedHash,
       sha256Current: resolution === 'overwrite' ? shippedHash : currentHash,
@@ -121,8 +121,19 @@ export async function update(opts: UpdateOptions): Promise<void> {
   }
 
   // Orphans: previously kit-owned files no longer shipped.
+  // Stack-specific schematics (`claude-quarkus`, future `claude-<stack>`,
+  // `walking-skeleton`, …) have their own template roots; until update is
+  // stack-aware, we leave their files alone and preserve their manifest
+  // entries verbatim. Only entries owned by claude-core are eligible for
+  // orphan removal here, since `assetRoot` only walks claude-core. The
+  // legacy `project/` prefix is treated as core-equivalent to keep
+  // pre-v0.2 manifests upgrading cleanly.
   for (const prior of existing.entries) {
     if (seen.has(prior.target)) continue;
+    if (!isCoreOwned(prior.source)) {
+      newEntries.push(prior);
+      continue;
+    }
     const abs = path.join(targetRoot, prior.target);
     if (!(await fs.pathExists(abs))) continue;
     const current = await fs.readFile(abs);
@@ -212,9 +223,18 @@ async function restoreExecBit(absPath: string, relPosix: string): Promise<void> 
   await fs.chmod(absPath, 0o755);
 }
 
+/** Source prefixes that identify a manifest entry as owned by claude-core
+ *  (the universal scaffold). `project/` is the pre-v0.2 prefix; `claude-core/`
+ *  the current one. Both route through the same orphan/update path. */
+const CORE_SOURCE_PREFIXES = ['claude-core/', 'project/'];
+
+function isCoreOwned(source: string): boolean {
+  return CORE_SOURCE_PREFIXES.some((p) => source.startsWith(p));
+}
+
 function freshEntry(relPosix: string, hash: string, installedAt: string): ManifestEntry {
   return {
-    source: path.posix.join('project', relPosix),
+    source: path.posix.join('claude-core', relPosix),
     target: relPosix,
     sha256Shipped: hash,
     sha256Current: hash,

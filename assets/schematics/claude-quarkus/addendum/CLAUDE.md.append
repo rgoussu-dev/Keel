@@ -1,0 +1,79 @@
+<!-- keel:claude-quarkus:addendum -->
+
+---
+
+## Stack: Java 25 + Quarkus 3.33 LTS + Gradle 9.4
+
+This project was scaffolded with the **java-quarkus** keel profile.
+
+### Layout
+
+```
+domain/
+  kernel/        # mediator + result + handler interfaces; depends on nothing
+  contract/      # commands, queries, errors, port interfaces; depends on kernel
+  core/          # handlers + mediator implementation; depends on kernel + contract
+application/
+  rest/
+    contract/    # OpenAPI spec + transport DTOs; depends on domain/contract
+    executable/  # Quarkus runnable; composition root, JAX-RS resources, mediator wiring
+infrastructure/
+  <port>/<impl>/ # real adapters; never depended on by domain
+  <port>/fake/   # canonical fake; used by tests
+build-logic/     # Gradle convention plugins (java/quality/test conventions)
+gradle/
+  libs.versions.toml  # version catalog — pinned, refresh quarterly
+iac/             # OpenTofu modules + bootstrap scripts
+.github/         # CI / CD workflows
+```
+
+### Default endpoints (dev mode)
+
+| URL                                  | What                |
+| ------------------------------------ | ------------------- |
+| `http://localhost:8080/`             | the service         |
+| `http://localhost:8080/q/dev`        | Quarkus Dev UI      |
+| `http://localhost:8080/q/swagger-ui` | Swagger UI          |
+| `http://localhost:8080/q/openapi`    | live OpenAPI 3.1    |
+| `http://localhost:8080/q/health`     | liveness/readiness  |
+
+### Skills available in this profile
+
+- **`build`** — `./gradlew build`, native packaging, what `check` wraps.
+- **`test`** — JUnit 5, RestAssured, ArchUnit, Pitest mutation runs.
+- **`run`** — Quarkus dev mode, hot reload, debugger attach.
+- **`format`** — `./gradlew spotlessApply` (Google Java Format).
+- **`troubleshoot`** — port conflicts, toolchain issues, native-image,
+  ArchUnit failures, hot-reload edge cases.
+
+Each skill is a runbook; consult before guessing.
+
+### Quick command reference
+
+| Goal                          | Command                                            |
+| ----------------------------- | -------------------------------------------------- |
+| run locally with hot reload   | `./gradlew quarkusDev`                             |
+| full build + tests + checks   | `./gradlew build`                                  |
+| run all tests                 | `./gradlew test`                                   |
+| run one test                  | `./gradlew test --tests com.example.Foo`           |
+| auto-format                   | `./gradlew spotlessApply`                          |
+| mutation tests                | `./gradlew pitest`                                 |
+| native build (GraalVM CE 25)  | `./gradlew build -Dquarkus.package.type=native`    |
+| attach debugger               | `./gradlew quarkusDev -Ddebug=5005 -Dsuspend=true` |
+
+### Conventions reminders specific to this stack
+
+- **Composition root:** `application/rest/executable` is the only
+  module allowed to wire concrete adapters and handlers. Keep the
+  JAX-RS layer (`application/rest/contract`) free of business logic
+  — it dispatches via the mediator and translates `Result` ↔ HTTP.
+- **OpenAPI:** the spec file under
+  `application/rest/contract/src/main/resources/openapi/` is the
+  contract; the runtime spec at `/q/openapi` is generated from
+  annotations. Keep both in sync.
+- **Port fakes:** every secondary port ships an
+  `infrastructure/<port>/fake` module — that's the canonical reference
+  implementation tests depend on. Real adapters never substitute for
+  fakes in tests.
+- **Toolchain:** Java 25 is pinned in `build-logic`. Don't downgrade
+  to chase a dependency — bump the dependency.

@@ -123,7 +123,7 @@ describe('executable-rest schematic', () => {
     );
 
     const catalog = readFileSync(path.join(workDir, 'gradle/libs.versions.toml'), 'utf8');
-    expect(catalog).toMatch(/quarkus\s*=\s*"3\.15\.0"/);
+    expect(catalog).toMatch(/quarkus\s*=\s*"3\.33\.1"/);
     expect(catalog).toContain('quarkus-bom');
     expect(catalog).toContain('id = "io.quarkus"');
   });
@@ -148,7 +148,7 @@ describe('executable-rest schematic', () => {
     // `quarkus =` legitimately appears twice — once in [versions] with a
     // string value, once in [plugins] with the plugin descriptor — but
     // each occurrence must still appear exactly once.
-    const quarkusVersionLine = catalog.match(/^\s*quarkus\s*=\s*"3\.15\.0"/gm)?.length ?? 0;
+    const quarkusVersionLine = catalog.match(/^\s*quarkus\s*=\s*"3\.33\.1"/gm)?.length ?? 0;
     const quarkusPluginLine =
       catalog.match(/^\s*quarkus\s*=\s*\{\s*id\s*=\s*"io\.quarkus"/gm)?.length ?? 0;
     expect(quarkusVersionLine).toBe(1);
@@ -204,7 +204,7 @@ function seedWalkingSkeletonShell(workDir: string): void {
   mkdirSync(path.join(workDir, 'gradle'), { recursive: true });
   writeFileSync(
     path.join(workDir, 'gradle/libs.versions.toml'),
-    '[versions]\njunit = "5.11.4"\n\n[libraries]\njunit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }\n\n[plugins]\nspotless = { id = "com.diffplug.spotless", version = "7.0.1" }\n',
+    '[versions]\njunit = "5.13.4"\n\n[libraries]\njunit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }\n\n[plugins]\nspotless = { id = "com.diffplug.spotless", version = "8.4.0" }\n',
     'utf8',
   );
 }
