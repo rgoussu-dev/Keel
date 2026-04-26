@@ -1,6 +1,6 @@
 {
   "name": "@rgoussu.dev/keel",
-  "version": "0.2.0-alpha",
+  "version": "0.3.0-alpha",
   "description": "Universal Claude Code workflow kit: hexagonal architecture, trunk-based development, XP, walking skeleton, schematics.",
   "type": "module",
   "repository": {
