@@ -22,7 +22,7 @@ export interface Paths {
   claudeCoreTemplates(): string;
 }
 
-export type AssetKind = 'schematics';
+export type AssetKind = 'schematics' | 'composition';
 
 const __filename = fileURLToPath(import.meta.url);
 const packageRoot = path.resolve(path.dirname(__filename), '..', '..');

@@ -1,0 +1,26 @@
+plugins {
+    java
+    id("io.quarkus") version "3.16.0"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation(enforcedPlatform("io.quarkus.platform:quarkus-bom:3.16.0"))
+    implementation("io.quarkus:quarkus-picocli")
+    testImplementation("io.quarkus:quarkus-junit5")
+}
+
+group = "<%= basePackage %>"
+version = "0.1.0-SNAPSHOT"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
