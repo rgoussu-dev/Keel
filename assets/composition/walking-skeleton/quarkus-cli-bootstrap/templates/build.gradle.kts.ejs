@@ -19,6 +19,13 @@ subprojects {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    dependencies {
+        // Required at test runtime since Gradle 9; the platform
+        // launcher used to be auto-provided by `useJUnitPlatform()`
+        // but is now an explicit dependency.
+        "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+    }
+
     tasks.withType<Test> {
         useJUnitPlatform()
     }
