@@ -1,14 +1,15 @@
 /**
- * The composition layer. Where the engine port (`src/engine`) gives
- * keel an in-memory tree and a way to render templates, this module
- * gives it the contract for **how schematics compose**: capability
- * tags, predicates, adapters that contribute against a manifest,
- * verticals that group adapters under a coverage requirement.
+ * The composition layer. Where `engine/tree` gives keel an in-memory
+ * tree adapters can write into, this module gives it the contract for
+ * **how adapters compose**: capability tags, predicates, adapters that
+ * contribute against a manifest, verticals that group adapters under
+ * a coverage requirement.
  *
  * The substrate this builds on:
- *   - `Tree` from `engine/types` — adapters write into a Tree.
- *   - `renderTemplate` from `engine/template` — adapters can call it
- *     from inside `contribute`.
+ *   - `Tree` from `engine/tree` — adapters write into a Tree.
+ *   - `renderTemplateFiles` from `composition/render` — adapters can
+ *     call it from inside `contribute` to render an EJS template
+ *     directory into a list of `ContributionFile`s.
  *
  * Nothing in this file imports from anywhere else in keel; the types
  * are the contract every adapter author writes against.

@@ -11,8 +11,11 @@
  *      Tree. Tags emitted by adapters via `tagsAdd` accumulate into
  *      the manifest snapshot the next vertical sees.
  *   5. Print the plan (file changes + pending actions).
- *   6. Unless dryRun: commit the Tree, run actions, write the
- *      manifest.
+ *   6. Unless dryRun: commit the Tree, persist the manifest, then
+ *      run the deferred actions. Persisting the manifest *before*
+ *      actions keeps the workspace recoverable if an action throws
+ *      (e.g. `gradle wrapper` with no `gradle` on PATH) — files and
+ *      manifest stay in sync.
  */
 
 import path from 'node:path';

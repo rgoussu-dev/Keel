@@ -15,8 +15,12 @@
  *      "real" reads — patches against them work, whole-file writes
  *      conflict (which is exactly the diagnostic we want).
  *   5. Print the plan; if `dryRun`, return without writing anything.
- *   6. Otherwise: commit the Tree, run actions, persist the updated
- *      manifest.
+ *   6. Otherwise: commit the Tree, persist the updated manifest, then
+ *      run the deferred actions. Persisting the manifest *before*
+ *      actions keeps the workspace recoverable if an action throws
+ *      (e.g. `gradle wrapper` with no `gradle` on PATH) — files,
+ *      manifest, and the duplicate-vertical guard stay coherent on
+ *      a re-run.
  *
  * The manifest's `tags` carry over verbatim from disk; the install
  * orchestrator folds in any `tagsAdd` and sticky-answer updates the
