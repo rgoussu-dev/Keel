@@ -52,29 +52,93 @@ const noPrompt: Prompt = {
 };
 
 /**
- * Replaces the listed action ids with no-ops. The "git/CI" fakes
- * required by the brief — every other action runs for real so the
- * generated project actually gets a `gradlew` to drive.
+ * Well-known flake modes from the Gradle distribution CDN that we
+ * want to retry past — `Test of distribution url ... failed` (the
+ * `gradle wrapper` task's HEAD probe) and `Server returned HTTP
+ * response code: 5xx` (the wrapper's first-run download). Both surface
+ * 5xx responses from release-assets.githubusercontent.com and are
+ * unrelated to keel; without retry the test is unreliable on cold
+ * caches.
  */
-const stubActions =
-  (stubbed: ReadonlySet<string>) =>
+const TRANSIENT_PATTERNS = [
+  /Test of distribution url .* failed/,
+  /Server returned HTTP response code: 5\d\d/,
+  /HEAD request to .* failed: response code \(5\d\d\)/,
+];
+
+const isTransient = (blob: string): boolean => TRANSIENT_PATTERNS.some((re) => re.test(blob));
+
+/**
+ * Rewrites the action list before handing it to the real runner:
+ *   - actions in `stubbed` become no-ops (the "git/CI" fakes
+ *     required by the brief);
+ *   - actions in `retried` keep their behaviour but are wrapped in
+ *     a retry loop that swallows the transient HTTP flakes from the
+ *     Gradle distribution CDN.
+ */
+const rewriteActions =
+  (config: { stubbed: ReadonlySet<string>; retried: ReadonlySet<string> }) =>
   (inputs: RunActionsInputs): Promise<void> => {
-    const rewritten = inputs.actions.map(
-      (a): Action =>
-        stubbed.has(a.id)
-          ? {
-              id: a.id,
-              description: `${a.description} [faked: no-op]`,
-              run: () => Promise.resolve(),
-            }
-          : a,
-    );
+    const rewritten = inputs.actions.map((a): Action => {
+      if (config.stubbed.has(a.id)) {
+        return {
+          id: a.id,
+          description: `${a.description} [faked: no-op]`,
+          run: () => Promise.resolve(),
+        };
+      }
+      if (config.retried.has(a.id)) {
+        return {
+          id: a.id,
+          description: a.description,
+          run: (env) => withRetry(() => a.run(env)),
+        };
+      }
+      return a;
+    });
     return runActions({ ...inputs, actions: rewritten });
   };
+
+const withRetry = async (fn: () => Promise<void>, attempts = 3): Promise<void> => {
+  let last: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      last = err;
+      const blob = err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err);
+      if (!isTransient(blob)) throw err;
+    }
+  }
+  throw last;
+};
 
 const onPath = (cmd: string): boolean => {
   const probe = process.platform === 'win32' ? 'where' : 'which';
   return spawnSync(probe, [cmd], { stdio: 'ignore' }).status === 0;
+};
+
+interface RunResult {
+  readonly status: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+const runWithRetry = (
+  cmd: string,
+  args: readonly string[],
+  options: Parameters<typeof spawnSync>[2],
+  attempts = 3,
+): RunResult => {
+  let last: RunResult = { status: null, stdout: '', stderr: '' };
+  for (let i = 0; i < attempts; i += 1) {
+    const r = spawnSync(cmd, args, options);
+    last = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+    if (last.status === 0) return last;
+    if (!isTransient(`${last.stdout}\n${last.stderr}`)) return last;
+  }
+  return last;
 };
 
 const skipE2E = process.env.KEEL_SKIP_E2E === '1' || !onPath('gradle') || !onPath('java');
@@ -114,7 +178,10 @@ describe.skipIf(skipE2E)('walking-skeleton e2e', () => {
         prompt: noPrompt,
         now: () => '2026-04-26T12:00:00Z',
         keelVersion: '0.0.0-e2e',
-        runActions: stubActions(new Set(['vcs/git-init'])),
+        runActions: rewriteActions({
+          stubbed: new Set(['vcs/git-init']),
+          retried: new Set(['walking-skeleton/gradle-wrapper']),
+        }),
       });
 
       // Sanity check: wrapper landed and is executable, no .git dir
@@ -125,9 +192,12 @@ describe.skipIf(skipE2E)('walking-skeleton e2e', () => {
 
       // 2. Build + test the generated project. `build` runs tests
       //    transitively, so this single invocation proves both
-      //    "builds" and "tests pass".
+      //    "builds" and "tests pass". Retry on transient CDN flakes:
+      //    the wrapper's first-run download targets a GitHub release
+      //    asset that occasionally 5xx's, with no signal about keel
+      //    itself.
       const env = { ...process.env, GRADLE_USER_HOME: gradleUserHome };
-      const build = spawnSync(gradlew, ['--no-daemon', '--stacktrace', 'build'], {
+      const build = runWithRetry(gradlew, ['--no-daemon', '--stacktrace', 'build'], {
         cwd,
         env,
         encoding: 'utf8',

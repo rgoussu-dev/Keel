@@ -55,6 +55,33 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   predicate empty so it fires unconditionally. Reads from the same
   canonical file contributors edit, so there's exactly one source of
   truth for the spec.
+- **Walking-skeleton end-to-end test.** New
+  `tests/composition/walking-skeleton-e2e.test.ts` drives `newProject`
+  for the `quarkus-cli` stack into a temp directory, then runs
+  `./gradlew build` (compile + tests) and the produced
+  `quarkus-run.jar` against a sample `hello --name E2E` invocation,
+  asserting the greeting reaches stdout. Per the brief, the only
+  side effect that's faked is git: `vcs/git-init` is replaced with a
+  no-op; every other deferred action runs for real. Each run uses a
+  fresh `GRADLE_USER_HOME` so the scenario starts from a blank cache,
+  and the suite is skipped when `gradle` or `java` isn't on PATH (with
+  `KEEL_SKIP_E2E=1` as an explicit opt-out for fast inner-loop runs).
+
+### Fixed
+
+- **Walking-skeleton template now actually builds.** Bumped the
+  `quarkus-cli-bootstrap` template's Quarkus version from `3.16.0`
+  (which was never published to Maven Central — the 3.16 line jumped
+  from `3.16.0.CR1` to `3.16.1`) to `3.34.6`, the latest stable in
+  the 3.x line. The new version is also compatible with the Gradle
+  9.4.1 wrapper the `gradle-wrapper` adapter pins, where 3.16's Gradle
+  plugin tripped Gradle 9's stricter detached-configuration model.
+- **JUnit Platform launcher on the test runtime classpath.** Gradle 9
+  no longer auto-provides the platform launcher, so
+  `useJUnitPlatform()` alone fails with "Failed to load JUnit
+  Platform". The root `build.gradle.kts` template now adds
+  `testRuntimeOnly("org.junit.platform:junit-platform-launcher")` to
+  every subproject.
 
 ### Removed
 
