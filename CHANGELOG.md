@@ -6,6 +6,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0-alpha] — 2026-06-10
+
 ### Added
 
 - **Composition engine.** Replaces the v0.3 schematic-and-engine model
@@ -456,7 +458,8 @@ swappable `Engine` / `Schematic` / `Tree` / `Context` port interface.
 - Migration runner for `keel update` (scripts exist as a concept but are
   not yet executed).
 
-[Unreleased]: https://github.com/rgoussu-dev/Keel/compare/v0.3.0-alpha...HEAD
+[Unreleased]: https://github.com/rgoussu-dev/Keel/compare/v0.4.0-alpha...HEAD
+[0.4.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.3.0-alpha...v0.4.0-alpha
 [0.3.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.2.0-alpha...v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.1.0-alpha.2...v0.2.0-alpha
 [0.1.0-alpha.2]: https://github.com/rgoussu-dev/Keel/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
