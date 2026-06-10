@@ -65,8 +65,14 @@ function runWrapperTask(cwd: string, gradleVersion: string, logger: ActionEnv['l
 
 function describeFailure(r: ReturnType<typeof spawnSync>): string {
   if (r.error) return r.error.message;
-  const stderr = (r.stderr ?? '').toString().trim();
-  if (stderr) return stderr;
+  // Gradle prints task failures (`Test of distribution url ... failed`,
+  // `BUILD FAILED in Ns`, the stack trace under `--stacktrace`) on
+  // stdout, not stderr — without surfacing it the caller is left with
+  // a context-free `exit N` message and no clue what went wrong.
+  const parts = [(r.stderr ?? '').toString().trim(), (r.stdout ?? '').toString().trim()].filter(
+    (s) => s.length > 0,
+  );
+  if (parts.length > 0) return parts.join('\n');
   if (r.status === null) return 'gradle did not run';
   return `exit ${r.status}`;
 }
