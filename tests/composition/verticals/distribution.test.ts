@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { installVertical } from '../../../src/composition/install.js';
 import { distributionVertical } from '../../../src/composition/verticals/distribution.js';
 import { ResolutionError } from '../../../src/composition/resolver.js';
-import { emptyManifestV2 } from '../../../src/manifest/schema-v2.js';
+import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { InMemoryTree } from '../../../src/engine/tree.js';
 import type { Prompt } from '../../../src/composition/answers.js';
 

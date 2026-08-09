@@ -6,7 +6,7 @@
  *
  * The wrapper is generated, not committed: invoking the canonical
  * `gradle wrapper` task against the project shell is the only path
- * Gradle endorses. The adapter therefore emits a deferred Action that
+ * Gradle endorses. The adapter therefore emits a deferred DeferredAction that
  * shells out to the system `gradle` after the bootstrap files have
  * landed on disk. A friendly error fires if `gradle` is not on PATH.
  *
@@ -19,7 +19,11 @@
 
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import type { Action, ActionEnv, Adapter } from '../types.js';
+import type {
+  DeferredAction,
+  DeferredActionEnv,
+  Adapter,
+} from '../../domain/contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const GRADLE_WRAPPER_ID = 'walking-skeleton/gradle-wrapper';
@@ -33,10 +37,10 @@ export const gradleWrapperAdapter: Adapter = {
   predicate: { requires: ['pkg.gradle'] },
   after: [QUARKUS_CLI_BOOTSTRAP_ID],
   contribute() {
-    const action: Action = {
+    const action: DeferredAction = {
       id: GRADLE_WRAPPER_ID,
       description: `gradle wrapper --gradle-version=${GRADLE_VERSION}`,
-      run: ({ cwd, logger }: ActionEnv) => {
+      run: ({ cwd, logger }: DeferredActionEnv) => {
         runWrapperTask(path.resolve(cwd), GRADLE_VERSION, logger);
         return Promise.resolve();
       },
@@ -45,7 +49,11 @@ export const gradleWrapperAdapter: Adapter = {
   },
 };
 
-function runWrapperTask(cwd: string, gradleVersion: string, logger: ActionEnv['logger']): void {
+function runWrapperTask(
+  cwd: string,
+  gradleVersion: string,
+  logger: DeferredActionEnv['logger'],
+): void {
   logger.info(`gradle: generating wrapper at version ${gradleVersion}`);
   const r = spawnSync(
     'gradle',

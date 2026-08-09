@@ -12,7 +12,7 @@ import { claudeCoreAdapter } from '../adapters/claude-core.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
-import type { Vertical } from '../types.js';
+import type { Vertical } from '../../domain/contract/composition.js';
 
 export const walkingSkeletonVertical: Vertical = {
   id: 'walking-skeleton',

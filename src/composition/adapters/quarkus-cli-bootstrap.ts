@@ -20,7 +20,7 @@ import path from 'node:path';
 import { paths } from '../../util/paths.js';
 import { renderTemplateFiles } from '../render.js';
 import { packageToPath } from '../util.js';
-import type { Adapter } from '../types.js';
+import type { Adapter } from '../../domain/contract/composition.js';
 
 export const QUARKUS_CLI_BOOTSTRAP_ID = 'walking-skeleton/quarkus-cli-bootstrap';
 

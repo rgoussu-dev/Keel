@@ -37,7 +37,7 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProject } from '../../src/installer/new.js';
 import { runActions, type RunActionsInputs } from '../../src/composition/actions.js';
-import type { Action } from '../../src/composition/types.js';
+import type { DeferredAction } from '../../src/domain/contract/composition.js';
 import type { Prompt } from '../../src/composition/answers.js';
 
 const E2E_TIMEOUT_MS = 20 * 60 * 1000;
@@ -84,7 +84,7 @@ const isTransient = (blob: string): boolean => TRANSIENT_PATTERNS.some((re) => r
 const rewriteActions =
   (config: { stubbed: ReadonlySet<string>; retried: ReadonlySet<string> }) =>
   (inputs: RunActionsInputs): Promise<void> => {
-    const rewritten = inputs.actions.map((a): Action => {
+    const rewritten = inputs.actions.map((a): DeferredAction => {
       if (config.stubbed.has(a.id)) {
         return {
           id: a.id,

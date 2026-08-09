@@ -21,7 +21,7 @@
 import path from 'node:path';
 import fs from 'fs-extra';
 import { paths } from '../../util/paths.js';
-import type { Adapter } from '../types.js';
+import type { Adapter } from '../../domain/contract/composition.js';
 
 export const CLAUDE_CORE_ID = 'walking-skeleton/claude-core';
 

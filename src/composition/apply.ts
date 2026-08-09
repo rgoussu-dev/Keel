@@ -23,7 +23,7 @@
  */
 
 import type {
-  Action,
+  DeferredAction,
   Adapter,
   AgenticBundle,
   Contribution,
@@ -31,7 +31,7 @@ import type {
   ManifestV2,
   Tag,
   Tree,
-} from './types.js';
+} from '../domain/contract/composition.js';
 import type { Logger } from '../util/log.js';
 
 /** Per-adapter answer map: questionId → value. */
@@ -49,7 +49,7 @@ export interface ApplyResult {
    * does NOT execute them; pass to `runActions` after
    * `tree.commit()`.
    */
-  readonly actions: readonly Action[];
+  readonly actions: readonly DeferredAction[];
 }
 
 /**
@@ -84,7 +84,7 @@ export interface ApplyInputs {
 export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResult> {
   const tagsAdded = new Set<Tag>();
   const agentic: Record<string, AgenticBundle> = {};
-  const actions: Action[] = [];
+  const actions: DeferredAction[] = [];
 
   for (const adapter of inputs.adapters) {
     const ctx = makeCtx(adapter, inputs.answers[adapter.id] ?? {}, {

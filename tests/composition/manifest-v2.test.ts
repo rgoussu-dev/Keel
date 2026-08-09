@@ -7,7 +7,7 @@ import {
   MANIFEST_FILENAME,
   migrateV1,
   parseManifest,
-} from '../../src/manifest/schema-v2.js';
+} from '../../src/domain/contract/manifest.js';
 import { readManifestV2, writeManifestV2 } from '../../src/manifest/store-v2.js';
 
 let tmp: string;

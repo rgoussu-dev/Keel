@@ -1,22 +1,19 @@
 /**
- * The composition layer. Where `engine/tree` gives keel an in-memory
- * tree adapters can write into, this module gives it the contract for
- * **how adapters compose**: capability tags, predicates, adapters that
- * contribute against a manifest, verticals that group adapters under
- * a coverage requirement.
+ * The composition contract — how keel's own domain content composes.
+ * Capability tags, predicates, adapters that contribute against a
+ * manifest, verticals that group adapters under a coverage
+ * requirement. Every adapter author writes against these types.
  *
- * The substrate this builds on:
- *   - `Tree` from `engine/tree` — adapters write into a Tree.
- *   - `renderTemplateFiles` from `composition/render` — adapters can
- *     call it from inside `contribute` to render an EJS template
- *     directory into a list of `ContributionFile`s.
- *
- * Nothing in this file imports from anywhere else in keel; the types
- * are the contract every adapter author writes against.
+ * Naming note: a composition **Adapter** (git-init, quarkus-cli
+ * bootstrap, …) is keel domain content — a unit that contributes
+ * files to a scaffolded project. It is *not* a hexagonal adapter of
+ * keel-the-application; those live under `src/infrastructure/` and
+ * implement the port interfaces in `./ports/`.
  */
 
-import type { Tree } from '../engine/tree.js';
-import type { Logger } from '../util/log.js';
+import type { Logger } from './ports/logger.js';
+import type { Tree } from './ports/tree.js';
+import type { ManifestV2 } from './manifest.js';
 
 /**
  * A capability tag — a flat string with hierarchical-dot naming
@@ -107,13 +104,13 @@ export interface Contribution {
   readonly tagsAdd?: readonly Tag[];
   /**
    * Deferred side effects: shell-outs, network calls, anything that
-   * mutates state outside the Tree. Actions are *collected* by the
-   * applier but **not executed**; the caller runs them via
+   * mutates state outside the Tree. Deferred actions are *collected*
+   * by the applier but **not executed**; the caller runs them via
    * `runActions` after `tree.commit()`. This keeps the apply phase
    * pure (and dry-runnable) and concentrates side effects in one
    * place where dry-run handling is uniform.
    */
-  readonly actions?: readonly Action[];
+  readonly actions?: readonly DeferredAction[];
 }
 
 /** A whole-file write contribution. */
@@ -132,23 +129,25 @@ export interface ContributionPatch {
 /**
  * A deferred side effect emitted by an adapter — typically a shell
  * command (e.g. `git init`, `pnpm install`) but anything async that
- * touches state outside the Tree fits.
+ * touches state outside the Tree fits. Named "deferred" to keep it
+ * distinct from the kernel's dispatchable `Action` base.
  *
- * Actions run AFTER `tree.commit()`, so they may rely on files the
- * Tree wrote being present on disk. They run in the order their
- * adapters resolved, and within an adapter in declaration order.
+ * Deferred actions run AFTER `tree.commit()`, so they may rely on
+ * files the Tree wrote being present on disk. They run in the order
+ * their adapters resolved, and within an adapter in declaration
+ * order.
  *
  * `description` should read well as a single dry-run line — the
  * runner prints it verbatim when dryRun is enabled.
  */
-export interface Action {
+export interface DeferredAction {
   readonly id: string;
   readonly description: string;
-  run(env: ActionEnv): Promise<void>;
+  run(env: DeferredActionEnv): Promise<void>;
 }
 
-/** Environment passed to `Action.run`. */
-export interface ActionEnv {
+/** Environment passed to `DeferredAction.run`. */
+export interface DeferredActionEnv {
   readonly cwd: string;
   readonly logger: Logger;
 }
@@ -167,10 +166,9 @@ export interface AgenticBundle {
 }
 
 /**
- * The execution context passed to `Adapter.contribute`. Mirrors the
- * legacy `engine.Context` but carries the manifest snapshot and an
- * `answer` resolver — the adapter does not see prompt logic, only
- * resolved values.
+ * The execution context passed to `Adapter.contribute`. Carries the
+ * manifest snapshot and an `answer` resolver — the adapter does not
+ * see prompt logic, only resolved values.
  */
 export interface Ctx {
   readonly logger: Logger;
@@ -221,49 +219,8 @@ export interface Vertical {
 }
 
 /**
- * Manifest v2 — the keel state file. Adds capability-tag composition
- * to the file-tracking entries from v1 (which remain for drift
- * detection on `keel doctor`).
- *
- * Stored at `<project>/.claude/.keel-manifest.json`. The reader is
- * version-aware and migrates v1 manifests on first v2 read.
- */
-export interface ManifestV2 {
-  readonly version: 2;
-  readonly keelVersion: string;
-  readonly installedAt: string;
-  readonly updatedAt: string;
-  readonly tags: readonly Tag[];
-  readonly verticals: readonly InstalledVertical[];
-  /** Installed package versions, keyed by package id, for migrations. */
-  readonly versions: Readonly<Record<string, string>>;
-  /** Sticky question answers: adapterId → questionId → value. */
-  readonly answers: Readonly<Record<string, Readonly<Record<string, string>>>>;
-  /** File-tracking entries carried over from v1, used for drift detection. */
-  readonly entries: readonly ManifestEntry[];
-}
-
-/** Record of a vertical the user installed. */
-export interface InstalledVertical {
-  readonly id: string;
-  readonly installedAt: string;
-}
-
-/**
- * File-tracking entry — unchanged from v1. `sha256Shipped` is the
- * hash at install time; `sha256Current` is the hash at last manifest
- * write. Divergence indicates a user edit.
- */
-export interface ManifestEntry {
-  readonly source: string;
-  readonly target: string;
-  readonly sha256Shipped: string;
-  readonly sha256Current: string;
-  readonly installedAt: string;
-}
-
-/**
- * The Tree contract from the engine port, re-exported so adapter
- * authors only need to import from `composition`.
+ * Re-exports so adapter authors import the whole composition
+ * vocabulary from one module.
  */
 export type { Tree };
+export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';

@@ -13,10 +13,10 @@ import path from 'node:path';
 import { gitInitAdapter, GIT_INIT_VERTICAL } from '../../../src/composition/adapters/git-init.js';
 import { runActions } from '../../../src/composition/actions.js';
 import { installVertical } from '../../../src/composition/install.js';
-import { emptyManifestV2 } from '../../../src/manifest/schema-v2.js';
+import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { InMemoryTree } from '../../../src/engine/tree.js';
 import type { Prompt } from '../../../src/composition/answers.js';
-import type { Vertical } from '../../../src/composition/types.js';
+import type { Vertical } from '../../../src/domain/contract/composition.js';
 
 const silent = {
   info: () => {},

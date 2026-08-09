@@ -5,8 +5,12 @@
 
 import path from 'node:path';
 import fs from 'fs-extra';
-import { MANIFEST_FILENAME, ManifestV2Schema, parseManifest } from './schema-v2.js';
-import type { ManifestV2 } from '../composition/types.js';
+import {
+  MANIFEST_FILENAME,
+  ManifestV2Schema,
+  parseManifest,
+  type ManifestV2,
+} from '../domain/contract/manifest.js';
 
 /**
  * Reads the manifest from `<scopeRoot>/.keel-manifest.json`. Returns

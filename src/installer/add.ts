@@ -36,7 +36,7 @@ import { runActions, type RunActionsInputs } from '../composition/actions.js';
 import { readManifestV2, writeManifestV2 } from '../manifest/store-v2.js';
 import { cliPrompt, type Prompt } from '../composition/answers.js';
 import { getVertical, listVerticalIds } from '../composition/verticals/index.js';
-import type { Action, ManifestV2 } from '../composition/types.js';
+import type { DeferredAction, ManifestV2 } from '../domain/contract/composition.js';
 
 /** Inputs to {@link addVertical}. */
 export interface AddInputs {
@@ -52,7 +52,7 @@ export interface AddInputs {
   /** Time source — injected so tests can pin `updatedAt`. */
   readonly now?: () => string;
   /**
-   * Action runner — injected so tests can stub deferred side effects.
+   * DeferredAction runner — injected so tests can stub deferred side effects.
    * Defaults to the real {@link runActions}.
    */
   readonly runActions?: (inputs: RunActionsInputs) => Promise<void>;
@@ -137,7 +137,7 @@ function mergeAnswers(
 function printPlan(
   verticalId: string,
   changes: ReturnType<InMemoryTree['changes']>,
-  actions: readonly Action[],
+  actions: readonly DeferredAction[],
   log: Logger,
 ): void {
   log.info(`keel add ${verticalId}: planned changes`);

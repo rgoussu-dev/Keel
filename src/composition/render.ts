@@ -27,7 +27,7 @@
 import path from 'node:path';
 import fs from 'fs-extra';
 import { render } from 'ejs';
-import type { ContributionFile } from './types.js';
+import type { ContributionFile } from '../domain/contract/composition.js';
 
 /**
  * Renders every file under `templateRoot` as a contribution rooted
