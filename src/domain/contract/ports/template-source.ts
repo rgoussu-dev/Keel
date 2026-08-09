@@ -22,6 +22,6 @@ export interface TemplateSource {
     targetRoot: string,
     vars: Readonly<Record<string, unknown>>,
   ): Promise<ContributionFile[]>;
-  /** Reads a single canonical text asset, e.g. `project/CLAUDE.md`. */
+  /** Reads a single canonical text asset, e.g. `project/AGENTS.md`. */
   readText(assetId: string): Promise<string>;
 }

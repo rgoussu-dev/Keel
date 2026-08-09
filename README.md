@@ -125,7 +125,7 @@ verticals. Adding a stack is a couple of lines in
 ## Principles
 
 The four-line summary; the binding version is in
-[`assets/project/CLAUDE.md`](assets/project/CLAUDE.md).
+[`assets/project/AGENTS.md`](assets/project/AGENTS.md).
 
 - Hexagonal always (domain / application / infrastructure / interface),
   three-module DAG: `domain/kernel ← domain/contract ← domain/core`.
