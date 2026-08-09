@@ -18,17 +18,13 @@
 import { packageToPath } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
+import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
 
 export const SAMPLE_PORT_FAKE_ID = 'walking-skeleton/sample-port-fake';
 
 const TEMPLATE_ID = 'composition/walking-skeleton/sample-port-fake/templates';
 
 const FAKE_MODULE_INCLUDE = 'include(":infrastructure:clock:fake")';
-
-// The REST sibling's id, referenced ahead of the adapter landing —
-// absent ids in `after` are dropped by the resolver, and the answers
-// lookup simply finds nothing until a REST bootstrap has run.
-const QUARKUS_REST_BOOTSTRAP_ID = 'walking-skeleton/quarkus-rest-bootstrap';
 
 const BOOTSTRAP_IDS = [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_REST_BOOTSTRAP_ID] as const;
 

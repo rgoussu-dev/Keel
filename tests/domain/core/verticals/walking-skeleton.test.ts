@@ -2,7 +2,8 @@
  * End-to-end test for the `walking-skeleton` vertical against a
  * Quarkus CLI tag set. Asserts the rendered tree shape matches the
  * minimum runnable project we promise; checks the predicate split
- * by removing `arch.cli` and expecting a hard fail.
+ * by removing every entrypoint arch tag and expecting a hard fail.
+ * The REST tag set is covered by `walking-skeleton-rest.test.ts`.
  */
 
 import path from 'node:path';
@@ -216,13 +217,13 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
     ).rejects.toBeInstanceOf(ResolutionError);
   });
 
-  it('hard-fails when arch.cli is absent (no adapter covers entrypoint)', async () => {
+  it('hard-fails when no entrypoint arch tag is present (no adapter covers entrypoint)', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ws-fail-'));
     cwds.push(cwd);
     const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-      tags: baseTags('arch.server-http'),
+      tags: baseTags(),
     };
     await expect(
       installVertical({

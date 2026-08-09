@@ -43,6 +43,19 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
+  'quarkus-rest': {
+    id: 'quarkus-rest',
+    description: 'Quarkus 3 REST service on Gradle (Java 21), hexagonal layout.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.gradle',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+    ],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
 };
 
 /** Returns the stack registered under `id`, or null if absent. */
