@@ -12,7 +12,7 @@
 
 import path from 'node:path';
 import { z } from 'zod';
-import type { Tag } from './composition.js';
+import type { Tag } from './tags.js';
 
 /** The on-disk manifest filename, under `<project>/.claude/`. */
 export const MANIFEST_FILENAME = '.keel-manifest.json';
