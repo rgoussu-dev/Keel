@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import('../dist/cli/main.js')
+import('../dist/application/cli/executable/main.js')
   .then((m) => m.main(process.argv))
   .catch((err) => {
     console.error(err);

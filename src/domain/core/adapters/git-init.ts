@@ -13,13 +13,9 @@
  */
 
 import path from 'node:path';
-import type {
-  DeferredAction,
-  Adapter,
-  DeferredActionEnv,
-} from '../../domain/contract/composition.js';
-import type { Logger } from '../../domain/contract/ports/logger.js';
-import type { ProcessResult, ProcessRunner } from '../../domain/contract/ports/process-runner.js';
+import type { DeferredAction, Adapter, DeferredActionEnv } from '../../contract/composition.js';
+import type { Logger } from '../../contract/ports/logger.js';
+import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
 
 const DEFAULT_INITIAL_BRANCH = 'main';
 

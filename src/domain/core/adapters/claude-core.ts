@@ -18,7 +18,7 @@
  * patch the emitted file with an addendum (e.g. a Quarkus runbook).
  */
 
-import type { Adapter } from '../../domain/contract/composition.js';
+import type { Adapter } from '../../contract/composition.js';
 
 export const CLAUDE_CORE_ID = 'walking-skeleton/claude-core';
 

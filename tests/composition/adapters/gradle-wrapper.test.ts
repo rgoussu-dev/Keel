@@ -11,10 +11,10 @@ import { describe, expect, it } from 'vitest';
 import {
   gradleWrapperAdapter,
   GRADLE_WRAPPER_ID,
-} from '../../../src/composition/adapters/gradle-wrapper.js';
-import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../src/composition/adapters/quarkus-cli-bootstrap.js';
+} from '../../../src/domain/core/adapters/gradle-wrapper.js';
+import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../src/domain/core/adapters/quarkus-cli-bootstrap.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { makeCtx } from '../../../src/composition/apply.js';
+import { makeCtx } from '../../../src/domain/core/apply.js';
 import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 

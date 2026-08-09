@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matches, validatePattern } from '../../src/composition/predicate.js';
+import { matches, validatePattern } from '../../src/domain/core/predicate.js';
 
 const tagSet = (...tags: string[]): ReadonlySet<string> => new Set(tags);
 

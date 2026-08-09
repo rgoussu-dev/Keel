@@ -12,9 +12,9 @@ import { describe, expect, it } from 'vitest';
 import {
   claudeCoreAdapter,
   CLAUDE_CORE_ID,
-} from '../../../src/composition/adapters/claude-core.js';
+} from '../../../src/domain/core/adapters/claude-core.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { makeCtx } from '../../../src/composition/apply.js';
+import { makeCtx } from '../../../src/domain/core/apply.js';
 import {
   packagedAssetsRoot,
   ejsTemplateSource,

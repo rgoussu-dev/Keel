@@ -12,7 +12,7 @@
  */
 
 import { quarkusCliNativeAdapter } from '../adapters/quarkus-cli-native.js';
-import type { Vertical } from '../../domain/contract/composition.js';
+import type { Vertical } from '../../contract/composition.js';
 
 export const distributionVertical: Vertical = {
   id: 'distribution',

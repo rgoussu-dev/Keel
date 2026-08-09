@@ -12,12 +12,12 @@ import { mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { gitInitAdapter, GIT_INIT_VERTICAL } from '../../../src/composition/adapters/git-init.js';
-import { runActions } from '../../../src/composition/actions.js';
-import { installVertical } from '../../../src/composition/install.js';
+import { gitInitAdapter, GIT_INIT_VERTICAL } from '../../../src/domain/core/adapters/git-init.js';
+import { runActions } from '../../../src/domain/core/actions.js';
+import { installVertical } from '../../../src/domain/core/install.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
-import type { Prompt } from '../../../src/composition/answers.js';
+import type { Prompt } from '../../../src/domain/core/answers.js';
 import type { Vertical } from '../../../src/domain/contract/composition.js';
 
 const silent = {

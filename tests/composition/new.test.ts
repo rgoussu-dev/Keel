@@ -1,9 +1,11 @@
 /**
- * Integration test for `keel new` (the `newProject` orchestrator).
+ * Integration test for `keel new` — the `keel.new-project` command
+ * dispatched through the mediator.
  *
  * Drives the full flow against a real temp directory: stack lookup,
  * vertical install, tree commit, action execution (real `git init`),
- * and manifest persistence.
+ * and manifest persistence. Scenario data lives in each test; the
+ * wiring comes from the shared Factory.
  */
 
 import path from 'node:path';
@@ -11,35 +13,17 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { newProject } from '../../src/installer/new.js';
-import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
+import { newProjectCommand } from '../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../src/domain/contract/manifest.js';
-import { runActions, type RunActionsInputs } from '../../src/composition/actions.js';
-import type { Prompt } from '../../src/composition/answers.js';
+import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
+import { expectErr, expectOk, installMediator, runActionsExcept } from '../support/factory.js';
 
-/**
- * Skips actions whose id is in `skip`; passes the rest through to the
- * real runner. Lets the integration test exercise `git-init` end-to-end
- * while sidestepping `gradle wrapper`, which would spawn Gradle.
- */
-const runActionsExcept = (skip: readonly string[]) => {
-  const blocked = new Set(skip);
-  return (inputs: RunActionsInputs) =>
-    runActions({ ...inputs, actions: inputs.actions.filter((a) => !blocked.has(a.id)) });
-};
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-
-const noPrompt: Prompt = {
-  ask: async () => {
-    throw new Error('prompt should not be called in non-interactive mode');
+const bootstrapAnswers = {
+  'walking-skeleton/quarkus-cli-bootstrap': {
+    basePackage: 'com.acme.cli',
+    projectName: 'demo',
   },
+  'vcs/git-init': { remote: '', defaultBranch: 'main' },
 };
 
 let cwd: string;
@@ -52,26 +36,25 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-describe('newProject (keel new)', () => {
+describe('keel.new-project (keel new)', () => {
   it('bootstraps a Quarkus CLI project end-to-end', async () => {
-    await newProject({
-      cwd,
-      stack: 'quarkus-cli',
-      answers: {
-        'walking-skeleton/quarkus-cli-bootstrap': {
-          basePackage: 'com.acme.cli',
-          projectName: 'demo',
-        },
-        'vcs/git-init': { remote: '', defaultBranch: 'main' },
-      },
-      interactive: false,
-      dryRun: false,
-      logger: silent,
-      prompt: noPrompt,
-      now: () => '2026-04-26T12:00:00Z',
-      keelVersion: '0.4.0-alpha',
-      runActions: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
     });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.subject).toBe('quarkus-cli');
+    expect(report.committed).toBe(true);
+    expect(report.changes.length).toBeGreaterThan(0);
 
     // Tree-emitted files landed on disk.
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
@@ -125,23 +108,20 @@ describe('newProject (keel new)', () => {
   });
 
   it('writes nothing under --dry-run', async () => {
-    await newProject({
-      cwd,
-      stack: 'quarkus-cli',
-      answers: {
-        'walking-skeleton/quarkus-cli-bootstrap': {
-          basePackage: 'com.example',
-          projectName: 'walking-skeleton',
-        },
-        'vcs/git-init': { remote: '', defaultBranch: 'main' },
-      },
-      interactive: false,
-      dryRun: true,
-      logger: silent,
-      prompt: noPrompt,
-      now: () => '2026-04-26T12:00:00Z',
-      keelVersion: '0.4.0-alpha',
-    });
+    const mediator = installMediator();
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(report.committed).toBe(false);
+    expect(report.changes.length).toBeGreaterThan(0);
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(false);
     expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
     expect(await fs.pathExists(path.join(projectScopeRoot(cwd), '.keel-manifest.json'))).toBe(
@@ -162,32 +142,36 @@ describe('newProject (keel new)', () => {
       answers: {},
       entries: [],
     });
-    await expect(
-      newProject({
-        cwd,
-        stack: 'quarkus-cli',
-        interactive: false,
-        dryRun: false,
-        logger: silent,
-        prompt: noPrompt,
-        now: () => '2026-04-26T12:00:00Z',
-        keelVersion: '0.4.0-alpha',
-      }),
-    ).rejects.toThrow(/already initialised/);
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.already-initialised');
+    expect(error.message).toMatch(/already initialised/);
   });
 
   it('rejects an unknown stack id', async () => {
-    await expect(
-      newProject({
-        cwd,
-        stack: 'imaginary-stack',
-        interactive: false,
-        dryRun: false,
-        logger: silent,
-        prompt: noPrompt,
-        now: () => '2026-04-26T12:00:00Z',
-        keelVersion: '0.4.0-alpha',
-      }),
-    ).rejects.toThrow(/unknown stack/);
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'imaginary-stack',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toMatch(/unknown stack/);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * End-to-end test for the `walking-skeleton` vertical.
  *
- * Drives `newProject` against a real temp directory with the
+ * Dispatches `keel.new-project` against a real temp directory with the
  * `quarkus-cli` stack, then verifies the generated project actually
  * builds, its tests pass, and the CLI binary produced by the build
  * runs and prints what its picocli command says it should.
@@ -35,26 +35,12 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { newProject } from '../../src/installer/new.js';
-import { runActions, type RunActionsInputs } from '../../src/composition/actions.js';
+import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
+import { newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import type { Prompt } from '../../src/composition/answers.js';
+import { expectOk, installMediator } from '../support/factory.js';
 
 const E2E_TIMEOUT_MS = 20 * 60 * 1000;
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-
-const noPrompt: Prompt = {
-  ask: async () => {
-    throw new Error('prompt should not be called in non-interactive mode');
-  },
-};
 
 /**
  * Well-known flake modes from the Gradle distribution CDN that we
@@ -171,27 +157,30 @@ describe.skipIf(skipE2E)('walking-skeleton e2e', () => {
     async () => {
       // 1. Generate. Fake the git side effect; everything else (the
       //    gradle wrapper task) runs for real.
-      await newProject({
-        cwd,
-        stack: 'quarkus-cli',
-        answers: {
-          'walking-skeleton/quarkus-cli-bootstrap': {
-            basePackage: 'com.acme.e2e',
-            projectName: 'walking-skeleton-e2e',
-          },
-          'vcs/git-init': { remote: '', defaultBranch: 'main' },
-        },
-        interactive: false,
-        dryRun: false,
-        logger: silent,
-        prompt: noPrompt,
-        now: () => '2026-04-26T12:00:00Z',
+      const mediator = installMediator({
         keelVersion: '0.0.0-e2e',
-        runActions: rewriteActions({
+        runDeferred: rewriteActions({
           stubbed: new Set(['vcs/git-init']),
           retried: new Set(['walking-skeleton/gradle-wrapper']),
         }),
       });
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-cli',
+            answers: {
+              'walking-skeleton/quarkus-cli-bootstrap': {
+                basePackage: 'com.acme.e2e',
+                projectName: 'walking-skeleton-e2e',
+              },
+              'vcs/git-init': { remote: '', defaultBranch: 'main' },
+            },
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
 
       // Sanity check: wrapper landed and is executable, no .git dir
       // (git was stubbed out).

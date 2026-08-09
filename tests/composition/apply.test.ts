@@ -4,7 +4,7 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../src/infrastructure/process/spawn-process-runner.js';
-import { ContributionConflictError, applyContributions } from '../../src/composition/apply.js';
+import { ContributionConflictError, applyContributions } from '../../src/domain/core/apply.js';
 import { emptyManifestV2 } from '../../src/domain/contract/manifest.js';
 import { FsTree } from '../../src/infrastructure/tree/fs-tree.js';
 import type { Adapter, Contribution } from '../../src/domain/contract/composition.js';

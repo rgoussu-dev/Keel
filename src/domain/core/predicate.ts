@@ -17,7 +17,7 @@
  *     non-trailing `*` is rejected at validation time.
  */
 
-import type { Predicate, Tag } from '../domain/contract/composition.js';
+import type { Predicate, Tag } from '../contract/composition.js';
 
 /**
  * Returns true iff `tagSet` satisfies `predicate`. An empty predicate

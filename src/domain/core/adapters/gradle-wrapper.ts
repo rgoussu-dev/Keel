@@ -19,13 +19,9 @@
  */
 
 import path from 'node:path';
-import type {
-  DeferredAction,
-  DeferredActionEnv,
-  Adapter,
-} from '../../domain/contract/composition.js';
-import type { Logger } from '../../domain/contract/ports/logger.js';
-import type { ProcessResult, ProcessRunner } from '../../domain/contract/ports/process-runner.js';
+import type { DeferredAction, DeferredActionEnv, Adapter } from '../../contract/composition.js';
+import type { Logger } from '../../contract/ports/logger.js';
+import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const GRADLE_WRAPPER_ID = 'walking-skeleton/gradle-wrapper';

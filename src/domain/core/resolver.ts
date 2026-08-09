@@ -17,7 +17,7 @@
  */
 
 import { matches } from './predicate.js';
-import type { Adapter, Tag, Vertical } from '../domain/contract/composition.js';
+import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 
 /**
  * Thrown when adapter resolution fails. The message is intended for

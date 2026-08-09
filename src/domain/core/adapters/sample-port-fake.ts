@@ -16,7 +16,7 @@
  */
 
 import { packageToPath } from '../util.js';
-import type { Adapter } from '../../domain/contract/composition.js';
+import type { Adapter } from '../../contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const SAMPLE_PORT_FAKE_ID = 'walking-skeleton/sample-port-fake';

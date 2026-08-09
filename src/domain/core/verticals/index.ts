@@ -11,7 +11,7 @@
 import { distributionVertical } from './distribution.js';
 import { vcsVertical } from './vcs.js';
 import { walkingSkeletonVertical } from './walking-skeleton.js';
-import type { Vertical } from '../../domain/contract/composition.js';
+import type { Vertical } from '../../contract/composition.js';
 
 const ALL: readonly Vertical[] = [vcsVertical, walkingSkeletonVertical, distributionVertical];
 
