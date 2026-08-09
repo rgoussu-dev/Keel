@@ -1,0 +1,207 @@
+//! The HTTP primary adapter: maps transport DTOs to the greet
+//! command, dispatches through the driving port, and maps domain
+//! errors to RFC 9457 problem documents. Zero business logic.
+
+use std::sync::Arc;
+
+use axum::extract::{Query, State};
+use axum::http::{StatusCode, header};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
+use serde::{Deserialize, Serialize};
+
+use <%= crateName %>::domain::{GreetCommand, GreetError, Greeter};
+
+/// The driving port as shared, thread-safe state — the shape axum
+/// hands to every request handler.
+pub type SharedGreeter = Arc<dyn Greeter + Send + Sync>;
+
+#[derive(Deserialize)]
+struct GreetParams {
+    name: Option<String>,
+}
+
+/// GreetingResponse is the transport shape of a successful greeting
+/// — the REST seam contract shared with the other backend stacks
+/// (`{"greeting": …}`), so a frontend gateway works against any of
+/// them.
+#[derive(Serialize)]
+pub struct GreetingResponse {
+    pub greeting: String,
+}
+
+/// Problem is an RFC 9457 problem document — the transport shape of
+/// every error this adapter reports.
+#[derive(Serialize)]
+pub struct Problem {
+    #[serde(rename = "type")]
+    pub problem_type: String,
+    pub title: String,
+    pub status: u16,
+    pub detail: String,
+}
+
+/// Returns the HTTP surface of the service: GET /greet?name=…
+/// dispatched through `greeter`.
+pub fn router(greeter: SharedGreeter) -> Router {
+    Router::new()
+        .route("/greet", get(greet))
+        .with_state(greeter)
+}
+
+async fn greet(
+    State(greeter): State<SharedGreeter>,
+    Query(params): Query<GreetParams>,
+) -> Response {
+    // An absent name defaults at the transport boundary, per the seam
+    // contract; a name that is present but blank still reaches the
+    // domain and is rejected there.
+    let name = params.name.unwrap_or_else(|| "world".to_string());
+    match greeter.greet(GreetCommand { name }) {
+        Ok(greeting) => Json(GreetingResponse { greeting }).into_response(),
+        Err(err) => problem(err),
+    }
+}
+
+fn problem(err: GreetError) -> Response {
+    let status = match err {
+        GreetError::EmptyName => StatusCode::BAD_REQUEST,
+    };
+    let body = Problem {
+        problem_type: "about:blank".to_string(),
+        title: status.canonical_reason().unwrap_or_default().to_string(),
+        status: status.as_u16(),
+        detail: err.to_string(),
+    };
+    (
+        status,
+        [(header::CONTENT_TYPE, "application/problem+json")],
+        Json(body),
+    )
+        .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use axum::body::Body;
+    use axum::http::Request;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    use super::*;
+
+    /// A hand-rolled fake of the driving port: it records the
+    /// dispatched command and replies with a canned outcome.
+    struct FakeGreeter {
+        got: Mutex<Option<GreetCommand>>,
+        reply: Result<String, GreetError>,
+    }
+
+    impl FakeGreeter {
+        fn replying(reply: Result<String, GreetError>) -> Arc<Self> {
+            Arc::new(Self {
+                got: Mutex::new(None),
+                reply,
+            })
+        }
+    }
+
+    impl Greeter for FakeGreeter {
+        fn greet(&self, cmd: GreetCommand) -> Result<String, GreetError> {
+            *self.got.lock().expect("record the command") = Some(cmd);
+            self.reply.clone()
+        }
+    }
+
+    #[tokio::test]
+    async fn greet_maps_the_query_to_the_command_and_replies_json() {
+        let fake = FakeGreeter::replying(Ok("Hello, Ada!".to_string()));
+        let app = router(fake.clone());
+
+        let response = app
+            .oneshot(
+                Request::get("/greet?name=Ada")
+                    .body(Body::empty())
+                    .expect("build the request"),
+            )
+            .await
+            .expect("dispatch the request");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let dispatched = fake
+            .got
+            .lock()
+            .expect("read the command")
+            .clone()
+            .expect("no command dispatched");
+        assert_eq!(dispatched.name, "Ada");
+        let bytes = response
+            .into_body()
+            .collect()
+            .await
+            .expect("read the body")
+            .to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&bytes).expect("decode the body");
+        assert_eq!(parsed["greeting"], "Hello, Ada!");
+    }
+
+    #[tokio::test]
+    async fn greet_defaults_an_absent_name_at_the_transport_boundary() {
+        let fake = FakeGreeter::replying(Ok("Hello, world!".to_string()));
+        let app = router(fake.clone());
+
+        let response = app
+            .oneshot(
+                Request::get("/greet")
+                    .body(Body::empty())
+                    .expect("build the request"),
+            )
+            .await
+            .expect("dispatch the request");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let dispatched = fake
+            .got
+            .lock()
+            .expect("read the command")
+            .clone()
+            .expect("no command dispatched");
+        assert_eq!(dispatched.name, "world");
+    }
+
+    #[tokio::test]
+    async fn greet_maps_a_domain_rejection_to_a_problem_document() {
+        let fake = FakeGreeter::replying(Err(GreetError::EmptyName));
+        let app = router(fake);
+
+        let response = app
+            .oneshot(
+                Request::get("/greet?name=")
+                    .body(Body::empty())
+                    .expect("build the request"),
+            )
+            .await
+            .expect("dispatch the request");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("application/problem+json")
+        );
+        let bytes = response
+            .into_body()
+            .collect()
+            .await
+            .expect("read the body")
+            .to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&bytes).expect("decode the body");
+        assert_eq!(parsed["status"], 400);
+        assert!(parsed["detail"].as_str().is_some_and(|d| !d.is_empty()));
+    }
+}

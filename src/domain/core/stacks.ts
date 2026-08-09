@@ -104,6 +104,19 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
+  'rust-cli': {
+    id: 'rust-cli',
+    description: 'Rust CLI on the stdlib, hexagonal layout, no mediator object.',
+    tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.cli'],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
+  'rust-http': {
+    id: 'rust-http',
+    description: 'Rust HTTP service on axum + tokio, hexagonal layout, no mediator object.',
+    tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+    projects: ['peer.api.rest'],
+  },
   'web-components': {
     id: 'web-components',
     description:

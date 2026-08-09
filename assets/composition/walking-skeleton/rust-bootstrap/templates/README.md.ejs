@@ -1,0 +1,38 @@
+# <%= projectName %>
+
+Rust walking skeleton scaffolded by keel — hexagonal, one package, no
+mediator object: commands are structs, driving ports are per-use-case
+traits, and each `src/bin/` main is the assembly point.
+
+## Layout
+
+```
+src/bin/        — one directory per deployment unit: main.rs wires
+                  the hexagon by hand (constructor injection); its
+                  sibling modules are the unit's primary adapter —
+                  transport → command → port → transport, zero
+                  business logic
+src/domain.rs   — the contract face: commands, ports, and the
+                  exported factories returning driving ports
+src/domain/     — the domain's submodules: the compiler-hidden core
+                  (declared private in domain.rs, unnameable from
+                  adapters and deployment units) and the port
+                  modules the face re-exports
+src/infra/      — secondary adapters, one module per technology;
+                  each port's canonical fake lives here too
+tests/          — DIP-strict tests against the crate's public face
+```
+
+Cross-cutting concerns (logging, metrics, tx) wrap the driving ports
+as decorators applied at the assembly point.
+
+## Test
+
+```sh
+cargo test
+```
+
+## Deployment units
+
+Each `src/bin/` directory is one deployment unit; its `main.rs`
+`use` list reads like the ops runbook.

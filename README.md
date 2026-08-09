@@ -72,6 +72,24 @@ fake under `internal/infra/`, and no mediator object — commands are
 structs, driving ports are per-use-case interfaces wired explicitly
 in `main`.
 
+Or a Rust project — `rust-cli` for a dependency-free terminal binary,
+`rust-http` for an axum service:
+
+```sh
+mkdir my-service && cd my-service
+npx @rgoussu.dev/keel new --stack=rust-http
+```
+
+You'll be asked for a project name and an optional `origin` git
+remote. The result follows the house Rust hexagonal reference: one
+package, one `src/bin/` directory per deployment unit (its `main.rs`
+the assembly point, its sibling modules the unit's primary adapter),
+`src/domain.rs` as the contract face over a compiler-hidden core
+(`src/domain/greet.rs`, a private module), a sample secondary port
+(`Clock`) with its canonical fake under `src/infra/`, and no
+mediator object — commands are structs, driving ports are
+per-use-case traits wired explicitly in `main`.
+
 Or a framework-free web-components SPA — the browser and the DOM API
 as the framework:
 
@@ -142,18 +160,18 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `web-components`, `fullstack`, `fullstack-go`. |
-| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                             |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                      |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                      |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                |
-| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                |
-| `keel add ... --yes`     | Non-interactive.                                                                                                                                              |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                                |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                                  |
+| Command                  | What it does                                                                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-go`. |
+| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                                                      |
+| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                                               |
+| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                                               |
+| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                         |
+| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                                         |
+| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                         |
+| `keel add ... --yes`     | Non-interactive.                                                                                                                                                                       |
+| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                                                         |
+| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                                                           |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.

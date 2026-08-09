@@ -1,0 +1,26 @@
+//! The http deployment unit. Its main is the assembly point: it
+//! wires the hexagon for HTTP with plain constructor injection and
+//! contains no logic. Config comes from the environment per
+//! 12-factor: PORT picks the listen port (default 8080; 0 lets the
+//! OS choose).
+
+mod handler;
+
+use std::sync::Arc;
+
+use <%= crateName %>::domain::new_greeter;
+
+#[tokio::main]
+async fn main() {
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
+        .await
+        .expect("bind the listen port");
+    let addr = listener.local_addr().expect("read the bound address");
+    println!("listening on {addr}");
+
+    let greeter: handler::SharedGreeter = Arc::new(new_greeter());
+    axum::serve(listener, handler::router(greeter))
+        .await
+        .expect("serve HTTP");
+}
