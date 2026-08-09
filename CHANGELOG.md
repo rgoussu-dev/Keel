@@ -6,6 +6,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0-alpha] — 2026-08-09
+
 ### Changed
 
 - **keel now dogfoods its own binding spec.** The source tree is
@@ -524,7 +526,8 @@ swappable `Engine` / `Schematic` / `Tree` / `Context` port interface.
 - Migration runner for `keel update` (scripts exist as a concept but are
   not yet executed).
 
-[Unreleased]: https://github.com/rgoussu-dev/Keel/compare/v0.4.0-alpha...HEAD
+[Unreleased]: https://github.com/rgoussu-dev/Keel/compare/v0.5.0-alpha...HEAD
+[0.5.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.4.0-alpha...v0.5.0-alpha
 [0.4.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.3.0-alpha...v0.4.0-alpha
 [0.3.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.2.0-alpha...v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/rgoussu-dev/Keel/compare/v0.1.0-alpha.2...v0.2.0-alpha
