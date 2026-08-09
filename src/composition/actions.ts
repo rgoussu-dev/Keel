@@ -14,12 +14,12 @@
  * with the action's id attached for diagnostics.
  */
 
-import type { Action } from './types.js';
+import type { DeferredAction } from '../domain/contract/composition.js';
 import type { Logger } from '../util/log.js';
 
 /** Inputs for `runActions`. */
 export interface RunActionsInputs {
-  readonly actions: readonly Action[];
+  readonly actions: readonly DeferredAction[];
   readonly cwd: string;
   readonly logger: Logger;
   readonly dryRun: boolean;

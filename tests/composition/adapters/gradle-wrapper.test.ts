@@ -13,7 +13,7 @@ import {
   GRADLE_WRAPPER_ID,
 } from '../../../src/composition/adapters/gradle-wrapper.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../src/composition/adapters/quarkus-cli-bootstrap.js';
-import { emptyManifestV2 } from '../../../src/manifest/schema-v2.js';
+import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../src/composition/apply.js';
 
 const silent = {

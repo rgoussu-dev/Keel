@@ -29,7 +29,7 @@
 import path from 'node:path';
 import { paths } from '../../util/paths.js';
 import { renderTemplateFiles } from '../render.js';
-import type { Adapter } from '../types.js';
+import type { Adapter } from '../../domain/contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const QUARKUS_CLI_NATIVE_ID = 'distribution/quarkus-cli-native';

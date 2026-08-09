@@ -20,18 +20,15 @@
  */
 
 import { confirm, input, select } from '@inquirer/prompts';
-import type { Adapter, Question } from './types.js';
-
-/** Operating mode for prompt resolution. */
-export type AnswerMode = 'interactive' | 'non-interactive';
+import type { Adapter, Question } from '../domain/contract/composition.js';
+import type { AnswerMode, Prompt } from '../domain/contract/ports/prompt.js';
 
 /**
- * Prompt port — the answers engine never imports a terminal library
- * directly so tests can supply a scripted fake.
+ * Re-export of the Prompt port so existing importers of this module
+ * keep compiling while the interactive adapter migrates to
+ * `infrastructure/`.
  */
-export interface Prompt {
-  ask(question: Question): Promise<string>;
-}
+export type { AnswerMode, Prompt };
 
 /** Result of resolving a single question. */
 export interface AnswerResolution {

@@ -13,7 +13,7 @@ import {
   claudeCoreAdapter,
   CLAUDE_CORE_ID,
 } from '../../../src/composition/adapters/claude-core.js';
-import { emptyManifestV2 } from '../../../src/manifest/schema-v2.js';
+import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../src/composition/apply.js';
 import { paths } from '../../../src/util/paths.js';
 

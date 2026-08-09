@@ -1,16 +1,12 @@
 import chalk from 'chalk';
+import type { Logger } from '../domain/contract/ports/logger.js';
 
 /**
- * Minimal leveled logger for CLI output. Writes to stderr so that stdout
- * stays clean for structured output.
+ * Re-export of the Logger port so existing importers of this module
+ * keep compiling while the implementation migrates to
+ * `infrastructure/`.
  */
-export interface Logger {
-  info(msg: string): void;
-  success(msg: string): void;
-  warn(msg: string): void;
-  error(msg: string): void;
-  debug(msg: string): void;
-}
+export type { Logger };
 
 const DEBUG = process.env['KEEL_DEBUG'] === '1';
 

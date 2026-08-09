@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ActionError, runActions } from '../../src/composition/actions.js';
-import type { Action } from '../../src/composition/types.js';
+import type { DeferredAction } from '../../src/domain/contract/composition.js';
 
 const silent = {
   info: () => {},
@@ -27,7 +27,7 @@ const recordingLogger = (): {
   };
 };
 
-const action = (id: string, run: () => Promise<void>): Action => ({
+const action = (id: string, run: () => Promise<void>): DeferredAction => ({
   id,
   description: id,
   run,
@@ -36,7 +36,7 @@ const action = (id: string, run: () => Promise<void>): Action => ({
 describe('runActions', () => {
   it('runs every action in order when not dry-run', async () => {
     const order: string[] = [];
-    const actions: Action[] = [
+    const actions: DeferredAction[] = [
       action('a', async () => {
         order.push('a');
       }),
@@ -51,7 +51,7 @@ describe('runActions', () => {
   it('skips action.run in dry-run and logs the description', async () => {
     const { logger, lines } = recordingLogger();
     let ran = false;
-    const actions: Action[] = [
+    const actions: DeferredAction[] = [
       action('a', async () => {
         ran = true;
       }),
@@ -62,7 +62,7 @@ describe('runActions', () => {
   });
 
   it('wraps thrown errors in ActionError with the offending id', async () => {
-    const actions: Action[] = [
+    const actions: DeferredAction[] = [
       action('boom', async () => {
         throw new Error('kaboom');
       }),
@@ -74,7 +74,7 @@ describe('runActions', () => {
 
   it('stops after the first failure — subsequent actions do not run', async () => {
     let bRan = false;
-    const actions: Action[] = [
+    const actions: DeferredAction[] = [
       action('a', async () => {
         throw new Error('nope');
       }),

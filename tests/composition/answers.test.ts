@@ -4,7 +4,7 @@ import {
   resolveAnswer,
   type Prompt,
 } from '../../src/composition/answers.js';
-import type { Adapter, Contribution, Question } from '../../src/composition/types.js';
+import type { Adapter, Contribution, Question } from '../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
 

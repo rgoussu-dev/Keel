@@ -26,14 +26,14 @@ import { resolveAdapterAnswers, type AnswerMode, type Prompt } from './answers.j
 import { applyContribution, makeCtx, type ApplyResult } from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {
-  Action,
+  DeferredAction,
   AgenticBundle,
   InstalledVertical,
   ManifestV2,
   Tag,
   Tree,
   Vertical,
-} from './types.js';
+} from '../domain/contract/composition.js';
 import type { Logger } from '../util/log.js';
 
 /** Inputs to `installVertical`. */
@@ -63,7 +63,7 @@ export async function installVertical(
   const ordered = resolveVertical(inputs.vertical, inputs.manifest.tags);
 
   let running: ManifestV2 = inputs.manifest;
-  const collectedActions: Action[] = [];
+  const collectedActions: DeferredAction[] = [];
   const collectedAgentic: Record<string, AgenticBundle> = {};
   const allTagsAdded = new Set<Tag>();
 

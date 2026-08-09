@@ -1,39 +1,14 @@
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import fs from 'fs-extra';
+import type { Tree, TreeChange } from '../domain/contract/ports/tree.js';
 
 /**
- * A virtual filesystem staged in memory. Composition adapters mutate
- * a Tree via {@link Tree.write} / {@link Tree.delete}; the applier
- * materialises the Tree to disk only after a dry-run has been
- * reviewed (or `commit` is called explicitly).
+ * Re-export of the Tree port so existing importers of this module
+ * keep compiling while the implementation migrates to
+ * `infrastructure/`.
  */
-export interface Tree {
-  /** Returns the content of a file in the tree, or `null` if absent. */
-  read(filePath: string): Buffer | null;
-  /**
-   * Writes (or overwrites) a file in the tree. The optional `mode` is
-   * propagated to disk on `commit`; omit it to preserve any prior
-   * mode bits on the target file, or to let the platform default
-   * apply on create. Mode is required to round-trip executable
-   * template files such as `gradlew`.
-   */
-  write(filePath: string, content: Buffer | string, options?: { mode?: number }): void;
-  /** Deletes a file from the tree. No-op if absent. */
-  delete(filePath: string): void;
-  /** Reports whether the given file exists in the tree. */
-  exists(filePath: string): boolean;
-  /** Lists files under the given directory in the tree. */
-  list(dirPath: string): readonly string[];
-  /** Returns every file affected (created, modified, deleted) by staged actions. */
-  changes(): readonly TreeChange[];
-}
-
-/** A staged change to the tree, surfaced via {@link Tree.changes}. */
-export type TreeChange =
-  | { kind: 'create'; path: string }
-  | { kind: 'modify'; path: string }
-  | { kind: 'delete'; path: string };
+export type { Tree, TreeChange };
 
 type Entry =
   | {

@@ -6,7 +6,7 @@
  *
  * Differences from the legacy schematic:
  *   - The dryRun flag is no longer this adapter's concern; the
- *     applier emits an Action and `runActions` honours the flag.
+ *     applier emits an DeferredAction and `runActions` honours the flag.
  *   - `remote` and `defaultBranch` become sticky-memory questions:
  *     answered once, recalled on subsequent runs.
  *   - The behaviour matrix is identical — fresh dir → init; root of
@@ -16,7 +16,11 @@
 
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import type { Action, Adapter, ActionEnv } from '../types.js';
+import type {
+  DeferredAction,
+  Adapter,
+  DeferredActionEnv,
+} from '../../domain/contract/composition.js';
 
 const DEFAULT_INITIAL_BRANCH = 'main';
 
@@ -48,10 +52,10 @@ export const gitInitAdapter: Adapter = {
     const remote = ctx.answer('remote').trim();
     const defaultBranch = ctx.answer('defaultBranch').trim() || DEFAULT_INITIAL_BRANCH;
 
-    const action: Action = {
+    const action: DeferredAction = {
       id: 'vcs/git-init',
       description: gitInitDescription(remote, defaultBranch, ctx.cwd),
-      run: ({ cwd, logger }: ActionEnv) => {
+      run: ({ cwd, logger }: DeferredActionEnv) => {
         runGitInit(path.resolve(cwd), defaultBranch, remote, logger);
         return Promise.resolve();
       },
@@ -79,7 +83,7 @@ function runGitInit(
   cwd: string,
   defaultBranch: string,
   remote: string,
-  logger: ActionEnv['logger'],
+  logger: DeferredActionEnv['logger'],
 ): void {
   const detection = detectGit(cwd);
   if (detection.inRepo && detection.toplevel !== cwd) {
