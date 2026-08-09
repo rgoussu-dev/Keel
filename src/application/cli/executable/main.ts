@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { RegistryMediator } from '../../../domain/core/mediator.js';
 import { NewProjectHandler } from '../../../domain/core/handlers/new-project.js';
 import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.js';
+import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
 import { listStackIds } from '../../../domain/core/stacks.js';
 import { listVerticalIds } from '../../../domain/core/verticals/index.js';
 import { consoleLogger } from '../../../infrastructure/commons/console-logger.js';
@@ -39,6 +40,7 @@ export async function main(argv: string[]): Promise<void> {
   const mediator = new RegistryMediator([
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
+    new LinkPeerHandler(deps),
   ]);
 
   const program = buildProgram({

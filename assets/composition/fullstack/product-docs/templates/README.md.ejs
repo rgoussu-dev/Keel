@@ -1,0 +1,34 @@
+# Product workspace
+
+A keel fullstack product: each service below is a complete hexagonal
+project with its own build, manifest, and `AGENTS.md`. Cross-service
+composition is recorded as `peers` in each service's keel manifest —
+peer-conditional adapters (the frontend's REST gateway, the backend's
+CORS config) were selected from those facts.
+
+## Services
+
+<% for (const service of services) { -%>
+- [`<%= service.path %>/`](<%= service.path %>/README.md) — scaffolded from the `<%= service.stack %>` stack.
+<% } -%>
+
+## Run order (development)
+
+1. Start the backend first:
+   ```sh
+   cd backend && ./gradlew quarkusDev        # serves http://localhost:8080
+   ```
+2. Then the frontend dev server:
+   ```sh
+   cd frontend && npm run dev                # proxies /api → localhost:8080
+   ```
+
+The frontend reaches the backend through its `gateway-rest` driven
+port; in development Vite proxies `/api`, in production set
+`VITE_API_BASE_URL` at build time (12-factor: config via env).
+
+## Working here
+
+Each service is independently buildable and testable — see its own
+README. Changes that cross services (e.g. the greet contract) land as
+one commit in this repository.

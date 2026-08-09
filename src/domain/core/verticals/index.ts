@@ -9,11 +9,17 @@
  */
 
 import { distributionVertical } from './distribution.js';
+import { gatewayVertical } from './gateway.js';
 import { vcsVertical } from './vcs.js';
 import { walkingSkeletonVertical } from './walking-skeleton.js';
 import type { Vertical } from '../../contract/composition.js';
 
-const ALL: readonly Vertical[] = [vcsVertical, walkingSkeletonVertical, distributionVertical];
+const ALL: readonly Vertical[] = [
+  vcsVertical,
+  walkingSkeletonVertical,
+  distributionVertical,
+  gatewayVertical,
+];
 
 /** All verticals known to the brownfield registry, keyed by id. */
 export const VERTICALS: Readonly<Record<string, Vertical>> = Object.freeze(

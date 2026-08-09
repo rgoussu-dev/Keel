@@ -44,6 +44,39 @@ export interface ManifestV2 {
   readonly answers: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** File-tracking entries carried over from v1, used for drift detection. */
   readonly entries: readonly ManifestEntry[];
+  /**
+   * Peer tags this project projects onto sibling services of the same
+   * product (e.g. `peer.api.rest` for a REST backend). Declared by
+   * the stack at install time; read by `keel link` and the composite
+   * orchestrator to populate siblings' {@link peers}.
+   */
+  readonly projects: readonly Tag[];
+  /** Links to sibling keel projects, and what they project here. */
+  readonly peers: readonly PeerLink[];
+  /** Services of a composite (product-root) install, in install order. */
+  readonly services: readonly ServiceRef[];
+}
+
+/**
+ * A link to a sibling keel project — another service of the same
+ * product, in the same repository or a neighbouring one. The peer's
+ * projected tags join this project's own tags during adapter
+ * resolution, so peer-conditional adapters (an HTTP gateway, a CORS
+ * patch) are selected by the ordinary predicate machinery.
+ */
+export interface PeerLink {
+  /** Where the peer lives, relative to this project's root. */
+  readonly ref: string;
+  /** Peer tags the sibling projects into this project's resolution. */
+  readonly tags: readonly Tag[];
+}
+
+/** One service of a composite install, recorded on the product root. */
+export interface ServiceRef {
+  /** Directory of the service, relative to the product root. */
+  readonly path: string;
+  /** Stack preset the service was scaffolded from. */
+  readonly stack: string;
 }
 
 /** Record of a vertical the user installed. */
@@ -92,6 +125,18 @@ export const InstalledVerticalSchema = z.object({
   installedAt: z.string(),
 });
 
+/** Schema for a peer link. */
+export const PeerLinkSchema = z.object({
+  ref: z.string(),
+  tags: z.array(z.string()),
+});
+
+/** Schema for a composite-install service record. */
+export const ServiceRefSchema = z.object({
+  path: z.string(),
+  stack: z.string(),
+});
+
 /** Schema governing the v2 on-disk shape. */
 export const ManifestV2Schema = z.object({
   version: z.literal(2),
@@ -103,6 +148,11 @@ export const ManifestV2Schema = z.object({
   versions: z.record(z.string(), z.string()),
   answers: z.record(z.string(), z.record(z.string(), z.string())),
   entries: z.array(ManifestEntrySchema),
+  // Peer-composition fields postdate the first v2 manifests on disk;
+  // defaults keep those files parseable without a version bump.
+  projects: z.array(z.string()).default([]),
+  peers: z.array(PeerLinkSchema).default([]),
+  services: z.array(ServiceRefSchema).default([]),
 });
 
 /**
@@ -133,6 +183,9 @@ export function migrateV1(v1: z.infer<typeof ManifestV1Schema>): ManifestV2 {
     versions: {},
     answers: {},
     entries: v1.entries,
+    projects: [],
+    peers: [],
+    services: [],
   };
 }
 
@@ -148,5 +201,23 @@ export function emptyManifestV2(now: string, keelVersion: string): ManifestV2 {
     versions: {},
     answers: {},
     entries: [],
+    projects: [],
+    peers: [],
+    services: [],
   };
+}
+
+/**
+ * The tag set adapter resolution runs against: the project's own tags
+ * plus every tag its peers project here, deduplicated and sorted.
+ * Peer tags participate in predicate matching only — they are facts
+ * about the neighbourhood, not about this project, so they are never
+ * folded into {@link ManifestV2.tags}.
+ */
+export function effectiveTags(manifest: ManifestV2): readonly Tag[] {
+  const all = new Set<Tag>(manifest.tags);
+  for (const peer of manifest.peers) {
+    for (const tag of peer.tags) all.add(tag);
+  }
+  return [...all].sort();
 }

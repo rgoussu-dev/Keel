@@ -24,6 +24,7 @@
 
 import { resolveAdapterAnswers } from './answers.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
+import { effectiveTags } from '../contract/manifest.js';
 import { applyContribution, makeCtx, type ApplyResult } from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {
@@ -65,7 +66,7 @@ export interface InstallVerticalResult {
 export async function installVertical(
   inputs: InstallVerticalInputs,
 ): Promise<InstallVerticalResult> {
-  const ordered = resolveVertical(inputs.vertical, inputs.manifest.tags);
+  const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest));
 
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];

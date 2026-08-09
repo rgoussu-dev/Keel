@@ -24,6 +24,13 @@ export interface InstallReport {
 /** Sticky answers supplied up front: adapterId → questionId → value. */
 export type PresetAnswers = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
+/**
+ * Repository layout of a composite (multi-service) install: one
+ * repository with the services as subdirectories, or one repository
+ * per service. Ignored by single-service stacks.
+ */
+export type RepoLayout = 'monorepo' | 'polyrepo';
+
 /** Bootstrap a greenfield project from a stack preset. */
 export interface NewProjectCommand extends Command<InstallReport> {
   readonly kind: 'keel.new-project';
@@ -33,6 +40,11 @@ export interface NewProjectCommand extends Command<InstallReport> {
   readonly answers: PresetAnswers;
   readonly interactive: boolean;
   readonly dryRun: boolean;
+  /**
+   * Layout for composite stacks. When absent, interactive installs
+   * prompt for it and non-interactive installs default to `monorepo`.
+   */
+  readonly layout?: RepoLayout;
 }
 
 /** Layer an additional vertical onto an initialised project. */
@@ -44,6 +56,35 @@ export interface AddVerticalCommand extends Command<InstallReport> {
   readonly answers: PresetAnswers;
   readonly interactive: boolean;
   readonly dryRun: boolean;
+}
+
+/** Result DTO of `keel link`. */
+export interface LinkReport {
+  /** The peer's directory as recorded in this project's manifest. */
+  readonly ref: string;
+  /** Peer tags the sibling now projects into this project. */
+  readonly projectedHere: readonly string[];
+  /** Peer tags this project now projects into the sibling. */
+  readonly projectedThere: readonly string[];
+}
+
+/**
+ * Record a sibling keel project as a peer — both ways — so
+ * peer-conditional adapters resolve on later `keel add` runs. The
+ * polyrepo counterpart of what a composite `keel new` records
+ * automatically, and the brownfield path for attaching a new service
+ * to an existing one.
+ */
+export interface LinkPeerCommand extends Command<LinkReport> {
+  readonly kind: 'keel.link-peer';
+  readonly cwd: string;
+  /** Path of the peer project, relative to cwd (or absolute). */
+  readonly ref: string;
+}
+
+/** Constructs a {@link LinkPeerCommand}. */
+export function linkPeerCommand(input: Omit<LinkPeerCommand, 'kind' | 'intent'>): LinkPeerCommand {
+  return { kind: 'keel.link-peer', intent: 'command', ...input };
 }
 
 /** Constructs a {@link NewProjectCommand}. */

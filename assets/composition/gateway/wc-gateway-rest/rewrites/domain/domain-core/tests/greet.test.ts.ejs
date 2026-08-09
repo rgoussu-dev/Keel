@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import type { Greet, Greeting, GreetingReadModel } from '@<%= npmScope %>/domain-api';
+import { createGreet, createGreetingStore } from '@<%= npmScope %>/domain-core';
+import { createFakeGreetGateway, type FakeGreetGateway } from '@<%= npmScope %>/gateway-rest/fake';
+
+interface Sut {
+  readonly greet: Greet;
+  readonly greetings: GreetingReadModel;
+  readonly gateway: FakeGreetGateway;
+}
+
+const factory = (): Sut => {
+  const gateway = createFakeGreetGateway();
+  const store = createGreetingStore();
+  return { greet: createGreet(gateway, store), greetings: store, gateway };
+};
+
+const nextGreeting = (greetings: GreetingReadModel): Promise<Greeting> =>
+  new Promise((resolve) => {
+    const unsubscribe = greetings.subscribe((greeting) => {
+      unsubscribe();
+      resolve(greeting);
+    });
+  });
+
+describe('greet (through the gateway)', () => {
+  it('publishes the gateway greeting for the given name', async () => {
+    const { greet, greetings, gateway } = factory();
+    const greeting = nextGreeting(greetings);
+    greet.execute({ name: 'Ada' });
+    expect((await greeting).message).toBe('Hello, Ada!');
+    expect(gateway.calls).toEqual(['Ada']);
+  });
+
+  it('trims the name before it crosses the gateway', async () => {
+    const { greet, greetings, gateway } = factory();
+    const greeting = nextGreeting(greetings);
+    greet.execute({ name: '  Ada  ' });
+    await greeting;
+    expect(gateway.calls).toEqual(['Ada']);
+  });
+
+  it('publishes a fallback message when the gateway fails', async () => {
+    const { greet, greetings, gateway } = factory();
+    gateway.failWith('backend down');
+    const greeting = nextGreeting(greetings);
+    greet.execute({ name: 'Ada' });
+    expect((await greeting).message).toBe('The greeting service is unreachable.');
+  });
+});
