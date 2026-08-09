@@ -1,0 +1,14 @@
+/*
+ * The project's token layer — brand decisions on top of the planks
+ * scale (--s*, --measure, --border-thin come from
+ * @rgoussu.dev/planks/tokens). Atoms and molecules consume these;
+ * nothing hardcodes a color or a radius.
+ */
+:root {
+  --color-brand: #1d4ed8;
+  --color-brand-hover: #1e40af;
+  --color-brand-contrast: #ffffff;
+  --color-ink: #1f2937;
+  --color-surface: #f9fafb;
+  --radius-control: 0.375rem;
+}

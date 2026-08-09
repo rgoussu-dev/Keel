@@ -94,6 +94,15 @@ describe('walking-skeleton vertical (web-components SPA)', () => {
       'application/web-app/src/context.ts',
       'application/web-app/src/context-keys.ts',
       'application/web-app/src/components/greeting-view.ts',
+      'design-system/package.json',
+      'design-system/tsconfig.json',
+      'design-system/src/index.ts',
+      'design-system/src/modules.d.ts',
+      'design-system/src/tokens.css',
+      'design-system/src/internal/structural-style.ts',
+      'design-system/src/atoms/button.ts',
+      'design-system/src/molecules/greeting-card.ts',
+      'design-system/tests/design-system.test.ts',
       'infrastructure/commons/package.json',
       'infrastructure/commons/tsconfig.json',
       'infrastructure/commons/src/index.ts',
@@ -169,6 +178,38 @@ describe('walking-skeleton vertical (web-components SPA)', () => {
     const fake = tree.read('infrastructure/commons/src/fake-clock.ts')?.toString() ?? '';
     expect(fake).toContain('export interface FakeClock extends Clock');
     expect(fake).toContain("from '@shipyard/domain-api'");
+  });
+
+  it('emits a domain-blind design system built on planks, wired into the app shell', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.spa'), {
+      'walking-skeleton/wc-spa-bootstrap': {
+        npmScope: 'shipyard',
+        projectName: 'harbourmaster',
+      },
+    });
+    cwds.push(cwd);
+
+    const dsPkg = tree.read('design-system/package.json')?.toString() ?? '';
+    expect(dsPkg).toContain('"name": "@shipyard/design-system"');
+    expect(dsPkg).toContain('"@rgoussu.dev/planks"');
+    expect(dsPkg).not.toContain('domain-api');
+
+    const rootPkg = tree.read('package.json')?.toString() ?? '';
+    expect(rootPkg).toContain('"design-system"');
+
+    const appPkg = tree.read('application/web-app/package.json')?.toString() ?? '';
+    expect(appPkg).toContain('"@shipyard/design-system": "*"');
+
+    const view = tree.read('application/web-app/src/components/greeting-view.ts')?.toString() ?? '';
+    expect(view).toContain('<shipyard-button type="submit">');
+    expect(view).toContain('<shipyard-greeting-card>');
+    expect(view).toContain('<stack-pk');
+
+    const html = tree.read('application/web-app/index.html')?.toString() ?? '';
+    expect(html).toContain('<center-pk');
+
+    const atom = tree.read('design-system/src/atoms/button.ts')?.toString() ?? '';
+    expect(atom).toContain("const TAG = 'shipyard-button';");
   });
 
   it('emits a deferred npm install action that runs after the bootstrap', async () => {

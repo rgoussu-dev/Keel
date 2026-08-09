@@ -1,0 +1,15 @@
+/// <reference path="./modules.d.ts" />
+/**
+ * The design system's single entry point. Importing it registers the
+ * planks layout primitives (the sub-atomic substrate), loads the
+ * token layers (planks scale + project brand), and registers the
+ * project's own atoms and molecules. Everything here is domain-blind
+ * — this package never depends on `@<%= npmScope %>/domain-api`.
+ */
+
+import '@rgoussu.dev/planks';
+import '@rgoussu.dev/planks/tokens';
+import './tokens.css';
+
+export { Button } from './atoms/button';
+export { GreetingCard } from './molecules/greeting-card';

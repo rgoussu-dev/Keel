@@ -85,9 +85,12 @@ TypeScript npm workspace in a hexagonal layout — `domain/domain-api`
 (ports, commands, read models; compiled without the DOM lib),
 `domain/domain-core` (factories only, via its `exports` map), an
 `application/web-app` Vite deployment unit whose `main.ts` wires
-ports to custom elements over the WCCG Context protocol, and the
-sample `Clock` port with real + fake adapters in
-`infrastructure/commons` — installed and ready to `npm run dev`.
+ports to custom elements over the WCCG Context protocol, a
+`design-system/` package (atomic design on
+[planks](https://github.com/rgoussu-dev/planks) layout primitives +
+tokens; domain-blind by construction), and the sample `Clock` port
+with real + fake adapters in `infrastructure/commons` — installed
+and ready to `npm run dev`.
 
 Brownfield — layer an additional vertical onto an existing keel
 project:
@@ -104,16 +107,16 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| Command                  | What it does                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `web-components`. |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                        |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                        |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                  |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`.                             |
-| `keel add ... --yes`     | Non-interactive.                                                                                                                |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                  |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                    |
+| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                         |
+| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                         |
+| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                   |
+| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`.                              |
+| `keel add ... --yes`     | Non-interactive.                                                                                                                 |
+| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                   |
+| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                     |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.
@@ -167,8 +170,9 @@ Adding a stack is a couple of lines in `src/domain/core/stacks.ts`.
   entrypoints that compose — a tag set carrying both ships both
   `cmd/` deployment units on one shared module, verified with a
   deferred `go mod tidy` (requires `go` on PATH); or a framework-free
-  web-components SPA on Vite as an npm workspace (dependencies
-  installed via `npm install` at scaffold time).
+  web-components SPA on Vite as an npm workspace, with a planks-based
+  atomic design system package (dependencies installed via
+  `npm install` at scaffold time).
 - **`distribution`** — how the project ships. Today: native CLI
   binaries via GraalVM, cross-compiled in a GitHub Actions matrix
   (linux-amd64, linux-arm64, darwin-arm64) and uploaded to a GitHub

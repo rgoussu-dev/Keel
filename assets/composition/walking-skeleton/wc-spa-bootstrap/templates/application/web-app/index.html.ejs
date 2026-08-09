@@ -7,6 +7,11 @@
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
-    <<%= npmScope %>-greeting></<%= npmScope %>-greeting>
+    <center-pk gutters="var(--s1)">
+      <stack-pk space="var(--s2)">
+        <typography-pk variant="heading-1"><%= projectName %></typography-pk>
+        <<%= npmScope %>-greeting></<%= npmScope %>-greeting>
+      </stack-pk>
+    </center-pk>
   </body>
 </html>

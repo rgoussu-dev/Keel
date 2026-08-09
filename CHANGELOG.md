@@ -60,6 +60,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `walking-skeleton/npm-install` covers the `build-tool` dimension
   under `pkg.npm` with a deferred `npm install`, the npm counterpart
   of `gradle-wrapper`.
+- **Design system in the web-components skeleton** — the
+  `walking-skeleton/wc-design-system` adapter (co-firing with the
+  bootstrap) emits a `design-system/` workspace package following
+  atomic design on top of `@rgoussu.dev/planks`: planks layout
+  primitives + token scale as the sub-atomic substrate, a project
+  brand-token layer (`tokens.css`), a button atom and a
+  greeting-card molecule (attributes in, `CustomEvent`s out, tested
+  under happy-dom), all domain-blind — the package declares no
+  dependency on the domain, so a domain-aware "atom" fails at module
+  resolution. The scaffolded shell and the greet organism compose it
+  (planks `<center-pk>`/`<stack-pk>`/`<cluster-pk>` layout, state
+  pushed down as attributes); everything renders in the light DOM,
+  matching planks' tag-scoped styling convention.
 
 ### Changed
 

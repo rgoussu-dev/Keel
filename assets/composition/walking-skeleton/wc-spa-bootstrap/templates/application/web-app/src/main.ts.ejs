@@ -1,12 +1,16 @@
 /**
  * The assembly point — the only place that knows the whole graph.
- * Construct driven adapters, call the domain factories (decorate
- * them here for cross-cutting concerns), register the context
- * provider, then define the elements: provider first, definitions
- * last, because definitions upgrade parsed markup and fire
- * `connectedCallback` synchronously.
+ * Importing the design system first registers the planks primitives
+ * and the project's atoms/molecules (they carry no ports, so they
+ * may upgrade immediately). Then: construct driven adapters, call
+ * the domain factories (decorate them here for cross-cutting
+ * concerns), register the context provider, and define the
+ * port-bound elements last — definitions upgrade parsed markup and
+ * fire `connectedCallback` synchronously, so the provider must
+ * already be listening.
  */
 
+import '@<%= npmScope %>/design-system';
 import { createGreet, createGreetingStore } from '@<%= npmScope %>/domain-core';
 import { type Context, ContextRequestEvent } from './context';
 import { greetContext, greetingsContext } from './context-keys';

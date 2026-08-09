@@ -6,6 +6,10 @@ the browser and the DOM API are the framework.
 ## Layout
 
 ```
+design-system/   — the project's design language: atomic design on top
+                   of @rgoussu.dev/planks (layout primitives + token
+                   scale), with the project's tokens, atoms and
+                   molecules; domain-blind by construction
 domain/
   domain-api/    — ports, commands, read models; zero deps, compiles
                    without the DOM lib ("the domain never touches the
@@ -32,6 +36,29 @@ the [WCCG Context protocol](https://github.com/webcomponents-cc/community-protoc
 definitions last. Cross-cutting concerns decorate the factories at the
 assembly point.
 
+## Design system
+
+Atomic design and the hexagon compose: the hexagon organises the
+application, atomic design organises the inside of the driving adapter.
+The line through the hierarchy is **port-awareness**:
+
+- **Sub-atomic** — [planks](https://github.com/rgoussu-dev/planks)
+  layout primitives (`<stack-pk>`, `<box-pk>`, …) and its token scale,
+  plus the project's brand layer in `design-system/src/tokens.css`.
+- **Atoms & molecules** — `design-system/src/atoms/`,
+  `design-system/src/molecules/`: attributes in, `CustomEvent`s out,
+  never a domain import. The package declares no dependency on the
+  domain, so a domain-aware "atom" fails at module resolution.
+- **Port-bound organisms** — `application/web-app/src/components/`:
+  where ports meet design-system children; they push read-model state
+  down as attributes and translate child events up into commands.
+- **Templates & pages** — the shell's `index.html` and its router as
+  it grows.
+
+Everything renders in the light DOM: planks styles by tag-scoped
+stylesheets injected into `document.head` (they would not pierce a
+shadow root), and the design system follows the same convention.
+
 ## Run
 
 ```sh
@@ -41,13 +68,14 @@ npm run dev        # Vite dev server for application/web-app
 ## Test
 
 ```sh
-npm test           # domain + fake contract tests, in Node, no DOM
+npm test           # domain + fake contract tests in Node; design-system
+                   # component tests under happy-dom
 npm run typecheck  # per-package tsc — enforces the lib walls
 ```
 
-Components are tested in a real browser against the domain's in-memory
-fakes; add a Vitest browser-mode setup to `application/web-app` when
-the first component with real logic appears.
+Port-bound organisms are tested in a real browser against the domain's
+in-memory fakes; add a Vitest browser-mode setup to
+`application/web-app` when the first organism with real logic appears.
 
 ## Build
 

@@ -25,6 +25,7 @@ import { npmInstallAdapter } from '../adapters/npm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
 import { quarkusRestBootstrapAdapter } from '../adapters/quarkus-rest-bootstrap.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
+import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
 import type { Vertical } from '../../contract/composition.js';
@@ -44,6 +45,7 @@ export const walkingSkeletonVertical: Vertical = {
     goPortFakeAdapter,
     wcSpaBootstrapAdapter,
     wcSamplePortFakeAdapter,
+    wcDesignSystemAdapter,
     npmInstallAdapter,
     claudeCoreAdapter,
   ],
