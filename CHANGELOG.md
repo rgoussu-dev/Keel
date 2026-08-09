@@ -28,6 +28,12 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   instead of `<project>/.claude/CLAUDE.md`, and the canonical asset
   moved to `assets/project/AGENTS.md`. Existing projects keep their
   `.claude/CLAUDE.md` until re-scaffolded.
+- **Binding spec §2 now states the settled per-language dispatch
+  stances**: commands through one explicit dispatch seam everywhere;
+  registry Mediator on the JVM (and server-side TypeScript), enum +
+  exhaustive match as Rust's unified-seam form, no mediator object in
+  Go or the frontend (per-use-case ports + decorators). Mirrors the
+  knowledge-base ruling of 2026-08-09.
 - **CLI output ordering.** The planned-changes listing now prints
   after deferred actions run (the plan is part of the command's
   result). Dry-run output is unchanged.

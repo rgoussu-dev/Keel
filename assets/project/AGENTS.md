@@ -54,20 +54,38 @@ cargo-deny, …); the composition-root exception is pinned to
 
 ---
 
-## 2. Business logic — Command/Query + Mediator
+## 2. Business logic — commands through one dispatch seam
 
-All business operations go through a Mediator. The sealed `Action` /
-`Command` / `Query` / `Result` / `Error` bases plus the `Handler` and
-`Mediator` interfaces live in `domain/kernel/`. The concrete `Command`
-and `Query` subtypes that name each supported operation live in
-`domain/contract/`. The Mediator implementation (`RegistryMediator`)
-and the handlers live in `domain/core/`. Handlers self-declare via
-`supports()`. The Mediator implementation is constructed from a
-`Collection<Handler>` and builds its own registry — **never inject a
-Map**. No reflection, no annotation scanning, no service locators.
-Adapters at the application layer map domain `Error` to transport-shaped
-representations (RFC 9457 for REST, exit code + stderr for CLI, etc.);
-domain code never knows about transport.
+Business operations enter the domain as **Command/Query data** through
+one explicit dispatch seam: primary adapters construct commands and
+never import concrete handlers. The mechanism behind the seam is
+per-language (settled 2026-08-09):
+
+- **JVM — and server-side TypeScript, keel itself included: registry
+  Mediator.** The sealed `Action` / `Command` / `Query` / `Result` /
+  `Error` bases plus the `Handler` and `Mediator` interfaces live in
+  `domain/kernel/`. The concrete `Command` and `Query` subtypes that
+  name each supported operation live in `domain/contract/`. The
+  Mediator implementation (`RegistryMediator`) and the handlers live
+  in `domain/core/`. Handlers self-declare via `supports()`. The
+  Mediator implementation is constructed from a `Collection<Handler>`
+  and builds its own registry — **never inject a Map**. No reflection,
+  no annotation scanning, no service locators.
+- **Rust**: per-use-case driving-port traits by default; where a
+  unified seam is justified, commands become an enum dispatched by one
+  exhaustive `match` — the compiler is the registry. A runtime
+  registry of trait objects probed via `supports()` is ruled out.
+- **Go**: no mediator object — commands as structs, per-use-case
+  driving-port interfaces wired explicitly in `main`, cross-cutting
+  concerns as decorator functions around the ports.
+- **Frontend**: no mediator — per-use-case driving ports delivered by
+  typed context keys; cross-cutting via factory decoration at the
+  assembly point (a central dispatcher defeats tree-shaking and
+  subtree scoping).
+
+In every language: adapters at the application layer map domain
+`Error` to transport-shaped representations (RFC 9457 for REST, exit
+code + stderr for CLI, etc.); domain code never knows about transport.
 
 ---
 

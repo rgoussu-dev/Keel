@@ -29,8 +29,10 @@ sentinel marker) are a roadmap item.
 that document:
 
 - Hexagonal architecture, dependency rule enforced.
-- Command/Query + Mediator for business logic; handlers self-declare via
-  `supports()`, never inject a `Map`.
+- Business logic as Command/Query data through one dispatch seam —
+  a registry Mediator on the JVM and in keel itself (handlers
+  self-declare via `supports()`, never inject a `Map`); per-language
+  stances for Rust/Go/frontend in spec §2.
 - Tests = Scenario + Factory + port interface; fakes, never mocks.
 - Walking skeleton first. IaC via OpenTofu.
 - XP + SOLID + 12-Factor. Always latest stable.
