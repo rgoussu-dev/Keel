@@ -35,6 +35,13 @@ mkdir my-cli && cd my-cli
 npx @rgoussu.dev/keel new --stack=quarkus-cli
 ```
 
+Or a Quarkus REST service:
+
+```sh
+mkdir my-service && cd my-service
+npx @rgoussu.dev/keel new --stack=quarkus-rest
+```
+
 You'll be asked for a base Java package, a project name, and an
 optional `origin` git remote. The result is a hexagonal Gradle
 multi-module project (`domain/contract`, `domain/core`,
@@ -75,16 +82,16 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                        |
-| ------------------------ | --------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `go-cli`, `go-http`.      |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                            |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                            |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                      |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`. |
-| `keel add ... --yes`     | Non-interactive.                                                                                    |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                      |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                        |
+| Command                  | What it does                                                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`. |
+| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                       |
+| `keel new ... --dry-run` | Print the plan without writing any file.                                                                       |
+| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                 |
+| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`.            |
+| `keel add ... --yes`     | Non-interactive.                                                                                               |
+| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                 |
+| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                   |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.
@@ -116,8 +123,9 @@ A **stack preset** (`keel new --stack=<id>`) is sugar over a list of
 tags + verticals — pick `quarkus-cli` and the engine seeds
 `lang.java`, `framework.quarkus`, `pkg.gradle`, `arch.cli`,
 `arch.hexagonal`, then composes the `vcs` and `walking-skeleton`
-verticals. Adding a stack is a couple of lines in
-`src/domain/core/stacks.ts`.
+verticals; `quarkus-rest` swaps `arch.cli` for `arch.server-http`
+and the same verticals compose the REST shape. Adding a stack is a
+couple of lines in `src/domain/core/stacks.ts`.
 
 ---
 
@@ -127,20 +135,26 @@ verticals. Adding a stack is a couple of lines in
   the requested default branch) and optionally registers an `origin`
   remote. Sticky answers, so subsequent runs don't re-ask.
 - **`walking-skeleton`** — the thinnest end-to-end runnable project
-  for the chosen stack. Today: a Quarkus picocli CLI on Gradle in a
-  hexagonal layout, plus a sample secondary port with a fake module,
-  plus the Gradle wrapper (requires `gradle` on PATH — the wrapper is
-  generated via the canonical `gradle wrapper` task, not committed
-  as a binary); and a Go skeleton with CLI (`arch.cli`) and HTTP
-  (`arch.server-http`) entrypoints that compose — a tag set carrying
-  both ships both `cmd/` deployment units on one shared module. The
-  Go skeleton verifies itself with a deferred `go mod tidy`
-  (requires `go` on PATH).
+  for the chosen stack — the entrypoint shape is selected by
+  predicate from the stack's tags. Today: a Quarkus picocli CLI or a
+  Quarkus REST service (`GET /greet` with RFC 9457 Problem Details
+  errors) on Gradle in a hexagonal layout, plus a sample secondary
+  port with a fake module, plus the Gradle wrapper (requires `gradle`
+  on PATH — the wrapper is generated via the canonical
+  `gradle wrapper` task, not committed as a binary); and a Go
+  skeleton with CLI (`arch.cli`) and HTTP (`arch.server-http`)
+  entrypoints that compose — a tag set carrying both ships both
+  `cmd/` deployment units on one shared module. The Go skeleton
+  verifies itself with a deferred `go mod tidy` (requires `go` on
+  PATH).
 - **`distribution`** — how the project ships. Today: native CLI
   binaries via GraalVM, cross-compiled in a GitHub Actions matrix
   (linux-amd64, linux-arm64, darwin-arm64) and uploaded to a GitHub
   Release on tag push. Promotes `runtime.graalvm-native` so future
-  verticals can key off it.
+  verticals can key off it. CLI-shaped only for now — `keel add
+distribution` on a `quarkus-rest` project hard-fails with
+  uncovered dimensions until the container-image sibling lands
+  (roadmap item E).
 
 ---
 

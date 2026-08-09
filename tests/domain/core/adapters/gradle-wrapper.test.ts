@@ -14,6 +14,7 @@ import {
   GRADLE_WRAPPER_ID,
 } from '../../../../src/domain/core/adapters/gradle-wrapper.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/quarkus-cli-bootstrap.js';
+import { QUARKUS_REST_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/quarkus-rest-bootstrap.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../../src/domain/core/apply.js';
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
@@ -25,7 +26,10 @@ describe('gradle-wrapper adapter', () => {
     expect(gradleWrapperAdapter.vertical).toBe('walking-skeleton');
     expect(gradleWrapperAdapter.covers).toEqual(['build-tool']);
     expect(gradleWrapperAdapter.predicate).toEqual({ requires: ['pkg.gradle'] });
-    expect(gradleWrapperAdapter.after).toEqual([QUARKUS_CLI_BOOTSTRAP_ID]);
+    expect(gradleWrapperAdapter.after).toEqual([
+      QUARKUS_CLI_BOOTSTRAP_ID,
+      QUARKUS_REST_BOOTSTRAP_ID,
+    ]);
     expect(gradleWrapperAdapter.questions ?? []).toEqual([]);
   });
 

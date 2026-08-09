@@ -13,3 +13,36 @@
 export function packageToPath(pkg: string): string {
   return pkg.replace(/\./g, '/');
 }
+
+const BASE_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
+const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
+
+/**
+ * Validates a `basePackage` answer shared by the JVM bootstrap
+ * adapters: a dotted lowercase identifier (e.g. `com.example`).
+ * Returns the input on success; throws with `adapterName` as the
+ * message prefix otherwise.
+ */
+export function validateBasePackage(s: string, adapterName: string): string {
+  if (!BASE_PACKAGE_RE.test(s)) {
+    throw new Error(
+      `${adapterName}: invalid basePackage '${s}' — must be a dotted lowercase identifier (e.g. com.example)`,
+    );
+  }
+  return s;
+}
+
+/**
+ * Validates a `projectName` answer shared by the JVM bootstrap
+ * adapters: lowercase + digits + dashes, starting with a letter,
+ * at most 63 chars. Returns the input on success; throws with
+ * `adapterName` as the message prefix otherwise.
+ */
+export function validateProjectName(s: string, adapterName: string): string {
+  if (!PROJECT_NAME_RE.test(s)) {
+    throw new Error(
+      `${adapterName}: invalid projectName '${s}' — lowercase + digits + dashes, start with a letter, ≤63 chars`,
+    );
+  }
+  return s;
+}

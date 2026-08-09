@@ -8,6 +8,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The `quarkus-rest` stack — the REST entrypoint.** `keel new
+--stack=quarkus-rest` scaffolds a Quarkus 3 REST service on Gradle
+  in the binding-spec layout: the familiar `domain/kernel` /
+  `domain/contract` / `domain/core` trisection plus the earned
+  application pair `application/rest/contract` (transport DTOs) and
+  `application/rest/executable` (Jakarta REST resource for
+  `GET /greet?name=…`, the domain-error → RFC 9457 Problem Details
+  mapper, and the CDI composition root), driven end to end by a
+  `@QuarkusTest` + RestAssured test. The new
+  `walking-skeleton/quarkus-rest-bootstrap` adapter covers the same
+  `entrypoint` dimension as the CLI bootstrap under
+  `framework.quarkus + arch.server-http` — the first proof that the
+  entrypoint is selected by predicate, not hard-coded.
 - **Go walking skeleton with composable CLI and HTTP entrypoints.**
   Two new stacks — `go-cli` and `go-http` — compose the existing
   `vcs` + `walking-skeleton` verticals for Go, realizing the house Go
@@ -28,6 +41,15 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `port-example`). The generated projects are stdlib-only and are
   exercised end to end by a Go e2e suite (vet, test, build, run the
   CLI, serve `/greet`).
+
+### Changed
+
+- **`walking-skeleton/sample-port-fake` now fires for both project
+  shapes**: its predicate loosened from requiring `arch.cli` to
+  `framework.quarkus + arch.hexagonal`, and it reads `basePackage`
+  from whichever bootstrap ran. `keel add distribution` on a
+  `quarkus-rest` project still hard-fails with uncovered dimensions —
+  the REST-shaped distribution adapter is the next roadmap item.
 
 ## [0.5.0-alpha] — 2026-08-09
 

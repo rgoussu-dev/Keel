@@ -1,0 +1,42 @@
+# <%= projectName %>
+
+Quarkus REST walking skeleton scaffolded by keel — hexagonal, mediator-driven.
+
+## Layout
+
+```
+domain/
+  kernel/      — Command, Handler, Mediator bases; depends on nothing
+  contract/    — the public surface: GreetCommand + GreetRejected
+                 (+ ports as they appear)
+  core/        — RegistryMediator + the GreetCommand handler
+application/
+  rest/
+    contract/    — transport DTOs (GreetResponse, ProblemDetails);
+                   zero business logic
+    executable/  — Jakarta REST resource, the domain-error →
+                   RFC 9457 Problem Details mapper, and the
+                   composition root
+infrastructure/  — driven adapters (arrives with the first real port)
+```
+
+## Run
+
+```sh
+./gradlew :application:rest:executable:quarkusDev
+# then:
+curl 'http://localhost:8080/greet?name=World'
+```
+
+## Test
+
+```sh
+./gradlew test
+```
+
+## Build
+
+```sh
+./gradlew build
+java -jar application/rest/executable/build/quarkus-app/quarkus-run.jar
+```

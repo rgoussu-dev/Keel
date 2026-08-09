@@ -12,7 +12,7 @@ produce. Items are lettered continuing the old sequence. D is the
 recommended next step; E pairs with it; the rest are ordered by
 leverage, not by commitment.
 
-## D — REST entrypoint: `quarkus-rest` stack
+## D — REST entrypoint: `quarkus-rest` stack ✅ (landed)
 
 **Goal.** The composition engine's core promise is that the
 `entrypoint` dimension is _selected by predicate_, not hard-coded —

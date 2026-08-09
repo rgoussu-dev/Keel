@@ -14,8 +14,9 @@
  * Composition:
  *   - covers `build-tool` of the `walking-skeleton` vertical;
  *   - predicate: `pkg.gradle` — fires for any Gradle project;
- *   - runs after `walking-skeleton/quarkus-cli-bootstrap` so the
- *     settings and build files exist before `gradle wrapper` runs.
+ *   - runs after whichever bootstrap fired (CLI or REST) so the
+ *     settings and build files exist before `gradle wrapper` runs;
+ *     ids absent from the resolved set are dropped by the resolver.
  */
 
 import path from 'node:path';
@@ -23,6 +24,7 @@ import type { DeferredAction, DeferredActionEnv, Adapter } from '../../contract/
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
+import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
 
 export const GRADLE_WRAPPER_ID = 'walking-skeleton/gradle-wrapper';
 
@@ -33,7 +35,7 @@ export const gradleWrapperAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: ['build-tool'],
   predicate: { requires: ['pkg.gradle'] },
-  after: [QUARKUS_CLI_BOOTSTRAP_ID],
+  after: [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_REST_BOOTSTRAP_ID],
   contribute() {
     const action: DeferredAction = {
       id: GRADLE_WRAPPER_ID,

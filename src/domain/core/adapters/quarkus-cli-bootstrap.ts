@@ -6,9 +6,10 @@
  *
  * This is the seed of the `walking-skeleton` vertical. It covers the
  * `entrypoint` dimension and is predicated on
- * `framework.quarkus + arch.cli`. A REST sibling adapter will cover
- * the same dimension under `arch.server-http`; the resolver picks
- * whichever predicate matches the project's tag set.
+ * `framework.quarkus + arch.cli`. Its REST sibling
+ * (`walking-skeleton/quarkus-rest-bootstrap`) covers the same
+ * dimension under `arch.server-http`; the resolver picks whichever
+ * predicate matches the project's tag set.
  *
  * Hexagonal split (separate `domain/core`, `domain/contract`,
  * `infrastructure/cli`) is intentionally NOT done in this seed —
@@ -16,15 +17,12 @@
  * and `settings.gradle.kts`.
  */
 
-import { packageToPath } from '../util.js';
+import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 
 export const QUARKUS_CLI_BOOTSTRAP_ID = 'walking-skeleton/quarkus-cli-bootstrap';
 
 const TEMPLATE_ID = 'composition/walking-skeleton/quarkus-cli-bootstrap/templates';
-
-const BASE_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
-const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
 
 export const quarkusCliBootstrapAdapter: Adapter = {
   id: QUARKUS_CLI_BOOTSTRAP_ID,
@@ -48,8 +46,14 @@ export const quarkusCliBootstrapAdapter: Adapter = {
     },
   ],
   async contribute(ctx) {
-    const basePackage = validateBasePackage(ctx.answer('basePackage').trim());
-    const projectName = validateProjectName(ctx.answer('projectName').trim());
+    const basePackage = validateBasePackage(
+      ctx.answer('basePackage').trim(),
+      'quarkus-cli-bootstrap',
+    );
+    const projectName = validateProjectName(
+      ctx.answer('projectName').trim(),
+      'quarkus-cli-bootstrap',
+    );
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       basePackage,
       projectName,
@@ -58,21 +62,3 @@ export const quarkusCliBootstrapAdapter: Adapter = {
     return { files };
   },
 };
-
-function validateBasePackage(s: string): string {
-  if (!BASE_PACKAGE_RE.test(s)) {
-    throw new Error(
-      `quarkus-cli-bootstrap: invalid basePackage '${s}' — must be a dotted lowercase identifier (e.g. com.example)`,
-    );
-  }
-  return s;
-}
-
-function validateProjectName(s: string): string {
-  if (!PROJECT_NAME_RE.test(s)) {
-    throw new Error(
-      `quarkus-cli-bootstrap: invalid projectName '${s}' — lowercase + digits + dashes, start with a letter, ≤63 chars`,
-    );
-  }
-  return s;
-}
