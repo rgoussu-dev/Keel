@@ -25,17 +25,26 @@ const TEMPLATE_ID = 'composition/walking-skeleton/sample-port-fake/templates';
 
 const FAKE_MODULE_INCLUDE = 'include(":infrastructure:clock:fake")';
 
+// The REST sibling's id, referenced ahead of the adapter landing —
+// absent ids in `after` are dropped by the resolver, and the answers
+// lookup simply finds nothing until a REST bootstrap has run.
+const QUARKUS_REST_BOOTSTRAP_ID = 'walking-skeleton/quarkus-rest-bootstrap';
+
+const BOOTSTRAP_IDS = [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_REST_BOOTSTRAP_ID] as const;
+
 export const samplePortFakeAdapter: Adapter = {
   id: SAMPLE_PORT_FAKE_ID,
   vertical: 'walking-skeleton',
   covers: ['port-example'],
-  predicate: { requires: ['framework.quarkus', 'arch.cli', 'arch.hexagonal'] },
-  after: [QUARKUS_CLI_BOOTSTRAP_ID],
+  predicate: { requires: ['framework.quarkus', 'arch.hexagonal'] },
+  after: [...BOOTSTRAP_IDS],
   async contribute(ctx) {
-    const basePackage = ctx.manifest.answers[QUARKUS_CLI_BOOTSTRAP_ID]?.basePackage;
+    const basePackage = BOOTSTRAP_IDS.map((id) => ctx.manifest.answers[id]?.basePackage).find(
+      Boolean,
+    );
     if (!basePackage) {
       throw new Error(
-        `${SAMPLE_PORT_FAKE_ID}: requires '${QUARKUS_CLI_BOOTSTRAP_ID}' to have run first; basePackage not in manifest`,
+        `${SAMPLE_PORT_FAKE_ID}: requires a walking-skeleton bootstrap (one of ${BOOTSTRAP_IDS.join(', ')}) to have run first; basePackage not in manifest`,
       );
     }
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
