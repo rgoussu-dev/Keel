@@ -114,7 +114,7 @@ not a restatement of the changes.
 
 ## 5. Dev workflow
 
-Requirements: Node 20+, pnpm 9+.
+Requirements: Node 22+, pnpm 9+.
 
 ```sh
 pnpm install
@@ -233,7 +233,7 @@ would ship as separate packages implementing the same port.
 ## 9. CI and release
 
 - `.github/workflows/ci.yml` runs on PRs and pushes to `main` — lint,
-  typecheck, test, build across Node 20 and 22.
+  typecheck, test, build across Node 22 and 24.
 - `.github/workflows/release.yml` runs on `v*` tag push — verifies the tag
   matches `package.json`, reruns verification, publishes to npm with
   provenance, creates a GitHub Release. Dist-tag is derived from the

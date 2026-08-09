@@ -23,6 +23,10 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 - **CLI output ordering.** The planned-changes listing now prints
   after deferred actions run (the plan is part of the command's
   result). Dry-run output is unchanged.
+- **Node 20 support dropped** (`engines.node` is now `>=22`). Node 20
+  reached end-of-life in April 2026, and the enforced-dependency-rule
+  tooling follows the node.js release cycle; CI now verifies on
+  Node 22 and 24.
 - The composition layer's deferred side effect is renamed `Action` →
   `DeferredAction` to keep it distinct from the kernel's dispatchable
   `Action` base; `InMemoryTree` is renamed `FsTree` and lives in

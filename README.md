@@ -141,7 +141,7 @@ The four-line summary; the binding version is in
 
 ## Development
 
-For working on keel itself. Requirements: Node 20+ and pnpm 9+.
+For working on keel itself. Requirements: Node 22+ and pnpm 9+.
 
 ```sh
 pnpm install
