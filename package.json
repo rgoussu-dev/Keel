@@ -25,13 +25,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json -w",
-    "lint": "eslint src tests && prettier --check .",
+    "lint": "eslint src tests && prettier --check . && depcruise src",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "deps:check": "depcruise src"
   },
   "keywords": [
     "claude-code",
@@ -60,6 +61,7 @@
     "@types/ejs": "^3.1.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.10.0",
+    "dependency-cruiser": "^18.1.1",
     "eslint": "^9.16.0",
     "globals": "^15.14.0",
     "prettier": "^3.4.0",
