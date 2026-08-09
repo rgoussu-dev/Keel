@@ -1,0 +1,39 @@
+// Package domain is the contract face of the hexagon: the commands
+// and ports adapters are written against, plus the exported factories
+// that assemble the compiler-hidden core underneath internal/.
+// Deployment units and adapters import this package — never anything
+// below internal/domain/internal/.
+package domain
+
+import "<%= modulePath %>/internal/domain/internal/greet"
+
+// GreetCommand asks for a greeting addressed to Name.
+type GreetCommand struct {
+	Name string
+}
+
+// Greeter is the driving port for the greet use case. Primary
+// adapters depend on this interface, never on the implementation;
+// cross-cutting concerns stack as decorators around it at the
+// assembly point.
+type Greeter interface {
+	// Greet composes the greeting for the command's addressee.
+	// Returns ErrEmptyName when the name is blank.
+	Greet(cmd GreetCommand) (string, error)
+}
+
+// ErrEmptyName reports a greet command with nobody to address.
+var ErrEmptyName = greet.ErrEmptyName
+
+// NewGreeter assembles the greet use case and returns it behind its
+// driving port. Each cmd/ main wires it by hand — constructor
+// injection, no framework.
+func NewGreeter() Greeter {
+	return greeter{}
+}
+
+type greeter struct{}
+
+func (greeter) Greet(cmd GreetCommand) (string, error) {
+	return greet.Message(cmd.Name)
+}

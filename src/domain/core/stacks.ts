@@ -56,6 +56,18 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
+  'go-cli': {
+    id: 'go-cli',
+    description: 'Go CLI on the stdlib, hexagonal layout, no mediator object.',
+    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli'],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
+  'go-http': {
+    id: 'go-http',
+    description: 'Go HTTP service on stdlib net/http, hexagonal layout, no mediator object.',
+    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
 };
 
 /** Returns the stack registered under `id`, or null if absent. */

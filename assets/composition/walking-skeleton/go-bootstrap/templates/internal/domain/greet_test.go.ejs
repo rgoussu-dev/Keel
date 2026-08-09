@@ -1,0 +1,29 @@
+package domain_test
+
+import (
+	"errors"
+	"testing"
+
+	"<%= modulePath %>/internal/domain"
+)
+
+func TestGreetComposesTheGreeting(t *testing.T) {
+	greeter := domain.NewGreeter()
+
+	got, err := greeter.Greet(domain.GreetCommand{Name: "World"})
+	if err != nil {
+		t.Fatalf("Greet returned an unexpected error: %v", err)
+	}
+	if want := "Hello, World!"; got != want {
+		t.Fatalf("Greet = %q, want %q", got, want)
+	}
+}
+
+func TestGreetRejectsABlankName(t *testing.T) {
+	greeter := domain.NewGreeter()
+
+	_, err := greeter.Greet(domain.GreetCommand{Name: "   "})
+	if !errors.Is(err, domain.ErrEmptyName) {
+		t.Fatalf("Greet error = %v, want ErrEmptyName", err)
+	}
+}

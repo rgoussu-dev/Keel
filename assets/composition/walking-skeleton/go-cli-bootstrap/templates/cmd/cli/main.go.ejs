@@ -1,0 +1,17 @@
+// The cli deployment unit. Its main is the assembly point: it wires
+// the hexagon for the terminal with plain constructor injection and
+// contains no logic — construct adapters, hand ports over, run.
+package main
+
+import (
+	"os"
+
+	"<%= modulePath %>/internal/app/cli"
+	"<%= modulePath %>/internal/domain"
+)
+
+func main() {
+	greeter := domain.NewGreeter()
+	app := cli.New(greeter)
+	os.Exit(app.Run(os.Args[1:], os.Stdout, os.Stderr))
+}

@@ -21,6 +21,26 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `entrypoint` dimension as the CLI bootstrap under
   `framework.quarkus + arch.server-http` — the first proof that the
   entrypoint is selected by predicate, not hard-coded.
+- **Go walking skeleton with composable CLI and HTTP entrypoints.**
+  Two new stacks — `go-cli` and `go-http` — compose the existing
+  `vcs` + `walking-skeleton` verticals for Go, realizing the house Go
+  hexagonal reference: one module per service, `internal/domain` as
+  the contract face (commands, driving ports, exported factories)
+  over a compiler-hidden core in `internal/domain/internal/`, one
+  `cmd/` directory per deployment unit wired by hand in `main`, and
+  no mediator object — per the binding spec's settled Go stance.
+  Four new adapters: `walking-skeleton/go-bootstrap` (module shell,
+  domain, DIP-strict domain test, deferred `go mod tidy`; covers
+  `build-tool`), `walking-skeleton/go-cli-bootstrap` (flags →
+  command → port → exit code) and `walking-skeleton/go-http-bootstrap`
+  (`GET /greet` → command → port → JSON, domain errors as RFC 9457
+  problem documents) — both covering `entrypoint`, additive so a tag
+  set carrying `arch.cli` and `arch.server-http` ships both units —
+  and `walking-skeleton/go-port-fake` (the `Clock` port with its
+  canonical fake under `internal/infra/clockfake`; covers
+  `port-example`). The generated projects are stdlib-only and are
+  exercised end to end by a Go e2e suite (vet, test, build, run the
+  CLI, serve `/greet`).
 
 ### Changed
 

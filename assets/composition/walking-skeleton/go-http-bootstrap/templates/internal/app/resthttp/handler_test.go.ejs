@@ -1,0 +1,76 @@
+package resthttp_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"<%= modulePath %>/internal/app/resthttp"
+	"<%= modulePath %>/internal/domain"
+)
+
+// fakeGreeter is a hand-rolled fake of the driving port: it records
+// the dispatched command and replies with a canned outcome.
+type fakeGreeter struct {
+	got   domain.GreetCommand
+	reply string
+	err   error
+}
+
+func (f *fakeGreeter) Greet(cmd domain.GreetCommand) (string, error) {
+	f.got = cmd
+	return f.reply, f.err
+}
+
+func TestGreetMapsTheQueryToTheCommandAndRepliesJSON(t *testing.T) {
+	fake := &fakeGreeter{reply: "Hello, Ada!"}
+	server := httptest.NewServer(resthttp.NewHandler(fake))
+	defer server.Close()
+
+	res, err := http.Get(server.URL + "/greet?name=Ada")
+	if err != nil {
+		t.Fatalf("GET /greet failed: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", res.StatusCode, http.StatusOK)
+	}
+	if fake.got.Name != "Ada" {
+		t.Fatalf("dispatched name = %q, want %q", fake.got.Name, "Ada")
+	}
+	var body resthttp.GreetingResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decoding the response failed: %v", err)
+	}
+	if body.Message != "Hello, Ada!" {
+		t.Fatalf("message = %q, want %q", body.Message, "Hello, Ada!")
+	}
+}
+
+func TestGreetMapsADomainRejectionToAProblemDocument(t *testing.T) {
+	fake := &fakeGreeter{err: domain.ErrEmptyName}
+	server := httptest.NewServer(resthttp.NewHandler(fake))
+	defer server.Close()
+
+	res, err := http.Get(server.URL + "/greet?name=")
+	if err != nil {
+		t.Fatalf("GET /greet failed: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", res.StatusCode, http.StatusBadRequest)
+	}
+	if ct := res.Header.Get("Content-Type"); ct != "application/problem+json" {
+		t.Fatalf("Content-Type = %q, want %q", ct, "application/problem+json")
+	}
+	var problem resthttp.Problem
+	if err := json.NewDecoder(res.Body).Decode(&problem); err != nil {
+		t.Fatalf("decoding the problem document failed: %v", err)
+	}
+	if problem.Status != http.StatusBadRequest || problem.Detail == "" {
+		t.Fatalf("problem = %+v, want status 400 with a detail", problem)
+	}
+}
