@@ -113,6 +113,59 @@ describe('keel.new-project (keel new)', () => {
     });
   });
 
+  it('bootstraps a Go CLI project end-to-end', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/go-bootstrap']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          answers: {
+            'walking-skeleton/go-bootstrap': {
+              modulePath: 'github.com/acme/shipper',
+              projectName: 'shipper',
+            },
+            'vcs/git-init': { remote: '', defaultBranch: 'main' },
+          },
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.subject).toBe('go-cli');
+    expect(report.committed).toBe(true);
+
+    // The Go reference tree landed on disk: assembly point, contract
+    // face, hidden core, primary adapter, port fake.
+    for (const p of [
+      'go.mod',
+      'cmd/cli/main.go',
+      'internal/domain/greet.go',
+      'internal/domain/internal/greet/greet.go',
+      'internal/app/cli/app.go',
+      'internal/infra/clockfake/clock.go',
+      'AGENTS.md',
+    ]) {
+      expect(await fs.pathExists(path.join(cwd, p)), `missing ${p}`).toBe(true);
+    }
+
+    // Action ran: git repo exists on main.
+    expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(true);
+
+    // Manifest was persisted with the stack's tags + answers.
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest).not.toBeNull();
+    expect(manifest!.tags).toEqual(
+      ['arch.cli', 'arch.hexagonal', 'lang.go', 'pkg.go-modules'].sort(),
+    );
+    expect(manifest!.answers['walking-skeleton/go-bootstrap']).toEqual({
+      modulePath: 'github.com/acme/shipper',
+      projectName: 'shipper',
+    });
+  });
+
   it('writes nothing under --dry-run', async () => {
     const mediator = installMediator();
     const report = expectOk(

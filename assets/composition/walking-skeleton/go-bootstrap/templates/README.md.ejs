@@ -1,0 +1,36 @@
+# <%= projectName %>
+
+Go walking skeleton scaffolded by keel — hexagonal, one module, no
+mediator object: commands are structs, driving ports are per-use-case
+interfaces, and each `cmd/` main is the assembly point.
+
+## Layout
+
+```
+cmd/            — one directory per deployment unit; each main.go
+                  wires the hexagon by hand (constructor injection)
+internal/
+  domain/       — the contract face: commands, ports, and the
+                  exported factories returning driving ports
+    internal/   — the compiler-hidden core: entities and domain
+                  services, unimportable from outside the domain
+                  subtree
+  app/          — primary adapters: transport → command → port →
+                  transport; zero business logic
+  infra/        — secondary adapters, one directory per technology;
+                  each port's canonical fake lives here too
+```
+
+Cross-cutting concerns (logging, metrics, tx) wrap the driving ports
+as decorator functions applied at the assembly point.
+
+## Test
+
+```sh
+go test ./...
+```
+
+## Deployment units
+
+Each `cmd/` directory is one deployment unit; its `main.go` import
+list reads like the ops runbook.
