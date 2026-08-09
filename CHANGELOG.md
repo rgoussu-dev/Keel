@@ -44,6 +44,9 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `application/cli/executable`. No import cycles anywhere.
 - Per-layer `README.md` + `AGENTS.md` documenting each layer's
   purpose and local conventions.
+- The root contributor guide migrated from `CLAUDE.md` to `AGENTS.md`
+  (the open agent-instructions convention); `CLAUDE.md` remains as a
+  one-line `@AGENTS.md` import so Claude Code keeps loading it.
 - Typecheck (`pnpm typecheck`) now covers `tests/` as well as `src/`.
 
 ### Removed
