@@ -8,7 +8,7 @@
  * physically live and what `.ejs` means.
  */
 
-import type { ContributionFile } from '../composition.js';
+import type { ContributionFile } from '../files.js';
 
 /** Renders template trees and reads canonical assets. */
 export interface TemplateSource {

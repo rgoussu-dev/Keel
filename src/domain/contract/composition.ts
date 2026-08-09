@@ -11,27 +11,13 @@
  * implement the port interfaces in `./ports/`.
  */
 
+import type { ContributionFile } from './files.js';
+import type { Tag } from './tags.js';
 import type { Logger } from './ports/logger.js';
 import type { ProcessRunner } from './ports/process-runner.js';
 import type { TemplateSource } from './ports/template-source.js';
 import type { Tree } from './ports/tree.js';
 import type { ManifestV2 } from './manifest.js';
-
-/**
- * A capability tag — a flat string with hierarchical-dot naming
- * (`lang.java`, `framework.quarkus`, `runtime.jvm.graalvm-native`).
- *
- * Tags are facts about the project, captured in the manifest at
- * install time and grown by adapters that promote new capabilities
- * via `Contribution.tagsAdd`.
- *
- * No structured schema is enforced; readability comes from naming
- * discipline. See the keel design doc for the canonical namespaces
- * (`lang.*`, `runtime.*`, `pkg.*`, `framework.*`, `arch.*`,
- * `deploy.*`, `orchestrator.*`, `cloud.*`, `iac.*`, `ci.*`,
- * `vertical.*`).
- */
-export type Tag = string;
 
 /**
  * Predicate over the tag set. An adapter is selected for a given
@@ -113,13 +99,6 @@ export interface Contribution {
    * place where dry-run handling is uniform.
    */
   readonly actions?: readonly DeferredAction[];
-}
-
-/** A whole-file write contribution. */
-export interface ContributionFile {
-  readonly path: string;
-  readonly content: Buffer | string;
-  readonly mode?: number;
 }
 
 /** A patch against an existing file. */
@@ -231,4 +210,6 @@ export interface Vertical {
  * vocabulary from one module.
  */
 export type { Tree };
+export type { Tag } from './tags.js';
+export type { ContributionFile } from './files.js';
 export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';
