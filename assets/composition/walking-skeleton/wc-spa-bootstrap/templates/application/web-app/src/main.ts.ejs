@@ -1,0 +1,30 @@
+/**
+ * The assembly point — the only place that knows the whole graph.
+ * Construct driven adapters, call the domain factories (decorate
+ * them here for cross-cutting concerns), register the context
+ * provider, then define the elements: provider first, definitions
+ * last, because definitions upgrade parsed markup and fire
+ * `connectedCallback` synchronously.
+ */
+
+import { createGreet, createGreetingStore } from '@<%= npmScope %>/domain-core';
+import { type Context, ContextRequestEvent } from './context';
+import { greetContext, greetingsContext } from './context-keys';
+import { GreetingView } from './components/greeting-view';
+
+const greetings = createGreetingStore();
+const greet = createGreet(greetings);
+
+const ports = new Map<Context<unknown>, unknown>([
+  [greetContext, greet],
+  [greetingsContext, greetings],
+]);
+
+document.addEventListener('context-request', (event) => {
+  const request = event as ContextRequestEvent<unknown>;
+  if (!ports.has(request.context)) return;
+  request.stopPropagation();
+  request.callback(ports.get(request.context));
+});
+
+customElements.define('<%= npmScope %>-greeting', GreetingView);

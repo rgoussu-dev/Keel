@@ -1,0 +1,16 @@
+{
+  "name": "@<%= npmScope %>/web-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@<%= npmScope %>/domain-api": "*",
+    "@<%= npmScope %>/domain-core": "*"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,56 @@
+# <%= projectName %>
+
+Web-components SPA walking skeleton scaffolded by keel — hexagonal, framework-free:
+the browser and the DOM API are the framework.
+
+## Layout
+
+```
+domain/
+  domain-api/    — ports, commands, read models; zero deps, compiles
+                   without the DOM lib ("the domain never touches the
+                   browser" is a tsc error, not a convention)
+  domain-core/   — services and stores; its `exports` map exposes only
+                   factory entry points, so deep imports fail at
+                   module resolution
+application/
+  web-app/       — the deployment unit: index.html + main.ts (the
+                   assembly point) + port-bound custom elements
+infrastructure/  — driven adapters wrapping browser capabilities
+                   (clock in `commons`; gateway/storage as they appear)
+```
+
+The walls are held by the workspace itself: package dependencies point
+inward only, and each package's `tsconfig` sets its own `lib`.
+
+## Wiring
+
+No mediator. Each use case is a driving port delivered to elements over
+the [WCCG Context protocol](https://github.com/webcomponents-cc/community-protocols/blob/main/proposals/context.md):
+`main.ts` constructs adapters and domain factories, registers one
+`context-request` listener, then defines the elements — provider first,
+definitions last. Cross-cutting concerns decorate the factories at the
+assembly point.
+
+## Run
+
+```sh
+npm run dev        # Vite dev server for application/web-app
+```
+
+## Test
+
+```sh
+npm test           # domain + fake contract tests, in Node, no DOM
+npm run typecheck  # per-package tsc — enforces the lib walls
+```
+
+Components are tested in a real browser against the domain's in-memory
+fakes; add a Vitest browser-mode setup to `application/web-app` when
+the first component with real logic appears.
+
+## Build
+
+```sh
+npm run build      # application/web-app/dist — static files, ready to serve
+```

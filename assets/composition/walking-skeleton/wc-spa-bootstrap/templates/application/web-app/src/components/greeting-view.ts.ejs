@@ -1,0 +1,61 @@
+/**
+ * Port-bound custom element for the greet use case — a driving
+ * adapter's part: DOM events in, commands out. Ports arrive over the
+ * Context protocol; state arrives by subscribing to the read model;
+ * rendering clones the template once and patches only what changed.
+ */
+
+import type { Greet, GreetingReadModel, Unsubscribe } from '@<%= npmScope %>/domain-api';
+import { ContextRequestEvent } from '../context';
+import { greetContext, greetingsContext } from '../context-keys';
+
+const template = document.createElement('template');
+template.innerHTML = `
+  <form>
+    <label>Name <input name="name" autocomplete="off" /></label>
+    <button type="submit">Greet</button>
+  </form>
+  <output aria-live="polite"></output>
+`;
+
+export class GreetingView extends HTMLElement {
+  #root = this.attachShadow({ mode: 'open' });
+  #greet?: Greet;
+  #greetings?: GreetingReadModel;
+  #unsubscribe?: Unsubscribe;
+
+  connectedCallback(): void {
+    this.dispatchEvent(new ContextRequestEvent(greetContext, (port) => (this.#greet = port)));
+    this.dispatchEvent(
+      new ContextRequestEvent(greetingsContext, (readModel) => (this.#greetings = readModel)),
+    );
+    const greet = this.#greet;
+    const greetings = this.#greetings;
+    if (!greet || !greetings) {
+      throw new Error('<<%= npmScope %>-greeting>: no context provider answered');
+    }
+
+    this.#root.append(template.content.cloneNode(true));
+    const output = this.#root.querySelector('output');
+    const form = this.#root.querySelector('form');
+    if (!output || !form) throw new Error('<<%= npmScope %>-greeting>: template is missing nodes');
+
+    const render = (message: string): void => {
+      output.textContent = message;
+    };
+    const current = greetings.current();
+    if (current) render(current.message);
+    this.#unsubscribe = greetings.subscribe((greeting) => render(greeting.message));
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      greet.execute({ name: String(data.get('name') ?? '') });
+    });
+  }
+
+  disconnectedCallback(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
+  }
+}

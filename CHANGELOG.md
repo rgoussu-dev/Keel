@@ -41,6 +41,25 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `port-example`). The generated projects are stdlib-only and are
   exercised end to end by a Go e2e suite (vet, test, build, run the
   CLI, serve `/greet`).
+- **`web-components` stack** (`keel new --stack=web-components`) —
+  the walking skeleton's frontend realization, mirroring the house
+  hexagonal reference for the browser: a framework-free
+  web-components SPA as a TypeScript npm workspace. The
+  `walking-skeleton/wc-spa-bootstrap` adapter emits
+  `domain/domain-api` (ports, commands, read models — compiled with
+  `"lib": ["ES2022"]`, so touching the DOM is a tsc error),
+  `domain/domain-core` (an `exports` map exposing only factory entry
+  points, so deep imports fail at module resolution), and an
+  `application/web-app` Vite deployment unit whose `main.ts` is the
+  assembly point — ports delivered to custom elements over the WCCG
+  Context protocol, no mediator, cross-cutting via factory
+  decoration, per binding spec §2. `walking-skeleton/wc-sample-port-fake`
+  adds the sample `Clock` port with real (`systemClock`) and fake
+  (`createFakeClock`) adapters side by side in
+  `infrastructure/commons`, plus a contract test;
+  `walking-skeleton/npm-install` covers the `build-tool` dimension
+  under `pkg.npm` with a deferred `npm install`, the npm counterpart
+  of `gradle-wrapper`.
 
 ### Changed
 
