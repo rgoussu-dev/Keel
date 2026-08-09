@@ -6,6 +6,46 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **keel now dogfoods its own binding spec.** The source tree is
+  trisected into `domain/` (kernel ← contract ← core), `application/`
+  (`cli/contract` interface adapter + `cli/executable` composition
+  root), and `infrastructure/` (one directory per port). Business
+  operations dispatch as commands (`keel.new-project`,
+  `keel.add-vertical`) through a `RegistryMediator` over handlers that
+  self-declare via `supports()`; expected failures return
+  `Result`-wrapped `DomainError`s that the CLI maps to stderr + exit
+  code 1. All technology (fs, EJS, inquirer, chalk, `spawnSync`) sits
+  behind ports — `Tree`, `Prompt`, `Logger`, `Clock`, `ManifestStore`,
+  `TemplateSource`, `ProcessRunner` — each shipping a canonical
+  in-memory fake beside its real adapter.
+- **CLI output ordering.** The planned-changes listing now prints
+  after deferred actions run (the plan is part of the command's
+  result). Dry-run output is unchanged.
+- The composition layer's deferred side effect is renamed `Action` →
+  `DeferredAction` to keep it distinct from the kernel's dispatchable
+  `Action` base; `InMemoryTree` is renamed `FsTree` and lives in
+  `infrastructure/tree` (it stages in memory but reads/commits the
+  real filesystem).
+
+### Added
+
+- **The dependency rule is now enforced.** dependency-cruiser runs in
+  `pnpm lint` (and CI): the kernel imports nothing, the contract sees
+  only the kernel, core never imports outward, infrastructure sees
+  only kernel+contract and adapters never import each other, the CLI
+  interface adapter can't touch core or infrastructure, and the
+  composition-root exception is pinned to
+  `application/cli/executable`. No import cycles anywhere.
+- Per-layer `README.md` + `AGENTS.md` documenting each layer's
+  purpose and local conventions.
+- Typecheck (`pnpm typecheck`) now covers `tests/` as well as `src/`.
+
+### Removed
+
+- The dead `util/hash` module (no importers).
+
 ## [0.4.0-alpha] — 2026-06-10
 
 ### Added
