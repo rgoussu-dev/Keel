@@ -179,7 +179,7 @@ keel dogfoods its own binding spec: hexagonal trisection with the
 dependency rule enforced by dependency-cruiser in `pnpm lint`.
 
 Conventions for contributing to keel itself are in the root
-[`CLAUDE.md`](./CLAUDE.md).
+[`AGENTS.md`](./AGENTS.md) (`CLAUDE.md` is a pointer to it).
 
 ---
 
