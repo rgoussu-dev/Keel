@@ -33,6 +33,12 @@ import { expectOk, installMediator } from '../support/factory.js';
 
 const E2E_TIMEOUT_MS = 5 * 60 * 1000;
 
+/**
+ * Windows will only execute binaries carrying the .exe extension, so
+ * both the -o target and the spawned path need the suffix there.
+ */
+const EXE = process.platform === 'win32' ? '.exe' : '';
+
 const stubActions =
   (stubbed: ReadonlySet<string>) =>
   (inputs: RunActionsInputs): Promise<void> => {
@@ -124,16 +130,16 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
 
       goRun(['vet', './...']);
       goRun(['test', './...']);
-      goRun(['build', '-o', 'bin/skel', './cmd/cli']);
+      goRun(['build', '-o', `bin/skel${EXE}`, './cmd/cli']);
 
-      const run = spawnSync(path.join(cwd, 'bin', 'skel'), ['--name', 'E2E'], {
+      const run = spawnSync(path.join(cwd, 'bin', `skel${EXE}`), ['--name', 'E2E'], {
         cwd,
         encoding: 'utf8',
       });
       expect(run.status).toBe(0);
       expect(run.stdout).toBe('Hello, E2E!\n');
 
-      const rejected = spawnSync(path.join(cwd, 'bin', 'skel'), ['--name', '  '], {
+      const rejected = spawnSync(path.join(cwd, 'bin', `skel${EXE}`), ['--name', '  '], {
         cwd,
         encoding: 'utf8',
       });
@@ -149,11 +155,11 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
       await generate('go-http', 'skel');
 
       goRun(['test', './...']);
-      goRun(['build', '-o', 'bin/skel-http', './cmd/http']);
+      goRun(['build', '-o', `bin/skel-http${EXE}`, './cmd/http']);
 
       // Boot the unit on an OS-assigned port and read the bound
       // address from its startup log.
-      const server = spawn(path.join(cwd, 'bin', 'skel-http'), [], {
+      const server = spawn(path.join(cwd, 'bin', `skel-http${EXE}`), [], {
         cwd,
         env: { ...process.env, PORT: '0' },
       });
@@ -163,20 +169,24 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
             () => reject(new Error('server never announced its port')),
             15_000,
           );
+          const settle = (outcome: () => void): void => {
+            clearTimeout(timer);
+            outcome();
+          };
           let buffered = '';
           const sniff = (chunk: Buffer): void => {
             buffered += chunk.toString();
             const match = /listening on .*:(\d+)/.exec(buffered);
             if (match?.[1]) {
-              clearTimeout(timer);
-              resolve(match[1]);
+              const port = match[1];
+              settle(() => resolve(port));
             }
           };
           server.stdout.on('data', sniff);
           server.stderr.on('data', sniff);
-          server.on('error', reject);
+          server.on('error', (err) => settle(() => reject(err)));
           server.on('exit', (code) =>
-            reject(new Error(`server exited early (${code}): ${buffered}`)),
+            settle(() => reject(new Error(`server exited early (${code}): ${buffered}`))),
           );
         });
 
