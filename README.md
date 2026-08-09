@@ -99,7 +99,7 @@ tags + verticals — pick `quarkus-cli` and the engine seeds
 `lang.java`, `framework.quarkus`, `pkg.gradle`, `arch.cli`,
 `arch.hexagonal`, then composes the `vcs` and `walking-skeleton`
 verticals. Adding a stack is a couple of lines in
-`src/composition/stacks.ts`.
+`src/domain/core/stacks.ts`.
 
 ---
 
@@ -157,24 +157,26 @@ Repository layout:
 
 ```
 src/
-  cli/                    # commander entry points (`new`, `add`)
-  composition/            # the engine: predicates, resolver, answers,
-                          # apply, install, render, actions, stacks,
-                          # types, util
-  composition/adapters/   # git-init, quarkus-cli-bootstrap,
-                          # sample-port-fake, gradle-wrapper,
-                          # quarkus-cli-native
-  composition/verticals/  # vcs, walking-skeleton, distribution,
-                          # index (registry)
-  engine/                 # in-memory Tree (used by composition)
-  installer/              # new.ts, add.ts
-  manifest/               # schema-v2.ts, store-v2.ts
-  util/                   # log, hash, paths
+  domain/
+    kernel/               # Command/Query, Result, Handler, Mediator
+    contract/             # commands, composition vocabulary,
+                          # manifest schema, ports/
+    core/                 # engine + composition adapters/verticals +
+                          # handlers + RegistryMediator
+  application/
+    cli/                  # contract/ (commander → mediator) +
+                          # executable/ (composition root)
+  infrastructure/         # one directory per port: real adapter +
+                          # canonical fake (tree, prompt, manifest,
+                          # template, process, commons)
 assets/
   composition/            # adapter template trees (ejs)
-tests/
-  composition/            # vitest (Scenario + Factory + fakes)
+tests/                    # vitest (Scenario + Factory + fakes),
+                          # mirrors src/; support/factory.ts
 ```
+
+keel dogfoods its own binding spec: hexagonal trisection with the
+dependency rule enforced by dependency-cruiser in `pnpm lint`.
 
 Conventions for contributing to keel itself are in the root
 [`CLAUDE.md`](./CLAUDE.md).

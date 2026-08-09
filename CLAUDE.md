@@ -148,36 +148,54 @@ trying the CLI locally.
 
 ## 6. Repository layout
 
+keel is trisected per its own binding spec (§1); every layer directory
+carries a `README.md` + `AGENTS.md` with its local conventions.
+
 ```
 src/
-  cli/                    # commander entry points (`new`, `add`)
-  composition/            # the engine: predicates, resolver, answers,
-                          # apply, install, render, actions, stacks,
-                          # types, util
-  composition/adapters/   # git-init, quarkus-cli-bootstrap,
-                          # sample-port-fake, gradle-wrapper,
-                          # quarkus-cli-native
-  composition/verticals/  # vcs, walking-skeleton, distribution,
-                          # index (registry)
-  engine/                 # in-memory Tree (used by composition)
-  installer/              # new.ts, add.ts
-  manifest/               # schema-v2.ts, store-v2.ts
-  util/                   # log, hash, paths
+  domain/
+    kernel/               # Action/Command/Query, Result, Handler,
+                          # Mediator — depends on nothing
+    contract/             # commands + InstallReport, composition
+                          # vocabulary (Adapter, Vertical, …),
+                          # manifest types + zod schemas, ports/
+                          # (Tree, Prompt, Logger, Clock,
+                          # ManifestStore, TemplateSource,
+                          # ProcessRunner)
+    core/                 # the engine (predicate, resolver, answers,
+                          # apply, install, actions), composition
+                          # adapters/ + verticals/ + stacks,
+                          # handlers/ (new-project, add-vertical),
+                          # RegistryMediator
+  application/
+    cli/
+      contract/           # commander → commands → mediator → Result
+                          # rendered; zero business logic
+      executable/         # composition root: wires infra adapters +
+                          # handlers + mediator; no logic
+  infrastructure/         # one directory per port, real adapter +
+    tree/ prompt/         # canonical fake side by side
+    manifest/ template/
+    process/ commons/
 assets/
   composition/            # adapter template trees (ejs), one
                           # directory per `<vertical>/<adapter>/`
   project/                # binding spec (CLAUDE.md) — source of truth
                           # for the universal engineering conventions
-tests/                    # vitest; Scenario + Factory + fakes
-  composition/            # mirrors src/composition/ test-for-test
-bin/keel.js               # npm bin entry
+tests/                    # vitest; mirrors src/ (domain/, e2e/,
+  support/factory.ts      # infrastructure/); the shared test Factory
+bin/keel.js               # npm bin entry → dist/application/cli/executable
+.dependency-cruiser.cjs   # the dependency rule, enforced in pnpm lint
 ```
 
-The composition layer is the port. `Tree` is its substrate (the
-in-memory filesystem adapters write into); `engine/tree.ts` is the
-default adapter. Alternative Tree adapters (e.g. backed by a Yjs CRDT
-or a remote VFS) would ship as separate packages; they do **not** go
-under `src/engine/`.
+Naming note: a _composition adapter_ (git-init, quarkus-cli-bootstrap,
+…) is keel **domain content** — a unit contributing files to a
+scaffolded project — not a hexagonal adapter of keel itself; those
+implement `domain/contract/ports/` and live under
+`src/infrastructure/`. The `Tree` port is the composition substrate;
+`infrastructure/tree/fs-tree.ts` is its default adapter, and
+alternative substrates (e.g. backed by a Yjs CRDT or a remote VFS)
+would ship as separate packages implementing the same port.
 
 ---
 
