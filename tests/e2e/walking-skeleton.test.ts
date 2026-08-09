@@ -212,7 +212,7 @@ describe.skipIf(skipE2E)('walking-skeleton e2e', () => {
       //    expected greeting on stdout.
       const runJar = path.join(
         cwd,
-        'infrastructure',
+        'application',
         'cli',
         'build',
         'quarkus-app',

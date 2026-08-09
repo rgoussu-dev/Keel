@@ -1,7 +1,8 @@
 package <%= basePackage %>.core.greet;
 
-import <%= basePackage %>.contract.Command;
-import <%= basePackage %>.contract.Handler;
+import <%= basePackage %>.contract.greet.GreetCommand;
+import <%= basePackage %>.kernel.Command;
+import <%= basePackage %>.kernel.Handler;
 
 public final class GreetHandler implements Handler<GreetCommand, String> {
 

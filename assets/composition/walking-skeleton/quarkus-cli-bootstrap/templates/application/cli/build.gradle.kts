@@ -7,6 +7,7 @@ dependencies {
     implementation(enforcedPlatform("io.quarkus.platform:quarkus-bom:3.34.6"))
     implementation("io.quarkus:quarkus-picocli")
 
+    implementation(project(":domain:kernel"))
     implementation(project(":domain:contract"))
     implementation(project(":domain:core"))
 
