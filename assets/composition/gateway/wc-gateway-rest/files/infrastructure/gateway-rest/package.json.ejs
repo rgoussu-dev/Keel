@@ -1,0 +1,17 @@
+{
+  "name": "@<%= npmScope %>/gateway-rest",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fake": "./src/fake.ts"
+  },
+  "dependencies": {
+    "@<%= npmScope %>/domain-api": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

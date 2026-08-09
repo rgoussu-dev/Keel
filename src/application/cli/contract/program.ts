@@ -12,8 +12,11 @@ import type { Result } from '../../../domain/kernel/result.js';
 import type { Logger } from '../../../domain/contract/ports/logger.js';
 import {
   addVerticalCommand,
+  linkPeerCommand,
   newProjectCommand,
   type InstallReport,
+  type LinkReport,
+  type RepoLayout,
 } from '../../../domain/contract/commands.js';
 
 /** What the composition root wires into the CLI adapter. */
@@ -47,6 +50,10 @@ export function buildProgram(deps: CliDeps): Command {
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
     .option(
+      '--layout <layout>',
+      "repository layout for composite stacks: 'monorepo' or 'polyrepo' (prompted when omitted)",
+    )
+    .option(
       '--set <kv...>',
       'preset an answer as adapterId:questionId=value (repeatable)',
       [] as string[],
@@ -56,6 +63,7 @@ export function buildProgram(deps: CliDeps): Command {
         stack: string;
         yes: boolean;
         dryRun: boolean;
+        layout?: string;
         set: string[];
       }): Promise<void> => {
         const dir = cwd();
@@ -66,6 +74,7 @@ export function buildProgram(deps: CliDeps): Command {
             answers: parseSetAnswers(opts.set),
             interactive: !opts.yes,
             dryRun: opts.dryRun,
+            ...(opts.layout !== undefined ? { layout: opts.layout as RepoLayout } : {}),
           }),
         );
         const report = unwrap(result);
@@ -108,7 +117,31 @@ export function buildProgram(deps: CliDeps): Command {
       },
     );
 
+  program
+    .command('link <path>')
+    .description(
+      'Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.',
+    )
+    .action(async (ref: string): Promise<void> => {
+      const result = await deps.mediator.dispatch(linkPeerCommand({ cwd: cwd(), ref }));
+      const report = unwrapLink(result);
+      deps.logger.info(`peer: ${report.ref}`);
+      deps.logger.info(`  → projects here: ${formatTags(report.projectedHere)}`);
+      deps.logger.info(`  ← projects there: ${formatTags(report.projectedThere)}`);
+      deps.logger.success('keel link: peers recorded in both manifests');
+    });
+
   return program;
+}
+
+function formatTags(tags: readonly string[]): string {
+  return tags.length > 0 ? tags.join(', ') : '(none)';
+}
+
+/** Maps a link result's `Err` to the CLI's thrown-error transport. */
+function unwrapLink(result: Result<LinkReport>): LinkReport {
+  if (!result.ok) throw new Error(result.error.message);
+  return result.value;
 }
 
 /**

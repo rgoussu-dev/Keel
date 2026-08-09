@@ -15,6 +15,7 @@ import { DomainError } from '../../src/domain/kernel/result.js';
 import { RegistryMediator } from '../../src/domain/core/mediator.js';
 import { NewProjectHandler } from '../../src/domain/core/handlers/new-project.js';
 import { AddVerticalHandler } from '../../src/domain/core/handlers/add-vertical.js';
+import { LinkPeerHandler } from '../../src/domain/core/handlers/link-peer.js';
 import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { FakeClock } from '../../src/infrastructure/commons/fake-clock.js';
@@ -41,7 +42,11 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     keelVersion: '0.4.0-alpha',
     ...overrides,
   };
-  return new RegistryMediator([new NewProjectHandler(deps), new AddVerticalHandler(deps)]);
+  return new RegistryMediator([
+    new NewProjectHandler(deps),
+    new AddVerticalHandler(deps),
+    new LinkPeerHandler(deps),
+  ]);
 }
 
 /**

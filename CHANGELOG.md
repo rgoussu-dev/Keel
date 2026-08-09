@@ -8,6 +8,40 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Fullstack composition: peer tags, composite stacks, and the
+  `fullstack` preset.** Stacks now declare the peer tags they project
+  onto sibling services (`quarkus-rest`/`go-http` → `peer.api.rest`,
+  `web-components` → `peer.ui.spa`); each project's manifest records
+  its own `projects` and its siblings' projections as `peers`, and
+  adapter resolution runs against tags ∪ peer tags — so cross-service
+  elements are ordinary predicate-selected adapters. A composite
+  stack declares `services` instead of scaffolding in place:
+  `keel new --stack=fullstack` scaffolds a `quarkus-rest` backend and
+  a `web-components` frontend as full keel projects (own tree, own
+  manifest each), under the user's choice of repository layout —
+  `--layout=monorepo` (default; `vcs` hoisted to the product root,
+  root README glue via the new `fullstack` vertical) or
+  `--layout=polyrepo` (a repository per service, no shared root);
+  prompted when interactive and unspecified.
+- **The `gateway` vertical — the cross-service seam.** Declares no
+  dimensions: its adapters fire purely on peer tags, so it installs
+  nothing without peers. `gateway/wc-gateway-rest` (on
+  `peer.api.rest`) gives the frontend the `GreetGateway` driven port,
+  an `infrastructure/gateway-rest` package (fetch adapter + canonical
+  fake on a `./fake` subpath so DOM-less test programs never resolve
+  `fetch`), a Vite dev proxy (`/api` → `localhost:8080`) with
+  `VITE_API_BASE_URL` for production, and rewrites the greet slice to
+  run end-to-end across services — outcome and offline fallback both
+  surfacing through the read model. `gateway/quarkus-cors` (on
+  `peer.ui.spa`) allows the Vite dev origin in the backend's
+  `application.properties`. Installed automatically for composite
+  services; brownfield via the new **`keel link <path>`** command,
+  which records two existing projects as peers of one another (both
+  manifests, refs relative, re-link refreshes) followed by
+  `keel add gateway` in each.
+
+### Added
+
 - **The `quarkus-rest` stack — the REST entrypoint.** `keel new
 --stack=quarkus-rest` scaffolds a Quarkus 3 REST service on Gradle
   in the binding-spec layout: the familiar `domain/kernel` /
