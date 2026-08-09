@@ -92,7 +92,10 @@ tokens; domain-blind by construction), and the sample `Clock` port
 with real + fake adapters in `infrastructure/commons` — installed
 and ready to `npm run dev`.
 
-Or a fullstack product — the two of them composed:
+Or a fullstack product — a backend and the SPA composed
+(`fullstack` pairs `quarkus-rest`, `fullstack-go` pairs `go-http`;
+both select the _same_ frontend gateway adapters, because the seam is
+driven by peer tags, not by the backend's language):
 
 ```sh
 mkdir my-product && cd my-product
@@ -109,8 +112,12 @@ projects `peer.api.rest`, the frontend `peer.ui.spa` — which is how
 the cross-service elements get selected: the frontend gains an
 `infrastructure/gateway-rest` package (fetch adapter + fake behind a
 `GreetGateway` driven port, Vite dev proxy to `localhost:8080`), and
-the backend gains the CORS config for the Vite dev origin. The greet
-slice runs end to end across both hexagons.
+the backend gains the CORS config for the Vite dev origin. The wire
+itself is pinned by an OpenAPI document the backend owns
+(`contract/greet.openapi.yaml`), the greet slice runs end to end
+across both hexagons, and monorepo products ship a `compose.yaml`
+with a Dockerfile beside each deployment unit
+(`docker compose up --build`).
 
 Brownfield — layer an additional vertical onto an existing keel
 project:
@@ -135,18 +142,18 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                                                                  |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `web-components`, `fullstack`. |
-| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                             |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                      |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                      |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                |
-| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                |
-| `keel add ... --yes`     | Non-interactive.                                                                                                                              |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                  |
+| Command                  | What it does                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `web-components`, `fullstack`, `fullstack-go`. |
+| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                             |
+| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                      |
+| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                      |
+| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                |
+| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                |
+| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                |
+| `keel add ... --yes`     | Non-interactive.                                                                                                                                              |
+| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                                |
+| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                                  |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.
@@ -223,12 +230,15 @@ Two more primitives compose services into **products**:
 - **`gateway`** — the cross-service seam. Declares no dimensions; its
   adapters fire purely on peer tags, so without peers it installs
   nothing. Today: a REST gateway package for the web-components
-  frontend (`peer.api.rest`) and a CORS accommodation for the Quarkus
-  REST backend (`peer.ui.spa`). Installed automatically for composite
+  frontend (`peer.api.rest`), CORS accommodations for the Quarkus and
+  Go HTTP backends (`peer.ui.spa`), and the seam's OpenAPI contract
+  emitted on the backend. Installed automatically for composite
   services; brownfield via `keel link` + `keel add gateway`.
 - **`fullstack`** — product-root glue for composite monorepos: the
-  product README (service map, run order) and root housekeeping.
-  Orchestrated by composite stacks, not user-addable.
+  product README (service map, run order), root housekeeping, and the
+  container story (`compose.yaml` + a Dockerfile beside each
+  deployment unit). Orchestrated by composite stacks, not
+  user-addable.
 - **`distribution`** — how the project ships. Today: native CLI
   binaries via GraalVM, cross-compiled in a GitHub Actions matrix
   (linux-amd64, linux-arm64, darwin-arm64) and uploaded to a GitHub

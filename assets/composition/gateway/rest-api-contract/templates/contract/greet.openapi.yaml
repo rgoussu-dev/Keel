@@ -1,0 +1,66 @@
+# The REST seam contract between this service and its SPA peer(s).
+# This document is the source of truth for the wire: the frontend's
+# gateway adapter (and its canonical fake) encode exactly this shape,
+# and the fullstack e2e suites verify a running backend honours it.
+openapi: 3.1.0
+info:
+  title: Greet API
+  version: 0.1.0
+  description: >-
+    The walking skeleton's end-to-end slice, seen from the wire. Owned
+    by the backend; consumed by every SPA peer's gateway adapter.
+servers:
+  - url: http://localhost:8080
+    description: Local development (the SPA's dev proxy targets this).
+paths:
+  /greet:
+    get:
+      summary: Greet a name
+      operationId: greet
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: >-
+            Name to greet. When absent, the backend defaults it to
+            "world"; when present but blank, the domain rejects it.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The greeting.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - greeting
+                properties:
+                  greeting:
+                    type: string
+                    examples:
+                      - Hello, world!
+        '400':
+          description: The name was present but blank.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    Problem:
+      description: RFC 9457 problem document.
+      type: object
+      required:
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string

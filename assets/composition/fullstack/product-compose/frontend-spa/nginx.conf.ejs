@@ -1,0 +1,15 @@
+# Serves the built SPA and proxies /api to the backend service —
+# the same convention the Vite dev proxy uses, so the bundle's
+# default VITE_API_BASE_URL (/api) works unchanged.
+server {
+  listen 80;
+  root /usr/share/nginx/html;
+
+  location /api/ {
+    proxy_pass http://<%= backendService %>:8080/;
+  }
+
+  location / {
+    try_files $uri /index.html;
+  }
+}

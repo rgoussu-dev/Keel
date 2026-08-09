@@ -1,0 +1,14 @@
+# The product, containerised: one image per deployment unit, built
+# from the Dockerfile beside it. `docker compose up --build` serves
+# the SPA on http://localhost:8081 with `/api` proxied to the backend.
+services:
+  <%= backend.path %>:
+    build: ./<%= backend.path %>
+    ports:
+      - '8080:8080'
+  <%= frontend.path %>:
+    build: ./<%= frontend.path %>
+    ports:
+      - '8081:80'
+    depends_on:
+      - <%= backend.path %>

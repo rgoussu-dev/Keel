@@ -138,6 +138,18 @@ describe('fullstack composite install (monorepo)', () => {
     expect(
       read('backend/application/rest/executable/src/main/resources/application.properties'),
     ).toContain('quarkus.http.cors.enabled=true');
+    expect(read('backend/contract/greet.openapi.yaml')).toContain('openapi: 3.1.0');
+  });
+
+  it('containerises the pair with a Quarkus backend image', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+
+    expect(read('compose.yaml')).toContain('build: ./backend');
+    expect(read('backend/Dockerfile')).toContain('FROM gradle:jdk21 AS build');
+    expect(read('frontend/Dockerfile')).toContain('FROM node:22-alpine AS build');
+    expect(read('frontend/nginx.conf')).toContain('proxy_pass http://backend:8080/');
   });
 
   it('prefixes report changes and action descriptions with the service path', async () => {
@@ -201,6 +213,7 @@ describe('fullstack composite install (polyrepo)', () => {
     expectOk(await mediator.dispatch(newFullstack({ layout: 'polyrepo' })));
 
     expect(read('README.md')).toBeNull();
+    expect(read('compose.yaml')).toBeNull();
     expect(await fsManifestStore.read(projectScopeRoot(cwd))).toBeNull();
 
     const gitRuns = ran.filter((a) => a.id === 'vcs/git-init');
