@@ -19,16 +19,20 @@
  */
 
 import path from 'node:path';
-import fs from 'fs-extra';
 import chalk from 'chalk';
-import { logger as defaultLogger, type Logger } from '../util/log.js';
-import { paths } from '../util/paths.js';
-import { InMemoryTree } from '../engine/tree.js';
+import { consoleLogger as defaultLogger } from '../infrastructure/commons/console-logger.js';
+import type { Logger } from '../domain/contract/ports/logger.js';
+import type { Prompt } from '../domain/contract/ports/prompt.js';
+import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
+import type { TemplateSource } from '../domain/contract/ports/template-source.js';
+import { FsTree } from '../infrastructure/tree/fs-tree.js';
+import { fsManifestStore } from '../infrastructure/manifest/fs-manifest-store.js';
+import { inquirerPrompt } from '../infrastructure/prompt/inquirer-prompt.js';
+import { ejsTemplateSource } from '../infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../composition/install.js';
 import { runActions, type RunActionsInputs } from '../composition/actions.js';
-import { writeManifestV2 } from '../manifest/store-v2.js';
-import { emptyManifestV2, MANIFEST_FILENAME } from '../domain/contract/manifest.js';
-import { cliPrompt, type Prompt } from '../composition/answers.js';
+import { emptyManifestV2, projectScopeRoot } from '../domain/contract/manifest.js';
 import { getStack, listStackIds } from '../composition/stacks.js';
 import type { DeferredAction, ManifestV2 } from '../domain/contract/composition.js';
 
@@ -43,6 +47,10 @@ export interface NewInputs {
   readonly dryRun: boolean;
   readonly logger?: Logger;
   readonly prompt?: Prompt;
+  /** Template source — injected so tests can supply a fake. */
+  readonly templates?: TemplateSource;
+  /** Process runner — injected so tests can stub external tools. */
+  readonly processes?: ProcessRunner;
   /** Time source — injected so tests can pin the timestamps. */
   readonly now?: () => string;
   /** keel version recorded into the manifest; defaults to `package.json` value. */
@@ -62,8 +70,8 @@ export async function newProject(inputs: NewInputs): Promise<void> {
     throw new Error(`unknown stack '${inputs.stack}'; available: ${listStackIds().join(', ')}`);
   }
 
-  const scopeRoot = paths.project(inputs.cwd);
-  if (await fs.pathExists(path.join(scopeRoot, MANIFEST_FILENAME))) {
+  const scopeRoot = projectScopeRoot(inputs.cwd);
+  if ((await fsManifestStore.read(scopeRoot)) !== null) {
     throw new Error(`project already initialised at ${scopeRoot} — 'keel new' is greenfield-only`);
   }
 
@@ -76,7 +84,9 @@ export async function newProject(inputs: NewInputs): Promise<void> {
     answers: inputs.answers ?? {},
   };
 
-  const tree = new InMemoryTree(inputs.cwd);
+  const templates = inputs.templates ?? ejsTemplateSource;
+  const processes = inputs.processes ?? spawnProcessRunner;
+  const tree = new FsTree(inputs.cwd);
   const collectedActions: DeferredAction[] = [];
 
   for (const vertical of stack.verticals) {
@@ -85,9 +95,11 @@ export async function newProject(inputs: NewInputs): Promise<void> {
       manifest,
       tree,
       mode: inputs.interactive ? 'interactive' : 'non-interactive',
-      prompt: inputs.prompt ?? cliPrompt,
+      prompt: inputs.prompt ?? inquirerPrompt,
       logger: log,
       cwd: inputs.cwd,
+      templates,
+      processes,
       now: () => now,
     });
     manifest = result.manifest;
@@ -108,12 +120,13 @@ export async function newProject(inputs: NewInputs): Promise<void> {
   // manifest paired with those files is the recoverable state — the
   // alternative leaves a populated workspace with no manifest, and
   // a re-run hits the existing-files conflict path with no breadcrumbs.
-  await writeManifestV2(scopeRoot, manifest);
+  await fsManifestStore.write(scopeRoot, manifest);
   const runner = inputs.runActions ?? runActions;
   await runner({
     actions: collectedActions,
     cwd: inputs.cwd,
     logger: log,
+    processes,
     dryRun: false,
   });
   log.success(`keel new ${stack.id}: ready in ${inputs.cwd}`);
@@ -121,7 +134,7 @@ export async function newProject(inputs: NewInputs): Promise<void> {
 
 function printPlan(
   stackId: string,
-  changes: ReturnType<InMemoryTree['changes']>,
+  changes: ReturnType<FsTree['changes']>,
   actions: readonly DeferredAction[],
   log: Logger,
 ): void {

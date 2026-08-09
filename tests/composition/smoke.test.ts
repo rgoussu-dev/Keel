@@ -8,9 +8,11 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../src/composition/install.js';
 import { emptyManifestV2 } from '../../src/domain/contract/manifest.js';
-import { InMemoryTree } from '../../src/engine/tree.js';
+import { FsTree } from '../../src/infrastructure/tree/fs-tree.js';
 import type { Prompt } from '../../src/composition/answers.js';
 import type { Vertical } from '../../src/domain/contract/composition.js';
 
@@ -104,7 +106,7 @@ afterEach(async () => {
 
 describe('installVertical end-to-end', () => {
   it('resolves, prompts for sticky answers, applies, updates manifest', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
@@ -117,6 +119,8 @@ describe('installVertical end-to-end', () => {
       prompt: scripted('darwin-arm64'),
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
       now: () => '2026-04-26T12:00:00Z',
     });
 
@@ -140,7 +144,7 @@ describe('installVertical end-to-end', () => {
   });
 
   it('reuses sticky answers from the manifest without prompting', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
@@ -156,6 +160,8 @@ describe('installVertical end-to-end', () => {
       prompt: failingPrompt,
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
       now: () => '2026-04-26T12:00:00Z',
     });
     expect(tree.read('.github/workflows/release.yml')?.toString()).toBe('targets: linux-amd64\n');
@@ -165,7 +171,7 @@ describe('installVertical end-to-end', () => {
   });
 
   it('hard-fails when a dimension is uncovered for the current tag set', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       // Missing ci.github-actions, so the release adapter is filtered out.
@@ -180,6 +186,8 @@ describe('installVertical end-to-end', () => {
         prompt: failingPrompt,
         logger: silent,
         cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toThrow(/release/);

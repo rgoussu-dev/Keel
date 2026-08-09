@@ -15,6 +15,8 @@ import {
 import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../src/composition/adapters/quarkus-cli-bootstrap.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../src/composition/apply.js';
+import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
+import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 
 const silent = {
   info: () => {},
@@ -42,6 +44,8 @@ describe('gradle-wrapper adapter', () => {
         manifest: emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
         logger: silent,
         cwd: '/tmp/dummy',
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
       },
     );
     const contribution = await gradleWrapperAdapter.contribute(ctx);

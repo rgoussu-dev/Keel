@@ -12,8 +12,8 @@ import fs from 'fs-extra';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProject } from '../../src/installer/new.js';
-import { readManifestV2 } from '../../src/manifest/store-v2.js';
-import { paths } from '../../src/util/paths.js';
+import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
+import { projectScopeRoot } from '../../src/domain/contract/manifest.js';
 import { runActions, type RunActionsInputs } from '../../src/composition/actions.js';
 import type { Prompt } from '../../src/composition/answers.js';
 
@@ -105,7 +105,7 @@ describe('newProject (keel new)', () => {
     expect(branch.stdout.trim()).toBe('main');
 
     // Manifest was persisted with the stack's tags + verticals + answers.
-    const manifest = await readManifestV2(paths.project(cwd));
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest).not.toBeNull();
     expect(manifest!.tags).toEqual(
       [
@@ -144,12 +144,14 @@ describe('newProject (keel new)', () => {
     });
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(false);
     expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
-    expect(await fs.pathExists(path.join(paths.project(cwd), '.keel-manifest.json'))).toBe(false);
+    expect(await fs.pathExists(path.join(projectScopeRoot(cwd), '.keel-manifest.json'))).toBe(
+      false,
+    );
   });
 
   it('refuses to run if a manifest already exists', async () => {
-    await fs.ensureDir(paths.project(cwd));
-    await fs.writeJson(path.join(paths.project(cwd), '.keel-manifest.json'), {
+    await fs.ensureDir(projectScopeRoot(cwd));
+    await fs.writeJson(path.join(projectScopeRoot(cwd), '.keel-manifest.json'), {
       version: 2,
       keelVersion: '0.4.0-alpha',
       installedAt: 'x',

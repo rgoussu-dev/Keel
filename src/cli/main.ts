@@ -3,7 +3,7 @@ import { newProject } from '../installer/new.js';
 import { addVertical } from '../installer/add.js';
 import { listStackIds } from '../composition/stacks.js';
 import { listVerticalIds } from '../composition/verticals/index.js';
-import { logger } from '../util/log.js';
+import { consoleLogger as logger } from '../infrastructure/commons/console-logger.js';
 
 /**
  * Entry point for the `keel` CLI. Wires commander to the two

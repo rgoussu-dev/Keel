@@ -6,6 +6,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
 import { mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -14,7 +16,7 @@ import { gitInitAdapter, GIT_INIT_VERTICAL } from '../../../src/composition/adap
 import { runActions } from '../../../src/composition/actions.js';
 import { installVertical } from '../../../src/composition/install.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { InMemoryTree } from '../../../src/engine/tree.js';
+import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
 import type { Prompt } from '../../../src/composition/answers.js';
 import type { Vertical } from '../../../src/domain/contract/composition.js';
 
@@ -46,7 +48,7 @@ const installAndRun = async (opts: {
   branch?: string;
   dryRun?: boolean;
 }): Promise<void> => {
-  const tree = new InMemoryTree(opts.cwd);
+  const tree = new FsTree(opts.cwd);
   const manifest = {
     ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
     answers: {
@@ -64,6 +66,8 @@ const installAndRun = async (opts: {
     prompt: noPrompt,
     logger: silent,
     cwd: opts.cwd,
+    templates: ejsTemplateSource,
+    processes: spawnProcessRunner,
     now: () => '2026-04-26T12:00:00Z',
   });
   await tree.commit();
@@ -71,6 +75,7 @@ const installAndRun = async (opts: {
     actions: result.applyResult.actions,
     cwd: opts.cwd,
     logger: silent,
+    processes: spawnProcessRunner,
     dryRun: opts.dryRun ?? false,
   });
 };

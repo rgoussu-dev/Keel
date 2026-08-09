@@ -9,11 +9,13 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../src/composition/install.js';
 import { walkingSkeletonVertical } from '../../../src/composition/verticals/walking-skeleton.js';
 import { ResolutionError } from '../../../src/composition/resolver.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { InMemoryTree } from '../../../src/engine/tree.js';
+import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
 import type { Prompt } from '../../../src/composition/answers.js';
 import type { InstallVerticalResult } from '../../../src/composition/install.js';
 
@@ -43,9 +45,9 @@ const baseTags = (...extra: string[]): string[] => [
 const installWith = async (
   tags: string[],
   answers?: Record<string, Record<string, string>>,
-): Promise<{ tree: InMemoryTree; cwd: string; result: InstallVerticalResult }> => {
+): Promise<{ tree: FsTree; cwd: string; result: InstallVerticalResult }> => {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ws-'));
-  const tree = new InMemoryTree(cwd);
+  const tree = new FsTree(cwd);
   const manifest = {
     ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
     tags,
@@ -59,6 +61,8 @@ const installWith = async (
     prompt: noPrompt,
     logger: silent,
     cwd,
+    templates: ejsTemplateSource,
+    processes: spawnProcessRunner,
     now: () => '2026-04-26T12:00:00Z',
   });
   return { tree, cwd, result };
@@ -202,7 +206,7 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
   it('hard-fails when pkg.gradle is absent (no adapter covers build-tool)', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ws-fail-gradle-'));
     cwds.push(cwd);
-    const tree = new InMemoryTree(cwd);
+    const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
@@ -216,6 +220,8 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
         prompt: noPrompt,
         logger: silent,
         cwd,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toBeInstanceOf(ResolutionError);
@@ -224,7 +230,7 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
   it('hard-fails when arch.cli is absent (no adapter covers entrypoint)', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ws-fail-'));
     cwds.push(cwd);
-    const tree = new InMemoryTree(cwd);
+    const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: baseTags('arch.server-http'),
@@ -238,6 +244,8 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
         prompt: noPrompt,
         logger: silent,
         cwd,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toBeInstanceOf(ResolutionError);

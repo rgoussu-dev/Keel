@@ -15,7 +15,11 @@ import {
 } from '../../../src/composition/adapters/claude-core.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../src/composition/apply.js';
-import { paths } from '../../../src/util/paths.js';
+import {
+  packagedAssetsRoot,
+  ejsTemplateSource,
+} from '../../../src/infrastructure/template/ejs-template-source.js';
+import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 
 const silent = {
   info: () => {},
@@ -42,6 +46,8 @@ describe('claude-core adapter', () => {
         manifest: emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
         logger: silent,
         cwd: '/tmp/dummy',
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
       },
     );
     const contribution = await claudeCoreAdapter.contribute(ctx);
@@ -51,7 +57,10 @@ describe('claude-core adapter', () => {
     const [file] = contribution.files ?? [];
     expect(file?.path).toBe('.claude/CLAUDE.md');
 
-    const expected = await fs.readFile(path.join(paths.asset('project'), 'CLAUDE.md'), 'utf8');
+    const expected = await fs.readFile(
+      path.join(path.join(packagedAssetsRoot, 'project'), 'CLAUDE.md'),
+      'utf8',
+    );
     expect(file?.content).toBe(expected);
   });
 });

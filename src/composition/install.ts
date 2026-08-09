@@ -34,7 +34,9 @@ import type {
   Tree,
   Vertical,
 } from '../domain/contract/composition.js';
-import type { Logger } from '../util/log.js';
+import type { Logger } from '../domain/contract/ports/logger.js';
+import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
+import type { TemplateSource } from '../domain/contract/ports/template-source.js';
 
 /** Inputs to `installVertical`. */
 export interface InstallVerticalInputs {
@@ -45,6 +47,8 @@ export interface InstallVerticalInputs {
   readonly prompt: Prompt;
   readonly logger: Logger;
   readonly cwd: string;
+  readonly templates: TemplateSource;
+  readonly processes: ProcessRunner;
   /** Time source — injected so tests can pin `installedAt`/`updatedAt`. */
   readonly now: () => string;
 }
@@ -77,6 +81,8 @@ export async function installVertical(
       manifest: running,
       logger: inputs.logger,
       cwd: inputs.cwd,
+      templates: inputs.templates,
+      processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
     applyContribution(adapter, contribution, inputs.tree);

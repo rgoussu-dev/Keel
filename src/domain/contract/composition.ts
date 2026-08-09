@@ -12,6 +12,8 @@
  */
 
 import type { Logger } from './ports/logger.js';
+import type { ProcessRunner } from './ports/process-runner.js';
+import type { TemplateSource } from './ports/template-source.js';
 import type { Tree } from './ports/tree.js';
 import type { ManifestV2 } from './manifest.js';
 
@@ -150,6 +152,8 @@ export interface DeferredAction {
 export interface DeferredActionEnv {
   readonly cwd: string;
   readonly logger: Logger;
+  /** External tools are reached only through this port. */
+  readonly processes: ProcessRunner;
 }
 
 /**
@@ -175,6 +179,10 @@ export interface Ctx {
   readonly cwd: string;
   /** Read the manifest as it stood when resolution began. */
   readonly manifest: ManifestV2;
+  /** Rendered template trees and canonical assets. */
+  readonly templates: TemplateSource;
+  /** External tool probes (e.g. git detection at plan time). */
+  readonly processes: ProcessRunner;
   /**
    * Returns the resolved answer for a question declared on this
    * adapter. Throws if the question id is not declared — typo'd ids

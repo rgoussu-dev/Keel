@@ -14,8 +14,8 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProject } from '../../src/installer/new.js';
 import { addVertical } from '../../src/installer/add.js';
-import { readManifestV2 } from '../../src/manifest/store-v2.js';
-import { paths } from '../../src/util/paths.js';
+import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
+import { projectScopeRoot } from '../../src/domain/contract/manifest.js';
 import { runActions, type RunActionsInputs } from '../../src/composition/actions.js';
 import type { Prompt } from '../../src/composition/answers.js';
 
@@ -85,7 +85,7 @@ describe('addVertical (keel add)', () => {
     expect(await fs.pathExists(path.join(cwd, '.github/workflows/release.yml'))).toBe(true);
     expect(await fs.pathExists(path.join(cwd, '.github/workflows/native-build.yml'))).toBe(true);
 
-    const manifest = await readManifestV2(paths.project(cwd));
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest).not.toBeNull();
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
       'distribution',
@@ -164,7 +164,7 @@ describe('addVertical (keel add)', () => {
       now: () => '2026-04-27T08:00:00Z',
     });
     expect(await fs.pathExists(path.join(cwd, '.github/workflows/release.yml'))).toBe(false);
-    const manifest = await readManifestV2(paths.project(cwd));
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual(['vcs', 'walking-skeleton']);
   });
 });
