@@ -1,0 +1,34 @@
+/**
+ * The assembly point — the only place that knows the whole graph.
+ * Importing the design system first registers the planks primitives
+ * and the project's atoms/molecules (they carry no ports, so they
+ * may upgrade immediately). Then: construct driven adapters, call
+ * the domain factories (decorate them here for cross-cutting
+ * concerns), register the context provider, and define the
+ * port-bound elements last — definitions upgrade parsed markup and
+ * fire `connectedCallback` synchronously, so the provider must
+ * already be listening.
+ */
+
+import '@<%= npmScope %>/design-system';
+import { createGreet, createGreetingStore } from '@<%= npmScope %>/domain-core';
+import { type Context, ContextRequestEvent } from './context';
+import { greetContext, greetingsContext } from './context-keys';
+import { GreetingView } from './components/greeting-view';
+
+const greetings = createGreetingStore();
+const greet = createGreet(greetings);
+
+const ports = new Map<Context<unknown>, unknown>([
+  [greetContext, greet],
+  [greetingsContext, greetings],
+]);
+
+document.addEventListener('context-request', (event) => {
+  const request = event as ContextRequestEvent<unknown>;
+  if (!ports.has(request.context)) return;
+  request.stopPropagation();
+  request.callback(ports.get(request.context));
+});
+
+customElements.define('<%= npmScope %>-greeting', GreetingView);

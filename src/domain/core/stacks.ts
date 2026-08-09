@@ -68,6 +68,20 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
+  'web-components': {
+    id: 'web-components',
+    description:
+      'Framework-free web-components SPA on Vite (TypeScript, npm workspaces), hexagonal layout.',
+    tags: [
+      'lang.typescript',
+      'runtime.browser',
+      'pkg.npm',
+      'framework.web-components',
+      'arch.hexagonal',
+      'arch.spa',
+    ],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
 };
 
 /** Returns the stack registered under `id`, or null if absent. */

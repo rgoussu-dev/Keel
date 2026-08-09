@@ -1,0 +1,14 @@
+/**
+ * The unit's context keys — application-layer artifacts typed by
+ * `domain-api` ports. The key couples consumer to contract; the
+ * domain never learns a DOM-flavoured DI mechanism exists.
+ */
+
+import type { Greet, GreetingReadModel } from '@<%= npmScope %>/domain-api';
+import { createContext } from './context';
+
+/** Delivers the greet driving port. */
+export const greetContext = createContext<Greet>('<%= npmScope %>.greet');
+
+/** Delivers the greeting read model. */
+export const greetingsContext = createContext<GreetingReadModel>('<%= npmScope %>.greetings');

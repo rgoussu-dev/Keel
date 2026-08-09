@@ -1,0 +1,75 @@
+import { ensureStructuralStyle } from '../internal/structural-style';
+
+const TAG = '<%= npmScope %>-button';
+
+const STRUCTURAL_CSS = `
+  ${TAG} { display: inline-block; }
+  ${TAG} > button {
+    font: inherit;
+    padding: var(--s-1) var(--s0);
+    border: var(--border-thin) solid var(--color-brand);
+    border-radius: var(--radius-control);
+    background: var(--color-brand);
+    color: var(--color-brand-contrast);
+    cursor: pointer;
+  }
+  ${TAG} > button:hover { background: var(--color-brand-hover); }
+  ${TAG} > button:focus-visible {
+    outline: var(--border-thin) solid var(--color-brand);
+    outline-offset: 2px;
+  }
+`;
+
+const BUTTON_TYPES = ['button', 'submit', 'reset'] as const;
+type ButtonType = (typeof BUTTON_TYPES)[number];
+
+/**
+ * Button atom: the design system's clickable primitive, styled from
+ * the token layer. Renders a native `<button>` in the light DOM so
+ * it participates in surrounding forms; slotted children become the
+ * button's label.
+ */
+export class Button extends HTMLElement {
+  static get observedAttributes(): string[] {
+    return ['type'];
+  }
+
+  /** The native button type; anything unrecognised falls back to `button`. */
+  get type(): ButtonType {
+    const raw = this.getAttribute('type');
+    return (BUTTON_TYPES as readonly string[]).includes(raw ?? '')
+      ? (raw as ButtonType)
+      : 'button';
+  }
+
+  set type(value: ButtonType) {
+    this.setAttribute('type', value);
+  }
+
+  connectedCallback(): void {
+    ensureStructuralStyle(TAG, () => STRUCTURAL_CSS);
+    let button = this.querySelector('button');
+    if (!button) {
+      button = document.createElement('button');
+      button.append(...Array.from(this.childNodes));
+      this.append(button);
+    }
+    button.type = this.type;
+  }
+
+  attributeChangedCallback(): void {
+    if (!this.isConnected) return;
+    const button = this.querySelector('button');
+    if (button) button.type = this.type;
+  }
+}
+
+if (!customElements.get(TAG)) {
+  customElements.define(TAG, Button);
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    '<%= npmScope %>-button': Button;
+  }
+}

@@ -1,0 +1,69 @@
+/**
+ * Port-bound custom element for the greet use case — a driving
+ * adapter's part, and where the two composition worlds meet:
+ * context-supplied ports on one side, design-system children on the
+ * other. It subscribes to the read model and pushes state *down* as
+ * an attribute on the greeting-card molecule; it listens to its
+ * form and translates the submit *up* into a command on the driving
+ * port. Renders in the light DOM: planks (and the design system
+ * built on it) style through tag-scoped stylesheets in
+ * `document.head`, which do not pierce shadow roots.
+ */
+
+import type { Greet, GreetingReadModel, Unsubscribe } from '@<%= npmScope %>/domain-api';
+import { ContextRequestEvent } from '../context';
+import { greetContext, greetingsContext } from '../context-keys';
+
+const template = document.createElement('template');
+template.innerHTML = `
+  <stack-pk space="var(--s0)">
+    <form>
+      <cluster-pk space="var(--s-1)" align="center">
+        <label>Name <input name="name" autocomplete="off" /></label>
+        <<%= npmScope %>-button type="submit">Greet</<%= npmScope %>-button>
+      </cluster-pk>
+    </form>
+    <<%= npmScope %>-greeting-card></<%= npmScope %>-greeting-card>
+  </stack-pk>
+`;
+
+export class GreetingView extends HTMLElement {
+  #greet?: Greet;
+  #greetings?: GreetingReadModel;
+  #unsubscribe?: Unsubscribe;
+
+  connectedCallback(): void {
+    this.dispatchEvent(new ContextRequestEvent(greetContext, (port) => (this.#greet = port)));
+    this.dispatchEvent(
+      new ContextRequestEvent(greetingsContext, (readModel) => (this.#greetings = readModel)),
+    );
+    const greet = this.#greet;
+    const greetings = this.#greetings;
+    if (!greet || !greetings) {
+      throw new Error('<<%= npmScope %>-greeting>: no context provider answered');
+    }
+
+    if (!this.querySelector('form')) this.append(template.content.cloneNode(true));
+    const card = this.querySelector('<%= npmScope %>-greeting-card');
+    const form = this.querySelector('form');
+    if (!card || !form) throw new Error('<<%= npmScope %>-greeting>: template is missing nodes');
+
+    const render = (message: string): void => {
+      card.setAttribute('message', message);
+    };
+    const current = greetings.current();
+    if (current) render(current.message);
+    this.#unsubscribe = greetings.subscribe((greeting) => render(greeting.message));
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      greet.execute({ name: String(data.get('name') ?? '') });
+    });
+  }
+
+  disconnectedCallback(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
+  }
+}

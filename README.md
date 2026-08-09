@@ -72,6 +72,26 @@ fake under `internal/infra/`, and no mediator object — commands are
 structs, driving ports are per-use-case interfaces wired explicitly
 in `main`.
 
+Or a framework-free web-components SPA — the browser and the DOM API
+as the framework:
+
+```sh
+mkdir my-app && cd my-app
+npx @rgoussu.dev/keel new --stack=web-components
+```
+
+You'll be asked for an npm scope and a project name. The result is a
+TypeScript npm workspace in a hexagonal layout — `domain/domain-api`
+(ports, commands, read models; compiled without the DOM lib),
+`domain/domain-core` (factories only, via its `exports` map), an
+`application/web-app` Vite deployment unit whose `main.ts` wires
+ports to custom elements over the WCCG Context protocol, a
+`design-system/` package (atomic design on
+[planks](https://github.com/rgoussu-dev/planks) layout primitives +
+tokens; domain-blind by construction), and the sample `Clock` port
+with real + fake adapters in `infrastructure/commons` — installed
+and ready to `npm run dev`.
+
 Brownfield — layer an additional vertical onto an existing keel
 project:
 
@@ -87,16 +107,16 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                                   |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`. |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                       |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                                       |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                 |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`.            |
-| `keel add ... --yes`     | Non-interactive.                                                                                               |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                 |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                   |
+| Command                  | What it does                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `web-components`. |
+| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                         |
+| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                         |
+| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                   |
+| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`.                              |
+| `keel add ... --yes`     | Non-interactive.                                                                                                                 |
+| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                   |
+| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                     |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.
@@ -140,18 +160,19 @@ Adding a stack is a couple of lines in `src/domain/core/stacks.ts`.
   the requested default branch) and optionally registers an `origin`
   remote. Sticky answers, so subsequent runs don't re-ask.
 - **`walking-skeleton`** — the thinnest end-to-end runnable project
-  for the chosen stack — the entrypoint shape is selected by
-  predicate from the stack's tags. Today: a Quarkus picocli CLI or a
-  Quarkus REST service (`GET /greet` with RFC 9457 Problem Details
-  errors) on Gradle in a hexagonal layout, plus a sample secondary
-  port with a fake module, plus the Gradle wrapper (requires `gradle`
-  on PATH — the wrapper is generated via the canonical
-  `gradle wrapper` task, not committed as a binary); and a Go
-  skeleton with CLI (`arch.cli`) and HTTP (`arch.server-http`)
+  for the chosen stack, in a hexagonal layout with a sample secondary
+  port + fake — the entrypoint shape is selected by predicate from
+  the stack's tags. Today: a Quarkus picocli CLI or a Quarkus REST
+  service (`GET /greet` with RFC 9457 Problem Details errors) on
+  Gradle (requires `gradle` on PATH — the wrapper is generated via
+  the canonical `gradle wrapper` task, not committed as a binary); a
+  Go skeleton with CLI (`arch.cli`) and HTTP (`arch.server-http`)
   entrypoints that compose — a tag set carrying both ships both
-  `cmd/` deployment units on one shared module. The Go skeleton
-  verifies itself with a deferred `go mod tidy` (requires `go` on
-  PATH).
+  `cmd/` deployment units on one shared module, verified with a
+  deferred `go mod tidy` (requires `go` on PATH); or a framework-free
+  web-components SPA on Vite as an npm workspace, with a planks-based
+  atomic design system package (dependencies installed via
+  `npm install` at scaffold time).
 - **`distribution`** — how the project ships. Today: native CLI
   binaries via GraalVM, cross-compiled in a GitHub Actions matrix
   (linux-amd64, linux-arm64, darwin-arm64) and uploaded to a GitHub

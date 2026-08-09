@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= projectName %></title>
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <center-pk gutters="var(--s1)">
+      <stack-pk space="var(--s2)">
+        <typography-pk variant="heading-1"><%= projectName %></typography-pk>
+        <<%= npmScope %>-greeting></<%= npmScope %>-greeting>
+      </stack-pk>
+    </center-pk>
+  </body>
+</html>

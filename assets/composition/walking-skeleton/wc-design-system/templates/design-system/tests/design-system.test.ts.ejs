@@ -1,0 +1,61 @@
+// @vitest-environment happy-dom
+import { beforeEach, describe, expect, it } from 'vitest';
+import '@<%= npmScope %>/design-system';
+
+beforeEach(() => {
+  document.body.innerHTML = '';
+});
+
+describe('<<%= npmScope %>-button> (atom)', () => {
+  const make = (label: string): HTMLElement => {
+    const el = document.createElement('<%= npmScope %>-button');
+    el.append(label);
+    document.body.appendChild(el);
+    return el;
+  };
+
+  it('registers the custom element', () => {
+    expect(customElements.get('<%= npmScope %>-button')).toBeDefined();
+  });
+
+  it('wraps its label in a native button', () => {
+    const el = make('Greet');
+    const button = el.querySelector('button');
+    expect(button).not.toBeNull();
+    expect(button?.textContent).toBe('Greet');
+    expect(button?.type).toBe('button');
+  });
+
+  it('reflects the type attribute onto the native button', () => {
+    const el = make('Greet');
+    el.setAttribute('type', 'submit');
+    expect(el.querySelector('button')?.type).toBe('submit');
+  });
+});
+
+describe('<<%= npmScope %>-greeting-card> (molecule)', () => {
+  const make = (): HTMLElement => {
+    const el = document.createElement('<%= npmScope %>-greeting-card');
+    document.body.appendChild(el);
+    return el;
+  };
+
+  it('stays hidden until it receives a message', () => {
+    const el = make();
+    expect(el.hidden).toBe(true);
+    el.setAttribute('message', 'Hello, Ada!');
+    expect(el.hidden).toBe(false);
+  });
+
+  it('renders the message through the planks primitives', () => {
+    const el = make();
+    el.setAttribute('message', 'Hello, Ada!');
+    const typography = el.querySelector('box-pk typography-pk');
+    expect(typography?.textContent).toBe('Hello, Ada!');
+  });
+
+  it('announces itself as a status region', () => {
+    const el = make();
+    expect(el.getAttribute('role')).toBe('status');
+  });
+});
