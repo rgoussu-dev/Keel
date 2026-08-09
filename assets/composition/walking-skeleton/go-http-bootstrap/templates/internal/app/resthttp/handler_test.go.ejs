@@ -44,8 +44,27 @@ func TestGreetMapsTheQueryToTheCommandAndRepliesJSON(t *testing.T) {
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		t.Fatalf("decoding the response failed: %v", err)
 	}
-	if body.Message != "Hello, Ada!" {
-		t.Fatalf("message = %q, want %q", body.Message, "Hello, Ada!")
+	if body.Greeting != "Hello, Ada!" {
+		t.Fatalf("greeting = %q, want %q", body.Greeting, "Hello, Ada!")
+	}
+}
+
+func TestGreetDefaultsAnAbsentNameToWorld(t *testing.T) {
+	fake := &fakeGreeter{reply: "Hello, world!"}
+	server := httptest.NewServer(resthttp.NewHandler(fake))
+	defer server.Close()
+
+	res, err := http.Get(server.URL + "/greet")
+	if err != nil {
+		t.Fatalf("GET /greet failed: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", res.StatusCode, http.StatusOK)
+	}
+	if fake.got.Name != "world" {
+		t.Fatalf("dispatched name = %q, want %q", fake.got.Name, "world")
 	}
 }
 
