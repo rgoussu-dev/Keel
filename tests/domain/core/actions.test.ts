@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ActionError, runActions } from '../../src/domain/core/actions.js';
-import { FakeProcessRunner } from '../../src/infrastructure/process/fake.js';
-import type { DeferredAction } from '../../src/domain/contract/composition.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
+import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
+import { ActionError, runActions } from '../../../src/domain/core/actions.js';
+import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
+import type { DeferredAction } from '../../../src/domain/contract/composition.js';
 
 const recordingLogger = (): {
-  logger: typeof silent;
+  logger: FakeLogger;
   lines: string[];
 } => {
   const lines: string[] = [];
@@ -48,7 +41,7 @@ describe('runActions', () => {
     await runActions({
       actions,
       cwd: '/tmp',
-      logger: silent,
+      logger: new FakeLogger(),
       processes: new FakeProcessRunner(),
       dryRun: false,
     });
@@ -83,7 +76,7 @@ describe('runActions', () => {
     const promise = runActions({
       actions,
       cwd: '/tmp',
-      logger: silent,
+      logger: new FakeLogger(),
       processes: new FakeProcessRunner(),
       dryRun: false,
     });
@@ -105,7 +98,7 @@ describe('runActions', () => {
       runActions({
         actions,
         cwd: '/tmp',
-        logger: silent,
+        logger: new FakeLogger(),
         processes: new FakeProcessRunner(),
         dryRun: false,
       }),

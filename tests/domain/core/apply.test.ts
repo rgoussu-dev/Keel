@@ -2,20 +2,13 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
-import { spawnProcessRunner } from '../../src/infrastructure/process/spawn-process-runner.js';
-import { ContributionConflictError, applyContributions } from '../../src/domain/core/apply.js';
-import { emptyManifestV2 } from '../../src/domain/contract/manifest.js';
-import { FsTree } from '../../src/infrastructure/tree/fs-tree.js';
-import type { Adapter, Contribution } from '../../src/domain/contract/composition.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
+import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
+import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
+import { ContributionConflictError, applyContributions } from '../../../src/domain/core/apply.js';
+import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
+import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
+import type { Adapter, Contribution } from '../../../src/domain/contract/composition.js';
 
 const adapter = (
   id: string,
@@ -51,7 +44,7 @@ describe('applyContributions', () => {
       answers: {},
       manifest: emptyManifestV2('now', '0.4.0'),
       tree,
-      logger: silent,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -75,7 +68,7 @@ describe('applyContributions', () => {
       answers: {},
       manifest: emptyManifestV2('now', '0.4.0'),
       tree,
-      logger: silent,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -93,7 +86,7 @@ describe('applyContributions', () => {
         answers: {},
         manifest: emptyManifestV2('now', '0.4.0'),
         tree,
-        logger: silent,
+        logger: new FakeLogger(),
         cwd: tmp,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,
@@ -111,7 +104,7 @@ describe('applyContributions', () => {
         answers: {},
         manifest: emptyManifestV2('now', '0.4.0'),
         tree,
-        logger: silent,
+        logger: new FakeLogger(),
         cwd: tmp,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,
@@ -130,7 +123,7 @@ describe('applyContributions', () => {
         answers: {},
         manifest: emptyManifestV2('now', '0.4.0'),
         tree,
-        logger: silent,
+        logger: new FakeLogger(),
         cwd: tmp,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,
@@ -147,7 +140,7 @@ describe('applyContributions', () => {
       answers: {},
       manifest: emptyManifestV2('now', '0.4.0'),
       tree,
-      logger: silent,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -169,7 +162,7 @@ describe('applyContributions', () => {
       answers: {},
       manifest: emptyManifestV2('now', '0.4.0'),
       tree,
-      logger: silent,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -196,7 +189,7 @@ describe('applyContributions', () => {
       answers: { a: { targets: 'darwin-arm64' } },
       manifest: emptyManifestV2('now', '0.4.0'),
       tree,
-      logger: silent,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -222,7 +215,7 @@ describe('applyContributions', () => {
         answers: {},
         manifest: emptyManifestV2('now', '0.4.0'),
         tree,
-        logger: silent,
+        logger: new FakeLogger(),
         cwd: tmp,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,

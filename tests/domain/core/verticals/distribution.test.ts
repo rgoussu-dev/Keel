@@ -14,34 +14,15 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
-import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
-import { installVertical } from '../../../src/domain/core/install.js';
-import { distributionVertical } from '../../../src/domain/core/verticals/distribution.js';
-import { ResolutionError } from '../../../src/domain/core/resolver.js';
-import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
-import type { Prompt } from '../../../src/domain/core/answers.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-
-const noPrompt: Prompt = {
-  ask: async () => {
-    throw new Error('prompt should not be called in non-interactive mode');
-  },
-};
-
-const failingPrompt: Prompt = {
-  ask: async () => {
-    throw new Error('prompt should not be called when answer is sticky');
-  },
-};
+import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
+import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
+import { installVertical } from '../../../../src/domain/core/install.js';
+import { distributionVertical } from '../../../../src/domain/core/verticals/distribution.js';
+import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 
 const baseTags = (...extra: string[]): string[] => [
   'lang.java',
@@ -84,8 +65,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
       manifest,
       tree,
       mode: 'non-interactive',
-      prompt: noPrompt,
-      logger: silent,
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
       cwd,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -135,8 +116,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
       manifest,
       tree,
       mode: 'interactive',
-      prompt: failingPrompt,
-      logger: silent,
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
       cwd,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -165,8 +146,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
         manifest,
         tree,
         mode: 'non-interactive',
-        prompt: noPrompt,
-        logger: silent,
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
         cwd,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,
@@ -189,8 +170,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
         manifest,
         tree,
         mode: 'non-interactive',
-        prompt: noPrompt,
-        logger: silent,
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
         cwd,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,

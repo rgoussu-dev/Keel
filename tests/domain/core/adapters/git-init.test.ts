@@ -6,33 +6,23 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
-import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
+import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
+import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { gitInitAdapter, GIT_INIT_VERTICAL } from '../../../src/domain/core/adapters/git-init.js';
-import { runActions } from '../../../src/domain/core/actions.js';
-import { installVertical } from '../../../src/domain/core/install.js';
-import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
-import type { Prompt } from '../../../src/domain/core/answers.js';
-import type { Vertical } from '../../../src/domain/contract/composition.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-
-const noPrompt: Prompt = {
-  ask: async () => {
-    throw new Error('prompt should not be called in non-interactive mode');
-  },
-};
+import {
+  gitInitAdapter,
+  GIT_INIT_VERTICAL,
+} from '../../../../src/domain/core/adapters/git-init.js';
+import { runActions } from '../../../../src/domain/core/actions.js';
+import { installVertical } from '../../../../src/domain/core/install.js';
+import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
+import type { Vertical } from '../../../../src/domain/contract/composition.js';
 
 /** Wraps the single adapter into a one-dimension vertical. */
 const vcsVertical: Vertical = {
@@ -63,8 +53,8 @@ const installAndRun = async (opts: {
     manifest,
     tree,
     mode: 'non-interactive',
-    prompt: noPrompt,
-    logger: silent,
+    prompt: rejectingPrompt,
+    logger: new FakeLogger(),
     cwd: opts.cwd,
     templates: ejsTemplateSource,
     processes: spawnProcessRunner,
@@ -74,7 +64,7 @@ const installAndRun = async (opts: {
   await runActions({
     actions: result.applyResult.actions,
     cwd: opts.cwd,
-    logger: silent,
+    logger: new FakeLogger(),
     processes: spawnProcessRunner,
     dryRun: opts.dryRun ?? false,
   });

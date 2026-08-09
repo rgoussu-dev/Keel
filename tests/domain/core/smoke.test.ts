@@ -8,27 +8,15 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
-import { spawnProcessRunner } from '../../src/infrastructure/process/spawn-process-runner.js';
-import { installVertical } from '../../src/domain/core/install.js';
-import { emptyManifestV2 } from '../../src/domain/contract/manifest.js';
-import { FsTree } from '../../src/infrastructure/tree/fs-tree.js';
-import type { Prompt } from '../../src/domain/core/answers.js';
-import type { Vertical } from '../../src/domain/contract/composition.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-
-const failingPrompt: Prompt = {
-  ask: async () => {
-    throw new Error('prompt should not have been called');
-  },
-};
+import { rejectingPrompt } from '../../../src/infrastructure/prompt/fake.js';
+import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
+import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
+import { installVertical } from '../../../src/domain/core/install.js';
+import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
+import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
+import type { Prompt } from '../../../src/domain/contract/ports/prompt.js';
+import type { Vertical } from '../../../src/domain/contract/composition.js';
 
 const scripted = (...replies: string[]): Prompt => {
   let i = 0;
@@ -117,7 +105,7 @@ describe('installVertical end-to-end', () => {
       tree,
       mode: 'interactive',
       prompt: scripted('darwin-arm64'),
-      logger: silent,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -157,8 +145,8 @@ describe('installVertical end-to-end', () => {
       manifest,
       tree,
       mode: 'interactive',
-      prompt: failingPrompt,
-      logger: silent,
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
       cwd: tmp,
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
@@ -183,8 +171,8 @@ describe('installVertical end-to-end', () => {
         manifest,
         tree,
         mode: 'non-interactive',
-        prompt: failingPrompt,
-        logger: silent,
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
         cwd: tmp,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,

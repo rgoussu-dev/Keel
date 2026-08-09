@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ResolutionError, resolveVertical } from '../../src/domain/core/resolver.js';
-import type { Adapter, Contribution, Vertical } from '../../src/domain/contract/composition.js';
+import { ResolutionError, resolveVertical } from '../../../src/domain/core/resolver.js';
+import type { Adapter, Contribution, Vertical } from '../../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
 const stub = (a: Partial<Adapter> & Pick<Adapter, 'id' | 'covers' | 'predicate'>): Adapter => ({

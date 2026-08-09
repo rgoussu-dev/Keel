@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  resolveAdapterAnswers,
-  resolveAnswer,
-  type Prompt,
-} from '../../src/domain/core/answers.js';
-import type { Adapter, Contribution, Question } from '../../src/domain/contract/composition.js';
+import { resolveAdapterAnswers, resolveAnswer } from '../../../src/domain/core/answers.js';
+import type { Prompt } from '../../../src/domain/contract/ports/prompt.js';
+import type { Adapter, Contribution, Question } from '../../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
 
