@@ -119,11 +119,11 @@ not a restatement of the changes.
 
 ## 5. Dev workflow
 
-Requirements: Node 22+, pnpm 9+.
+Requirements: Node 22+, pnpm 10+.
 
 ```sh
 pnpm install
-pnpm lint          # eslint (flat config, src + tests) + prettier --check .
+pnpm lint          # eslint (flat config, src + tests) + prettier --check . + depcruise src
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
 pnpm test:watch    # vitest watch
@@ -132,8 +132,9 @@ pnpm format        # prettier --write .
 pnpm format:check  # prettier --check .
 ```
 
-`pnpm lint` covers both eslint and prettier, so formatting drift fails the
-same gate as code-style rules. A Claude `PreToolUse` hook
+`pnpm lint` covers eslint, prettier, and dependency-cruiser, so formatting
+drift and dependency-rule violations fail the same gate as code-style
+rules. A Claude `PreToolUse` hook
 (`.claude/hooks/pre-commit-format.sh`) runs `pnpm format` and re-stages any
 previously-staged files before every Claude-issued `git commit`, then
 verifies `pnpm lint`. That means you almost never need to run `pnpm format`
@@ -226,9 +227,6 @@ would ship as separate packages implementing the same port.
   `Security`). At release time, `[Unreleased]` is renamed to
   `[x.y.z] — YYYY-MM-DD` and a new empty `[Unreleased]` is added. Link
   references at the bottom compare against the previous tag.
-- **BRAINSTORM.md**: in-progress design notes. Not authoritative. Do not
-  treat it as a source of truth for behavior — only `assets/project/AGENTS.md`
-  and code are.
 - **AGENTS.md** (this file): conventions for contributors. Update when the
   workflow itself changes. `CLAUDE.md` is only the pointer stub —
   never put content there.
@@ -243,8 +241,8 @@ would ship as separate packages implementing the same port.
 - `.github/workflows/release.yml` runs on `v*` tag push — verifies the tag
   matches `package.json`, reruns verification, publishes to npm with
   provenance, creates a GitHub Release. Dist-tag is derived from the
-  prerelease identifier: `alpha`, `beta`, `rc` → `next`, none → `latest`;
-  unknown identifiers are a hard error.
+  prerelease identifier: `alpha` → `alpha`, `beta` → `beta`, `rc` →
+  `next`, none → `latest`; unknown identifiers are a hard error.
 - Third-party actions are pinned to full commit SHAs with a `# vX.Y.Z`
   comment for supply-chain integrity. Dependabot
   (`.github/dependabot.yml`) proposes grouped weekly updates.

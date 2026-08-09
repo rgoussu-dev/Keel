@@ -4,8 +4,8 @@ The previous roadmap (composition engine: A3 gradle-wrapper, B
 distribution vertical, C1 `keel add`, C2 legacy retirement) landed in
 full in v0.4.0-alpha. Since then the repo has been trisected to
 dogfood its own binding spec and the skeleton emits the spec as
-`AGENTS.md` (see `CHANGELOG.md [Unreleased]`); cutting v0.5.0-alpha
-to ship that work is the standing housekeeping item.
+`AGENTS.md`; that work shipped in v0.5.0-alpha (see its
+`CHANGELOG.md` entry).
 
 This roadmap covers what comes next: widening what the scaffold can
 produce. Items are lettered continuing the old sequence. D is the
