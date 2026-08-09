@@ -44,10 +44,15 @@ npx @rgoussu.dev/keel new --stack=quarkus-rest
 
 You'll be asked for a base Java package, a project name, and an
 optional `origin` git remote. The result is a hexagonal Gradle
-multi-module project (`domain/contract`, `domain/core`,
-`infrastructure/cli`), a Quarkus picocli entrypoint with a sample
-subcommand and a Quarkus test, a sample secondary port (`Clock`) with
-a fake module, an initialised git repo, and the Gradle wrapper.
+multi-module project — `domain/kernel`, `domain/contract`,
+`domain/core`, plus the channel modules for the chosen stack:
+`application/cli` (a Quarkus picocli entrypoint with a sample
+subcommand) or `application/rest/contract` +
+`application/rest/executable` (`GET /greet` with RFC 9457 Problem
+Details errors) — with a Quarkus test driving it end to end, a
+sample secondary port (`Clock`) with a fake module, the binding spec
+emitted as `AGENTS.md` (plus a `CLAUDE.md` pointer), an initialised
+git repo, and the Gradle wrapper.
 
 Brownfield — layer an additional vertical onto an existing keel
 project:
@@ -103,11 +108,11 @@ A keel project is composed from three primitives:
 
 A **stack preset** (`keel new --stack=<id>`) is sugar over a list of
 tags + verticals — pick `quarkus-cli` and the engine seeds
-`lang.java`, `framework.quarkus`, `pkg.gradle`, `arch.cli`,
-`arch.hexagonal`, then composes the `vcs` and `walking-skeleton`
-verticals; `quarkus-rest` swaps `arch.cli` for `arch.server-http`
-and the same verticals compose the REST shape. Adding a stack is a
-couple of lines in `src/domain/core/stacks.ts`.
+`lang.java`, `runtime.jvm`, `framework.quarkus`, `pkg.gradle`,
+`arch.cli`, `arch.hexagonal`, then composes the `vcs` and
+`walking-skeleton` verticals; `quarkus-rest` swaps `arch.cli` for
+`arch.server-http` and the same verticals compose the REST shape.
+Adding a stack is a couple of lines in `src/domain/core/stacks.ts`.
 
 ---
 
@@ -154,11 +159,11 @@ The four-line summary; the binding version is in
 
 ## Development
 
-For working on keel itself. Requirements: Node 22+ and pnpm 9+.
+For working on keel itself. Requirements: Node 22+ and pnpm 10+.
 
 ```sh
 pnpm install
-pnpm lint          # eslint (flat config) + prettier --check .
+pnpm lint          # eslint (flat config, src + tests) + prettier --check . + depcruise src
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
 pnpm test:watch    # vitest watch mode

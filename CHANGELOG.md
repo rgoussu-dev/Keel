@@ -31,6 +31,14 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `quarkus-rest` project still hard-fails with uncovered dimensions —
   the REST-shaped distribution adapter is the next roadmap item.
 
+### Fixed
+
+- README quickstart now describes the layout the v0.5 skeleton
+  actually scaffolds (`domain/kernel`, `domain/contract`,
+  `domain/core`, `application/cli`, plus the emitted `AGENTS.md` +
+  `CLAUDE.md` pointer) instead of the pre-v0.5 `infrastructure/cli`
+  shape, and the `quarkus-cli` seed-tag list includes `runtime.jvm`.
+
 ## [0.5.0-alpha] — 2026-08-09
 
 ### Changed
