@@ -1,9 +1,9 @@
 # Universal engineering conventions (keel)
 
 These are **non-negotiable** defaults installed by `@rgoussu.dev/keel`. They
-are the binding spec for any project keel scaffolds. Project `CLAUDE.md`
-may extend these conventions; it must not contradict them without an
-explicit, documented reason. Stack-specific runbooks (build, test, run,
+are the binding spec for any project keel scaffolds. The project's own
+agent instructions (its `AGENTS.md`) may extend these conventions; they
+must not contradict them without an explicit, documented reason. Stack-specific runbooks (build, test, run,
 format, troubleshoot) ship as **skills** alongside this file when the
 matching stack profile is installed.
 

@@ -3,26 +3,27 @@
 This is the source repository for `@rgoussu.dev/keel`, the universal Claude
 Code workflow kit. Everything in this file applies to **working on keel
 itself**. Projects that _consume_ keel get a different binding spec (see
-[`assets/project/CLAUDE.md`](assets/project/CLAUDE.md)).
+[`assets/project/AGENTS.md`](assets/project/AGENTS.md)).
 
 This file follows the [AGENTS.md](https://agents.md) convention — the
 same one keel's per-layer `AGENTS.md` files use. `CLAUDE.md` at the
 root is a one-line pointer importing this file, so Claude Code and
 AGENTS.md-native tools read the same source of truth. keel is
-**project-scoped**: it installs only into `<project>/.claude/`, never
-into the user's home directory.
+**project-scoped**: everything it installs lands inside the target
+project — the user's home directory (`~/.claude`) is never touched.
 
 ---
 
 ## 1. Binding spec
 
 The universal engineering conventions are defined in
-[`assets/project/CLAUDE.md`](assets/project/CLAUDE.md). That file is
+[`assets/project/AGENTS.md`](assets/project/AGENTS.md). That file is
 the source of truth for the conventions every keel-scaffolded project
 should follow, and the `walking-skeleton/claude-core` adapter emits
-it verbatim into `<project>/.claude/CLAUDE.md` whenever a project is
-scaffolded. Stack-specific addenda (e.g. a Quarkus runbook appended
-under a sentinel marker) are a roadmap item.
+it verbatim as `<project>/AGENTS.md` (plus a one-line `CLAUDE.md`
+pointer importing it) whenever a project is scaffolded.
+Stack-specific addenda (e.g. a Quarkus runbook appended under a
+sentinel marker) are a roadmap item.
 
 **keel dogfoods those conventions.** Any change to this repo must conform to
 that document:
@@ -143,7 +144,7 @@ rather than asserting success.
 
 The CLI is intentionally thin: `keel new --stack=<id>` for greenfield
 bootstrap and `keel add <vertical>` for brownfield layering. The CLI
-entry is `bin/keel.js`, which loads `dist/cli/main.js`. Build before
+entry is `bin/keel.js`, which loads `dist/application/cli/executable/main.js`. Build before
 trying the CLI locally.
 
 ---
@@ -182,7 +183,7 @@ src/
 assets/
   composition/            # adapter template trees (ejs), one
                           # directory per `<vertical>/<adapter>/`
-  project/                # binding spec (CLAUDE.md) — source of truth
+  project/                # binding spec (AGENTS.md) — source of truth
                           # for the universal engineering conventions
 tests/                    # vitest; mirrors src/ (domain/, e2e/,
   support/factory.ts      # infrastructure/); the shared test Factory
@@ -206,7 +207,7 @@ would ship as separate packages implementing the same port.
 - Vitest, run via `pnpm test`. Test files live under `tests/` mirroring
   the `src/` structure.
 - Follow the Scenario + Factory + port pattern from
-  `assets/project/CLAUDE.md §3`. No mocking libraries — build fakes
+  `assets/project/AGENTS.md §3`. No mocking libraries — build fakes
   directly.
 - Every public API change is accompanied by a test change.
 - Mutation testing is on the roadmap; not yet wired in this repo.
@@ -224,7 +225,7 @@ would ship as separate packages implementing the same port.
   `[x.y.z] — YYYY-MM-DD` and a new empty `[Unreleased]` is added. Link
   references at the bottom compare against the previous tag.
 - **BRAINSTORM.md**: in-progress design notes. Not authoritative. Do not
-  treat it as a source of truth for behavior — only `assets/project/CLAUDE.md`
+  treat it as a source of truth for behavior — only `assets/project/AGENTS.md`
   and code are.
 - **AGENTS.md** (this file): conventions for contributors. Update when the
   workflow itself changes. `CLAUDE.md` is only the pointer stub —

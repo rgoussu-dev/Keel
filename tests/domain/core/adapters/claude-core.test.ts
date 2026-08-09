@@ -1,7 +1,7 @@
 /**
  * Test for the `claude-core` adapter — verifies the contribution
- * shape (one whole-file write at `.claude/CLAUDE.md`, no patches or
- * actions) and that the emitted content matches the canonical
+ * shape (the root `AGENTS.md` spec plus the `CLAUDE.md` pointer, no
+ * patches or actions) and that the emitted content matches the canonical
  * binding spec on disk byte-for-byte. End-to-end placement under a
  * vertical is covered by the walking-skeleton smoke test.
  */
@@ -31,7 +31,7 @@ describe('claude-core adapter', () => {
     expect(claudeCoreAdapter.questions ?? []).toEqual([]);
   });
 
-  it('emits the binding spec verbatim into .claude/CLAUDE.md', async () => {
+  it('emits the binding spec as AGENTS.md plus a CLAUDE.md pointer', async () => {
     const ctx = makeCtx(
       claudeCoreAdapter,
       {},
@@ -46,14 +46,16 @@ describe('claude-core adapter', () => {
     const contribution = await claudeCoreAdapter.contribute(ctx);
     expect(contribution.patches ?? []).toEqual([]);
     expect(contribution.actions ?? []).toEqual([]);
-    expect(contribution.files).toHaveLength(1);
-    const [file] = contribution.files ?? [];
-    expect(file?.path).toBe('.claude/CLAUDE.md');
-
+    expect(contribution.files).toHaveLength(2);
+    const [spec, pointer] = contribution.files ?? [];
+    expect(spec?.path).toBe('AGENTS.md');
     const expected = await fs.readFile(
-      path.join(path.join(packagedAssetsRoot, 'project'), 'CLAUDE.md'),
+      path.join(path.join(packagedAssetsRoot, 'project'), 'AGENTS.md'),
       'utf8',
     );
-    expect(file?.content).toBe(expected);
+    expect(spec?.content).toBe(expected);
+
+    expect(pointer?.path).toBe('CLAUDE.md');
+    expect(pointer?.content).toBe('@AGENTS.md\n');
   });
 });

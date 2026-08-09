@@ -20,6 +20,14 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   behind ports — `Tree`, `Prompt`, `Logger`, `Clock`, `ManifestStore`,
   `TemplateSource`, `ProcessRunner` — each shipping a canonical
   in-memory fake beside its real adapter.
+- **The agent-instructions files migrated to the AGENTS.md
+  convention** — in this repo (the contributor guide is `AGENTS.md`;
+  `CLAUDE.md` is a one-line `@AGENTS.md` import) and in scaffolded
+  projects: the `walking-skeleton/claude-core` adapter now emits the
+  binding spec as `<project>/AGENTS.md` plus the `CLAUDE.md` pointer,
+  instead of `<project>/.claude/CLAUDE.md`, and the canonical asset
+  moved to `assets/project/AGENTS.md`. Existing projects keep their
+  `.claude/CLAUDE.md` until re-scaffolded.
 - **CLI output ordering.** The planned-changes listing now prints
   after deferred actions run (the plan is part of the command's
   result). Dry-run output is unchanged.
@@ -44,9 +52,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `application/cli/executable`. No import cycles anywhere.
 - Per-layer `README.md` + `AGENTS.md` documenting each layer's
   purpose and local conventions.
-- The root contributor guide migrated from `CLAUDE.md` to `AGENTS.md`
-  (the open agent-instructions convention); `CLAUDE.md` remains as a
-  one-line `@AGENTS.md` import so Claude Code keeps loading it.
 - Typecheck (`pnpm typecheck`) now covers `tests/` as well as `src/`.
 
 ### Removed
