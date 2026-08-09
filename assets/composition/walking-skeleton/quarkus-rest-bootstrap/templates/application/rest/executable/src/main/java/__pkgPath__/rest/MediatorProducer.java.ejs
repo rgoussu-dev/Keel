@@ -1,0 +1,28 @@
+package <%= basePackage %>.rest;
+
+import java.util.List;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Singleton;
+
+import <%= basePackage %>.kernel.Handler;
+import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.core.RegistryMediator;
+import <%= basePackage %>.core.greet.GreetHandler;
+
+/**
+ * The channel's composition root: hand-wires the Mediator with every
+ * domain Handler. Replace with CDI lookup of all {@link Handler}
+ * beans once the project grows past one or two handlers.
+ */
+@ApplicationScoped
+public class MediatorProducer {
+
+    @Produces
+    @Singleton
+    public Mediator mediator() {
+        List<Handler<?, ?>> handlers = List.of(new GreetHandler());
+        return new RegistryMediator(handlers);
+    }
+}

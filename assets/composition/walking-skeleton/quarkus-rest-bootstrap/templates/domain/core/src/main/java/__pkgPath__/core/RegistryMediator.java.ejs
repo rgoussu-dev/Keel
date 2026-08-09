@@ -1,0 +1,35 @@
+package <%= basePackage %>.core;
+
+import java.util.List;
+
+import <%= basePackage %>.kernel.Command;
+import <%= basePackage %>.kernel.Handler;
+import <%= basePackage %>.kernel.Mediator;
+
+/**
+ * Walks an immutable list of handlers and dispatches each command to
+ * the first one whose {@link Handler#supports(Command)} returns
+ * true. A missing handler is a wiring bug, not a runtime condition,
+ * so the dispatcher throws.
+ */
+public final class RegistryMediator implements Mediator {
+
+    private final List<Handler<?, ?>> handlers;
+
+    public RegistryMediator(List<Handler<?, ?>> handlers) {
+        this.handlers = List.copyOf(handlers);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <R> R dispatch(Command<R> command) {
+        for (Handler<?, ?> handler : handlers) {
+            if (handler.supports(command)) {
+                Handler<Command<R>, R> typed = (Handler<Command<R>, R>) handler;
+                return typed.handle(command);
+            }
+        }
+        throw new IllegalStateException(
+                "no handler supports " + command.getClass().getName());
+    }
+}

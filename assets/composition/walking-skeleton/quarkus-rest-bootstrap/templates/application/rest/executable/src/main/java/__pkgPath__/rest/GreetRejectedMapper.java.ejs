@@ -1,0 +1,36 @@
+package <%= basePackage %>.rest;
+
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.Provider;
+
+import <%= basePackage %>.contract.greet.GreetRejected;
+import <%= basePackage %>.rest.contract.ProblemDetails;
+
+/**
+ * Maps the domain's {@link GreetRejected} error to an RFC 9457
+ * Problem Details response. The interface adapter owns the
+ * domain-error → transport translation; the domain never learns
+ * about HTTP.
+ */
+@Provider
+public class GreetRejectedMapper implements ExceptionMapper<GreetRejected> {
+
+    static final String PROBLEM_JSON = "application/problem+json";
+
+    @Context
+    UriInfo uriInfo;
+
+    @Override
+    public Response toResponse(GreetRejected rejected) {
+        ProblemDetails body = new ProblemDetails(
+                "urn:problem-type:greet-rejected",
+                "Greeting rejected",
+                400,
+                rejected.getMessage(),
+                uriInfo.getRequestUri().getPath());
+        return Response.status(400).type(PROBLEM_JSON).entity(body).build();
+    }
+}

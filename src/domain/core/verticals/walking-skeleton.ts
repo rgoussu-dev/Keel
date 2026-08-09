@@ -11,6 +11,7 @@
 import { claudeCoreAdapter } from '../adapters/claude-core.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
+import { quarkusRestBootstrapAdapter } from '../adapters/quarkus-rest-bootstrap.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
 import type { Vertical } from '../../contract/composition.js';
 
@@ -20,6 +21,7 @@ export const walkingSkeletonVertical: Vertical = {
   dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline'],
   adapters: [
     quarkusCliBootstrapAdapter,
+    quarkusRestBootstrapAdapter,
     samplePortFakeAdapter,
     gradleWrapperAdapter,
     claudeCoreAdapter,

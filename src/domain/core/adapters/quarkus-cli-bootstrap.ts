@@ -6,9 +6,10 @@
  *
  * This is the seed of the `walking-skeleton` vertical. It covers the
  * `entrypoint` dimension and is predicated on
- * `framework.quarkus + arch.cli`. A REST sibling adapter will cover
- * the same dimension under `arch.server-http`; the resolver picks
- * whichever predicate matches the project's tag set.
+ * `framework.quarkus + arch.cli`. Its REST sibling
+ * (`walking-skeleton/quarkus-rest-bootstrap`) covers the same
+ * dimension under `arch.server-http`; the resolver picks whichever
+ * predicate matches the project's tag set.
  *
  * Hexagonal split (separate `domain/core`, `domain/contract`,
  * `infrastructure/cli`) is intentionally NOT done in this seed —
