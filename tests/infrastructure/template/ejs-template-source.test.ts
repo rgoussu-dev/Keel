@@ -2,7 +2,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { EjsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
+import { EjsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
 
 let tmplRoot: string;
 

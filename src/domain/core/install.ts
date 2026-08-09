@@ -22,7 +22,8 @@
  * returns the next manifest. The caller commits both.
  */
 
-import { resolveAdapterAnswers, type AnswerMode, type Prompt } from './answers.js';
+import { resolveAdapterAnswers } from './answers.js';
+import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 import { applyContribution, makeCtx, type ApplyResult } from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {

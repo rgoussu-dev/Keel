@@ -12,11 +12,16 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../src/domain/contract/manifest.js';
-import { FakeClock } from '../../src/infrastructure/commons/fake-clock.js';
-import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
-import { expectErr, expectOk, installMediator, runActionsExcept } from '../support/factory.js';
+import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
+import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
+import {
+  expectErr,
+  expectOk,
+  installMediator,
+  runActionsExcept,
+} from '../../../support/factory.js';
 
 let cwd: string;
 

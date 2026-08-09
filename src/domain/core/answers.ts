@@ -22,12 +22,6 @@
 import type { Adapter, Question } from '../contract/composition.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 
-/**
- * Re-export of the Prompt port so existing importers of this module
- * keep compiling while call sites migrate to the contract import.
- */
-export type { AnswerMode, Prompt };
-
 /** Result of resolving a single question. */
 export interface AnswerResolution {
   readonly value: string;

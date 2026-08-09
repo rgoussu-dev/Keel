@@ -9,25 +9,18 @@
 import path from 'node:path';
 import fs from 'fs-extra';
 import { describe, expect, it } from 'vitest';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import {
   claudeCoreAdapter,
   CLAUDE_CORE_ID,
-} from '../../../src/domain/core/adapters/claude-core.js';
-import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { makeCtx } from '../../../src/domain/core/apply.js';
+} from '../../../../src/domain/core/adapters/claude-core.js';
+import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
 import {
   packagedAssetsRoot,
   ejsTemplateSource,
-} from '../../../src/infrastructure/template/ejs-template-source.js';
-import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
+} from '../../../../src/infrastructure/template/ejs-template-source.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 
 describe('claude-core adapter', () => {
   it('declares the right vertical, predicate, and coverage', () => {
@@ -44,7 +37,7 @@ describe('claude-core adapter', () => {
       {},
       {
         manifest: emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-        logger: silent,
+        logger: new FakeLogger(),
         cwd: '/tmp/dummy',
         templates: ejsTemplateSource,
         processes: new FakeProcessRunner(),

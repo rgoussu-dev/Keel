@@ -7,8 +7,8 @@ import {
   MANIFEST_FILENAME,
   migrateV1,
   parseManifest,
-} from '../../src/domain/contract/manifest.js';
-import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
+} from '../../../src/domain/contract/manifest.js';
+import { fsManifestStore } from '../../../src/infrastructure/manifest/fs-manifest-store.js';
 
 let tmp: string;
 

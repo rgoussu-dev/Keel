@@ -13,10 +13,15 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { newProjectCommand } from '../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../src/domain/contract/manifest.js';
-import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
-import { expectErr, expectOk, installMediator, runActionsExcept } from '../support/factory.js';
+import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
+import {
+  expectErr,
+  expectOk,
+  installMediator,
+  runActionsExcept,
+} from '../../../support/factory.js';
 
 const bootstrapAnswers = {
   'walking-skeleton/quarkus-cli-bootstrap': {

@@ -8,23 +8,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import {
   gradleWrapperAdapter,
   GRADLE_WRAPPER_ID,
-} from '../../../src/domain/core/adapters/gradle-wrapper.js';
-import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../src/domain/core/adapters/quarkus-cli-bootstrap.js';
-import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { makeCtx } from '../../../src/domain/core/apply.js';
-import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
-import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
-
-const silent = {
-  info: () => {},
-  success: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
+} from '../../../../src/domain/core/adapters/gradle-wrapper.js';
+import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/quarkus-cli-bootstrap.js';
+import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
+import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 
 describe('gradle-wrapper adapter', () => {
   it('declares the right vertical, predicate, and ordering', () => {
@@ -42,7 +35,7 @@ describe('gradle-wrapper adapter', () => {
       {},
       {
         manifest: emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-        logger: silent,
+        logger: new FakeLogger(),
         cwd: '/tmp/dummy',
         templates: ejsTemplateSource,
         processes: new FakeProcessRunner(),
