@@ -28,13 +28,19 @@
  */
 
 import chalk from 'chalk';
-import { logger as defaultLogger, type Logger } from '../util/log.js';
-import { paths } from '../util/paths.js';
-import { InMemoryTree } from '../engine/tree.js';
+import { consoleLogger as defaultLogger } from '../infrastructure/commons/console-logger.js';
+import type { Logger } from '../domain/contract/ports/logger.js';
+import type { Prompt } from '../domain/contract/ports/prompt.js';
+import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
+import type { TemplateSource } from '../domain/contract/ports/template-source.js';
+import { FsTree } from '../infrastructure/tree/fs-tree.js';
+import { fsManifestStore } from '../infrastructure/manifest/fs-manifest-store.js';
+import { inquirerPrompt } from '../infrastructure/prompt/inquirer-prompt.js';
+import { ejsTemplateSource } from '../infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../composition/install.js';
 import { runActions, type RunActionsInputs } from '../composition/actions.js';
-import { readManifestV2, writeManifestV2 } from '../manifest/store-v2.js';
-import { cliPrompt, type Prompt } from '../composition/answers.js';
+import { projectScopeRoot } from '../domain/contract/manifest.js';
 import { getVertical, listVerticalIds } from '../composition/verticals/index.js';
 import type { DeferredAction, ManifestV2 } from '../domain/contract/composition.js';
 
@@ -49,6 +55,10 @@ export interface AddInputs {
   readonly dryRun: boolean;
   readonly logger?: Logger;
   readonly prompt?: Prompt;
+  /** Template source — injected so tests can supply a fake. */
+  readonly templates?: TemplateSource;
+  /** Process runner — injected so tests can stub external tools. */
+  readonly processes?: ProcessRunner;
   /** Time source — injected so tests can pin `updatedAt`. */
   readonly now?: () => string;
   /**
@@ -68,8 +78,8 @@ export async function addVertical(inputs: AddInputs): Promise<void> {
     );
   }
 
-  const scopeRoot = paths.project(inputs.cwd);
-  const stored = await readManifestV2(scopeRoot);
+  const scopeRoot = projectScopeRoot(inputs.cwd);
+  const stored = await fsManifestStore.read(scopeRoot);
   if (!stored) {
     throw new Error(
       `no project initialised at ${scopeRoot} — run 'keel new --stack=<id>' first to create one`,
@@ -84,7 +94,9 @@ export async function addVertical(inputs: AddInputs): Promise<void> {
 
   const now = (inputs.now ?? (() => new Date().toISOString()))();
 
-  const tree = new InMemoryTree(inputs.cwd);
+  const templates = inputs.templates ?? ejsTemplateSource;
+  const processes = inputs.processes ?? spawnProcessRunner;
+  const tree = new FsTree(inputs.cwd);
   const merged: ManifestV2 = {
     ...stored,
     answers: mergeAnswers(stored.answers, inputs.answers ?? {}),
@@ -94,9 +106,11 @@ export async function addVertical(inputs: AddInputs): Promise<void> {
     manifest: merged,
     tree,
     mode: inputs.interactive ? 'interactive' : 'non-interactive',
-    prompt: inputs.prompt ?? cliPrompt,
+    prompt: inputs.prompt ?? inquirerPrompt,
     logger: log,
     cwd: inputs.cwd,
+    templates,
+    processes,
     now: () => now,
   });
 
@@ -113,12 +127,13 @@ export async function addVertical(inputs: AddInputs): Promise<void> {
   // a coherent (files + manifest) pair on disk instead of stranding
   // files with no manifest entry, and the second run of `keel add`
   // would (correctly) refuse the duplicate-vertical install.
-  await writeManifestV2(scopeRoot, result.manifest);
+  await fsManifestStore.write(scopeRoot, result.manifest);
   const runner = inputs.runActions ?? runActions;
   await runner({
     actions: result.applyResult.actions,
     cwd: inputs.cwd,
     logger: log,
+    processes,
     dryRun: false,
   });
   log.success(`keel add ${vertical.id}: ready`);
@@ -136,7 +151,7 @@ function mergeAnswers(
 
 function printPlan(
   verticalId: string,
-  changes: ReturnType<InMemoryTree['changes']>,
+  changes: ReturnType<FsTree['changes']>,
   actions: readonly DeferredAction[],
   log: Logger,
 ): void {

@@ -15,14 +15,13 @@
  * here without re-prompting the user.
  */
 
-import path from 'node:path';
-import { paths } from '../../util/paths.js';
-import { renderTemplateFiles } from '../render.js';
 import { packageToPath } from '../util.js';
 import type { Adapter } from '../../domain/contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const SAMPLE_PORT_FAKE_ID = 'walking-skeleton/sample-port-fake';
+
+const TEMPLATE_ID = 'composition/walking-skeleton/sample-port-fake/templates';
 
 const FAKE_MODULE_INCLUDE = 'include(":infrastructure:clock:fake")';
 
@@ -39,13 +38,7 @@ export const samplePortFakeAdapter: Adapter = {
         `${SAMPLE_PORT_FAKE_ID}: requires '${QUARKUS_CLI_BOOTSTRAP_ID}' to have run first; basePackage not in manifest`,
       );
     }
-    const templateRoot = path.join(
-      paths.asset('composition'),
-      'walking-skeleton',
-      'sample-port-fake',
-      'templates',
-    );
-    const files = await renderTemplateFiles(templateRoot, '', {
+    const files = await ctx.templates.render(TEMPLATE_ID, '', {
       basePackage,
       pkgPath: packageToPath(basePackage),
     });

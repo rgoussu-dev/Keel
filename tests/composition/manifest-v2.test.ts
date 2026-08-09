@@ -8,7 +8,7 @@ import {
   migrateV1,
   parseManifest,
 } from '../../src/domain/contract/manifest.js';
-import { readManifestV2, writeManifestV2 } from '../../src/manifest/store-v2.js';
+import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
 
 let tmp: string;
 
@@ -22,7 +22,7 @@ afterEach(async () => {
 
 describe('manifest v2', () => {
   it('returns null when the manifest file is absent', async () => {
-    expect(await readManifestV2(tmp)).toBeNull();
+    expect(await fsManifestStore.read(tmp)).toBeNull();
   });
 
   it('round-trips a v2 manifest', async () => {
@@ -34,8 +34,8 @@ describe('manifest v2', () => {
       versions: { java: '21', quarkus: '3.16.0' },
       answers: { 'distribution/quarkus-cli-native': { targets: 'linux-amd64' } },
     };
-    await writeManifestV2(tmp, withState);
-    const read = await readManifestV2(tmp);
+    await fsManifestStore.write(tmp, withState);
+    const read = await fsManifestStore.read(tmp);
     expect(read).toEqual(withState);
   });
 
@@ -55,7 +55,7 @@ describe('manifest v2', () => {
       ],
     };
     await fs.writeJson(path.join(tmp, MANIFEST_FILENAME), v1);
-    const read = await readManifestV2(tmp);
+    const read = await fsManifestStore.read(tmp);
     expect(read).not.toBeNull();
     expect(read!.version).toBe(2);
     expect(read!.keelVersion).toBe('0.3.0-alpha');
@@ -72,7 +72,7 @@ describe('manifest v2', () => {
       entries: [],
     };
     await fs.writeJson(path.join(tmp, MANIFEST_FILENAME), v1);
-    await readManifestV2(tmp);
+    await fsManifestStore.read(tmp);
     const onDisk = await fs.readJson(path.join(tmp, MANIFEST_FILENAME));
     expect(onDisk).toEqual(v1);
     expect(onDisk.version).toBeUndefined();

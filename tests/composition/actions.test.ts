@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ActionError, runActions } from '../../src/composition/actions.js';
+import { FakeProcessRunner } from '../../src/infrastructure/process/fake.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 
 const silent = {
@@ -44,7 +45,13 @@ describe('runActions', () => {
         order.push('b');
       }),
     ];
-    await runActions({ actions, cwd: '/tmp', logger: silent, dryRun: false });
+    await runActions({
+      actions,
+      cwd: '/tmp',
+      logger: silent,
+      processes: new FakeProcessRunner(),
+      dryRun: false,
+    });
     expect(order).toEqual(['a', 'b']);
   });
 
@@ -56,7 +63,13 @@ describe('runActions', () => {
         ran = true;
       }),
     ];
-    await runActions({ actions, cwd: '/tmp', logger, dryRun: true });
+    await runActions({
+      actions,
+      cwd: '/tmp',
+      logger,
+      processes: new FakeProcessRunner(),
+      dryRun: true,
+    });
     expect(ran).toBe(false);
     expect(lines).toEqual(['info would: a']);
   });
@@ -67,7 +80,13 @@ describe('runActions', () => {
         throw new Error('kaboom');
       }),
     ];
-    const promise = runActions({ actions, cwd: '/tmp', logger: silent, dryRun: false });
+    const promise = runActions({
+      actions,
+      cwd: '/tmp',
+      logger: silent,
+      processes: new FakeProcessRunner(),
+      dryRun: false,
+    });
     await expect(promise).rejects.toBeInstanceOf(ActionError);
     await expect(promise).rejects.toMatchObject({ actionId: 'boom' });
   });
@@ -83,7 +102,13 @@ describe('runActions', () => {
       }),
     ];
     await expect(
-      runActions({ actions, cwd: '/tmp', logger: silent, dryRun: false }),
+      runActions({
+        actions,
+        cwd: '/tmp',
+        logger: silent,
+        processes: new FakeProcessRunner(),
+        dryRun: false,
+      }),
     ).rejects.toBeInstanceOf(ActionError);
     expect(bRan).toBe(false);
   });

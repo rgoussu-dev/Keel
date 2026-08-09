@@ -19,14 +19,12 @@
  * (since they're already in the manifest).
  */
 
-import { confirm, input, select } from '@inquirer/prompts';
 import type { Adapter, Question } from '../domain/contract/composition.js';
 import type { AnswerMode, Prompt } from '../domain/contract/ports/prompt.js';
 
 /**
  * Re-export of the Prompt port so existing importers of this module
- * keep compiling while the interactive adapter migrates to
- * `infrastructure/`.
+ * keep compiling while call sites migrate to the contract import.
  */
 export type { AnswerMode, Prompt };
 
@@ -97,35 +95,3 @@ function validateChoice(question: Question, value: string): void {
     );
   }
 }
-
-/**
- * CLI-backed prompt adapter. Picks `select` for choice questions and
- * a free-form `input` (with the default pre-filled) otherwise.
- *
- * Boolean-shaped questions can be modelled as a `select` with values
- * `'yes' | 'no'`; we don't expose a `confirm` shortcut to keep the
- * answer alphabet uniformly stringy in the manifest.
- */
-export const cliPrompt: Prompt = {
-  async ask(question: Question): Promise<string> {
-    if (question.choices && question.choices.length > 0) {
-      const value = await select<string>({
-        message: question.prompt,
-        default: question.default,
-        choices: question.choices.map((c) => ({
-          name: c.label,
-          value: c.value,
-          description: c.doc,
-        })),
-      });
-      return value;
-    }
-    return input({ message: question.prompt, default: question.default });
-  },
-};
-
-/**
- * Re-export to keep `confirm` imported (some adapters may want it via
- * `cliPrompt` extensions in the future). No-op for now beyond signal.
- */
-export { confirm as _confirm };

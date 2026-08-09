@@ -18,9 +18,6 @@
  * patch the emitted file with an addendum (e.g. a Quarkus runbook).
  */
 
-import path from 'node:path';
-import fs from 'fs-extra';
-import { paths } from '../../util/paths.js';
 import type { Adapter } from '../../domain/contract/composition.js';
 
 export const CLAUDE_CORE_ID = 'walking-skeleton/claude-core';
@@ -32,9 +29,8 @@ export const claudeCoreAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: ['agentic-baseline'],
   predicate: {},
-  async contribute() {
-    const source = path.join(paths.asset('project'), 'CLAUDE.md');
-    const content = await fs.readFile(source, 'utf8');
+  async contribute(ctx) {
+    const content = await ctx.templates.readText('project/CLAUDE.md');
     return {
       files: [{ path: TARGET_PATH, content }],
     };

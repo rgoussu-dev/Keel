@@ -1,14 +1,8 @@
 /**
- * Template rendering for adapters.
+ * Filesystem + EJS adapter for the TemplateSource port. Resolves
+ * identifiers against an assets root (the packaged `assets/`
+ * directory by default), walks template trees, and renders:
  *
- * Walks a directory of template files and emits a list of
- * `ContributionFile`s ready to be returned from an adapter's
- * `contribute()`. Same semantics as the legacy `engine/template.ts`
- * helper, but produces immutable contributions instead of mutating a
- * Tree directly — that lets the applier do conflict detection
- * uniformly.
- *
- * Behaviour per file kind:
  *   - `*.ejs` — rendered through EJS with `vars`, written without the
  *     `.ejs` suffix.
  *   - everything else — read as a binary `Buffer` and copied
@@ -25,26 +19,46 @@
  */
 
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fs from 'fs-extra';
 import { render } from 'ejs';
-import type { ContributionFile } from '../domain/contract/composition.js';
+import type { ContributionFile } from '../../domain/contract/composition.js';
+import type { TemplateSource } from '../../domain/contract/ports/template-source.js';
 
-/**
- * Renders every file under `templateRoot` as a contribution rooted
- * at `targetRoot`. Returns the contributions; nothing is written.
- */
-export async function renderTemplateFiles(
-  templateRoot: string,
-  targetRoot: string,
-  vars: Readonly<Record<string, unknown>>,
-): Promise<ContributionFile[]> {
-  const out: ContributionFile[] = [];
-  const files = await walk(templateRoot);
-  for (const absFile of files) {
-    out.push(await renderOne(absFile, templateRoot, targetRoot, vars));
+/** The `assets/` directory shipped inside the installed package. */
+export const packagedAssetsRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'assets',
+);
+
+/** TemplateSource adapter rooted at a directory of assets. */
+export class EjsTemplateSource implements TemplateSource {
+  constructor(private readonly assetsRoot: string = packagedAssetsRoot) {}
+
+  async render(
+    templateId: string,
+    targetRoot: string,
+    vars: Readonly<Record<string, unknown>>,
+  ): Promise<ContributionFile[]> {
+    const templateRoot = path.join(this.assetsRoot, templateId);
+    const out: ContributionFile[] = [];
+    const files = await walk(templateRoot);
+    for (const absFile of files) {
+      out.push(await renderOne(absFile, templateRoot, targetRoot, vars));
+    }
+    return out;
   }
-  return out;
+
+  readText(assetId: string): Promise<string> {
+    return fs.readFile(path.join(this.assetsRoot, assetId), 'utf8');
+  }
 }
+
+/** Shared default instance over the packaged assets. */
+export const ejsTemplateSource = new EjsTemplateSource();
 
 async function renderOne(
   absFile: string,

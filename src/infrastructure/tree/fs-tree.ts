@@ -1,14 +1,17 @@
+/**
+ * Filesystem adapter for the Tree port. Staged in memory, rooted at
+ * an absolute path: reads fall through to disk lazily on first
+ * access; writes stage in memory; `commit()` materialises staged
+ * changes, each file written atomically via write-to-temp + rename
+ * (see {@link atomicWrite}). If the process crashes mid-commit some
+ * files may be written and others not, but no file is observed in a
+ * half-written state.
+ */
+
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import fs from 'fs-extra';
-import type { Tree, TreeChange } from '../domain/contract/ports/tree.js';
-
-/**
- * Re-export of the Tree port so existing importers of this module
- * keep compiling while the implementation migrates to
- * `infrastructure/`.
- */
-export type { Tree, TreeChange };
+import type { Tree, TreeChange, TreeFactory } from '../../domain/contract/ports/tree.js';
 
 type Entry =
   | {
@@ -20,15 +23,8 @@ type Entry =
     }
   | { kind: 'deleted'; wasOnDisk: boolean };
 
-/**
- * In-memory tree rooted at an absolute path. Reads fall through to disk
- * lazily on first access; writes stage in memory. `commit()` materialises
- * staged changes to disk, each file written atomically via write-to-temp
- * + rename (see {@link atomicWrite}). If the process crashes mid-commit
- * some files may be written and others not, but no file is observed in a
- * half-written state.
- */
-export class InMemoryTree implements Tree {
+/** The default Tree adapter, staging over the real filesystem. */
+export class FsTree implements Tree {
   private readonly entries = new Map<string, Entry>();
 
   constructor(private readonly root: string) {}
@@ -108,14 +104,6 @@ export class InMemoryTree implements Tree {
     return out.sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  /**
-   * Materialises staged changes to disk. Each file is written atomically
-   * (write-to-temp + rename on the same filesystem) so observers never
-   * see a half-written file; if an existing file is being replaced its
-   * permission bits are preserved across the rename.
-   *
-   * @returns the changes applied, in the same order as {@link changes}.
-   */
   async commit(): Promise<readonly TreeChange[]> {
     const changes = this.changes();
     for (const change of changes) {
@@ -138,6 +126,9 @@ export class InMemoryTree implements Tree {
     return normal;
   }
 }
+
+/** TreeFactory over {@link FsTree} — what the composition root wires. */
+export const fsTreeFactory: TreeFactory = (root) => new FsTree(root);
 
 /**
  * Writes a file atomically: the payload is written to a unique temp path

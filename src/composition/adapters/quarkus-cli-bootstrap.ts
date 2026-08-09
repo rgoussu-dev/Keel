@@ -16,13 +16,12 @@
  * and `settings.gradle.kts`.
  */
 
-import path from 'node:path';
-import { paths } from '../../util/paths.js';
-import { renderTemplateFiles } from '../render.js';
 import { packageToPath } from '../util.js';
 import type { Adapter } from '../../domain/contract/composition.js';
 
 export const QUARKUS_CLI_BOOTSTRAP_ID = 'walking-skeleton/quarkus-cli-bootstrap';
+
+const TEMPLATE_ID = 'composition/walking-skeleton/quarkus-cli-bootstrap/templates';
 
 const BASE_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -51,13 +50,7 @@ export const quarkusCliBootstrapAdapter: Adapter = {
   async contribute(ctx) {
     const basePackage = validateBasePackage(ctx.answer('basePackage').trim());
     const projectName = validateProjectName(ctx.answer('projectName').trim());
-    const templateRoot = path.join(
-      paths.asset('composition'),
-      'walking-skeleton',
-      'quarkus-cli-bootstrap',
-      'templates',
-    );
-    const files = await renderTemplateFiles(templateRoot, '', {
+    const files = await ctx.templates.render(TEMPLATE_ID, '', {
       basePackage,
       projectName,
       pkgPath: packageToPath(basePackage),

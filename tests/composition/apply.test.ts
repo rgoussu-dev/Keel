@@ -2,9 +2,11 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../src/infrastructure/process/spawn-process-runner.js';
 import { ContributionConflictError, applyContributions } from '../../src/composition/apply.js';
 import { emptyManifestV2 } from '../../src/domain/contract/manifest.js';
-import { InMemoryTree } from '../../src/engine/tree.js';
+import { FsTree } from '../../src/infrastructure/tree/fs-tree.js';
 import type { Adapter, Contribution } from '../../src/domain/contract/composition.js';
 
 const silent = {
@@ -40,7 +42,7 @@ afterEach(async () => {
 
 describe('applyContributions', () => {
   it('writes files declared by adapters to the tree', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a = adapter('a', {
       files: [{ path: 'src/app.java', content: 'class App {}' }],
     });
@@ -51,12 +53,14 @@ describe('applyContributions', () => {
       tree,
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
     });
     expect(tree.read('src/app.java')?.toString()).toBe('class App {}');
   });
 
   it('chains patches across adapters', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const seed = adapter('seed', {
       files: [{ path: 'pom.xml', content: '<project></project>' }],
     });
@@ -73,12 +77,14 @@ describe('applyContributions', () => {
       tree,
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
     });
     expect(tree.read('pom.xml')?.toString()).toBe('<project><a/><b/></project>');
   });
 
   it('conflicts when two adapters write the same file', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a = adapter('a', { files: [{ path: 'x.txt', content: 'a' }] });
     const b = adapter('b', { files: [{ path: 'x.txt', content: 'b' }] });
     await expect(
@@ -89,12 +95,14 @@ describe('applyContributions', () => {
         tree,
         logger: silent,
         cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
       }),
     ).rejects.toBeInstanceOf(ContributionConflictError);
   });
 
   it('conflicts when a file write would overwrite an on-disk file', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     await fs.writeFile(path.join(tmp, 'README.md'), 'hello');
     const a = adapter('a', { files: [{ path: 'README.md', content: 'goodbye' }] });
     await expect(
@@ -105,12 +113,14 @@ describe('applyContributions', () => {
         tree,
         logger: silent,
         cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
       }),
     ).rejects.toBeInstanceOf(ContributionConflictError);
   });
 
   it('errors when a patch targets a missing file', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a = adapter('a', {
       patches: [{ target: 'nope.txt', apply: (s) => s }],
     });
@@ -122,12 +132,14 @@ describe('applyContributions', () => {
         tree,
         logger: silent,
         cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
       }),
     ).rejects.toBeInstanceOf(ContributionConflictError);
   });
 
   it('aggregates tagsAdd across adapters, deduplicated', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a = adapter('a', { tagsAdd: ['runtime.graalvm-native', 'feature.foo'] });
     const b = adapter('b', { tagsAdd: ['feature.foo', 'feature.bar'] });
     const r = await applyContributions({
@@ -137,6 +149,8 @@ describe('applyContributions', () => {
       tree,
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
     });
     expect([...r.tagsAdded].sort()).toEqual([
       'feature.bar',
@@ -146,7 +160,7 @@ describe('applyContributions', () => {
   });
 
   it('records agentic bundles per adapter', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a = adapter('a', {
       agentic: { skills: ['skills/debug.md'], slashCommands: ['commands/release.md'] },
     });
@@ -157,6 +171,8 @@ describe('applyContributions', () => {
       tree,
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
     });
     expect(r.agentic).toEqual({
       a: { skills: ['skills/debug.md'], slashCommands: ['commands/release.md'] },
@@ -164,7 +180,7 @@ describe('applyContributions', () => {
   });
 
   it('exposes resolved answers via ctx.answer', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a: Adapter = {
       id: 'a',
       vertical: 'test',
@@ -182,12 +198,14 @@ describe('applyContributions', () => {
       tree,
       logger: silent,
       cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
     });
     expect(tree.read('targets.txt')?.toString()).toBe('darwin-arm64');
   });
 
   it('rejects ctx.answer for an undeclared question id', async () => {
-    const tree = new InMemoryTree(tmp);
+    const tree = new FsTree(tmp);
     const a: Adapter = {
       id: 'a',
       vertical: 'test',
@@ -206,6 +224,8 @@ describe('applyContributions', () => {
         tree,
         logger: silent,
         cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
       }),
     ).rejects.toThrow(/did not declare it/);
   });

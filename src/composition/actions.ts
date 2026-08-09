@@ -15,13 +15,15 @@
  */
 
 import type { DeferredAction } from '../domain/contract/composition.js';
-import type { Logger } from '../util/log.js';
+import type { Logger } from '../domain/contract/ports/logger.js';
+import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
 
 /** Inputs for `runActions`. */
 export interface RunActionsInputs {
   readonly actions: readonly DeferredAction[];
   readonly cwd: string;
   readonly logger: Logger;
+  readonly processes: ProcessRunner;
   readonly dryRun: boolean;
 }
 
@@ -48,7 +50,7 @@ export async function runActions(inputs: RunActionsInputs): Promise<void> {
       continue;
     }
     try {
-      await action.run({ cwd: inputs.cwd, logger: inputs.logger });
+      await action.run({ cwd: inputs.cwd, logger: inputs.logger, processes: inputs.processes });
     } catch (err) {
       throw new ActionError(`action '${action.id}' failed: ${describe(err)}`, action.id, {
         cause: err,

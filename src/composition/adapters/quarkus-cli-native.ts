@@ -26,13 +26,12 @@
  * is touched, which keeps this adapter cleanly additive.
  */
 
-import path from 'node:path';
-import { paths } from '../../util/paths.js';
-import { renderTemplateFiles } from '../render.js';
 import type { Adapter } from '../../domain/contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const QUARKUS_CLI_NATIVE_ID = 'distribution/quarkus-cli-native';
+
+const TEMPLATE_ID = 'composition/distribution/quarkus-cli-native/templates';
 
 const TARGET_PRESETS = [
   'linux-amd64,linux-arm64,darwin-arm64',
@@ -99,13 +98,7 @@ export const quarkusCliNativeAdapter: Adapter = {
       );
     }
     const targets = parseTargets(ctx.answer('targets'));
-    const templateRoot = path.join(
-      paths.asset('composition'),
-      'distribution',
-      'quarkus-cli-native',
-      'templates',
-    );
-    const files = await renderTemplateFiles(templateRoot, '', {
+    const files = await ctx.templates.render(TEMPLATE_ID, '', {
       projectName,
       targets,
       smokeTarget: targets[0],

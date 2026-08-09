@@ -1,26 +1,25 @@
 /**
  * `git-init` adapter — ensures the project is a git repository and
- * optionally registers an `origin` remote. Ports the legacy
- * `gitInitSchematic` (src/schematics/git-init/factory.ts) onto the
- * composition contract.
+ * optionally registers an `origin` remote.
  *
- * Differences from the legacy schematic:
- *   - The dryRun flag is no longer this adapter's concern; the
- *     applier emits an DeferredAction and `runActions` honours the flag.
- *   - `remote` and `defaultBranch` become sticky-memory questions:
- *     answered once, recalled on subsequent runs.
- *   - The behaviour matrix is identical — fresh dir → init; root of
- *     existing repo → skip init, optionally add remote; nested under
- *     an enclosing repo → warn and do nothing.
+ * Behaviour matrix: fresh dir → init; root of existing repo → skip
+ * init, optionally add remote; nested under an enclosing repo → warn
+ * and do nothing. `remote` and `defaultBranch` are sticky-memory
+ * questions: answered once, recalled on subsequent runs.
+ *
+ * All `git` invocations go through the ProcessRunner port — the
+ * plan-time probe via `ctx.processes`, the deferred action via its
+ * env's `processes`.
  */
 
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import type {
   DeferredAction,
   Adapter,
   DeferredActionEnv,
 } from '../../domain/contract/composition.js';
+import type { Logger } from '../../domain/contract/ports/logger.js';
+import type { ProcessResult, ProcessRunner } from '../../domain/contract/ports/process-runner.js';
 
 const DEFAULT_INITIAL_BRANCH = 'main';
 
@@ -54,9 +53,9 @@ export const gitInitAdapter: Adapter = {
 
     const action: DeferredAction = {
       id: 'vcs/git-init',
-      description: gitInitDescription(remote, defaultBranch, ctx.cwd),
-      run: ({ cwd, logger }: DeferredActionEnv) => {
-        runGitInit(path.resolve(cwd), defaultBranch, remote, logger);
+      description: gitInitDescription(remote, defaultBranch, ctx.cwd, ctx.processes),
+      run: ({ cwd, logger, processes }: DeferredActionEnv) => {
+        runGitInit(path.resolve(cwd), defaultBranch, remote, logger, processes);
         return Promise.resolve();
       },
     };
@@ -64,8 +63,13 @@ export const gitInitAdapter: Adapter = {
   },
 };
 
-function gitInitDescription(remote: string, defaultBranch: string, cwd: string): string {
-  const detection = detectGit(cwd);
+function gitInitDescription(
+  remote: string,
+  defaultBranch: string,
+  cwd: string,
+  processes: ProcessRunner,
+): string {
+  const detection = detectGit(cwd, processes);
   if (detection.inRepo && detection.toplevel === path.resolve(cwd)) {
     return remote
       ? `set origin to ${remote} (repo already initialised)`
@@ -83,9 +87,10 @@ function runGitInit(
   cwd: string,
   defaultBranch: string,
   remote: string,
-  logger: DeferredActionEnv['logger'],
+  logger: Logger,
+  processes: ProcessRunner,
 ): void {
-  const detection = detectGit(cwd);
+  const detection = detectGit(cwd, processes);
   if (detection.inRepo && detection.toplevel !== cwd) {
     logger.warn(
       `git: cwd is inside an enclosing repo at ${detection.toplevel}; not initialising a nested repo or adding a remote`,
@@ -95,7 +100,7 @@ function runGitInit(
 
   if (!detection.inRepo) {
     logger.info(`git: initialising repo on branch "${defaultBranch}"`);
-    runGit(cwd, ['init', '-b', defaultBranch]);
+    runGit(cwd, ['init', '-b', defaultBranch], processes);
   } else {
     logger.info('git: repo already initialised at project root');
   }
@@ -105,12 +110,12 @@ function runGitInit(
     return;
   }
 
-  if (hasRemote(cwd, 'origin')) {
+  if (hasRemote(cwd, 'origin', processes)) {
     logger.info('git: origin remote already exists — not overwriting');
     return;
   }
 
-  runGit(cwd, ['remote', 'add', 'origin', remote]);
+  runGit(cwd, ['remote', 'add', 'origin', remote], processes);
   logger.success(`git: origin set to ${remote}`);
 }
 
@@ -119,26 +124,26 @@ interface GitDetection {
   toplevel: string | null;
 }
 
-function detectGit(cwd: string): GitDetection {
-  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' });
+function detectGit(cwd: string, processes: ProcessRunner): GitDetection {
+  const r = processes.run('git', ['rev-parse', '--show-toplevel'], { cwd });
   if (r.status !== 0) return { inRepo: false, toplevel: null };
   return { inRepo: true, toplevel: path.resolve(r.stdout.trim()) };
 }
 
-function hasRemote(cwd: string, name: string): boolean {
-  const r = spawnSync('git', ['remote', 'get-url', name], { cwd, stdio: 'ignore' });
+function hasRemote(cwd: string, name: string, processes: ProcessRunner): boolean {
+  const r = processes.run('git', ['remote', 'get-url', name], { cwd });
   return r.status === 0;
 }
 
-function runGit(cwd: string, args: string[]): void {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
+function runGit(cwd: string, args: string[], processes: ProcessRunner): void {
+  const r = processes.run('git', args, { cwd });
   if (r.status === 0) return;
   throw new Error(`git ${args.join(' ')} failed: ${describeFailure(r)}`);
 }
 
-function describeFailure(r: ReturnType<typeof spawnSync>): string {
-  if (r.error) return r.error.message;
-  const stderr = (r.stderr ?? '').toString().trim();
+function describeFailure(r: ProcessResult): string {
+  if (r.startFailure) return r.startFailure.message;
+  const stderr = r.stderr.trim();
   if (stderr) return stderr;
   if (r.status === null) return 'git did not run (is it installed and on PATH?)';
   return `exit ${r.status}`;

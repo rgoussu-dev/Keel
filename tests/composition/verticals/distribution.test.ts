@@ -14,11 +14,13 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
+import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../src/composition/install.js';
 import { distributionVertical } from '../../../src/composition/verticals/distribution.js';
 import { ResolutionError } from '../../../src/composition/resolver.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
-import { InMemoryTree } from '../../../src/engine/tree.js';
+import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
 import type { Prompt } from '../../../src/composition/answers.js';
 
 const silent = {
@@ -71,7 +73,7 @@ describe('distribution vertical (Quarkus CLI native)', () => {
   it('emits release+native-build workflows and promotes runtime.graalvm-native', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dist-'));
     cwds.push(cwd);
-    const tree = new InMemoryTree(cwd);
+    const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: baseTags('arch.cli'),
@@ -85,6 +87,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
       prompt: noPrompt,
       logger: silent,
       cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
       now: () => '2026-04-26T12:00:00Z',
     });
 
@@ -117,7 +121,7 @@ describe('distribution vertical (Quarkus CLI native)', () => {
   it('reuses a stored target answer without prompting', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dist-sticky-'));
     cwds.push(cwd);
-    const tree = new InMemoryTree(cwd);
+    const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: baseTags('arch.cli'),
@@ -134,6 +138,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
       prompt: failingPrompt,
       logger: silent,
       cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
       now: () => '2026-04-26T12:00:00Z',
     });
     const release = tree.read('.github/workflows/release.yml')?.toString() ?? '';
@@ -145,7 +151,7 @@ describe('distribution vertical (Quarkus CLI native)', () => {
   it('hard-fails when arch.cli is absent (no adapter covers the dimensions)', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dist-fail-'));
     cwds.push(cwd);
-    const tree = new InMemoryTree(cwd);
+    const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       // Quarkus + Gradle but no arch.cli — predicate filters the
@@ -162,6 +168,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
         prompt: noPrompt,
         logger: silent,
         cwd,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toBeInstanceOf(ResolutionError);
@@ -170,7 +178,7 @@ describe('distribution vertical (Quarkus CLI native)', () => {
   it('errors if the bootstrap projectName is missing from the manifest', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dist-missing-'));
     cwds.push(cwd);
-    const tree = new InMemoryTree(cwd);
+    const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       tags: baseTags('arch.cli'),
@@ -184,6 +192,8 @@ describe('distribution vertical (Quarkus CLI native)', () => {
         prompt: noPrompt,
         logger: silent,
         cwd,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toThrow(/projectName not in manifest/);

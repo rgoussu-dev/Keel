@@ -18,7 +18,7 @@
  * write the manifest itself. The caller threads the returned
  * `tagsAdded` and `agentic` records into the manifest update.
  *
- * Mutations to the Tree are staged in memory (per `InMemoryTree`);
+ * Mutations to the Tree are staged in memory (per the Tree port);
  * `tree.commit()` is the caller's responsibility.
  */
 
@@ -32,7 +32,9 @@ import type {
   Tag,
   Tree,
 } from '../domain/contract/composition.js';
-import type { Logger } from '../util/log.js';
+import type { Logger } from '../domain/contract/ports/logger.js';
+import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
+import type { TemplateSource } from '../domain/contract/ports/template-source.js';
 
 /** Per-adapter answer map: questionId → value. */
 export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, string>>>>;
@@ -79,6 +81,8 @@ export interface ApplyInputs {
   readonly tree: Tree;
   readonly logger: Logger;
   readonly cwd: string;
+  readonly templates: TemplateSource;
+  readonly processes: ProcessRunner;
 }
 
 export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResult> {
@@ -91,6 +95,8 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
       manifest: inputs.manifest,
       logger: inputs.logger,
       cwd: inputs.cwd,
+      templates: inputs.templates,
+      processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
     applyContribution(adapter, contribution, inputs.tree);
@@ -107,6 +113,8 @@ export interface CtxInputs {
   readonly manifest: ManifestV2;
   readonly logger: Logger;
   readonly cwd: string;
+  readonly templates: TemplateSource;
+  readonly processes: ProcessRunner;
 }
 
 /**
@@ -125,6 +133,8 @@ export function makeCtx(
     logger: ctx.logger,
     cwd: ctx.cwd,
     manifest: ctx.manifest,
+    templates: ctx.templates,
+    processes: ctx.processes,
     answer(questionId: string): string {
       if (!declared.has(questionId)) {
         throw new Error(

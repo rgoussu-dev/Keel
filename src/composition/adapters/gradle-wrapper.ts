@@ -6,9 +6,10 @@
  *
  * The wrapper is generated, not committed: invoking the canonical
  * `gradle wrapper` task against the project shell is the only path
- * Gradle endorses. The adapter therefore emits a deferred DeferredAction that
- * shells out to the system `gradle` after the bootstrap files have
- * landed on disk. A friendly error fires if `gradle` is not on PATH.
+ * Gradle endorses. The adapter therefore emits a deferred action that
+ * runs the system `gradle` (through the ProcessRunner port) after the
+ * bootstrap files have landed on disk. A friendly error fires if
+ * `gradle` is not on PATH.
  *
  * Composition:
  *   - covers `build-tool` of the `walking-skeleton` vertical;
@@ -18,12 +19,13 @@
  */
 
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import type {
   DeferredAction,
   DeferredActionEnv,
   Adapter,
 } from '../../domain/contract/composition.js';
+import type { Logger } from '../../domain/contract/ports/logger.js';
+import type { ProcessResult, ProcessRunner } from '../../domain/contract/ports/process-runner.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const GRADLE_WRAPPER_ID = 'walking-skeleton/gradle-wrapper';
@@ -40,8 +42,8 @@ export const gradleWrapperAdapter: Adapter = {
     const action: DeferredAction = {
       id: GRADLE_WRAPPER_ID,
       description: `gradle wrapper --gradle-version=${GRADLE_VERSION}`,
-      run: ({ cwd, logger }: DeferredActionEnv) => {
-        runWrapperTask(path.resolve(cwd), GRADLE_VERSION, logger);
+      run: ({ cwd, logger, processes }: DeferredActionEnv) => {
+        runWrapperTask(path.resolve(cwd), GRADLE_VERSION, logger, processes);
         return Promise.resolve();
       },
     };
@@ -52,15 +54,16 @@ export const gradleWrapperAdapter: Adapter = {
 function runWrapperTask(
   cwd: string,
   gradleVersion: string,
-  logger: DeferredActionEnv['logger'],
+  logger: Logger,
+  processes: ProcessRunner,
 ): void {
   logger.info(`gradle: generating wrapper at version ${gradleVersion}`);
-  const r = spawnSync(
+  const r = processes.run(
     'gradle',
     ['wrapper', `--gradle-version=${gradleVersion}`, '--distribution-type=bin'],
-    { cwd, encoding: 'utf8' },
+    { cwd },
   );
-  if (r.error && (r.error as NodeJS.ErrnoException).code === 'ENOENT') {
+  if (r.startFailure?.code === 'ENOENT') {
     throw new Error(
       "gradle-wrapper: 'gradle' is not on PATH — install Gradle locally to generate the wrapper, then commit the result",
     );
@@ -71,15 +74,13 @@ function runWrapperTask(
   logger.success(`gradle: wrapper generated at version ${gradleVersion}`);
 }
 
-function describeFailure(r: ReturnType<typeof spawnSync>): string {
-  if (r.error) return r.error.message;
+function describeFailure(r: ProcessResult): string {
+  if (r.startFailure) return r.startFailure.message;
   // Gradle prints task failures (`Test of distribution url ... failed`,
   // `BUILD FAILED in Ns`, the stack trace under `--stacktrace`) on
   // stdout, not stderr — without surfacing it the caller is left with
   // a context-free `exit N` message and no clue what went wrong.
-  const parts = [(r.stderr ?? '').toString().trim(), (r.stdout ?? '').toString().trim()].filter(
-    (s) => s.length > 0,
-  );
+  const parts = [r.stderr.trim(), r.stdout.trim()].filter((s) => s.length > 0);
   if (parts.length > 0) return parts.join('\n');
   if (r.status === null) return 'gradle did not run';
   return `exit ${r.status}`;
