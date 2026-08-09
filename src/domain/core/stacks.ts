@@ -17,7 +17,7 @@
 
 import { vcsVertical } from './verticals/vcs.js';
 import { walkingSkeletonVertical } from './verticals/walking-skeleton.js';
-import type { Tag, Vertical } from '../domain/contract/composition.js';
+import type { Tag, Vertical } from '../contract/composition.js';
 
 /** A curated greenfield preset. */
 export interface Stack {

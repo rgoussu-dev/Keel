@@ -19,8 +19,8 @@
  * (since they're already in the manifest).
  */
 
-import type { Adapter, Question } from '../domain/contract/composition.js';
-import type { AnswerMode, Prompt } from '../domain/contract/ports/prompt.js';
+import type { Adapter, Question } from '../contract/composition.js';
+import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 
 /**
  * Re-export of the Prompt port so existing importers of this module

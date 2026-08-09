@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ResolutionError, resolveVertical } from '../../src/composition/resolver.js';
+import { ResolutionError, resolveVertical } from '../../src/domain/core/resolver.js';
 import type { Adapter, Contribution, Vertical } from '../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};

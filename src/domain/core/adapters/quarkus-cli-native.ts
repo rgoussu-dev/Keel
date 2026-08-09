@@ -26,7 +26,7 @@
  * is touched, which keeps this adapter cleanly additive.
  */
 
-import type { Adapter } from '../../domain/contract/composition.js';
+import type { Adapter } from '../../contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 
 export const QUARKUS_CLI_NATIVE_ID = 'distribution/quarkus-cli-native';

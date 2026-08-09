@@ -14,9 +14,9 @@
  * with the action's id attached for diagnostics.
  */
 
-import type { DeferredAction } from '../domain/contract/composition.js';
-import type { Logger } from '../domain/contract/ports/logger.js';
-import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
+import type { DeferredAction } from '../contract/composition.js';
+import type { Logger } from '../contract/ports/logger.js';
+import type { ProcessRunner } from '../contract/ports/process-runner.js';
 
 /** Inputs for `runActions`. */
 export interface RunActionsInputs {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ActionError, runActions } from '../../src/composition/actions.js';
+import { ActionError, runActions } from '../../src/domain/core/actions.js';
 import { FakeProcessRunner } from '../../src/infrastructure/process/fake.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 

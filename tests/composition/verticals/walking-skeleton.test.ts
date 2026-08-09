@@ -11,13 +11,13 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
-import { installVertical } from '../../../src/composition/install.js';
-import { walkingSkeletonVertical } from '../../../src/composition/verticals/walking-skeleton.js';
-import { ResolutionError } from '../../../src/composition/resolver.js';
+import { installVertical } from '../../../src/domain/core/install.js';
+import { walkingSkeletonVertical } from '../../../src/domain/core/verticals/walking-skeleton.js';
+import { ResolutionError } from '../../../src/domain/core/resolver.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
-import type { Prompt } from '../../../src/composition/answers.js';
-import type { InstallVerticalResult } from '../../../src/composition/install.js';
+import type { Prompt } from '../../../src/domain/core/answers.js';
+import type { InstallVerticalResult } from '../../../src/domain/core/install.js';
 
 const silent = {
   info: () => {},

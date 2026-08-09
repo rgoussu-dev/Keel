@@ -31,10 +31,10 @@ import type {
   ManifestV2,
   Tag,
   Tree,
-} from '../domain/contract/composition.js';
-import type { Logger } from '../domain/contract/ports/logger.js';
-import type { ProcessRunner } from '../domain/contract/ports/process-runner.js';
-import type { TemplateSource } from '../domain/contract/ports/template-source.js';
+} from '../contract/composition.js';
+import type { Logger } from '../contract/ports/logger.js';
+import type { ProcessRunner } from '../contract/ports/process-runner.js';
+import type { TemplateSource } from '../contract/ports/template-source.js';
 
 /** Per-adapter answer map: questionId → value. */
 export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, string>>>>;

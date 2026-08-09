@@ -5,7 +5,7 @@
  */
 
 import { gitInitAdapter } from '../adapters/git-init.js';
-import type { Vertical } from '../../domain/contract/composition.js';
+import type { Vertical } from '../../contract/composition.js';
 
 export const vcsVertical: Vertical = {
   id: 'vcs',

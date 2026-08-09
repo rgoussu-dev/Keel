@@ -3,7 +3,7 @@ import {
   resolveAdapterAnswers,
   resolveAnswer,
   type Prompt,
-} from '../../src/composition/answers.js';
+} from '../../src/domain/core/answers.js';
 import type { Adapter, Contribution, Question } from '../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
