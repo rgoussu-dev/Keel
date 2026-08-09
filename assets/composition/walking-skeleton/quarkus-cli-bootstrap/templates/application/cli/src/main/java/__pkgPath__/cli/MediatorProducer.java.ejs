@@ -6,15 +6,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
-import <%= basePackage %>.contract.Handler;
-import <%= basePackage %>.contract.Mediator;
-import <%= basePackage %>.core.DefaultMediator;
+import <%= basePackage %>.kernel.Handler;
+import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.core.RegistryMediator;
 import <%= basePackage %>.core.greet.GreetHandler;
 
 /**
- * Hand-wires the Mediator with every domain Handler. Replace with
- * CDI lookup of all {@link Handler} beans once the project grows
- * past one or two handlers.
+ * The channel's composition root: hand-wires the Mediator with every
+ * domain Handler. Replace with CDI lookup of all {@link Handler}
+ * beans once the project grows past one or two handlers.
  */
 @ApplicationScoped
 public class MediatorProducer {
@@ -23,6 +23,6 @@ public class MediatorProducer {
     @Singleton
     public Mediator mediator() {
         List<Handler<?, ?>> handlers = List.of(new GreetHandler());
-        return new DefaultMediator(handlers);
+        return new RegistryMediator(handlers);
     }
 }

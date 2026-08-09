@@ -6,18 +6,21 @@ Quarkus CLI walking skeleton scaffolded by keel — hexagonal, mediator-driven.
 
 ```
 domain/
-  contract/    — Command, Handler, Mediator interfaces (the kernel)
-  core/        — DefaultMediator + sample GreetCommand handler
-infrastructure/
-  cli/         — picocli + Quarkus, calls into the mediator
+  kernel/      — Command, Handler, Mediator bases; depends on nothing
+  contract/    — the public surface: GreetCommand (+ ports as they appear)
+  core/        — RegistryMediator + the GreetCommand handler
+application/
+  cli/         — picocli + Quarkus: maps flags to commands, dispatches
+                 via the mediator, and hosts the composition root
+infrastructure/  — driven adapters (arrives with the first real port)
 ```
 
 ## Run
 
 ```sh
-./gradlew :infrastructure:cli:quarkusDev
+./gradlew :application:cli:quarkusDev
 # or once built:
-./gradlew :infrastructure:cli:run --args="hello --name World"
+./gradlew :application:cli:run --args="hello --name World"
 ```
 
 ## Test
@@ -29,5 +32,5 @@ infrastructure/
 ## Build a native binary
 
 ```sh
-./gradlew :infrastructure:cli:build -Dquarkus.package.type=native
+./gradlew :application:cli:build -Dquarkus.package.type=native
 ```

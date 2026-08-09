@@ -76,34 +76,36 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
       'build.gradle.kts',
       'gradle.properties',
       'settings.gradle.kts',
+      'domain/kernel/build.gradle.kts',
+      'domain/kernel/src/main/java/com/example/kernel/Command.java',
+      'domain/kernel/src/main/java/com/example/kernel/Handler.java',
+      'domain/kernel/src/main/java/com/example/kernel/Mediator.java',
       'domain/contract/build.gradle.kts',
-      'domain/contract/src/main/java/com/example/contract/Command.java',
-      'domain/contract/src/main/java/com/example/contract/Handler.java',
-      'domain/contract/src/main/java/com/example/contract/Mediator.java',
+      'domain/contract/src/main/java/com/example/contract/greet/GreetCommand.java',
       'domain/core/build.gradle.kts',
-      'domain/core/src/main/java/com/example/core/DefaultMediator.java',
-      'domain/core/src/main/java/com/example/core/greet/GreetCommand.java',
+      'domain/core/src/main/java/com/example/core/RegistryMediator.java',
       'domain/core/src/main/java/com/example/core/greet/GreetHandler.java',
       'domain/core/src/test/java/com/example/core/greet/GreetTest.java',
-      'infrastructure/cli/build.gradle.kts',
-      'infrastructure/cli/src/main/java/com/example/cli/HelloCommand.java',
-      'infrastructure/cli/src/main/java/com/example/cli/Main.java',
-      'infrastructure/cli/src/main/java/com/example/cli/MediatorProducer.java',
-      'infrastructure/cli/src/main/resources/application.properties',
-      'infrastructure/cli/src/test/java/com/example/cli/HelloCommandTest.java',
+      'application/cli/build.gradle.kts',
+      'application/cli/src/main/java/com/example/cli/HelloCommand.java',
+      'application/cli/src/main/java/com/example/cli/Main.java',
+      'application/cli/src/main/java/com/example/cli/MediatorProducer.java',
+      'application/cli/src/main/resources/application.properties',
+      'application/cli/src/test/java/com/example/cli/HelloCommandTest.java',
     ];
     for (const p of expected) {
       expect(tree.read(p), `missing ${p}`).not.toBeNull();
     }
   });
 
-  it('settings.gradle.kts wires the three subprojects', async () => {
+  it('settings.gradle.kts wires the four subprojects', async () => {
     const { tree, cwd } = await installWith(baseTags('arch.cli'));
     cwds.push(cwd);
     const settings = tree.read('settings.gradle.kts')?.toString() ?? '';
+    expect(settings).toContain('include(":domain:kernel")');
     expect(settings).toContain('include(":domain:contract")');
     expect(settings).toContain('include(":domain:core")');
-    expect(settings).toContain('include(":infrastructure:cli")');
+    expect(settings).toContain('include(":application:cli")');
   });
 
   it('emits the sample Clock port and FakeClock module, patching settings.gradle.kts', async () => {
@@ -157,8 +159,7 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
     expect(settings).toContain('rootProject.name = "shipper"');
 
     const main =
-      tree.read('infrastructure/cli/src/main/java/com/acme/tooling/cli/Main.java')?.toString() ??
-      '';
+      tree.read('application/cli/src/main/java/com/acme/tooling/cli/Main.java')?.toString() ?? '';
     expect(main).toContain('package com.acme.tooling.cli;');
     expect(main).toContain('public static final String NAME = "shipper";');
 
@@ -167,10 +168,10 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
 
     const helloCmd =
       tree
-        .read('infrastructure/cli/src/main/java/com/acme/tooling/cli/HelloCommand.java')
+        .read('application/cli/src/main/java/com/acme/tooling/cli/HelloCommand.java')
         ?.toString() ?? '';
-    expect(helloCmd).toContain('import com.acme.tooling.contract.Mediator;');
-    expect(helloCmd).toContain('import com.acme.tooling.core.greet.GreetCommand;');
+    expect(helloCmd).toContain('import com.acme.tooling.kernel.Mediator;');
+    expect(helloCmd).toContain('import com.acme.tooling.contract.greet.GreetCommand;');
   });
 
   it('emits the binding spec at AGENTS.md with a CLAUDE.md pointer', async () => {

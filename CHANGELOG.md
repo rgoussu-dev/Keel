@@ -43,6 +43,14 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The scaffolded walking skeleton now follows the binding spec's
+  layout itself**: a `domain/kernel` Gradle module owns the
+  `Command`/`Handler`/`Mediator` bases; `GreetCommand` (the public
+  surface) moves to `domain/contract`; the mediator implementation is
+  named `RegistryMediator`; and the CLI — a primary adapter — moves
+  from `infrastructure/cli` to `application/cli` (one module, per the
+  earned-pair rule: a CLI has no consumable API artifact). The
+  distribution workflows follow the new build paths.
 - **The dependency rule is now enforced.** dependency-cruiser runs in
   `pnpm lint` (and CI): the kernel imports nothing, the contract sees
   only the kernel, core never imports outward, infrastructure sees

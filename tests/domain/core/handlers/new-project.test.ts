@@ -66,12 +66,12 @@ describe('keel.new-project (keel new)', () => {
     expect(await fs.pathExists(path.join(cwd, 'settings.gradle.kts'))).toBe(true);
     expect(
       await fs.pathExists(
-        path.join(cwd, 'infrastructure/cli/src/main/java/com/acme/cli/cli/Main.java'),
+        path.join(cwd, 'application/cli/src/main/java/com/acme/cli/cli/Main.java'),
       ),
     ).toBe(true);
     expect(
       await fs.pathExists(
-        path.join(cwd, 'domain/contract/src/main/java/com/acme/cli/contract/Mediator.java'),
+        path.join(cwd, 'domain/kernel/src/main/java/com/acme/cli/kernel/Mediator.java'),
       ),
     ).toBe(true);
     expect(
