@@ -3,9 +3,10 @@
  * runnable project for a given stack/arch combo.
  *
  * Adapters in this vertical compose by predicate: the bootstraps
- * pick the entrypoint shape (Quarkus CLI/REST, Go CLI, Go HTTP,
- * Rust CLI, Rust HTTP, a web-components SPA; more later), and shared
- * adapters like `sample-port-fake` / `go-port-fake` /
+ * pick the entrypoint shape (Quarkus/Spring/Micronaut CLI and REST
+ * in Java or Kotlin, Go CLI, Go HTTP, Rust CLI, Rust HTTP, a
+ * web-components SPA; more later), and shared adapters like
+ * `sample-port-fake` / `sample-port-fake-kotlin` / `go-port-fake` /
  * `rust-port-fake` / `wc-sample-port-fake` add the hexagonal
  * niceties wherever they apply. Each dimension is covered
  * per-platform — e.g. `build-tool` by `gradle-wrapper` under
@@ -22,14 +23,25 @@ import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
+import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
+import { micronautCliKotlinBootstrapAdapter } from '../adapters/micronaut-cli-kotlin-bootstrap.js';
+import { micronautRestBootstrapAdapter } from '../adapters/micronaut-rest-bootstrap.js';
+import { micronautRestKotlinBootstrapAdapter } from '../adapters/micronaut-rest-kotlin-bootstrap.js';
 import { npmInstallAdapter } from '../adapters/npm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
+import { quarkusCliKotlinBootstrapAdapter } from '../adapters/quarkus-cli-kotlin-bootstrap.js';
 import { quarkusRestBootstrapAdapter } from '../adapters/quarkus-rest-bootstrap.js';
+import { quarkusRestKotlinBootstrapAdapter } from '../adapters/quarkus-rest-kotlin-bootstrap.js';
+import { samplePortFakeKotlinAdapter } from '../adapters/sample-port-fake-kotlin.js';
 import { rustBootstrapAdapter } from '../adapters/rust-bootstrap.js';
 import { rustCliBootstrapAdapter } from '../adapters/rust-cli-bootstrap.js';
 import { rustHttpBootstrapAdapter } from '../adapters/rust-http-bootstrap.js';
 import { rustPortFakeAdapter } from '../adapters/rust-port-fake.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
+import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
+import { springCliKotlinBootstrapAdapter } from '../adapters/spring-cli-kotlin-bootstrap.js';
+import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
+import { springRestKotlinBootstrapAdapter } from '../adapters/spring-rest-kotlin-bootstrap.js';
 import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
@@ -42,7 +54,18 @@ export const walkingSkeletonVertical: Vertical = {
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,
+    quarkusCliKotlinBootstrapAdapter,
+    quarkusRestKotlinBootstrapAdapter,
+    springCliBootstrapAdapter,
+    springRestBootstrapAdapter,
+    springCliKotlinBootstrapAdapter,
+    springRestKotlinBootstrapAdapter,
+    micronautCliBootstrapAdapter,
+    micronautRestBootstrapAdapter,
+    micronautCliKotlinBootstrapAdapter,
+    micronautRestKotlinBootstrapAdapter,
     samplePortFakeAdapter,
+    samplePortFakeKotlinAdapter,
     gradleWrapperAdapter,
     goBootstrapAdapter,
     goCliBootstrapAdapter,

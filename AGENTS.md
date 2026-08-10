@@ -185,7 +185,9 @@ src/
     process/ commons/
 assets/
   composition/            # adapter template trees (ejs), one
-                          # directory per `<vertical>/<adapter>/`
+                          # directory per `<vertical>/<adapter>/`;
+                          # plus shared trees several adapters
+                          # render (walking-skeleton/jvm-domain/)
   project/                # binding spec (AGENTS.md) — source of truth
                           # for the universal engineering conventions
 tests/                    # vitest; mirrors src/ (domain/, e2e/,

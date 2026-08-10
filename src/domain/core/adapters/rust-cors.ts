@@ -47,7 +47,10 @@ async fn with_cors(
 `;
 
 const WRAP_MARKER = 'handler::router(greeter).layer(axum::middleware::from_fn(with_cors))';
-const CORS_FN_SIGNATURE = 'async fn with_cors(';
+const CORS_FN_SIGNATURE = `async fn with_cors(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {`;
 
 export const rustCorsAdapter: Adapter = {
   id: RUST_CORS_ID,

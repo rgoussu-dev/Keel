@@ -1,0 +1,36 @@
+package <%= basePackage %>.cli
+
+import kotlin.system.exitProcess
+
+import org.springframework.boot.CommandLineRunner
+import org.springframework.boot.ExitCodeGenerator
+import org.springframework.boot.SpringApplication
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
+import picocli.CommandLine
+import picocli.CommandLine.IFactory
+
+/**
+ * Boots the Spring container, then hands the raw arguments to
+ * picocli. Commands are Spring beans instantiated through the
+ * [IFactory] the picocli starter provides, so constructor injection
+ * works inside them.
+ */
+@SpringBootApplication
+class Main(
+    private val factory: IFactory,
+    private val rootCommand: RootCommand,
+) : CommandLineRunner, ExitCodeGenerator {
+
+    private var exitCode = 0
+
+    override fun run(vararg args: String) {
+        exitCode = CommandLine(rootCommand, factory).execute(*args)
+    }
+
+    override fun getExitCode(): Int = exitCode
+}
+
+fun main(args: Array<String>) {
+    exitProcess(SpringApplication.exit(runApplication<Main>(*args)))
+}

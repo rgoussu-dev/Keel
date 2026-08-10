@@ -1,0 +1,65 @@
+package <%= basePackage %>.rest;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Boots the full channel on a random port and drives it over real
+ * HTTP with the JDK client — no framework test client, so the test
+ * exercises exactly what a consumer sees on the wire.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class GreetControllerTest {
+
+    @Value("${local.server.port}")
+    int port;
+
+    private final HttpClient client = HttpClient.newHttpClient();
+
+    private HttpResponse<String> get(String pathAndQuery) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + pathAndQuery))
+                .GET()
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
+    void greetsByNameThroughMediator() throws Exception {
+        HttpResponse<String> response = get("/greet?name=Romain");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"greeting\":\"Hello, Romain!\"");
+    }
+
+    @Test
+    void defaultsToWorldWhenNoNameIsGiven() throws Exception {
+        HttpResponse<String> response = get("/greet");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"greeting\":\"Hello, world!\"");
+    }
+
+    @Test
+    void mapsGreetRejectedToProblemDetails() throws Exception {
+        HttpResponse<String> response = get("/greet?name=%20%20");
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.headers().firstValue("Content-Type").orElse(""))
+                .contains(GreetRejectedAdvice.PROBLEM_JSON);
+        assertThat(response.body())
+                .contains("\"type\":\"urn:problem-type:greet-rejected\"")
+                .contains("\"title\":\"Greeting rejected\"")
+                .contains("\"status\":400")
+                .contains("\"detail\":\"name must not be blank\"")
+                .contains("\"instance\":\"/greet\"");
+    }
+}

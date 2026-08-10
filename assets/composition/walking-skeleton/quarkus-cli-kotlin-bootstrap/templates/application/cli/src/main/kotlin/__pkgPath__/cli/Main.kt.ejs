@@ -1,0 +1,22 @@
+package <%= basePackage %>.cli
+
+import io.quarkus.picocli.runtime.annotations.TopCommand
+import picocli.CommandLine.Command
+
+/**
+ * Top-level entry point for the CLI. Subcommands are declared on
+ * [Command.subcommands]; add a new one by writing a Runnable
+ * annotated with [Command] and listing it here.
+ */
+@TopCommand
+@Command(
+    name = Main.NAME,
+    mixinStandardHelpOptions = true,
+    description = ["Walking skeleton CLI scaffolded by keel."],
+    subcommands = [HelloCommand::class],
+)
+class Main {
+    companion object {
+        const val NAME = "<%= projectName %>"
+    }
+}

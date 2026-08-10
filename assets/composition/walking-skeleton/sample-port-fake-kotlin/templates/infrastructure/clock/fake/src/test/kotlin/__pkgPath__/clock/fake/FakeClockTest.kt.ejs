@@ -1,0 +1,29 @@
+package <%= basePackage %>.clock.fake
+
+import java.time.Instant
+
+import org.junit.jupiter.api.Test
+
+import org.junit.jupiter.api.Assertions.assertEquals
+
+class FakeClockTest {
+
+    @Test
+    fun returnsTheConfiguredInstant() {
+        val t = Instant.parse("2026-04-26T12:00:00Z")
+        val clock = FakeClock(t)
+
+        assertEquals(t, clock.now())
+    }
+
+    @Test
+    fun canBeAdvanced() {
+        val a = Instant.parse("2026-04-26T12:00:00Z")
+        val b = Instant.parse("2026-04-26T13:00:00Z")
+        val clock = FakeClock(a)
+
+        clock.setNow(b)
+
+        assertEquals(b, clock.now())
+    }
+}

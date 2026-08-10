@@ -1,0 +1,23 @@
+package <%= basePackage %>.rest
+
+import io.micronaut.http.MediaType
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Get
+import io.micronaut.http.annotation.QueryValue
+
+import <%= basePackage %>.contract.greet.GreetCommand
+import <%= basePackage %>.kernel.Mediator
+import <%= basePackage %>.rest.contract.GreetResponse
+
+/**
+ * HTTP entry point of the walking skeleton: maps the query string to
+ * a [GreetCommand], dispatches it via the mediator, and wraps the
+ * result in the channel's transport DTO. No business logic.
+ */
+@Controller("/greet")
+class GreetController(private val mediator: Mediator) {
+
+    @Get(produces = [MediaType.APPLICATION_JSON])
+    fun greet(@QueryValue(value = "name", defaultValue = "world") name: String): GreetResponse =
+        GreetResponse(mediator.dispatch(GreetCommand(name)))
+}

@@ -1,0 +1,48 @@
+package <%= basePackage %>.rest
+
+import io.quarkus.test.junit.QuarkusTest
+import org.junit.jupiter.api.Test
+
+import io.restassured.RestAssured.given
+import org.hamcrest.Matchers.equalTo
+
+@QuarkusTest
+class GreetResourceTest {
+
+    @Test
+    fun greetsByNameThroughMediator() {
+        given()
+            .queryParam("name", "Romain")
+            .`when`()
+            .get("/greet")
+            .then()
+            .statusCode(200)
+            .body("greeting", equalTo("Hello, Romain!"))
+    }
+
+    @Test
+    fun defaultsToWorldWhenNoNameIsGiven() {
+        given()
+            .`when`()
+            .get("/greet")
+            .then()
+            .statusCode(200)
+            .body("greeting", equalTo("Hello, world!"))
+    }
+
+    @Test
+    fun mapsGreetRejectedToProblemDetails() {
+        given()
+            .queryParam("name", "  ")
+            .`when`()
+            .get("/greet")
+            .then()
+            .statusCode(400)
+            .contentType(GreetRejectedMapper.PROBLEM_JSON)
+            .body("type", equalTo("urn:problem-type:greet-rejected"))
+            .body("title", equalTo("Greeting rejected"))
+            .body("status", equalTo(400))
+            .body("detail", equalTo("name must not be blank"))
+            .body("instance", equalTo("/greet"))
+    }
+}

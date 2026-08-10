@@ -26,10 +26,9 @@ describe('gradle-wrapper adapter', () => {
     expect(gradleWrapperAdapter.vertical).toBe('walking-skeleton');
     expect(gradleWrapperAdapter.covers).toEqual(['build-tool']);
     expect(gradleWrapperAdapter.predicate).toEqual({ requires: ['pkg.gradle'] });
-    expect(gradleWrapperAdapter.after).toEqual([
-      QUARKUS_CLI_BOOTSTRAP_ID,
-      QUARKUS_REST_BOOTSTRAP_ID,
-    ]);
+    expect(gradleWrapperAdapter.after).toContain(QUARKUS_CLI_BOOTSTRAP_ID);
+    expect(gradleWrapperAdapter.after).toContain(QUARKUS_REST_BOOTSTRAP_ID);
+    expect(gradleWrapperAdapter.after?.every((id) => id.endsWith('-bootstrap'))).toBe(true);
     expect(gradleWrapperAdapter.questions ?? []).toEqual([]);
   });
 

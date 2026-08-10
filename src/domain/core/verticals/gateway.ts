@@ -12,9 +12,12 @@
  */
 
 import { goCorsAdapter } from '../adapters/go-cors.js';
+import { micronautCorsAdapter } from '../adapters/micronaut-cors.js';
 import { quarkusCorsAdapter } from '../adapters/quarkus-cors.js';
 import { restApiContractAdapter } from '../adapters/rest-api-contract.js';
 import { rustCorsAdapter } from '../adapters/rust-cors.js';
+import { springCorsAdapter } from '../adapters/spring-cors.js';
+import { springCorsKotlinAdapter } from '../adapters/spring-cors-kotlin.js';
 import { wcGatewayRestAdapter } from '../adapters/wc-gateway-rest.js';
 import type { Vertical } from '../../contract/composition.js';
 
@@ -25,6 +28,9 @@ export const gatewayVertical: Vertical = {
   adapters: [
     wcGatewayRestAdapter,
     quarkusCorsAdapter,
+    springCorsAdapter,
+    springCorsKotlinAdapter,
+    micronautCorsAdapter,
     goCorsAdapter,
     rustCorsAdapter,
     restApiContractAdapter,

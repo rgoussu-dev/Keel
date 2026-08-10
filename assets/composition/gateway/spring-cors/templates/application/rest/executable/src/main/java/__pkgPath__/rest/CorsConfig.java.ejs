@@ -1,0 +1,19 @@
+package <%= basePackage %>.rest;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Allows the sibling SPA's dev origin (the Vite dev server) to call
+ * this API directly during development; the SPA's production
+ * traffic arrives same-origin through its reverse proxy.
+ */
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**").allowedOrigins("http://localhost:5173");
+    }
+}

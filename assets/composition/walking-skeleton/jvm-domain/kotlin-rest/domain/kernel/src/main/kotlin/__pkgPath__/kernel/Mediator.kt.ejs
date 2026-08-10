@@ -1,0 +1,10 @@
+package <%= basePackage %>.kernel
+
+/**
+ * Dispatches commands to the handler that supports them. Primary
+ * adapters (CLI, REST, batch, …) hold a Mediator reference and call
+ * [dispatch] instead of touching domain handlers directly.
+ */
+interface Mediator {
+    fun <R> dispatch(command: Command<R>): R
+}

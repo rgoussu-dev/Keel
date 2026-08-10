@@ -1,0 +1,26 @@
+package <%= basePackage %>.rest
+
+import jakarta.ws.rs.DefaultValue
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
+
+import <%= basePackage %>.contract.greet.GreetCommand
+import <%= basePackage %>.kernel.Mediator
+import <%= basePackage %>.rest.contract.GreetResponse
+
+/**
+ * HTTP entry point of the walking skeleton: maps the query string to
+ * a [GreetCommand], dispatches it via the mediator, and wraps the
+ * result in the channel's transport DTO. No business logic.
+ */
+@Path("/greet")
+class GreetResource(private val mediator: Mediator) {
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    fun greet(@QueryParam("name") @DefaultValue("world") name: String): GreetResponse =
+        GreetResponse(mediator.dispatch(GreetCommand(name)))
+}

@@ -1,0 +1,19 @@
+package <%= basePackage %>.rest.contract
+
+/**
+ * RFC 9457 Problem Details body — the transport shape every error
+ * response of this channel uses.
+ *
+ * @property type     URI reference identifying the problem type
+ * @property title    short, human-readable summary of the problem type
+ * @property status   the HTTP status code for this occurrence
+ * @property detail   human-readable explanation of this occurrence
+ * @property instance URI reference identifying this occurrence
+ */
+data class ProblemDetails(
+    val type: String,
+    val title: String,
+    val status: Int,
+    val detail: String,
+    val instance: String,
+)

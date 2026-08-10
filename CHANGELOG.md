@@ -8,6 +8,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Spring Boot stacks** (`keel new --stack=spring-cli|spring-rest`)
+  — the JVM walking skeleton generalised past Quarkus: the same
+  hexagonal multi-module shape on Spring Boot 4.1.0, with a picocli
+  CLI over the Spring container (`spring-cli`) or a Spring MVC
+  `GET /greet` with an RFC 9457 Problem Details advice
+  (`spring-rest`), each driven end to end by its generated test
+  suite. Selected by the ordinary predicate machinery on
+  `framework.spring`.
+- **Micronaut stacks** (`keel new --stack=micronaut-cli|micronaut-rest`)
+  — the same pair on Micronaut platform 4.10.17 (compile-time DI,
+  `PicocliRunner` for the CLI, an `ExceptionHandler` for the Problem
+  Details mapping), selected on `framework.micronaut`.
+- **Kotlin across the JVM stacks** — every JVM stack now has a
+  Kotlin twin (`quarkus-cli-kotlin` … `micronaut-rest-kotlin`):
+  idiomatic Kotlin 2.3.21 over shared Kotlin domain-trisection
+  template trees, with the per-framework compiler wiring each stance
+  needs (allopen for Quarkus CDI, `plugin.spring` for Spring, KSP
+  for Micronaut). Language is a predicate dimension like any other —
+  `lang.kotlin` swaps the bootstrap _and_ the sample-port adapter
+  (`sample-port-fake-kotlin`).
+- **The gateway seam covers the new backends.**
+  `gateway/spring-cors` (+ its Kotlin sibling) emits a
+  `WebMvcConfigurer` CORS bean, `gateway/micronaut-cors` patches
+  `application.properties`; `fullstack-spring` and
+  `fullstack-micronaut` composite presets pair the new REST backends
+  with the web-components frontend, Dockerfiles included.
 - **`fullstack-rust` stack** (`keel new --stack=fullstack-rust`) —
   the third backend behind the same seam: a `rust-http` backend +
   `web-components` frontend product, selecting exactly the same
@@ -174,6 +200,15 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The JVM bootstraps share their domain templates.** The domain
+  trisection is emitted from shared per-language trees
+  (`assets/composition/walking-skeleton/jvm-domain/`) rather than
+  being duplicated per framework, and all twelve JVM bootstrap
+  adapters are built by one `jvmBootstrapAdapter` factory keyed on
+  (framework, arch, language). Rendered output for the existing
+  Quarkus stacks is unchanged. `sample-port-fake` (plain Java + a
+  plain Gradle module) now fires for every Java JVM bootstrap
+  (`runtime.jvm + lang.java`), not just Quarkus.
 - **`walking-skeleton/sample-port-fake` now fires for both project
   shapes**: its predicate loosened from requiring `arch.cli` to
   `framework.quarkus + arch.hexagonal`, and it reads `basePackage`

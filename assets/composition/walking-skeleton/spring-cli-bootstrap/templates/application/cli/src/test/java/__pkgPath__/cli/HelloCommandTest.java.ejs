@@ -1,0 +1,28 @@
+package <%= basePackage %>.cli;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.context.ConfigurableApplicationContext;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Drives the whole CLI — Spring container, picocli parsing, mediator
+ * dispatch — exactly as `main` would, capturing what lands on
+ * stdout.
+ */
+@ExtendWith(OutputCaptureExtension.class)
+class HelloCommandTest {
+
+    @Test
+    void greetsByNameThroughMediator(CapturedOutput output) {
+        try (ConfigurableApplicationContext context =
+                SpringApplication.run(Main.class, "hello", "--name", "Romain")) {
+            assertThat(SpringApplication.exit(context)).isZero();
+        }
+        assertThat(output).contains("Hello, Romain!");
+    }
+}

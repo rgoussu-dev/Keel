@@ -80,6 +80,16 @@ describe('rust-cors adapter', () => {
     );
   });
 
+  it('does not mistake an incidental signature mention for the decorator', async () => {
+    const patch = await contributePatch();
+    const commented = `// once considered: async fn with_cors( — reverted\n${BOOTSTRAP_MAIN}`;
+    const patched = patch.apply(commented);
+    expect(patched).toContain(
+      'handler::router(greeter).layer(axum::middleware::from_fn(with_cors))',
+    );
+    expect(patched).toContain('-> axum::response::Response {');
+  });
+
   it('fails loudly when the assembly point has diverged', async () => {
     const patch = await contributePatch();
     const diverged = BOOTSTRAP_MAIN.replace('axum::serve', 'my_serve');
@@ -93,7 +103,20 @@ describe('rust-cors adapter', () => {
     const fnGone = once.replace(/\n\/\/\/ Allows the sibling SPA[\s\S]*$/, '\n');
     expect(() => patch.apply(fnGone)).toThrow(/partially CORS-decorated/);
 
-    const unwrapped = `${BOOTSTRAP_MAIN}\nasync fn with_cors() {}\n`;
+    const wrappedServe = [
+      '    axum::serve(',
+      '        listener,',
+      '        handler::router(greeter).layer(axum::middleware::from_fn(with_cors)),',
+      '    )',
+      '    .await',
+      '    .expect("serve HTTP");',
+    ].join('\n');
+    const plainServe = [
+      '    axum::serve(listener, handler::router(greeter))',
+      '        .await',
+      '        .expect("serve HTTP");',
+    ].join('\n');
+    const unwrapped = once.replace(wrappedServe, plainServe);
     expect(() => patch.apply(unwrapped)).toThrow(/partially CORS-decorated/);
   });
 });

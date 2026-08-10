@@ -1,0 +1,38 @@
+package <%= basePackage %>.cli;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import io.micronaut.configuration.picocli.PicocliRunner;
+import io.micronaut.context.env.Environment;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Drives the whole CLI — Micronaut context, picocli parsing,
+ * mediator dispatch — exactly as `main` would, capturing what lands
+ * on stdout.
+ */
+class HelloCommandTest {
+
+    @Test
+    void greetsByNameThroughMediator() {
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(captured, true, StandardCharsets.UTF_8));
+        try {
+            int exitCode = PicocliRunner.execute(
+                    Main.class,
+                    List.of(Environment.CLI, Environment.TEST),
+                    "hello", "--name", "Romain");
+            assertEquals(0, exitCode);
+        } finally {
+            System.setOut(original);
+        }
+        assertTrue(captured.toString(StandardCharsets.UTF_8).contains("Hello, Romain!"));
+    }
+}
