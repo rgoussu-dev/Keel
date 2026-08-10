@@ -26,5 +26,7 @@ dependencies {
     implementation(project(":domain:core"))
     implementation(project(":application:rest:contract"))
 
+    runtimeOnly("ch.qos.logback:logback-classic")
+
     testImplementation("io.micronaut:micronaut-http-client")
 }
