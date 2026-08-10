@@ -247,6 +247,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The gateway CORS seam is dev-only across every fullstack
+  backend.** The accommodation for the Vite dev origin no longer
+  reaches production, each stack using its own idiom: Quarkus
+  properties are `%dev.`-scoped, the Spring `CorsConfig` bean is
+  `@Profile("dev")`, Micronaut's properties move to a dev-environment
+  `application-dev.properties`, the Go wrapper is a no-op unless
+  `GO_ENV=dev`, the Rust decoration is gated on
+  `cfg!(debug_assertions)` (release builds pass through), and the
+  Node wrapper is a no-op under `NODE_ENV=production` (which the
+  `backend-ts` image now sets). The Go and Rust wrappers also answer
+  preflights completely (`allow-methods` + echoed `allow-headers`),
+  matching the ts-cors fix below, and the product README's run hints
+  show each stack's dev activation.
 - **The JVM stacks target Java 25 (latest LTS).** Every JVM bootstrap
   now pins the JDK through a Gradle toolchain
   (`JavaLanguageVersion.of(25)`) instead of bare

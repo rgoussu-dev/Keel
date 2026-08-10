@@ -108,7 +108,8 @@ describe.skipIf(skipE2E)('fullstack-go e2e (monorepo)', () => {
 
       const server = spawn(path.join(backend, 'bin', `backend-http${EXE}`), [], {
         cwd: backend,
-        env: { ...process.env, PORT: '0' },
+        // GO_ENV=dev activates the dev-only CORS accommodation under test.
+        env: { ...process.env, PORT: '0', GO_ENV: 'dev' },
       });
       try {
         const port = await new Promise<string>((resolve, reject) => {
@@ -151,6 +152,14 @@ describe.skipIf(skipE2E)('fullstack-go e2e (monorepo)', () => {
         const rejected = await fetch(`${base}/greet?name=`);
         expect(rejected.status).toBe(400);
         expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+
+        const preflight = await fetch(`${base}/greet`, {
+          method: 'OPTIONS',
+          headers: { 'access-control-request-headers': 'x-requested-with' },
+        });
+        expect(preflight.status).toBe(204);
+        expect(preflight.headers.get('access-control-allow-methods')).toBe('GET');
+        expect(preflight.headers.get('access-control-allow-headers')).toBe('x-requested-with');
       } finally {
         server.removeAllListeners('exit');
         server.kill();

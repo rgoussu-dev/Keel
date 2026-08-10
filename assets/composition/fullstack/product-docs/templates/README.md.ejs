@@ -17,7 +17,9 @@ CORS config) were selected from those facts.
 <%
 const runHints = {
   'quarkus-rest': './gradlew quarkusDev',
-  'go-http': 'go run ./cmd/http',
+  'spring-rest': 'SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun',
+  'micronaut-rest': 'MICRONAUT_ENVIRONMENTS=dev ./gradlew run',
+  'go-http': 'GO_ENV=dev go run ./cmd/http',
   'rust-http': 'cargo run',
   'ts-http': 'npm run dev',
   'web-components': 'npm run dev',
@@ -39,6 +41,12 @@ port; in development Vite proxies `/api`, in production set
 `VITE_API_BASE_URL` at build time (12-factor: config via env). The
 wire itself is pinned by the backend's
 [`contract/greet.openapi.yaml`](<%= backendService.path %>/contract/greet.openapi.yaml).
+
+The backend's CORS accommodation for the Vite origin (for calling
+the API directly, without the `/api` proxy) is **dev-only** — the
+run commands above activate it where the stack needs a flag — and is
+never served in production, where SPA traffic arrives same-origin
+through the frontend's reverse proxy.
 
 ## Run containerised
 

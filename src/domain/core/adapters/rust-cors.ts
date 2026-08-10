@@ -4,7 +4,11 @@
  * (`peer.ui.spa`), layers a CORS decoration onto the HTTP unit's
  * router in `main` allowing the Vite dev server's origin —
  * cross-cutting as a decorator at the assembly point, per the
- * binding spec's Rust stance.
+ * binding spec's Rust stance. Dev-only: gated on
+ * `cfg!(debug_assertions)`, so `cargo run` serves the dev origin
+ * while release builds — what production containers ship — pass
+ * through untouched; SPA production traffic arrives same-origin
+ * through the reverse proxy.
  */
 
 import type { Adapter } from '../../contract/composition.js';
@@ -26,13 +30,22 @@ const SERVE_BLOCK_WRAPPED = `    axum::serve(
 
 const CORS_FN = `
 /// Allows the sibling SPA's dev origin to call this API directly
-/// during development; the SPA's production traffic arrives
+/// during development. Debug builds only (\`cargo run\`): in release
+/// builds — what production containers ship — the decoration is a
+/// pass-through, because the SPA's production traffic arrives
 /// same-origin through its reverse proxy.
 async fn with_cors(
     request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
+    if !cfg!(debug_assertions) {
+        return next.run(request).await;
+    }
     let preflight = request.method() == axum::http::Method::OPTIONS;
+    let requested_headers = request
+        .headers()
+        .get(axum::http::header::ACCESS_CONTROL_REQUEST_HEADERS)
+        .cloned();
     let mut response = if preflight {
         axum::response::IntoResponse::into_response(axum::http::StatusCode::NO_CONTENT)
     } else {
@@ -42,6 +55,17 @@ async fn with_cors(
         axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
         axum::http::HeaderValue::from_static("http://localhost:5173"),
     );
+    if preflight {
+        response.headers_mut().insert(
+            axum::http::header::ACCESS_CONTROL_ALLOW_METHODS,
+            axum::http::HeaderValue::from_static("GET"),
+        );
+        if let Some(requested) = requested_headers {
+            response
+                .headers_mut()
+                .insert(axum::http::header::ACCESS_CONTROL_ALLOW_HEADERS, requested);
+        }
+    }
     response
 }
 `;
