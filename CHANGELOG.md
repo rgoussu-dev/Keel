@@ -34,6 +34,21 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `application.properties`; `fullstack-spring` and
   `fullstack-micronaut` composite presets pair the new REST backends
   with the web-components frontend, Dockerfiles included.
+- **`fullstack-rust` stack** (`keel new --stack=fullstack-rust`) —
+  the third backend behind the same seam: a `rust-http` backend +
+  `web-components` frontend product, selecting exactly the same
+  frontend gateway adapters as the Quarkus and Go pairs because all
+  three backends project `peer.api.rest`. The Rust side gets its own
+  seam half — `gateway/rust-cors` layers a CORS decoration onto the
+  HTTP unit's router in `main` for the Vite dev origin
+  (cross-cutting as a decorator at the assembly point, per the
+  binding spec's Rust stance) — plus the shared
+  `contract/greet.openapi.yaml` via the language-generic
+  `gateway/rest-api-contract`, and `fullstack/product-compose` learns
+  a Rust backend image (musl-static cargo build onto distroless). A
+  `fullstack-rust` e2e boots the real Rust backend and verifies the
+  wire — named, defaulted, and rejected requests plus the CORS
+  header.
 
 - **`fullstack-go` stack** (`keel new --stack=fullstack-go`) — the
   proof that the gateway seam is generic over backends: a `go-http`
@@ -59,28 +74,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   nginx for the frontend, with nginx proxying `/api` to the backend
   service — the same convention as the dev proxy, so the bundle's
   default `VITE_API_BASE_URL` works unchanged in both worlds).
-
-### Changed
-
-- **The JVM bootstraps share their domain templates.** The domain
-  trisection is emitted from shared per-language trees
-  (`assets/composition/walking-skeleton/jvm-domain/`) rather than
-  being duplicated per framework, and all twelve JVM bootstrap
-  adapters are built by one `jvmBootstrapAdapter` factory keyed on
-  (framework, arch, language). Rendered output for the existing
-  Quarkus stacks is unchanged. `sample-port-fake` (plain Java + a
-  plain Gradle module) now fires for every Java JVM bootstrap
-  (`runtime.jvm`), not just Quarkus.
-
-### Fixed
-
-- **`go-http` now honours the REST seam contract.** Its greet reply
-  was `{"message": …}` where the Quarkus REST unit replies
-  `{"greeting": …}`, and it rejected an absent name where Quarkus
-  defaults to `world` — so one frontend gateway could not serve both
-  backends. Absent names now default at the transport boundary; a
-  present-but-blank name still reaches the domain and is rejected as
-  an RFC 9457 problem.
 
 - **Fullstack composition: peer tags, composite stacks, and the
   `fullstack` preset.** Stacks now declare the peer tags they project
@@ -207,6 +200,15 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The JVM bootstraps share their domain templates.** The domain
+  trisection is emitted from shared per-language trees
+  (`assets/composition/walking-skeleton/jvm-domain/`) rather than
+  being duplicated per framework, and all twelve JVM bootstrap
+  adapters are built by one `jvmBootstrapAdapter` factory keyed on
+  (framework, arch, language). Rendered output for the existing
+  Quarkus stacks is unchanged. `sample-port-fake` (plain Java + a
+  plain Gradle module) now fires for every Java JVM bootstrap
+  (`runtime.jvm + lang.java`), not just Quarkus.
 - **`walking-skeleton/sample-port-fake` now fires for both project
   shapes**: its predicate loosened from requiring `arch.cli` to
   `framework.quarkus + arch.hexagonal`, and it reads `basePackage`
@@ -216,6 +218,22 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`go-http` now honours the REST seam contract.** Its greet reply
+  was `{"message": …}` where the Quarkus REST unit replies
+  `{"greeting": …}`, and it rejected an absent name where Quarkus
+  defaults to `world` — so one frontend gateway could not serve both
+  backends. Absent names now default at the transport boundary; a
+  present-but-blank name still reaches the domain and is rejected as
+  an RFC 9457 problem.
+- **Composite-service peer refs are correct at any nesting depth.**
+  `keel new` recorded a sibling's `peers` ref by prefixing `../`,
+  which is only right for single-segment service paths; refs are now
+  computed relatively, so nested layouts (e.g. `apps/backend` +
+  `apps/frontend`) project correctly.
+- **`gateway/go-cors` fails loudly on a diverged assembly point.**
+  When `cmd/http/main.go` no longer contains the serve call the
+  adapter knows how to wrap, the install now hard-fails with a clear
+  message instead of appending a decorator that never runs.
 - README quickstart now describes the layout the v0.5 skeleton
   actually scaffolds (`domain/kernel`, `domain/contract`,
   `domain/core`, `application/cli`, plus the emitted `AGENTS.md` +

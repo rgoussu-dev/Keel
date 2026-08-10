@@ -33,6 +33,9 @@ func withCORS(next http.Handler) http.Handler {
 }
 `;
 
+const WRAP_MARKER = 'withCORS(resthttp.NewHandler(greeter))';
+const CORS_FUNC_SIGNATURE = 'func withCORS(next http.Handler) http.Handler {';
+
 export const goCorsAdapter: Adapter = {
   id: GO_CORS_ID,
   vertical: 'gateway',
@@ -44,7 +47,23 @@ export const goCorsAdapter: Adapter = {
         {
           target: MAIN_TARGET,
           apply: (existing) => {
-            if (existing.includes('withCORS')) return existing;
+            const wrapped = existing.includes(WRAP_MARKER);
+            const decorated = existing.includes(CORS_FUNC_SIGNATURE);
+            if (wrapped && decorated) return existing;
+            if (wrapped || decorated) {
+              throw new Error(
+                `${GO_CORS_ID}: ${MAIN_TARGET} is partially CORS-decorated (${
+                  wrapped
+                    ? 'the serve call is wrapped but withCORS is missing'
+                    : 'withCORS is present but the serve call is unwrapped'
+                }); reconcile it manually`,
+              );
+            }
+            if (!existing.includes(SERVE_LINE)) {
+              throw new Error(
+                `${GO_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,
+              );
+            }
             return `${existing.replace(SERVE_LINE, SERVE_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
           },
         },

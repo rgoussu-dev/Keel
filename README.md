@@ -122,9 +122,9 @@ and ready to `npm run dev`.
 Or a fullstack product — a backend and the SPA composed
 (`fullstack` pairs `quarkus-rest`, `fullstack-spring` pairs
 `spring-rest`, `fullstack-micronaut` pairs `micronaut-rest`,
-`fullstack-go` pairs `go-http`; all select the _same_ frontend
-gateway adapters, because the seam is driven by peer tags, not by
-the backend's language or framework):
+`fullstack-go` pairs `go-http`, `fullstack-rust` pairs `rust-http`;
+all select the _same_ frontend gateway adapters, because the seam is
+driven by peer tags, not by the backend's language or framework):
 
 ```sh
 mkdir my-product && cd my-product
@@ -171,18 +171,18 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                                                                                                                                                                                                                                                |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `spring-cli`, `spring-rest`, `micronaut-cli`, `micronaut-rest` (each also as `…-kotlin`), `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-spring`, `fullstack-micronaut`, `fullstack-go`. |
-| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                                                                                                                                                                                           |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                    |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                                                                                                                                                                                    |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                              |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                                                                                                                                                                              |
-| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                              |
-| `keel add ... --yes`     | Non-interactive.                                                                                                                                                                                                                                                                                                            |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                                                                                                                                                                                              |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                                                                                                                                                                                                |
+| Command                  | What it does                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `spring-cli`, `spring-rest`, `micronaut-cli`, `micronaut-rest` (each also as `…-kotlin`), `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-spring`, `fullstack-micronaut`, `fullstack-go`, `fullstack-rust`. |
+| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                                                                                                                                                                                                             |
+| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                      |
+| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                      |
+| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                |
+| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                                                                                                                                                                                                |
+| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                                                |
+| `keel add ... --yes`     | Non-interactive.                                                                                                                                                                                                                                                                                                                              |
+| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                                                                                                                                                                                                                |
+| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                                                                                                                                                                                                                  |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.
@@ -264,10 +264,10 @@ Two more primitives compose services into **products**:
   adapters fire purely on peer tags, so without peers it installs
   nothing. Today: a REST gateway package for the web-components
   frontend (`peer.api.rest`), CORS accommodations for the Quarkus,
-  Spring, Micronaut, and Go HTTP backends (`peer.ui.spa`), and the
-  seam's OpenAPI contract
-  emitted on the backend. Installed automatically for composite
-  services; brownfield via `keel link` + `keel add gateway`.
+  Spring, Micronaut, Go, and Rust HTTP backends (`peer.ui.spa`), and
+  the seam's OpenAPI contract emitted on the backend. Installed
+  automatically for composite services; brownfield via `keel link` +
+  `keel add gateway`.
 - **`fullstack`** — product-root glue for composite monorepos: the
   product README (service map, run order), root housekeeping, and the
   container story (`compose.yaml` + a Dockerfile beside each
