@@ -30,6 +30,8 @@ import { rustCliBootstrapAdapter } from '../adapters/rust-cli-bootstrap.js';
 import { rustHttpBootstrapAdapter } from '../adapters/rust-http-bootstrap.js';
 import { rustPortFakeAdapter } from '../adapters/rust-port-fake.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
+import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
+import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
 import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
@@ -42,6 +44,8 @@ export const walkingSkeletonVertical: Vertical = {
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,
+    springCliBootstrapAdapter,
+    springRestBootstrapAdapter,
     samplePortFakeAdapter,
     gradleWrapperAdapter,
     goBootstrapAdapter,

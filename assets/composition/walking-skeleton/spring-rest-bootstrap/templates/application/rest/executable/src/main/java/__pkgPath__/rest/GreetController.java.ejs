@@ -1,0 +1,29 @@
+package <%= basePackage %>.rest;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import <%= basePackage %>.contract.greet.GreetCommand;
+import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.rest.contract.GreetResponse;
+
+/**
+ * HTTP entry point of the walking skeleton: maps the query string to
+ * a {@link GreetCommand}, dispatches it via the mediator, and wraps
+ * the result in the channel's transport DTO. No business logic.
+ */
+@RestController
+public class GreetController {
+
+    private final Mediator mediator;
+
+    public GreetController(Mediator mediator) {
+        this.mediator = mediator;
+    }
+
+    @GetMapping("/greet")
+    public GreetResponse greet(@RequestParam(name = "name", defaultValue = "world") String name) {
+        return new GreetResponse(mediator.dispatch(new GreetCommand(name)));
+    }
+}

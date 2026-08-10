@@ -12,13 +12,19 @@
  * Reads `basePackage` from the bootstrap adapter's manifest answers
  * — the install orchestrator threads a running manifest snapshot
  * between adapters, so any answer the bootstrap recorded is visible
- * here without re-prompting the user.
+ * here without re-prompting the user. Framework-agnostic: the port,
+ * the fake, and its Gradle module are plain Java, so the adapter
+ * fires for every Java JVM bootstrap (`runtime.jvm + lang.java`);
+ * the Kotlin sibling (`sample-port-fake-kotlin`) covers the same
+ * dimension under `lang.kotlin`.
  */
 
 import { packageToPath } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
+import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
+import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
 
 export const SAMPLE_PORT_FAKE_ID = 'walking-skeleton/sample-port-fake';
 
@@ -26,13 +32,18 @@ const TEMPLATE_ID = 'composition/walking-skeleton/sample-port-fake/templates';
 
 const FAKE_MODULE_INCLUDE = 'include(":infrastructure:clock:fake")';
 
-const BOOTSTRAP_IDS = [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_REST_BOOTSTRAP_ID] as const;
+const BOOTSTRAP_IDS = [
+  QUARKUS_CLI_BOOTSTRAP_ID,
+  QUARKUS_REST_BOOTSTRAP_ID,
+  SPRING_CLI_BOOTSTRAP_ID,
+  SPRING_REST_BOOTSTRAP_ID,
+] as const;
 
 export const samplePortFakeAdapter: Adapter = {
   id: SAMPLE_PORT_FAKE_ID,
   vertical: 'walking-skeleton',
   covers: ['port-example'],
-  predicate: { requires: ['framework.quarkus', 'arch.hexagonal'] },
+  predicate: { requires: ['runtime.jvm', 'arch.hexagonal', 'lang.java'] },
   after: [...BOOTSTRAP_IDS],
   async contribute(ctx) {
     const basePackage = BOOTSTRAP_IDS.map((id) => ctx.manifest.answers[id]?.basePackage).find(

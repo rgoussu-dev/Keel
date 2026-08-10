@@ -25,6 +25,8 @@ import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
+import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
+import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
 
 export const GRADLE_WRAPPER_ID = 'walking-skeleton/gradle-wrapper';
 
@@ -35,7 +37,12 @@ export const gradleWrapperAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: ['build-tool'],
   predicate: { requires: ['pkg.gradle'] },
-  after: [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_REST_BOOTSTRAP_ID],
+  after: [
+    QUARKUS_CLI_BOOTSTRAP_ID,
+    QUARKUS_REST_BOOTSTRAP_ID,
+    SPRING_CLI_BOOTSTRAP_ID,
+    SPRING_REST_BOOTSTRAP_ID,
+  ],
   contribute() {
     const action: DeferredAction = {
       id: GRADLE_WRAPPER_ID,

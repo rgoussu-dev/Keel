@@ -1,0 +1,20 @@
+package <%= basePackage %>.cli;
+
+import org.springframework.stereotype.Component;
+import picocli.CommandLine.Command;
+
+/**
+ * Top-level entry point for the {@value #NAME} CLI. Subcommands are
+ * declared on {@link Command#subcommands}; add a new one by writing
+ * a Runnable annotated with {@link Command} and listing it here.
+ */
+@Component
+@Command(
+    name = RootCommand.NAME,
+    mixinStandardHelpOptions = true,
+    description = "Walking skeleton CLI scaffolded by keel.",
+    subcommands = {HelloCommand.class}
+)
+public class RootCommand {
+    public static final String NAME = "<%= projectName %>";
+}

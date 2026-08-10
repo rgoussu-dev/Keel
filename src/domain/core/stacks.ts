@@ -91,6 +91,33 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
+  'spring-cli': {
+    id: 'spring-cli',
+    description: 'Spring Boot 4 CLI on Gradle (Java 21, picocli), hexagonal layout.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.gradle',
+      'framework.spring',
+      'arch.hexagonal',
+      'arch.cli',
+    ],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
+  'spring-rest': {
+    id: 'spring-rest',
+    description: 'Spring Boot 4 REST service on Gradle (Java 21), hexagonal layout.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.gradle',
+      'framework.spring',
+      'arch.hexagonal',
+      'arch.server-http',
+    ],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+    projects: ['peer.api.rest'],
+  },
   'go-cli': {
     id: 'go-cli',
     description: 'Go CLI on the stdlib, hexagonal layout, no mediator object.',
