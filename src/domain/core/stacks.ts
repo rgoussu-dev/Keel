@@ -340,6 +340,17 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
     ],
   },
+  'fullstack-ts': {
+    id: 'fullstack-ts',
+    description:
+      'Fullstack product: ts-http backend + web-components frontend, monorepo or polyrepo.',
+    tags: [],
+    verticals: [vcsVertical, fullstackVertical],
+    services: [
+      { path: 'backend', stack: 'ts-http', extraVerticals: [gatewayVertical] },
+      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
+    ],
+  },
   'fullstack-rust': {
     id: 'fullstack-rust',
     description:
