@@ -272,6 +272,15 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
+  'ts-http': {
+    id: 'ts-http',
+    description:
+      'TypeScript HTTP service on node:http (Node 22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.',
+    tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
+    buildSystems: [NPM_BUILD, PNPM_BUILD],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+    projects: ['peer.api.rest'],
+  },
   'web-components': {
     id: 'web-components',
     description:

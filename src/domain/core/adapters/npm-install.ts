@@ -12,7 +12,7 @@
  * Composition:
  *   - covers `build-tool` of the `walking-skeleton` vertical;
  *   - predicate: `pkg.npm` — fires for any npm-workspace project;
- *   - runs after `walking-skeleton/wc-spa-bootstrap` so the
+ *   - runs after whichever TypeScript bootstrap fired so the
  *     package manifests exist before `npm install` runs.
  */
 
@@ -20,6 +20,7 @@ import path from 'node:path';
 import type { DeferredAction, DeferredActionEnv, Adapter } from '../../contract/composition.js';
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
+import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
 export const NPM_INSTALL_ID = 'walking-skeleton/npm-install';
@@ -31,7 +32,7 @@ export const npmInstallAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: ['build-tool'],
   predicate: { requires: ['pkg.npm'] },
-  after: [WC_SPA_BOOTSTRAP_ID],
+  after: [WC_SPA_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID],
   contribute() {
     const action: DeferredAction = {
       id: NPM_INSTALL_ID,

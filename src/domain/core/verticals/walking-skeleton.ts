@@ -30,6 +30,7 @@ import { micronautCliKotlinBootstrapAdapter } from '../adapters/micronaut-cli-ko
 import { micronautRestBootstrapAdapter } from '../adapters/micronaut-rest-bootstrap.js';
 import { micronautRestKotlinBootstrapAdapter } from '../adapters/micronaut-rest-kotlin-bootstrap.js';
 import { npmInstallAdapter } from '../adapters/npm-install.js';
+import { pnpmInstallAdapter } from '../adapters/pnpm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
 import { quarkusCliKotlinBootstrapAdapter } from '../adapters/quarkus-cli-kotlin-bootstrap.js';
 import { quarkusRestBootstrapAdapter } from '../adapters/quarkus-rest-bootstrap.js';
@@ -40,6 +41,8 @@ import { rustCliBootstrapAdapter } from '../adapters/rust-cli-bootstrap.js';
 import { rustHttpBootstrapAdapter } from '../adapters/rust-http-bootstrap.js';
 import { rustPortFakeAdapter } from '../adapters/rust-port-fake.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
+import { tsHttpBootstrapAdapter } from '../adapters/ts-http-bootstrap.js';
+import { tsPortFakeAdapter } from '../adapters/ts-port-fake.js';
 import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
 import { springCliKotlinBootstrapAdapter } from '../adapters/spring-cli-kotlin-bootstrap.js';
 import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
@@ -78,10 +81,13 @@ export const walkingSkeletonVertical: Vertical = {
     rustCliBootstrapAdapter,
     rustHttpBootstrapAdapter,
     rustPortFakeAdapter,
+    tsHttpBootstrapAdapter,
+    tsPortFakeAdapter,
     wcSpaBootstrapAdapter,
     wcSamplePortFakeAdapter,
     wcDesignSystemAdapter,
     npmInstallAdapter,
+    pnpmInstallAdapter,
     claudeCoreAdapter,
   ],
 };

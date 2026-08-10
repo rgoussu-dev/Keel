@@ -1,0 +1,25 @@
+import {
+  DomainError,
+  err,
+  ok,
+  type Command,
+  type Handler,
+  type Result,
+} from '@<%= npmScope %>/domain-kernel';
+import { GREET_REJECTED, type GreetCommand, type Greeting } from '@<%= npmScope %>/domain-contract';
+
+/** Handles the walking skeleton's one command. */
+export function createGreetHandler(): Handler<GreetCommand> {
+  return {
+    supports(command: Command): command is GreetCommand {
+      return command.kind === 'greet';
+    },
+    handle(command: GreetCommand): Promise<Result<Greeting>> {
+      const name = command.name.trim();
+      if (name === '') {
+        return Promise.resolve(err(new DomainError('name must not be blank', GREET_REJECTED)));
+      }
+      return Promise.resolve(ok({ message: `Hello, ${name}!` }));
+    },
+  };
+}

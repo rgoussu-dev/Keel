@@ -8,6 +8,25 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **TypeScript backend stack** (`keel new --stack=ts-http`) — the
+  Node realization of the walking skeleton: a TypeScript workspace in
+  the binding-spec trisection (`domain/kernel` with the
+  Command/Result/Handler/Mediator bases, `domain/contract`,
+  `domain/core` exposing factories through its `exports` map — the
+  registry-mediator stance keel itself is built on) plus an
+  `application/rest` deployment unit on bare `node:http` mapping
+  `GET /greet` to the mediator and rejections to RFC 9457 Problem
+  Details. No build step: Node 22.18+ runs the sources directly
+  (type stripping, held honest by `erasableSyntaxOnly`), per-package
+  `tsc --noEmit` and `"types": []` hold the walls, and the sample
+  `Clock` port ships real + fake adapters in `infrastructure/clock`
+  (`walking-skeleton/ts-port-fake`). Projects `peer.api.rest`, so it
+  slots into the same gateway seam as the other REST backends.
+- **npm or pnpm for the TypeScript stacks** — `ts-http` offers the
+  build-system choice: npm (hoisted workspaces, the default) or pnpm
+  (`pnpm-workspace.yaml`, the `workspace:*` dependency protocol, a
+  pinned `packageManager` field, and a `walking-skeleton/pnpm-install`
+  adapter covering `build-tool` under `pkg.pnpm`).
 - **Selectable build systems** (`keel new … --build-system <id>`) —
   stacks may now offer a choice of build system instead of pinning
   one. The six Java JVM stacks offer **Gradle or Maven**: the same
