@@ -11,7 +11,8 @@
 
 import { jvmBootstrapAdapter } from './jvm-bootstrap.js';
 
-export const MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID = 'walking-skeleton/micronaut-rest-kotlin-bootstrap';
+export const MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID =
+  'walking-skeleton/micronaut-rest-kotlin-bootstrap';
 
 export const micronautRestKotlinBootstrapAdapter = jvmBootstrapAdapter({
   id: MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID,

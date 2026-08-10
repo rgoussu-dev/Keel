@@ -26,7 +26,7 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   template trees, with the per-framework compiler wiring each stance
   needs (allopen for Quarkus CDI, `plugin.spring` for Spring, KSP
   for Micronaut). Language is a predicate dimension like any other —
-  `lang.kotlin` swaps the bootstrap *and* the sample-port adapter
+  `lang.kotlin` swaps the bootstrap _and_ the sample-port adapter
   (`sample-port-fake-kotlin`).
 - **The gateway seam covers the new backends.**
   `gateway/spring-cors` (+ its Kotlin sibling) emits a
@@ -34,18 +34,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `application.properties`; `fullstack-spring` and
   `fullstack-micronaut` composite presets pair the new REST backends
   with the web-components frontend, Dockerfiles included.
-
-### Changed
-
-- **The JVM bootstraps share their domain templates.** The domain
-  trisection is emitted from shared per-language trees
-  (`assets/composition/walking-skeleton/jvm-domain/`) rather than
-  being duplicated per framework, and all twelve JVM bootstrap
-  adapters are built by one `jvmBootstrapAdapter` factory keyed on
-  (framework, arch, language). Rendered output for the existing
-  Quarkus stacks is unchanged. `sample-port-fake` (plain Java + a
-  plain Gradle module) now fires for every Java JVM bootstrap
-  (`runtime.jvm`), not just Quarkus.
 
 - **`fullstack-go` stack** (`keel new --stack=fullstack-go`) — the
   proof that the gateway seam is generic over backends: a `go-http`
@@ -71,6 +59,18 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   nginx for the frontend, with nginx proxying `/api` to the backend
   service — the same convention as the dev proxy, so the bundle's
   default `VITE_API_BASE_URL` works unchanged in both worlds).
+
+### Changed
+
+- **The JVM bootstraps share their domain templates.** The domain
+  trisection is emitted from shared per-language trees
+  (`assets/composition/walking-skeleton/jvm-domain/`) rather than
+  being duplicated per framework, and all twelve JVM bootstrap
+  adapters are built by one `jvmBootstrapAdapter` factory keyed on
+  (framework, arch, language). Rendered output for the existing
+  Quarkus stacks is unchanged. `sample-port-fake` (plain Java + a
+  plain Gradle module) now fires for every Java JVM bootstrap
+  (`runtime.jvm`), not just Quarkus.
 
 ### Fixed
 

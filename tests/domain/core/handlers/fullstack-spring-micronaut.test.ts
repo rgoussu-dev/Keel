@@ -76,9 +76,7 @@ describe('fullstack-spring composite install (monorepo)', () => {
 
   it('containerises the product with a Spring boot-jar Dockerfile', () => {
     expect(read('compose.yaml')).toContain('backend');
-    expect(read('backend/Dockerfile')).toContain(
-      'application-rest-executable-0.1.0-SNAPSHOT.jar',
-    );
+    expect(read('backend/Dockerfile')).toContain('application-rest-executable-0.1.0-SNAPSHOT.jar');
   });
 });
 

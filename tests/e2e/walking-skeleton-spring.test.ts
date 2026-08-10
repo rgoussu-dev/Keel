@@ -10,11 +10,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, it } from 'vitest';
-import {
-  E2E_TIMEOUT_MS,
-  runJvmRestE2E,
-  skipJvmRestE2E,
-} from '../support/jvm-rest-e2e.js';
+import { E2E_TIMEOUT_MS, runJvmRestE2E, skipJvmRestE2E } from '../support/jvm-rest-e2e.js';
 
 let cwd: string;
 let gradleUserHome: string;

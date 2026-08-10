@@ -12,11 +12,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, it } from 'vitest';
-import {
-  E2E_TIMEOUT_MS,
-  runJvmRestE2E,
-  skipJvmRestE2E,
-} from '../support/jvm-rest-e2e.js';
+import { E2E_TIMEOUT_MS, runJvmRestE2E, skipJvmRestE2E } from '../support/jvm-rest-e2e.js';
 
 let cwd: string;
 let gradleUserHome: string;
@@ -39,14 +35,7 @@ describe.skipIf(skipJvmRestE2E)('walking-skeleton Kotlin (Quarkus REST) e2e', ()
         {
           stack: 'quarkus-rest-kotlin',
           bootstrapId: 'walking-skeleton/quarkus-rest-kotlin-bootstrap',
-          runJar: [
-            'application',
-            'rest',
-            'executable',
-            'build',
-            'quarkus-app',
-            'quarkus-run.jar',
-          ],
+          runJar: ['application', 'rest', 'executable', 'build', 'quarkus-app', 'quarkus-run.jar'],
           randomPortFlag: '-Dquarkus.http.port=0',
           announceRe: /Listening on: https?:\/\/[^:\s]+:(\d+)/,
         },
