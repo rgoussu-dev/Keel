@@ -355,6 +355,15 @@ function alreadyInitialised(scopeRoot: string): DomainError {
 }
 
 /**
+ * Relative ref from one service directory to a sibling's, with posix
+ * separators — correct at any nesting depth (`apps/backend` →
+ * `apps/frontend` is `../frontend`, not `../apps/frontend`).
+ */
+export function peerRef(fromServicePath: string, toServicePath: string): string {
+  return toPosix(path.relative(fromServicePath, toServicePath));
+}
+
+/**
  * The peers a service sees: every sibling's declared projections,
  * ref'd relative to the service's own directory.
  */
@@ -362,7 +371,7 @@ function peersFor(service: ResolvedService, all: readonly ResolvedService[]): Pe
   return all
     .filter((other) => other.path !== service.path)
     .map((other) => ({
-      ref: toPosix(path.join('..', other.path)),
+      ref: peerRef(service.path, other.path),
       tags: [...(other.stack.projects ?? [])].sort(),
     }));
 }
