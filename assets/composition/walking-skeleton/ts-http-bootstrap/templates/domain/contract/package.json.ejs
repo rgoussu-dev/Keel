@@ -1,0 +1,18 @@
+{
+  "name": "@<%= npmScope %>/domain-contract",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@<%= npmScope %>/domain-kernel": "<%= workspaceDep %>"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

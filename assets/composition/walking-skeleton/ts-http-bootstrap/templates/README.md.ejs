@@ -1,0 +1,53 @@
+# <%= projectName %>
+
+TypeScript HTTP walking skeleton scaffolded by keel — hexagonal,
+mediator-driven, no build step: Node 22.18+ runs the TypeScript
+sources directly (type stripping), `tsc --noEmit` holds the walls.
+
+## Layout
+
+```
+domain/
+  kernel/      — Command, Result, Handler, Mediator bases; depends on
+                 nothing (not even the Node type definitions)
+  contract/    — the public surface: GreetCommand + the greet.rejected
+                 error code (+ ports as they appear)
+  core/        — createRegistryMediator + the GreetCommand handler,
+                 factories only via the exports map
+application/
+  rest/        — the deployment unit: node:http server mapping the
+                 query string to commands and Results to JSON or
+                 RFC 9457 Problem Details; main.ts is the assembly
+                 point
+infrastructure/  — driven adapters (clock in `clock`; more as they
+                 appear), real + fake side by side
+```
+
+The walls are held by the workspace itself: package dependencies
+point inward only, deep imports die at each package's `exports` map,
+and the domain packages compile with `"types": []` — a domain import
+of `node:*` is a tsc error, not a convention. The
+`erasableSyntaxOnly` dial keeps every source file inside the syntax
+Node can strip.
+
+## Run
+
+```sh
+<%= pm %> run dev      # node --watch on the assembly point
+# then:
+curl 'http://localhost:8080/greet?name=World'
+```
+
+## Test
+
+```sh
+<%= pm %> test         # vitest per package: domain + HTTP contract tests
+<%= pm %> run typecheck
+```
+
+## Deploy
+
+There is nothing to bundle: ship the sources plus production
+`node_modules` and run `<%= pm %> start` (12-factor: the port comes
+from `PORT`). Add a bundler later only if cold-start size starts to
+matter.

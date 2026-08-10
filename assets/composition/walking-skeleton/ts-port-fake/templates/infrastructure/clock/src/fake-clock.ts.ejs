@@ -1,0 +1,28 @@
+import type { Clock } from '@<%= npmScope %>/domain-contract';
+
+/**
+ * The canonical fake for the Clock port — a controllable clock, and
+ * the reference implementation of the contract. Tests wire it
+ * through the same factory seams the real adapter uses; production
+ * code may opt in for fast prototyping.
+ */
+export interface FakeClock extends Clock {
+  /** Pins the clock to the given instant. */
+  set(instant: Date): void;
+  /** Moves the clock forward by the given number of milliseconds. */
+  advance(milliseconds: number): void;
+}
+
+/** Creates a FakeClock starting at `start` (epoch by default). */
+export function createFakeClock(start: Date = new Date(0)): FakeClock {
+  let epochMillis = start.getTime();
+  return {
+    now: () => new Date(epochMillis),
+    set(instant: Date): void {
+      epochMillis = instant.getTime();
+    },
+    advance(milliseconds: number): void {
+      epochMillis += milliseconds;
+    },
+  };
+}

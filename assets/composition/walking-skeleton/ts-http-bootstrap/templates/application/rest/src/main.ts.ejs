@@ -1,0 +1,14 @@
+import { createGreetHandler, createRegistryMediator } from '@<%= npmScope %>/domain-core';
+import { createGreetServer } from './server.ts';
+
+/**
+ * The assembly point: construct the domain behind its mediator seam,
+ * hand it to the HTTP unit, listen. Cross-cutting concerns decorate
+ * the handlers or the server right here — nowhere else.
+ */
+const mediator = createRegistryMediator([createGreetHandler()]);
+const port = Number(process.env['PORT'] ?? 8080);
+
+createGreetServer(mediator).listen(port, () => {
+  console.log(`listening on http://localhost:${port} — try /greet?name=World`);
+});
