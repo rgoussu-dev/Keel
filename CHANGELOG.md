@@ -296,6 +296,12 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The `ts-http` 500 problem detail is redacted in production.**
+  The rejected-dispatch handler echoed `error.message` to clients
+  unconditionally; under `NODE_ENV=production` the detail is now the
+  generic `unexpected failure`, while dev and test keep the real
+  message. The generated test suite pins both. (Post-merge review
+  finding from #32.)
 - **The `ts-http` request handler no longer leaves the response
   hanging on a rejected dispatch.** The generated `server.ts` chains
   `.catch()` onto `mediator.dispatch(…)` and maps unexpected failures
