@@ -1,0 +1,58 @@
+package <%= basePackage %>.rest;
+
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
+import io.micronaut.http.client.exceptions.HttpClientResponseException;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Boots the full channel on the embedded server and drives it over
+ * real HTTP with the Micronaut client.
+ */
+@MicronautTest
+class GreetControllerTest {
+
+    @Inject
+    @Client("/")
+    HttpClient client;
+
+    @Test
+    void greetsByNameThroughMediator() {
+        String body = client.toBlocking().retrieve("/greet?name=Romain");
+
+        assertTrue(body.contains("\"greeting\":\"Hello, Romain!\""), body);
+    }
+
+    @Test
+    void defaultsToWorldWhenNoNameIsGiven() {
+        String body = client.toBlocking().retrieve("/greet");
+
+        assertTrue(body.contains("\"greeting\":\"Hello, world!\""), body);
+    }
+
+    @Test
+    void mapsGreetRejectedToProblemDetails() {
+        HttpClientResponseException rejected = assertThrows(
+                HttpClientResponseException.class,
+                () -> client.toBlocking().exchange(
+                        HttpRequest.GET("/greet?name=%20%20"), String.class));
+
+        assertEquals(400, rejected.getStatus().getCode());
+        assertEquals(
+                GreetRejectedHandler.PROBLEM_JSON,
+                rejected.getResponse().getContentType().map(Object::toString).orElse(""));
+        String body = rejected.getResponse().getBody(String.class).orElse("");
+        assertTrue(body.contains("\"type\":\"urn:problem-type:greet-rejected\""), body);
+        assertTrue(body.contains("\"title\":\"Greeting rejected\""), body);
+        assertTrue(body.contains("\"status\":400"), body);
+        assertTrue(body.contains("\"detail\":\"name must not be blank\""), body);
+        assertTrue(body.contains("\"instance\":\"/greet\""), body);
+    }
+}

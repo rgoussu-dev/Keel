@@ -1,0 +1,14 @@
+package <%= basePackage %>.rest;
+
+import io.micronaut.runtime.Micronaut;
+
+/**
+ * Boots the REST channel. Micronaut wires the controller, the error
+ * handler, and the composition root in this package at compile time.
+ */
+public class Application {
+
+    public static void main(String[] args) {
+        Micronaut.run(Application.class, args);
+    }
+}

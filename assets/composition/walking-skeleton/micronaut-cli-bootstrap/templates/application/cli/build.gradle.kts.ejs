@@ -1,0 +1,25 @@
+plugins {
+    java
+    id("io.micronaut.application") version "4.6.2"
+}
+
+micronaut {
+    version("4.10.17")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("<%= basePackage %>.*")
+    }
+}
+
+application {
+    mainClass.set("<%= basePackage %>.cli.Main")
+}
+
+dependencies {
+    implementation("io.micronaut.picocli:micronaut-picocli")
+
+    implementation(project(":domain:kernel"))
+    implementation(project(":domain:contract"))
+    implementation(project(":domain:core"))
+}

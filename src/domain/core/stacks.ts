@@ -118,6 +118,33 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
+  'micronaut-cli': {
+    id: 'micronaut-cli',
+    description: 'Micronaut 4 CLI on Gradle (Java 21, picocli), hexagonal layout.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.gradle',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.cli',
+    ],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+  },
+  'micronaut-rest': {
+    id: 'micronaut-rest',
+    description: 'Micronaut 4 REST service on Gradle (Java 21), hexagonal layout.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.gradle',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.server-http',
+    ],
+    verticals: [vcsVertical, walkingSkeletonVertical],
+    projects: ['peer.api.rest'],
+  },
   'go-cli': {
     id: 'go-cli',
     description: 'Go CLI on the stdlib, hexagonal layout, no mediator object.',

@@ -23,6 +23,8 @@ import path from 'node:path';
 import type { DeferredAction, DeferredActionEnv, Adapter } from '../../contract/composition.js';
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
+import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
+import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
 import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
@@ -42,6 +44,8 @@ export const gradleWrapperAdapter: Adapter = {
     QUARKUS_REST_BOOTSTRAP_ID,
     SPRING_CLI_BOOTSTRAP_ID,
     SPRING_REST_BOOTSTRAP_ID,
+    MICRONAUT_CLI_BOOTSTRAP_ID,
+    MICRONAUT_REST_BOOTSTRAP_ID,
   ],
   contribute() {
     const action: DeferredAction = {

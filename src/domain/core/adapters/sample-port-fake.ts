@@ -21,6 +21,8 @@
 
 import { packageToPath } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
+import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
+import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
 import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
@@ -37,6 +39,8 @@ const BOOTSTRAP_IDS = [
   QUARKUS_REST_BOOTSTRAP_ID,
   SPRING_CLI_BOOTSTRAP_ID,
   SPRING_REST_BOOTSTRAP_ID,
+  MICRONAUT_CLI_BOOTSTRAP_ID,
+  MICRONAUT_REST_BOOTSTRAP_ID,
 ] as const;
 
 export const samplePortFakeAdapter: Adapter = {

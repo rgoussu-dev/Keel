@@ -22,6 +22,8 @@ import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
+import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
+import { micronautRestBootstrapAdapter } from '../adapters/micronaut-rest-bootstrap.js';
 import { npmInstallAdapter } from '../adapters/npm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
 import { quarkusRestBootstrapAdapter } from '../adapters/quarkus-rest-bootstrap.js';
@@ -46,6 +48,8 @@ export const walkingSkeletonVertical: Vertical = {
     quarkusRestBootstrapAdapter,
     springCliBootstrapAdapter,
     springRestBootstrapAdapter,
+    micronautCliBootstrapAdapter,
+    micronautRestBootstrapAdapter,
     samplePortFakeAdapter,
     gradleWrapperAdapter,
     goBootstrapAdapter,
