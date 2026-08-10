@@ -12,9 +12,12 @@ import (
 	"<%= modulePath %>/internal/domain"
 )
 
-// GreetingResponse is the transport shape of a successful greeting.
+// GreetingResponse is the transport shape of a successful greeting —
+// the REST seam contract shared with the other backend stacks
+// (`{"greeting": …}`), so a frontend gateway works against any of
+// them.
 type GreetingResponse struct {
-	Message string `json:"message"`
+	Greeting string `json:"greeting"`
 }
 
 // Problem is an RFC 9457 problem document — the transport shape of
@@ -31,12 +34,19 @@ type Problem struct {
 func NewHandler(greeter domain.Greeter) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /greet", func(w http.ResponseWriter, r *http.Request) {
-		message, err := greeter.Greet(domain.GreetCommand{Name: r.URL.Query().Get("name")})
+		// An absent name defaults at the transport boundary, per the
+		// seam contract; a name that is present but blank still
+		// reaches the domain and is rejected there.
+		name := "world"
+		if r.URL.Query().Has("name") {
+			name = r.URL.Query().Get("name")
+		}
+		message, err := greeter.Greet(domain.GreetCommand{Name: name})
 		if err != nil {
 			writeProblem(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, "application/json", GreetingResponse{Message: message})
+		writeJSON(w, http.StatusOK, "application/json", GreetingResponse{Greeting: message})
 	})
 	return mux
 }

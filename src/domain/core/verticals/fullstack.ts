@@ -5,12 +5,13 @@
  * composite orchestrator skips it there.
  */
 
+import { productComposeAdapter } from '../adapters/product-compose.js';
 import { productDocsAdapter } from '../adapters/product-docs.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const fullstackVertical: Vertical = {
   id: 'fullstack',
   description: 'Product-root glue for multi-service workspaces.',
-  dimensions: ['product-docs'],
-  adapters: [productDocsAdapter],
+  dimensions: ['product-docs', 'product-compose'],
+  adapters: [productDocsAdapter, productComposeAdapter],
 };

@@ -14,18 +14,37 @@ CORS config) were selected from those facts.
 
 ## Run order (development)
 
+<%
+const runHints = {
+  'quarkus-rest': './gradlew quarkusDev',
+  'go-http': 'go run ./cmd/http',
+  'web-components': 'npm run dev',
+};
+const backendService = services[0];
+const frontendService = services[services.length - 1];
+-%>
 1. Start the backend first:
    ```sh
-   cd backend && ./gradlew quarkusDev        # serves http://localhost:8080
+   cd <%= backendService.path %> && <%= runHints[backendService.stack] ?? 'see its README' %>   # serves http://localhost:8080
    ```
 2. Then the frontend dev server:
    ```sh
-   cd frontend && npm run dev                # proxies /api → localhost:8080
+   cd <%= frontendService.path %> && <%= runHints[frontendService.stack] ?? 'see its README' %>   # proxies /api → localhost:8080
    ```
 
 The frontend reaches the backend through its `gateway-rest` driven
 port; in development Vite proxies `/api`, in production set
-`VITE_API_BASE_URL` at build time (12-factor: config via env).
+`VITE_API_BASE_URL` at build time (12-factor: config via env). The
+wire itself is pinned by the backend's
+[`contract/greet.openapi.yaml`](<%= backendService.path %>/contract/greet.openapi.yaml).
+
+## Run containerised
+
+```sh
+docker compose up --build   # SPA on http://localhost:8081, /api proxied to the backend
+```
+
+One image per deployment unit, built from the Dockerfile beside it.
 
 ## Working here
 

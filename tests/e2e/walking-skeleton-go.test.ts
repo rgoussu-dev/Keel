@@ -192,7 +192,11 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
 
         const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
         expect(ok.status).toBe(200);
-        expect(await ok.json()).toEqual({ message: 'Hello, E2E!' });
+        expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+
+        const defaulted = await fetch(`http://127.0.0.1:${port}/greet`);
+        expect(defaulted.status).toBe(200);
+        expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
 
         const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=`);
         expect(rejected.status).toBe(400);

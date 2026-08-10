@@ -8,6 +8,41 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`fullstack-go` stack** (`keel new --stack=fullstack-go`) — the
+  proof that the gateway seam is generic over backends: a `go-http`
+  backend + `web-components` frontend product, selecting exactly the
+  same frontend gateway adapters as the Quarkus pair because both
+  backends project `peer.api.rest`. The Go side gets its own seam
+  half — `gateway/go-cors` decorates the HTTP unit's assembly point
+  with a CORS wrapper for the Vite dev origin (cross-cutting as a
+  decorator, per the binding spec's Go stance).
+- **The REST seam contract is pinned as OpenAPI.**
+  `gateway/rest-api-contract` emits `contract/greet.openapi.yaml` on
+  any HTTP backend with an SPA peer, whatever its language:
+  `GET /greet`, optional `name` defaulting to `world`,
+  `{"greeting": …}` on 200, RFC 9457 problem documents on errors.
+  The frontend gateway (and its fake) encode this shape, and the new
+  `fullstack-go` e2e boots the real Go backend and verifies the wire
+  against it — named, defaulted, and rejected requests plus the CORS
+  header.
+- **Monorepo products are containerised.**
+  `fullstack/product-compose` emits a root `compose.yaml` plus a
+  Dockerfile beside each deployment unit (Gradle multi-stage for
+  `quarkus-rest`, Go-onto-distroless for `go-http`, Vite-build-onto
+  nginx for the frontend, with nginx proxying `/api` to the backend
+  service — the same convention as the dev proxy, so the bundle's
+  default `VITE_API_BASE_URL` works unchanged in both worlds).
+
+### Fixed
+
+- **`go-http` now honours the REST seam contract.** Its greet reply
+  was `{"message": …}` where the Quarkus REST unit replies
+  `{"greeting": …}`, and it rejected an absent name where Quarkus
+  defaults to `world` — so one frontend gateway could not serve both
+  backends. Absent names now default at the transport boundary; a
+  present-but-blank name still reaches the domain and is rejected as
+  an RFC 9457 problem.
+
 - **Fullstack composition: peer tags, composite stacks, and the
   `fullstack` preset.** Stacks now declare the peer tags they project
   onto sibling services (`quarkus-rest`/`go-http` → `peer.api.rest`,

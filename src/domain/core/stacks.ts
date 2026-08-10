@@ -130,6 +130,17 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
     ],
   },
+  'fullstack-go': {
+    id: 'fullstack-go',
+    description:
+      'Fullstack product: go-http backend + web-components frontend, monorepo or polyrepo.',
+    tags: [],
+    verticals: [vcsVertical, fullstackVertical],
+    services: [
+      { path: 'backend', stack: 'go-http', extraVerticals: [gatewayVertical] },
+      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
+    ],
+  },
 };
 
 /** Returns the stack registered under `id`, or null if absent. */

@@ -11,7 +11,9 @@
  * `keel add gateway` in each.
  */
 
+import { goCorsAdapter } from '../adapters/go-cors.js';
 import { quarkusCorsAdapter } from '../adapters/quarkus-cors.js';
+import { restApiContractAdapter } from '../adapters/rest-api-contract.js';
 import { wcGatewayRestAdapter } from '../adapters/wc-gateway-rest.js';
 import type { Vertical } from '../../contract/composition.js';
 
@@ -19,5 +21,5 @@ export const gatewayVertical: Vertical = {
   id: 'gateway',
   description: 'Cross-service seam: client gateways and server accommodations from peer tags.',
   dimensions: [],
-  adapters: [wcGatewayRestAdapter, quarkusCorsAdapter],
+  adapters: [wcGatewayRestAdapter, quarkusCorsAdapter, goCorsAdapter, restApiContractAdapter],
 };
