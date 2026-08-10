@@ -268,3 +268,46 @@ describe('walking-skeleton vertical (web-components SPA)', () => {
     ).rejects.toThrow(/invalid projectName/);
   });
 });
+
+describe('walking-skeleton vertical (web-components, pnpm)', () => {
+  const pnpmTags = [
+    'lang.typescript',
+    'runtime.browser',
+    'pkg.pnpm',
+    'framework.web-components',
+    'arch.hexagonal',
+    'arch.spa',
+  ];
+
+  it('renders the pnpm workspace shape with the workspace: protocol', async () => {
+    const { tree, cwd } = await installWith(pnpmTags);
+    cwds.push(cwd);
+
+    const workspaceFile = tree.read('pnpm-workspace.yaml')?.toString() ?? '';
+    expect(workspaceFile).toContain('design-system');
+    expect(workspaceFile).toContain('domain/*');
+
+    const root = tree.read('package.json')?.toString() ?? '';
+    expect(root).toContain('"packageManager": "pnpm@');
+    expect(root).not.toContain('"workspaces"');
+
+    const webApp = tree.read('application/web-app/package.json')?.toString() ?? '';
+    expect(webApp).toContain('"@acme/domain-core": "workspace:*"');
+
+    const commons = tree.read('infrastructure/commons/package.json')?.toString() ?? '';
+    expect(commons).toContain('"@acme/domain-api": "workspace:*"');
+  });
+
+  it('emits a deferred pnpm install action instead of the npm one', async () => {
+    const { result, cwd } = await installWith(pnpmTags);
+    cwds.push(cwd);
+    const install = result.applyResult.actions.find(
+      (a) => a.id === 'walking-skeleton/pnpm-install',
+    );
+    expect(install).toBeDefined();
+    expect(install?.description).toBe('pnpm install');
+    expect(
+      result.applyResult.actions.find((a) => a.id === 'walking-skeleton/npm-install'),
+    ).toBeUndefined();
+  });
+});

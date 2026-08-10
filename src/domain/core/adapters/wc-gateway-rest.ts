@@ -29,6 +29,7 @@
  */
 
 import type { Adapter, ContributionFile } from '../../contract/composition.js';
+import { tsWorkspaceVars } from './ts-workspace.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
 export const WC_GATEWAY_REST_ID = 'gateway/wc-gateway-rest';
@@ -53,8 +54,11 @@ export const wcGatewayRestAdapter: Adapter = {
         `${WC_GATEWAY_REST_ID}: requires '${WC_SPA_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
       );
     }
-    const files = await ctx.templates.render(`${TEMPLATE_ROOT}/files`, '', { npmScope });
-    const rewrites = await ctx.templates.render(`${TEMPLATE_ROOT}/rewrites`, '', { npmScope });
+    const ws = tsWorkspaceVars(ctx.manifest.tags);
+    const vars = { npmScope, ...ws };
+    const files = await ctx.templates.render(`${TEMPLATE_ROOT}/files`, '', vars);
+    const rewrites = await ctx.templates.render(`${TEMPLATE_ROOT}/rewrites`, '', vars);
+    const gatewayPkg = `@${npmScope}/gateway-rest`;
     return {
       files,
       patches: [
@@ -67,23 +71,13 @@ export const wcGatewayRestAdapter: Adapter = {
         },
         {
           target: WEB_APP_PKG_TARGET,
-          apply: (existing) => {
-            if (existing.includes(`"@${npmScope}/gateway-rest"`)) return existing;
-            return existing.replace(
-              `"@${npmScope}/domain-core": "*"`,
-              `"@${npmScope}/domain-core": "*",\n    "@${npmScope}/gateway-rest": "*"`,
-            );
-          },
+          apply: (existing) =>
+            addPackageDependency(existing, 'dependencies', gatewayPkg, ws.workspaceDep),
         },
         {
           target: CORE_PKG_TARGET,
-          apply: (existing) => {
-            if (existing.includes(`"@${npmScope}/gateway-rest"`)) return existing;
-            return existing.replace(
-              `"dependencies": {\n    "@${npmScope}/domain-api": "*"\n  },`,
-              `"dependencies": {\n    "@${npmScope}/domain-api": "*"\n  },\n  "devDependencies": {\n    "@${npmScope}/gateway-rest": "*"\n  },`,
-            );
-          },
+          apply: (existing) =>
+            addPackageDependency(existing, 'devDependencies', gatewayPkg, ws.workspaceDep),
         },
         ...rewrites.map((file: ContributionFile) => ({
           target: file.path,
@@ -94,3 +88,23 @@ export const wcGatewayRestAdapter: Adapter = {
     };
   },
 };
+
+/**
+ * Adds one dependency entry to a package manifest, preserving the
+ * 2-space formatting the templates emit. Parsing instead of string
+ * surgery keeps the patch correct under either workspace protocol
+ * (`*` for npm, `workspace:*` for pnpm) and idempotent on re-runs.
+ */
+function addPackageDependency(
+  existing: string,
+  section: 'dependencies' | 'devDependencies',
+  name: string,
+  version: string,
+): string {
+  const pkg = JSON.parse(existing) as Record<string, unknown>;
+  const deps = { ...((pkg[section] as Record<string, string> | undefined) ?? {}) };
+  if (deps[name] !== undefined) return existing;
+  deps[name] = version;
+  pkg[section] = deps;
+  return `${JSON.stringify(pkg, null, 2)}\n`;
+}

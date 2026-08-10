@@ -8,10 +8,14 @@
     "./fake": "./src/fake.ts"
   },
   "dependencies": {
-    "@<%= npmScope %>/domain-api": "*"
+    "@<%= npmScope %>/domain-api": "<%= workspaceDep %>"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

@@ -131,8 +131,9 @@ mkdir my-app && cd my-app
 npx @rgoussu.dev/keel new --stack=web-components
 ```
 
-You'll be asked for an npm scope and a project name. The result is a
-TypeScript npm workspace in a hexagonal layout — `domain/domain-api`
+You'll be asked for an npm scope, a project name, and a package
+manager (npm or pnpm). The result is a TypeScript workspace in a
+hexagonal layout — `domain/domain-api`
 (ports, commands, read models; compiled without the DOM lib),
 `domain/domain-core` (factories only, via its `exports` map), an
 `application/web-app` Vite deployment unit whose `main.ts` wires

@@ -62,15 +62,15 @@ shadow root), and the design system follows the same convention.
 ## Run
 
 ```sh
-npm run dev        # Vite dev server for application/web-app
+<%= pm %> run dev        # Vite dev server for application/web-app
 ```
 
 ## Test
 
 ```sh
-npm test           # domain + fake contract tests in Node; design-system
+<%= pm %> test           # domain + fake contract tests in Node; design-system
                    # component tests under happy-dom
-npm run typecheck  # per-package tsc — enforces the lib walls
+<%= pm %> run typecheck  # per-package tsc — enforces the lib walls
 ```
 
 Port-bound organisms are tested in a real browser against the domain's
@@ -80,5 +80,5 @@ in-memory fakes; add a Vitest browser-mode setup to
 ## Build
 
 ```sh
-npm run build      # application/web-app/dist — static files, ready to serve
+<%= pm %> run build      # application/web-app/dist — static files, ready to serve
 ```
