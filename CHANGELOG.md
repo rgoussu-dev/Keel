@@ -22,6 +22,14 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `Clock` port ships real + fake adapters in `infrastructure/clock`
   (`walking-skeleton/ts-port-fake`). Projects `peer.api.rest`, so it
   slots into the same gateway seam as the other REST backends.
+- **`fullstack-ts` stack** (`keel new --stack=fullstack-ts`) — the
+  fourth backend behind the same seam: a `ts-http` backend +
+  `web-components` frontend product selecting exactly the same
+  frontend gateway adapters as the other pairs. The Node side gets
+  its own CORS decoration (`gateway/ts-cors` wraps the server at the
+  assembly point), the shared OpenAPI wire contract, and a
+  `node:22-alpine` Dockerfile with no build stage — the container
+  runs the TypeScript sources directly.
 - **npm or pnpm for the TypeScript stacks** — `ts-http` and
   `web-components` offer the build-system choice: npm (hoisted
   workspaces, the default) or pnpm (`pnpm-workspace.yaml`, the

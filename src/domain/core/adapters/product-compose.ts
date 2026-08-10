@@ -32,6 +32,7 @@ const BACKEND_IMAGES: Readonly<Record<string, string>> = {
   'micronaut-rest': 'backend-micronaut',
   'go-http': 'backend-go',
   'rust-http': 'backend-rust',
+  'ts-http': 'backend-ts',
 };
 
 const FRONTEND_IMAGES: Readonly<Record<string, string>> = {
