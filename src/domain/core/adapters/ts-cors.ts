@@ -30,6 +30,9 @@ function withCors(server: Server): Server {
   server.on('request', (request, response) => {
     response.setHeader('access-control-allow-origin', 'http://localhost:5173');
     if (request.method === 'OPTIONS') {
+      response.setHeader('access-control-allow-methods', 'GET');
+      const requested = request.headers['access-control-request-headers'];
+      if (requested !== undefined) response.setHeader('access-control-allow-headers', requested);
       response.writeHead(204).end();
       return;
     }

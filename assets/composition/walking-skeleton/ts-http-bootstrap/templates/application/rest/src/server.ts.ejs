@@ -16,15 +16,22 @@ export function createGreetServer(mediator: Mediator): Server {
       return;
     }
     const name = url.searchParams.get('name') ?? 'world';
-    void mediator.dispatch(greetCommand(name)).then((result) => {
-      if (!result.ok) {
-        const status = result.error.code === GREET_REJECTED ? 400 : 500;
-        problem(response, status, result.error.code, result.error.message);
-        return;
-      }
-      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-      response.end(JSON.stringify({ greeting: result.value.message }));
-    });
+    void mediator
+      .dispatch(greetCommand(name))
+      .then((result) => {
+        if (!result.ok) {
+          const status = result.error.code === GREET_REJECTED ? 400 : 500;
+          problem(response, status, result.error.code, result.error.message);
+          return;
+        }
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ greeting: result.value.message }));
+      })
+      .catch((error: unknown) => {
+        // A rejected dispatch promise is a defect (handlers return
+        // Result), but it must not leave the response hanging.
+        problem(response, 500, 'internal error', error instanceof Error ? error.message : 'unexpected failure');
+      });
   });
 }
 
