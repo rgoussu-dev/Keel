@@ -9,6 +9,13 @@
  * trees (`assets/composition/walking-skeleton/jvm-domain/<lang>-<arch>`)
  * and each adapter renders it alongside its own application tree.
  *
+ * Build files are not part of the source trees: they live in
+ * build-system trees under
+ * `assets/composition/walking-skeleton/jvm-build/<build-system>/`
+ * (a shared `domain/` tree for the module build files plus one tree
+ * per combination), selected at contribute time from the manifest's
+ * `pkg.*` tag — the same sources scaffold onto Gradle or Maven.
+ *
  * One adapter per (framework, arch, language) combination — the
  * resolver picks by predicate (`framework.*` + `arch.*` + `lang.*`),
  * per the composition contract's no-OR rule. All twelve share the
@@ -17,6 +24,7 @@
  * manifest whichever bootstrap fired.
  */
 
+import { jvmBuildSystem } from './jvm-build-system.js';
 import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
 import type { Adapter, Question } from '../../contract/composition.js';
 
@@ -77,6 +85,7 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
  */
 export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
   const shortName = spec.id.split('/').pop() ?? spec.id;
+  const combo = shortName.replace(/-bootstrap$/, '');
   const domainTemplateId = `composition/walking-skeleton/jvm-domain/${spec.language}-${spec.arch}`;
   const appTemplateId = `composition/walking-skeleton/${spec.templateDir}/templates`;
   return {
@@ -95,11 +104,15 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
         projectName,
         pkgPath: packageToPath(basePackage),
       };
-      const [domain, app] = await Promise.all([
+      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const buildRoot = `composition/walking-skeleton/jvm-build/${buildSystem}`;
+      const [domain, app, domainBuild, appBuild] = await Promise.all([
         ctx.templates.render(domainTemplateId, '', vars),
         ctx.templates.render(appTemplateId, '', vars),
+        ctx.templates.render(`${buildRoot}/domain`, '', vars),
+        ctx.templates.render(`${buildRoot}/${combo}`, '', vars),
       ]);
-      return { files: [...domain, ...app] };
+      return { files: [...domain, ...app, ...domainBuild, ...appBuild] };
     },
   };
 }
