@@ -5,7 +5,6 @@ import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 
 import io.micronaut.configuration.picocli.PicocliRunner
-import io.micronaut.context.ApplicationContext
 import io.micronaut.context.env.Environment
 import org.junit.jupiter.api.Test
 
@@ -25,11 +24,14 @@ class HelloCommandTest {
         val original = System.out
         System.setOut(PrintStream(captured, true, StandardCharsets.UTF_8))
         try {
-            ApplicationContext.run(Environment.CLI, Environment.TEST).use { context ->
-                val exitCode =
-                    PicocliRunner.execute(Main::class.java, context, "hello", "--name", "Romain")
-                assertEquals(0, exitCode)
-            }
+            val exitCode = PicocliRunner.execute(
+                Main::class.java,
+                listOf(Environment.CLI, Environment.TEST),
+                "hello",
+                "--name",
+                "Romain",
+            )
+            assertEquals(0, exitCode)
         } finally {
             System.setOut(original)
         }

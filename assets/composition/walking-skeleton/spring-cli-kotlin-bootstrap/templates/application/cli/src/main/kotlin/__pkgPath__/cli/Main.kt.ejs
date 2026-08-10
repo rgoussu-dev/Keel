@@ -24,7 +24,7 @@ class Main(
 
     private var exitCode = 0
 
-    override fun run(vararg args: String?) {
+    override fun run(vararg args: String) {
         exitCode = CommandLine(rootCommand, factory).execute(*args)
     }
 
