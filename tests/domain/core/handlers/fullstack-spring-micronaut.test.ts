@@ -62,12 +62,13 @@ describe('fullstack-spring composite install (monorepo)', () => {
     expect(read('frontend/package.json')).not.toBeNull();
   });
 
-  it('gives the backend the Spring CORS accommodation for the SPA peer', () => {
+  it('gives the backend a dev-profile Spring CORS accommodation for the SPA peer', () => {
     const cors = read(
       'backend/application/rest/executable/src/main/java/com/example/rest/CorsConfig.java',
     );
     expect(cors).toContain('implements WebMvcConfigurer');
     expect(cors).toContain('http://localhost:5173');
+    expect(cors).toContain('@Profile("dev")');
   });
 
   it('pins the REST seam contract beside the backend', () => {
@@ -92,12 +93,15 @@ describe('fullstack-micronaut composite install (monorepo)', () => {
     expect(read('frontend/package.json')).not.toBeNull();
   });
 
-  it('patches the backend properties with the Micronaut CORS accommodation', () => {
+  it('scopes the Micronaut CORS accommodation to the dev environment', () => {
     const properties = read(
-      'backend/application/rest/executable/src/main/resources/application.properties',
+      'backend/application/rest/executable/src/main/resources/application-dev.properties',
     );
     expect(properties).toContain('micronaut.server.cors.enabled=true');
     expect(properties).toContain('http://localhost:5173');
+    expect(
+      read('backend/application/rest/executable/src/main/resources/application.properties'),
+    ).not.toContain('micronaut.server.cors');
   });
 
   it('containerises the product with a Micronaut fat-jar Dockerfile', () => {

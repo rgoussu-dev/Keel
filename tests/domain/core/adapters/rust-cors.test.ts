@@ -65,6 +65,14 @@ describe('rust-cors adapter', () => {
     expect(patched).toContain('async fn with_cors(');
   });
 
+  it('gates the decoration to debug builds and answers preflights completely', async () => {
+    const patch = await contributePatch();
+    const patched = patch.apply(BOOTSTRAP_MAIN);
+    expect(patched).toContain('if !cfg!(debug_assertions) {');
+    expect(patched).toContain('ACCESS_CONTROL_ALLOW_METHODS');
+    expect(patched).toContain('ACCESS_CONTROL_REQUEST_HEADERS');
+  });
+
   it('is idempotent when the decorator is already in place', async () => {
     const patch = await contributePatch();
     const once = patch.apply(BOOTSTRAP_MAIN);

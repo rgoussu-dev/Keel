@@ -62,6 +62,7 @@ describe('ts-cors adapter', () => {
     expect(patched).toContain('access-control-allow-origin');
     expect(patched).toContain("setHeader('access-control-allow-methods', 'GET')");
     expect(patched).toContain("request.headers['access-control-request-headers']");
+    expect(patched).toContain("if (process.env.NODE_ENV === 'production') return server;");
   });
 
   it('is idempotent when the decorator is already in place', async () => {

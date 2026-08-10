@@ -4,7 +4,10 @@
  * (`peer.ui.spa`), decorates the HTTP unit at the assembly point
  * (`main.ts`) with a CORS wrapper allowing the Vite dev server's
  * origin — cross-cutting as a decorator where the pieces are wired,
- * per the binding spec's stance.
+ * per the binding spec's stance. Dev-only at runtime: the wrapper is
+ * a no-op under `NODE_ENV=production` (set by the production
+ * container), so deployed services never serve the dev origin; SPA
+ * production traffic arrives same-origin through the reverse proxy.
  */
 
 import type { Adapter } from '../../contract/composition.js';
@@ -21,10 +24,12 @@ const IMPORT_LINE = "import type { Server } from 'node:http';";
 const CORS_FN = `
 /**
  * Allows the sibling SPA's dev origin to call this API directly
- * during development; the SPA's production traffic arrives
- * same-origin through its reverse proxy.
+ * during development. Dev-only: a no-op under NODE_ENV=production
+ * (which the production container sets), where the SPA's traffic
+ * arrives same-origin through its reverse proxy.
  */
 function withCors(server: Server): Server {
+  if (process.env.NODE_ENV === 'production') return server;
   const inner = server.listeners('request') as Array<(...args: unknown[]) => void>;
   server.removeAllListeners('request');
   server.on('request', (request, response) => {

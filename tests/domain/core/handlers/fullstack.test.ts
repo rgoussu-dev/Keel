@@ -147,7 +147,7 @@ describe('fullstack composite install (monorepo)', () => {
 
     expect(
       read('backend/application/rest/executable/src/main/resources/application.properties'),
-    ).toContain('quarkus.http.cors.enabled=true');
+    ).toContain('%dev.quarkus.http.cors.enabled=true');
     expect(read('backend/contract/greet.openapi.yaml')).toContain('openapi: 3.1.0');
   });
 
@@ -326,7 +326,7 @@ describe('brownfield: keel link + keel add gateway', () => {
       ),
       'utf8',
     );
-    expect(properties).toContain('quarkus.http.cors.enabled=true');
+    expect(properties).toContain('%dev.quarkus.http.cors.enabled=true');
   });
 
   it('installs nothing when the gateway vertical resolves without peers', async () => {

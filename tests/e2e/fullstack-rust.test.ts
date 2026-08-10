@@ -158,6 +158,15 @@ describe.skipIf(skipE2E)('fullstack-rust e2e (monorepo)', () => {
         const rejected = await fetch(`${base}/greet?name=`);
         expect(rejected.status).toBe(400);
         expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+
+        // The debug build carries the dev-only CORS accommodation.
+        const preflight = await fetch(`${base}/greet`, {
+          method: 'OPTIONS',
+          headers: { 'access-control-request-headers': 'x-requested-with' },
+        });
+        expect(preflight.status).toBe(204);
+        expect(preflight.headers.get('access-control-allow-methods')).toBe('GET');
+        expect(preflight.headers.get('access-control-allow-headers')).toBe('x-requested-with');
       } finally {
         server.removeAllListeners('exit');
         server.kill();

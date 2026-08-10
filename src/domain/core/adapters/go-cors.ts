@@ -4,7 +4,9 @@
  * (`peer.ui.spa`), decorates the HTTP unit's handler in `main` with a
  * CORS wrapper allowing the Vite dev server's origin — cross-cutting
  * as a decorator at the assembly point, per the binding spec's Go
- * stance.
+ * stance. Dev-only at runtime: the wrapper is a no-op unless
+ * `GO_ENV=dev`, so production deployments (whose SPA traffic arrives
+ * same-origin through the reverse proxy) never serve the dev origin.
  */
 
 import type { Adapter } from '../../contract/composition.js';
@@ -19,12 +21,21 @@ const SERVE_LINE_WRAPPED =
 
 const CORS_FUNC = `
 // withCORS allows the sibling SPA's dev origin to call this API
-// directly during development; the SPA's production traffic arrives
-// same-origin through its reverse proxy.
+// directly during development. Dev-only: it decorates the handler
+// only under GO_ENV=dev (run the dev pair with
+// "GO_ENV=dev go run ./cmd/http"); in production it is a no-op —
+// the SPA's traffic arrives same-origin through its reverse proxy.
 func withCORS(next http.Handler) http.Handler {
+	if os.Getenv("GO_ENV") != "dev" {
+		return next
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
 		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", http.MethodGet)
+			if requested := r.Header.Get("Access-Control-Request-Headers"); requested != "" {
+				w.Header().Set("Access-Control-Allow-Headers", requested)
+			}
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

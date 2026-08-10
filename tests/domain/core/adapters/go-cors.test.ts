@@ -56,6 +56,14 @@ describe('go-cors adapter', () => {
     expect(patched).toContain('func withCORS(next http.Handler) http.Handler {');
   });
 
+  it('gates the decoration to dev and answers preflights completely', async () => {
+    const patch = await contributePatch();
+    const patched = patch.apply(BOOTSTRAP_MAIN);
+    expect(patched).toContain('if os.Getenv("GO_ENV") != "dev" {');
+    expect(patched).toContain('w.Header().Set("Access-Control-Allow-Methods", http.MethodGet)');
+    expect(patched).toContain('r.Header.Get("Access-Control-Request-Headers")');
+  });
+
   it('is idempotent when the decorator is already in place', async () => {
     const patch = await contributePatch();
     const once = patch.apply(BOOTSTRAP_MAIN);

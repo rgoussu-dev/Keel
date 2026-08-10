@@ -1,15 +1,20 @@
 package <%= basePackage %>.rest;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Allows the sibling SPA's dev origin (the Vite dev server) to call
- * this API directly during development; the SPA's production
- * traffic arrives same-origin through its reverse proxy.
+ * this API directly during development. Dev-profile only — activate
+ * with {@code SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun} (or
+ * {@code -Dspring-boot.run.profiles=dev} under Maven); never active
+ * in production, where the SPA's traffic arrives same-origin
+ * through its reverse proxy.
  */
 @Configuration
+@Profile("dev")
 public class CorsConfig implements WebMvcConfigurer {
 
     @Override
