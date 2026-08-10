@@ -247,6 +247,15 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **README reframed around the bootstrapper.** The tagline and _Why
+  keel_ now lead with what `keel new` produces — a runnable,
+  production-shaped walking skeleton in under a minute — with the
+  composition engine and the Claude Code workflow kit presented as
+  how and why it holds, instead of leading with the convention kit
+  and mentioning scaffolding last. The _Verticals shipped_ section
+  also catches up with the surface: Gradle **or Maven** on the JVM,
+  the Rust and TypeScript skeletons, npm **or pnpm** workspaces, and
+  the TypeScript backend's CORS half of the gateway seam.
 - **The gateway CORS seam is dev-only across every fullstack
   backend.** The accommodation for the Vite dev origin no longer
   reaches production, each stack using its own idiom: Quarkus

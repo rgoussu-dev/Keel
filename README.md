@@ -1,8 +1,11 @@
 # keel
 
-Universal Claude Code workflow kit. Opinionated defaults for hexagonal
-architecture, trunk-based development, XP, and composition-driven
-project scaffolding.
+keel bootstraps projects. One command scaffolds a runnable,
+production-shaped walking skeleton — Java, Kotlin, Go, Rust, or
+TypeScript; CLI, HTTP service, SPA, or a composed fullstack product —
+carrying opinionated engineering conventions (hexagonal architecture,
+trunk-based development, XP) and the Claude Code affordances to keep
+it growing that way.
 
 [![CI](https://github.com/rgoussu-dev/Keel/actions/workflows/ci.yml/badge.svg)](https://github.com/rgoussu-dev/Keel/actions/workflows/ci.yml)
 [![Release](https://github.com/rgoussu-dev/Keel/actions/workflows/release.yml/badge.svg)](https://github.com/rgoussu-dev/Keel/actions/workflows/release.yml)
@@ -11,18 +14,33 @@ project scaffolding.
 
 ## Why keel
 
-Claude Code is much more useful when it shares your team's conventions.
-keel ships a curated, opinionated set of those conventions — architecture,
-testing, workflow, infra — composed into your project from a small set
-of capability tags. The composition engine resolves a stack into the
-right adapters, asks only the questions it needs to, and emits a
-runnable project plus the agentic affordances Claude needs to work
-inside it.
+Day one sets a project's shape, and most day-ones are spent on
+boilerplate that encodes no opinion at all. keel front-loads the
+opinions: `npx @rgoussu.dev/keel new` gives you, in under a minute,
+the project you would otherwise converge on months in — the
+hexagonal trisection with the dependency rule laid out, a walking
+skeleton that builds, tests, and runs end to end before your first
+commit, a sample port with its canonical fake to pattern-match from,
+git initialised, and the toolchain wired.
 
-**keel is project-scoped only.** It writes into `<project>/.claude/`
-and never reads, writes, or otherwise touches `~/.claude` or any other
-global Claude Code configuration. Everything keel adds lives in your
-repository, so the configuration travels with the code.
+The bootstrap is composition, not a template dump. A stack preset
+seeds capability tags; predicate-selected adapters compose the
+project from them, asking only the questions they need to. That is
+how one engine serves 24 stacks — the same conventions rendered as
+idiomatic Java, Kotlin, Go, Rust, or TypeScript — and why a
+fullstack product is just two services whose seam adapters found
+each other. The conventions, not the framework, are the product.
+
+The scaffold doubles as a Claude Code workflow kit. Claude Code is
+much more useful when it shares your team's conventions, so every
+generated project ships the binding spec as `AGENTS.md` (plus a
+`CLAUDE.md` pointer) — the agentic affordances Claude needs to keep
+working inside the shape the bootstrap laid down.
+
+**keel is project-scoped only.** It writes into your project
+directory and never reads, writes, or otherwise touches `~/.claude`
+or any other global Claude Code configuration. Everything keel adds
+lives in your repository, so the conventions travel with the code.
 
 ---
 
@@ -274,25 +292,26 @@ Two more primitives compose services into **products**:
   for the chosen stack, in a hexagonal layout with a sample secondary
   port + fake — the entrypoint shape is selected by predicate from
   the stack's tags. Today: a JVM picocli CLI or REST service
-  (`GET /greet` with RFC 9457 Problem Details errors) on Gradle for
-  Quarkus, Spring Boot, or Micronaut, each in Java or Kotlin — the
-  framework and language are ordinary predicate dimensions, and the
-  domain trisection is shared per language across all three
-  frameworks (requires `gradle` on PATH — the wrapper is generated
-  via the canonical `gradle wrapper` task, not committed as a
-  binary); a
-  Go skeleton with CLI (`arch.cli`) and HTTP (`arch.server-http`)
-  entrypoints that compose — a tag set carrying both ships both
-  `cmd/` deployment units on one shared module, verified with a
-  deferred `go mod tidy` (requires `go` on PATH); or a framework-free
-  web-components SPA on Vite as an npm workspace, with a planks-based
-  atomic design system package (dependencies installed via
-  `npm install` at scaffold time).
+  (`GET /greet` with RFC 9457 Problem Details errors) on Gradle or
+  Maven for Quarkus, Spring Boot, or Micronaut, each in Java or
+  Kotlin — the framework, language, and build system are ordinary
+  predicate dimensions, and the domain trisection is shared per
+  language across all three frameworks (the wrapper is generated via
+  the canonical `gradle wrapper` / `mvn -N wrapper:wrapper` task,
+  not committed as a binary — the build tool must be on PATH); Go
+  and Rust skeletons with CLI (`arch.cli`) and HTTP
+  (`arch.server-http`) entrypoints that compose — a tag set carrying
+  both ships both deployment units on one shared module/package; a
+  no-build-step TypeScript `node:http` service (Node 22.18+ runs the
+  sources directly); or a framework-free web-components SPA on Vite
+  as an npm or pnpm workspace, with a planks-based atomic design
+  system package (dependencies installed at scaffold time).
 - **`gateway`** — the cross-service seam. Declares no dimensions; its
   adapters fire purely on peer tags, so without peers it installs
   nothing. Today: a REST gateway package for the web-components
   frontend (`peer.api.rest`), CORS accommodations for the Quarkus,
-  Spring, Micronaut, Go, and Rust HTTP backends (`peer.ui.spa`), and
+  Spring, Micronaut, Go, Rust, and TypeScript HTTP backends
+  (`peer.ui.spa`), and
   the seam's OpenAPI contract emitted on the backend. Installed
   automatically for composite services; brownfield via `keel link` +
   `keel add gateway`.
