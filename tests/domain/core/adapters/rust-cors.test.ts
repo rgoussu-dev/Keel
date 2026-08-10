@@ -103,10 +103,20 @@ describe('rust-cors adapter', () => {
     const fnGone = once.replace(/\n\/\/\/ Allows the sibling SPA[\s\S]*$/, '\n');
     expect(() => patch.apply(fnGone)).toThrow(/partially CORS-decorated/);
 
-    const unwrapped = once.replace(
-      /axum::serve\(\n        listener,\n        handler::router\(greeter\)\.layer\(axum::middleware::from_fn\(with_cors\)\),\n    \)\n    \.await\n    \.expect\("serve HTTP"\);/,
-      'axum::serve(listener, handler::router(greeter))\n        .await\n        .expect("serve HTTP");',
-    );
+    const wrappedServe = [
+      '    axum::serve(',
+      '        listener,',
+      '        handler::router(greeter).layer(axum::middleware::from_fn(with_cors)),',
+      '    )',
+      '    .await',
+      '    .expect("serve HTTP");',
+    ].join('\n');
+    const plainServe = [
+      '    axum::serve(listener, handler::router(greeter))',
+      '        .await',
+      '        .expect("serve HTTP");',
+    ].join('\n');
+    const unwrapped = once.replace(wrappedServe, plainServe);
     expect(() => patch.apply(unwrapped)).toThrow(/partially CORS-decorated/);
   });
 });
