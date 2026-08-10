@@ -42,7 +42,7 @@ describe.skipIf(skipJvmRestE2E)('walking-skeleton Spring REST e2e', () => {
             'application-rest-executable-0.1.0-SNAPSHOT.jar',
           ],
           randomPortFlag: '-Dserver.port=0',
-          announceRe: /Tomcat started on port (\d+)/,
+          announceRe: /Tomcat started on port(?:\(s\))?:? (\d+)/,
         },
         cwd,
         gradleUserHome,

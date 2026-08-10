@@ -3,7 +3,7 @@
  * gateway seam is generic over backends: the same frontend adapters
  * fire against a Go backend because `go-http` projects
  * `peer.api.rest`, and the Go side gets its own CORS decoration and
- * the shared wire contract. Deferred actions are recorded, not run.
+ * the shared wire contract. Deferred actions are discarded, not run.
  */
 
 import path from 'node:path';
@@ -16,7 +16,7 @@ import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
 
-const recordDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
+const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
 };
 
@@ -37,7 +37,7 @@ const read = (rel: string): string | null => {
 
 describe('fullstack-go composite install (monorepo)', () => {
   beforeEach(async () => {
-    const mediator = installMediator({ runDeferred: recordDeferred() });
+    const mediator = installMediator({ runDeferred: discardDeferred() });
     expectOk(
       await mediator.dispatch(
         newProjectCommand({

@@ -5,7 +5,7 @@
  * `peer.api.rest`, and each backend gets its own CORS accommodation
  * (a `WebMvcConfigurer` bean for Spring, a properties patch for
  * Micronaut) plus the shared wire contract and a Dockerfile.
- * Deferred actions are recorded, not run.
+ * Deferred actions are discarded, not run.
  */
 
 import path from 'node:path';
@@ -16,7 +16,7 @@ import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
 
-const recordDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
+const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
 };
 
@@ -36,7 +36,7 @@ const read = (rel: string): string | null => {
 };
 
 const scaffold = async (stack: string): Promise<void> => {
-  const mediator = installMediator({ runDeferred: recordDeferred() });
+  const mediator = installMediator({ runDeferred: discardDeferred() });
   expectOk(
     await mediator.dispatch(
       newProjectCommand({
