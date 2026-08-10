@@ -8,6 +8,22 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`fullstack-rust` stack** (`keel new --stack=fullstack-rust`) —
+  the third backend behind the same seam: a `rust-http` backend +
+  `web-components` frontend product, selecting exactly the same
+  frontend gateway adapters as the Quarkus and Go pairs because all
+  three backends project `peer.api.rest`. The Rust side gets its own
+  seam half — `gateway/rust-cors` layers a CORS decoration onto the
+  HTTP unit's router in `main` for the Vite dev origin
+  (cross-cutting as a decorator at the assembly point, per the
+  binding spec's Rust stance) — plus the shared
+  `contract/greet.openapi.yaml` via the language-generic
+  `gateway/rest-api-contract`, and `fullstack/product-compose` learns
+  a Rust backend image (musl-static cargo build onto distroless). A
+  `fullstack-rust` e2e boots the real Rust backend and verifies the
+  wire — named, defaulted, and rejected requests plus the CORS
+  header.
+
 - **`fullstack-go` stack** (`keel new --stack=fullstack-go`) — the
   proof that the gateway seam is generic over backends: a `go-http`
   backend + `web-components` frontend product, selecting exactly the
