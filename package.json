@@ -1,7 +1,7 @@
 {
   "name": "@rgoussu.dev/keel",
   "version": "0.5.0-alpha",
-  "description": "Universal Claude Code workflow kit: hexagonal architecture, trunk-based development, XP, and composition-driven project scaffolding.",
+  "description": "Opinionated project bootstrapper: one command scaffolds a runnable hexagonal walking skeleton — Java, Kotlin, Go, Rust, or TypeScript — with engineering conventions and Claude Code affordances built in.",
   "type": "module",
   "repository": {
     "url": "https://github.com/rgoussu-dev/Keel"

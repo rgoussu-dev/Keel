@@ -256,6 +256,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   also catches up with the surface: Gradle **or Maven** on the JVM,
   the Rust and TypeScript skeletons, npm **or pnpm** workspaces, and
   the TypeScript backend's CORS half of the gateway seam.
+- The npm package description follows the same reframing — it now
+  leads with the bootstrapper instead of the workflow kit.
 - **The gateway CORS seam is dev-only across every fullstack
   backend.** The accommodation for the Vite dev origin no longer
   reaches production, each stack using its own idiom: Quarkus
