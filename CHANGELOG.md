@@ -8,6 +8,18 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Selectable build systems** (`keel new … --build-system <id>`) —
+  stacks may now offer a choice of build system instead of pinning
+  one. The six Java JVM stacks offer **Gradle or Maven**: the same
+  hexagonal sources scaffold onto either, with per-build-system
+  template trees (multi-module poms, Maven wrapper via a deferred
+  `mvn -N wrapper:wrapper`, `sample-port-fake` registering its module
+  through a root-pom `<module>` patch instead of a
+  `settings.gradle.kts` include). Interactive installs prompt for the
+  choice; non-interactive installs take the stack default (Gradle);
+  `--build-system maven` pins it from the command line. Kotlin JVM
+  stacks stay Gradle-pinned for now, and composite stacks scaffold
+  each service on its default.
 - **Spring Boot stacks** (`keel new --stack=spring-cli|spring-rest`)
   — the JVM walking skeleton generalised past Quarkus: the same
   hexagonal multi-module shape on Spring Boot 4.1.0, with a picocli

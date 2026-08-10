@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
+import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
 import {
   expectErr,
   expectOk,
@@ -279,5 +280,139 @@ describe('keel.new-project (keel new)', () => {
     );
     expect(error.code).toBe('keel.unknown-stack');
     expect(error.message).toMatch(/unknown stack/);
+  });
+});
+
+describe('keel.new-project build-system selection', () => {
+  it('scaffolds quarkus-cli on Maven with an explicit build-system id', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/maven-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+          buildSystem: 'maven',
+        }),
+      ),
+    );
+    expect(report.committed).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'pom.xml'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'application/cli/pom.xml'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(false);
+    expect(report.actions.some((a) => a.startsWith('mvn -N wrapper:wrapper'))).toBe(true);
+
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.tags).toContain('pkg.maven');
+    expect(manifest?.tags).not.toContain('pkg.gradle');
+  });
+
+  it('defaults to Gradle when no build system is chosen non-interactively', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'pom.xml'))).toBe(false);
+
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.tags).toContain('pkg.gradle');
+  });
+
+  it('asks interactively and honours the chosen build system', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: 'maven',
+      remote: '',
+      defaultBranch: 'main',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/maven-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(prompt.asked).toContain('buildSystem');
+    expect(await fs.pathExists(path.join(cwd, 'pom.xml'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(false);
+  });
+
+  it('rejects a build system the stack does not offer', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          buildSystem: 'pnpm',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-build-system');
+    expect(error.message).toMatch(/does not support build system 'pnpm'/);
+    expect(error.message).toMatch(/gradle, maven/);
+  });
+
+  it('rejects --build-system for a stack with a fixed build system', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          buildSystem: 'maven',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-build-system');
+    expect(error.message).toMatch(/fixed build system/);
+  });
+
+  it('rejects --build-system on composite stacks', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          buildSystem: 'maven',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-build-system');
+    expect(error.message).toMatch(/composite/);
   });
 });

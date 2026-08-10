@@ -42,17 +42,19 @@ mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=quarkus-rest
 ```
 
-You'll be asked for a base Java package, a project name, and an
-optional `origin` git remote. The result is a hexagonal Gradle
-multi-module project — `domain/kernel`, `domain/contract`,
-`domain/core`, plus the channel modules for the chosen stack:
+You'll be asked for a base Java package, a project name, a build
+system (Gradle by default, or Maven — `--build-system maven` pins it
+non-interactively), and an optional `origin` git remote. The result
+is a hexagonal multi-module project — `domain/kernel`,
+`domain/contract`, `domain/core`, plus the channel modules for the
+chosen stack:
 `application/cli` (a Quarkus picocli entrypoint with a sample
 subcommand) or `application/rest/contract` +
 `application/rest/executable` (`GET /greet` with RFC 9457 Problem
 Details errors) — with a Quarkus test driving it end to end, a
 sample secondary port (`Clock`) with a fake module, the binding spec
 emitted as `AGENTS.md` (plus a `CLAUDE.md` pointer), an initialised
-git repo, and the Gradle wrapper.
+git repo, and the build tool's wrapper (`gradlew` or `mvnw`).
 
 The same two shapes exist for Spring Boot (`spring-cli`,
 `spring-rest`) and Micronaut (`micronaut-cli`, `micronaut-rest`),
@@ -171,18 +173,19 @@ to a GitHub Release on tag push.
 
 ## CLI
 
-| Command                  | What it does                                                                                                                                                                                                                                                                                                                                  |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `spring-cli`, `spring-rest`, `micronaut-cli`, `micronaut-rest` (each also as `…-kotlin`), `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-spring`, `fullstack-micronaut`, `fullstack-go`, `fullstack-rust`. |
-| `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                                                                                                                                                                                                             |
-| `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                      |
-| `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                      |
-| `keel new ... --set k=v` | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                |
-| `keel add <vertical>`    | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                                                                                                                                                                                                |
-| `keel link <path>`       | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                                                |
-| `keel add ... --yes`     | Non-interactive.                                                                                                                                                                                                                                                                                                                              |
-| `keel add ... --dry-run` | Print the plan; write nothing.                                                                                                                                                                                                                                                                                                                |
-| `keel add ... --set k=v` | Preset an answer (same shape as `keel new`).                                                                                                                                                                                                                                                                                                  |
+| Command                       | What it does                                                                                                                                                                                                                                                                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keel new --stack=<id>`       | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `spring-cli`, `spring-rest`, `micronaut-cli`, `micronaut-rest` (each also as `…-kotlin`), `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-spring`, `fullstack-micronaut`, `fullstack-go`, `fullstack-rust`. |
+| `keel new ... --layout`       | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                                                                                                                                                                                                             |
+| `keel new ... --build-system` | Stacks offering a choice: `gradle` (default) or `maven` on the Java JVM stacks; prompted when interactive and omitted.                                                                                                                                                                                                                        |
+| `keel new ... --yes`          | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                      |
+| `keel new ... --dry-run`      | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                      |
+| `keel new ... --set k=v`      | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                |
+| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                                                                                                                                                                                                |
+| `keel link <path>`            | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                                                |
+| `keel add ... --yes`          | Non-interactive.                                                                                                                                                                                                                                                                                                                              |
+| `keel add ... --dry-run`      | Print the plan; write nothing.                                                                                                                                                                                                                                                                                                                |
+| `keel add ... --set k=v`      | Preset an answer (same shape as `keel new`).                                                                                                                                                                                                                                                                                                  |
 
 All commands operate on the current working directory. There is no
 `--global` flag and no path under `$HOME` is ever touched.

@@ -54,6 +54,10 @@ export function buildProgram(deps: CliDeps): Command {
       "repository layout for composite stacks: 'monorepo' or 'polyrepo' (prompted when omitted)",
     )
     .option(
+      '--build-system <id>',
+      "build system for stacks that offer a choice, e.g. 'gradle', 'maven', 'npm', 'pnpm' (prompted when omitted)",
+    )
+    .option(
       '--set <kv...>',
       'preset an answer as adapterId:questionId=value (repeatable)',
       [] as string[],
@@ -64,6 +68,7 @@ export function buildProgram(deps: CliDeps): Command {
         yes: boolean;
         dryRun: boolean;
         layout?: string;
+        buildSystem?: string;
         set: string[];
       }): Promise<void> => {
         const dir = cwd();
@@ -75,6 +80,7 @@ export function buildProgram(deps: CliDeps): Command {
             interactive: !opts.yes,
             dryRun: opts.dryRun,
             ...(opts.layout !== undefined ? { layout: opts.layout as RepoLayout } : {}),
+            ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
           }),
         );
         const report = unwrap(result);

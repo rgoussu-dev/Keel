@@ -31,6 +31,55 @@ import { vcsVertical } from './verticals/vcs.js';
 import { walkingSkeletonVertical } from './verticals/walking-skeleton.js';
 import type { Tag, Vertical } from '../contract/composition.js';
 
+/**
+ * One selectable build system of a stack. The choice folds a `pkg.*`
+ * capability tag into the manifest at install time; everything else
+ * (which build-tool adapter fires, which build-file trees render) is
+ * ordinary predicate machinery reading that tag.
+ */
+export interface BuildSystemOption {
+  /** User-facing id, e.g. `gradle`, `maven`, `npm`, `pnpm`. */
+  readonly id: string;
+  /** The `pkg.*` tag the choice contributes. */
+  readonly tag: Tag;
+  /** One-line label shown as the interactive choice. */
+  readonly label: string;
+  /** Longer help text for the interactive prompt. */
+  readonly doc: string;
+}
+
+/** Gradle as a selectable JVM build system. */
+export const GRADLE_BUILD: BuildSystemOption = {
+  id: 'gradle',
+  tag: 'pkg.gradle',
+  label: 'Gradle — incremental task-graph build (Kotlin DSL)',
+  doc: 'Task DAG with incremental builds and caching; build scripts are code.',
+};
+
+/** Maven as a selectable JVM build system. */
+export const MAVEN_BUILD: BuildSystemOption = {
+  id: 'maven',
+  tag: 'pkg.maven',
+  label: 'Maven — convention-first declarative build (POM)',
+  doc: 'Fixed lifecycle and declarative POMs; the conservative, predictable choice.',
+};
+
+/** npm as a selectable TypeScript workspace package manager. */
+export const NPM_BUILD: BuildSystemOption = {
+  id: 'npm',
+  tag: 'pkg.npm',
+  label: 'npm — the package manager bundled with Node',
+  doc: 'Zero extra install; hoisted workspaces with the classic flat node_modules.',
+};
+
+/** pnpm as a selectable TypeScript workspace package manager. */
+export const PNPM_BUILD: BuildSystemOption = {
+  id: 'pnpm',
+  tag: 'pkg.pnpm',
+  label: 'pnpm — fast, strict, content-addressed installs',
+  doc: 'Symlinked strict node_modules (no phantom dependencies) and workspace: protocol.',
+};
+
 /** One service of a composite stack. */
 export interface StackService {
   /** Directory the service is scaffolded into, relative to cwd. */
@@ -51,6 +100,13 @@ export interface Stack {
   readonly description: string;
   /** Capability tags this stack contributes to the manifest at install time. */
   readonly tags: readonly Tag[];
+  /**
+   * Build systems this stack can be scaffolded on; the first entry is
+   * the default. Stacks declaring this omit the `pkg.*` tag from
+   * `tags` — the install handler folds the chosen option's tag in.
+   * Absent when the stack's `tags` already pin its only build system.
+   */
+  readonly buildSystems?: readonly BuildSystemOption[];
   /** Verticals to install, in order. */
   readonly verticals: readonly Vertical[];
   /**
@@ -66,28 +122,16 @@ export interface Stack {
 export const STACKS: Readonly<Record<string, Stack>> = {
   'quarkus-cli': {
     id: 'quarkus-cli',
-    description: 'Quarkus 3 CLI on Gradle (Java 21), hexagonal layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'pkg.gradle',
-      'framework.quarkus',
-      'arch.hexagonal',
-      'arch.cli',
-    ],
+    description: 'Quarkus 3 CLI (Java 21), hexagonal layout; Gradle or Maven.',
+    tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'quarkus-rest': {
     id: 'quarkus-rest',
-    description: 'Quarkus 3 REST service on Gradle (Java 21), hexagonal layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'pkg.gradle',
-      'framework.quarkus',
-      'arch.hexagonal',
-      'arch.server-http',
-    ],
+    description: 'Quarkus 3 REST service (Java 21), hexagonal layout; Gradle or Maven.',
+    tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
@@ -120,28 +164,16 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'spring-cli': {
     id: 'spring-cli',
-    description: 'Spring Boot 4 CLI on Gradle (Java 21, picocli), hexagonal layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'pkg.gradle',
-      'framework.spring',
-      'arch.hexagonal',
-      'arch.cli',
-    ],
+    description: 'Spring Boot 4 CLI (Java 21, picocli), hexagonal layout; Gradle or Maven.',
+    tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'spring-rest': {
     id: 'spring-rest',
-    description: 'Spring Boot 4 REST service on Gradle (Java 21), hexagonal layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'pkg.gradle',
-      'framework.spring',
-      'arch.hexagonal',
-      'arch.server-http',
-    ],
+    description: 'Spring Boot 4 REST service (Java 21), hexagonal layout; Gradle or Maven.',
+    tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
@@ -174,28 +206,16 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'micronaut-cli': {
     id: 'micronaut-cli',
-    description: 'Micronaut 4 CLI on Gradle (Java 21, picocli), hexagonal layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'pkg.gradle',
-      'framework.micronaut',
-      'arch.hexagonal',
-      'arch.cli',
-    ],
+    description: 'Micronaut 4 CLI (Java 21, picocli), hexagonal layout; Gradle or Maven.',
+    tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'micronaut-rest': {
     id: 'micronaut-rest',
-    description: 'Micronaut 4 REST service on Gradle (Java 21), hexagonal layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'pkg.gradle',
-      'framework.micronaut',
-      'arch.hexagonal',
-      'arch.server-http',
-    ],
+    description: 'Micronaut 4 REST service (Java 21), hexagonal layout; Gradle or Maven.',
+    tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.api.rest'],
   },
