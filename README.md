@@ -280,7 +280,7 @@ Two more primitives compose services into **products**:
   verticals can key off it. CLI-shaped only for now — `keel add
 distribution` on a `quarkus-rest` project hard-fails with
   uncovered dimensions until the container-image sibling lands
-  (roadmap item E).
+  ([roadmap](./docs/roadmap.md) item E).
 
 ---
 

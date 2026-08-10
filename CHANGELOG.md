@@ -234,6 +234,13 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   When `cmd/http/main.go` no longer contains the serve call the
   adapter knows how to wrap, the install now hard-fails with a clear
   message instead of appending a decorator that never runs.
+- `docs/roadmap.md` no longer presents the REST entrypoint as the
+  recommended next step: landed work (quarkus-rest, the Go / Rust /
+  web-components skeletons, fullstack composition and the gateway
+  seam, the Spring / Micronaut / Kotlin generalisation) is collapsed
+  into a "landed" summary, and the remaining items (container-image
+  distribution, CI vertical, AGENTS.md addenda, server-side
+  TypeScript stack) are restated against the current surface.
 - README quickstart now describes the layout the v0.5 skeleton
   actually scaffolds (`domain/kernel`, `domain/contract`,
   `domain/core`, `application/cli`, plus the emitted `AGENTS.md` +

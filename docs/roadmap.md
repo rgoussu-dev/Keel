@@ -1,88 +1,63 @@
 # Roadmap — growing the scaffold surface
 
-The previous roadmap (composition engine: A3 gradle-wrapper, B
-distribution vertical, C1 `keel add`, C2 legacy retirement) landed in
-full in v0.4.0-alpha. Since then the repo has been trisected to
-dogfood its own binding spec and the skeleton emits the spec as
-`AGENTS.md`; that work shipped in v0.5.0-alpha (see its
-`CHANGELOG.md` entry).
+Two waves have landed since this roadmap was first written. The
+composition engine itself (gradle-wrapper, the `distribution`
+vertical, `keel add`, legacy retirement) shipped in v0.4.0-alpha, and
+the repo trisection + emitted binding spec shipped in v0.5.0-alpha.
+Since then the surface widened far past the original plan — see
+"Landed since v0.5.0-alpha" below and the `[Unreleased]` section of
+`CHANGELOG.md` for the details.
 
-This roadmap covers what comes next: widening what the scaffold can
-produce. Items are lettered continuing the old sequence. D is the
-recommended next step; E pairs with it; the rest are ordered by
-leverage, not by commitment.
+Items are lettered continuing the old sequence. E and F are the
+recommended next steps; the rest are ordered by leverage, not by
+commitment.
 
-## D — REST entrypoint: `quarkus-rest` stack ✅ (landed)
+## Landed since v0.5.0-alpha ✅
 
-**Goal.** The composition engine's core promise is that the
-`entrypoint` dimension is _selected by predicate_, not hard-coded —
-`quarkus-cli-bootstrap` even documents its future sibling: "A REST
-sibling adapter will cover the same dimension under
-`arch.server-http`." Nothing has cashed that promise yet; today there
-is exactly one bootstrap and one stack. A REST entrypoint is the
-first real proof that a second project shape composes out of the
-same vertical, and it is the shape most consumers actually want.
+- **D — REST entrypoint.** `quarkus-rest` proved the core promise:
+  the `entrypoint` dimension is selected by predicate, not
+  hard-coded — a second project shape composed out of the same
+  `walking-skeleton` vertical, with the earned
+  `application/rest/contract` + `executable` pair and RFC 9457
+  Problem Details mapping.
+- **Two more languages.** Go (`go-cli`, `go-http`) and Rust
+  (`rust-cli`, `rust-http`) walking skeletons realise the house
+  hexagonal references — contract face over a compiler-hidden core,
+  per-use-case driving ports, no mediator object — with composable
+  CLI + HTTP entrypoints on one module/package.
+- **The frontend.** `web-components`: a framework-free SPA as a
+  TypeScript npm workspace, DOM-less domain packages, ports over the
+  WCCG Context protocol, and a planks-based atomic design system.
+- **Products.** Peer tags, composite stacks, `keel link`, and the
+  `gateway` + `fullstack` verticals compose services into fullstack
+  products (`fullstack`, `fullstack-spring`, `fullstack-micronaut`,
+  `fullstack-go`, `fullstack-rust`) under a monorepo or polyrepo
+  layout, with the REST seam pinned as an OpenAPI contract and
+  monorepo products containerised (`compose.yaml` + Dockerfiles).
+- **The JVM generalised.** Spring Boot and Micronaut join Quarkus in
+  both shapes, every JVM stack has a Kotlin twin, and all twelve JVM
+  bootstraps share per-language domain template trees behind one
+  adapter factory.
 
-It also unlocks the parts of the binding spec a CLI cannot exercise:
-the earned-pair `application/rest/contract` + `executable` split
-(a REST channel _does_ have a consumable API artifact, unlike the
-CLI's single module) and domain-error → RFC 9457 Problem Details
-mapping in the interface adapter.
-
-**Adapter.** `walking-skeleton/quarkus-rest-bootstrap`
-
-- `covers: ['entrypoint']` — same dimension as the CLI bootstrap;
-  the resolver picks whichever predicate matches the tag set.
-- `predicate: { requires: ['framework.quarkus', 'arch.server-http'] }`
-- Same sticky questions as the CLI bootstrap (`basePackage`,
-  `projectName`) so downstream adapters read them identically.
-- Emits the binding-spec layout with a REST channel: the familiar
-  `domain/kernel`, `domain/contract` (with `GreetCommand` as the
-  sample surface), and `domain/core` (`RegistryMediator` + handler),
-  plus `application/rest/contract` (DTOs) and
-  `application/rest/executable` (Jakarta REST resource,
-  `GET /greet?name=…`, CDI wiring, RFC 9457 error mapper). A
-  `@QuarkusTest` + RestAssured test drives the endpoint end to end.
-
-**Stack.** `quarkus-rest` in `src/domain/core/stacks.ts`:
-
-- `tags: ['lang.java', 'runtime.jvm', 'pkg.gradle',
-'framework.quarkus', 'arch.hexagonal', 'arch.server-http']`
-- `verticals: [vcsVertical, walkingSkeletonVertical]` — unchanged;
-  that reuse is the point.
-
-**Ripples in existing adapters.**
-
-- `gradle-wrapper` orders itself `after` the CLI bootstrap by id;
-  extend `after` with the REST bootstrap id (absent adapters in
-  `after` are already tolerated by the resolver — verify, else gate).
-- `sample-port-fake` requires `arch.cli`; loosen to
-  `['framework.quarkus', 'arch.hexagonal']` so the sample port lands
-  in both shapes. Its `after` needs the same extension.
-- `claude-core` fires unconditionally — nothing to do.
-
-**Tests.**
-
-- Resolution: with `arch.server-http` tags the vertical resolves to
-  the REST bootstrap, the CLI bootstrap stays out, and all four
-  dimensions are covered; with `arch.cli` nothing changes.
-- Content: rendered tree contains the two `application/rest` modules,
-  the Problem Details mapper, and `settings.gradle.kts` includes.
-- E2E, mirroring `tests/e2e/walking-skeleton.test.ts`: scaffold with
-  `--stack=quarkus-rest`, `./gradlew build`, then run the jar and hit
-  `/greet` (same `KEEL_RUN_E2E` / `KEEL_SKIP_E2E` gating).
-
-**Commit.** `feat(walking-skeleton): add quarkus-rest-bootstrap and the quarkus-rest stack`
+What that wave proved: the per-language dispatch stances of binding
+spec §2 are exercised outside the JVM (Go, Rust, frontend
+TypeScript), and cross-service elements resolve through the same
+predicate machinery as everything else.
 
 ---
 
 ## E — Distribution for REST: container image
 
-**Goal.** `distribution`'s only adapter
-(`quarkus-cli-native`) requires `arch.cli`, so `keel add
-distribution` on a `quarkus-rest` project hard-fails with uncovered
-dimensions. Add the REST-shaped sibling so the brownfield story
-holds for both stacks.
+**Goal.** `distribution`'s only adapter (`quarkus-cli-native`)
+requires `arch.cli`, so `keel add distribution` on any REST project
+hard-fails with uncovered dimensions. Add the server-shaped sibling
+so the brownfield story holds for both shapes.
+
+The container know-how partially exists — `fullstack/product-compose`
+already emits Dockerfiles for every backend — but that vertical is
+orchestrator-only glue for composite monorepos. E is the
+_distribution_ story: CI-built images pushed to a registry on tag
+push, addable to a standalone service.
 
 **Adapter.** `distribution/quarkus-rest-container`
 
@@ -94,6 +69,10 @@ holds for both stacks.
   one sticky question for the base-image / jvm-vs-native flavour.
 - `tagsAdd: ['dist.container-image']` — the tag a future IaC or
   deploy vertical keys on.
+
+Quarkus first; Spring/Micronaut/Go/Rust siblings then cover the same
+dimensions under their own predicates, reusing the Dockerfile
+patterns `product-compose` established.
 
 **Commit.** `feat(distribution): add quarkus-rest-container adapter`
 
@@ -108,8 +87,8 @@ is small, applies to every stack, and is the most broadly useful
 
 **Sketch.** Vertical `ci`, `dimensions: ['pipeline']`; first adapter
 `ci/gradle-github-actions` predicated on `pkg.gradle`, emitting a
-build-and-test workflow on push. A future `pnpm` sibling covers the
-same dimension for TypeScript stacks (see H).
+build-and-test workflow on push. Siblings for `pkg.npm`, Go, and
+Cargo cover the same dimension for the other stacks.
 
 **Commit.** `feat(ci): add ci vertical with gradle-github-actions adapter`
 
@@ -127,27 +106,29 @@ so it exercises the patch path of the composition contract.
 
 ---
 
-## H — Second language: a TypeScript stack
+## H — Server-side TypeScript stack
 
-**Goal.** Binding spec §2 now states settled per-language dispatch
-stances; nothing outside the JVM proves them. A `ts-cli` (or
-fastify-based `ts-rest`) stack scaffolding the trisected layout with
-a registry Mediator — exactly the shape keel's own source uses —
-would demonstrate that the conventions, not the templates, are the
-product. Largest item here; do it after D–F so the second language
-arrives with entrypoint, distribution, and CI patterns to mirror.
+**Goal.** The per-language stances are now proven for Go, Rust, and
+frontend TypeScript — what remains unproven is the registry-Mediator
+stance for server-side TypeScript, the exact shape keel's own source
+uses. A `ts-cli` (or fastify-based `ts-rest`) stack scaffolding the
+trisected layout with a `RegistryMediator` would close the loop:
+scaffold with keel a project shaped like keel. Arrives last so the
+new language lands with entrypoint, distribution, and CI patterns to
+mirror.
 
 ---
 
 ## Backlog (unordered)
 
 - **`keel add --reapply` / update path** — today adding an installed
-  vertical errors; there is no way to re-render after a template fix
-  or answer change.
+  vertical errors (`keel.vertical-already-installed`); there is no
+  way to re-render after a template fix or answer change.
 - **IaC vertical (OpenTofu)** — the spec mandates IaC; the skeleton
   emits none. Natural after E (deploy target implies infra).
 - **Mutation testing in this repo** — `AGENTS.md §7` marks it "on
   the roadmap; not yet wired". Stryker over `src/domain` first.
-- **Java version bump in `quarkus-cli`** — the stack description
-  says Java 21 while the spec's stance is latest LTS (25). Verify
-  the template's toolchain pin and align.
+- **Java version bump across the JVM stacks** — the stack
+  descriptions say Java 21 and the templates pin
+  `JavaVersion.VERSION_21`, while the spec's stance is latest LTS
+  (25). Align the toolchain pins and descriptions.
