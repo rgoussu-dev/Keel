@@ -1,0 +1,16 @@
+package <%= basePackage %>.rest
+
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
+
+/**
+ * Boots the REST channel. Component scanning is rooted here, so the
+ * controller, the error advice, and the composition root in this
+ * package are picked up automatically.
+ */
+@SpringBootApplication
+class Application
+
+fun main(args: Array<String>) {
+    runApplication<Application>(*args)
+}

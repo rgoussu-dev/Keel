@@ -1,0 +1,22 @@
+package <%= basePackage %>.cli
+
+import jakarta.inject.Inject
+import picocli.CommandLine.Command
+import picocli.CommandLine.Option
+
+import <%= basePackage %>.contract.greet.GreetCommand
+import <%= basePackage %>.kernel.Mediator
+
+@Command(name = "hello", description = ["Print a friendly greeting."])
+class HelloCommand : Runnable {
+
+    @Inject
+    lateinit var mediator: Mediator
+
+    @Option(names = ["--name"], defaultValue = "world", description = ["Recipient of the greeting."])
+    var name: String = "world"
+
+    override fun run() {
+        println(mediator.dispatch(GreetCommand(name)))
+    }
+}

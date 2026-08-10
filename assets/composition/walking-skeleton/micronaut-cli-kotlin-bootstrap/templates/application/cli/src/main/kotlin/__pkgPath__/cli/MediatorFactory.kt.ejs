@@ -1,0 +1,20 @@
+package <%= basePackage %>.cli
+
+import io.micronaut.context.annotation.Factory
+import jakarta.inject.Singleton
+
+import <%= basePackage %>.core.RegistryMediator
+import <%= basePackage %>.core.greet.GreetHandler
+import <%= basePackage %>.kernel.Mediator
+
+/**
+ * The channel's composition root: hand-wires the Mediator with every
+ * domain Handler. Replace with container lookup of all Handler beans
+ * once the project grows past one or two handlers.
+ */
+@Factory
+class MediatorFactory {
+
+    @Singleton
+    fun mediator(): Mediator = RegistryMediator(listOf(GreetHandler()))
+}

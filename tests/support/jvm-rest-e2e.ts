@@ -1,0 +1,239 @@
+/**
+ * Shared machinery for the JVM REST walking-skeleton e2e tests.
+ *
+ * Each e2e scaffolds a stack into a temp dir, runs the generated
+ * `./gradlew build` (which executes the generated framework test
+ * suite), boots the packaged application on a random port, and
+ * drives `GET /greet` over the wire. The framework-specific bits —
+ * stack id, jar location, the JVM flag that requests a random port,
+ * and the log line announcing it — are parameters.
+ *
+ * Skip rules mirror `tests/e2e/walking-skeleton.test.ts`: skipped
+ * when `gradle`/`java` are missing from PATH, skipped on CI unless
+ * `KEEL_RUN_E2E=1`, opt out anywhere with `KEEL_SKIP_E2E=1`.
+ */
+
+import path from 'node:path';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import fs from 'fs-extra';
+import { expect } from 'vitest';
+import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
+import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import type { DeferredAction } from '../../src/domain/contract/composition.js';
+import { expectOk, installMediator } from './factory.js';
+
+export const E2E_TIMEOUT_MS = 20 * 60 * 1000;
+const APP_START_TIMEOUT_MS = 60 * 1000;
+
+const TRANSIENT_PATTERNS = [
+  /Test of distribution url .* failed/,
+  /Server returned HTTP response code: 5\d\d/,
+  /HEAD request to .* failed: response code \(5\d\d\)/,
+];
+
+const isTransient = (blob: string): boolean => TRANSIENT_PATTERNS.some((re) => re.test(blob));
+
+const rewriteActions =
+  (config: { stubbed: ReadonlySet<string>; retried: ReadonlySet<string> }) =>
+  (inputs: RunActionsInputs): Promise<void> => {
+    const rewritten = inputs.actions.map((a): DeferredAction => {
+      if (config.stubbed.has(a.id)) {
+        return {
+          id: a.id,
+          description: `${a.description} [faked: no-op]`,
+          run: () => Promise.resolve(),
+        };
+      }
+      if (config.retried.has(a.id)) {
+        return {
+          id: a.id,
+          description: a.description,
+          run: (env) => withRetry(() => a.run(env)),
+        };
+      }
+      return a;
+    });
+    return runActions({ ...inputs, actions: rewritten });
+  };
+
+const withRetry = async (fn: () => Promise<void>, attempts = 3): Promise<void> => {
+  let last: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      last = err;
+      const blob = err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err);
+      if (!isTransient(blob)) throw err;
+    }
+  }
+  throw last;
+};
+
+const onPath = (cmd: string): boolean => {
+  const probe = process.platform === 'win32' ? 'where' : 'which';
+  return spawnSync(probe, [cmd], { stdio: 'ignore' }).status === 0;
+};
+
+interface RunResult {
+  readonly status: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+const runWithRetry = (
+  cmd: string,
+  args: readonly string[],
+  options: Parameters<typeof spawnSync>[2],
+  attempts = 3,
+): RunResult => {
+  let last: RunResult = { status: null, stdout: '', stderr: '' };
+  for (let i = 0; i < attempts; i += 1) {
+    const r = spawnSync(cmd, args, options);
+    last = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+    if (last.status === 0) return last;
+    if (!isTransient(`${last.stdout}\n${last.stderr}`)) return last;
+  }
+  return last;
+};
+
+const startApp = (
+  runJar: string,
+  randomPortFlag: string,
+  announceRe: RegExp,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): Promise<{ child: ChildProcess; port: number }> =>
+  new Promise((resolve, reject) => {
+    const child = spawn('java', [randomPortFlag, '-jar', runJar], { cwd, env });
+    let output = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`app did not announce its port within 60s; output so far:\n${output}`));
+    }, APP_START_TIMEOUT_MS);
+    const onData = (chunk: Buffer): void => {
+      output += chunk.toString();
+      const m = announceRe.exec(output);
+      if (m?.[1] !== undefined) {
+        clearTimeout(timer);
+        resolve({ child, port: Number(m[1]) });
+      }
+    };
+    child.stdout.on('data', onData);
+    child.stderr.on('data', onData);
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`app exited before announcing its port (exit ${code}):\n${output}`));
+    });
+  });
+
+const stopApp = async (child: ChildProcess): Promise<void> => {
+  if (child.exitCode !== null) return;
+  await new Promise<void>((resolve) => {
+    child.once('exit', () => {
+      resolve();
+    });
+    child.kill('SIGTERM');
+    setTimeout(() => child.kill('SIGKILL'), 5000).unref();
+  });
+};
+
+const optedIn = process.env.KEEL_RUN_E2E === '1';
+const optedOut = process.env.KEEL_SKIP_E2E === '1';
+const onCI = process.env.CI === 'true';
+const toolingMissing = !onPath('gradle') || !onPath('java');
+
+/** Whether the JVM REST e2e tests should be skipped in this run. */
+export const skipJvmRestE2E = optedOut || toolingMissing || (onCI && !optedIn);
+
+/** Framework-specific parameters of one JVM REST e2e run. */
+export interface JvmRestE2ESpec {
+  /** Stack preset to scaffold. */
+  readonly stack: string;
+  /** Bootstrap adapter id the sticky answers are recorded under. */
+  readonly bootstrapId: string;
+  /** Path of the runnable jar relative to the project root. */
+  readonly runJar: readonly string[];
+  /** JVM flag that requests an ephemeral port. */
+  readonly randomPortFlag: string;
+  /** Log line announcing the bound port; group 1 is the port. */
+  readonly announceRe: RegExp;
+}
+
+/**
+ * Scaffolds `spec.stack` into `cwd`, builds it with the generated
+ * wrapper (running the generated test suite transitively), boots the
+ * packaged jar, and asserts the `/greet` wire contract — named,
+ * defaulted, and rejected requests.
+ */
+export async function runJvmRestE2E(
+  spec: JvmRestE2ESpec,
+  cwd: string,
+  gradleUserHome: string,
+): Promise<void> {
+  const mediator = installMediator({
+    keelVersion: '0.0.0-e2e',
+    runDeferred: rewriteActions({
+      stubbed: new Set(['vcs/git-init']),
+      retried: new Set(['walking-skeleton/gradle-wrapper']),
+    }),
+  });
+  expectOk(
+    await mediator.dispatch(
+      newProjectCommand({
+        cwd,
+        stack: spec.stack,
+        answers: {
+          [spec.bootstrapId]: {
+            basePackage: 'com.acme.e2e',
+            projectName: `walking-skeleton-${spec.stack}-e2e`,
+          },
+          'vcs/git-init': { remote: '', defaultBranch: 'main' },
+        },
+        interactive: false,
+        dryRun: false,
+      }),
+    ),
+  );
+
+  const gradlew = path.join(cwd, 'gradlew');
+  expect(await fs.pathExists(gradlew)).toBe(true);
+
+  const env = { ...process.env, GRADLE_USER_HOME: gradleUserHome };
+  const build = runWithRetry(gradlew, ['--no-daemon', '--stacktrace', 'build'], {
+    cwd,
+    env,
+    encoding: 'utf8',
+  });
+  if (build.status !== 0) {
+    throw new Error(
+      `./gradlew build failed (exit ${build.status})\n` +
+        `stdout:\n${build.stdout}\nstderr:\n${build.stderr}`,
+    );
+  }
+
+  const runJar = path.join(cwd, ...spec.runJar);
+  expect(await fs.pathExists(runJar), `missing ${runJar}`).toBe(true);
+
+  const { child, port } = await startApp(runJar, spec.randomPortFlag, spec.announceRe, cwd, env);
+  try {
+    const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+
+    const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=%20%20`);
+    expect(rejected.status).toBe(400);
+    expect(rejected.headers.get('content-type')).toContain('application/problem+json');
+    const problem = (await rejected.json()) as Record<string, unknown>;
+    expect(problem.title).toBe('Greeting rejected');
+    expect(problem.status).toBe(400);
+    expect(problem.detail).toBe('name must not be blank');
+  } finally {
+    await stopApp(child);
+  }
+}

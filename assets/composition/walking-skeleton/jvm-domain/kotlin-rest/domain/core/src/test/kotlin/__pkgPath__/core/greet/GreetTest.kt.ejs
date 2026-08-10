@@ -1,0 +1,31 @@
+package <%= basePackage %>.core.greet
+
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.contract.greet.GreetCommand
+import <%= basePackage %>.contract.greet.GreetRejected
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+
+class GreetTest {
+
+    @Test
+    fun greetsByName() {
+        val handler = GreetHandler()
+
+        val greeting = handler.handle(GreetCommand("Romain"))
+
+        assertEquals("Hello, Romain!", greeting)
+    }
+
+    @Test
+    fun rejectsABlankName() {
+        val handler = GreetHandler()
+
+        val rejected =
+            assertThrows(GreetRejected::class.java) { handler.handle(GreetCommand("  ")) }
+
+        assertEquals("name must not be blank", rejected.message)
+    }
+}

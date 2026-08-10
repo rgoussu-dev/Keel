@@ -1,0 +1,36 @@
+# <%= projectName %>
+
+Micronaut CLI walking skeleton (Kotlin) scaffolded by keel — hexagonal, mediator-driven.
+
+## Layout
+
+```
+domain/
+  kernel/      — Command, Handler, Mediator bases; depends on nothing
+  contract/    — the public surface: GreetCommand (+ ports as they appear)
+  core/        — RegistryMediator + the GreetCommand handler
+application/
+  cli/         — picocli + Micronaut: maps flags to commands,
+                 dispatches via the mediator, and hosts the
+                 composition root
+infrastructure/  — driven adapters (arrives with the first real port)
+```
+
+## Run
+
+```sh
+./gradlew :application:cli:run --args="hello --name World"
+```
+
+## Test
+
+```sh
+./gradlew test
+```
+
+## Build
+
+```sh
+./gradlew build
+java -jar application/cli/build/libs/cli-0.1.0-SNAPSHOT-all.jar hello --name World
+```

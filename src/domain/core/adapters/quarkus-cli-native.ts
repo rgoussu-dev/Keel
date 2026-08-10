@@ -28,6 +28,7 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
+import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
 
 export const QUARKUS_CLI_NATIVE_ID = 'distribution/quarkus-cli-native';
 
@@ -91,10 +92,13 @@ export const quarkusCliNativeAdapter: Adapter = {
     },
   ],
   async contribute(ctx) {
-    const projectName = ctx.manifest.answers[QUARKUS_CLI_BOOTSTRAP_ID]?.projectName;
+    const bootstrapIds = [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID];
+    const projectName = bootstrapIds
+      .map((id) => ctx.manifest.answers[id]?.projectName)
+      .find(Boolean);
     if (!projectName) {
       throw new Error(
-        `${QUARKUS_CLI_NATIVE_ID}: requires '${QUARKUS_CLI_BOOTSTRAP_ID}' to have run first; projectName not in manifest`,
+        `${QUARKUS_CLI_NATIVE_ID}: requires a Quarkus CLI bootstrap (one of ${bootstrapIds.join(', ')}) to have run first; projectName not in manifest`,
       );
     }
     const targets = parseTargets(ctx.answer('targets'));

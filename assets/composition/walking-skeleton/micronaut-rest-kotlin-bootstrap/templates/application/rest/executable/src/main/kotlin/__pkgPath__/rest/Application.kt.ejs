@@ -1,0 +1,11 @@
+package <%= basePackage %>.rest
+
+import io.micronaut.runtime.Micronaut.run
+
+/**
+ * Boots the REST channel. Micronaut wires the controller, the error
+ * handler, and the composition root in this package at compile time.
+ */
+fun main(args: Array<String>) {
+    run(*args)
+}
