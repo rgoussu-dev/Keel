@@ -45,6 +45,11 @@ export const goCorsAdapter: Adapter = {
           target: MAIN_TARGET,
           apply: (existing) => {
             if (existing.includes('withCORS')) return existing;
+            if (!existing.includes(SERVE_LINE)) {
+              throw new Error(
+                `${GO_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,
+              );
+            }
             return `${existing.replace(SERVE_LINE, SERVE_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
           },
         },
