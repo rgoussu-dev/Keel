@@ -45,6 +45,14 @@ export interface NewProjectCommand extends Command<InstallReport> {
    * prompt for it and non-interactive installs default to `monorepo`.
    */
   readonly layout?: RepoLayout;
+  /**
+   * Build-system id (`gradle`, `maven`, `npm`, `pnpm`) for stacks
+   * that declare a choice. When absent, interactive installs prompt
+   * for it and non-interactive installs use the stack's default.
+   * Rejected for stacks with a fixed build system and for composite
+   * stacks (their services scaffold on each service's default).
+   */
+  readonly buildSystem?: string;
 }
 
 /** Layer an additional vertical onto an initialised project. */

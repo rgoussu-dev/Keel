@@ -46,9 +46,16 @@ import {
 import type { TreeChange } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
 import { installVertical } from '../install.js';
-import { getStack, listStackIds, type Stack, type StackService } from '../stacks.js';
+import {
+  getStack,
+  listStackIds,
+  type BuildSystemOption,
+  type Stack,
+  type StackService,
+} from '../stacks.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import type { InstallDeps } from './deps.js';
+import type { Tag } from '../../contract/composition.js';
 
 const LAYOUT_QUESTION: Question = {
   id: 'layout',
@@ -118,11 +125,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       return err(alreadyInitialised(scopeRoot));
     }
 
+    const buildTag = await this.resolveBuildSystem(command, stack);
+    if (!buildTag.ok) return buildTag;
+
     const now = this.deps.clock.nowIso();
     const staged = await this.stageStack({
       prefix: '',
       cwd: command.cwd,
       stack,
+      buildTag: buildTag.value,
       peers: [],
       services: [],
       skipVcs: false,
@@ -172,6 +183,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       });
     }
 
+    if (command.buildSystem !== undefined) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' is composite — its services scaffold on each service stack's default build system, so --build-system does not apply`,
+          'keel.invalid-build-system',
+        ),
+      );
+    }
+
     const layout = await this.resolveLayout(command);
     if (!layout.ok) return layout;
 
@@ -196,6 +216,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           prefix: '',
           cwd: command.cwd,
           stack,
+          buildTag: null,
           peers: [],
           services: (stack.services ?? []).map((s: StackService) => ({
             path: s.path,
@@ -214,6 +235,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           prefix: service.path,
           cwd: path.join(command.cwd, service.path),
           stack: service.stack,
+          buildTag: defaultBuildTag(service.stack),
           peers: peersFor(service, resolved),
           services: [],
           skipVcs: monorepo,
@@ -255,6 +277,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     prefix: string;
     cwd: string;
     stack: Stack;
+    /** The chosen build system's `pkg.*` tag; null when the stack's `tags` pin it. */
+    buildTag: Tag | null;
     peers: readonly PeerLink[];
     services: ManifestV2['services'];
     skipVcs: boolean;
@@ -264,7 +288,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }): Promise<StagedScope> {
     let manifest: ManifestV2 = {
       ...emptyManifestV2(inputs.now, this.deps.keelVersion),
-      tags: [...inputs.stack.tags].sort(),
+      tags: [...inputs.stack.tags, ...(inputs.buildTag ? [inputs.buildTag] : [])].sort(),
       answers: inputs.command.answers,
       projects: [...(inputs.stack.projects ?? [])],
       peers: inputs.peers,
@@ -321,6 +345,43 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }
   }
 
+  /**
+   * Resolves the build system for a single-service stack: the
+   * `--build-system` id when supplied, the interactive choice when
+   * the stack declares more than one, the stack default otherwise.
+   * Returns `null` for stacks whose `tags` pin their build system.
+   */
+  private async resolveBuildSystem(
+    command: NewProjectCommand,
+    stack: Stack,
+  ): Promise<Result<Tag | null>> {
+    const options = stack.buildSystems ?? [];
+    const fallback = options[0];
+    if (!fallback) {
+      if (command.buildSystem !== undefined) {
+        return err(
+          new DomainError(
+            `stack '${stack.id}' has a fixed build system — remove --build-system`,
+            'keel.invalid-build-system',
+          ),
+        );
+      }
+      return ok(null);
+    }
+    if (command.buildSystem !== undefined) {
+      const chosen = options.find((o) => o.id === command.buildSystem);
+      if (!chosen) {
+        return err(invalidBuildSystem(stack, command.buildSystem, options));
+      }
+      return ok(chosen.tag);
+    }
+    if (!command.interactive || options.length === 1) return ok(fallback.tag);
+    const answer = (await this.deps.prompt.ask(buildSystemQuestion(options, fallback))).trim();
+    const chosen = options.find((o) => o.id === answer);
+    if (!chosen) return err(invalidBuildSystem(stack, answer, options));
+    return ok(chosen.tag);
+  }
+
   private async resolveLayout(command: NewProjectCommand): Promise<Result<RepoLayout>> {
     if (command.layout !== undefined) {
       if (command.layout !== 'monorepo' && command.layout !== 'polyrepo') {
@@ -345,6 +406,38 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }
     return ok(answer);
   }
+}
+
+function buildSystemQuestion(
+  options: readonly BuildSystemOption[],
+  fallback: BuildSystemOption,
+): Question {
+  return {
+    id: 'buildSystem',
+    prompt: 'Build system',
+    doc: 'How the scaffolded project is built; every other choice is unaffected.',
+    choices: options.map((o) => ({ value: o.id, label: o.label, doc: o.doc })),
+    default: fallback.id,
+    memory: 'repeat',
+  };
+}
+
+function invalidBuildSystem(
+  stack: Stack,
+  requested: string,
+  options: readonly BuildSystemOption[],
+): DomainError {
+  return new DomainError(
+    `stack '${stack.id}' does not support build system '${requested}' — available: ${options
+      .map((o) => o.id)
+      .join(', ')}`,
+    'keel.invalid-build-system',
+  );
+}
+
+/** The default build-system tag of a service stack, if it declares a choice. */
+function defaultBuildTag(stack: Stack): Tag | null {
+  return stack.buildSystems?.[0]?.tag ?? null;
 }
 
 function alreadyInitialised(scopeRoot: string): DomainError {

@@ -10,8 +10,9 @@
  * `rust-port-fake` / `wc-sample-port-fake` add the hexagonal
  * niceties wherever they apply. Each dimension is covered
  * per-platform — e.g. `build-tool` by `gradle-wrapper` under
- * `pkg.gradle` and by `npm-install` under `pkg.npm` — and the
- * resolver picks whichever predicates match the project's tag set.
+ * `pkg.gradle`, `maven-wrapper` under `pkg.maven`, and `npm-install`
+ * under `pkg.npm` — and the resolver picks whichever predicates
+ * match the project's tag set.
  * The Go and Rust entrypoints are additive — a tag set carrying both
  * `arch.cli` and `arch.server-http` ships both deployment units on
  * one shared bootstrap shell.
@@ -23,6 +24,7 @@ import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
+import { mavenWrapperAdapter } from '../adapters/maven-wrapper.js';
 import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
 import { micronautCliKotlinBootstrapAdapter } from '../adapters/micronaut-cli-kotlin-bootstrap.js';
 import { micronautRestBootstrapAdapter } from '../adapters/micronaut-rest-bootstrap.js';
@@ -67,6 +69,7 @@ export const walkingSkeletonVertical: Vertical = {
     samplePortFakeAdapter,
     samplePortFakeKotlinAdapter,
     gradleWrapperAdapter,
+    mavenWrapperAdapter,
     goBootstrapAdapter,
     goCliBootstrapAdapter,
     goHttpBootstrapAdapter,
