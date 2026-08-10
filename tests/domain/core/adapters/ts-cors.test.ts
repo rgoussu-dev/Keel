@@ -60,6 +60,8 @@ describe('ts-cors adapter', () => {
     expect(patched).toContain('function withCors(server: Server): Server {');
     expect(patched).toContain("import type { Server } from 'node:http';");
     expect(patched).toContain('access-control-allow-origin');
+    expect(patched).toContain("setHeader('access-control-allow-methods', 'GET')");
+    expect(patched).toContain("request.headers['access-control-request-headers']");
   });
 
   it('is idempotent when the decorator is already in place', async () => {

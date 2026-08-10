@@ -283,6 +283,16 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The `ts-http` request handler no longer leaves the response
+  hanging on a rejected dispatch.** The generated `server.ts` chains
+  `.catch()` onto `mediator.dispatch(…)` and maps unexpected failures
+  to an RFC 9457 500 problem document; the generated test suite pins
+  the behaviour. (Post-merge review finding from #31.)
+- **`gateway/ts-cors` answers preflights completely.** The `OPTIONS`
+  branch now sends `access-control-allow-methods` and echoes any
+  `access-control-request-headers`, so a browser preflight that does
+  fire is actually satisfied instead of blocked. (Post-merge review
+  finding from #31.)
 - **`go-http` now honours the REST seam contract.** Its greet reply
   was `{"message": …}` where the Quarkus REST unit replies
   `{"greeting": …}`, and it rejected an absent name where Quarkus

@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
+import type { Mediator } from '@<%= npmScope %>/domain-kernel';
 import { createGreetHandler, createRegistryMediator } from '@<%= npmScope %>/domain-core';
 import { createGreetServer } from '../src/server.ts';
 
 const servers: Server[] = [];
 
-const factory = async (): Promise<string> => {
-  const mediator = createRegistryMediator([createGreetHandler()]);
+const factory = async (
+  mediator: Mediator = createRegistryMediator([createGreetHandler()]),
+): Promise<string> => {
   const server = createGreetServer(mediator);
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(0, resolve));
@@ -51,5 +53,16 @@ describe('GET /greet', () => {
     const response = await fetch(`${base}/nope`);
     expect(response.status).toBe(404);
     expect(response.headers.get('content-type')).toContain('application/problem+json');
+  });
+
+  it('maps a rejected dispatch to a 500 problem instead of hanging', async () => {
+    const failing: Mediator = { dispatch: () => Promise.reject(new Error('boom')) };
+    const base = await factory(failing);
+    const response = await fetch(`${base}/greet`);
+    expect(response.status).toBe(500);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+    const body = (await response.json()) as { status: number; detail: string };
+    expect(body.status).toBe(500);
+    expect(body.detail).toBe('boom');
   });
 });
