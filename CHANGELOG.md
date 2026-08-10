@@ -33,16 +33,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   service — the same convention as the dev proxy, so the bundle's
   default `VITE_API_BASE_URL` works unchanged in both worlds).
 
-### Fixed
-
-- **`go-http` now honours the REST seam contract.** Its greet reply
-  was `{"message": …}` where the Quarkus REST unit replies
-  `{"greeting": …}`, and it rejected an absent name where Quarkus
-  defaults to `world` — so one frontend gateway could not serve both
-  backends. Absent names now default at the transport boundary; a
-  present-but-blank name still reaches the domain and is rejected as
-  an RFC 9457 problem.
-
 - **Fullstack composition: peer tags, composite stacks, and the
   `fullstack` preset.** Stacks now declare the peer tags they project
   onto sibling services (`quarkus-rest`/`go-http` → `peer.api.rest`,
@@ -177,6 +167,22 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`go-http` now honours the REST seam contract.** Its greet reply
+  was `{"message": …}` where the Quarkus REST unit replies
+  `{"greeting": …}`, and it rejected an absent name where Quarkus
+  defaults to `world` — so one frontend gateway could not serve both
+  backends. Absent names now default at the transport boundary; a
+  present-but-blank name still reaches the domain and is rejected as
+  an RFC 9457 problem.
+- **Composite-service peer refs are correct at any nesting depth.**
+  `keel new` recorded a sibling's `peers` ref by prefixing `../`,
+  which is only right for single-segment service paths; refs are now
+  computed relatively, so nested layouts (e.g. `apps/backend` +
+  `apps/frontend`) project correctly.
+- **`gateway/go-cors` fails loudly on a diverged assembly point.**
+  When `cmd/http/main.go` no longer contains the serve call the
+  adapter knows how to wrap, the install now hard-fails with a clear
+  message instead of appending a decorator that never runs.
 - README quickstart now describes the layout the v0.5 skeleton
   actually scaffolds (`domain/kernel`, `domain/contract`,
   `domain/core`, `application/cli`, plus the emitted `AGENTS.md` +
