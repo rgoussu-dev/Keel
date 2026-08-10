@@ -38,6 +38,15 @@ commitment.
   both shapes, every JVM stack has a Kotlin twin, and all twelve JVM
   bootstraps share per-language domain template trees behind one
   adapter factory.
+- **H — Server-side TypeScript.** `ts-http` scaffolds the trisected
+  layout with a `RegistryMediator` — keel-shaped by keel — on bare
+  `node:http` with no build step (Node runs the sources directly),
+  and `fullstack-ts` slots it behind the shared gateway seam.
+- **Selectable build systems.** Stacks may offer a build-system
+  choice (`--build-system`, or an interactive prompt): Gradle or
+  Maven across the Java JVM stacks, npm or pnpm across the
+  TypeScript stacks — the choice is just a `pkg.*` tag, and
+  everything downstream is ordinary predicate machinery.
 
 What that wave proved: the per-language dispatch stances of binding
 spec §2 are exercised outside the JVM (Go, Rust, frontend
@@ -106,21 +115,17 @@ so it exercises the patch path of the composition contract.
 
 ---
 
-## H — Server-side TypeScript stack
-
-**Goal.** The per-language stances are now proven for Go, Rust, and
-frontend TypeScript — what remains unproven is the registry-Mediator
-stance for server-side TypeScript, the exact shape keel's own source
-uses. A `ts-cli` (or fastify-based `ts-rest`) stack scaffolding the
-trisected layout with a `RegistryMediator` would close the loop:
-scaffold with keel a project shaped like keel. Arrives last so the
-new language lands with entrypoint, distribution, and CI patterns to
-mirror.
-
----
-
 ## Backlog (unordered)
 
+- **Maven for the Kotlin JVM stacks** — the six Java stacks offer
+  Gradle or Maven; the Kotlin twins stay Gradle-pinned until their
+  `kotlin-maven-plugin` trees (allopen/KSP wiring per framework) are
+  written.
+- **Per-service build systems in composite stacks** — composites
+  scaffold each service on its default today; offering the choice
+  per service needs the compose Dockerfiles to follow it.
+- **`ts-cli` stack** — the CLI twin of `ts-http`, mirroring the
+  other languages' CLI/HTTP pairing.
 - **`keel add --reapply` / update path** — today adding an installed
   vertical errors (`keel.vertical-already-installed`); there is no
   way to re-render after a template fix or answer change.
