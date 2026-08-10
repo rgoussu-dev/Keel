@@ -54,6 +54,15 @@ sample secondary port (`Clock`) with a fake module, the binding spec
 emitted as `AGENTS.md` (plus a `CLAUDE.md` pointer), an initialised
 git repo, and the Gradle wrapper.
 
+The same two shapes exist for Spring Boot (`spring-cli`,
+`spring-rest`) and Micronaut (`micronaut-cli`, `micronaut-rest`),
+and every JVM stack has a Kotlin twin (`quarkus-rest-kotlin`,
+`spring-cli-kotlin`, `micronaut-rest-kotlin`, …) that emits the
+identical hexagonal layout as idiomatic Kotlin. The domain
+trisection is byte-for-byte the same across frameworks per language
+— only the application layer and build wiring change, which is the
+point: the conventions, not the framework, are the product.
+
 Or a Go project — `go-cli` for a terminal binary, `go-http` for a
 stdlib `net/http` service:
 
@@ -111,9 +120,11 @@ with real + fake adapters in `infrastructure/commons` — installed
 and ready to `npm run dev`.
 
 Or a fullstack product — a backend and the SPA composed
-(`fullstack` pairs `quarkus-rest`, `fullstack-go` pairs `go-http`;
-both select the _same_ frontend gateway adapters, because the seam is
-driven by peer tags, not by the backend's language):
+(`fullstack` pairs `quarkus-rest`, `fullstack-spring` pairs
+`spring-rest`, `fullstack-micronaut` pairs `micronaut-rest`,
+`fullstack-go` pairs `go-http`; all select the _same_ frontend
+gateway adapters, because the seam is driven by peer tags, not by
+the backend's language or framework):
 
 ```sh
 mkdir my-product && cd my-product
@@ -162,7 +173,7 @@ to a GitHub Release on tag push.
 
 | Command                  | What it does                                                                                                                                                                           |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-go`. |
+| `keel new --stack=<id>`  | Bootstrap a greenfield project from a stack preset. Today: `quarkus-cli`, `quarkus-rest`, `spring-cli`, `spring-rest`, `micronaut-cli`, `micronaut-rest` (each also as `…-kotlin`), `go-cli`, `go-http`, `rust-cli`, `rust-http`, `web-components`, `fullstack`, `fullstack-spring`, `fullstack-micronaut`, `fullstack-go`. |
 | `keel new ... --layout`  | Composite stacks only: `monorepo` (default) or `polyrepo`; prompted when interactive and omitted.                                                                                      |
 | `keel new ... --yes`     | Non-interactive — use defaults for unanswered questions.                                                                                                                               |
 | `keel new ... --dry-run` | Print the plan without writing any file.                                                                                                                                               |
@@ -234,10 +245,14 @@ Two more primitives compose services into **products**:
 - **`walking-skeleton`** — the thinnest end-to-end runnable project
   for the chosen stack, in a hexagonal layout with a sample secondary
   port + fake — the entrypoint shape is selected by predicate from
-  the stack's tags. Today: a Quarkus picocli CLI or a Quarkus REST
-  service (`GET /greet` with RFC 9457 Problem Details errors) on
-  Gradle (requires `gradle` on PATH — the wrapper is generated via
-  the canonical `gradle wrapper` task, not committed as a binary); a
+  the stack's tags. Today: a JVM picocli CLI or REST service
+  (`GET /greet` with RFC 9457 Problem Details errors) on Gradle for
+  Quarkus, Spring Boot, or Micronaut, each in Java or Kotlin — the
+  framework and language are ordinary predicate dimensions, and the
+  domain trisection is shared per language across all three
+  frameworks (requires `gradle` on PATH — the wrapper is generated
+  via the canonical `gradle wrapper` task, not committed as a
+  binary); a
   Go skeleton with CLI (`arch.cli`) and HTTP (`arch.server-http`)
   entrypoints that compose — a tag set carrying both ships both
   `cmd/` deployment units on one shared module, verified with a
@@ -248,8 +263,9 @@ Two more primitives compose services into **products**:
 - **`gateway`** — the cross-service seam. Declares no dimensions; its
   adapters fire purely on peer tags, so without peers it installs
   nothing. Today: a REST gateway package for the web-components
-  frontend (`peer.api.rest`), CORS accommodations for the Quarkus and
-  Go HTTP backends (`peer.ui.spa`), and the seam's OpenAPI contract
+  frontend (`peer.api.rest`), CORS accommodations for the Quarkus,
+  Spring, Micronaut, and Go HTTP backends (`peer.ui.spa`), and the
+  seam's OpenAPI contract
   emitted on the backend. Installed automatically for composite
   services; brownfield via `keel link` + `keel add gateway`.
 - **`fullstack`** — product-root glue for composite monorepos: the
