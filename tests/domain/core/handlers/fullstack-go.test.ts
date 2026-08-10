@@ -84,6 +84,8 @@ describe('fullstack-go composite install (monorepo)', () => {
     expect(contract).toContain('openapi: 3.1.0');
     expect(contract).toContain('/greet');
     expect(contract).toContain('greeting');
+    expect(contract).toContain('minLength: 1');
+    expect(contract).toContain('default: world');
     expect(read('frontend/contract/greet.openapi.yaml')).toBeNull();
   });
 
