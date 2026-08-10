@@ -22,11 +22,16 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `Clock` port ships real + fake adapters in `infrastructure/clock`
   (`walking-skeleton/ts-port-fake`). Projects `peer.api.rest`, so it
   slots into the same gateway seam as the other REST backends.
-- **npm or pnpm for the TypeScript stacks** — `ts-http` offers the
-  build-system choice: npm (hoisted workspaces, the default) or pnpm
-  (`pnpm-workspace.yaml`, the `workspace:*` dependency protocol, a
-  pinned `packageManager` field, and a `walking-skeleton/pnpm-install`
-  adapter covering `build-tool` under `pkg.pnpm`).
+- **npm or pnpm for the TypeScript stacks** — `ts-http` and
+  `web-components` offer the build-system choice: npm (hoisted
+  workspaces, the default) or pnpm (`pnpm-workspace.yaml`, the
+  `workspace:*` dependency protocol, a pinned `packageManager` field,
+  and a `walking-skeleton/pnpm-install` adapter covering `build-tool`
+  under `pkg.pnpm`). The workspace packages now declare their own
+  tool devDependencies (correct under pnpm's strict layout, harmless
+  under npm's hoisting), and `gateway/wc-gateway-rest` patches
+  package manifests structurally so its dependency insertions follow
+  whichever protocol the workspace uses.
 - **Selectable build systems** (`keel new … --build-system <id>`) —
   stacks may now offer a choice of build system instead of pinning
   one. The six Java JVM stacks offer **Gradle or Maven**: the same

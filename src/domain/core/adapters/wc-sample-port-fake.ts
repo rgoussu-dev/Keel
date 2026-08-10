@@ -22,6 +22,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { tsWorkspaceVars } from './ts-workspace.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
 export const WC_SAMPLE_PORT_FAKE_ID = 'walking-skeleton/wc-sample-port-fake';
@@ -44,7 +45,10 @@ export const wcSamplePortFakeAdapter: Adapter = {
         `${WC_SAMPLE_PORT_FAKE_ID}: requires '${WC_SPA_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
       );
     }
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { npmScope });
+    const files = await ctx.templates.render(TEMPLATE_ID, '', {
+      npmScope,
+      ...tsWorkspaceVars(ctx.manifest.tags),
+    });
     return {
       files,
       patches: [

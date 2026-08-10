@@ -284,15 +284,15 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'web-components': {
     id: 'web-components',
     description:
-      'Framework-free web-components SPA on Vite (TypeScript, npm workspaces), hexagonal layout.',
+      'Framework-free web-components SPA on Vite (TypeScript workspaces), hexagonal layout; npm or pnpm.',
     tags: [
       'lang.typescript',
       'runtime.browser',
-      'pkg.npm',
       'framework.web-components',
       'arch.hexagonal',
       'arch.spa',
     ],
+    buildSystems: [NPM_BUILD, PNPM_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.ui.spa'],
   },

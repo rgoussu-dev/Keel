@@ -22,10 +22,12 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { tsWorkspaceVars } from './ts-workspace.js';
 
 export const WC_SPA_BOOTSTRAP_ID = 'walking-skeleton/wc-spa-bootstrap';
 
 const TEMPLATE_ID = 'composition/walking-skeleton/wc-spa-bootstrap/templates';
+const PNPM_TEMPLATE_ID = 'composition/walking-skeleton/wc-spa-bootstrap/pm/pnpm';
 
 const NPM_SCOPE_RE = /^[a-z][a-z0-9-]{0,38}$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -54,7 +56,12 @@ export const wcSpaBootstrapAdapter: Adapter = {
   async contribute(ctx) {
     const npmScope = validateNpmScope(ctx.answer('npmScope').trim());
     const projectName = validateProjectName(ctx.answer('projectName').trim());
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { npmScope, projectName });
+    const ws = tsWorkspaceVars(ctx.manifest.tags);
+    const vars = { npmScope, projectName, ...ws };
+    const files = await ctx.templates.render(TEMPLATE_ID, '', vars);
+    if (ws.pm === 'pnpm') {
+      files.push(...(await ctx.templates.render(PNPM_TEMPLATE_ID, '', vars)));
+    }
     return { files };
   },
 };
