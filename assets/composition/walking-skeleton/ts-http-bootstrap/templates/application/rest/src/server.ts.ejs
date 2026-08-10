@@ -29,8 +29,14 @@ export function createGreetServer(mediator: Mediator): Server {
       })
       .catch((error: unknown) => {
         // A rejected dispatch promise is a defect (handlers return
-        // Result), but it must not leave the response hanging.
-        problem(response, 500, 'internal error', error instanceof Error ? error.message : 'unexpected failure');
+        // Result), but it must not leave the response hanging. The
+        // detail stays generic in production so internals never
+        // reach clients.
+        const detail =
+          process.env.NODE_ENV !== 'production' && error instanceof Error
+            ? error.message
+            : 'unexpected failure';
+        problem(response, 500, 'internal error', detail);
       });
   });
 }
