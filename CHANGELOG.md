@@ -234,6 +234,9 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   When `cmd/http/main.go` no longer contains the serve call the
   adapter knows how to wrap, the install now hard-fails with a clear
   message instead of appending a decorator that never runs.
+- The npm package description no longer advertises "schematics" —
+  the engine retired in v0.4.0-alpha — and describes the
+  composition-driven scaffolding instead.
 - `docs/roadmap.md` no longer presents the REST entrypoint as the
   recommended next step: landed work (quarkus-rest, the Go / Rust /
   web-components skeletons, fullstack composition and the gateway
