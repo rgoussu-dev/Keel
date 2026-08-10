@@ -1,0 +1,152 @@
+//! The CLI primary adapter: maps process arguments to the greet
+//! command, dispatches through the driving port, and maps the outcome
+//! back to streams and an exit code. Zero business logic.
+
+use std::io::Write;
+
+use <%= crateName %>::domain::{GreetCommand, GreetError, Greeter};
+
+const EXIT_OK: i32 = 0;
+const EXIT_ERROR: i32 = 1;
+const EXIT_USAGE: i32 = 2;
+
+const PROGRAM: &str = "<%= projectName %>";
+
+/// App drives the greet use case from the terminal.
+pub struct App<G: Greeter> {
+    greeter: G,
+}
+
+impl<G: Greeter> App<G> {
+    /// Returns an App dispatching to `greeter`.
+    pub fn new(greeter: G) -> Self {
+        Self { greeter }
+    }
+
+    /// Parses `args` (the process arguments after the program name),
+    /// executes the greet command, and writes the outcome to stdout
+    /// or stderr. The returned value is the process exit code: 0 on
+    /// success, 2 on usage or validation errors, 1 on anything else.
+    pub fn run(&self, args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> i32 {
+        let name = match parse_name(args) {
+            Ok(name) => name,
+            Err(reason) => {
+                let _ = writeln!(stderr, "{PROGRAM}: {reason}");
+                let _ = writeln!(stderr, "usage: {PROGRAM} [--name <who>]");
+                return EXIT_USAGE;
+            }
+        };
+        match self.greeter.greet(GreetCommand { name }) {
+            Ok(message) => {
+                let _ = writeln!(stdout, "{message}");
+                EXIT_OK
+            }
+            Err(err) => {
+                let _ = writeln!(stderr, "{PROGRAM}: {err}");
+                if matches!(err, GreetError::EmptyName) {
+                    EXIT_USAGE
+                } else {
+                    EXIT_ERROR
+                }
+            }
+        }
+    }
+}
+
+fn parse_name(args: &[String]) -> Result<String, String> {
+    let mut name = "World".to_string();
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        if arg == "--name" {
+            name = rest
+                .next()
+                .ok_or_else(|| "--name requires a value".to_string())?
+                .clone();
+        } else if let Some(value) = arg.strip_prefix("--name=") {
+            name = value.to_string();
+        } else {
+            return Err(format!("unknown argument '{arg}'"));
+        }
+    }
+    Ok(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+
+    use super::*;
+
+    /// A hand-rolled fake of the driving port: it records the
+    /// dispatched command and replies with a canned outcome.
+    struct FakeGreeter {
+        got: RefCell<Option<GreetCommand>>,
+        reply: Result<String, GreetError>,
+    }
+
+    impl FakeGreeter {
+        fn replying(reply: Result<String, GreetError>) -> Self {
+            Self {
+                got: RefCell::new(None),
+                reply,
+            }
+        }
+    }
+
+    impl Greeter for &FakeGreeter {
+        fn greet(&self, cmd: GreetCommand) -> Result<String, GreetError> {
+            *self.got.borrow_mut() = Some(cmd);
+            self.reply.clone()
+        }
+    }
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn run_maps_flags_to_the_command_and_prints_the_reply() {
+        let fake = FakeGreeter::replying(Ok("Hello, Ada!".to_string()));
+        let app = App::new(&fake);
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+
+        let code = app.run(&args(&["--name", "Ada"]), &mut stdout, &mut stderr);
+
+        assert_eq!(
+            code,
+            EXIT_OK,
+            "stderr: {}",
+            String::from_utf8_lossy(&stderr)
+        );
+        let dispatched = fake.got.borrow().clone().expect("no command dispatched");
+        assert_eq!(dispatched.name, "Ada");
+        assert_eq!(String::from_utf8_lossy(&stdout), "Hello, Ada!\n");
+    }
+
+    #[test]
+    fn run_maps_a_domain_rejection_to_stderr_and_usage_exit_code() {
+        let fake = FakeGreeter::replying(Err(GreetError::EmptyName));
+        let app = App::new(&fake);
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+
+        let code = app.run(&args(&["--name", "  "]), &mut stdout, &mut stderr);
+
+        assert_eq!(code, EXIT_USAGE);
+        assert!(
+            String::from_utf8_lossy(&stderr).contains("name must not be empty"),
+            "stderr: {}",
+            String::from_utf8_lossy(&stderr)
+        );
+    }
+
+    #[test]
+    fn run_maps_an_unknown_flag_to_usage_exit_code() {
+        let fake = FakeGreeter::replying(Ok(String::new()));
+        let app = App::new(&fake);
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+
+        let code = app.run(&args(&["--no-such-flag"]), &mut stdout, &mut stderr);
+
+        assert_eq!(code, EXIT_USAGE);
+    }
+}

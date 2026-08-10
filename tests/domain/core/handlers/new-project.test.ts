@@ -166,6 +166,53 @@ describe('keel.new-project (keel new)', () => {
     });
   });
 
+  it('bootstraps a Rust CLI project end-to-end', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/rust-bootstrap']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'rust-cli',
+          answers: {
+            'walking-skeleton/rust-bootstrap': { projectName: 'shipper' },
+            'vcs/git-init': { remote: '', defaultBranch: 'main' },
+          },
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.subject).toBe('rust-cli');
+    expect(report.committed).toBe(true);
+
+    // The Rust reference tree landed on disk: assembly point, contract
+    // face, hidden core, primary adapter, port fake.
+    for (const p of [
+      'Cargo.toml',
+      'src/bin/cli/main.rs',
+      'src/bin/cli/app.rs',
+      'src/domain.rs',
+      'src/domain/greet.rs',
+      'src/infra/clock_fake.rs',
+      'AGENTS.md',
+    ]) {
+      expect(await fs.pathExists(path.join(cwd, p)), `missing ${p}`).toBe(true);
+    }
+
+    // Action ran: git repo exists on main.
+    expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(true);
+
+    // Manifest was persisted with the stack's tags + answers.
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest).not.toBeNull();
+    expect(manifest!.tags).toEqual(['arch.cli', 'arch.hexagonal', 'lang.rust', 'pkg.cargo'].sort());
+    expect(manifest!.answers['walking-skeleton/rust-bootstrap']).toEqual({
+      projectName: 'shipper',
+    });
+  });
+
   it('writes nothing under --dry-run', async () => {
     const mediator = installMediator();
     const report = expectOk(

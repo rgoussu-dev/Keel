@@ -1,0 +1,15 @@
+//! The cli deployment unit. Its main is the assembly point: it wires
+//! the hexagon for the terminal with plain constructor injection and
+//! contains no logic — construct adapters, hand ports over, run.
+
+mod app;
+
+use std::io::{stderr, stdout};
+
+use <%= crateName %>::domain::new_greeter;
+
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let code = app::App::new(new_greeter()).run(&args, &mut stdout(), &mut stderr());
+    std::process::exit(code);
+}

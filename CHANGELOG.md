@@ -74,9 +74,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   which records two existing projects as peers of one another (both
   manifests, refs relative, re-link refreshes) followed by
   `keel add gateway` in each.
-
-### Added
-
+- **Rust walking skeleton with composable CLI and HTTP entrypoints.**
+  Two new stacks — `rust-cli` and `rust-http` — compose the existing
+  `vcs` + `walking-skeleton` verticals for Rust, realizing the house
+  Rust hexagonal reference: one package per service, `src/domain.rs`
+  as the contract face (commands, driving-port traits, exported
+  factories) over a compiler-hidden core (`src/domain/greet.rs`, a
+  private module nothing outside `domain` can name), one `src/bin/`
+  directory per deployment unit wired by hand in `main`, and no
+  mediator object — per the binding spec's settled Rust stance
+  (per-use-case driving-port traits by default). Four new adapters:
+  `walking-skeleton/rust-bootstrap` (package shell, domain,
+  DIP-strict `tests/` integration test, deferred `cargo check`;
+  covers `build-tool`), `walking-skeleton/rust-cli-bootstrap` (flags
+  → command → port → exit code, dependency-free) and
+  `walking-skeleton/rust-http-bootstrap` (`GET /greet` → command →
+  port → JSON on axum + tokio, honouring the REST seam contract —
+  `{"greeting": …}`, absent name defaulting to `world` at the
+  transport boundary — with domain errors as RFC 9457 problem
+  documents) — both covering `entrypoint`, additive so a tag set
+  carrying `arch.cli` and `arch.server-http` ships both units, each
+  registered as an explicit `[[bin]]` target — and
+  `walking-skeleton/rust-port-fake` (the `Clock` trait with its
+  canonical fake under `src/infra/`, stitched in by idempotent
+  module-declaration patches; covers `port-example`). Exercised end
+  to end by a Rust e2e suite (test, build, run the CLI, serve
+  `/greet`).
 - **The `quarkus-rest` stack — the REST entrypoint.** `keel new
 --stack=quarkus-rest` scaffolds a Quarkus 3 REST service on Gradle
   in the binding-spec layout: the familiar `domain/kernel` /
