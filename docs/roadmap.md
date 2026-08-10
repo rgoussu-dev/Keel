@@ -129,7 +129,3 @@ so it exercises the patch path of the composition contract.
   emits none. Natural after E (deploy target implies infra).
 - **Mutation testing in this repo** — `AGENTS.md §7` marks it "on
   the roadmap; not yet wired". Stryker over `src/domain` first.
-- **Java version bump across the JVM stacks** — the stack
-  descriptions say Java 21 and the templates pin
-  `JavaVersion.VERSION_21`, while the spec's stance is latest LTS
-  (25). Align the toolchain pins and descriptions.

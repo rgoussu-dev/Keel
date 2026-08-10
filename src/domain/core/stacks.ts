@@ -122,14 +122,14 @@ export interface Stack {
 export const STACKS: Readonly<Record<string, Stack>> = {
   'quarkus-cli': {
     id: 'quarkus-cli',
-    description: 'Quarkus 3 CLI (Java 21), hexagonal layout; Gradle or Maven.',
+    description: 'Quarkus 3 CLI (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'quarkus-rest': {
     id: 'quarkus-rest',
-    description: 'Quarkus 3 REST service (Java 21), hexagonal layout; Gradle or Maven.',
+    description: 'Quarkus 3 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
@@ -137,14 +137,14 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'quarkus-cli-kotlin': {
     id: 'quarkus-cli-kotlin',
-    description: 'Quarkus 3 CLI (Kotlin, JVM 21), hexagonal layout; Gradle or Maven.',
+    description: 'Quarkus 3 CLI (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'quarkus-rest-kotlin': {
     id: 'quarkus-rest-kotlin',
-    description: 'Quarkus 3 REST service (Kotlin, JVM 21), hexagonal layout; Gradle or Maven.',
+    description: 'Quarkus 3 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
@@ -152,14 +152,14 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'spring-cli': {
     id: 'spring-cli',
-    description: 'Spring Boot 4 CLI (Java 21, picocli), hexagonal layout; Gradle or Maven.',
+    description: 'Spring Boot 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'spring-rest': {
     id: 'spring-rest',
-    description: 'Spring Boot 4 REST service (Java 21), hexagonal layout; Gradle or Maven.',
+    description: 'Spring Boot 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
@@ -167,14 +167,14 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'spring-cli-kotlin': {
     id: 'spring-cli-kotlin',
-    description: 'Spring Boot 4 CLI (Kotlin, JVM 21, picocli), hexagonal layout; Gradle or Maven.',
+    description: 'Spring Boot 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'spring-rest-kotlin': {
     id: 'spring-rest-kotlin',
-    description: 'Spring Boot 4 REST service (Kotlin, JVM 21), hexagonal layout; Gradle or Maven.',
+    description: 'Spring Boot 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
@@ -182,14 +182,14 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'micronaut-cli': {
     id: 'micronaut-cli',
-    description: 'Micronaut 4 CLI (Java 21, picocli), hexagonal layout; Gradle or Maven.',
+    description: 'Micronaut 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'micronaut-rest': {
     id: 'micronaut-rest',
-    description: 'Micronaut 4 REST service (Java 21), hexagonal layout; Gradle or Maven.',
+    description: 'Micronaut 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
@@ -197,14 +197,14 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   },
   'micronaut-cli-kotlin': {
     id: 'micronaut-cli-kotlin',
-    description: 'Micronaut 4 CLI (Kotlin, JVM 21, picocli), hexagonal layout; Gradle or Maven.',
+    description: 'Micronaut 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'micronaut-rest-kotlin': {
     id: 'micronaut-rest-kotlin',
-    description: 'Micronaut 4 REST service (Kotlin, JVM 21), hexagonal layout; Gradle or Maven.',
+    description: 'Micronaut 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: [
       'lang.kotlin',
       'runtime.jvm',
