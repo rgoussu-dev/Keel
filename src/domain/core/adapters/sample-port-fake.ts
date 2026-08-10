@@ -19,6 +19,7 @@
  * dimension under `lang.kotlin`.
  */
 
+import { jvmBuildSystem } from './jvm-build-system.js';
 import { packageToPath } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
@@ -31,6 +32,7 @@ import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
 export const SAMPLE_PORT_FAKE_ID = 'walking-skeleton/sample-port-fake';
 
 const TEMPLATE_ID = 'composition/walking-skeleton/sample-port-fake/templates';
+const BUILD_TEMPLATE_ROOT = 'composition/walking-skeleton/sample-port-fake/build';
 
 const FAKE_MODULE_INCLUDE = 'include(":infrastructure:clock:fake")';
 
@@ -58,12 +60,16 @@ export const samplePortFakeAdapter: Adapter = {
         `${SAMPLE_PORT_FAKE_ID}: requires a walking-skeleton bootstrap (one of ${BOOTSTRAP_IDS.join(', ')}) to have run first; basePackage not in manifest`,
       );
     }
-    const files = await ctx.templates.render(TEMPLATE_ID, '', {
+    const vars = {
       basePackage,
       pkgPath: packageToPath(basePackage),
-    });
+    };
+    const [sources, build] = await Promise.all([
+      ctx.templates.render(TEMPLATE_ID, '', vars),
+      ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${jvmBuildSystem(ctx.manifest.tags)}`, '', vars),
+    ]);
     return {
-      files,
+      files: [...sources, ...build],
       patches: [
         {
           target: 'settings.gradle.kts',
