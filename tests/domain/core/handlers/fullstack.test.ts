@@ -157,7 +157,7 @@ describe('fullstack composite install (monorepo)', () => {
     expectOk(await mediator.dispatch(newFullstack({})));
 
     expect(read('compose.yaml')).toContain('build: ./backend');
-    expect(read('backend/Dockerfile')).toContain('FROM gradle:jdk21 AS build');
+    expect(read('backend/Dockerfile')).toContain('FROM gradle:jdk25 AS build');
     expect(read('frontend/Dockerfile')).toContain('FROM node:22-alpine AS build');
     expect(read('frontend/nginx.conf')).toContain('proxy_pass http://backend:8080/');
   });

@@ -247,6 +247,24 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The JVM stacks target Java 25 (latest LTS).** Every JVM bootstrap
+  now pins the JDK through a Gradle toolchain
+  (`JavaLanguageVersion.of(25)`) instead of bare
+  source/targetCompatibility flags, with the
+  `foojay-resolver-convention` settings plugin so a machine without a
+  local JDK 25 auto-provisions one instead of failing the first
+  build. On the Kotlin twins the Kotlin compiler derives its
+  `jvmTarget` from the same toolchain, replacing the explicit
+  `JvmTarget.JVM_21` wiring. The fullstack backend images build on
+  `gradle:jdk25` and run on `eclipse-temurin:25-jre`, the
+  `quarkus-cli-native` workflows set up GraalVM for JDK 25, and the
+  stack descriptions say so. The Maven build trees pin the same
+  version (`maven.compiler.release`, the Kotlin `jvmTarget`, and the
+  Micronaut `jdk.version`/`release.version` properties). The
+  surrounding versions already
+  supported 25 (Gradle 9.4.1, Quarkus 3.34.6, Spring Boot 4.1.0,
+  Micronaut 4.10.17, Kotlin 2.3.21), so this closes the roadmap's
+  "latest LTS" drift.
 - **The JVM bootstraps share their domain templates.** The domain
   trisection is emitted from shared per-language trees
   (`assets/composition/walking-skeleton/jvm-domain/`) rather than

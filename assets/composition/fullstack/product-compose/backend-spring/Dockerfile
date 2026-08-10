@@ -1,9 +1,9 @@
-FROM gradle:jdk21 AS build
+FROM gradle:jdk25 AS build
 WORKDIR /workspace
 COPY . .
 RUN gradle build -x test
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /workspace/application/rest/executable/build/libs/application-rest-executable-0.1.0-SNAPSHOT.jar /app/app.jar
 EXPOSE 8080

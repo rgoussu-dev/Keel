@@ -1,6 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm") version "2.3.21" apply false
     kotlin("plugin.allopen") version "2.3.21" apply false
@@ -18,13 +15,12 @@ allprojects {
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
 
+    // The Kotlin compiler derives its jvmTarget from the Java
+    // toolchain, so this one pin covers both compilers.
     extensions.configure<JavaPluginExtension> {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    tasks.withType<KotlinCompile>().configureEach {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
     }
 
     dependencies {
