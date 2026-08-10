@@ -16,6 +16,7 @@ import {
   newProjectCommand,
 } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { peerRef } from '../../../../src/domain/core/handlers/new-project.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
@@ -68,6 +69,15 @@ const read = (rel: string): string | null => {
   const file = path.join(cwd, rel);
   return fs.pathExistsSync(file) ? fs.readFileSync(file, 'utf8') : null;
 };
+
+describe('peerRef', () => {
+  it('computes sibling refs at any nesting depth', () => {
+    expect(peerRef('backend', 'frontend')).toBe('../frontend');
+    expect(peerRef('apps/backend', 'apps/frontend')).toBe('../frontend');
+    expect(peerRef('backend', 'apps/frontend')).toBe('../apps/frontend');
+    expect(peerRef('apps/api/backend', 'web')).toBe('../../../web');
+  });
+});
 
 describe('fullstack composite install (monorepo)', () => {
   it('scaffolds both services, root glue, and hoists vcs to the root', async () => {
