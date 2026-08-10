@@ -62,9 +62,28 @@ describe('go-cors adapter', () => {
     expect(patch.apply(once)).toBe(once);
   });
 
+  it('still applies when the marker substring appears incidentally', async () => {
+    const patch = await contributePatch();
+    const commented = `// TODO: consider withCORS here\n${BOOTSTRAP_MAIN}`;
+    const patched = patch.apply(commented);
+    expect(patched).toContain('withCORS(resthttp.NewHandler(greeter))');
+    expect(patched).toContain('func withCORS(next http.Handler) http.Handler {');
+  });
+
   it('fails loudly when the assembly point has diverged', async () => {
     const patch = await contributePatch();
     const diverged = BOOTSTRAP_MAIN.replace('http.Serve', 'myServe');
     expect(() => patch.apply(diverged)).toThrow(/could not find the serve call/);
+  });
+
+  it('fails loudly on a partially decorated assembly point', async () => {
+    const patch = await contributePatch();
+    const once = patch.apply(BOOTSTRAP_MAIN);
+
+    const funcGone = once.replace(/\n\/\/ withCORS allows[\s\S]*$/, '\n');
+    expect(() => patch.apply(funcGone)).toThrow(/partially CORS-decorated/);
+
+    const unwrapped = `${BOOTSTRAP_MAIN}\nfunc withCORS(next http.Handler) http.Handler {\n\treturn next\n}\n`;
+    expect(() => patch.apply(unwrapped)).toThrow(/partially CORS-decorated/);
   });
 });
