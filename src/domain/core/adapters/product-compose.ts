@@ -5,8 +5,9 @@
  * containerisation lives next to its unit).
  *
  *   - the backend image is chosen by the service's stack — a Gradle
- *     multi-stage build for `quarkus-rest`, a Go multi-stage build
- *     onto distroless for `go-http`;
+ *     multi-stage build for `quarkus-rest` / `spring-rest` /
+ *     `micronaut-rest`, a Go multi-stage build onto distroless for
+ *     `go-http`;
  *   - the frontend image builds the Vite bundle and serves it from
  *     nginx, whose config proxies `/api` to the backend service —
  *     the same `/api` convention the dev proxy uses, so the bundle's
@@ -26,6 +27,8 @@ const TEMPLATE_ROOT = 'composition/fullstack/product-compose';
 
 const BACKEND_IMAGES: Readonly<Record<string, string>> = {
   'quarkus-rest': 'backend-quarkus',
+  'spring-rest': 'backend-spring',
+  'micronaut-rest': 'backend-micronaut',
   'go-http': 'backend-go',
 };
 

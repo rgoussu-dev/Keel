@@ -278,6 +278,28 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
     ],
   },
+  'fullstack-spring': {
+    id: 'fullstack-spring',
+    description:
+      'Fullstack product: spring-rest backend + web-components frontend, monorepo or polyrepo.',
+    tags: [],
+    verticals: [vcsVertical, fullstackVertical],
+    services: [
+      { path: 'backend', stack: 'spring-rest', extraVerticals: [gatewayVertical] },
+      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
+    ],
+  },
+  'fullstack-micronaut': {
+    id: 'fullstack-micronaut',
+    description:
+      'Fullstack product: micronaut-rest backend + web-components frontend, monorepo or polyrepo.',
+    tags: [],
+    verticals: [vcsVertical, fullstackVertical],
+    services: [
+      { path: 'backend', stack: 'micronaut-rest', extraVerticals: [gatewayVertical] },
+      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
+    ],
+  },
   'fullstack-go': {
     id: 'fullstack-go',
     description:
