@@ -60,7 +60,8 @@ The same two shapes exist for Spring Boot (`spring-cli`,
 `spring-rest`) and Micronaut (`micronaut-cli`, `micronaut-rest`),
 and every JVM stack has a Kotlin twin (`quarkus-rest-kotlin`,
 `spring-cli-kotlin`, `micronaut-rest-kotlin`, …) that emits the
-identical hexagonal layout as idiomatic Kotlin. The domain
+identical hexagonal layout as idiomatic Kotlin — with the same
+Gradle-or-Maven choice. The domain
 trisection is byte-for-byte the same across frameworks per language
 — only the application layer and build wiring change, which is the
 point: the conventions, not the framework, are the product.

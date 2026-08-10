@@ -21,8 +21,8 @@ import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { InstallVerticalResult } from '../../../../src/domain/core/install.js';
 
-const mavenTags = (framework: string, arch: string): string[] => [
-  'lang.java',
+const mavenTags = (framework: string, arch: string, lang = 'lang.java'): string[] => [
+  lang,
   'runtime.jvm',
   'pkg.maven',
   `framework.${framework}`,
@@ -166,5 +166,39 @@ describe('walking-skeleton vertical (Maven, other Java combos)', () => {
     const pom = tree.read(appPom)?.toString() ?? '';
     expect(pom).toContain(marker);
     expect(tree.read('build.gradle.kts')).toBeNull();
+  });
+});
+
+describe('walking-skeleton vertical (Maven, Kotlin combos)', () => {
+  it.each([
+    ['quarkus', 'arch.server-http', 'application/rest/executable/pom.xml', 'kotlin-maven-allopen'],
+    ['quarkus', 'arch.cli', 'application/cli/pom.xml', 'kotlin-maven-allopen'],
+    [
+      'spring',
+      'arch.server-http',
+      'application/rest/executable/pom.xml',
+      '<plugin>spring</plugin>',
+    ],
+    ['spring', 'arch.cli', 'application/cli/pom.xml', '<plugin>spring</plugin>'],
+    ['micronaut', 'arch.server-http', 'application/rest/executable/pom.xml', '<goal>kapt</goal>'],
+    ['micronaut', 'arch.cli', 'application/cli/pom.xml', '<goal>kapt</goal>'],
+  ])('renders a %s %s Kotlin Maven project', async (framework, arch, appPom, marker) => {
+    const { tree, cwd } = await installWith(mavenTags(framework, arch, 'lang.kotlin'));
+    cwds.push(cwd);
+
+    const rootPom = tree.read('pom.xml')?.toString() ?? '';
+    expect(rootPom).toContain('kotlin-maven-plugin');
+    expect(rootPom).toContain('<module>infrastructure/clock/fake</module>');
+
+    const pom = tree.read(appPom)?.toString() ?? '';
+    expect(pom).toContain(marker);
+
+    expect(tree.read('build.gradle.kts')).toBeNull();
+    expect(tree.read('settings.gradle.kts')).toBeNull();
+    expect(tree.read('infrastructure/clock/fake/build.gradle.kts')).toBeNull();
+    expect(tree.read('infrastructure/clock/fake/pom.xml')).not.toBeNull();
+    expect(
+      tree.read('infrastructure/clock/fake/src/main/kotlin/com/example/clock/fake/FakeClock.kt'),
+    ).not.toBeNull();
   });
 });

@@ -44,9 +44,9 @@ commitment.
   and `fullstack-ts` slots it behind the shared gateway seam.
 - **Selectable build systems.** Stacks may offer a build-system
   choice (`--build-system`, or an interactive prompt): Gradle or
-  Maven across the Java JVM stacks, npm or pnpm across the
-  TypeScript stacks — the choice is just a `pkg.*` tag, and
-  everything downstream is ordinary predicate machinery.
+  Maven across all twelve JVM stacks (Java and Kotlin), npm or pnpm
+  across the TypeScript stacks — the choice is just a `pkg.*` tag,
+  and everything downstream is ordinary predicate machinery.
 
 What that wave proved: the per-language dispatch stances of binding
 spec §2 are exercised outside the JVM (Go, Rust, frontend
@@ -117,10 +117,6 @@ so it exercises the patch path of the composition contract.
 
 ## Backlog (unordered)
 
-- **Maven for the Kotlin JVM stacks** — the six Java stacks offer
-  Gradle or Maven; the Kotlin twins stay Gradle-pinned until their
-  `kotlin-maven-plugin` trees (allopen/KSP wiring per framework) are
-  written.
 - **Per-service build systems in composite stacks** — composites
   scaffold each service on its default today; offering the choice
   per service needs the compose Dockerfiles to follow it.

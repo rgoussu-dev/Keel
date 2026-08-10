@@ -24,11 +24,17 @@ import type { DeferredAction, DeferredActionEnv, Adapter } from '../../contract/
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
+import { MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID } from './micronaut-cli-kotlin-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
+import { MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID } from './micronaut-rest-kotlin-bootstrap.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
+import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
+import { QUARKUS_REST_KOTLIN_BOOTSTRAP_ID } from './quarkus-rest-kotlin-bootstrap.js';
 import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
+import { SPRING_CLI_KOTLIN_BOOTSTRAP_ID } from './spring-cli-kotlin-bootstrap.js';
 import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
+import { SPRING_REST_KOTLIN_BOOTSTRAP_ID } from './spring-rest-kotlin-bootstrap.js';
 
 export const MAVEN_WRAPPER_ID = 'walking-skeleton/maven-wrapper';
 
@@ -42,10 +48,16 @@ export const mavenWrapperAdapter: Adapter = {
   after: [
     QUARKUS_CLI_BOOTSTRAP_ID,
     QUARKUS_REST_BOOTSTRAP_ID,
+    QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID,
+    QUARKUS_REST_KOTLIN_BOOTSTRAP_ID,
     SPRING_CLI_BOOTSTRAP_ID,
     SPRING_REST_BOOTSTRAP_ID,
+    SPRING_CLI_KOTLIN_BOOTSTRAP_ID,
+    SPRING_REST_KOTLIN_BOOTSTRAP_ID,
     MICRONAUT_CLI_BOOTSTRAP_ID,
     MICRONAUT_REST_BOOTSTRAP_ID,
+    MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID,
+    MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID,
   ],
   contribute() {
     const action: DeferredAction = {
