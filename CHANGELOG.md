@@ -8,6 +8,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`containerization` vertical** (`keel add containerization`) — a
+  thin Dockerfile (plus `.dockerignore`) beside the deployment unit
+  for every HTTP-shaped stack. No build stage anywhere: the image
+  copies the artifact the host build already produced and documents
+  the build command instead of running it. Per stack: the Quarkus
+  fast-jar layout, Spring boot jar, or Micronaut shadow/shaded jar
+  onto `eclipse-temurin:25-jre` (artifact paths following the
+  Gradle-or-Maven choice), the Go static binary onto distroless
+  static, the Rust release binary onto distroless cc, the `ts-http`
+  sources onto `node:22-alpine` (npm or pnpm install to link the
+  workspace), and the SPA's Vite bundle onto `nginx:alpine` with a
+  history-API fallback config. Every JVM backend poses a sticky
+  `flavor` question with an opt-in **GraalVM native** image,
+  promoting `runtime.graalvm-native` on top of the
+  `deploy.container-image` tag every image adapter adds. Quarkus and
+  Micronaut builds already produce the binary without build-file
+  changes (`-Dquarkus.native.enabled=true`, `nativeCompile` /
+  `-Dpackaging=native-image`); Spring's opt-in patches the GraalVM
+  Native Build Tools wiring in — the `org.graalvm.buildtools.native`
+  Gradle plugin beside the Boot plugin, or a `native` Maven profile
+  mirroring the one `spring-boot-starter-parent` ships (the skeleton
+  imports the BOM instead of that parent) — marker-guarded and
+  idempotent, exercising the composition contract's patch path.
+  CLI-shaped projects hard-fail with the uncovered `image`
+  dimension — a CLI ships through `distribution`, not a serving
+  container.
 - **TypeScript backend stack** (`keel new --stack=ts-http`) — the
   Node realization of the walking skeleton: a TypeScript workspace in
   the binding-spec trisection (`domain/kernel` with the
