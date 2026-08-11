@@ -9,6 +9,7 @@
  */
 
 import { containerizationVertical } from './containerization.js';
+import { devEnvVertical } from './dev-env.js';
 import { distributionVertical } from './distribution.js';
 import { gatewayVertical } from './gateway.js';
 import { observabilityVertical } from './observability.js';
@@ -22,6 +23,7 @@ const ALL: readonly Vertical[] = [
   distributionVertical,
   gatewayVertical,
   containerizationVertical,
+  devEnvVertical,
   observabilityVertical,
 ];
 

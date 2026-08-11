@@ -1,0 +1,7 @@
+# Prometheus — metrics store. Metrics arrive as remote-write pushes
+# from the collector (see --web.enable-remote-write-receiver in
+# compose.yaml), so no scrape config targets the service. Add
+# scrape_configs here only for pull-model exporters you introduce.
+
+global:
+  scrape_interval: 15s

@@ -131,6 +131,55 @@ describe('applyContributions', () => {
     ).rejects.toBeInstanceOf(ContributionConflictError);
   });
 
+  it('seeds a missing patch target instead of erroring (the shared-file upsert)', async () => {
+    const tree = new FsTree(tmp);
+    const a = adapter('a', {
+      patches: [
+        {
+          target: 'shared.yaml',
+          seed: 'services: {}\n',
+          apply: (s) => s.replace('services: {}', 'services:\n  redis: {}'),
+        },
+      ],
+    });
+    await applyContributions({
+      adapters: [a],
+      answers: {},
+      manifest: emptyManifestV2('now', '0.4.0'),
+      tree,
+      logger: new FakeLogger(),
+      cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+    });
+    expect(tree.read('shared.yaml')?.toString()).toBe('services:\n  redis: {}\n');
+  });
+
+  it('a seeded patch still transforms the existing file when the target is present', async () => {
+    const tree = new FsTree(tmp);
+    tree.write('shared.yaml', 'services:\n  postgres: {}\n');
+    const a = adapter('a', {
+      patches: [
+        {
+          target: 'shared.yaml',
+          seed: 'services: {}\n',
+          apply: (s) => `${s}  redis: {}\n`,
+        },
+      ],
+    });
+    await applyContributions({
+      adapters: [a],
+      answers: {},
+      manifest: emptyManifestV2('now', '0.4.0'),
+      tree,
+      logger: new FakeLogger(),
+      cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+    });
+    expect(tree.read('shared.yaml')?.toString()).toBe('services:\n  postgres: {}\n  redis: {}\n');
+  });
+
   it('aggregates tagsAdd across adapters, deduplicated', async () => {
     const tree = new FsTree(tmp);
     const a = adapter('a', { tagsAdd: ['runtime.graalvm-native', 'feature.foo'] });

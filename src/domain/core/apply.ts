@@ -11,7 +11,9 @@
  *      (whether from an earlier adapter or from disk) is a hard
  *      error. To modify existing files, use `patches` instead.
  *   4. Apply `patches` (read–transform–write); a patch whose target
- *      doesn't exist is an error.
+ *      doesn't exist is an error, unless the patch supplies a `seed`
+ *      — then the transform runs against the seed and the result is
+ *      written as a new file (the shared-file upsert).
  *   5. Aggregate `tagsAdd` into a flat list returned to the caller.
  *
  * The applier is pure with respect to the manifest — it does not
@@ -170,7 +172,7 @@ export function applyContribution(adapter: Adapter, contribution: Contribution, 
   }
   for (const p of contribution.patches ?? []) {
     const current = tree.read(p.target);
-    if (current === null) {
+    if (current === null && p.seed === undefined) {
       throw new ContributionConflictError(
         `adapter '${adapter.id}': patch target '${p.target}' does not exist in tree`,
         adapter.id,
@@ -178,7 +180,7 @@ export function applyContribution(adapter: Adapter, contribution: Contribution, 
         'missing-patch-target',
       );
     }
-    const next = p.apply(current.toString('utf8'));
+    const next = p.apply(current === null ? (p.seed as string) : current.toString('utf8'));
     tree.write(p.target, next);
   }
 }

@@ -1,0 +1,20 @@
+# Grafana datasource provisioning — one datasource per signal store,
+# ready on first start. Dashboards are yours to add (Dashboards →
+# New); provision them the same way once they stabilise.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100

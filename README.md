@@ -229,7 +229,7 @@ Build Tools wiring patched into its build files on opt-in).
 | `keel new ... --yes`          | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                                                 |
 | `keel new ... --dry-run`      | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                                                 |
 | `keel new ... --set k=v`      | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                           |
-| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`, `containerization`, `observability`.                                                                                                                                                                                                                      |
+| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`, `containerization`, `dev-env`, `observability`.                                                                                                                                                                                                           |
 | `keel link <path>`            | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                                                                           |
 | `keel add ... --yes`          | Non-interactive.                                                                                                                                                                                                                                                                                                                                                         |
 | `keel add ... --dry-run`      | Print the plan; write nothing.                                                                                                                                                                                                                                                                                                                                           |
@@ -325,6 +325,18 @@ Two more primitives compose services into **products**:
   container story (`compose.yaml` + a Dockerfile beside each
   deployment unit). Orchestrated by composite stacks, not
   user-addable.
+- **`dev-env`** — the local development environment:
+  `dev/compose.yaml`, one Compose file for everything the service
+  needs on a laptop but does not own. The vertical seeds the empty
+  base; supplementing verticals patch their services in (the
+  observability vertical's monitoring stack today; a persistence
+  vertical's database, a cache, a broker tomorrow), and ad-hoc local
+  infra goes in the same file. Dev-only by design — production
+  infrastructure belongs to IaC. No install-order coupling:
+  contributors carry the shared base as a patch seed, so each
+  vertical stands alone and whichever runs first creates the file.
+  Listed on every REST/HTTP stack; brownfield via `keel add dev-env`
+  at any point.
 - **`observability`** — how you know the service is alive, ready,
   and what it is doing. Three dimensions covered per HTTP stack by
   one adapter: **health** (liveness + readiness probes,
@@ -337,7 +349,14 @@ Two more primitives compose services into **products**:
   point for more propagated fields), and **telemetry**
   (OpenTelemetry traces + metrics over OTLP with an example span
   enrichment and an `app.http.requests` counter, configured via the
-  standard `OTEL_*` env vars). Listed on every REST/HTTP stack after
+  standard `OTEL_*` env vars), and **monitoring-stack** (the
+  receiving end as a worked example: supplements the `dev-env`
+  vertical's `dev/compose.yaml` with a monitoring stack listening
+  where the service exports — granular collector + Tempo +
+  Prometheus + Loki + provisioned Grafana by default, the base a
+  production setup grows from, or the all-in-one `grafana/otel-lgtm`
+  dev container by sticky choice).
+  Listed on every REST/HTTP stack after
   `walking-skeleton`; brownfield via `keel add observability`.
   HTTP-services only — `keel add observability` on a CLI project
   hard-fails with uncovered dimensions (no probe surface to cover).

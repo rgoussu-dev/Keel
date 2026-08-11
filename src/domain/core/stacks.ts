@@ -26,6 +26,7 @@
  */
 
 import { fullstackVertical } from './verticals/fullstack.js';
+import { devEnvVertical } from './verticals/dev-env.js';
 import { observabilityVertical } from './verticals/observability.js';
 import { gatewayVertical } from './verticals/gateway.js';
 import { vcsVertical } from './verticals/vcs.js';
@@ -133,7 +134,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Quarkus 3 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'quarkus-cli-kotlin': {
@@ -148,7 +149,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Quarkus 3 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'spring-cli': {
@@ -163,7 +164,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Spring Boot 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'spring-cli-kotlin': {
@@ -178,7 +179,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Spring Boot 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'micronaut-cli': {
@@ -193,7 +194,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Micronaut 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'micronaut-cli-kotlin': {
@@ -214,7 +215,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'go-cli': {
@@ -227,7 +228,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     id: 'go-http',
     description: 'Go HTTP service on stdlib net/http, hexagonal layout, no mediator object.',
     tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'rust-cli': {
@@ -240,7 +241,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     id: 'rust-http',
     description: 'Rust HTTP service on axum + tokio, hexagonal layout, no mediator object.',
     tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'ts-http': {
@@ -249,7 +250,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'TypeScript HTTP service on node:http (Node 22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.',
     tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
-    verticals: [vcsVertical, walkingSkeletonVertical, observabilityVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
   'web-components': {

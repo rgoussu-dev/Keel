@@ -19,12 +19,14 @@ import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.j
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
+import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
 import { observabilityVertical } from '../../../../src/domain/core/verticals/observability.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { QUARKUS_OBSERVABILITY_ID } from '../../../../src/domain/core/adapters/quarkus-observability.js';
 import { SPRING_OBSERVABILITY_ID } from '../../../../src/domain/core/adapters/spring-observability.js';
 import { MICRONAUT_OBSERVABILITY_KOTLIN_ID } from '../../../../src/domain/core/adapters/micronaut-observability-kotlin.js';
+import { MONITORING_COMPOSE_ID } from '../../../../src/domain/core/adapters/monitoring-compose.js';
 import {
   GO_OBSERVABILITY_ID,
   patchMain,
@@ -43,12 +45,14 @@ const read = (tree: FsTree, p: string): string => tree.read(p)?.toString() ?? ''
 
 const installBoth = async (
   tags: string[],
+  answers: Record<string, Record<string, string>> = {},
 ): Promise<{ tree: FsTree; cwd: string; actions: readonly DeferredAction[] }> => {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-obs-'));
   const tree = new FsTree(cwd);
   let manifest: ManifestV2 = {
     ...emptyManifestV2('2026-08-11T00:00:00Z', '0.0.0-test'),
     tags,
+    answers,
   };
   const deps = {
     tree,
@@ -62,6 +66,8 @@ const installBoth = async (
   };
   const skeleton = await installVertical({ vertical: walkingSkeletonVertical, manifest, ...deps });
   manifest = skeleton.manifest;
+  const devEnv = await installVertical({ vertical: devEnvVertical, manifest, ...deps });
+  manifest = devEnv.manifest;
   const observability = await installVertical({
     vertical: observabilityVertical,
     manifest,
@@ -100,14 +106,20 @@ describe('observability resolution (per-stack adapter by predicate)', () => {
       ['lang.typescript', 'runtime.node', 'pkg.npm', 'arch.hexagonal', 'arch.server-http'],
       TS_OBSERVABILITY_ID,
     ],
-  ])('selects exactly one adapter covering all dimensions (%j)', (tags, expected) => {
-    const adapters = resolveVertical(observabilityVertical, tags as string[]);
-    expect(adapters.map((a) => a.id)).toEqual([expected]);
-    const covered = new Set(adapters.flatMap((a) => [...a.covers]));
-    for (const dimension of observabilityVertical.dimensions) {
-      expect(covered.has(dimension), `dimension '${dimension}' uncovered`).toBe(true);
-    }
-  });
+  ])(
+    'selects the stack adapter + the monitoring stack, covering all dimensions (%j)',
+    (tags, expected) => {
+      const adapters = resolveVertical(observabilityVertical, tags as string[]);
+      const ids = adapters.map((a) => a.id);
+      expect(ids).toContain(expected);
+      expect(ids).toContain(MONITORING_COMPOSE_ID);
+      expect(ids).toHaveLength(2);
+      const covered = new Set(adapters.flatMap((a) => [...a.covers]));
+      for (const dimension of observabilityVertical.dimensions) {
+        expect(covered.has(dimension), `dimension '${dimension}' uncovered`).toBe(true);
+      }
+    },
+  );
 
   it('hard-fails on a CLI tag set — a CLI has no probe surface', () => {
     expect(() =>
@@ -163,6 +175,74 @@ describe('observability on the Quarkus REST skeleton (Java, Gradle)', () => {
 
     expect(read(tree, 'README.md')).toContain('### Observability');
     expect(read(tree, 'README.md')).toContain('/q/health/ready');
+
+    // The monitoring stack (granular by default) supplements the
+    // dev-env compose, listening where the service exports.
+    const compose = read(tree, 'dev/compose.yaml');
+    expect(compose).toContain('name: walking-skeleton-dev');
+    expect(compose).not.toContain('services: {}');
+    expect(compose).toContain('otel-collector:');
+    expect(compose).toContain('"4317:4317"');
+    expect(compose).toContain('grafana-data:');
+    for (const f of [
+      'otel-collector.yaml',
+      'prometheus.yml',
+      'tempo.yaml',
+      'grafana-datasources.yaml',
+    ]) {
+      expect(tree.exists(`dev/observability/${f}`), f).toBe(true);
+    }
+    expect(read(tree, 'README.md')).toContain('### Dev environment');
+    expect(read(tree, 'README.md')).toContain('### Monitoring stack');
+  });
+});
+
+describe('the monitoring stack shape question', () => {
+  it('patches the all-in-one lgtm service in on the sticky answer', async () => {
+    const { tree, cwd } = await installBoth(
+      ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
+      { 'observability/monitoring-compose': { stack: 'lgtm' } },
+    );
+    cwds.push(cwd);
+
+    const compose = read(tree, 'dev/compose.yaml');
+    expect(compose).toContain('grafana/otel-lgtm');
+    expect(compose).toContain('"4318:4318"');
+    expect(compose).not.toContain('services: {}');
+    expect(tree.exists('dev/observability/otel-collector.yaml')).toBe(false);
+  });
+
+  it('stands alone without dev-env — the seeded patch creates the base itself', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-obs-nodev-'));
+    cwds.push(cwd);
+    const tree = new FsTree(cwd);
+    const deps = {
+      tree,
+      mode: 'non-interactive' as const,
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-11T12:00:00Z',
+    };
+    const tags = ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'];
+    let manifest: ManifestV2 = {
+      ...emptyManifestV2('2026-08-11T00:00:00Z', '0.0.0-test'),
+      tags,
+    };
+    const skeleton = await installVertical({
+      vertical: walkingSkeletonVertical,
+      manifest,
+      ...deps,
+    });
+    manifest = skeleton.manifest;
+    await installVertical({ vertical: observabilityVertical, manifest, ...deps });
+
+    const compose = read(tree, 'dev/compose.yaml');
+    expect(compose).toContain('name: walking-skeleton-dev');
+    expect(compose).toContain('otel-collector:');
+    expect(compose).not.toContain('services: {}');
   });
 });
 
