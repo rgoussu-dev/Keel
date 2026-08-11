@@ -138,6 +138,46 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(content).toContain('./mvnw package');
   });
 
+  it('opts a Gradle Spring service into the native flavor, patching the build wiring in', async () => {
+    await seed('spring-rest');
+    await addContainerization({ 'containerization/spring-rest-image': { flavor: 'native' } });
+
+    const content = await dockerfile();
+    expect(content).toContain('FROM cgr.dev/chainguard/wolfi-base:latest');
+    expect(content).toContain(
+      'COPY application/rest/executable/build/native/nativeCompile/* /app/application',
+    );
+    expect(content).toContain(':application:rest:executable:nativeCompile');
+
+    const buildFile = await fs.readFile(
+      path.join(cwd, 'application/rest/executable/build.gradle.kts'),
+      'utf8',
+    );
+    expect(buildFile).toContain('id("org.graalvm.buildtools.native") version "1.1.8"');
+    expect(buildFile.indexOf('org.graalvm.buildtools.native')).toBeGreaterThan(
+      buildFile.indexOf('org.springframework.boot'),
+    );
+    expect((await manifest()).tags).toContain('runtime.graalvm-native');
+  });
+
+  it('opts a Maven Spring service into the native flavor via a native profile', async () => {
+    await seed('spring-rest', {}, 'maven');
+    await addContainerization({ 'containerization/spring-rest-image': { flavor: 'native' } });
+
+    const content = await dockerfile();
+    expect(content).toContain(
+      'COPY application/rest/executable/target/application-rest-executable /app/application',
+    );
+    expect(content).toContain('./mvnw package -Pnative');
+
+    const pom = await fs.readFile(path.join(cwd, 'application/rest/executable/pom.xml'), 'utf8');
+    expect(pom).toContain('<id>native</id>');
+    expect(pom).toContain('<artifactId>native-maven-plugin</artifactId>');
+    expect(pom).toContain('<goal>process-aot</goal>');
+    expect(pom.trimEnd().endsWith('</project>')).toBe(true);
+    expect((await manifest()).tags).toContain('runtime.graalvm-native');
+  });
+
   it('ships the Micronaut shadow jar under Gradle', async () => {
     await seed('micronaut-rest');
     await addContainerization();

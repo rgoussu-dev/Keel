@@ -1,9 +1,22 @@
+<% if (flavor === 'native') { -%>
+# Thin native image — no build stage. Copies the GraalVM binary the
+# host build produced (needs a GraalVM JDK on a Linux host — the
+# binary is platform-native); build it first:
+#
+#   <%= buildCommand %>
+FROM cgr.dev/chainguard/wolfi-base:latest
+WORKDIR /app
+COPY <%= artifactPath %> /app/application
+EXPOSE 8080
+ENTRYPOINT ["/app/application"]
+<% } else { -%>
 # Thin JVM image — no build stage. Copies the boot jar the host
 # build produced; build it first:
 #
 #   <%= buildCommand %>
 FROM eclipse-temurin:25-jre
 WORKDIR /app
-COPY <%= jarPath %> /app/app.jar
+COPY <%= artifactPath %> /app/app.jar
 EXPOSE 8080
 CMD ["java", "-jar", "app.jar"]
+<% } -%>

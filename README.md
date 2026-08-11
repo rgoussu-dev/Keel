@@ -214,8 +214,8 @@ cross-compile the CLI to native binaries via GraalVM and publish them
 to a GitHub Release on tag push. The `containerization` vertical adds
 a thin Dockerfile beside the deployment unit — no build stage, the
 image copies the artifact the host build produced — with an opt-in
-GraalVM native flavor where the scaffolded build already supports it
-(Quarkus, Micronaut).
+GraalVM native flavor on every JVM backend (Spring gets the Native
+Build Tools wiring patched into its build files on opt-in).
 
 ---
 
@@ -341,11 +341,13 @@ distribution` on a `quarkus-rest` project hard-fails with
   / Spring boot jar / Micronaut shadow jar onto a JRE base (artifact
   paths following the Gradle-or-Maven choice), Go and Rust binaries
   onto distroless bases, the `ts-http` sources onto `node:22-alpine`,
-  the SPA bundle onto nginx with a history-API fallback. Quarkus and
-  Micronaut offer a sticky JVM-vs-native flavor question — their
-  scaffolded builds already produce a GraalVM binary without
-  build-file changes — promoting `runtime.graalvm-native` on top of
-  the `deploy.container-image` tag every image adapter adds.
+  the SPA bundle onto nginx with a history-API fallback. Every JVM
+  backend offers a sticky JVM-vs-native flavor question, promoting
+  `runtime.graalvm-native` on top of the `deploy.container-image` tag
+  every image adapter adds: Quarkus and Micronaut builds already
+  produce the GraalVM binary without build-file changes, and Spring
+  gets the Native Build Tools wiring patched in (the Gradle plugin,
+  or a `native` Maven profile mirroring the starter parent's).
   CLI-shaped projects hard-fail with the uncovered `image` dimension
   (a CLI ships through `distribution`).
 

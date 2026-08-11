@@ -43,9 +43,11 @@ export function jvmBuildSystem(manifest: ManifestV2, requesterId: string): JvmBu
 }
 
 /**
- * The JVM-vs-native flavor question, shared by the image adapters of
- * frameworks whose scaffolded build can already produce a GraalVM
- * native binary without build-file changes (Quarkus, Micronaut).
+ * The JVM-vs-native flavor question, shared by the JVM image
+ * adapters that offer a native image — because the scaffolded build
+ * already produces one without build-file changes (Quarkus,
+ * Micronaut), or because the adapter patches the wiring in alongside
+ * the Dockerfile (Spring).
  */
 export const FLAVOR_QUESTION: Question = {
   id: 'flavor',

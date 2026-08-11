@@ -19,14 +19,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   static, the Rust release binary onto distroless cc, the `ts-http`
   sources onto `node:22-alpine` (npm or pnpm install to link the
   workspace), and the SPA's Vite bundle onto `nginx:alpine` with a
-  history-API fallback config. Quarkus and Micronaut pose a sticky
-  `flavor` question with an opt-in **GraalVM native** image — their
-  scaffolded builds already produce the binary without build-file
+  history-API fallback config. Every JVM backend poses a sticky
+  `flavor` question with an opt-in **GraalVM native** image,
+  promoting `runtime.graalvm-native` on top of the
+  `deploy.container-image` tag every image adapter adds. Quarkus and
+  Micronaut builds already produce the binary without build-file
   changes (`-Dquarkus.native.enabled=true`, `nativeCompile` /
-  `-Dpackaging=native-image`) — promoting `runtime.graalvm-native`;
-  every image adapter promotes `deploy.container-image`. Spring stays
-  JVM-only until the skeleton carries GraalVM Native Build Tools
-  wiring. CLI-shaped projects hard-fail with the uncovered `image`
+  `-Dpackaging=native-image`); Spring's opt-in patches the GraalVM
+  Native Build Tools wiring in — the `org.graalvm.buildtools.native`
+  Gradle plugin beside the Boot plugin, or a `native` Maven profile
+  mirroring the one `spring-boot-starter-parent` ships (the skeleton
+  imports the BOM instead of that parent) — marker-guarded and
+  idempotent, exercising the composition contract's patch path.
+  CLI-shaped projects hard-fail with the uncovered `image`
   dimension — a CLI ships through `distribution`, not a serving
   container.
 - **TypeScript backend stack** (`keel new --stack=ts-http`) — the

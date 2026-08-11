@@ -50,10 +50,11 @@ commitment.
 - **The `containerization` vertical.** `keel add containerization`
   puts a thin Dockerfile beside the deployment unit of every
   HTTP-shaped stack — no build stage, the image copies the artifact
-  the host build produced — with an opt-in GraalVM native flavor for
-  Quarkus and Micronaut. This is the local container story; E below
-  (CI-built images pushed to a registry) remains open and can reuse
-  these Dockerfiles.
+  the host build produced — with an opt-in GraalVM native flavor on
+  every JVM backend (Spring's opt-in patches the Native Build Tools
+  wiring into its build files). This is the local container story; E
+  below (CI-built images pushed to a registry) remains open and can
+  reuse these Dockerfiles.
 
 What that wave proved: the per-language dispatch stances of binding
 spec §2 are exercised outside the JVM (Go, Rust, frontend
