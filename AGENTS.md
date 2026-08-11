@@ -221,8 +221,17 @@ would ship as separate packages implementing the same port.
 
 ## 8. Documentation policy
 
-- **README.md**: quickstart for consumers (`npx @rgoussu.dev/keel …`),
-  development section for contributors, release process for maintainers.
+- **README.md**: the engaging front door — quickstart, stack matrix,
+  per-family "How to" sections, verticals table. Keep it scannable;
+  depth belongs in `docs/`.
+- **docs/**: the comprehensive documentation — `docs/stacks/` (one
+  page per stack family: prerequisites, questions, generated tree),
+  `docs/verticals/` (one page per vertical + compatibility matrix),
+  `docs/cli.md`, `docs/composition.md`, `docs/development.md`,
+  `docs/release.md`, `docs/roadmap.md`. New stacks, verticals, or
+  CLI flags must update the matching page(s) and the README matrix
+  in the same change. Contribution workflow (forks) lives in
+  `CONTRIBUTING.md`.
 - **CHANGELOG.md**: [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
   Every user-visible change goes under `[Unreleased]` with the appropriate
   category (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`,
