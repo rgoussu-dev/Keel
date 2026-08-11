@@ -196,11 +196,24 @@ describe('keel.add-vertical (keel add containerization)', () => {
     await addContainerization({ 'containerization/spring-rest-image': { flavor: 'native' } });
 
     const pom = await fs.readFile(pomPath, 'utf8');
-    expect(pom.match(/<profiles>/g)).toHaveLength(1);
+    expect(pom.match(/<profiles>/g) ?? []).toHaveLength(1);
     expect(pom).toContain('<id>existing</id>');
     expect(pom).toContain('<id>native</id>');
     expect(pom).toContain('<artifactId>native-maven-plugin</artifactId>');
     expect(pom.trimEnd().endsWith('</project>')).toBe(true);
+  });
+
+  it('preserves CRLF line endings when patching a CRLF pom', async () => {
+    await seed('spring-rest', {}, 'maven');
+    const pomPath = path.join(cwd, 'application/rest/executable/pom.xml');
+    const original = await fs.readFile(pomPath, 'utf8');
+    await fs.writeFile(pomPath, original.replace(/\n/g, '\r\n'));
+    await addContainerization({ 'containerization/spring-rest-image': { flavor: 'native' } });
+
+    const pom = await fs.readFile(pomPath, 'utf8');
+    expect(pom).toContain('<artifactId>native-maven-plugin</artifactId>');
+    // Every newline still carries its carriage return — no mixed EOLs.
+    expect(pom.match(/(?<!\r)\n/g) ?? []).toHaveLength(0);
   });
 
   it('ships the Micronaut shadow jar under Gradle', async () => {
