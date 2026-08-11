@@ -94,7 +94,9 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(content).toContain('COPY application/rest/executable/build/quarkus-app/ /app/');
     expect(content).toContain('./gradlew build');
     expect(content).not.toContain('AS build');
-    expect(await fs.pathExists(path.join(cwd, '.dockerignore'))).toBe(true);
+    // The whole context reaches the builder regardless of what the
+    // Dockerfile copies, so secrets stay out of it.
+    expect(await fs.readFile(path.join(cwd, '.dockerignore'), 'utf8')).toContain('.env');
 
     const stored = await manifest();
     expect(stored.verticals.map((v) => v.id)).toContain('containerization');
@@ -176,6 +178,27 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(pom).toContain('<goal>process-aot</goal>');
     expect(pom.trimEnd().endsWith('</project>')).toBe(true);
     expect((await manifest()).tags).toContain('runtime.graalvm-native');
+  });
+
+  it('merges the native profile into an existing <profiles> block instead of doubling it', async () => {
+    await seed('spring-rest', {}, 'maven');
+    const pomPath = path.join(cwd, 'application/rest/executable/pom.xml');
+    const original = await fs.readFile(pomPath, 'utf8');
+    await fs.writeFile(
+      pomPath,
+      original.replace(
+        /<\/project>\s*$/,
+        '  <profiles>\n    <profile>\n      <id>existing</id>\n    </profile>\n  </profiles>\n</project>\n',
+      ),
+    );
+    await addContainerization({ 'containerization/spring-rest-image': { flavor: 'native' } });
+
+    const pom = await fs.readFile(pomPath, 'utf8');
+    expect(pom.match(/<profiles>/g)).toHaveLength(1);
+    expect(pom).toContain('<id>existing</id>');
+    expect(pom).toContain('<id>native</id>');
+    expect(pom).toContain('<artifactId>native-maven-plugin</artifactId>');
+    expect(pom.trimEnd().endsWith('</project>')).toBe(true);
   });
 
   it('ships the Micronaut shadow jar under Gradle', async () => {
