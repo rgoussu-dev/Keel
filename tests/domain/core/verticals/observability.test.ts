@@ -212,6 +212,41 @@ describe('the monitoring stack shape question', () => {
     expect(tree.exists('dev/observability/otel-collector.yaml')).toBe(false);
   });
 
+  it('refuses to mix monitoring shapes when the sticky answer changes', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-obs-mixed-'));
+    cwds.push(cwd);
+    const tree = new FsTree(cwd);
+    const deps = {
+      tree,
+      mode: 'non-interactive' as const,
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-11T12:00:00Z',
+    };
+    const tags = ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'];
+    let manifest: ManifestV2 = {
+      ...emptyManifestV2('2026-08-11T00:00:00Z', '0.0.0-test'),
+      tags,
+    };
+    const skeleton = await installVertical({
+      vertical: walkingSkeletonVertical,
+      manifest,
+      ...deps,
+    });
+    manifest = skeleton.manifest;
+    tree.write(
+      'dev/compose.yaml',
+      'name: demo-dev\n\nservices:\n  lgtm:\n    image: grafana/otel-lgtm:0.30.1\n',
+    );
+    // Granular (the default) against a compose already carrying lgtm.
+    await expect(
+      installVertical({ vertical: observabilityVertical, manifest, ...deps }),
+    ).rejects.toThrow(/already carries the all-in-one lgtm monitoring stack/);
+  });
+
   it('stands alone without dev-env — the seeded patch creates the base itself', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-obs-nodev-'));
     cwds.push(cwd);
