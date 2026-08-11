@@ -58,9 +58,12 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   container.
 - **`observability` vertical** — production observability for every
   HTTP-service stack, greenfield (listed after `walking-skeleton` on
-  the nine REST/HTTP presets) and brownfield (`keel add
-observability`). Three dimensions, covered per stack by one
-  adapter selected on `framework.*`/`lang.*` + `arch.server-http`:
+  the nine REST/HTTP presets) and brownfield
+  (`keel add observability`). Four dimensions — the first three
+  covered per stack by one adapter selected on
+  `framework.*`/`lang.*` + `arch.server-http`, the fourth
+  (`monitoring-stack`, described below) by a language-agnostic
+  sibling adapter:
   **health** — liveness ("restart me", dependency-free by design)
   and readiness ("route traffic to me") probe endpoints,
   framework-native where the framework has them (SmallRye Health

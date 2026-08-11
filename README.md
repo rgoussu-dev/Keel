@@ -338,8 +338,10 @@ Two more primitives compose services into **products**:
   Listed on every REST/HTTP stack; brownfield via `keel add dev-env`
   at any point.
 - **`observability`** — how you know the service is alive, ready,
-  and what it is doing. Three dimensions covered per HTTP stack by
-  one adapter: **health** (liveness + readiness probes,
+  and what it is doing. Four dimensions: the first three covered per
+  HTTP stack by one predicate-selected adapter, the fourth by the
+  language-agnostic monitoring-compose adapter resolving alongside
+  it: **health** (liveness + readiness probes,
   framework-native on the JVM — SmallRye Health, Actuator, Micronaut
   Management — hand-rolled `/health/live` + `/health/ready` on
   Go/Rust/TS, plus a template readiness check), **request-context**
