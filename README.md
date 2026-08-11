@@ -198,6 +198,7 @@ project:
 
 ```sh
 keel add distribution
+keel add containerization
 ```
 
 Or wire two existing keel projects together after the fact:
@@ -210,7 +211,11 @@ cd ../my-backend && keel add gateway          # backend side (CORS)
 
 The `distribution` vertical adds GitHub Actions workflows that
 cross-compile the CLI to native binaries via GraalVM and publish them
-to a GitHub Release on tag push.
+to a GitHub Release on tag push. The `containerization` vertical adds
+a thin Dockerfile beside the deployment unit — no build stage, the
+image copies the artifact the host build produced — with an opt-in
+GraalVM native flavor where the scaffolded build already supports it
+(Quarkus, Micronaut).
 
 ---
 
@@ -224,7 +229,7 @@ to a GitHub Release on tag push.
 | `keel new ... --yes`          | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                                                 |
 | `keel new ... --dry-run`      | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                                                 |
 | `keel new ... --set k=v`      | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                           |
-| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`.                                                                                                                                                                                                                                                           |
+| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`, `containerization`.                                                                                                                                                                                                                                       |
 | `keel link <path>`            | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                                                                           |
 | `keel add ... --yes`          | Non-interactive.                                                                                                                                                                                                                                                                                                                                                         |
 | `keel add ... --dry-run`      | Print the plan; write nothing.                                                                                                                                                                                                                                                                                                                                           |
@@ -328,6 +333,21 @@ Two more primitives compose services into **products**:
 distribution` on a `quarkus-rest` project hard-fails with
   uncovered dimensions until the container-image sibling lands
   ([roadmap](./docs/roadmap.md) item E).
+- **`containerization`** — how the project runs as a container
+  image. A thin Dockerfile (plus `.dockerignore`) beside the
+  deployment unit for every HTTP-shaped stack: no build stage, the
+  image copies the artifact the host build already produced and
+  documents the build command instead of running it. Quarkus fast-jar
+  / Spring boot jar / Micronaut shadow jar onto a JRE base (artifact
+  paths following the Gradle-or-Maven choice), Go and Rust binaries
+  onto distroless bases, the `ts-http` sources onto `node:22-alpine`,
+  the SPA bundle onto nginx with a history-API fallback. Quarkus and
+  Micronaut offer a sticky JVM-vs-native flavor question — their
+  scaffolded builds already produce a GraalVM binary without
+  build-file changes — promoting `runtime.graalvm-native` on top of
+  the `deploy.container-image` tag every image adapter adds.
+  CLI-shaped projects hard-fail with the uncovered `image` dimension
+  (a CLI ships through `distribution`).
 
 ---
 

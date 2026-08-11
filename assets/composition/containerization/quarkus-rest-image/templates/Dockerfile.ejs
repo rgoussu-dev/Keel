@@ -1,0 +1,23 @@
+<% if (flavor === 'native') { -%>
+# Thin native image — no build stage. Copies the GraalVM binary the
+# host build produced; build it first (container-build emits a Linux
+# binary whatever the host OS):
+#
+#   <%= buildCommand %>
+FROM quay.io/quarkus/quarkus-micro-image:2.0
+WORKDIR /work/
+COPY --chown=1001:root application/rest/executable/<%= buildRoot %>/*-runner /work/application
+EXPOSE 8080
+USER 1001
+ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0"]
+<% } else { -%>
+# Thin JVM image — no build stage. Copies the fast-jar layout the
+# host build produced; build it first:
+#
+#   <%= buildCommand %>
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+COPY application/rest/executable/<%= buildRoot %>/quarkus-app/ /app/
+EXPOSE 8080
+CMD ["java", "-jar", "quarkus-run.jar"]
+<% } -%>

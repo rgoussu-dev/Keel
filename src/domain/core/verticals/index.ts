@@ -8,6 +8,7 @@
  * registry are caught at registration time.
  */
 
+import { containerizationVertical } from './containerization.js';
 import { distributionVertical } from './distribution.js';
 import { gatewayVertical } from './gateway.js';
 import { vcsVertical } from './vcs.js';
@@ -19,6 +20,7 @@ const ALL: readonly Vertical[] = [
   walkingSkeletonVertical,
   distributionVertical,
   gatewayVertical,
+  containerizationVertical,
 ];
 
 /** All verticals known to the brownfield registry, keyed by id. */

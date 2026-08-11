@@ -1,0 +1,10 @@
+# Thin image — no build stage. Copies the release binary the host
+# build produced (glibc-dynamic, so build on a glibc Linux host);
+# build it first:
+#
+#   cargo build --release
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY target/release/<%= projectName %>-http /<%= projectName %>-http
+ENV PORT=8080
+EXPOSE 8080
+ENTRYPOINT ["/<%= projectName %>-http"]

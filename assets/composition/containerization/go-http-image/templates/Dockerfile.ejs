@@ -1,0 +1,9 @@
+# Thin image — no build stage. Copies the static binary the host
+# build produced; build it first:
+#
+#   CGO_ENABLED=0 GOOS=linux go build -o bin/<%= projectName %>-http ./cmd/http
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY bin/<%= projectName %>-http /<%= projectName %>-http
+ENV PORT=8080
+EXPOSE 8080
+ENTRYPOINT ["/<%= projectName %>-http"]

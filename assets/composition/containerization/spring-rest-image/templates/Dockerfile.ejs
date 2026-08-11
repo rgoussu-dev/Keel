@@ -1,0 +1,9 @@
+# Thin JVM image — no build stage. Copies the boot jar the host
+# build produced; build it first:
+#
+#   <%= buildCommand %>
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+COPY <%= jarPath %> /app/app.jar
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar"]
