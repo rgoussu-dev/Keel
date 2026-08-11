@@ -27,6 +27,7 @@ import type {
   DeferredActionEnv,
   ManifestV2,
 } from '../../contract/composition.js';
+import { eolAware } from '../util.js';
 
 export const TS_OBSERVABILITY_ID = 'observability/ts-observability';
 
@@ -105,18 +106,18 @@ export const tsObservabilityAdapter: Adapter = {
       patches: [
         {
           target: PACKAGE_TARGET,
-          apply: addOtelDependencies,
+          apply: eolAware(addOtelDependencies),
         },
         {
           target: MAIN_TARGET,
-          apply: patchMainTs,
+          apply: eolAware(patchMainTs),
         },
         {
           target: 'README.md',
-          apply: (existing) => {
+          apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
             return `${existing.trimEnd()}\n${readmeSection()}`;
-          },
+          }),
         },
       ],
       actions: [action],

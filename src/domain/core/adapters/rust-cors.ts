@@ -12,6 +12,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const RUST_CORS_ID = 'gateway/rust-cors';
 
@@ -94,8 +95,12 @@ export const rustCorsAdapter: Adapter = {
         {
           target: MAIN_TARGET,
           apply: (existing) => {
+            // Multi-line anchors are LF-authored; convert them to the
+            // file's own EOL so a CRLF checkout matches instead of
+            // hard-failing, and the splice keeps its endings uniform.
+            const eol = eolOf(existing);
             const wrapped = existing.includes(WRAP_MARKER);
-            const decorated = existing.includes(CORS_FN_SIGNATURE);
+            const decorated = existing.includes(withEol(CORS_FN_SIGNATURE, eol));
             if (wrapped && decorated) return existing;
             if (wrapped || decorated) {
               throw new Error(
@@ -106,13 +111,16 @@ export const rustCorsAdapter: Adapter = {
                 }); reconcile it manually`,
               );
             }
-            if (existing.includes(SERVE_BLOCK)) {
-              return `${existing.replace(SERVE_BLOCK, SERVE_BLOCK_WRAPPED).trimEnd()}\n${CORS_FN}`;
+            const serveBlock = withEol(SERVE_BLOCK, eol);
+            if (existing.includes(serveBlock)) {
+              return `${existing
+                .replace(serveBlock, withEol(SERVE_BLOCK_WRAPPED, eol))
+                .trimEnd()}${withEol(`\n${CORS_FN}`, eol)}`;
             }
             if (existing.includes(OBSERVED_MERGE_LINE)) {
               return `${existing
-                .replace(OBSERVED_MERGE_LINE, OBSERVED_MERGE_LINE_WRAPPED)
-                .trimEnd()}\n${CORS_FN}`;
+                .replace(OBSERVED_MERGE_LINE, withEol(OBSERVED_MERGE_LINE_WRAPPED, eol))
+                .trimEnd()}${withEol(`\n${CORS_FN}`, eol)}`;
             }
             throw new Error(
               `${RUST_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the rust-http bootstrap; layer a CORS decorator onto the router manually`,

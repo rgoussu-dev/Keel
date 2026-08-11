@@ -34,7 +34,7 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
-import { packageToPath } from '../util.js';
+import { eolAware, packageToPath } from '../util.js';
 import type { JvmLanguage } from './jvm-bootstrap.js';
 import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
 
@@ -155,10 +155,10 @@ const MICRONAUT_LOGBACK_PATTERN_MDC =
 
 const appendBlock = (target: string, guard: string, block: string): ContributionPatch => ({
   target,
-  apply: (existing) => {
+  apply: eolAware((existing) => {
     if (existing.includes(guard)) return existing;
     return `${existing.trimEnd()}\n\n${block}`;
-  },
+  }),
 });
 
 const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
@@ -181,7 +181,7 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
     configPatches: () => [
       {
         target: PROPERTIES_TARGET,
-        apply: (existing) => {
+        apply: eolAware((existing) => {
           let next = existing;
           if (!next.includes(QUARKUS_LOG_FORMAT_MDC)) {
             next = next.replace(QUARKUS_LOG_FORMAT_PLAIN, QUARKUS_LOG_FORMAT_MDC);
@@ -190,7 +190,7 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
             next = `${next.trimEnd()}\n\n${QUARKUS_PROPERTIES_BLOCK}`;
           }
           return next;
-        },
+        }),
       },
     ],
   },
@@ -254,10 +254,10 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
       appendBlock(PROPERTIES_TARGET, OBSERVABILITY_PROPERTIES_GUARD, MICRONAUT_PROPERTIES_BLOCK),
       {
         target: LOGBACK_TARGET,
-        apply: (existing) => {
+        apply: eolAware((existing) => {
           if (existing.includes('%X{correlationId}')) return existing;
           return existing.replace(MICRONAUT_LOGBACK_PATTERN_PLAIN, MICRONAUT_LOGBACK_PATTERN_MDC);
-        },
+        }),
       },
     ],
   },
@@ -307,23 +307,23 @@ export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
         jvmBuildSystem(ctx.manifest.tags) === 'maven'
           ? {
               target: MAVEN_TARGET,
-              apply: (existing) => {
+              apply: eolAware((existing) => {
                 if (existing.includes(wiring.guard)) return existing;
                 return existing.replace(
                   wiring.mavenAnchor,
                   `${wiring.mavenAnchor}\n${wiring.mavenDeps}`,
                 );
-              },
+              }),
             }
           : {
               target: GRADLE_TARGET,
-              apply: (existing) => {
+              apply: eolAware((existing) => {
                 if (existing.includes(wiring.guard)) return existing;
                 return existing.replace(
                   wiring.gradleAnchor,
                   `${wiring.gradleAnchor}\n${wiring.gradleDeps}`,
                 );
-              },
+              }),
             };
       return {
         files,
@@ -332,10 +332,10 @@ export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
           ...wiring.configPatches(),
           {
             target: 'README.md',
-            apply: (existing) => {
+            apply: eolAware((existing) => {
               if (existing.includes(README_MARKER)) return existing;
               return `${existing.trimEnd()}\n${readmeSection(wiring)}`;
-            },
+            }),
           },
         ],
       };

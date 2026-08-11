@@ -23,6 +23,7 @@
  */
 
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 import { FLAVOR_QUESTION, imageFlavor, imageTags, jvmBuildSystem } from './container-image.js';
 
 export const SPRING_REST_IMAGE_ID = 'containerization/spring-rest-image';
@@ -41,12 +42,6 @@ const GRADLE_BUILD_FILE = `${MODULE}/build.gradle.kts`;
 const SPRING_PLUGIN_MARKER = 'id("org.springframework.boot")';
 
 const NATIVE_GRADLE_PLUGIN = `id("org.graalvm.buildtools.native") version "${NATIVE_BUILD_TOOLS_VERSION}"`;
-
-/**
- * The line ending a patched file uses — brownfield files may be
- * CRLF, and splicing LF-only lines into them would mix endings.
- */
-const eolOf = (text: string): string => (text.includes('\r\n') ? '\r\n' : '\n');
 
 const gradleNativePatch = (): ContributionPatch => ({
   target: GRADLE_BUILD_FILE,
@@ -120,7 +115,7 @@ const mavenNativePatch = (): ContributionPatch => ({
   apply: (existing) => {
     if (existing.includes('native-maven-plugin')) return existing;
     const eol = eolOf(existing);
-    const profile = MAVEN_NATIVE_PROFILE.replace(/\n/g, eol);
+    const profile = withEol(MAVEN_NATIVE_PROFILE, eol);
     // A POM allows at most one <profiles> element, so merge into an
     // existing block when the project already carries profiles and
     // only open a fresh one when it doesn't.
@@ -137,7 +132,7 @@ const mavenNativePatch = (): ContributionPatch => ({
     }
     return existing.replace(
       /<\/project>\s*$/,
-      `  <profiles>\n${MAVEN_NATIVE_PROFILE}\n  </profiles>\n</project>\n`.replace(/\n/g, eol),
+      withEol(`  <profiles>\n${MAVEN_NATIVE_PROFILE}\n  </profiles>\n</project>\n`, eol),
     );
   },
 });

@@ -29,6 +29,7 @@
  */
 
 import type { Adapter, ContributionFile } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
@@ -66,7 +67,8 @@ export const wcGatewayRestAdapter: Adapter = {
           target: API_INDEX_TARGET,
           apply: (existing) => {
             if (existing.includes(GATEWAY_EXPORT)) return existing;
-            return `${existing.trimEnd()}\n${GATEWAY_EXPORT}\n`;
+            const eol = eolOf(existing);
+            return `${existing.trimEnd()}${withEol(`\n${GATEWAY_EXPORT}\n`, eol)}`;
           },
         },
         {
@@ -106,5 +108,5 @@ function addPackageDependency(
   if (deps[name] !== undefined) return existing;
   deps[name] = version;
   pkg[section] = deps;
-  return `${JSON.stringify(pkg, null, 2)}\n`;
+  return withEol(`${JSON.stringify(pkg, null, 2)}\n`, eolOf(existing));
 }

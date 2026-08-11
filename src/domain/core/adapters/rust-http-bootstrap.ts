@@ -19,6 +19,7 @@
 
 import { RUST_BOOTSTRAP_ID, rustBootstrapAnswers } from './rust-bootstrap.js';
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const RUST_HTTP_BOOTSTRAP_ID = 'walking-skeleton/rust-http-bootstrap';
 
@@ -72,18 +73,19 @@ export const rustHttpBootstrapAdapter: Adapter = {
         {
           target: 'Cargo.toml',
           apply: (existing) => {
+            const eol = eolOf(existing);
             let next = existing;
             if (!next.includes('axum = ')) {
               next = next.replace(
                 DEPENDENCIES_MARKER,
-                `${DEPENDENCIES_MARKER}\n${RUNTIME_DEPENDENCIES}`,
+                `${DEPENDENCIES_MARKER}${withEol(`\n${RUNTIME_DEPENDENCIES}`, eol)}`,
               );
             }
             if (!next.includes('[dev-dependencies]')) {
-              next = `${next.trimEnd()}\n${DEV_DEPENDENCIES}`;
+              next = `${next.trimEnd()}${withEol(`\n${DEV_DEPENDENCIES}`, eol)}`;
             }
             if (!next.includes(BIN_MARKER)) {
-              next = `${next.trimEnd()}\n${binSection(projectName)}`;
+              next = `${next.trimEnd()}${withEol(`\n${binSection(projectName)}`, eol)}`;
             }
             return next;
           },
@@ -92,7 +94,7 @@ export const rustHttpBootstrapAdapter: Adapter = {
           target: 'README.md',
           apply: (existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(projectName)}`;
+            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eolOf(existing))}`;
           },
         },
       ],

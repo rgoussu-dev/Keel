@@ -98,6 +98,16 @@ describe('rust-cors adapter', () => {
     expect(patched).toContain('-> axum::response::Response {');
   });
 
+  it('patches a CRLF assembly point without mixing line endings', async () => {
+    const patch = await contributePatch();
+    const crlf = BOOTSTRAP_MAIN.replace(/\n/g, '\r\n');
+    const patched = patch.apply(crlf);
+    expect(patched).toContain('axum::middleware::from_fn(with_cors)');
+    // Every newline still carries its carriage return — no mixed EOLs.
+    expect(patched.match(/(?<!\r)\n/g) ?? []).toHaveLength(0);
+    expect(patch.apply(patched)).toBe(patched);
+  });
+
   it('fails loudly when the assembly point has diverged', async () => {
     const patch = await contributePatch();
     const diverged = BOOTSTRAP_MAIN.replace('axum::serve', 'my_serve');

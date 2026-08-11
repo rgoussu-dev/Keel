@@ -17,6 +17,7 @@
 
 import { RUST_BOOTSTRAP_ID } from './rust-bootstrap.js';
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const RUST_PORT_FAKE_ID = 'walking-skeleton/rust-port-fake';
 
@@ -40,14 +41,16 @@ export const rustPortFakeAdapter: Adapter = {
           target: 'src/domain.rs',
           apply: (existing) => {
             if (existing.includes(DOMAIN_MARKER)) return existing;
-            return `${existing.trimEnd()}\n\n${DOMAIN_MARKER}\npub use clock::Clock;\n`;
+            const eol = eolOf(existing);
+            return `${existing.trimEnd()}${withEol(`\n\n${DOMAIN_MARKER}\npub use clock::Clock;\n`, eol)}`;
           },
         },
         {
           target: 'src/lib.rs',
           apply: (existing) => {
             if (existing.includes(LIB_MARKER)) return existing;
-            return `${existing.trimEnd()}\n\n${LIB_MARKER}\n`;
+            const eol = eolOf(existing);
+            return `${existing.trimEnd()}${withEol(`\n\n${LIB_MARKER}\n`, eol)}`;
           },
         },
       ],

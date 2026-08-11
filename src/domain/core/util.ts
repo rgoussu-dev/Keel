@@ -14,6 +14,41 @@ export function packageToPath(pkg: string): string {
   return pkg.replace(/\./g, '/');
 }
 
+/**
+ * Detects the dominant line ending of a text file being patched.
+ * Brownfield files (and Windows checkouts under `core.autocrlf`) may
+ * be CRLF; splicing LF-only lines into them mixes endings, and
+ * LF-authored multi-line anchors silently fail to match.
+ */
+export function eolOf(text: string): string {
+  return text.includes('\r\n') ? '\r\n' : '\n';
+}
+
+/**
+ * Converts an LF-authored patch fragment (a block to insert, or a
+ * multi-line anchor to match) to the target file's line ending.
+ * Identity for LF, so LF files round-trip byte-identical.
+ */
+export function withEol(fragment: string, eol: string): string {
+  return eol === '\n' ? fragment : fragment.replace(/\n/g, eol);
+}
+
+/**
+ * Wraps a patch-apply function so it always operates on LF text: a
+ * CRLF file is normalized before `fn` runs and restored after, so
+ * LF-authored anchors match and splices stay uniform without every
+ * anchor converting individually. LF files pass through untouched.
+ * The right tool for patchers with many multi-line anchors; simple
+ * appends convert their one fragment with {@link withEol} instead.
+ */
+export function eolAware(fn: (existing: string) => string): (existing: string) => string {
+  return (existing) => {
+    const eol = eolOf(existing);
+    if (eol === '\n') return fn(existing);
+    return fn(existing.replace(/\r\n/g, '\n')).replace(/\n/g, eol);
+  };
+}
+
 const BASE_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
 
