@@ -69,7 +69,7 @@ flowchart TD
   A --> F["files + patches<br/>(the project tree)"]
   A --> D["deferred actions<br/>git init · gradle wrapper · npm install"]
   A --> M["manifest written<br/>tags ∪ tagsAdd · answers · verticals"]
-  M --> N["later: keel add &lt;vertical&gt;<br/>resolves against the recorded tags"]
+  M --> N["later: keel add a vertical —<br/>resolves against the recorded tags"]
 ```
 
 The **manifest** is what makes brownfield growth work: `keel add`
@@ -102,7 +102,7 @@ flowchart LR
   end
   backend -- "projects peer.api.rest" --> frontend
   frontend -- "projects peer.ui.spa" --> backend
-  FG <-. "OpenAPI contract<br/>contract/greet.openapi.yaml" .-> BC
+  BC -. "OpenAPI contract<br/>contract/greet.openapi.yaml" .-> FG
 ```
 
 Brownfield, the projection is recorded with

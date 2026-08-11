@@ -65,10 +65,10 @@ Whatever the language, the shape is the same hexagon:
 
 ```mermaid
 flowchart TD
-  K["domain / kernel<br/>Command · Result · Handler · Mediator<br/><i>depends on nothing</i>"]
+  K["domain / kernel<br/>Command · Result · Handler · Mediator<br/>(depends on nothing)"]
   C["domain / contract<br/>commands · ports · read models"]
-  CO["domain / core<br/>handlers · the engine<br/><i>reachable only via factories</i>"]
-  APP["application<br/>CLI entrypoint or HTTP endpoint<br/><i>the deployment unit</i>"]
+  CO["domain / core<br/>handlers · the engine<br/>(reachable only via factories)"]
+  APP["application<br/>CLI entrypoint or HTTP endpoint<br/>(the deployment unit)"]
   INF["infrastructure<br/>real adapter + canonical fake<br/>per port (e.g. Clock)"]
   C --> K
   CO --> C
