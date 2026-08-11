@@ -6,6 +6,28 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Adapter patches preserve the patched file's line endings.** Every
+  text patch (the gateway CORS decorations, the Cargo/README/module
+  registrations of the walking-skeleton adapters, the Spring native
+  build wiring, the observability and dev-env patchers) spliced
+  LF-only content, mixing endings in brownfield CRLF files — e.g.
+  Windows checkouts under `core.autocrlf` — and multi-line anchors
+  (`rust-cors`'s serve block, the observability assembly-point
+  rewires) failed to match outright on them. Patches now share the
+  `eolOf` / `withEol` / `eolAware` helpers: simple splices convert
+  their fragments and anchors to the file's dominant EOL, and the
+  multi-anchor patchers run on LF-normalized text with the file's
+  EOL restored after. LF files round-trip byte-identical.
+- **`fullstack/product-compose` ships a `.dockerignore` beside every
+  Dockerfile.** Its multi-stage builds `COPY . .`, so the whole
+  context — including `.env` and package-manager rc files — reached
+  the builder (and, for the single-stage `ts-http` image, the final
+  image). Each deployment unit now excludes VCS metadata, secrets,
+  and host build outputs (`build`/`target`/`bin`/`node_modules`/
+  `dist`) from its context.
+
 ### Added
 
 - **`containerization` vertical** (`keel add containerization`) — a
