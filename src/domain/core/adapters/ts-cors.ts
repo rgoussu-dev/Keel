@@ -47,7 +47,12 @@ function withCors(server: Server): Server {
 }
 `;
 
-const WRAP_MARKER = 'withCors(createGreetServer(mediator))';
+// The observability vertical rewires the same assembly point first
+// (greenfield stacks run it before the gateway); in that shape the
+// CORS decoration wraps the instrumented server instead.
+const OBSERVED_CALL = 'const server = instrument(createGreetServer(mediator));';
+const OBSERVED_CALL_WRAPPED = 'const server = withCors(instrument(createGreetServer(mediator)));';
+
 const CORS_FN_SIGNATURE = 'function withCors(server: Server): Server {';
 
 export const tsCorsAdapter: Adapter = {
@@ -61,7 +66,8 @@ export const tsCorsAdapter: Adapter = {
         {
           target: MAIN_TARGET,
           apply: (existing) => {
-            const wrapped = existing.includes(WRAP_MARKER);
+            const wrapped =
+              existing.includes(SERVE_CALL_WRAPPED) || existing.includes(OBSERVED_CALL_WRAPPED);
             const decorated = existing.includes(CORS_FN_SIGNATURE);
             if (wrapped && decorated) return existing;
             if (wrapped || decorated) {
@@ -73,12 +79,17 @@ export const tsCorsAdapter: Adapter = {
                 }); reconcile it manually`,
               );
             }
-            if (!existing.includes(SERVE_CALL)) {
+            const anchor = existing.includes(SERVE_CALL)
+              ? ([SERVE_CALL, SERVE_CALL_WRAPPED] as const)
+              : existing.includes(OBSERVED_CALL)
+                ? ([OBSERVED_CALL, OBSERVED_CALL_WRAPPED] as const)
+                : null;
+            if (anchor === null) {
               throw new Error(
                 `${TS_CORS_ID}: could not find the listen call in ${MAIN_TARGET} — the assembly point has diverged from the ts-http bootstrap; decorate the server with a CORS wrapper manually`,
               );
             }
-            const body = existing.replace(SERVE_CALL, SERVE_CALL_WRAPPED);
+            const body = existing.replace(anchor[0], anchor[1]);
             return `${IMPORT_LINE}\n${body.trimEnd()}\n${CORS_FN}`;
           },
         },

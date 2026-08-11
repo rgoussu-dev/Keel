@@ -74,7 +74,7 @@ describe('fullstack-go composite install (monorepo)', () => {
 
   it('decorates the Go assembly point with CORS instead of the quarkus patch', () => {
     const main = read('backend/cmd/http/main.go') ?? '';
-    expect(main).toContain('withCORS(resthttp.NewHandler(greeter))');
+    expect(main).toContain('withCORS(observability.RequestContext(resthttp.NewHandler(greeter)))');
     expect(main).toContain('Access-Control-Allow-Origin');
     expect(read('backend/internal/app/resthttp/handler.go')).toContain('json:"greeting"');
   });

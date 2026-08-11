@@ -1,0 +1,25 @@
+package <%= basePackage %>.rest.observability
+
+import org.springframework.boot.health.contributor.Health
+import org.springframework.boot.health.contributor.HealthIndicator
+import org.springframework.stereotype.Component
+
+/**
+ * Readiness gate for the service: the `readiness` health group
+ * (`/actuator/health/readiness`) aggregates the application's own
+ * readiness state with this indicator (wired in by
+ * `management.endpoint.health.group.readiness.include`), and the
+ * orchestrator routes traffic only while both pass. Grow this check
+ * (or add siblings) as real dependencies appear — a datasource ping,
+ * a downstream probe, a cache warm flag.
+ *
+ * Keep dependency checks out of liveness
+ * (`/actuator/health/liveness`): liveness failing means "restart
+ * me", and a dead shared dependency would restart-storm the whole
+ * fleet instead of just draining it.
+ */
+@Component("serviceReady")
+class ServiceReadyHealthIndicator : HealthIndicator {
+
+    override fun health(): Health = Health.up().withDetail("service", "ready").build()
+}

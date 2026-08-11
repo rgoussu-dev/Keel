@@ -1,0 +1,75 @@
+package <%= basePackage %>.rest.observability;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Drives the observability seam over real HTTP with the JDK client
+ * (the house wire-test style): both probes answer, readiness
+ * aggregates the service's own indicator, and the correlation id
+ * round-trips (echoed when supplied, minted when absent). Telemetry
+ * export is switched off so the test needs no collector.
+ */
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "management.tracing.enabled=false",
+            "management.otlp.tracing.export.enabled=false",
+            "management.otlp.metrics.export.enabled=false"
+        })
+class ObservabilityTest {
+
+    @Value("${local.server.port}")
+    int port;
+
+    private final HttpClient client = HttpClient.newHttpClient();
+
+    private HttpResponse<String> get(String path, String... headers) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + path))
+                .GET();
+        if (headers.length > 0) {
+            request.headers(headers);
+        }
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
+    void livenessProbeIsUp() throws Exception {
+        HttpResponse<String> response = get("/actuator/health/liveness");
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("UP");
+    }
+
+    @Test
+    void readinessProbeIsUp() throws Exception {
+        HttpResponse<String> response = get("/actuator/health/readiness");
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("UP");
+    }
+
+    @Test
+    void echoesTheSuppliedCorrelationId() throws Exception {
+        HttpResponse<String> response =
+                get("/greet", RequestContext.CORRELATION_ID_HEADER, "corr-123");
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue(RequestContext.CORRELATION_ID_HEADER))
+                .contains("corr-123");
+    }
+
+    @Test
+    void mintsACorrelationIdWhenAbsent() throws Exception {
+        HttpResponse<String> response = get("/greet");
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue(RequestContext.CORRELATION_ID_HEADER))
+                .isNotEmpty();
+    }
+}

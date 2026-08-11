@@ -19,6 +19,14 @@ const SERVE_LINE = 'log.Fatal(http.Serve(listener, resthttp.NewHandler(greeter))
 const SERVE_LINE_WRAPPED =
   'log.Fatal(http.Serve(listener, withCORS(resthttp.NewHandler(greeter))))';
 
+// The observability vertical rewires the same assembly point first
+// (greenfield stacks run it before the gateway), so the handler may
+// already sit behind the request-context middleware — decorate
+// outside it in that shape.
+const OBSERVED_LINE = 'mux.Handle("/", observability.RequestContext(resthttp.NewHandler(greeter)))';
+const OBSERVED_LINE_WRAPPED =
+  'mux.Handle("/", withCORS(observability.RequestContext(resthttp.NewHandler(greeter))))';
+
 const CORS_FUNC = `
 // withCORS allows the sibling SPA's dev origin to call this API
 // directly during development. Dev-only: it decorates the handler
@@ -44,7 +52,6 @@ func withCORS(next http.Handler) http.Handler {
 }
 `;
 
-const WRAP_MARKER = 'withCORS(resthttp.NewHandler(greeter))';
 const CORS_FUNC_SIGNATURE = 'func withCORS(next http.Handler) http.Handler {';
 
 export const goCorsAdapter: Adapter = {
@@ -58,7 +65,8 @@ export const goCorsAdapter: Adapter = {
         {
           target: MAIN_TARGET,
           apply: (existing) => {
-            const wrapped = existing.includes(WRAP_MARKER);
+            const wrapped =
+              existing.includes(SERVE_LINE_WRAPPED) || existing.includes(OBSERVED_LINE_WRAPPED);
             const decorated = existing.includes(CORS_FUNC_SIGNATURE);
             if (wrapped && decorated) return existing;
             if (wrapped || decorated) {
@@ -70,12 +78,15 @@ export const goCorsAdapter: Adapter = {
                 }); reconcile it manually`,
               );
             }
-            if (!existing.includes(SERVE_LINE)) {
-              throw new Error(
-                `${GO_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,
-              );
+            if (existing.includes(SERVE_LINE)) {
+              return `${existing.replace(SERVE_LINE, SERVE_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
             }
-            return `${existing.replace(SERVE_LINE, SERVE_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
+            if (existing.includes(OBSERVED_LINE)) {
+              return `${existing.replace(OBSERVED_LINE, OBSERVED_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
+            }
+            throw new Error(
+              `${GO_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,
+            );
           },
         },
       ],

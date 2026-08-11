@@ -74,7 +74,7 @@ describe('fullstack-rust composite install (monorepo)', () => {
 
   it('decorates the Rust assembly point with CORS instead of the quarkus patch', () => {
     const main = read('backend/src/bin/http/main.rs') ?? '';
-    expect(main).toContain('handler::router(greeter).layer(axum::middleware::from_fn(with_cors))');
+    expect(main).toContain('.layer(axum::middleware::from_fn(with_cors))');
     expect(main).toContain('ACCESS_CONTROL_ALLOW_ORIGIN');
     expect(main).toContain('http://localhost:5173');
     expect(read('backend/src/bin/http/handler.rs')).toContain('pub greeting: String');

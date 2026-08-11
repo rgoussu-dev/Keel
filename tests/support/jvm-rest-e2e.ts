@@ -100,13 +100,13 @@ const runWithRetry = (
 
 const startApp = (
   runJar: string,
-  randomPortFlag: string,
+  jvmFlags: readonly string[],
   announceRe: RegExp,
   cwd: string,
   env: NodeJS.ProcessEnv,
 ): Promise<{ child: ChildProcess; port: number }> =>
   new Promise((resolve, reject) => {
-    const child = spawn('java', [randomPortFlag, '-jar', runJar], { cwd, env });
+    const child = spawn('java', [...jvmFlags, '-jar', runJar], { cwd, env });
     let output = '';
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
@@ -163,6 +163,15 @@ export interface JvmRestE2ESpec {
   readonly randomPortFlag: string;
   /** Log line announcing the bound port; group 1 is the port. */
   readonly announceRe: RegExp;
+  /** The framework's liveness probe path. */
+  readonly healthLivePath: string;
+  /** The framework's readiness probe path. */
+  readonly healthReadyPath: string;
+  /**
+   * Extra JVM flags for the boot — typically the framework's switch
+   * that silences telemetry export (no collector runs in e2e).
+   */
+  readonly extraJvmFlags?: readonly string[];
 }
 
 /**
@@ -220,7 +229,13 @@ export async function runJvmRestE2E(
   const runJar = path.join(cwd, ...spec.runJar);
   expect(await fs.pathExists(runJar), `missing ${runJar}`).toBe(true);
 
-  const { child, port } = await startApp(runJar, spec.randomPortFlag, spec.announceRe, cwd, env);
+  const { child, port } = await startApp(
+    runJar,
+    [spec.randomPortFlag, ...(spec.extraJvmFlags ?? [])],
+    spec.announceRe,
+    cwd,
+    env,
+  );
   try {
     const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
     expect(ok.status).toBe(200);
@@ -233,6 +248,20 @@ export async function runJvmRestE2E(
     expect(problem.title).toBe('Greeting rejected');
     expect(problem.status).toBe(400);
     expect(problem.detail).toBe('name must not be blank');
+
+    // Observability seam: both probes answer, and the correlation id
+    // round-trips (echoed when supplied, minted when absent).
+    const live = await fetch(`http://127.0.0.1:${port}${spec.healthLivePath}`);
+    expect(live.status, spec.healthLivePath).toBe(200);
+    const readyProbe = await fetch(`http://127.0.0.1:${port}${spec.healthReadyPath}`);
+    expect(readyProbe.status, spec.healthReadyPath).toBe(200);
+
+    const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
+      headers: { 'X-Correlation-Id': 'corr-e2e' },
+    });
+    expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+    const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+    expect(minted.headers.get('x-correlation-id')).toBeTruthy();
   } finally {
     await stopApp(child);
   }

@@ -1,0 +1,72 @@
+package <%= basePackage %>.rest.observability
+
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.tracing.Span
+import io.micrometer.tracing.Tracer
+import jakarta.servlet.FilterChain
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import java.util.UUID
+import org.slf4j.MDC
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.stereotype.Component
+import org.springframework.web.filter.OncePerRequestFilter
+
+/**
+ * The one place the request context is established. On the way in:
+ * extract (or mint) the correlation id and the optional tenant id,
+ * store them in the request-scoped [RequestContext], mirror them
+ * into the MDC so every log line of the request carries them (next
+ * to the trace/span ids micrometer-tracing already manages), tag the
+ * active span, count the request, and set the response echo header
+ * before the chain runs so callers can always quote the id back. The
+ * MDC is cleared on the way out.
+ */
+// Explicit bean name: the default ("requestContextFilter") collides
+// with the bean WebMvcAutoConfiguration registers under that name.
+@Component("observabilityRequestContextFilter")
+class RequestContextFilter(
+    private val requestContext: RequestContext,
+    private val meterRegistry: MeterRegistry,
+    private val tracer: ObjectProvider<Tracer>,
+) : OncePerRequestFilter() {
+
+    override fun doFilterInternal(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        chain: FilterChain,
+    ) {
+        val correlationId = header(request, RequestContext.CORRELATION_ID_HEADER)
+            ?: UUID.randomUUID().toString()
+        requestContext.correlationId = correlationId
+        MDC.put(CORRELATION_ID_MDC_KEY, correlationId)
+        response.setHeader(RequestContext.CORRELATION_ID_HEADER, correlationId)
+
+        val span = currentSpan()
+        span?.tag("app.correlation_id", correlationId)
+        header(request, RequestContext.TENANT_ID_HEADER)?.let { tenantId ->
+            requestContext.tenantId = tenantId
+            MDC.put(TENANT_ID_MDC_KEY, tenantId)
+            span?.tag("app.tenant_id", tenantId)
+        }
+
+        meterRegistry.counter("app.http.requests", "http.route", request.requestURI).increment()
+
+        try {
+            chain.doFilter(request, response)
+        } finally {
+            MDC.remove(CORRELATION_ID_MDC_KEY)
+            MDC.remove(TENANT_ID_MDC_KEY)
+        }
+    }
+
+    private fun currentSpan(): Span? = tracer.ifAvailable?.currentSpan()
+
+    private fun header(request: HttpServletRequest, name: String): String? =
+        request.getHeader(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+    companion object {
+        private const val CORRELATION_ID_MDC_KEY = "correlationId"
+        private const val TENANT_ID_MDC_KEY = "tenantId"
+    }
+}

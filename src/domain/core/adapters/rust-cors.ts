@@ -70,7 +70,14 @@ async fn with_cors(
 }
 `;
 
-const WRAP_MARKER = 'handler::router(greeter).layer(axum::middleware::from_fn(with_cors))';
+// The observability vertical rewires the same assembly point first
+// (greenfield stacks run it before the gateway); in that shape the
+// CORS decoration joins the router's layer stack instead.
+const OBSERVED_MERGE_LINE = '        .merge(health::router(ready.clone()));';
+const OBSERVED_MERGE_LINE_WRAPPED = `        .layer(axum::middleware::from_fn(with_cors))
+        .merge(health::router(ready.clone()));`;
+
+const WRAP_MARKER = 'axum::middleware::from_fn(with_cors)';
 const CORS_FN_SIGNATURE = `async fn with_cors(
     request: axum::extract::Request,
     next: axum::middleware::Next,
@@ -99,12 +106,17 @@ export const rustCorsAdapter: Adapter = {
                 }); reconcile it manually`,
               );
             }
-            if (!existing.includes(SERVE_BLOCK)) {
-              throw new Error(
-                `${RUST_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the rust-http bootstrap; layer a CORS decorator onto the router manually`,
-              );
+            if (existing.includes(SERVE_BLOCK)) {
+              return `${existing.replace(SERVE_BLOCK, SERVE_BLOCK_WRAPPED).trimEnd()}\n${CORS_FN}`;
             }
-            return `${existing.replace(SERVE_BLOCK, SERVE_BLOCK_WRAPPED).trimEnd()}\n${CORS_FN}`;
+            if (existing.includes(OBSERVED_MERGE_LINE)) {
+              return `${existing
+                .replace(OBSERVED_MERGE_LINE, OBSERVED_MERGE_LINE_WRAPPED)
+                .trimEnd()}\n${CORS_FN}`;
+            }
+            throw new Error(
+              `${RUST_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the rust-http bootstrap; layer a CORS decorator onto the router manually`,
+            );
           },
         },
       ],

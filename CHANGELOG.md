@@ -34,6 +34,35 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   CLI-shaped projects hard-fail with the uncovered `image`
   dimension — a CLI ships through `distribution`, not a serving
   container.
+- **`observability` vertical** — production observability for every
+  HTTP-service stack, greenfield (listed after `walking-skeleton` on
+  the nine REST/HTTP presets) and brownfield (`keel add
+observability`). Three dimensions, covered per stack by one
+  adapter selected on `framework.*`/`lang.*` + `arch.server-http`:
+  **health** — liveness ("restart me", dependency-free by design)
+  and readiness ("route traffic to me") probe endpoints,
+  framework-native where the framework has them (SmallRye Health
+  `/q/health/*`, Actuator `/actuator/health/*`, Micronaut Management
+  `/health/*`) and hand-rolled `/health/live` + `/health/ready` on
+  the Go/Rust/TS stacks, plus a template readiness check to hang
+  real dependency checks on; **request-context** — one
+  filter/middleware at the HTTP edge extracts-or-mints
+  `X-Correlation-Id` (and the optional `X-Tenant-Id` as the
+  multi-tenant worked example) into a request-scoped context and the
+  log context (SLF4J MDC, `slog` context handler, `tracing` span
+  fields, `AsyncLocalStorage`), echoes it on the response, and is
+  the documented extension point for more propagated fields;
+  **telemetry** — OpenTelemetry across the stack (traces + metrics
+  over OTLP, standard `OTEL_*` env vars) with one example span
+  enrichment and one example `app.http.requests` counter per stack
+  (quarkus-opentelemetry, micrometer-tracing OTel bridge + OTLP
+  registries, micronaut-tracing-opentelemetry + Micrometer OTLP,
+  otel-go, tracing-opentelemetry, NodeSDK). Each install patches the
+  bootstrap's build + config files at guarded anchors and ships a
+  wire-level `ObservabilityTest` in the generated project; the
+  gateway CORS adapters learned the observability-decorated assembly
+  points so both verticals compose in the fullstack presets.
+
 - **TypeScript backend stack** (`keel new --stack=ts-http`) — the
   Node realization of the walking skeleton: a TypeScript workspace in
   the binding-spec trisection (`domain/kernel` with the

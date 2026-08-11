@@ -229,7 +229,7 @@ Build Tools wiring patched into its build files on opt-in).
 | `keel new ... --yes`          | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                                                 |
 | `keel new ... --dry-run`      | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                                                 |
 | `keel new ... --set k=v`      | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                           |
-| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`, `containerization`.                                                                                                                                                                                                                                       |
+| `keel add <vertical>`         | Install a vertical onto an existing keel project. Today: `vcs`, `walking-skeleton`, `distribution`, `gateway`, `containerization`, `observability`.                                                                                                                                                                                                                      |
 | `keel link <path>`            | Record a sibling keel project as a peer (both ways) so peer-conditional adapters resolve here.                                                                                                                                                                                                                                                                           |
 | `keel add ... --yes`          | Non-interactive.                                                                                                                                                                                                                                                                                                                                                         |
 | `keel add ... --dry-run`      | Print the plan; write nothing.                                                                                                                                                                                                                                                                                                                                           |
@@ -325,6 +325,22 @@ Two more primitives compose services into **products**:
   container story (`compose.yaml` + a Dockerfile beside each
   deployment unit). Orchestrated by composite stacks, not
   user-addable.
+- **`observability`** — how you know the service is alive, ready,
+  and what it is doing. Three dimensions covered per HTTP stack by
+  one adapter: **health** (liveness + readiness probes,
+  framework-native on the JVM — SmallRye Health, Actuator, Micronaut
+  Management — hand-rolled `/health/live` + `/health/ready` on
+  Go/Rust/TS, plus a template readiness check), **request-context**
+  (one filter/middleware extracts-or-mints `X-Correlation-Id` — and
+  the optional `X-Tenant-Id` — into a request-scoped context and the
+  MDC/log context, echoes it on the response, and is the extension
+  point for more propagated fields), and **telemetry**
+  (OpenTelemetry traces + metrics over OTLP with an example span
+  enrichment and an `app.http.requests` counter, configured via the
+  standard `OTEL_*` env vars). Listed on every REST/HTTP stack after
+  `walking-skeleton`; brownfield via `keel add observability`.
+  HTTP-services only — `keel add observability` on a CLI project
+  hard-fails with uncovered dimensions (no probe surface to cover).
 - **`distribution`** — how the project ships. Today: native CLI
   binaries via GraalVM, cross-compiled in a GitHub Actions matrix
   (linux-amd64, linux-arm64, darwin-arm64) and uploaded to a GitHub

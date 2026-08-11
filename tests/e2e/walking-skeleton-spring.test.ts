@@ -43,6 +43,13 @@ describe.skipIf(skipJvmRestE2E)('walking-skeleton Spring REST e2e', () => {
           ],
           randomPortFlag: '-Dserver.port=0',
           announceRe: /Tomcat started on port(?:\(s\))?:? (\d+)/,
+          healthLivePath: '/actuator/health/liveness',
+          healthReadyPath: '/actuator/health/readiness',
+          extraJvmFlags: [
+            '-Dmanagement.tracing.enabled=false',
+            '-Dmanagement.otlp.tracing.export.enabled=false',
+            '-Dmanagement.otlp.metrics.export.enabled=false',
+          ],
         },
         cwd,
         gradleUserHome,

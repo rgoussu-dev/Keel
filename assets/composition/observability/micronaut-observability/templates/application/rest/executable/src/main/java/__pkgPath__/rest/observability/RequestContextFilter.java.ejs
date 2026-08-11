@@ -1,0 +1,70 @@
+package <%= basePackage %>.rest.observability;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.MutableHttpResponse;
+import io.micronaut.http.annotation.RequestFilter;
+import io.micronaut.http.annotation.ResponseFilter;
+import io.micronaut.http.annotation.ServerFilter;
+import io.opentelemetry.api.trace.Span;
+import org.slf4j.MDC;
+
+/**
+ * The one place the request context is established. On the way in:
+ * extract (or mint) the correlation id and the optional tenant id,
+ * store them in the request-scoped {@link RequestContext}, mirror
+ * them into the MDC so every log line of the request carries them,
+ * tag the active OpenTelemetry server span, and count the request.
+ * On the way out: echo the correlation id so callers can quote it
+ * back, and clear the MDC.
+ */
+@ServerFilter(ServerFilter.MATCH_ALL_PATTERN)
+public class RequestContextFilter {
+
+    private static final String CORRELATION_ID_MDC_KEY = "correlationId";
+    private static final String TENANT_ID_MDC_KEY = "tenantId";
+
+    private final RequestContext requestContext;
+    private final MeterRegistry meterRegistry;
+
+    public RequestContextFilter(RequestContext requestContext, MeterRegistry meterRegistry) {
+        this.requestContext = requestContext;
+        this.meterRegistry = meterRegistry;
+    }
+
+    @RequestFilter
+    public void incoming(HttpRequest<?> request) {
+        String correlationId = header(request, RequestContext.CORRELATION_ID_HEADER)
+                .orElseGet(() -> UUID.randomUUID().toString());
+        requestContext.setCorrelationId(correlationId);
+        MDC.put(CORRELATION_ID_MDC_KEY, correlationId);
+
+        Span span = Span.current();
+        span.setAttribute("app.correlation_id", correlationId);
+        header(request, RequestContext.TENANT_ID_HEADER).ifPresent(tenantId -> {
+            requestContext.setTenantId(tenantId);
+            MDC.put(TENANT_ID_MDC_KEY, tenantId);
+            span.setAttribute("app.tenant_id", tenantId);
+        });
+
+        meterRegistry
+                .counter("app.http.requests", "http.route", request.getPath())
+                .increment();
+    }
+
+    @ResponseFilter
+    public void outgoing(MutableHttpResponse<?> response) {
+        response.header(RequestContext.CORRELATION_ID_HEADER, requestContext.correlationId());
+        MDC.remove(CORRELATION_ID_MDC_KEY);
+        MDC.remove(TENANT_ID_MDC_KEY);
+    }
+
+    private static Optional<String> header(HttpRequest<?> request, String name) {
+        return Optional.ofNullable(request.getHeaders().get(name))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty());
+    }
+}

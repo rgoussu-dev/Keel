@@ -1,0 +1,31 @@
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+
+/**
+ * OpenTelemetry wiring: OTLP/HTTP exporters for traces and metrics,
+ * started at import time (main.ts imports this module before the
+ * server accepts traffic). Configuration follows the standard env
+ * vars — `OTEL_EXPORTER_OTLP_ENDPOINT` (default
+ * http://localhost:4318), `OTEL_SERVICE_NAME`, and
+ * `OTEL_SDK_DISABLED=true` to switch telemetry off.
+ */
+
+const disabled = (process.env['OTEL_SDK_DISABLED'] ?? '').toLowerCase() === 'true';
+
+if (!disabled) {
+  const sdk = new NodeSDK({
+    resource: resourceFromAttributes({
+      [ATTR_SERVICE_NAME]: process.env['OTEL_SERVICE_NAME'] ?? '<%= projectName %>',
+    }),
+    traceExporter: new OTLPTraceExporter(),
+    metricReaders: [new PeriodicExportingMetricReader({ exporter: new OTLPMetricExporter() })],
+  });
+  sdk.start();
+  process.once('SIGTERM', () => {
+    void sdk.shutdown();
+  });
+}

@@ -1,0 +1,66 @@
+package <%= basePackage %>.rest.observability;
+
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Drives the observability seam over the wire: both probes answer,
+ * and the correlation id round-trips (echoed when supplied, minted
+ * when absent).
+ */
+@MicronautTest
+class ObservabilityTest {
+
+    @Inject
+    @Client("/")
+    HttpClient client;
+
+    @Test
+    void livenessProbeIsUp() {
+        HttpResponse<String> response =
+                client.toBlocking().exchange("/health/liveness", String.class);
+        assertEquals(200, response.getStatus().getCode());
+        assertTrue(response.getBody().orElse("").contains("UP"));
+    }
+
+    @Test
+    void readinessProbeIsUp() {
+        HttpResponse<String> response =
+                client.toBlocking().exchange("/health/readiness", String.class);
+        assertEquals(200, response.getStatus().getCode());
+        assertTrue(response.getBody().orElse("").contains("UP"));
+    }
+
+    @Test
+    void echoesTheSuppliedCorrelationId() {
+        HttpResponse<String> response = client.toBlocking()
+                .exchange(
+                        HttpRequest.GET("/greet")
+                                .header(RequestContext.CORRELATION_ID_HEADER, "corr-123"),
+                        String.class);
+        assertEquals(200, response.getStatus().getCode());
+        assertEquals(
+                "corr-123",
+                response.getHeaders().get(RequestContext.CORRELATION_ID_HEADER));
+    }
+
+    @Test
+    void mintsACorrelationIdWhenAbsent() {
+        HttpResponse<String> response =
+                client.toBlocking().exchange(HttpRequest.GET("/greet"), String.class);
+        assertEquals(200, response.getStatus().getCode());
+        String minted = response.getHeaders().get(RequestContext.CORRELATION_ID_HEADER);
+        assertNotNull(minted);
+        assertFalse(minted.isBlank());
+    }
+}

@@ -1,0 +1,63 @@
+package observability_test
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"<%= modulePath %>/internal/app/observability"
+)
+
+// The middleware is exercised through the port it exposes: an
+// http.Handler decoration. Assertions cover the seam contract —
+// echo, minting, and context propagation into the wrapped handler.
+
+func TestEchoesSuppliedCorrelationId(t *testing.T) {
+	handler := observability.RequestContext(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) },
+	))
+	request := httptest.NewRequest(http.MethodGet, "/greet", nil)
+	request.Header.Set(observability.HeaderCorrelationID, "corr-123")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if got := recorder.Header().Get(observability.HeaderCorrelationID); got != "corr-123" {
+		t.Fatalf("expected echoed correlation id, got %q", got)
+	}
+}
+
+func TestMintsCorrelationIdWhenAbsent(t *testing.T) {
+	handler := observability.RequestContext(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) },
+	))
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/greet", nil))
+
+	if got := recorder.Header().Get(observability.HeaderCorrelationID); got == "" {
+		t.Fatal("expected a minted correlation id on the response")
+	}
+}
+
+func TestPropagatesContextIntoTheHandler(t *testing.T) {
+	var seen observability.RequestInfo
+	handler := observability.RequestContext(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			seen = observability.FromContext(r.Context())
+			w.WriteHeader(http.StatusOK)
+		},
+	))
+	request := httptest.NewRequest(http.MethodGet, "/greet", nil)
+	request.Header.Set(observability.HeaderCorrelationID, "corr-123")
+	request.Header.Set(observability.HeaderTenantID, "tenant-9")
+
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+
+	if seen.CorrelationID != "corr-123" {
+		t.Fatalf("expected correlation id in context, got %q", seen.CorrelationID)
+	}
+	if seen.TenantID != "tenant-9" {
+		t.Fatalf("expected tenant id in context, got %q", seen.TenantID)
+	}
+}

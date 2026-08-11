@@ -13,7 +13,9 @@
  *
  * Hermeticity: a fresh `GOCACHE`/`GOPATH` is shared across the tests
  * in this file (cold-compiling the stdlib once is slow enough). The
- * skeleton is stdlib-only, so no network access is needed.
+ * CLI skeleton is stdlib-only; `go-http` pulls the OpenTelemetry
+ * modules through its observability vertical, so that test needs
+ * network access for `go mod tidy`.
  *
  * Skip rules mirror the Quarkus e2e:
  *   - skipped automatically when `go` is missing from PATH;
@@ -161,7 +163,7 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
       // address from its startup log.
       const server = spawn(path.join(cwd, 'bin', `skel-http${EXE}`), [], {
         cwd,
-        env: { ...process.env, PORT: '0' },
+        env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
       });
       try {
         const port = await new Promise<string>((resolve, reject) => {
@@ -201,6 +203,17 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
         const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=`);
         expect(rejected.status).toBe(400);
         expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+
+        // Observability seam: both probes answer, and the correlation
+        // id round-trips (echoed when supplied, minted when absent).
+        expect((await fetch(`http://127.0.0.1:${port}/health/live`)).status).toBe(200);
+        expect((await fetch(`http://127.0.0.1:${port}/health/ready`)).status).toBe(200);
+        const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
+          headers: { 'X-Correlation-Id': 'corr-e2e' },
+        });
+        expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+        const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+        expect(minted.headers.get('x-correlation-id')).toBeTruthy();
       } finally {
         server.removeAllListeners('exit');
         server.kill();
