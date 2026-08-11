@@ -5,7 +5,7 @@
 > end to end before your first commit.
 
 [![CI](https://github.com/rgoussu-dev/Keel/actions/workflows/ci.yml/badge.svg)](https://github.com/rgoussu-dev/Keel/actions/workflows/ci.yml)
-[![Latest Release](https://img.shields.io/github/v/release/rgoussu-dev/Keel?include_prereleases)](https://github.com/rgoussu-dev/Keel/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/rgoussu-dev/Keel?include_prereleases)](https://github.com/rgoussu-dev/Keel/releases)
 
 ```sh
 mkdir my-service && cd my-service
