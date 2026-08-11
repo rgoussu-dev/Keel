@@ -189,6 +189,11 @@ export const monitoringComposeAdapter: Adapter = {
             seed,
             apply: eolAware((existing) => {
               if (existing.includes('grafana/otel-lgtm')) return existing;
+              if (existing.includes('otel-collector:')) {
+                throw new Error(
+                  `${MONITORING_COMPOSE_ID}: dev/compose.yaml already carries the granular monitoring stack — remove those services (and their volumes) before switching the sticky 'stack' answer to 'lgtm', or keep the granular shape`,
+                );
+              }
               return addComposeService(existing, LGTM_SERVICE);
             }),
           },
@@ -209,6 +214,11 @@ export const monitoringComposeAdapter: Adapter = {
           seed,
           apply: eolAware((existing) => {
             if (existing.includes('otel-collector:')) return existing;
+            if (existing.includes('grafana/otel-lgtm')) {
+              throw new Error(
+                `${MONITORING_COMPOSE_ID}: dev/compose.yaml already carries the all-in-one lgtm monitoring stack — remove that service before switching the sticky 'stack' answer to 'granular', or keep the lgtm shape`,
+              );
+            }
             return addComposeVolumes(
               addComposeService(existing, GRANULAR_SERVICES),
               GRANULAR_VOLUMES,
