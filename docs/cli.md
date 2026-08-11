@@ -8,6 +8,10 @@ All commands operate on the **current working directory**. There is no
 npx @rgoussu.dev/keel <command>   # one-shot
 ```
 
+The examples below use the short `keel <command>` form. Run them as
+`npx @rgoussu.dev/keel <command>`, or install the binary once with
+`npm install -g @rgoussu.dev/keel` to have `keel` on PATH.
+
 ## `keel new`
 
 Bootstrap a greenfield project from a [stack preset](stacks/README.md).

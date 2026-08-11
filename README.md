@@ -161,6 +161,9 @@ keel add dev-env              # dev/compose.yaml for local infra
 cd my-frontend && keel link ../my-backend   # then `keel add gateway` on both sides
 ```
 
+`keel …` is shorthand for the installed binary — without an install,
+prefix with npx: `npx @rgoussu.dev/keel add observability`.
+
 → [Verticals catalog](docs/verticals/README.md) ·
 [CLI reference](docs/cli.md)
 
