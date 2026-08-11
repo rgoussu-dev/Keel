@@ -165,6 +165,10 @@ describe('fullstack composite install (monorepo)', () => {
     expect(read('backend/Dockerfile')).toContain('FROM gradle:jdk25 AS build');
     expect(read('frontend/Dockerfile')).toContain('FROM node:22-alpine AS build');
     expect(read('frontend/nginx.conf')).toContain('proxy_pass http://backend:8080/');
+    // Docker sends the whole context to the builder, so secrets stay
+    // out of it for every deployment unit.
+    expect(read('backend/.dockerignore')).toContain('.env');
+    expect(read('frontend/.dockerignore')).toContain('.env');
   });
 
   it('prefixes report changes and action descriptions with the service path', async () => {
