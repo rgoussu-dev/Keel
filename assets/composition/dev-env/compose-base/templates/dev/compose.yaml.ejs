@@ -1,0 +1,15 @@
+# Local development environment for <%= projectName %> — one Compose
+# file for everything the service needs on a laptop but does not own:
+# monitoring, databases, caches, brokers.
+#
+#   docker compose -f dev/compose.yaml up
+#
+# keel verticals patch their services in below (e.g. the
+# observability vertical's monitoring stack); add your own local
+# infra the same way — a `postgres:` service here beats a
+# hand-managed local install, and this file stays the single place to
+# look for what the dev loop needs. Dev-only by design: production
+# infrastructure is provisioned by your IaC, not this file.
+name: <%= projectName %>-dev
+
+services: {}

@@ -104,6 +104,7 @@ const QUARKUS_PROPERTIES_BLOCK = `# --- observability (installed by keel) ------
 # with the standard env vars (OTEL_EXPORTER_OTLP_ENDPOINT, defaults to
 # http://localhost:4317) — nothing to change here per environment.
 quarkus.otel.metrics.enabled=true
+quarkus.otel.logs.enabled=true
 # No collector runs in dev/test, so keep the SDK quiet there. Remove
 # the %dev override to watch telemetry from \`quarkus dev\` against a
 # local collector.

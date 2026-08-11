@@ -46,3 +46,20 @@ export function validateProjectName(s: string, adapterName: string): string {
   }
   return s;
 }
+
+/**
+ * The first `projectName` any bootstrap recorded in the manifest —
+ * every stack's bootstrap asks it under its own adapter id, so
+ * cross-stack adapters (dev-env, observability's monitoring stack)
+ * scan the answer map instead of hard-coding bootstrap ids. Falls
+ * back to `'service'` when no bootstrap has run.
+ */
+export function anyProjectName(manifest: {
+  readonly answers: Readonly<Record<string, Readonly<Record<string, string>>>>;
+}): string {
+  for (const answers of Object.values(manifest.answers)) {
+    const name = answers?.projectName;
+    if (name) return name;
+  }
+  return 'service';
+}

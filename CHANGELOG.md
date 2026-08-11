@@ -63,6 +63,36 @@ observability`). Three dimensions, covered per stack by one
   gateway CORS adapters learned the observability-decorated assembly
   points so both verticals compose in the fullstack presets.
 
+- **`dev-env` vertical** — the local development environment:
+  `dev/compose.yaml`, one Compose file for everything the service
+  needs on a laptop but does not own. The vertical seeds the empty
+  base (plus a README section); supplementing verticals patch their
+  services in through shared compose helpers, and ad-hoc local infra
+  (a database, redis, a broker) goes in the same file — the single
+  place to look for what the dev loop needs. Dev-only by design:
+  production infrastructure belongs to IaC. Listed on every REST/HTTP
+  stack before `observability`; brownfield via `keel add dev-env`.
+
+- **Monitoring stack in the dev environment** — the observability
+  vertical's fourth dimension (`monitoring-stack`) supplements
+  `dev/compose.yaml` with a monitoring stack listening exactly where
+  the service already exports (OTLP `localhost:4317/4318`, Grafana
+  `:3000`). A sticky `stack` question picks the shape: **granular**
+  (default) — one service per concern as the base a production setup
+  grows from: an OpenTelemetry Collector as the single OTLP
+  entrypoint fanning signals out to Tempo (traces), Prometheus
+  (metrics via remote-write), and Loki (logs), plus Grafana
+  provisioned with all three datasources, config files landed under
+  `dev/observability/` ready to edit — or **lgtm**, the all-in-one
+  `grafana/otel-lgtm` dev container. No install-order coupling with
+  `dev-env`: contributions to `dev/compose.yaml` ride the composition
+  contract's new **seeded patches** (`ContributionPatch.seed` — a
+  patch that runs against a supplied seed when its target does not
+  exist yet), so each vertical stands alone and whichever runs first
+  creates the shared file. Quarkus projects now also enable OTLP log
+  export (`quarkus.otel.logs.enabled=true`) so all three signals
+  flow.
+
 - **TypeScript backend stack** (`keel new --stack=ts-http`) — the
   Node realization of the walking skeleton: a TypeScript workspace in
   the binding-spec trisection (`domain/kernel` with the

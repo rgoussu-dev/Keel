@@ -118,6 +118,7 @@ describe('fullstack composite install (monorepo)', () => {
     expect(backend?.peers).toEqual([{ ref: '../frontend', tags: ['peer.ui.spa'] }]);
     expect(backend?.verticals.map((v) => v.id)).toEqual([
       'walking-skeleton',
+      'dev-env',
       'observability',
       'gateway',
     ]);
@@ -240,6 +241,7 @@ describe('fullstack composite install (polyrepo)', () => {
     expect(backend?.verticals.map((v) => v.id)).toEqual([
       'vcs',
       'walking-skeleton',
+      'dev-env',
       'observability',
       'gateway',
     ]);
@@ -254,6 +256,7 @@ describe('fullstack composite install (polyrepo)', () => {
       basePackage: 'com.acme',
       projectName: 'walking-skeleton',
       npmScope: 'acme',
+      stack: 'granular',
     });
     const { runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred, prompt });

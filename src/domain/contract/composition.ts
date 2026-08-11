@@ -101,9 +101,22 @@ export interface Contribution {
   readonly actions?: readonly DeferredAction[];
 }
 
-/** A patch against an existing file. */
+/**
+ * A patch against an existing file — or, when `seed` is supplied, an
+ * upsert against a shared one.
+ */
 export interface ContributionPatch {
   readonly target: string;
+  /**
+   * Content the patch runs against when `target` does not exist yet;
+   * the result is written as a new file. This turns the patch into
+   * an upsert, letting independent adapters contribute to a shared
+   * file without install-order or cross-vertical dependencies: each
+   * contributor supplies the same seed, whichever runs first creates
+   * the file, and the others compose onto it. Absent, a missing
+   * target stays a hard error.
+   */
+  readonly seed?: string;
   readonly apply: (existing: string) => string;
 }
 

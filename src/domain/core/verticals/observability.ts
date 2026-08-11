@@ -21,6 +21,14 @@
  *   - `telemetry` — OpenTelemetry across the stack: traces + metrics
  *     over OTLP with one example span enrichment and one example
  *     counter, configured through the standard `OTEL_*` env vars.
+ *   - `monitoring-stack` — the receiving end, as a worked example:
+ *     supplements the `dev-env` vertical's `dev/compose.yaml` with a
+ *     monitoring stack (granular collector + Tempo + Prometheus +
+ *     Loki + Grafana, or the all-in-one `grafana/otel-lgtm`)
+ *     listening exactly where the service exports — the base the
+ *     production setup grows from. Order-independent: the patch is
+ *     seeded with the shared base, so without `dev-env` it creates
+ *     the file with just the monitoring services.
  *
  * The vertical applies to HTTP services only (`arch.server-http`);
  * CLIs and SPAs have no probe surface. Greenfield REST stacks list
@@ -31,6 +39,7 @@
 
 import { goObservabilityAdapter } from '../adapters/go-observability.js';
 import { micronautObservabilityAdapter } from '../adapters/micronaut-observability.js';
+import { monitoringComposeAdapter } from '../adapters/monitoring-compose.js';
 import { micronautObservabilityKotlinAdapter } from '../adapters/micronaut-observability-kotlin.js';
 import { quarkusObservabilityAdapter } from '../adapters/quarkus-observability.js';
 import { quarkusObservabilityKotlinAdapter } from '../adapters/quarkus-observability-kotlin.js';
@@ -43,7 +52,7 @@ import type { Vertical } from '../../contract/composition.js';
 export const observabilityVertical: Vertical = {
   id: 'observability',
   description: 'Health probes, correlated structured logging, and OpenTelemetry for HTTP services.',
-  dimensions: ['health', 'request-context', 'telemetry'],
+  dimensions: ['health', 'request-context', 'telemetry', 'monitoring-stack'],
   adapters: [
     quarkusObservabilityAdapter,
     quarkusObservabilityKotlinAdapter,
@@ -54,5 +63,6 @@ export const observabilityVertical: Vertical = {
     goObservabilityAdapter,
     rustObservabilityAdapter,
     tsObservabilityAdapter,
+    monitoringComposeAdapter,
   ],
 };
