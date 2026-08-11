@@ -6,6 +6,27 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Dedicated documentation under `docs/`** — cross-linked pages for
+  every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
+  `web-components`, fullstack) and every vertical
+  (`docs/verticals/`), each with explicit prerequisites (toolchains
+  on PATH, env vars), the questions asked, and the generated tree;
+  plus a full CLI reference (`docs/cli.md`), the composition model
+  with diagrams (`docs/composition.md`), and contributor/maintainer
+  guides (`docs/development.md`, `docs/release.md`).
+- **`CONTRIBUTING.md`** — the fork → branch → PR contribution
+  workflow, commit conventions, and pointers into the docs.
+
+### Changed
+
+- **README reorganized for first-time users** — prose trimmed in
+  favor of a stack matrix, per-family "How to" sections (command +
+  what you get + prerequisites), a composition diagram, and a
+  verticals table; the deep material moved to `docs/` with
+  cross-links.
+
 ### Fixed
 
 - **Adapter patches preserve the patched file's line endings.** Every
