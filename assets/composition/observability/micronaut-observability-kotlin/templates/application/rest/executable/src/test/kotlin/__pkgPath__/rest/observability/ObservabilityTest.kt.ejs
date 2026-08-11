@@ -1,0 +1,58 @@
+package <%= basePackage %>.rest.observability
+
+import io.micronaut.http.HttpRequest
+import io.micronaut.http.client.HttpClient
+import io.micronaut.http.client.annotation.Client
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+import jakarta.inject.Inject
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+/**
+ * Drives the observability seam over the wire: both probes answer,
+ * and the correlation id round-trips (echoed when supplied, minted
+ * when absent).
+ */
+@MicronautTest
+class ObservabilityTest {
+
+    @Inject
+    @field:Client("/")
+    lateinit var client: HttpClient
+
+    @Test
+    fun `liveness probe is up`() {
+        val response = client.toBlocking().exchange("/health/liveness", String::class.java)
+        assertEquals(200, response.status.code)
+        assertTrue(response.body.orElse("").contains("UP"))
+    }
+
+    @Test
+    fun `readiness probe is up`() {
+        val response = client.toBlocking().exchange("/health/readiness", String::class.java)
+        assertEquals(200, response.status.code)
+        assertTrue(response.body.orElse("").contains("UP"))
+    }
+
+    @Test
+    fun `echoes the supplied correlation id`() {
+        val response = client.toBlocking().exchange(
+            HttpRequest.GET<Any>("/greet")
+                .header(RequestContext.CORRELATION_ID_HEADER, "corr-123"),
+            String::class.java,
+        )
+        assertEquals(200, response.status.code)
+        assertEquals("corr-123", response.headers.get(RequestContext.CORRELATION_ID_HEADER))
+    }
+
+    @Test
+    fun `mints a correlation id when absent`() {
+        val response =
+            client.toBlocking().exchange(HttpRequest.GET<Any>("/greet"), String::class.java)
+        assertEquals(200, response.status.code)
+        val minted = response.headers.get(RequestContext.CORRELATION_ID_HEADER)
+        assertFalse(minted.isNullOrBlank())
+    }
+}

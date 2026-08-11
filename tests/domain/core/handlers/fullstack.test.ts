@@ -116,7 +116,11 @@ describe('fullstack composite install (monorepo)', () => {
     const backend = await fsManifestStore.read(projectScopeRoot(path.join(cwd, 'backend')));
     expect(backend?.projects).toEqual(['peer.api.rest']);
     expect(backend?.peers).toEqual([{ ref: '../frontend', tags: ['peer.ui.spa'] }]);
-    expect(backend?.verticals.map((v) => v.id)).toEqual(['walking-skeleton', 'gateway']);
+    expect(backend?.verticals.map((v) => v.id)).toEqual([
+      'walking-skeleton',
+      'observability',
+      'gateway',
+    ]);
 
     const frontend = await fsManifestStore.read(projectScopeRoot(path.join(cwd, 'frontend')));
     expect(frontend?.projects).toEqual(['peer.ui.spa']);
@@ -233,7 +237,12 @@ describe('fullstack composite install (polyrepo)', () => {
     ]);
 
     const backend = await fsManifestStore.read(projectScopeRoot(path.join(cwd, 'backend')));
-    expect(backend?.verticals.map((v) => v.id)).toEqual(['vcs', 'walking-skeleton', 'gateway']);
+    expect(backend?.verticals.map((v) => v.id)).toEqual([
+      'vcs',
+      'walking-skeleton',
+      'observability',
+      'gateway',
+    ]);
     expect(backend?.peers).toEqual([{ ref: '../frontend', tags: ['peer.ui.spa'] }]);
   });
 

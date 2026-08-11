@@ -1,0 +1,49 @@
+package <%= basePackage %>.rest.observability;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
+
+/**
+ * Per-request correlation context, populated by
+ * {@link RequestContextFilter} from the inbound headers before any
+ * controller code runs.
+ *
+ * <p>Extension point: to propagate another field (a user id, a
+ * request source, …), add it here with an accessor pair and parse it
+ * in {@link RequestContextFilter} — the tenant id below is the
+ * worked example. Keep all header parsing in the filter so the rest
+ * of the application only ever reads this bean.
+ */
+// Explicit bean name: the default ("requestContext") is too close to
+// framework-owned names; the filter's default would even collide with
+// Boot's own requestContextFilter bean.
+@Component("observabilityRequestContext")
+@RequestScope
+public class RequestContext {
+
+    /** Header carrying the caller-supplied correlation id. */
+    public static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
+
+    /** Header carrying the tenant id in multi-tenant scenarios. */
+    public static final String TENANT_ID_HEADER = "X-Tenant-Id";
+
+    private String correlationId = "";
+    private String tenantId;
+
+    public String correlationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
+    }
+
+    /** The tenant id, or null outside multi-tenant calls. */
+    public String tenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+}

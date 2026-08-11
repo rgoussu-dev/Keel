@@ -1,0 +1,90 @@
+package <%= basePackage %>.rest.observability
+
+import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.api.common.AttributeKey
+import io.opentelemetry.api.common.Attributes
+import io.opentelemetry.api.metrics.LongCounter
+import io.opentelemetry.api.trace.Span
+import jakarta.enterprise.inject.Instance
+import jakarta.inject.Inject
+import jakarta.ws.rs.container.ContainerRequestContext
+import jakarta.ws.rs.container.ContainerRequestFilter
+import jakarta.ws.rs.container.ContainerResponseContext
+import jakarta.ws.rs.container.ContainerResponseFilter
+import java.util.UUID
+import org.slf4j.MDC
+
+/**
+ * The one place the request context is established. On the way in:
+ * extract (or mint) the correlation id and the optional tenant id,
+ * store them in the request-scoped [RequestContext], mirror them
+ * into the MDC so every log line of the request carries them, tag
+ * the active OpenTelemetry server span, and count the request. On
+ * the way out: echo the correlation id so callers can quote it back,
+ * and clear the MDC.
+ */
+@jakarta.ws.rs.ext.Provider
+class RequestContextFilter : ContainerRequestFilter, ContainerResponseFilter {
+
+    @Inject
+    lateinit var requestContext: RequestContext
+
+    // Resolved lazily via Instance: JAX-RS providers are instantiated
+    // at static init, before Quarkus initialises the synthetic
+    // OpenTelemetry bean — a direct injection fails to start.
+    @Inject
+    lateinit var openTelemetry: Instance<OpenTelemetry>
+
+    @Volatile
+    private var requests: LongCounter? = null
+
+    private fun requests(): LongCounter =
+        requests ?: openTelemetry
+            .get()
+            .getMeter("<%= projectName %>")
+            .counterBuilder("app.http.requests")
+            .setDescription("HTTP requests, by path")
+            .setUnit("{request}")
+            .build()
+            .also { requests = it }
+
+    override fun filter(request: ContainerRequestContext) {
+        val correlationId = header(request, RequestContext.CORRELATION_ID_HEADER)
+            ?: UUID.randomUUID().toString()
+        requestContext.correlationId = correlationId
+        MDC.put(CORRELATION_ID_MDC_KEY, correlationId)
+
+        val span = Span.current()
+        span.setAttribute(CORRELATION_ID_ATTRIBUTE, correlationId)
+        header(request, RequestContext.TENANT_ID_HEADER)?.let { tenantId ->
+            requestContext.tenantId = tenantId
+            MDC.put(TENANT_ID_MDC_KEY, tenantId)
+            span.setAttribute(TENANT_ID_ATTRIBUTE, tenantId)
+        }
+
+        requests().add(1, Attributes.of(ROUTE_ATTRIBUTE, request.uriInfo.path))
+    }
+
+    override fun filter(request: ContainerRequestContext, response: ContainerResponseContext) {
+        response.headers.putSingle(
+            RequestContext.CORRELATION_ID_HEADER,
+            requestContext.correlationId,
+        )
+        MDC.remove(CORRELATION_ID_MDC_KEY)
+        MDC.remove(TENANT_ID_MDC_KEY)
+    }
+
+    private fun header(request: ContainerRequestContext, name: String): String? =
+        request.getHeaderString(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+    companion object {
+        private const val CORRELATION_ID_MDC_KEY = "correlationId"
+        private const val TENANT_ID_MDC_KEY = "tenantId"
+
+        private val CORRELATION_ID_ATTRIBUTE: AttributeKey<String> =
+            AttributeKey.stringKey("app.correlation_id")
+        private val TENANT_ID_ATTRIBUTE: AttributeKey<String> =
+            AttributeKey.stringKey("app.tenant_id")
+        private val ROUTE_ATTRIBUTE: AttributeKey<String> = AttributeKey.stringKey("http.route")
+    }
+}

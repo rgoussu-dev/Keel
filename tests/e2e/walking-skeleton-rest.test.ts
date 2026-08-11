@@ -113,7 +113,11 @@ const startApp = (
   env: NodeJS.ProcessEnv,
 ): Promise<{ child: ChildProcess; port: number }> =>
   new Promise((resolve, reject) => {
-    const child = spawn('java', ['-Dquarkus.http.port=0', '-jar', runJar], { cwd, env });
+    const child = spawn(
+      'java',
+      ['-Dquarkus.http.port=0', '-Dquarkus.otel.sdk.disabled=true', '-jar', runJar],
+      { cwd, env },
+    );
     let output = '';
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
@@ -242,6 +246,20 @@ describe.skipIf(skipE2E)('walking-skeleton REST e2e', () => {
         expect(problem.title).toBe('Greeting rejected');
         expect(problem.status).toBe(400);
         expect(problem.detail).toBe('name must not be blank');
+
+        // Observability seam: both probes answer, and the correlation
+        // id round-trips (echoed when supplied, minted when absent).
+        const live = await fetch(`http://127.0.0.1:${port}/q/health/live`);
+        expect(live.status).toBe(200);
+        const ready = await fetch(`http://127.0.0.1:${port}/q/health/ready`);
+        expect(ready.status).toBe(200);
+
+        const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
+          headers: { 'X-Correlation-Id': 'corr-e2e' },
+        });
+        expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+        const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+        expect(minted.headers.get('x-correlation-id')).toBeTruthy();
       } finally {
         await stopApp(child);
       }

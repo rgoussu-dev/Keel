@@ -38,6 +38,8 @@ const SKIPPED_ACTIONS = [
   'walking-skeleton/rust-bootstrap',
   'walking-skeleton/npm-install',
   'walking-skeleton/pnpm-install',
+  'observability/go-observability',
+  'observability/ts-observability',
 ];
 
 const seed = async (

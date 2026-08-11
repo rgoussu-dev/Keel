@@ -76,7 +76,7 @@ describe('fullstack-ts composite install (monorepo)', () => {
 
   it('decorates the Node assembly point with CORS instead of the quarkus patch', () => {
     const main = read('backend/application/rest/src/main.ts') ?? '';
-    expect(main).toContain('withCors(createGreetServer(mediator))');
+    expect(main).toContain('withCors(instrument(createGreetServer(mediator)))');
     expect(main).toContain('access-control-allow-origin');
     expect(main).toContain("import type { Server } from 'node:http';");
   });

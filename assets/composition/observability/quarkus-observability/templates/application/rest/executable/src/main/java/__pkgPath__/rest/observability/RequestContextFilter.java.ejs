@@ -1,0 +1,99 @@
+package <%= basePackage %>.rest.observability;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.trace.Span;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.ext.Provider;
+import org.slf4j.MDC;
+
+/**
+ * The one place the request context is established. On the way in:
+ * extract (or mint) the correlation id and the optional tenant id,
+ * store them in the request-scoped {@link RequestContext}, mirror
+ * them into the MDC so every log line of the request carries them,
+ * tag the active OpenTelemetry server span, and count the request.
+ * On the way out: echo the correlation id so callers can quote it
+ * back, and clear the MDC.
+ */
+@Provider
+public class RequestContextFilter implements ContainerRequestFilter, ContainerResponseFilter {
+
+    private static final String CORRELATION_ID_MDC_KEY = "correlationId";
+    private static final String TENANT_ID_MDC_KEY = "tenantId";
+
+    private static final AttributeKey<String> CORRELATION_ID_ATTRIBUTE =
+            AttributeKey.stringKey("app.correlation_id");
+    private static final AttributeKey<String> TENANT_ID_ATTRIBUTE =
+            AttributeKey.stringKey("app.tenant_id");
+    private static final AttributeKey<String> ROUTE_ATTRIBUTE =
+            AttributeKey.stringKey("http.route");
+
+    @Inject
+    RequestContext requestContext;
+
+    // Resolved lazily via Instance: JAX-RS providers are instantiated
+    // at static init, before Quarkus initialises the synthetic
+    // OpenTelemetry bean — a direct injection fails to start.
+    @Inject
+    Instance<OpenTelemetry> openTelemetry;
+
+    private volatile LongCounter requests;
+
+    private LongCounter requests() {
+        LongCounter counter = requests;
+        if (counter == null) {
+            counter = openTelemetry
+                    .get()
+                    .getMeter("<%= projectName %>")
+                    .counterBuilder("app.http.requests")
+                    .setDescription("HTTP requests, by path")
+                    .setUnit("{request}")
+                    .build();
+            requests = counter;
+        }
+        return counter;
+    }
+
+    @Override
+    public void filter(ContainerRequestContext request) {
+        String correlationId = header(request, RequestContext.CORRELATION_ID_HEADER)
+                .orElseGet(() -> UUID.randomUUID().toString());
+        requestContext.setCorrelationId(correlationId);
+        MDC.put(CORRELATION_ID_MDC_KEY, correlationId);
+
+        Span span = Span.current();
+        span.setAttribute(CORRELATION_ID_ATTRIBUTE, correlationId);
+        header(request, RequestContext.TENANT_ID_HEADER).ifPresent(tenantId -> {
+            requestContext.setTenantId(tenantId);
+            MDC.put(TENANT_ID_MDC_KEY, tenantId);
+            span.setAttribute(TENANT_ID_ATTRIBUTE, tenantId);
+        });
+
+        requests().add(1, Attributes.of(ROUTE_ATTRIBUTE, request.getUriInfo().getPath()));
+    }
+
+    @Override
+    public void filter(ContainerRequestContext request, ContainerResponseContext response) {
+        response.getHeaders()
+                .putSingle(RequestContext.CORRELATION_ID_HEADER, requestContext.correlationId());
+        MDC.remove(CORRELATION_ID_MDC_KEY);
+        MDC.remove(TENANT_ID_MDC_KEY);
+    }
+
+    private static Optional<String> header(ContainerRequestContext request, String name) {
+        return Optional.ofNullable(request.getHeaderString(name))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty());
+    }
+}

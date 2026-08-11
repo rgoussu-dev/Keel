@@ -1,0 +1,95 @@
+package <%= basePackage %>.rest.observability;
+
+import java.io.IOException;
+import java.util.Optional;
+import java.util.UUID;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+/**
+ * The one place the request context is established. On the way in:
+ * extract (or mint) the correlation id and the optional tenant id,
+ * store them in the request-scoped {@link RequestContext}, mirror
+ * them into the MDC so every log line of the request carries them
+ * (next to the trace/span ids micrometer-tracing already manages),
+ * tag the active span, count the request, and set the response echo
+ * header before the chain runs so callers can always quote the id
+ * back. The MDC is cleared on the way out.
+ */
+// Explicit bean name: the default ("requestContextFilter") collides
+// with the bean WebMvcAutoConfiguration registers under that name.
+@Component("observabilityRequestContextFilter")
+public class RequestContextFilter extends OncePerRequestFilter {
+
+    private static final String CORRELATION_ID_MDC_KEY = "correlationId";
+    private static final String TENANT_ID_MDC_KEY = "tenantId";
+
+    private final RequestContext requestContext;
+    private final MeterRegistry meterRegistry;
+    private final ObjectProvider<Tracer> tracer;
+
+    public RequestContextFilter(
+            RequestContext requestContext,
+            MeterRegistry meterRegistry,
+            ObjectProvider<Tracer> tracer) {
+        this.requestContext = requestContext;
+        this.meterRegistry = meterRegistry;
+        this.tracer = tracer;
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        String correlationId = header(request, RequestContext.CORRELATION_ID_HEADER)
+                .orElseGet(() -> UUID.randomUUID().toString());
+        requestContext.setCorrelationId(correlationId);
+        MDC.put(CORRELATION_ID_MDC_KEY, correlationId);
+        response.setHeader(RequestContext.CORRELATION_ID_HEADER, correlationId);
+
+        Span span = currentSpan();
+        if (span != null) {
+            span.tag("app.correlation_id", correlationId);
+        }
+        Optional<String> tenantId = header(request, RequestContext.TENANT_ID_HEADER);
+        tenantId.ifPresent(tenant -> {
+            requestContext.setTenantId(tenant);
+            MDC.put(TENANT_ID_MDC_KEY, tenant);
+            if (span != null) {
+                span.tag("app.tenant_id", tenant);
+            }
+        });
+
+        meterRegistry
+                .counter("app.http.requests", "http.route", request.getRequestURI())
+                .increment();
+
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            MDC.remove(CORRELATION_ID_MDC_KEY);
+            MDC.remove(TENANT_ID_MDC_KEY);
+        }
+    }
+
+    private Span currentSpan() {
+        Tracer available = tracer.getIfAvailable();
+        return available == null ? null : available.currentSpan();
+    }
+
+    private static Optional<String> header(HttpServletRequest request, String name) {
+        return Optional.ofNullable(request.getHeader(name))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty());
+    }
+}

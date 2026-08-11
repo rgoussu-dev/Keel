@@ -1,0 +1,26 @@
+package <%= basePackage %>.rest.observability
+
+import io.micronaut.core.async.publisher.Publishers
+import io.micronaut.health.HealthStatus
+import io.micronaut.management.health.indicator.HealthIndicator
+import io.micronaut.management.health.indicator.HealthResult
+import jakarta.inject.Singleton
+import org.reactivestreams.Publisher
+
+/**
+ * Readiness gate for the service: `/health/readiness` aggregates
+ * every indicator not marked `@Liveness`, and the orchestrator
+ * routes traffic only while they all pass. Grow this check (or add
+ * siblings) as real dependencies appear — a datasource ping, a
+ * downstream probe, a cache warm flag.
+ *
+ * Keep dependency checks out of liveness (`/health/liveness`):
+ * liveness failing means "restart me", and a dead shared dependency
+ * would restart-storm the whole fleet instead of just draining it.
+ */
+@Singleton
+class ServiceReadyIndicator : HealthIndicator {
+
+    override fun getResult(): Publisher<HealthResult> =
+        Publishers.just(HealthResult.builder("service-ready", HealthStatus.UP).build())
+}
