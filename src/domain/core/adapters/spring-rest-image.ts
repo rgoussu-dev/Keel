@@ -61,9 +61,8 @@ const gradleNativePatch = (): ContributionPatch => ({
 
 const MAVEN_POM = `${MODULE}/pom.xml`;
 
-const MAVEN_NATIVE_PROFILE = `  <!-- The native profile spring-boot-starter-parent would provide;
-       declared here because the reactor imports the BOM instead. -->
-  <profiles>
+const MAVEN_NATIVE_PROFILE = `    <!-- The native profile spring-boot-starter-parent would provide;
+         declared here because the reactor imports the BOM instead. -->
     <profile>
       <id>native</id>
       <build>
@@ -107,20 +106,30 @@ const MAVEN_NATIVE_PROFILE = `  <!-- The native profile spring-boot-starter-pare
           </plugin>
         </plugins>
       </build>
-    </profile>
-  </profiles>
-</project>`;
+    </profile>`;
 
 const mavenNativePatch = (): ContributionPatch => ({
   target: MAVEN_POM,
   apply: (existing) => {
     if (existing.includes('native-maven-plugin')) return existing;
+    // A POM allows at most one <profiles> element, so merge into an
+    // existing block when the project already carries profiles and
+    // only open a fresh one when it doesn't.
+    const lines = existing.split('\n');
+    const profilesEnd = lines.findIndex((l) => /^\s*<\/profiles>/.test(l));
+    if (profilesEnd !== -1) {
+      lines.splice(profilesEnd, 0, MAVEN_NATIVE_PROFILE);
+      return lines.join('\n');
+    }
     if (!existing.includes('</project>')) {
       throw new Error(
         `${SPRING_REST_IMAGE_ID}: cannot find </project> in ${MAVEN_POM} to anchor the native profile`,
       );
     }
-    return existing.replace(/<\/project>\s*$/, `${MAVEN_NATIVE_PROFILE}\n`);
+    return existing.replace(
+      /<\/project>\s*$/,
+      `  <profiles>\n${MAVEN_NATIVE_PROFILE}\n  </profiles>\n</project>\n`,
+    );
   },
 });
 
