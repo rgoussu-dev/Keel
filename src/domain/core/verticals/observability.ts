@@ -2,8 +2,10 @@
  * The `observability` vertical — answers "how do we know this
  * service is alive, ready, and what it is doing?"
  *
- * Three dimensions, each covered per-stack by one adapter selected
- * on `framework.* / lang.* + arch.server-http`:
+ * Four dimensions. The first three are covered per-stack by one
+ * adapter selected on `framework.* / lang.* + arch.server-http`;
+ * the fourth by the language-agnostic `monitoring-compose` adapter
+ * that resolves alongside it:
  *
  *   - `health` — liveness ("restart me") and readiness ("route
  *     traffic to me") probe endpoints, framework-native where the
