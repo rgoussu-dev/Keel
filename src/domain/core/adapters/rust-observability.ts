@@ -21,6 +21,7 @@
 
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
 import type { Adapter } from '../../contract/composition.js';
+import { eolAware } from '../util.js';
 
 export const RUST_OBSERVABILITY_ID = 'observability/rust-observability';
 
@@ -85,24 +86,24 @@ export const rustObservabilityAdapter: Adapter = {
       patches: [
         {
           target: 'Cargo.toml',
-          apply: (existing) => {
+          apply: eolAware((existing) => {
             if (existing.includes('tracing-opentelemetry')) return existing;
             return existing.replace(
               DEPENDENCIES_MARKER,
               `${DEPENDENCIES_MARKER}\n${OBSERVABILITY_DEPENDENCIES}`,
             );
-          },
+          }),
         },
         {
           target: MAIN_TARGET,
-          apply: (existing) => patchMainRs(existing, projectName),
+          apply: eolAware((existing) => patchMainRs(existing, projectName)),
         },
         {
           target: 'README.md',
-          apply: (existing) => {
+          apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
             return `${existing.trimEnd()}\n${readmeSection()}`;
-          },
+          }),
         },
       ],
     };

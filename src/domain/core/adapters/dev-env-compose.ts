@@ -23,7 +23,7 @@
  * shapes and an already-populated file.
  */
 
-import { anyProjectName } from '../util.js';
+import { anyProjectName, eolAware } from '../util.js';
 import type { Adapter, Ctx } from '../../contract/composition.js';
 
 export const DEV_ENV_COMPOSE_ID = 'dev-env/compose-base';
@@ -78,10 +78,10 @@ export const devEnvComposeAdapter: Adapter = {
         },
         {
           target: 'README.md',
-          apply: (existing) => {
+          apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
             return `${existing.trimEnd()}\n${readmeSection()}`;
-          },
+          }),
         },
       ],
     };

@@ -11,6 +11,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const TS_CORS_ID = 'gateway/ts-cors';
 
@@ -89,8 +90,9 @@ export const tsCorsAdapter: Adapter = {
                 `${TS_CORS_ID}: could not find the listen call in ${MAIN_TARGET} — the assembly point has diverged from the ts-http bootstrap; decorate the server with a CORS wrapper manually`,
               );
             }
+            const eol = eolOf(existing);
             const body = existing.replace(anchor[0], anchor[1]);
-            return `${IMPORT_LINE}\n${body.trimEnd()}\n${CORS_FN}`;
+            return `${IMPORT_LINE}${eol}${body.trimEnd()}${withEol(`\n${CORS_FN}`, eol)}`;
           },
         },
       ],

@@ -24,6 +24,7 @@
 
 import { goBootstrapAnswers } from './go-bootstrap.js';
 import type { Adapter, DeferredAction, DeferredActionEnv } from '../../contract/composition.js';
+import { eolAware } from '../util.js';
 
 export const GO_OBSERVABILITY_ID = 'observability/go-observability';
 
@@ -80,14 +81,14 @@ export const goObservabilityAdapter: Adapter = {
       patches: [
         {
           target: MAIN_TARGET,
-          apply: (existing) => patchMain(existing, modulePath, projectName),
+          apply: eolAware((existing) => patchMain(existing, modulePath, projectName)),
         },
         {
           target: 'README.md',
-          apply: (existing) => {
+          apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
             return `${existing.trimEnd()}\n${readmeSection()}`;
-          },
+          }),
         },
       ],
       actions: [action],

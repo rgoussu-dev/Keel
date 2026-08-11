@@ -10,6 +10,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const GO_CORS_ID = 'gateway/go-cors';
 
@@ -78,11 +79,16 @@ export const goCorsAdapter: Adapter = {
                 }); reconcile it manually`,
               );
             }
+            const eol = eolOf(existing);
             if (existing.includes(SERVE_LINE)) {
-              return `${existing.replace(SERVE_LINE, SERVE_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
+              return `${existing
+                .replace(SERVE_LINE, SERVE_LINE_WRAPPED)
+                .trimEnd()}${withEol(`\n${CORS_FUNC}`, eol)}`;
             }
             if (existing.includes(OBSERVED_LINE)) {
-              return `${existing.replace(OBSERVED_LINE, OBSERVED_LINE_WRAPPED).trimEnd()}\n${CORS_FUNC}`;
+              return `${existing
+                .replace(OBSERVED_LINE, OBSERVED_LINE_WRAPPED)
+                .trimEnd()}${withEol(`\n${CORS_FUNC}`, eol)}`;
             }
             throw new Error(
               `${GO_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,

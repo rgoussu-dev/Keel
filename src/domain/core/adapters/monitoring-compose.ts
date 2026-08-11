@@ -39,6 +39,7 @@ import {
   DEV_COMPOSE_TARGET,
 } from './dev-env-compose.js';
 import type { Adapter, Contribution } from '../../contract/composition.js';
+import { eolAware } from '../util.js';
 
 export const MONITORING_COMPOSE_ID = 'observability/monitoring-compose';
 
@@ -186,10 +187,10 @@ export const monitoringComposeAdapter: Adapter = {
           {
             target: DEV_COMPOSE_TARGET,
             seed,
-            apply: (existing) => {
+            apply: eolAware((existing) => {
               if (existing.includes('grafana/otel-lgtm')) return existing;
               return addComposeService(existing, LGTM_SERVICE);
-            },
+            }),
           },
           readmePatch,
         ],
@@ -206,13 +207,13 @@ export const monitoringComposeAdapter: Adapter = {
         {
           target: DEV_COMPOSE_TARGET,
           seed,
-          apply: (existing) => {
+          apply: eolAware((existing) => {
             if (existing.includes('otel-collector:')) return existing;
             return addComposeVolumes(
               addComposeService(existing, GRANULAR_SERVICES),
               GRANULAR_VOLUMES,
             );
-          },
+          }),
         },
         readmePatch,
       ],

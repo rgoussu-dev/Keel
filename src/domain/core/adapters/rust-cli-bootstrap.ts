@@ -17,6 +17,7 @@
 
 import { RUST_BOOTSTRAP_ID, rustBootstrapAnswers } from './rust-bootstrap.js';
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const RUST_CLI_BOOTSTRAP_ID = 'walking-skeleton/rust-cli-bootstrap';
 
@@ -57,14 +58,14 @@ export const rustCliBootstrapAdapter: Adapter = {
           target: 'Cargo.toml',
           apply: (existing) => {
             if (existing.includes(BIN_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${binSection(projectName)}`;
+            return `${existing.trimEnd()}${withEol(`\n${binSection(projectName)}`, eolOf(existing))}`;
           },
         },
         {
           target: 'README.md',
           apply: (existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(projectName)}`;
+            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eolOf(existing))}`;
           },
         },
       ],

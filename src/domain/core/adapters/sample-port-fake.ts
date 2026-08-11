@@ -21,7 +21,7 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
-import { packageToPath } from '../util.js';
+import { eolOf, packageToPath, withEol } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
@@ -88,7 +88,8 @@ function gradleIncludePatch(): ContributionPatch {
     target: 'settings.gradle.kts',
     apply: (existing) => {
       if (existing.includes(FAKE_MODULE_INCLUDE)) return existing;
-      return `${existing.trimEnd()}\n${FAKE_MODULE_INCLUDE}\n`;
+      const eol = eolOf(existing);
+      return `${existing.trimEnd()}${withEol(`\n${FAKE_MODULE_INCLUDE}\n`, eol)}`;
     },
   };
 }
@@ -103,7 +104,10 @@ function mavenModulePatch(): ContributionPatch {
           `${SAMPLE_PORT_FAKE_ID}: could not find the <modules> block in the root pom.xml — add ${MAVEN_MODULE} manually`,
         );
       }
-      return existing.replace(MAVEN_MODULES_END, `    ${MAVEN_MODULE}\n${MAVEN_MODULES_END}`);
+      return existing.replace(
+        MAVEN_MODULES_END,
+        `    ${MAVEN_MODULE}${eolOf(existing)}${MAVEN_MODULES_END}`,
+      );
     },
   };
 }

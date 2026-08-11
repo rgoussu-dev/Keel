@@ -11,6 +11,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const QUARKUS_CORS_ID = 'gateway/quarkus-cors';
 
@@ -36,7 +37,8 @@ export const quarkusCorsAdapter: Adapter = {
           target: PROPERTIES_TARGET,
           apply: (existing) => {
             if (existing.includes('quarkus.http.cors')) return existing;
-            return `${existing.trimEnd()}\n\n${CORS_BLOCK}\n`;
+            const eol = eolOf(existing);
+            return `${existing.trimEnd()}${eol}${eol}${withEol(CORS_BLOCK, eol)}${eol}`;
           },
         },
       ],

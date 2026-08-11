@@ -22,6 +22,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
@@ -56,7 +57,8 @@ export const wcSamplePortFakeAdapter: Adapter = {
           target: API_INDEX_TARGET,
           apply: (existing) => {
             if (existing.includes(CLOCK_EXPORT)) return existing;
-            return `${existing.trimEnd()}\n${CLOCK_EXPORT}\n`;
+            const eol = eolOf(existing);
+            return `${existing.trimEnd()}${withEol(`\n${CLOCK_EXPORT}\n`, eol)}`;
           },
         },
       ],

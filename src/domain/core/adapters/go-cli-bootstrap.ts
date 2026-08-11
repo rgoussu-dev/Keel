@@ -15,6 +15,7 @@
 
 import { GO_BOOTSTRAP_ID, goBootstrapAnswers } from './go-bootstrap.js';
 import type { Adapter } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 
 export const GO_CLI_BOOTSTRAP_ID = 'walking-skeleton/go-cli-bootstrap';
 
@@ -46,7 +47,7 @@ export const goCliBootstrapAdapter: Adapter = {
           target: 'README.md',
           apply: (existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(projectName)}`;
+            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eolOf(existing))}`;
           },
         },
       ],
