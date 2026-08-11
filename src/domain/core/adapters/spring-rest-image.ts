@@ -42,11 +42,18 @@ const SPRING_PLUGIN_MARKER = 'id("org.springframework.boot")';
 
 const NATIVE_GRADLE_PLUGIN = `id("org.graalvm.buildtools.native") version "${NATIVE_BUILD_TOOLS_VERSION}"`;
 
+/**
+ * The line ending a patched file uses — brownfield files may be
+ * CRLF, and splicing LF-only lines into them would mix endings.
+ */
+const eolOf = (text: string): string => (text.includes('\r\n') ? '\r\n' : '\n');
+
 const gradleNativePatch = (): ContributionPatch => ({
   target: GRADLE_BUILD_FILE,
   apply: (existing) => {
     if (existing.includes('org.graalvm.buildtools.native')) return existing;
-    const lines = existing.split('\n');
+    const eol = eolOf(existing);
+    const lines = existing.split(/\r?\n/);
     const boot = lines.findIndex((l) => l.includes(SPRING_PLUGIN_MARKER));
     if (boot === -1) {
       throw new Error(
@@ -55,7 +62,7 @@ const gradleNativePatch = (): ContributionPatch => ({
     }
     const indent = /^\s*/.exec(lines[boot]!)?.[0] ?? '    ';
     lines.splice(boot + 1, 0, `${indent}${NATIVE_GRADLE_PLUGIN}`);
-    return lines.join('\n');
+    return lines.join(eol);
   },
 });
 
@@ -112,14 +119,16 @@ const mavenNativePatch = (): ContributionPatch => ({
   target: MAVEN_POM,
   apply: (existing) => {
     if (existing.includes('native-maven-plugin')) return existing;
+    const eol = eolOf(existing);
+    const profile = MAVEN_NATIVE_PROFILE.replace(/\n/g, eol);
     // A POM allows at most one <profiles> element, so merge into an
     // existing block when the project already carries profiles and
     // only open a fresh one when it doesn't.
-    const lines = existing.split('\n');
+    const lines = existing.split(/\r?\n/);
     const profilesEnd = lines.findIndex((l) => /^\s*<\/profiles>/.test(l));
     if (profilesEnd !== -1) {
-      lines.splice(profilesEnd, 0, MAVEN_NATIVE_PROFILE);
-      return lines.join('\n');
+      lines.splice(profilesEnd, 0, profile);
+      return lines.join(eol);
     }
     if (!existing.includes('</project>')) {
       throw new Error(
@@ -128,7 +137,7 @@ const mavenNativePatch = (): ContributionPatch => ({
     }
     return existing.replace(
       /<\/project>\s*$/,
-      `  <profiles>\n${MAVEN_NATIVE_PROFILE}\n  </profiles>\n</project>\n`,
+      `  <profiles>\n${MAVEN_NATIVE_PROFILE}\n  </profiles>\n</project>\n`.replace(/\n/g, eol),
     );
   },
 });
