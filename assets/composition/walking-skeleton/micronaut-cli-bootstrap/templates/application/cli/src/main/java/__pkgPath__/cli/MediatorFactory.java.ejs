@@ -1,5 +1,6 @@
 package <%= basePackage %>.cli;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.micronaut.context.BeanContext;
@@ -40,10 +41,12 @@ import <%= basePackage %>.kernel.Mediator;
 public class MediatorFactory {
 
     @Singleton
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings("rawtypes") // Handler.class is raw; each element widens safely below
     public Mediator mediator(BeanContext beans) {
-        List<Handler<?, ?>> handlers =
-                beans.getBeansOfType(Handler.class).stream().<Handler<?, ?>>map(h -> h).toList();
+        List<Handler<?, ?>> handlers = new ArrayList<>();
+        for (Handler<?, ?> handler : beans.getBeansOfType(Handler.class)) {
+            handlers.add(handler);
+        }
         return new RegistryMediator(handlers);
     }
 }
