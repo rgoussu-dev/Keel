@@ -1,0 +1,39 @@
+# migrations — the schema's own deployment unit
+
+Database migrations are deployed **separately from the service**: this
+directory builds a self-contained [Flyway](https://flywaydb.org/)
+container that runs against the database and exits. The service never
+migrates in production — it starts against a schema this runner
+already put in place, so a bad migration blocks the rollout instead
+of taking the fleet down, and the database credentials that can alter
+schema never ship inside the service image.
+
+## Layout
+
+- `sql/` — plain-SQL migrations, Flyway naming:
+  `V<version>__<description>.sql` (e.g. `V2__add_greeting_channel.sql`).
+  Applied in version order, tracked in `flyway_schema_history`.
+  Never edit an applied migration — add the next one.
+- `Dockerfile` — the runner image: official Flyway + the `sql/` tree.
+
+## Running
+
+Configuration is environment-only (12-factor):
+
+```sh
+docker build -t <%= projectName %>-migrations migrations/
+docker run --rm \
+  -e FLYWAY_URL=jdbc:postgresql://<host>:5432/<database> \
+  -e FLYWAY_USER=… -e FLYWAY_PASSWORD=… \
+  <%= projectName %>-migrations
+```
+
+In the dev loop you rarely do this by hand:
+
+- `docker compose -f dev/compose.yaml up` runs the same container
+  once against the dev database (service `migrations`); re-run after
+  adding a script with
+  `docker compose -f dev/compose.yaml run --rm migrations`.
+- The service's `%dev` and `%test` profiles also apply `sql/` at
+  startup (Flyway `migrate-at-start`) for a tight local loop — a
+  dev-only convenience, disabled in production by configuration.

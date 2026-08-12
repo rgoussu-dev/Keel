@@ -1,0 +1,6 @@
+package <%= basePackage %>.contract.greetinglog;
+
+import <%= basePackage %>.kernel.Command;
+
+/** Record durably that someone was greeted. */
+public record RecordGreetingCommand(String name) implements Command<RecordedGreeting> {}

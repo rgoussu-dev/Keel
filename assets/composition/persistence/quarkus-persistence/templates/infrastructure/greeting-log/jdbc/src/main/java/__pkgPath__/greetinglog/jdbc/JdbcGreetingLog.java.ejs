@@ -1,0 +1,78 @@
+package <%= basePackage %>.greetinglog.jdbc;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.sql.DataSource;
+
+import <%= basePackage %>.contract.greetinglog.GreetingLog;
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
+
+/**
+ * {@link GreetingLog} over plain JDBC against the {@code greeting}
+ * table (schema in {@code migrations/sql/}). Zero business logic:
+ * SQL in, domain records out. Connections are drawn per call from
+ * the pool, so statements enlist automatically in the transaction a
+ * {@code UnitOfWork} block opened when the pool is
+ * transaction-aware (Agroal under Quarkus is).
+ */
+public final class JdbcGreetingLog implements GreetingLog {
+
+    private static final String INSERT =
+            "insert into greeting (name, greeted_at) values (?, ?)";
+    private static final String RECENT =
+            "select id, name, greeted_at from greeting order by id desc limit ?";
+
+    private final DataSource dataSource;
+
+    public JdbcGreetingLog(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @Override
+    public RecordedGreeting append(String name, Instant greetedAt) {
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement =
+                        connection.prepareStatement(INSERT, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, name);
+            statement.setObject(2, OffsetDateTime.ofInstant(greetedAt, ZoneOffset.UTC));
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (!keys.next()) {
+                    throw new IllegalStateException("insert into greeting returned no key");
+                }
+                return new RecordedGreeting(keys.getLong("id"), name, greetedAt);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not append to the greeting log", e);
+        }
+    }
+
+    @Override
+    public List<RecordedGreeting> recent(int limit) {
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(RECENT)) {
+            statement.setInt(1, limit);
+            try (ResultSet rows = statement.executeQuery()) {
+                List<RecordedGreeting> recent = new ArrayList<>();
+                while (rows.next()) {
+                    recent.add(new RecordedGreeting(
+                            rows.getLong("id"),
+                            rows.getString("name"),
+                            rows.getObject("greeted_at", OffsetDateTime.class).toInstant()));
+                }
+                return List.copyOf(recent);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not read the greeting log", e);
+        }
+    }
+}
