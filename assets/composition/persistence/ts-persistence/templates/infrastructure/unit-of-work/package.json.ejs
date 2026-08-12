@@ -1,0 +1,23 @@
+{
+  "name": "@<%= npmScope %>/infrastructure-unit-of-work",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@<%= npmScope %>/domain-contract": "<%= workspaceDep %>",
+    "pg": "^8.16.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

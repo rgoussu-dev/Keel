@@ -1,0 +1,24 @@
+import type { GreetingLog, RecordedGreeting } from '@<%= npmScope %>/domain-contract';
+
+/** A {@link GreetingLog} fake — also exposes nothing extra: the port is the contract. */
+export type FakeGreetingLog = GreetingLog;
+
+/**
+ * In-memory {@link GreetingLog} — the canonical reference
+ * implementation of the port's contract. Every test that needs a
+ * greeting log wires this fake (never a mock).
+ */
+export function createFakeGreetingLog(): FakeGreetingLog {
+  const entries: RecordedGreeting[] = [];
+  return {
+    append(name: string, greetedAt: Date): Promise<RecordedGreeting> {
+      const recorded: RecordedGreeting = { id: entries.length + 1, name, greetedAt };
+      entries.push(recorded);
+      return Promise.resolve(recorded);
+    },
+    recent(limit: number): Promise<readonly RecordedGreeting[]> {
+      const newestFirst = [...entries].reverse();
+      return Promise.resolve(newestFirst.slice(0, Math.max(limit, 0)));
+    },
+  };
+}
