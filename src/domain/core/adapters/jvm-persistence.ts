@@ -102,7 +102,10 @@ export async function jvmSharedPersistenceFiles(
   language: JvmPersistenceLanguage,
   vars: Readonly<Record<string, string>>,
 ): Promise<ContributionFile[]> {
-  const buildDir = language === 'kotlin' ? `${jvmBuildSystem(ctx.manifest.tags)}-kotlin` : jvmBuildSystem(ctx.manifest.tags);
+  const buildDir =
+    language === 'kotlin'
+      ? `${jvmBuildSystem(ctx.manifest.tags)}-kotlin`
+      : jvmBuildSystem(ctx.manifest.tags);
   const [sources, build] = await Promise.all([
     ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/${language}`, '', vars),
     ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/build/${buildDir}`, '', vars),
@@ -214,7 +217,11 @@ export function coreTestDepsPatch(
   basePackage: string,
 ): ContributionPatch {
   if (buildSystem === 'maven') {
-    const deps = ['infrastructure-clock-fake', 'infrastructure-greeting-log-fake', 'infrastructure-unit-of-work-fake']
+    const deps = [
+      'infrastructure-clock-fake',
+      'infrastructure-greeting-log-fake',
+      'infrastructure-unit-of-work-fake',
+    ]
       .map(
         (artifact) => `    <dependency>
       <groupId>${basePackage}</groupId>
@@ -255,6 +262,51 @@ export function persistenceReadmePatch(): ContributionPatch {
       return `${existing.trimEnd()}\n${readmeSection()}`;
     }),
   };
+}
+
+/**
+ * Rewires a Java composition root (`MediatorProducer` /
+ * `MediatorConfig` / `MediatorFactory` — the bodies are identical
+ * across the three frameworks): `mediator()` takes the persistence
+ * ports as parameters (the container injects the framework
+ * producer's beans) and registers the greeting-log handlers. Throws
+ * when the anchors drifted so the user gets a precise manual
+ * instruction instead of a silently unwired slice.
+ */
+export function patchJavaCompositionRoot(
+  adapterId: string,
+  basePackage: string,
+): (existing: string) => string {
+  const importAnchor = `import ${basePackage}.core.greet.GreetHandler;`;
+  const imports = `import ${basePackage}.core.greetinglog.ListGreetingsHandler;
+import ${basePackage}.core.greetinglog.RecordGreetingHandler;
+import ${basePackage}.contract.Clock;
+import ${basePackage}.contract.UnitOfWork;
+import ${basePackage}.contract.greetinglog.GreetingLog;`;
+  const methodAnchor = 'public Mediator mediator() {';
+  const methodSignature =
+    'public Mediator mediator(GreetingLog greetingLog, Clock clock, UnitOfWork unitOfWork) {';
+  const listAnchor = '        List<Handler<?, ?>> handlers = List.of(new GreetHandler());';
+  const listWiring = `        List<Handler<?, ?>> handlers = List.of(
+                new GreetHandler(),
+                new RecordGreetingHandler(greetingLog, clock, unitOfWork),
+                new ListGreetingsHandler(greetingLog));`;
+  return eolAware((existing) => {
+    if (existing.includes('RecordGreetingHandler')) return existing;
+    if (
+      !existing.includes(importAnchor) ||
+      !existing.includes(methodAnchor) ||
+      !existing.includes(listAnchor)
+    ) {
+      throw new Error(
+        `${adapterId}: the composition root has drifted from the walking-skeleton shape — register RecordGreetingHandler and ListGreetingsHandler with the mediator manually (inject GreetingLog, Clock and UnitOfWork)`,
+      );
+    }
+    return existing
+      .replace(importAnchor, `${importAnchor}\n${imports}`)
+      .replace(methodAnchor, methodSignature)
+      .replace(listAnchor, listWiring);
+  });
 }
 
 /** True when the observability vertical is recorded on the manifest. */

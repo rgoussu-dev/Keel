@@ -31,7 +31,14 @@ afterEach(async () => {
 });
 
 /** Deferred actions that shell out to tools the test host may lack. */
-const SKIPPED_ACTIONS = ['walking-skeleton/gradle-wrapper', 'walking-skeleton/maven-wrapper'];
+const SKIPPED_ACTIONS = [
+  'walking-skeleton/gradle-wrapper',
+  'walking-skeleton/maven-wrapper',
+  'walking-skeleton/npm-install',
+  'walking-skeleton/pnpm-install',
+  'observability/ts-observability',
+  'persistence/ts-persistence',
+];
 
 const seed = async (stack: string, buildSystem?: string): Promise<void> => {
   const mediator = installMediator({ runDeferred: runActionsExcept(SKIPPED_ACTIONS) });
@@ -51,7 +58,7 @@ const seed = async (stack: string, buildSystem?: string): Promise<void> => {
 
 const addPersistence = async (): Promise<void> => {
   expectOk(
-    await installMediator().dispatch(
+    await installMediator({ runDeferred: runActionsExcept(SKIPPED_ACTIONS) }).dispatch(
       addVerticalCommand({
         cwd,
         vertical: 'persistence',
@@ -112,6 +119,41 @@ describe('keel.add-vertical (keel add persistence)', () => {
     expect(await readFile('infrastructure/unit-of-work/jta/pom.xml')).toContain(
       '<artifactId>infrastructure-unit-of-work-jta</artifactId>',
     );
+  });
+
+  it('layers the Spring slice onto a Gradle spring-rest project', async () => {
+    await seed('spring-rest');
+    await addPersistence();
+
+    expect(await readFile('settings.gradle.kts')).toContain(
+      'include(":infrastructure:unit-of-work:spring-tx")',
+    );
+    expect(await readFile('application/rest/executable/build.gradle.kts')).toContain(
+      'spring-boot-starter-jdbc',
+    );
+    expect(
+      await readFile('application/rest/executable/src/main/resources/application-prod.properties'),
+    ).toContain('spring.flyway.enabled=false');
+
+    const stored = await manifest();
+    expect(stored.tags).toContain('db.postgres');
+  });
+
+  it('layers the TS slice onto an npm ts-http project', async () => {
+    await seed('ts-http');
+    await addPersistence();
+
+    expect(await readFile('application/rest/src/server.ts')).toContain(
+      "url.pathname === '/greetings'",
+    );
+    expect(await readFile('application/rest/package.json')).toContain(
+      '"@acme/infrastructure-unit-of-work": "*"',
+    );
+    expect(await readFile('migrations/Dockerfile')).toContain('FROM flyway/flyway:11-alpine');
+
+    const stored = await manifest();
+    expect(stored.verticals.map((v) => v.id)).toContain('persistence');
+    expect(stored.tags).toContain('db.postgres');
   });
 
   it('hard-fails on a CLI-shaped project with the uncovered dimensions', async () => {

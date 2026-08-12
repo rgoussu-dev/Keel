@@ -32,6 +32,17 @@ import {
   persistencePropertiesBlock,
   QUARKUS_PERSISTENCE_ID,
 } from '../../../../src/domain/core/adapters/quarkus-persistence.js';
+import {
+  patchGreetControllerTest as patchSpringGreetControllerTest,
+  SPRING_PERSISTENCE_ID,
+} from '../../../../src/domain/core/adapters/spring-persistence.js';
+import { MICRONAUT_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/micronaut-persistence.js';
+import {
+  addPackageDependencies,
+  patchMainTs,
+  patchServerTs,
+  TS_PERSISTENCE_ID,
+} from '../../../../src/domain/core/adapters/ts-persistence.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 
@@ -106,20 +117,180 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
 
   it.each([
     [
-      'spring-rest (no Spring adapter yet)',
+      'spring-rest',
       ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
+      SPRING_PERSISTENCE_ID,
     ],
+    [
+      'micronaut-rest',
+      ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
+      MICRONAUT_PERSISTENCE_ID,
+    ],
+    [
+      'ts-http',
+      ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http', 'pkg.npm'],
+      TS_PERSISTENCE_ID,
+    ],
+  ])('selects the per-stack adapter on %s', (_label, tags, adapterId) => {
+    const adapters = resolveVertical(persistenceVertical, tags);
+    expect(adapters.map((a) => a.id).sort()).toEqual(
+      [DATABASE_COMPOSE_ID, FLYWAY_MIGRATIONS_ID, adapterId].sort(),
+    );
+  });
+
+  it.each([
     [
       'quarkus-rest-kotlin (no Kotlin twin yet)',
       ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     ],
-    ['go-http', ['lang.go', 'arch.hexagonal', 'arch.server-http', 'pkg.go-modules']],
+    [
+      'go-http (no Go adapter yet)',
+      ['lang.go', 'arch.hexagonal', 'arch.server-http', 'pkg.go-modules'],
+    ],
+    [
+      'rust-http (no Rust adapter yet)',
+      ['lang.rust', 'arch.hexagonal', 'arch.server-http', 'pkg.cargo'],
+    ],
     [
       'quarkus-cli (no HTTP shape)',
       ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     ],
   ])('hard-fails on %s instead of half-installing', (_label, tags) => {
     expect(() => resolveVertical(persistenceVertical, tags)).toThrow(ResolutionError);
+  });
+});
+
+describe('persistence install on spring-rest and micronaut-rest (Gradle)', () => {
+  it('lays the Spring slice: spring-tx unit of work, config profiles, patched tests', async () => {
+    const tags = [
+      'lang.java',
+      'runtime.jvm',
+      'framework.spring',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.gradle',
+    ];
+    const { tree } = await installChain(tags);
+
+    expect(
+      tree.exists(
+        'infrastructure/unit-of-work/spring-tx/src/main/java/com/example/unitofwork/springtx/SpringTxUnitOfWork.java',
+      ),
+    ).toBe(true);
+    const settings = read(tree, 'settings.gradle.kts');
+    expect(settings).toContain('include(":infrastructure:unit-of-work:spring-tx")');
+    const executableBuild = read(tree, 'application/rest/executable/build.gradle.kts');
+    expect(executableBuild).toContain('org.springframework.boot:spring-boot-starter-jdbc');
+    expect(executableBuild).toContain('org.springframework.boot:spring-boot-testcontainers');
+    expect(executableBuild).toContain(
+      'implementation(project(":infrastructure:unit-of-work:spring-tx"))',
+    );
+    const properties = read(
+      tree,
+      'application/rest/executable/src/main/resources/application.properties',
+    );
+    expect(properties).toContain(
+      'spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/walking_skeleton}',
+    );
+    expect(properties).toContain('spring.flyway.enabled=true');
+    expect(
+      read(tree, 'application/rest/executable/src/main/resources/application-prod.properties'),
+    ).toContain('spring.flyway.enabled=false');
+    const config = read(
+      tree,
+      'application/rest/executable/src/main/java/com/example/rest/MediatorConfig.java',
+    );
+    expect(config).toContain('new RecordGreetingHandler(greetingLog, clock, unitOfWork)');
+    const greetTest = read(
+      tree,
+      'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java',
+    );
+    expect(greetTest).toContain('@Import(TestcontainersConfiguration.class)');
+    expect(
+      tree.exists(
+        'application/rest/executable/src/test/java/com/example/rest/GreetingLogControllerTest.java',
+      ),
+    ).toBe(true);
+  });
+
+  it('lays the Micronaut slice: micronaut-tx unit of work, config, patched tests', async () => {
+    const tags = [
+      'lang.java',
+      'runtime.jvm',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.gradle',
+    ];
+    const { tree } = await installChain(tags);
+
+    expect(
+      tree.exists(
+        'infrastructure/unit-of-work/micronaut-tx/src/main/java/com/example/unitofwork/micronauttx/MicronautTxUnitOfWork.java',
+      ),
+    ).toBe(true);
+    const executableBuild = read(tree, 'application/rest/executable/build.gradle.kts');
+    expect(executableBuild).toContain('io.micronaut.data:micronaut-data-tx-jdbc');
+    expect(executableBuild).toContain('io.micronaut.flyway:micronaut-flyway');
+    const properties = read(
+      tree,
+      'application/rest/executable/src/main/resources/application.properties',
+    );
+    expect(properties).toContain(
+      'datasources.default.url=${DB_URL:`jdbc:postgresql://localhost:5432/walking_skeleton`}',
+    );
+    expect(properties).toContain('flyway.datasources.default.enabled=true');
+    const factory = read(
+      tree,
+      'application/rest/executable/src/main/java/com/example/rest/MediatorFactory.java',
+    );
+    expect(factory).toContain('new ListGreetingsHandler(greetingLog));');
+    expect(
+      read(
+        tree,
+        'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java',
+      ),
+    ).toContain('extends PostgresTestFixture');
+  });
+});
+
+describe('persistence install on ts-http (npm)', () => {
+  it('lays the TS slice: workspace packages, barrel exports, server + main wiring', async () => {
+    const tags = [
+      'lang.typescript',
+      'runtime.node',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.npm',
+    ];
+    const { tree } = await installChain(tags);
+
+    expect(tree.exists('domain/contract/src/unit-of-work.ts')).toBe(true);
+    expect(read(tree, 'domain/contract/src/index.ts')).toContain(
+      "export * from './greeting-log.ts';",
+    );
+    expect(read(tree, 'domain/core/src/index.ts')).toContain('greeting-log-handlers');
+    expect(tree.exists('infrastructure/greeting-log/src/pg-greeting-log.ts')).toBe(true);
+    expect(tree.exists('infrastructure/unit-of-work/src/pg-unit-of-work.ts')).toBe(true);
+    const restPackage = read(tree, 'application/rest/package.json');
+    expect(restPackage).toContain('"@acme/infrastructure-greeting-log": "*"');
+    expect(restPackage).toContain('"@acme/infrastructure-unit-of-work": "*"');
+    const server = read(tree, 'application/rest/src/server.ts');
+    expect(server).toContain("if (url.pathname === '/greetings') {");
+    const main = read(tree, 'application/rest/src/main.ts');
+    expect(main).toContain(
+      'createRecordGreetingHandler(greetingLog, systemClock, createPgUnitOfWork(pool))',
+    );
+    expect(read(tree, 'infrastructure/unit-of-work/src/pool.ts')).toContain(
+      'postgres://app:app@localhost:5432/walking_skeleton',
+    );
+    // The SQL adapter's contract test ships Testcontainers-backed.
+    expect(read(tree, 'infrastructure/greeting-log/tests/pg-greeting-log.test.ts')).toContain(
+      'PostgreSqlContainer',
+    );
+    const compose = read(tree, 'dev/compose.yaml');
+    expect(compose).toContain('image: postgres:18-alpine');
+    expect(compose).toContain('build: ../migrations');
   });
 });
 
@@ -319,6 +490,37 @@ public class MediatorProducer {
     expect(() => patchMediatorProducer('com.example')('public class Custom {}')).toThrow(
       /register RecordGreetingHandler and ListGreetingsHandler .* manually/,
     );
+  });
+
+  it('merges package.json dependencies without clobbering existing entries', () => {
+    const pkg = JSON.stringify({ name: 'x', dependencies: { pg: '^8.0.0' } }, null, 2);
+    const patched = addPackageDependencies(pkg, 'dependencies', {
+      pg: '^9.9.9',
+      '@acme/infrastructure-unit-of-work': '*',
+    });
+    const parsed = JSON.parse(patched) as { dependencies: Record<string, string> };
+    expect(parsed.dependencies['pg']).toBe('^8.0.0');
+    expect(parsed.dependencies['@acme/infrastructure-unit-of-work']).toBe('*');
+    expect(addPackageDependencies(patched, 'dependencies', { pg: '^9.9.9' })).toBe(patched);
+  });
+
+  it('names the manual fix when the TS anchors drifted', () => {
+    expect(() => patchServerTs('acme')('const custom = true;')).toThrow(/route '\/greetings'/);
+    expect(() => patchMainTs('acme')('const custom = true;')).toThrow(
+      /wire createRecordGreetingHandler/,
+    );
+  });
+
+  it('patches the Spring boot test once and only once', () => {
+    const original = `import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class GreetControllerTest {
+}
+`;
+    const patched = patchSpringGreetControllerTest(original);
+    expect(patched).toContain('@Import(TestcontainersConfiguration.class)');
+    expect(patchSpringGreetControllerTest(patched)).toBe(patched);
   });
 
   it('keeps the telemetry line out of the properties block until observability is installed', () => {

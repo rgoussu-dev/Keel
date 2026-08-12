@@ -38,6 +38,7 @@ import {
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   observabilityInstalled,
+  patchJavaCompositionRoot,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
@@ -115,43 +116,12 @@ ${telemetryLines}`;
 }
 
 /**
- * Rewires the composition root: `mediator()` takes the persistence
- * ports as parameters (CDI injects the `PersistenceProducer` beans)
- * and registers the greeting-log handlers. Exported for the vertical
- * tests; throws when the anchors drifted so the user gets a precise
- * manual instruction instead of a silently unwired slice.
+ * Rewires `MediatorProducer` with the greeting-log handlers.
+ * Delegates to the shared Java composition-root patcher; exported
+ * for the vertical tests.
  */
 export function patchMediatorProducer(basePackage: string): (existing: string) => string {
-  const importAnchor = `import ${basePackage}.core.greet.GreetHandler;`;
-  const imports = `import ${basePackage}.core.greetinglog.ListGreetingsHandler;
-import ${basePackage}.core.greetinglog.RecordGreetingHandler;
-import ${basePackage}.contract.Clock;
-import ${basePackage}.contract.UnitOfWork;
-import ${basePackage}.contract.greetinglog.GreetingLog;`;
-  const methodAnchor = 'public Mediator mediator() {';
-  const methodSignature =
-    'public Mediator mediator(GreetingLog greetingLog, Clock clock, UnitOfWork unitOfWork) {';
-  const listAnchor = '        List<Handler<?, ?>> handlers = List.of(new GreetHandler());';
-  const listWiring = `        List<Handler<?, ?>> handlers = List.of(
-                new GreetHandler(),
-                new RecordGreetingHandler(greetingLog, clock, unitOfWork),
-                new ListGreetingsHandler(greetingLog));`;
-  return eolAware((existing) => {
-    if (existing.includes('RecordGreetingHandler')) return existing;
-    if (
-      !existing.includes(importAnchor) ||
-      !existing.includes(methodAnchor) ||
-      !existing.includes(listAnchor)
-    ) {
-      throw new Error(
-        `${QUARKUS_PERSISTENCE_ID}: MediatorProducer.java has drifted from the walking-skeleton shape — register RecordGreetingHandler and ListGreetingsHandler with the mediator manually (inject GreetingLog, Clock and UnitOfWork)`,
-      );
-    }
-    return existing
-      .replace(importAnchor, `${importAnchor}\n${imports}`)
-      .replace(methodAnchor, methodSignature)
-      .replace(listAnchor, listWiring);
-  });
+  return patchJavaCompositionRoot(QUARKUS_PERSISTENCE_ID, basePackage);
 }
 
 function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch {
@@ -171,7 +141,10 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
     target: GRADLE_EXECUTABLE_TARGET,
     apply: eolAware((existing) => {
       if (existing.includes(DEPS_GUARD)) return existing;
-      return existing.replace(GRADLE_QUARKUS_ANCHOR, `${GRADLE_QUARKUS_ANCHOR}\n${GRADLE_QUARKUS_DEPS}`);
+      return existing.replace(
+        GRADLE_QUARKUS_ANCHOR,
+        `${GRADLE_QUARKUS_ANCHOR}\n${GRADLE_QUARKUS_DEPS}`,
+      );
     }),
   };
 }
