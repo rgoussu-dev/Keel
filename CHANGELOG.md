@@ -8,6 +8,25 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The `persistence` vertical** — SQL persistence for HTTP services
+  (`keel add persistence`), Quarkus REST (Java) first, PostgreSQL as
+  the default engine behind an extensible engine spec. Five
+  dimensions: a `datasource` (Agroal pool, env-only prod config,
+  compose database in `%dev`, Dev Services in `%test`, pool health →
+  readiness and pool metrics/JDBC spans → telemetry with the
+  observability vertical); transaction management as a **domain
+  secondary port** shaped as a Unit of Work (`UnitOfWork` in
+  `domain/contract`, JTA adapter + canonical fake under
+  `infrastructure/unit-of-work/`); a repository example
+  (`GreetingLog` port, plain-JDBC adapter contract-tested against a
+  Testcontainers PostgreSQL, in-memory fake, command/query handlers,
+  `POST`/`GET /greetings`); **migrations as their own deployment
+  unit** (`migrations/` — plain-SQL Flyway scripts in a
+  self-contained container run against the database before the
+  service deploys, never from inside it, with `%dev`/`%test`
+  replaying the same SQL at startup as a local-loop convenience); and
+  the dev database + healthcheck-gated migrations one-shot patched
+  into `dev/compose.yaml`.
 - **Dedicated documentation under `docs/`** — cross-linked pages for
   every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
   `web-components`, fullstack) and every vertical
