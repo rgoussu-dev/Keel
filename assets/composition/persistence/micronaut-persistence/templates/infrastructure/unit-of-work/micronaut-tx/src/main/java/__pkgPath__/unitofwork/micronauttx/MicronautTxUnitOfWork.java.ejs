@@ -1,0 +1,29 @@
+package <%= basePackage %>.unitofwork.micronauttx;
+
+import java.sql.Connection;
+import java.util.function.Supplier;
+
+import io.micronaut.transaction.TransactionOperations;
+
+import <%= basePackage %>.contract.UnitOfWork;
+
+/**
+ * {@link UnitOfWork} over Micronaut's transaction operations: the
+ * write callback begins a transaction, runs the block, commits when
+ * it returns and rolls back when it throws. Connections drawn from
+ * the pool inside the block participate — Micronaut Data's JDBC
+ * transaction manager makes the {@code DataSource} transaction-aware.
+ */
+public final class MicronautTxUnitOfWork implements UnitOfWork {
+
+    private final TransactionOperations<Connection> transaction;
+
+    public MicronautTxUnitOfWork(TransactionOperations<Connection> transaction) {
+        this.transaction = transaction;
+    }
+
+    @Override
+    public <T> T inTransaction(Supplier<T> work) {
+        return transaction.executeWrite(status -> work.get());
+    }
+}

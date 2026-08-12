@@ -1,0 +1,6 @@
+package <%= basePackage %>.contract.greetinglog;
+
+import java.time.Instant;
+
+/** One greeting as the log recorded it. */
+public record RecordedGreeting(long id, String name, Instant greetedAt) {}

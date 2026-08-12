@@ -1,0 +1,83 @@
+package domain
+
+import (
+	"context"
+	"time"
+
+	"<%= modulePath %>/internal/domain/internal/greetinglog"
+)
+
+// RecordedGreeting is one greeting as the log recorded it.
+type RecordedGreeting struct {
+	ID        int64
+	Name      string
+	GreetedAt time.Time
+}
+
+// GreetingLog is the secondary port onto the greeting log — the
+// walking skeleton's persistence example. The domain appends and
+// reads; where the rows live (PostgreSQL in production, an in-memory
+// fake in tests) is an adapter concern.
+type GreetingLog interface {
+	// Append appends one greeting and returns it with its assigned id.
+	Append(ctx context.Context, name string, greetedAt time.Time) (RecordedGreeting, error)
+	// Recent returns at most limit greetings, most recent first.
+	Recent(ctx context.Context, limit int) ([]RecordedGreeting, error)
+}
+
+// RecordGreetingCommand asks to record durably that Name was greeted.
+type RecordGreetingCommand struct {
+	Name string
+}
+
+// ListGreetingsQuery asks for the most recent greetings; the use
+// case clamps Limit to [1, 100].
+type ListGreetingsQuery struct {
+	Limit int
+}
+
+// GreetingLogUseCases is the driving port for the greeting-log use
+// cases. Primary adapters depend on this interface, never on the
+// implementation.
+type GreetingLogUseCases interface {
+	// Record validates and appends inside one unit of work. Returns
+	// ErrEmptyName when the name is blank.
+	Record(ctx context.Context, cmd RecordGreetingCommand) (RecordedGreeting, error)
+	// List reads back the most recent greetings.
+	List(ctx context.Context, q ListGreetingsQuery) ([]RecordedGreeting, error)
+}
+
+// NewGreetingLogUseCases assembles the greeting-log use cases and
+// returns them behind their driving port. Each cmd/ main wires the
+// secondary ports by hand — constructor injection, no framework.
+func NewGreetingLogUseCases(log GreetingLog, clock Clock, uow UnitOfWork) GreetingLogUseCases {
+	return greetingLogUseCases{log: log, clock: clock, uow: uow}
+}
+
+type greetingLogUseCases struct {
+	log   GreetingLog
+	clock Clock
+	uow   UnitOfWork
+}
+
+func (u greetingLogUseCases) Record(
+	ctx context.Context, cmd RecordGreetingCommand,
+) (RecordedGreeting, error) {
+	name, err := greetinglog.ValidName(cmd.Name)
+	if err != nil {
+		return RecordedGreeting{}, err
+	}
+	var recorded RecordedGreeting
+	err = u.uow.InTransaction(ctx, func(ctx context.Context) error {
+		appended, appendErr := u.log.Append(ctx, name, u.clock.Now())
+		recorded = appended
+		return appendErr
+	})
+	return recorded, err
+}
+
+func (u greetingLogUseCases) List(
+	ctx context.Context, q ListGreetingsQuery,
+) ([]RecordedGreeting, error) {
+	return u.log.Recent(ctx, greetinglog.ClampLimit(q.Limit))
+}

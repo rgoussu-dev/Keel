@@ -1,0 +1,39 @@
+package <%= basePackage %>.rest
+
+import io.micronaut.http.HttpResponse
+import io.micronaut.http.MediaType
+import io.micronaut.http.annotation.Body
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Get
+import io.micronaut.http.annotation.Post
+import io.micronaut.http.annotation.QueryValue
+
+import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery
+import <%= basePackage %>.contract.greetinglog.RecordGreetingCommand
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting
+import <%= basePackage %>.kernel.Mediator
+import <%= basePackage %>.rest.contract.RecordGreetingRequest
+import <%= basePackage %>.rest.contract.RecordedGreetingResponse
+
+/**
+ * HTTP entry point of the persistence slice: maps transport DTOs to
+ * the greeting-log command/query, dispatches via the mediator, and
+ * maps the results back. No business logic.
+ */
+@Controller("/greetings")
+class GreetingLogController(private val mediator: Mediator) {
+
+    @Post(consumes = [MediaType.APPLICATION_JSON], produces = [MediaType.APPLICATION_JSON])
+    fun record(@Body request: RecordGreetingRequest): HttpResponse<RecordedGreetingResponse> {
+        val recorded = mediator.dispatch(RecordGreetingCommand(request.name))
+        return HttpResponse.created(recorded.toResponse())
+    }
+
+    @Get(produces = [MediaType.APPLICATION_JSON])
+    fun recent(
+        @QueryValue(value = "limit", defaultValue = "10") limit: Int,
+    ): List<RecordedGreetingResponse> =
+        mediator.dispatch(ListGreetingsQuery(limit)).map { it.toResponse() }
+
+    private fun RecordedGreeting.toResponse() = RecordedGreetingResponse(id, name, greetedAt)
+}

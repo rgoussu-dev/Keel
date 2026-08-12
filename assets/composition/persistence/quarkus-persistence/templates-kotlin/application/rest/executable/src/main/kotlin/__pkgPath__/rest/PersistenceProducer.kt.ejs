@@ -1,0 +1,41 @@
+package <%= basePackage %>.rest
+
+import java.time.Instant
+
+import javax.sql.DataSource
+
+import jakarta.enterprise.context.ApplicationScoped
+import jakarta.enterprise.inject.Produces
+import jakarta.inject.Singleton
+import jakarta.transaction.UserTransaction
+
+import <%= basePackage %>.contract.Clock
+import <%= basePackage %>.contract.UnitOfWork
+import <%= basePackage %>.contract.greetinglog.GreetingLog
+import <%= basePackage %>.greetinglog.jdbc.JdbcGreetingLog
+import <%= basePackage %>.unitofwork.jta.JtaUnitOfWork
+
+/**
+ * Composition-root wiring of the persistence slice: the real
+ * secondary adapters behind their ports — the JDBC greeting log on
+ * the Agroal datasource, the JTA-backed unit of work, and the system
+ * clock. No logic.
+ */
+@ApplicationScoped
+class PersistenceProducer {
+
+    @Produces
+    @Singleton
+    fun clock(): Clock =
+        object : Clock {
+            override fun now(): Instant = Instant.now()
+        }
+
+    @Produces
+    @Singleton
+    fun unitOfWork(transaction: UserTransaction): UnitOfWork = JtaUnitOfWork(transaction)
+
+    @Produces
+    @Singleton
+    fun greetingLog(dataSource: DataSource): GreetingLog = JdbcGreetingLog(dataSource)
+}

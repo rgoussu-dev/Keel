@@ -12,8 +12,9 @@ keel add dev-env
 
 Seeds the empty Compose base. **Supplementing verticals patch their
 services in**: the [`observability`](observability.md) vertical's
-monitoring stack today; a persistence vertical's database, a cache, a
-broker tomorrow. Ad-hoc local infra goes in the same file.
+monitoring stack and the [`persistence`](persistence.md) vertical's
+database + migrations one-shot today; a cache, a broker tomorrow.
+Ad-hoc local infra goes in the same file.
 
 Design points:
 
@@ -39,4 +40,6 @@ Design points:
 
 - [`observability`](observability.md) — supplements this file with the
   monitoring stack.
+- [`persistence`](persistence.md) — supplements this file with the
+  dev database and the migrations one-shot.
 - [Verticals catalog](README.md)

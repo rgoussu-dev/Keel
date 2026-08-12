@@ -13,6 +13,7 @@ import { devEnvVertical } from './dev-env.js';
 import { distributionVertical } from './distribution.js';
 import { gatewayVertical } from './gateway.js';
 import { observabilityVertical } from './observability.js';
+import { persistenceVertical } from './persistence.js';
 import { vcsVertical } from './vcs.js';
 import { walkingSkeletonVertical } from './walking-skeleton.js';
 import type { Vertical } from '../../contract/composition.js';
@@ -25,6 +26,7 @@ const ALL: readonly Vertical[] = [
   containerizationVertical,
   devEnvVertical,
   observabilityVertical,
+  persistenceVertical,
 ];
 
 /** All verticals known to the brownfield registry, keyed by id. */

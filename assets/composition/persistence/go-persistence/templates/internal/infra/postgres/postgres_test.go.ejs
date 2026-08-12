@@ -1,0 +1,137 @@
+package postgres_test
+
+import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+
+	"<%= modulePath %>/internal/domain"
+	"<%= modulePath %>/internal/infra/postgres"
+)
+
+// Compile-time proof the adapters satisfy their ports.
+var (
+	_ domain.GreetingLog = (*postgres.GreetingLog)(nil)
+	_ domain.UnitOfWork  = (*postgres.UnitOfWork)(nil)
+)
+
+// Contract test against a real PostgreSQL (Testcontainers), with the
+// schema applied from the same SQL the isolated migration runner
+// ships (migrations/sql/). Skipped when no Docker daemon is
+// available.
+func startPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		t.Skip("no Docker daemon available")
+	}
+	ctx := context.Background()
+	container, err := tcpostgres.Run(ctx, "postgres:18-alpine")
+	if err != nil {
+		t.Fatalf("start postgres container: %v", err)
+	}
+	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
+	url, err := container.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		t.Fatalf("read connection string: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		t.Fatalf("create pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	migrations, err := filepath.Glob("../../../migrations/sql/*.sql")
+	if err != nil || len(migrations) == 0 {
+		t.Fatalf("find migrations: %v (found %d)", err, len(migrations))
+	}
+	sort.Strings(migrations)
+	for _, migration := range migrations {
+		script, readErr := os.ReadFile(migration)
+		if readErr != nil {
+			t.Fatalf("read %s: %v", migration, readErr)
+		}
+		if _, execErr := pool.Exec(ctx, string(script)); execErr != nil {
+			t.Fatalf("apply %s: %v", migration, execErr)
+		}
+	}
+	return pool
+}
+
+func TestAppendsAndReadsBackMostRecentFirst(t *testing.T) {
+	pool := startPool(t)
+	log := postgres.NewGreetingLog(pool)
+	ctx := context.Background()
+	first := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)
+
+	if _, err := log.Append(ctx, "Ada", first); err != nil {
+		t.Fatalf("append: %v", err)
+	}
+	grace, err := log.Append(ctx, "Grace", first.Add(time.Second))
+	if err != nil {
+		t.Fatalf("append: %v", err)
+	}
+
+	recent, err := log.Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("recent: %v", err)
+	}
+	if len(recent) != 2 || recent[0].ID != grace.ID || recent[1].Name != "Ada" {
+		t.Fatalf("recent = %+v, want Grace then Ada", recent)
+	}
+}
+
+func TestARejectedUnitOfWorkLeavesNoRows(t *testing.T) {
+	pool := startPool(t)
+	log := postgres.NewGreetingLog(pool)
+	uow := postgres.NewUnitOfWork(pool)
+	ctx := context.Background()
+	boom := errors.New("boom")
+
+	err := uow.InTransaction(ctx, func(ctx context.Context) error {
+		if _, appendErr := log.Append(ctx, "Ada", time.Now().UTC()); appendErr != nil {
+			return appendErr
+		}
+		return boom
+	})
+	if !errors.Is(err, boom) {
+		t.Fatalf("InTransaction error = %v, want boom", err)
+	}
+
+	recent, err := log.Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("recent: %v", err)
+	}
+	if len(recent) != 0 {
+		t.Fatalf("recent = %+v, want empty after rollback", recent)
+	}
+}
+
+func TestACompletedUnitOfWorkCommits(t *testing.T) {
+	pool := startPool(t)
+	log := postgres.NewGreetingLog(pool)
+	uow := postgres.NewUnitOfWork(pool)
+	ctx := context.Background()
+
+	err := uow.InTransaction(ctx, func(ctx context.Context) error {
+		_, appendErr := log.Append(ctx, "Grace", time.Now().UTC())
+		return appendErr
+	})
+	if err != nil {
+		t.Fatalf("InTransaction: %v", err)
+	}
+
+	recent, err := log.Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("recent: %v", err)
+	}
+	if len(recent) != 1 || recent[0].Name != "Grace" {
+		t.Fatalf("recent = %+v, want the committed Grace row", recent)
+	}
+}

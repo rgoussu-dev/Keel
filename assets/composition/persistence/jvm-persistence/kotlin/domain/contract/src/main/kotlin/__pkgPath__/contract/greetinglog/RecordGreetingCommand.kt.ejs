@@ -1,0 +1,6 @@
+package <%= basePackage %>.contract.greetinglog
+
+import <%= basePackage %>.kernel.Command
+
+/** Record durably that someone was greeted. */
+data class RecordGreetingCommand(val name: String?) : Command<RecordedGreeting>

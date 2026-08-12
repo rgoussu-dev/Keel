@@ -1,0 +1,33 @@
+package <%= basePackage %>.unitofwork.fake
+
+import java.util.function.Supplier
+
+import <%= basePackage %>.contract.UnitOfWork
+
+/**
+ * In-memory [UnitOfWork] — the canonical reference implementation of
+ * the port's contract: runs the block synchronously and counts
+ * outcomes, so domain tests assert the transactional boundary
+ * (committed vs rolled back) without a transaction manager.
+ */
+class FakeUnitOfWork : UnitOfWork {
+
+    private var committed = 0
+    private var rolledBack = 0
+
+    override fun <T> inTransaction(work: Supplier<T>): T =
+        try {
+            val result = work.get()
+            committed++
+            result
+        } catch (e: RuntimeException) {
+            rolledBack++
+            throw e
+        }
+
+    /** Units of work that ran to completion. */
+    fun committed(): Int = committed
+
+    /** Units of work that ended in rollback. */
+    fun rolledBack(): Int = rolledBack
+}

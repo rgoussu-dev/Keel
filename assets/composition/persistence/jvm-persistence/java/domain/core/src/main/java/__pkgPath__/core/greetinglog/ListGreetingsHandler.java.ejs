@@ -1,0 +1,31 @@
+package <%= basePackage %>.core.greetinglog;
+
+import java.util.List;
+
+import <%= basePackage %>.contract.DomainHandler;
+import <%= basePackage %>.contract.greetinglog.GreetingLog;
+import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery;
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
+import <%= basePackage %>.kernel.Command;
+import <%= basePackage %>.kernel.Handler;
+
+@DomainHandler
+public final class ListGreetingsHandler
+        implements Handler<ListGreetingsQuery, List<RecordedGreeting>> {
+
+    private final GreetingLog greetingLog;
+
+    public ListGreetingsHandler(GreetingLog greetingLog) {
+        this.greetingLog = greetingLog;
+    }
+
+    @Override
+    public boolean supports(Command<?> command) {
+        return command instanceof ListGreetingsQuery;
+    }
+
+    @Override
+    public List<RecordedGreeting> handle(ListGreetingsQuery query) {
+        return greetingLog.recent(Math.clamp(query.limit(), 1, 100));
+    }
+}

@@ -8,6 +8,31 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The `persistence` vertical** — SQL persistence for every HTTP
+  stack (`keel add persistence`), PostgreSQL as the default engine
+  behind an extensible engine spec. Five dimensions: a `datasource`
+  (the stack's idiomatic pool — Agroal, Hikari, pgx, the sync
+  `postgres` crate, `pg` — env-only prod config, compose database in
+  dev, throwaway Testcontainers PostgreSQL in tests, pool health →
+  readiness and pool metrics/JDBC spans → telemetry with the
+  observability vertical on the JVM); transaction management as a
+  **domain secondary port** shaped as a Unit of Work, with per-stack
+  adapters (JTA on Quarkus, `TransactionTemplate` on Spring,
+  `TransactionOperations` on Micronaut, the transaction riding the
+  context on Go / `AsyncLocalStorage` on TS, a shared-connection
+  transaction on Rust) beside canonical counting fakes; a repository
+  example (`GreetingLog` port, SQL adapter contract-tested against a
+  Testcontainers PostgreSQL that skips without Docker, in-memory
+  fake, record/list operations demarcating writes with the unit of
+  work, `POST`/`GET /greetings`); **migrations as their own
+  deployment unit** (`migrations/` — plain-SQL Flyway scripts in a
+  self-contained container run against the database before the
+  service deploys, never from inside it, with dev/test replaying the
+  same SQL at startup as a local-loop convenience); and the dev
+  database + healthcheck-gated migrations one-shot patched into
+  `dev/compose.yaml`. Covered per stack by one predicate-selected
+  adapter: Quarkus/Spring/Micronaut in Java and Kotlin (Gradle or
+  Maven), `go-http`, `rust-http`, `ts-http`.
 - **`@DomainHandler` — container discovery of handlers on the JVM
   stacks.** Handlers in scaffolded projects now carry a marker the
   **domain owns** (`domain/contract`), so a new aggregate no longer
@@ -20,8 +45,12 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   domain modules ship a `beans.xml` marking them bean archives), a
   `@ComponentScan` include filter for Spring, and `@Import` for
   Micronaut Java. Mediator factories now take the discovered
-  collection instead of constructing handlers by hand.
-
+  collection instead of constructing handlers by hand, and the
+  `persistence` vertical's greeting-log handlers ride the same
+  marker — so on Quarkus and Spring it no longer rewrites the
+  composition root at all, and on Micronaut Java it only names the
+  new package in `@Import` (which does not scan sub-packages).
+  Micronaut Kotlin keeps its explicit wiring in both verticals.
 - **Dedicated documentation under `docs/`** — cross-linked pages for
   every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
   `web-components`, fullstack) and every vertical

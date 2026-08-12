@@ -1,0 +1,80 @@
+//! The in-memory `GreetingLog` — the canonical reference
+//! implementation of the port's contract. Every test that needs a
+//! greeting log wires this fake (never a mock).
+
+use std::sync::Mutex;
+use std::time::SystemTime;
+
+use crate::domain::{GreetingLog, GreetingLogError, RecordedGreeting};
+
+#[derive(Default)]
+pub struct FakeGreetingLog {
+    entries: Mutex<Vec<RecordedGreeting>>,
+}
+
+impl FakeGreetingLog {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl GreetingLog for FakeGreetingLog {
+    fn append(
+        &self,
+        name: &str,
+        greeted_at: SystemTime,
+    ) -> Result<RecordedGreeting, GreetingLogError> {
+        let mut entries = self
+            .entries
+            .lock()
+            .map_err(|_| GreetingLogError::Store("entries mutex poisoned".to_string()))?;
+        let recorded = RecordedGreeting {
+            id: entries.len() as i64 + 1,
+            name: name.to_string(),
+            greeted_at,
+        };
+        entries.push(recorded.clone());
+        Ok(recorded)
+    }
+
+    fn recent(&self, limit: i64) -> Result<Vec<RecordedGreeting>, GreetingLogError> {
+        let entries = self
+            .entries
+            .lock()
+            .map_err(|_| GreetingLogError::Store("entries mutex poisoned".to_string()))?;
+        Ok(entries
+            .iter()
+            .rev()
+            .take(limit.max(0) as usize)
+            .cloned()
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::SystemTime;
+
+    use super::*;
+
+    #[test]
+    fn assigns_increasing_ids_and_reads_back_most_recent_first() {
+        let log = FakeGreetingLog::new();
+        let at = SystemTime::UNIX_EPOCH;
+
+        assert_eq!(log.append("Ada", at).expect("append").id, 1);
+        assert_eq!(log.append("Grace", at).expect("append").id, 2);
+
+        let recent = log.recent(1).expect("recent");
+        assert_eq!(recent.len(), 1);
+        assert_eq!(recent[0].name, "Grace");
+    }
+
+    #[test]
+    fn tolerates_an_empty_log_and_non_positive_limits() {
+        let log = FakeGreetingLog::new();
+        assert!(log.recent(10).expect("recent").is_empty());
+        log.append("Ada", SystemTime::UNIX_EPOCH).expect("append");
+        assert!(log.recent(0).expect("recent").is_empty());
+    }
+}

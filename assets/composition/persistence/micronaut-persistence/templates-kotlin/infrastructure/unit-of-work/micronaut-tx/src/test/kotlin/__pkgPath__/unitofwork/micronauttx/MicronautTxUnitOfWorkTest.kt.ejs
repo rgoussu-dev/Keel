@@ -1,0 +1,70 @@
+package <%= basePackage %>.unitofwork.micronauttx
+
+import java.sql.Connection
+import java.util.Optional
+
+import io.micronaut.transaction.TransactionCallback
+import io.micronaut.transaction.TransactionDefinition
+import io.micronaut.transaction.TransactionOperations
+import io.micronaut.transaction.TransactionStatus
+
+import org.junit.jupiter.api.Test
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+
+class MicronautTxUnitOfWorkTest {
+
+    /** Hand-rolled recording transaction runner — a fake, not a mock. */
+    private class RecordingTransactionOperations : TransactionOperations<Connection> {
+
+        private val events = StringBuilder()
+
+        override fun getConnection(): Connection =
+            throw UnsupportedOperationException("no connection in the fake")
+
+        override fun hasConnection(): Boolean = false
+
+        override fun findTransactionStatus(): Optional<out TransactionStatus<*>> =
+            Optional.empty()
+
+        override fun <R> execute(
+            definition: TransactionDefinition,
+            callback: TransactionCallback<Connection, R>,
+        ): R {
+            events.append("begin ")
+            try {
+                val result = callback.call(null)
+                events.append("commit ")
+                return result
+            } catch (e: RuntimeException) {
+                events.append("rollback ")
+                throw e
+            } catch (e: Exception) {
+                events.append("rollback ")
+                throw IllegalStateException(e)
+            }
+        }
+
+        fun events(): String = events.toString().trim()
+    }
+
+    private val transaction = RecordingTransactionOperations()
+    private val unitOfWork = MicronautTxUnitOfWork(transaction)
+
+    @Test
+    fun commitsWhenTheBlockReturns() {
+        assertEquals("done", unitOfWork.inTransaction { "done" })
+        assertEquals("begin commit", transaction.events())
+    }
+
+    @Test
+    fun rollsBackAndRethrowsWhenTheBlockThrows() {
+        val thrown = assertThrows(IllegalArgumentException::class.java) {
+            unitOfWork.inTransaction<Nothing> { throw IllegalArgumentException("boom") }
+        }
+
+        assertEquals("boom", thrown.message)
+        assertEquals("begin rollback", transaction.events())
+    }
+}

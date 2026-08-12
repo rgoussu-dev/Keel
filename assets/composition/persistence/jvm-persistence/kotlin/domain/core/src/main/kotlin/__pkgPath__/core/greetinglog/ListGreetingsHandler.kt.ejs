@@ -1,0 +1,19 @@
+package <%= basePackage %>.core.greetinglog
+
+import <%= basePackage %>.contract.DomainHandler
+import <%= basePackage %>.contract.greetinglog.GreetingLog
+import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting
+import <%= basePackage %>.kernel.Command
+import <%= basePackage %>.kernel.Handler
+
+@DomainHandler
+class ListGreetingsHandler(
+    private val greetingLog: GreetingLog,
+) : Handler<ListGreetingsQuery, List<RecordedGreeting>> {
+
+    override fun supports(command: Command<*>): Boolean = command is ListGreetingsQuery
+
+    override fun handle(command: ListGreetingsQuery): List<RecordedGreeting> =
+        greetingLog.recent(command.limit.coerceIn(1, 100))
+}
