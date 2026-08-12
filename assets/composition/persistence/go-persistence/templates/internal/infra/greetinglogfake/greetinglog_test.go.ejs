@@ -1,0 +1,43 @@
+package greetinglogfake_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"<%= modulePath %>/internal/domain"
+	"<%= modulePath %>/internal/infra/greetinglogfake"
+)
+
+// The fake must satisfy the port it stands in for.
+var _ domain.GreetingLog = (*greetinglogfake.GreetingLog)(nil)
+
+func TestAssignsIncreasingIdsAndReadsBackMostRecentFirst(t *testing.T) {
+	log := greetinglogfake.New()
+	ctx := context.Background()
+	at := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)
+
+	ada, _ := log.Append(ctx, "Ada", at)
+	grace, _ := log.Append(ctx, "Grace", at)
+	if ada.ID != 1 || grace.ID != 2 {
+		t.Fatalf("ids = %d, %d; want 1, 2", ada.ID, grace.ID)
+	}
+
+	recent, err := log.Recent(ctx, 1)
+	if err != nil {
+		t.Fatalf("Recent: %v", err)
+	}
+	if len(recent) != 1 || recent[0].Name != "Grace" {
+		t.Fatalf("recent = %+v, want just Grace", recent)
+	}
+}
+
+func TestToleratesAnEmptyLog(t *testing.T) {
+	recent, err := greetinglogfake.New().Recent(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("Recent: %v", err)
+	}
+	if len(recent) != 0 {
+		t.Fatalf("recent = %+v, want empty", recent)
+	}
+}

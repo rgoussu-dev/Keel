@@ -1,0 +1,80 @@
+package resthttp
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"time"
+
+	"<%= modulePath %>/internal/domain"
+)
+
+// RecordGreetingRequest is the transport shape of POST /greetings.
+type RecordGreetingRequest struct {
+	Name string `json:"name"`
+}
+
+// RecordedGreetingResponse is the transport shape of one recorded
+// greeting.
+type RecordedGreetingResponse struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	GreetedAt time.Time `json:"greetedAt"`
+}
+
+// WithGreetings decorates a handler with the persistence slice's
+// routes: POST /greetings records a greeting durably, GET /greetings
+// reads the log back, most recent first. Everything else falls
+// through to next — cross-cutting the Go way, a decorator at the
+// assembly point.
+func WithGreetings(next http.Handler, greetings domain.GreetingLogUseCases) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /greetings", func(w http.ResponseWriter, r *http.Request) {
+		var request RecordGreetingRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			writeJSON(w, http.StatusBadRequest, "application/problem+json", Problem{
+				Type:   "about:blank",
+				Title:  http.StatusText(http.StatusBadRequest),
+				Status: http.StatusBadRequest,
+				Detail: "the request body must be JSON",
+			})
+			return
+		}
+		recorded, err := greetings.Record(r.Context(), domain.RecordGreetingCommand{
+			Name: request.Name,
+		})
+		if err != nil {
+			writeProblem(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, "application/json", toResponse(recorded))
+	})
+	mux.HandleFunc("GET /greetings", func(w http.ResponseWriter, r *http.Request) {
+		limit := 10
+		if raw := r.URL.Query().Get("limit"); raw != "" {
+			if parsed, err := strconv.Atoi(raw); err == nil {
+				limit = parsed
+			}
+		}
+		recent, err := greetings.List(r.Context(), domain.ListGreetingsQuery{Limit: limit})
+		if err != nil {
+			writeProblem(w, err)
+			return
+		}
+		responses := make([]RecordedGreetingResponse, 0, len(recent))
+		for _, recorded := range recent {
+			responses = append(responses, toResponse(recorded))
+		}
+		writeJSON(w, http.StatusOK, "application/json", responses)
+	})
+	mux.Handle("/", next)
+	return mux
+}
+
+func toResponse(recorded domain.RecordedGreeting) RecordedGreetingResponse {
+	return RecordedGreetingResponse{
+		ID:        recorded.ID,
+		Name:      recorded.Name,
+		GreetedAt: recorded.GreetedAt,
+	}
+}

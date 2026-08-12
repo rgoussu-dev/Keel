@@ -1,0 +1,19 @@
+// Package clocksys holds the real Clock adapter: the system clock.
+package clocksys
+
+import (
+	"time"
+
+	"<%= modulePath %>/internal/domain"
+)
+
+// Clock reads the platform clock.
+type Clock struct{}
+
+// Compile-time proof the adapter satisfies its port.
+var _ domain.Clock = Clock{}
+
+// Now implements domain.Clock.
+func (Clock) Now() time.Time {
+	return time.Now().UTC()
+}

@@ -1,0 +1,34 @@
+package uowfake_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"<%= modulePath %>/internal/domain"
+	"<%= modulePath %>/internal/infra/uowfake"
+)
+
+// The fake must satisfy the port it stands in for.
+var _ domain.UnitOfWork = (*uowfake.UnitOfWork)(nil)
+
+func TestCountsCompletedBlocksAsCommitted(t *testing.T) {
+	uow := uowfake.New()
+
+	err := uow.InTransaction(context.Background(), func(context.Context) error { return nil })
+
+	if err != nil || uow.Committed() != 1 || uow.RolledBack() != 0 {
+		t.Fatalf("err=%v committed=%d rolledBack=%d; want nil/1/0", err, uow.Committed(), uow.RolledBack())
+	}
+}
+
+func TestCountsFailingBlocksAsRolledBackAndPropagates(t *testing.T) {
+	uow := uowfake.New()
+	boom := errors.New("boom")
+
+	err := uow.InTransaction(context.Background(), func(context.Context) error { return boom })
+
+	if !errors.Is(err, boom) || uow.Committed() != 0 || uow.RolledBack() != 1 {
+		t.Fatalf("err=%v committed=%d rolledBack=%d; want boom/0/1", err, uow.Committed(), uow.RolledBack())
+	}
+}

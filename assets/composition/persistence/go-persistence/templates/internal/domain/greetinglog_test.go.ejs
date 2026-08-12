@@ -1,0 +1,68 @@
+package domain_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"<%= modulePath %>/internal/domain"
+	"<%= modulePath %>/internal/infra/clockfake"
+	"<%= modulePath %>/internal/infra/greetinglogfake"
+	"<%= modulePath %>/internal/infra/uowfake"
+)
+
+func factory() (domain.GreetingLogUseCases, *uowfake.UnitOfWork) {
+	uow := uowfake.New()
+	pinned := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)
+	return domain.NewGreetingLogUseCases(greetinglogfake.New(), clockfake.At(pinned), uow), uow
+}
+
+func TestRecordsInsideOneUnitOfWork(t *testing.T) {
+	useCases, uow := factory()
+
+	recorded, err := useCases.Record(context.Background(), domain.RecordGreetingCommand{Name: "Ada"})
+
+	if err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	if recorded.Name != "Ada" || recorded.GreetedAt.IsZero() {
+		t.Fatalf("recorded = %+v, want Ada at the pinned instant", recorded)
+	}
+	if uow.Committed() != 1 {
+		t.Fatalf("committed = %d, want 1", uow.Committed())
+	}
+}
+
+func TestRejectsBlankNamesWithoutTouchingTheLog(t *testing.T) {
+	useCases, uow := factory()
+
+	_, err := useCases.Record(context.Background(), domain.RecordGreetingCommand{Name: "   "})
+
+	if !errors.Is(err, domain.ErrEmptyName) {
+		t.Fatalf("Record error = %v, want ErrEmptyName", err)
+	}
+	if uow.Committed() != 0 {
+		t.Fatalf("committed = %d, want 0", uow.Committed())
+	}
+	recent, _ := useCases.List(context.Background(), domain.ListGreetingsQuery{Limit: 10})
+	if len(recent) != 0 {
+		t.Fatalf("recent = %+v, want empty", recent)
+	}
+}
+
+func TestListsMostRecentFirstAndClampsTheLimit(t *testing.T) {
+	useCases, _ := factory()
+	ctx := context.Background()
+	_, _ = useCases.Record(ctx, domain.RecordGreetingCommand{Name: "Ada"})
+	_, _ = useCases.Record(ctx, domain.RecordGreetingCommand{Name: "Grace"})
+
+	recent, err := useCases.List(ctx, domain.ListGreetingsQuery{Limit: 0})
+
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(recent) != 1 || recent[0].Name != "Grace" {
+		t.Fatalf("recent = %+v, want just Grace (limit clamped to 1)", recent)
+	}
+}

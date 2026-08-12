@@ -37,6 +37,7 @@ import {
   SPRING_PERSISTENCE_ID,
 } from '../../../../src/domain/core/adapters/spring-persistence.js';
 import { MICRONAUT_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/micronaut-persistence.js';
+import { GO_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/go-persistence.js';
 import {
   addPackageDependencies,
   patchMainTs,
@@ -131,6 +132,11 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
       ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http', 'pkg.npm'],
       TS_PERSISTENCE_ID,
     ],
+    [
+      'go-http',
+      ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
+      GO_PERSISTENCE_ID,
+    ],
   ])('selects the per-stack adapter on %s', (_label, tags, adapterId) => {
     const adapters = resolveVertical(persistenceVertical, tags);
     expect(adapters.map((a) => a.id).sort()).toEqual(
@@ -142,10 +148,6 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
     [
       'quarkus-rest-kotlin (no Kotlin twin yet)',
       ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
-    ],
-    [
-      'go-http (no Go adapter yet)',
-      ['lang.go', 'arch.hexagonal', 'arch.server-http', 'pkg.go-modules'],
     ],
     [
       'rust-http (no Rust adapter yet)',
@@ -251,6 +253,39 @@ describe('persistence install on spring-rest and micronaut-rest (Gradle)', () =>
         'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java',
       ),
     ).toContain('extends PostgresTestFixture');
+  });
+});
+
+describe('persistence install on go-http', () => {
+  it('lays the Go slice: ports, pgx adapters, fakes, decorator, patched main', async () => {
+    const tags = ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'];
+    const { tree } = await installChain(tags);
+
+    expect(tree.exists('internal/domain/unitofwork.go')).toBe(true);
+    expect(tree.exists('internal/domain/greetinglog.go')).toBe(true);
+    expect(tree.exists('internal/infra/postgres/postgres.go')).toBe(true);
+    expect(tree.exists('internal/infra/greetinglogfake/greetinglog.go')).toBe(true);
+    expect(tree.exists('internal/infra/uowfake/uow.go')).toBe(true);
+    expect(read(tree, 'internal/app/resthttp/greetings.go')).toContain('func WithGreetings(');
+    const main = read(tree, 'cmd/http/main.go');
+    expect(main).toContain('postgres.NewPool(context.Background())');
+    expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
+    expect(main).toContain('"context"');
+    expect(read(tree, 'internal/infra/postgres/postgres.go')).toContain(
+      'postgres://app:app@localhost:5432/walking_skeleton',
+    );
+    expect(read(tree, 'internal/infra/postgres/postgres_test.go')).toContain(
+      'testcontainers-go/modules/postgres',
+    );
+  });
+
+  it('wires the persistence slice into the observability-shaped main too', async () => {
+    const tags = ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'];
+    const { tree } = await installChain(tags, { observability: true });
+    const main = read(tree, 'cmd/http/main.go');
+    expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
+    expect(main).toContain('observability.RequestContext');
+    expect(main.match(/"context"/g)?.length).toBe(1);
   });
 });
 
