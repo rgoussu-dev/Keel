@@ -22,13 +22,15 @@ export interface SqlEngineSpec {
   jdbcUrl(host: string, database: string): string;
 }
 
+const POSTGRES_PORT = 5432;
+
 /** PostgreSQL — the persistence vertical's sane default. */
 export const POSTGRES: SqlEngineSpec = {
   id: 'postgres',
   tag: 'db.postgres',
   image: 'postgres:18-alpine',
-  port: 5432,
-  jdbcUrl: (host, database) => `jdbc:postgresql://${host}:5432/${database}`,
+  port: POSTGRES_PORT,
+  jdbcUrl: (host, database) => `jdbc:postgresql://${host}:${POSTGRES_PORT}/${database}`,
 };
 
 /** Resolves the project's SQL engine (PostgreSQL until more land). */
