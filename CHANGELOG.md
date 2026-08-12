@@ -8,6 +8,20 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`@DomainHandler` — container discovery of handlers on the JVM
+  stacks.** Handlers in scaffolded projects now carry a marker the
+  **domain owns** (`domain/contract`), so a new aggregate no longer
+  needs an edit in the composition root. No framework stereotype ever
+  appears in domain code: the marker is meta-annotated only with
+  Jakarta specification APIs (`jakarta.inject`,
+  `jakarta.enterprise.cdi-api`), declared `compileOnly`/`provided` so
+  neither reaches a runtime classpath, and each composition root reads
+  the same marker in its own idiom — a CDI stereotype for Quarkus (the
+  domain modules ship a `beans.xml` marking them bean archives), a
+  `@ComponentScan` include filter for Spring, and `@Import` for
+  Micronaut Java. Mediator factories now take the discovered
+  collection instead of constructing handlers by hand.
+
 - **Dedicated documentation under `docs/`** — cross-linked pages for
   every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
   `web-components`, fullstack) and every vertical

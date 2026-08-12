@@ -4,16 +4,29 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.ExitCodeGenerator;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import picocli.CommandLine;
 import picocli.CommandLine.IFactory;
+
+import <%= basePackage %>.contract.DomainHandler;
 
 /**
  * Boots the Spring container, then hands the raw arguments to
  * picocli. Commands are Spring beans instantiated through the
  * {@link IFactory} the picocli starter provides, so constructor
  * injection works inside them.
+ *
+ * <p>The scan is declared explicitly because it spans two packages:
+ * this one and the domain's, whose handlers carry no Spring
+ * stereotype and are admitted by the {@link DomainHandler} include
+ * filter instead.
  */
 @SpringBootApplication
+@ComponentScan(
+        basePackages = {"<%= basePackage %>.cli", "<%= basePackage %>.core"},
+        includeFilters =
+                @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = DomainHandler.class))
 public class Main implements CommandLineRunner, ExitCodeGenerator {
 
     private final IFactory factory;

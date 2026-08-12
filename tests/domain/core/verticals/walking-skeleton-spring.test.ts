@@ -134,6 +134,44 @@ describe('walking-skeleton vertical (Spring REST)', () => {
     expect(executable).toContain('spring-boot-starter-webmvc');
   });
 
+  it('discovers handlers through the domain-owned @DomainHandler marker', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.server-http'));
+    cwds.push(cwd);
+
+    // The marker belongs to the domain and names no framework.
+    const marker =
+      tree
+        .read('domain/contract/src/main/java/com/example/contract/DomainHandler.java')
+        ?.toString() ?? '';
+    expect(marker).toContain('@interface DomainHandler');
+    expect(marker).not.toContain('org.springframework');
+
+    const handler =
+      tree.read('domain/core/src/main/java/com/example/core/greet/GreetHandler.java')?.toString() ??
+      '';
+    expect(handler).toContain('@DomainHandler');
+    expect(handler).not.toContain('org.springframework');
+
+    // Spring reads that marker via an include filter, and the scan is
+    // widened to the domain package — Application sits under .rest, so
+    // the default root would never reach .core.
+    const app =
+      tree
+        .read('application/rest/executable/src/main/java/com/example/rest/Application.java')
+        ?.toString() ?? '';
+    expect(app).toContain('classes = DomainHandler.class');
+    expect(app).toContain('"com.example.core"');
+
+    // The composition root takes the discovered collection rather than
+    // constructing handlers by hand.
+    const config =
+      tree
+        .read('application/rest/executable/src/main/java/com/example/rest/MediatorConfig.java')
+        ?.toString() ?? '';
+    expect(config).toContain('mediator(List<Handler<?, ?>> handlers)');
+    expect(config).not.toContain('new GreetHandler()');
+  });
+
   it('wires the five subprojects and the sample Clock fake module', async () => {
     const { tree, cwd } = await installWith(baseTags('arch.server-http'));
     cwds.push(cwd);
