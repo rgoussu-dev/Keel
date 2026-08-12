@@ -168,7 +168,10 @@ export const rustPersistenceAdapter: Adapter = {
             return next;
           }),
         },
-        { target: DOMAIN_TARGET, apply: eolAware(appendStitch('pub mod greeting_log;', DOMAIN_STITCH)) },
+        {
+          target: DOMAIN_TARGET,
+          apply: eolAware(appendStitch('pub mod greeting_log;', DOMAIN_STITCH)),
+        },
         { target: LIB_TARGET, apply: eolAware(appendStitch('pub mod infra;', 'pub mod infra;')) },
         { target: INFRA_TARGET, apply: eolAware(appendStitch('pub mod postgres;', INFRA_STITCH)) },
         { target: MAIN_TARGET, apply: patchRustMain(crateName) },

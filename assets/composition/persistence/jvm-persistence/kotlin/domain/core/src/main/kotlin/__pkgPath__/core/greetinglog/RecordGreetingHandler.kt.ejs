@@ -1,0 +1,27 @@
+package <%= basePackage %>.core.greetinglog
+
+import <%= basePackage %>.contract.Clock
+import <%= basePackage %>.contract.UnitOfWork
+import <%= basePackage %>.contract.greet.GreetRejected
+import <%= basePackage %>.contract.greetinglog.GreetingLog
+import <%= basePackage %>.contract.greetinglog.RecordGreetingCommand
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting
+import <%= basePackage %>.kernel.Command
+import <%= basePackage %>.kernel.Handler
+
+class RecordGreetingHandler(
+    private val greetingLog: GreetingLog,
+    private val clock: Clock,
+    private val unitOfWork: UnitOfWork,
+) : Handler<RecordGreetingCommand, RecordedGreeting> {
+
+    override fun supports(command: Command<*>): Boolean = command is RecordGreetingCommand
+
+    override fun handle(command: RecordGreetingCommand): RecordedGreeting {
+        val name = command.name?.trim().orEmpty()
+        if (name.isEmpty()) {
+            throw GreetRejected("name must not be blank")
+        }
+        return unitOfWork.inTransaction { greetingLog.append(name, clock.now()) }
+    }
+}

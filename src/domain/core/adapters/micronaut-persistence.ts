@@ -40,6 +40,7 @@ import {
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   patchJavaCompositionRoot,
+  patchKotlinCompositionRoot,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
@@ -48,6 +49,9 @@ import { eolAware, packageToPath } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const MICRONAUT_PERSISTENCE_ID = 'persistence/micronaut-persistence';
+
+/** Adapter id of the Kotlin twin. */
+export const MICRONAUT_PERSISTENCE_KOTLIN_ID = 'persistence/micronaut-persistence-kotlin';
 
 const TEMPLATE_ID = 'composition/persistence/micronaut-persistence/templates';
 const BUILD_TEMPLATE_ROOT = 'composition/persistence/micronaut-persistence/build';
@@ -171,53 +175,86 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
   };
 }
 
-export const micronautPersistenceAdapter: Adapter = {
-  id: MICRONAUT_PERSISTENCE_ID,
-  vertical: 'persistence',
-  covers: ['datasource', 'unit-of-work', 'repository-example'],
-  predicate: { requires: ['framework.micronaut', 'arch.server-http', 'lang.java'] },
-  async contribute(ctx) {
-    const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
-      ctx.manifest,
-      MICRONAUT_PERSISTENCE_ID,
-      'micronaut',
-      'java',
+const KOTLIN_TEST_CLASS_ANCHOR =
+  'class GreetControllerTest(@Client("/") private val client: HttpClient) {';
+
+/**
+ * The Kotlin twin of {@link patchGreetControllerTest}. Exported for
+ * the vertical tests.
+ */
+export function patchGreetControllerTestKotlin(existing: string): string {
+  if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
+  if (!existing.includes(KOTLIN_TEST_CLASS_ANCHOR)) {
+    throw new Error(
+      `${MICRONAUT_PERSISTENCE_KOTLIN_ID}: GreetControllerTest.kt has drifted from the walking-skeleton shape — extend PostgresTestFixture manually so the embedded server has a database`,
     );
-    const vars = jvmPersistenceVars(basePackage, projectName);
-    const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-    const [shared, sources, build] = await Promise.all([
-      jvmSharedPersistenceFiles(ctx, 'java', vars),
-      ctx.templates.render(TEMPLATE_ID, '', vars),
-      ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
-    ]);
-    const database = databaseName(ctx.manifest);
-    const javaRoot = `application/rest/executable/src/main/java/${packageToPath(basePackage)}/rest`;
-    const testRoot = `application/rest/executable/src/test/java/${packageToPath(basePackage)}/rest`;
-    return {
-      files: [...shared, ...sources, ...build],
-      patches: [
-        moduleRegistrationPatch(buildSystem, MICRONAUT_PERSISTENCE_ID, UOW_MODULE),
-        frameworkDepsPatch(buildSystem),
-        executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
-        coreTestDepsPatch(buildSystem, basePackage),
-        {
-          target: PROPERTIES_TARGET,
-          apply: eolAware((existing) => {
-            if (existing.includes(PROPERTIES_GUARD)) return existing;
-            return `${existing.trimEnd()}\n\n${micronautPersistencePropertiesBlock(database).trim()}\n`;
-          }),
-        },
-        {
-          target: `${javaRoot}/MediatorFactory.java`,
-          apply: patchJavaCompositionRoot(MICRONAUT_PERSISTENCE_ID, basePackage),
-        },
-        {
-          target: `${testRoot}/GreetControllerTest.java`,
-          apply: eolAware(patchGreetControllerTest),
-        },
-        persistenceReadmePatch(),
-      ],
-      tagsAdd: [sqlEngine().tag],
-    };
-  },
-};
+  }
+  return existing.replace(
+    KOTLIN_TEST_CLASS_ANCHOR,
+    'class GreetControllerTest(@Client("/") private val client: HttpClient) : PostgresTestFixture() {',
+  );
+}
+
+function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
+  const kotlin = language === 'kotlin';
+  const id = kotlin ? MICRONAUT_PERSISTENCE_KOTLIN_ID : MICRONAUT_PERSISTENCE_ID;
+  const templateId = kotlin ? `${TEMPLATE_ID}-kotlin` : TEMPLATE_ID;
+  const sourceDir = kotlin ? 'kotlin' : 'java';
+  return {
+    id,
+    vertical: 'persistence',
+    covers: ['datasource', 'unit-of-work', 'repository-example'],
+    predicate: { requires: ['framework.micronaut', 'arch.server-http', `lang.${language}`] },
+    async contribute(ctx) {
+      const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
+        ctx.manifest,
+        id,
+        'micronaut',
+        language,
+      );
+      const vars = jvmPersistenceVars(basePackage, projectName);
+      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const [shared, sources, build] = await Promise.all([
+        jvmSharedPersistenceFiles(ctx, language, vars),
+        ctx.templates.render(templateId, '', vars),
+        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+      ]);
+      const database = databaseName(ctx.manifest);
+      const mainRoot = `application/rest/executable/src/main/${sourceDir}/${packageToPath(basePackage)}/rest`;
+      const testRoot = `application/rest/executable/src/test/${sourceDir}/${packageToPath(basePackage)}/rest`;
+      return {
+        files: [...shared, ...sources, ...build],
+        patches: [
+          moduleRegistrationPatch(buildSystem, id, UOW_MODULE),
+          frameworkDepsPatch(buildSystem),
+          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
+          coreTestDepsPatch(buildSystem, basePackage),
+          {
+            target: PROPERTIES_TARGET,
+            apply: eolAware((existing) => {
+              if (existing.includes(PROPERTIES_GUARD)) return existing;
+              return `${existing.trimEnd()}\n\n${micronautPersistencePropertiesBlock(database).trim()}\n`;
+            }),
+          },
+          {
+            target: `${mainRoot}/MediatorFactory.${kotlin ? 'kt' : 'java'}`,
+            apply: kotlin
+              ? patchKotlinCompositionRoot(id, basePackage)
+              : patchJavaCompositionRoot(id, basePackage),
+          },
+          {
+            target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
+            apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
+          },
+          persistenceReadmePatch(),
+        ],
+        tagsAdd: [sqlEngine().tag],
+      };
+    },
+  };
+}
+
+export const micronautPersistenceAdapter: Adapter = makeMicronautPersistenceAdapter('java');
+
+/** The Kotlin twin — same slice, Kotlin trees and patchers. */
+export const micronautPersistenceKotlinAdapter: Adapter = makeMicronautPersistenceAdapter('kotlin');

@@ -40,6 +40,7 @@ import {
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   patchJavaCompositionRoot,
+  patchKotlinCompositionRoot,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
@@ -48,6 +49,9 @@ import { eolAware, packageToPath } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const SPRING_PERSISTENCE_ID = 'persistence/spring-persistence';
+
+/** Adapter id of the Kotlin twin. */
+export const SPRING_PERSISTENCE_KOTLIN_ID = 'persistence/spring-persistence-kotlin';
 
 const TEMPLATE_ID = 'composition/persistence/spring-persistence/templates';
 const BUILD_TEMPLATE_ROOT = 'composition/persistence/spring-persistence/build';
@@ -180,53 +184,95 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
   };
 }
 
-export const springPersistenceAdapter: Adapter = {
-  id: SPRING_PERSISTENCE_ID,
-  vertical: 'persistence',
-  covers: ['datasource', 'unit-of-work', 'repository-example'],
-  predicate: { requires: ['framework.spring', 'arch.server-http', 'lang.java'] },
-  async contribute(ctx) {
-    const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
-      ctx.manifest,
-      SPRING_PERSISTENCE_ID,
-      'spring',
-      'java',
+const KOTLIN_TEST_CLASS_ANCHOR =
+  '@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)\nclass GreetControllerTest {';
+const KOTLIN_TEST_IMPORT_ANCHOR = 'import org.springframework.boot.test.context.SpringBootTest';
+
+/**
+ * The Kotlin twin of {@link patchGreetControllerTest}. Exported for
+ * the vertical tests.
+ */
+export function patchGreetControllerTestKotlin(existing: string): string {
+  if (existing.includes('TestcontainersConfiguration')) return existing;
+  if (
+    !existing.includes(KOTLIN_TEST_CLASS_ANCHOR) ||
+    !existing.includes(KOTLIN_TEST_IMPORT_ANCHOR)
+  ) {
+    throw new Error(
+      `${SPRING_PERSISTENCE_KOTLIN_ID}: GreetControllerTest.kt has drifted from the walking-skeleton shape — add @Import(TestcontainersConfiguration::class) to it manually so the context boot has a database`,
     );
-    const vars = jvmPersistenceVars(basePackage, projectName);
-    const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-    const [shared, sources, build] = await Promise.all([
-      jvmSharedPersistenceFiles(ctx, 'java', vars),
-      ctx.templates.render(TEMPLATE_ID, '', vars),
-      ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
-    ]);
-    const database = databaseName(ctx.manifest);
-    const javaRoot = `application/rest/executable/src/main/java/${packageToPath(basePackage)}/rest`;
-    const testRoot = `application/rest/executable/src/test/java/${packageToPath(basePackage)}/rest`;
-    return {
-      files: [...shared, ...sources, ...build],
-      patches: [
-        moduleRegistrationPatch(buildSystem, SPRING_PERSISTENCE_ID, UOW_MODULE),
-        frameworkDepsPatch(buildSystem),
-        executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
-        coreTestDepsPatch(buildSystem, basePackage),
-        {
-          target: PROPERTIES_TARGET,
-          apply: eolAware((existing) => {
-            if (existing.includes(PROPERTIES_GUARD)) return existing;
-            return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database).trim()}\n`;
-          }),
-        },
-        {
-          target: `${javaRoot}/MediatorConfig.java`,
-          apply: patchJavaCompositionRoot(SPRING_PERSISTENCE_ID, basePackage),
-        },
-        {
-          target: `${testRoot}/GreetControllerTest.java`,
-          apply: eolAware(patchGreetControllerTest),
-        },
-        persistenceReadmePatch(),
-      ],
-      tagsAdd: [sqlEngine().tag],
-    };
-  },
-};
+  }
+  return existing
+    .replace(
+      KOTLIN_TEST_IMPORT_ANCHOR,
+      `${KOTLIN_TEST_IMPORT_ANCHOR}\nimport org.springframework.context.annotation.Import`,
+    )
+    .replace(
+      KOTLIN_TEST_CLASS_ANCHOR,
+      `@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)\n@Import(TestcontainersConfiguration::class)\nclass GreetControllerTest {`,
+    );
+}
+
+function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
+  const kotlin = language === 'kotlin';
+  const id = kotlin ? SPRING_PERSISTENCE_KOTLIN_ID : SPRING_PERSISTENCE_ID;
+  const templateId = kotlin ? `${TEMPLATE_ID}-kotlin` : TEMPLATE_ID;
+  const sourceDir = kotlin ? 'kotlin' : 'java';
+  return {
+    id,
+    vertical: 'persistence',
+    covers: ['datasource', 'unit-of-work', 'repository-example'],
+    predicate: { requires: ['framework.spring', 'arch.server-http', `lang.${language}`] },
+    async contribute(ctx) {
+      const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
+        ctx.manifest,
+        id,
+        'spring',
+        language,
+      );
+      const vars = jvmPersistenceVars(basePackage, projectName);
+      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const [shared, sources, build] = await Promise.all([
+        jvmSharedPersistenceFiles(ctx, language, vars),
+        ctx.templates.render(templateId, '', vars),
+        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+      ]);
+      const database = databaseName(ctx.manifest);
+      const mainRoot = `application/rest/executable/src/main/${sourceDir}/${packageToPath(basePackage)}/rest`;
+      const testRoot = `application/rest/executable/src/test/${sourceDir}/${packageToPath(basePackage)}/rest`;
+      return {
+        files: [...shared, ...sources, ...build],
+        patches: [
+          moduleRegistrationPatch(buildSystem, id, UOW_MODULE),
+          frameworkDepsPatch(buildSystem),
+          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
+          coreTestDepsPatch(buildSystem, basePackage),
+          {
+            target: PROPERTIES_TARGET,
+            apply: eolAware((existing) => {
+              if (existing.includes(PROPERTIES_GUARD)) return existing;
+              return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database).trim()}\n`;
+            }),
+          },
+          {
+            target: `${mainRoot}/MediatorConfig.${kotlin ? 'kt' : 'java'}`,
+            apply: kotlin
+              ? patchKotlinCompositionRoot(id, basePackage)
+              : patchJavaCompositionRoot(id, basePackage),
+          },
+          {
+            target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
+            apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
+          },
+          persistenceReadmePatch(),
+        ],
+        tagsAdd: [sqlEngine().tag],
+      };
+    },
+  };
+}
+
+export const springPersistenceAdapter: Adapter = makeSpringPersistenceAdapter('java');
+
+/** The Kotlin twin — same slice, Kotlin trees and patchers. */
+export const springPersistenceKotlinAdapter: Adapter = makeSpringPersistenceAdapter('kotlin');

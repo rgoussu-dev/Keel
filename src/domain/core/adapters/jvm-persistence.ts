@@ -107,7 +107,11 @@ export async function jvmSharedPersistenceFiles(
   // every subproject, so `java-library` modules compile Kotlin too.
   const [sources, build] = await Promise.all([
     ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/${language}`, '', vars),
-    ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/build/${jvmBuildSystem(ctx.manifest.tags)}`, '', vars),
+    ctx.templates.render(
+      `${SHARED_TEMPLATE_ROOT}/build/${jvmBuildSystem(ctx.manifest.tags)}`,
+      '',
+      vars,
+    ),
   ]);
   return [...sources, ...build];
 }
@@ -305,6 +309,46 @@ import ${basePackage}.contract.greetinglog.GreetingLog;`;
       .replace(importAnchor, `${importAnchor}\n${imports}`)
       .replace(methodAnchor, methodSignature)
       .replace(listAnchor, listWiring);
+  });
+}
+
+/**
+ * Rewires a Kotlin composition root (`MediatorProducer` /
+ * `MediatorConfig` / `MediatorFactory` — the single-expression body
+ * is byte-identical across the three frameworks): `mediator()` takes
+ * the persistence ports as parameters and registers the greeting-log
+ * handlers. Throws when the anchors drifted so the user gets a
+ * precise manual instruction instead of a silently unwired slice.
+ */
+export function patchKotlinCompositionRoot(
+  adapterId: string,
+  basePackage: string,
+): (existing: string) => string {
+  const importAnchor = `import ${basePackage}.core.greet.GreetHandler`;
+  const imports = `import ${basePackage}.core.greetinglog.ListGreetingsHandler
+import ${basePackage}.core.greetinglog.RecordGreetingHandler
+import ${basePackage}.contract.Clock
+import ${basePackage}.contract.UnitOfWork
+import ${basePackage}.contract.greetinglog.GreetingLog`;
+  const bodyAnchor = '    fun mediator(): Mediator = RegistryMediator(listOf(GreetHandler()))';
+  const bodyWiring = `    fun mediator(greetingLog: GreetingLog, clock: Clock, unitOfWork: UnitOfWork): Mediator =
+        RegistryMediator(
+            listOf(
+                GreetHandler(),
+                RecordGreetingHandler(greetingLog, clock, unitOfWork),
+                ListGreetingsHandler(greetingLog),
+            ),
+        )`;
+  return eolAware((existing) => {
+    if (existing.includes('RecordGreetingHandler')) return existing;
+    if (!existing.includes(importAnchor) || !existing.includes(bodyAnchor)) {
+      throw new Error(
+        `${adapterId}: the composition root has drifted from the walking-skeleton shape — register RecordGreetingHandler and ListGreetingsHandler with the mediator manually (inject GreetingLog, Clock and UnitOfWork)`,
+      );
+    }
+    return existing
+      .replace(importAnchor, `${importAnchor}\n${imports}`)
+      .replace(bodyAnchor, bodyWiring);
   });
 }
 

@@ -1,0 +1,53 @@
+package <%= basePackage %>.unitofwork.springtx
+
+import org.junit.jupiter.api.Test
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.SimpleTransactionStatus
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+
+class SpringTxUnitOfWorkTest {
+
+    /** Hand-rolled recording transaction manager — a fake, not a mock. */
+    private class RecordingTransactionManager : PlatformTransactionManager {
+
+        private val events = StringBuilder()
+
+        override fun getTransaction(definition: TransactionDefinition?): TransactionStatus {
+            events.append("begin ")
+            return SimpleTransactionStatus()
+        }
+
+        override fun commit(status: TransactionStatus) {
+            events.append("commit ")
+        }
+
+        override fun rollback(status: TransactionStatus) {
+            events.append("rollback ")
+        }
+
+        fun events(): String = events.toString().trim()
+    }
+
+    private val manager = RecordingTransactionManager()
+    private val unitOfWork = SpringTxUnitOfWork(manager)
+
+    @Test
+    fun commitsWhenTheBlockReturns() {
+        assertEquals("done", unitOfWork.inTransaction { "done" })
+        assertEquals("begin commit", manager.events())
+    }
+
+    @Test
+    fun rollsBackAndRethrowsWhenTheBlockThrows() {
+        val thrown = assertThrows(IllegalArgumentException::class.java) {
+            unitOfWork.inTransaction<Nothing> { throw IllegalArgumentException("boom") }
+        }
+
+        assertEquals("boom", thrown.message)
+        assertEquals("begin rollback", manager.events())
+    }
+}

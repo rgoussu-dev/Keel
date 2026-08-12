@@ -39,6 +39,7 @@ import {
   moduleRegistrationPatch,
   observabilityInstalled,
   patchJavaCompositionRoot,
+  patchKotlinCompositionRoot,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
@@ -47,6 +48,9 @@ import { eolAware, packageToPath } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const QUARKUS_PERSISTENCE_ID = 'persistence/quarkus-persistence';
+
+/** Adapter id of the Kotlin twin. */
+export const QUARKUS_PERSISTENCE_KOTLIN_ID = 'persistence/quarkus-persistence-kotlin';
 
 const TEMPLATE_ID = 'composition/persistence/quarkus-persistence/templates';
 const BUILD_TEMPLATE_ROOT = 'composition/persistence/quarkus-persistence/build';
@@ -149,50 +153,65 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
   };
 }
 
-export const quarkusPersistenceAdapter: Adapter = {
-  id: QUARKUS_PERSISTENCE_ID,
-  vertical: 'persistence',
-  covers: ['datasource', 'unit-of-work', 'repository-example'],
-  predicate: { requires: ['framework.quarkus', 'arch.server-http', 'lang.java'] },
-  async contribute(ctx) {
-    const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
-      ctx.manifest,
-      QUARKUS_PERSISTENCE_ID,
-      'quarkus',
-      'java',
-    );
-    const vars = jvmPersistenceVars(basePackage, projectName);
-    const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-    const [shared, sources, build] = await Promise.all([
-      jvmSharedPersistenceFiles(ctx, 'java', vars),
-      ctx.templates.render(TEMPLATE_ID, '', vars),
-      ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
-    ]);
-    const database = databaseName(ctx.manifest);
-    return {
-      files: [...shared, ...sources, ...build],
-      patches: [
-        moduleRegistrationPatch(buildSystem, QUARKUS_PERSISTENCE_ID, UOW_MODULE),
-        frameworkDepsPatch(buildSystem),
-        executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
-        coreTestDepsPatch(buildSystem, basePackage),
-        {
-          target: PROPERTIES_TARGET,
-          apply: eolAware((existing) => {
-            if (existing.includes(PROPERTIES_GUARD)) return existing;
-            return `${existing.trimEnd()}\n\n${persistencePropertiesBlock(
-              database,
-              observabilityInstalled(ctx.manifest),
-            ).trim()}\n`;
-          }),
-        },
-        {
-          target: `application/rest/executable/src/main/java/${packageToPath(basePackage)}/rest/MediatorProducer.java`,
-          apply: patchMediatorProducer(basePackage),
-        },
-        persistenceReadmePatch(),
-      ],
-      tagsAdd: [sqlEngine().tag],
-    };
-  },
-};
+function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
+  const kotlin = language === 'kotlin';
+  const id = kotlin ? QUARKUS_PERSISTENCE_KOTLIN_ID : QUARKUS_PERSISTENCE_ID;
+  const templateId = kotlin ? `${TEMPLATE_ID}-kotlin` : TEMPLATE_ID;
+  return {
+    id,
+    vertical: 'persistence',
+    covers: ['datasource', 'unit-of-work', 'repository-example'],
+    predicate: { requires: ['framework.quarkus', 'arch.server-http', `lang.${language}`] },
+    async contribute(ctx) {
+      const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
+        ctx.manifest,
+        id,
+        'quarkus',
+        language,
+      );
+      const vars = jvmPersistenceVars(basePackage, projectName);
+      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const [shared, sources, build] = await Promise.all([
+        jvmSharedPersistenceFiles(ctx, language, vars),
+        ctx.templates.render(templateId, '', vars),
+        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+      ]);
+      const database = databaseName(ctx.manifest);
+      const rootTarget = kotlin
+        ? `application/rest/executable/src/main/kotlin/${packageToPath(basePackage)}/rest/MediatorProducer.kt`
+        : `application/rest/executable/src/main/java/${packageToPath(basePackage)}/rest/MediatorProducer.java`;
+      return {
+        files: [...shared, ...sources, ...build],
+        patches: [
+          moduleRegistrationPatch(buildSystem, id, UOW_MODULE),
+          frameworkDepsPatch(buildSystem),
+          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
+          coreTestDepsPatch(buildSystem, basePackage),
+          {
+            target: PROPERTIES_TARGET,
+            apply: eolAware((existing) => {
+              if (existing.includes(PROPERTIES_GUARD)) return existing;
+              return `${existing.trimEnd()}\n\n${persistencePropertiesBlock(
+                database,
+                observabilityInstalled(ctx.manifest),
+              ).trim()}\n`;
+            }),
+          },
+          {
+            target: rootTarget,
+            apply: kotlin
+              ? patchKotlinCompositionRoot(id, basePackage)
+              : patchJavaCompositionRoot(id, basePackage),
+          },
+          persistenceReadmePatch(),
+        ],
+        tagsAdd: [sqlEngine().tag],
+      };
+    },
+  };
+}
+
+export const quarkusPersistenceAdapter: Adapter = makeQuarkusPersistenceAdapter('java');
+
+/** The Kotlin twin — same slice, Kotlin trees and patchers. */
+export const quarkusPersistenceKotlinAdapter: Adapter = makeQuarkusPersistenceAdapter('kotlin');

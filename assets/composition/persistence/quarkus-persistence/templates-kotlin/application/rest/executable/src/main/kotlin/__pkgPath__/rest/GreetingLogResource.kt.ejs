@@ -1,0 +1,44 @@
+package <%= basePackage %>.rest
+
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DefaultValue
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
+
+import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery
+import <%= basePackage %>.contract.greetinglog.RecordGreetingCommand
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting
+import <%= basePackage %>.kernel.Mediator
+import <%= basePackage %>.rest.contract.RecordGreetingRequest
+import <%= basePackage %>.rest.contract.RecordedGreetingResponse
+
+/**
+ * HTTP entry point of the persistence slice: maps transport DTOs to
+ * the greeting-log command/query, dispatches via the mediator, and
+ * maps the results back. No business logic.
+ */
+@Path("/greetings")
+class GreetingLogResource(private val mediator: Mediator) {
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    fun record(request: RecordGreetingRequest): Response {
+        val recorded = mediator.dispatch(RecordGreetingCommand(request.name))
+        return Response.status(Response.Status.CREATED).entity(recorded.toResponse()).build()
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    fun recent(
+        @QueryParam("limit") @DefaultValue("10") limit: Int,
+    ): List<RecordedGreetingResponse> =
+        mediator.dispatch(ListGreetingsQuery(limit)).map { it.toResponse() }
+
+    private fun RecordedGreeting.toResponse() = RecordedGreetingResponse(id, name, greetedAt)
+}

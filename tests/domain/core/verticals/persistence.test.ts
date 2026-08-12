@@ -31,7 +31,10 @@ import {
   patchMediatorProducer,
   persistencePropertiesBlock,
   QUARKUS_PERSISTENCE_ID,
+  QUARKUS_PERSISTENCE_KOTLIN_ID,
 } from '../../../../src/domain/core/adapters/quarkus-persistence.js';
+import { SPRING_PERSISTENCE_KOTLIN_ID } from '../../../../src/domain/core/adapters/spring-persistence.js';
+import { MICRONAUT_PERSISTENCE_KOTLIN_ID } from '../../../../src/domain/core/adapters/micronaut-persistence.js';
 import {
   patchGreetControllerTest as patchSpringGreetControllerTest,
   SPRING_PERSISTENCE_ID,
@@ -143,6 +146,21 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
       ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
       RUST_PERSISTENCE_ID,
     ],
+    [
+      'quarkus-rest-kotlin',
+      ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
+      QUARKUS_PERSISTENCE_KOTLIN_ID,
+    ],
+    [
+      'spring-rest-kotlin',
+      ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
+      SPRING_PERSISTENCE_KOTLIN_ID,
+    ],
+    [
+      'micronaut-rest-kotlin',
+      ['lang.kotlin', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
+      MICRONAUT_PERSISTENCE_KOTLIN_ID,
+    ],
   ])('selects the per-stack adapter on %s', (_label, tags, adapterId) => {
     const adapters = resolveVertical(persistenceVertical, tags);
     expect(adapters.map((a) => a.id).sort()).toEqual(
@@ -152,12 +170,12 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
 
   it.each([
     [
-      'quarkus-rest-kotlin (no Kotlin twin yet)',
-      ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
-    ],
-    [
       'quarkus-cli (no HTTP shape)',
       ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
+    ],
+    [
+      'web-components (no server, no persistence)',
+      ['framework.web-components', 'arch.hexagonal', 'arch.spa', 'pkg.npm'],
     ],
   ])('hard-fails on %s instead of half-installing', (_label, tags) => {
     expect(() => resolveVertical(persistenceVertical, tags)).toThrow(ResolutionError);
@@ -255,6 +273,48 @@ describe('persistence install on spring-rest and micronaut-rest (Gradle)', () =>
         'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java',
       ),
     ).toContain('extends PostgresTestFixture');
+  });
+});
+
+describe('persistence install on quarkus-rest-kotlin (Gradle)', () => {
+  it('lays the Kotlin slice: kotlin trees, rewired composition root, patched config', async () => {
+    const tags = [
+      'lang.kotlin',
+      'runtime.jvm',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.gradle',
+    ];
+    const { tree } = await installChain(tags);
+
+    expect(tree.exists('domain/contract/src/main/kotlin/com/example/contract/UnitOfWork.kt')).toBe(
+      true,
+    );
+    expect(
+      tree.exists(
+        'infrastructure/unit-of-work/jta/src/main/kotlin/com/example/unitofwork/jta/JtaUnitOfWork.kt',
+      ),
+    ).toBe(true);
+    expect(
+      tree.exists(
+        'infrastructure/greeting-log/jdbc/src/test/kotlin/com/example/greetinglog/jdbc/JdbcGreetingLogTest.kt',
+      ),
+    ).toBe(true);
+    const producer = read(
+      tree,
+      'application/rest/executable/src/main/kotlin/com/example/rest/MediatorProducer.kt',
+    );
+    expect(producer).toContain(
+      'fun mediator(greetingLog: GreetingLog, clock: Clock, unitOfWork: UnitOfWork): Mediator',
+    );
+    expect(producer).toContain('RecordGreetingHandler(greetingLog, clock, unitOfWork)');
+    expect(read(tree, 'settings.gradle.kts')).toContain(
+      'include(":infrastructure:unit-of-work:jta")',
+    );
+    expect(
+      read(tree, 'application/rest/executable/src/main/resources/application.properties'),
+    ).toContain('quarkus.datasource.db-kind=postgresql');
   });
 });
 
