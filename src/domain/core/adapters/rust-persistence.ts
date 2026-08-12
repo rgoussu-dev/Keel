@@ -144,7 +144,7 @@ export const rustPersistenceAdapter: Adapter = {
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       projectName,
       crateName,
-      databaseName: databaseName(ctx.manifest),
+      devUrl: sqlEngine().devUrl('localhost', databaseName(ctx.manifest)),
     });
     return {
       files,

@@ -1,7 +1,7 @@
 import pg from 'pg';
 
 /** Default dev connection: the compose database (dev/compose.yaml). */
-const DEV_URL = 'postgres://app:app@localhost:5432/<%= databaseName %>';
+const DEV_URL = '<%= devUrl %>';
 
 /**
  * Creates the connection pool. 12-factor: `DB_URL` overrides the dev

@@ -17,7 +17,7 @@ use crate::domain::{GreetingLog, GreetingLogError, RecordedGreeting, UnitOfWork}
 
 /// Default dev connection: the compose database (dev/compose.yaml).
 /// 12-factor: `DB_URL` overrides it in every deployed environment.
-const DEV_URL: &str = "postgres://app:app@localhost:5432/<%= databaseName %>";
+const DEV_URL: &str = "<%= devUrl %>";
 
 /// The shared connection both adapters draw on.
 pub type SharedClient = Arc<Mutex<Client>>;
