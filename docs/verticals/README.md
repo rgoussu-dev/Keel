@@ -39,7 +39,7 @@ adapter matches your project's tags for a dimension, the install
 | `walking-skeleton` | ●       | ●        | ●           | ●            | ●         | ●                | ● per service                |
 | `dev-env`          | ➕      | ●        | ➕          | ●            | ●         | ➕               | ● backend                    |
 | `observability`    | ⛔      | ●        | ⛔          | ●            | ●         | ⛔               | ● backend                    |
-| `persistence`      | ⛔      | ➕ ⁴     | ⛔          | ⛔           | ⛔        | ⛔               | ➕ ⁴ backend                 |
+| `persistence`      | ⛔      | ➕       | ⛔          | ➕           | ➕        | ⛔               | ➕ backend                   |
 | `gateway`          | —       | ➕ ¹     | —           | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
 | `containerization` | ⛔      | ➕       | ⛔          | ➕           | ➕        | ➕               | (root compose is separate ²) |
 | `distribution`     | ➕ ³    | ⛔       | ⛔          | ⛔           | ⛔        | ⛔               | ⛔                           |
@@ -53,22 +53,19 @@ installs nothing.
 standalone-service story.
 ³ `quarkus-cli` on Gradle today; the REST/container sibling is
 [roadmap item E](../roadmap.md#e--distribution-for-rest-container-image).
-⁴ Quarkus REST in Java today (Gradle or Maven); the Kotlin twin and
-the other stacks' siblings are on the
-[roadmap backlog](../roadmap.md#backlog-unordered).
 
 ## Prerequisites per vertical
 
 Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-glance):
 
-| Vertical           | Needs at install time                                                           | Needs to use the result                                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `vcs`              | `git` on PATH                                                                   | —                                                                                                                                |
-| `walking-skeleton` | the stack's toolchain (see the [stack pages](../stacks/README.md))              | —                                                                                                                                |
-| `dev-env`          | —                                                                               | Docker + Compose to run `dev/compose.yaml`                                                                                       |
-| `observability`    | Go stacks: `go` on PATH (`go mod tidy`); TS stacks: `npm`/`pnpm` (install runs) | Docker + Compose for the monitoring stack; an OTLP endpoint via `OTEL_*` env vars                                                |
-| `persistence`      | —                                                                               | Docker + Compose for the dev database and the generated tests (Testcontainers); `DB_URL`/`DB_USERNAME`/`DB_PASSWORD` env in prod |
-| `gateway`          | both projects linked (`keel link`)                                              | —                                                                                                                                |
-| `containerization` | —                                                                               | Docker to build; the host build must produce the artifact first                                                                  |
-| `distribution`     | —                                                                               | a GitHub repository (Actions + Releases); GraalVM runs in CI, not locally                                                        |
-| `fullstack`        | orchestrated by composite stacks — not user-addable                             | Docker + Compose for `docker compose up --build`                                                                                 |
+| Vertical           | Needs at install time                                                                            | Needs to use the result                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vcs`              | `git` on PATH                                                                                    | —                                                                                                                                               |
+| `walking-skeleton` | the stack's toolchain (see the [stack pages](../stacks/README.md))                               | —                                                                                                                                               |
+| `dev-env`          | —                                                                                                | Docker + Compose to run `dev/compose.yaml`                                                                                                      |
+| `observability`    | Go stacks: `go` on PATH (`go mod tidy`); TS stacks: `npm`/`pnpm` (install runs)                  | Docker + Compose for the monitoring stack; an OTLP endpoint via `OTEL_*` env vars                                                               |
+| `persistence`      | Go: `go` on PATH (`go mod tidy`); Rust: `cargo` (`cargo check`); TS: `npm`/`pnpm` (install runs) | Docker + Compose for the dev database and the generated tests (Testcontainers); `DB_URL` (+ `DB_USERNAME`/`DB_PASSWORD` on the JVM) env in prod |
+| `gateway`          | both projects linked (`keel link`)                                                               | —                                                                                                                                               |
+| `containerization` | —                                                                                                | Docker to build; the host build must produce the artifact first                                                                                 |
+| `distribution`     | —                                                                                                | a GitHub repository (Actions + Releases); GraalVM runs in CI, not locally                                                                       |
+| `fullstack`        | orchestrated by composite stacks — not user-addable                                              | Docker + Compose for `docker compose up --build`                                                                                                |

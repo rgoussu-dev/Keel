@@ -125,16 +125,12 @@ so it exercises the patch path of the composition contract.
 
 ## Backlog (unordered)
 
-- **Persistence siblings** — the `persistence` vertical ships
-  Quarkus/Java first (mirroring how `quarkus-rest` proved the
-  entrypoint dimension). Next: the Kotlin twin, then
-  Spring/Micronaut/Go/Rust/TS adapters covering the same
-  `datasource`/`unit-of-work`/`repository-example` dimensions behind
-  their own predicates (an adapter factory à la
-  `jvm-observability.ts` once the second JVM combination lands), a
-  second RDBMS via the engine dial in `persistence-engine.ts` (one
-  spec record + a sticky question), and a Liquibase (YAML)
-  alternative to the Flyway migrations adapter.
+- **Persistence: more engines and migration tools** — the vertical
+  covers every HTTP stack (Quarkus/Spring/Micronaut in Java and
+  Kotlin, Go, Rust, TS); what remains is a second RDBMS via the
+  engine dial in `persistence-engine.ts` (one spec record + a sticky
+  question) and a Liquibase (YAML) alternative to the Flyway
+  migrations adapter.
 - **Per-service build systems in composite stacks** — composites
   scaffold each service on its default today; offering the choice
   per service needs the compose Dockerfiles to follow it.

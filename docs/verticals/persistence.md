@@ -9,22 +9,23 @@ migrations as **their own deployment unit**. Brownfield only:
 keel add persistence
 ```
 
-**Quarkus REST (Java) today** — on any other stack the install
-hard-fails with uncovered dimensions (the Kotlin twin and the
-Spring/Micronaut/Go/Rust/TS siblings follow the observability
-vertical's factory pattern). PostgreSQL is the sane default; the
-engine dial (`src/domain/core/adapters/persistence-engine.ts`) is
-where further RDBMS land as one spec record + a sticky question.
+**Every HTTP stack** — Quarkus, Spring and Micronaut (Java and
+Kotlin, Gradle or Maven), `go-http`, `rust-http` and `ts-http`, each
+through one predicate-selected adapter; on a stack with no server
+(CLIs, `web-components`) the install hard-fails with uncovered
+dimensions. PostgreSQL is the sane default; the engine dial
+(`src/domain/core/adapters/persistence-engine.ts`) is where further
+RDBMS land as one spec record + a sticky question.
 
 ## The five dimensions
 
-| Dimension            | What lands                                                                                                                                                                                                                                                                                                                                                           |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `datasource`         | PostgreSQL JDBC driver + Agroal pool. Prod config is **environment-only** (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`); `%dev` targets the compose database; `%test` gets a throwaway PostgreSQL from Dev Services (Testcontainers). Pool health feeds readiness; pool metrics — and JDBC spans, when [`observability`](observability.md) is installed — feed telemetry. |
-| `unit-of-work`       | The `UnitOfWork` **secondary port** in `domain/contract` — transaction management as a domain concept, shaped as a Unit of Work: handlers demarcate what commits or rolls back together; the JTA adapter (`infrastructure/unit-of-work/jta`) and the canonical fake carry the how.                                                                                   |
-| `repository-example` | The earned persistence slice: the `GreetingLog` port, a plain-JDBC adapter contract-tested against a **Testcontainers PostgreSQL**, its in-memory fake, the `RecordGreetingCommand`/`ListGreetingsQuery` handlers (writes inside the unit of work), and `POST`/`GET /greetings` on the REST channel.                                                                 |
-| `migrations`         | `migrations/` — the schema's own deployment unit: plain-SQL Flyway scripts (`V<n>__<desc>.sql`, no XML) baked into the official Flyway image, configured via `FLYWAY_*` env vars, run against the database **before the service deploys**, never from inside it.                                                                                                     |
-| `database-compose`   | Supplements [`dev-env`](dev-env.md)'s `dev/compose.yaml` with the PostgreSQL container (healthcheck-gated, `db-data` volume) and the migrations one-shot running the very same runner image against it.                                                                                                                                                              |
+| Dimension            | What lands                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `datasource`         | The stack's idiomatic PostgreSQL access — Agroal (Quarkus), Hikari (Spring, Micronaut), pgx (Go), the sync `postgres` crate (Rust), `pg` (TS). Config is **environment-only** (`DB_URL`, and `DB_USERNAME`/`DB_PASSWORD` on the JVM); dev defaults target the compose database and tests get a throwaway Testcontainers PostgreSQL. On the JVM, pool health feeds readiness and pool metrics — plus JDBC spans on Quarkus — feed telemetry when [`observability`](observability.md) is installed. |
+| `unit-of-work`       | The `UnitOfWork` **secondary port** on the domain's contract face — transaction management as a domain concept, shaped as a Unit of Work: handlers demarcate what commits or rolls back together; the _how_ is a per-stack adapter — JTA (Quarkus), `TransactionTemplate` (Spring), `TransactionOperations` (Micronaut), the transaction riding the `context.Context` (Go) / `AsyncLocalStorage` (TS), a shared-connection transaction (Rust) — each beside its canonical counting fake.          |
+| `repository-example` | The earned persistence slice: the `GreetingLog` port, a SQL adapter contract-tested against a **Testcontainers PostgreSQL** (schema applied from the same `migrations/sql/` the runner ships; skips without Docker), its in-memory fake, the record/list operations demarcating writes with the unit of work, and `POST`/`GET /greetings` on the REST channel — mediator handlers on the JVM and TS, per-use-case driving ports on Go and Rust, per the binding spec's dispatch stances.          |
+| `migrations`         | `migrations/` — the schema's own deployment unit: plain-SQL Flyway scripts (`V<n>__<desc>.sql`, no XML) baked into the official Flyway image, configured via `FLYWAY_*` env vars, run against the database **before the service deploys**, never from inside it.                                                                                                                                                                                                                                  |
+| `database-compose`   | Supplements [`dev-env`](dev-env.md)'s `dev/compose.yaml` with the PostgreSQL container (healthcheck-gated, `db-data` volume) and the migrations one-shot running the very same runner image against it.                                                                                                                                                                                                                                                                                           |
 
 ## The migration doctrine
 
@@ -39,14 +40,19 @@ against the dev database on every boot.
 
 ## Tests
 
-- `JdbcGreetingLogTest` — the JDBC adapter's contract test against a
-  real PostgreSQL via Testcontainers, schema applied from
-  `migrations/sql/`; skipped automatically when Docker is absent.
-- `GreetingLogResourceTest` — `@QuarkusTest` driving the slice end to
-  end on a Dev Services PostgreSQL (Testcontainers under the hood).
-- `GreetingLogHandlersTest` — domain handlers against the fakes
-  (Scenario + Factory, no mocks), asserting the unit-of-work
-  boundary.
+Every stack ships three layers of tests:
+
+- a **contract test of the SQL adapter against a real PostgreSQL via
+  Testcontainers**, schema applied from `migrations/sql/`; skipped
+  automatically when Docker is absent (Go probes the daemon, Rust
+  returns early, TS `describe.skipIf`, JVM
+  `disabledWithoutDocker`).
+- an **end-to-end REST test** where the framework boots one too —
+  Quarkus Dev Services, Spring `@ServiceConnection`, a Micronaut
+  `TestPropertyProvider` fixture (these require Docker).
+- **domain tests against the fakes** (Scenario + Factory, no mocks),
+  asserting the unit-of-work boundary: committed on success, rolled
+  back — with nothing persisted — on rejection.
 
 ## Prerequisites
 
