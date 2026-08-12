@@ -1,0 +1,135 @@
+// Package postgres holds the PostgreSQL secondary adapters of the
+// persistence slice: the pooled connection factory, the GreetingLog
+// repository, and the UnitOfWork. They live in one package because
+// the two adapters share the transaction context — the open
+// transaction rides the context the unit of work hands to its block,
+// and the repository's statements join it. Zero business logic.
+package postgres
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"<%= modulePath %>/internal/domain"
+)
+
+// Default dev connection: the compose database (dev/compose.yaml).
+// 12-factor: DB_URL overrides it in every deployed environment.
+const devURL = "postgres://app:app@localhost:5432/<%= databaseName %>"
+
+// NewPool creates the connection pool from DB_URL (or the dev
+// default).
+func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
+	url := os.Getenv("DB_URL")
+	if url == "" {
+		url = devURL
+	}
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("create postgres pool: %w", err)
+	}
+	return pool, nil
+}
+
+type txKey struct{}
+
+// querier is the slice of pgx both a pool and an open transaction
+// satisfy; statements go to the transaction when one rides the
+// context.
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+func querierFrom(ctx context.Context, pool *pgxpool.Pool) querier {
+	if tx, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
+		return tx
+	}
+	return pool
+}
+
+// GreetingLog implements domain.GreetingLog against the greeting
+// table (schema in migrations/sql/).
+type GreetingLog struct {
+	pool *pgxpool.Pool
+}
+
+// NewGreetingLog returns the repository over the pool.
+func NewGreetingLog(pool *pgxpool.Pool) *GreetingLog {
+	return &GreetingLog{pool: pool}
+}
+
+// Append implements domain.GreetingLog.
+func (l *GreetingLog) Append(
+	ctx context.Context, name string, greetedAt time.Time,
+) (domain.RecordedGreeting, error) {
+	var recorded domain.RecordedGreeting
+	row := querierFrom(ctx, l.pool).QueryRow(
+		ctx,
+		"insert into greeting (name, greeted_at) values ($1, $2) returning id, name, greeted_at",
+		name, greetedAt,
+	)
+	if err := row.Scan(&recorded.ID, &recorded.Name, &recorded.GreetedAt); err != nil {
+		return domain.RecordedGreeting{}, fmt.Errorf("append greeting: %w", err)
+	}
+	return recorded, nil
+}
+
+// Recent implements domain.GreetingLog, most recent first.
+func (l *GreetingLog) Recent(ctx context.Context, limit int) ([]domain.RecordedGreeting, error) {
+	rows, err := querierFrom(ctx, l.pool).Query(
+		ctx,
+		"select id, name, greeted_at from greeting order by id desc limit $1",
+		limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("read greeting log: %w", err)
+	}
+	defer rows.Close()
+	recent := []domain.RecordedGreeting{}
+	for rows.Next() {
+		var recorded domain.RecordedGreeting
+		if err := rows.Scan(&recorded.ID, &recorded.Name, &recorded.GreetedAt); err != nil {
+			return nil, fmt.Errorf("read greeting log: %w", err)
+		}
+		recent = append(recent, recorded)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read greeting log: %w", err)
+	}
+	return recent, nil
+}
+
+// UnitOfWork implements domain.UnitOfWork over a PostgreSQL
+// transaction carried by the context.
+type UnitOfWork struct {
+	pool *pgxpool.Pool
+}
+
+// NewUnitOfWork returns the unit of work over the pool.
+func NewUnitOfWork(pool *pgxpool.Pool) *UnitOfWork {
+	return &UnitOfWork{pool: pool}
+}
+
+// InTransaction implements domain.UnitOfWork.
+func (u *UnitOfWork) InTransaction(
+	ctx context.Context, work func(ctx context.Context) error,
+) error {
+	tx, err := u.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin unit of work: %w", err)
+	}
+	if err := work(context.WithValue(ctx, txKey{}, tx)); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit unit of work: %w", err)
+	}
+	return nil
+}

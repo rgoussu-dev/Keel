@@ -1,0 +1,95 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { Mediator } from '@<%= npmScope %>/domain-kernel';
+import {
+  GREET_REJECTED,
+  listGreetingsQuery,
+  recordGreetingCommand,
+} from '@<%= npmScope %>/domain-contract';
+
+/**
+ * HTTP surface of the persistence slice: `POST /greetings` records a
+ * greeting durably, `GET /greetings?limit=…` reads the log back,
+ * most recent first. Maps transport DTOs to the greeting-log
+ * command/query and the `Result` back to the transport — no business
+ * logic.
+ */
+export function handleGreetings(
+  mediator: Mediator,
+  request: IncomingMessage,
+  response: ServerResponse,
+  url: URL,
+): void {
+  if (request.method === 'POST') {
+    void readBody(request)
+      .then((body) => {
+        let name: string;
+        try {
+          const parsed: unknown = JSON.parse(body === '' ? '{}' : body);
+          name = String((parsed as { name?: unknown }).name ?? '');
+        } catch {
+          problem(response, 400, 'malformed body', 'the request body must be JSON');
+          return;
+        }
+        return mediator.dispatch(recordGreetingCommand(name)).then((result) => {
+          if (!result.ok) {
+            const status = result.error.code === GREET_REJECTED ? 400 : 500;
+            problem(response, status, result.error.code, result.error.message);
+            return;
+          }
+          response.writeHead(201, { 'content-type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify(result.value));
+        });
+      })
+      .catch((error: unknown) => {
+        defect(response, error);
+      });
+    return;
+  }
+  if (request.method === 'GET') {
+    const limit = Number(url.searchParams.get('limit') ?? '10');
+    void mediator
+      .dispatch(listGreetingsQuery(Number.isFinite(limit) ? limit : 10))
+      .then((result) => {
+        if (!result.ok) {
+          problem(response, 500, result.error.code, result.error.message);
+          return;
+        }
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify(result.value));
+      })
+      .catch((error: unknown) => {
+        defect(response, error);
+      });
+    return;
+  }
+  problem(response, 405, 'method not allowed', `${request.method ?? ''} is not supported here`);
+}
+
+function readBody(request: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    request.on('data', (chunk: Buffer) => {
+      body += chunk.toString('utf8');
+    });
+    request.on('end', () => {
+      resolve(body);
+    });
+    request.on('error', reject);
+  });
+}
+
+function problem(response: ServerResponse, status: number, title: string, detail: string): void {
+  response.writeHead(status, { 'content-type': 'application/problem+json; charset=utf-8' });
+  response.end(JSON.stringify({ type: 'about:blank', title, status, detail }));
+}
+
+// An infrastructure failure (e.g. the database is unreachable) must
+// not leave the response hanging or kill the process. The detail
+// stays generic in production so internals never reach clients.
+function defect(response: ServerResponse, error: unknown): void {
+  const detail =
+    process.env.NODE_ENV !== 'production' && error instanceof Error
+      ? error.message
+      : 'unexpected failure';
+  problem(response, 500, 'internal error', detail);
+}

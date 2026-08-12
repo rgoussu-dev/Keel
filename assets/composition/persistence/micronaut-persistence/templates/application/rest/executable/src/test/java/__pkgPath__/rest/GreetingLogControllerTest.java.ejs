@@ -1,0 +1,57 @@
+package <%= basePackage %>.rest;
+
+import io.micronaut.http.HttpRequest;
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
+import io.micronaut.http.client.exceptions.HttpClientResponseException;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Drives the persistence slice end to end on the embedded server:
+ * the POST really commits to the Testcontainers PostgreSQL and the
+ * GET really reads rows back.
+ */
+@MicronautTest
+class GreetingLogControllerTest extends PostgresTestFixture {
+
+    @Inject
+    @Client("/")
+    HttpClient client;
+
+    @Test
+    void recordsAGreetingDurablyAndListsItBack() {
+        HttpResponse<String> recorded = client.toBlocking().exchange(
+                HttpRequest.POST("/greetings", "{\"name\":\"Romain\"}")
+                        .contentType("application/json"),
+                String.class);
+
+        assertEquals(201, recorded.getStatus().getCode());
+        String recordedBody = recorded.getBody(String.class).orElse("");
+        assertTrue(recordedBody.contains("\"name\":\"Romain\""), recordedBody);
+
+        String recent = client.toBlocking().retrieve("/greetings");
+        assertTrue(recent.contains("\"name\":\"Romain\""), recent);
+    }
+
+    @Test
+    void mapsARejectedRecordToProblemDetails() {
+        HttpClientResponseException rejected = assertThrows(
+                HttpClientResponseException.class,
+                () -> client.toBlocking().exchange(
+                        HttpRequest.POST("/greetings", "{\"name\":\"  \"}")
+                                .contentType("application/json"),
+                        String.class));
+
+        assertEquals(400, rejected.getStatus().getCode());
+        String body = rejected.getResponse().getBody(String.class).orElse("");
+        assertTrue(body.contains("\"type\":\"urn:problem-type:greet-rejected\""), body);
+        assertTrue(body.contains("\"detail\":\"name must not be blank\""), body);
+    }
+}

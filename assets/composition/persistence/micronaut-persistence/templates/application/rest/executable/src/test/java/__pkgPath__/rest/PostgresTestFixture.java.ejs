@@ -1,0 +1,33 @@
+package <%= basePackage %>.rest;
+
+import java.util.Map;
+
+import io.micronaut.test.support.TestPropertyProvider;
+import org.junit.jupiter.api.TestInstance;
+import org.testcontainers.containers.PostgreSQLContainer;
+
+/**
+ * Embedded-server tests get a throwaway PostgreSQL from
+ * Testcontainers: the fixture points the datasource at the container
+ * and Flyway applies {@code migrations/sql/} at startup. Requires a
+ * Docker daemon. Test classes extend this fixture —
+ * {@code TestPropertyProvider} needs {@code PER_CLASS} lifecycle,
+ * which is inherited from here.
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public abstract class PostgresTestFixture implements TestPropertyProvider {
+
+    private static final PostgreSQLContainer<?> POSTGRES =
+            new PostgreSQLContainer<>("postgres:18-alpine");
+
+    @Override
+    public Map<String, String> getProperties() {
+        if (!POSTGRES.isRunning()) {
+            POSTGRES.start();
+        }
+        return Map.of(
+                "datasources.default.url", POSTGRES.getJdbcUrl(),
+                "datasources.default.username", POSTGRES.getUsername(),
+                "datasources.default.password", POSTGRES.getPassword());
+    }
+}

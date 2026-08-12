@@ -50,7 +50,8 @@ keel add <vertical> [options]
 ```
 
 Available verticals: `vcs`, `walking-skeleton`, `dev-env`,
-`observability`, `gateway`, `containerization`, `distribution`. See
+`observability`, `persistence`, `gateway`, `containerization`,
+`distribution`. See
 the [compatibility matrix](verticals/README.md#compatibility-matrix)
 for which vertical applies to which stack — a vertical whose declared
 dimensions cannot be covered on your project **hard-fails with a

@@ -1,0 +1,91 @@
+import { execSync } from 'node:child_process';
+import { readdir, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  PostgreSqlContainer,
+  type StartedPostgreSqlContainer,
+} from '@testcontainers/postgresql';
+import {
+  createPgPool,
+  createPgUnitOfWork,
+  transactionalQueryable,
+} from '@<%= npmScope %>/infrastructure-unit-of-work';
+import { createPgGreetingLog } from '../src/index.ts';
+
+/**
+ * Contract test of the SQL adapter against a real PostgreSQL
+ * (Testcontainers), with the schema applied from the same SQL the
+ * isolated migration runner ships (`migrations/sql/`). Skipped when
+ * no Docker daemon is available.
+ */
+function dockerAvailable(): boolean {
+  try {
+    execSync('docker info', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const MIGRATIONS = fileURLToPath(new URL('../../../migrations/sql', import.meta.url));
+
+describe.skipIf(!dockerAvailable())('pg greeting log (Testcontainers)', () => {
+  let container: StartedPostgreSqlContainer;
+  let pool: ReturnType<typeof createPgPool>;
+
+  beforeAll(async () => {
+    container = await new PostgreSqlContainer('postgres:18-alpine').start();
+    process.env['DB_URL'] = container.getConnectionUri();
+    pool = createPgPool();
+    for (const file of (await readdir(MIGRATIONS)).sort()) {
+      await pool.query(await readFile(`${MIGRATIONS}/${file}`, 'utf8'));
+    }
+  }, 120_000);
+
+  afterAll(async () => {
+    await pool?.end();
+    await container?.stop();
+  });
+
+  beforeEach(async () => {
+    await pool.query('truncate table greeting restart identity');
+  });
+
+  it('appends and reads back most recent first', async () => {
+    const log = createPgGreetingLog(transactionalQueryable(pool));
+
+    await log.append('Ada', new Date('2026-01-01T12:00:00Z'));
+    const grace = await log.append('Grace', new Date('2026-01-01T12:00:01Z'));
+
+    const recent = await log.recent(10);
+    expect(recent.length).toBe(2);
+    expect(recent[0]).toEqual(grace);
+    expect(recent[1]?.name).toBe('Ada');
+  });
+
+  it('joins the open unit of work: a rejected block leaves no rows', async () => {
+    const log = createPgGreetingLog(transactionalQueryable(pool));
+    const unitOfWork = createPgUnitOfWork(pool);
+
+    await expect(
+      unitOfWork.inTransaction(async () => {
+        await log.append('Ada', new Date('2026-01-01T12:00:00Z'));
+        throw new Error('boom');
+      }),
+    ).rejects.toThrow('boom');
+
+    expect(await log.recent(10)).toEqual([]);
+  });
+
+  it('commits the unit of work when the block resolves', async () => {
+    const log = createPgGreetingLog(transactionalQueryable(pool));
+    const unitOfWork = createPgUnitOfWork(pool);
+
+    const recorded = await unitOfWork.inTransaction(() =>
+      log.append('Grace', new Date('2026-01-01T12:00:00Z')),
+    );
+
+    expect((await log.recent(10))[0]).toEqual(recorded);
+  });
+});

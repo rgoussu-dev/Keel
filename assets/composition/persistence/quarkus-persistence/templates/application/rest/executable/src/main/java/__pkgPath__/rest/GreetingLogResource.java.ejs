@@ -1,0 +1,57 @@
+package <%= basePackage %>.rest;
+
+import java.util.List;
+
+import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
+import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery;
+import <%= basePackage %>.contract.greetinglog.RecordGreetingCommand;
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
+import <%= basePackage %>.kernel.Mediator;
+import <%= basePackage %>.rest.contract.RecordGreetingRequest;
+import <%= basePackage %>.rest.contract.RecordedGreetingResponse;
+
+/**
+ * HTTP entry point of the persistence slice: maps transport DTOs to
+ * the greeting-log command/query, dispatches via the mediator, and
+ * maps the results back. No business logic.
+ */
+@Path("/greetings")
+public class GreetingLogResource {
+
+    private final Mediator mediator;
+
+    @Inject
+    public GreetingLogResource(Mediator mediator) {
+        this.mediator = mediator;
+    }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response record(RecordGreetingRequest request) {
+        RecordedGreeting recorded = mediator.dispatch(new RecordGreetingCommand(request.name()));
+        return Response.status(Response.Status.CREATED).entity(toResponse(recorded)).build();
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<RecordedGreetingResponse> recent(
+            @QueryParam("limit") @DefaultValue("10") int limit) {
+        List<RecordedGreeting> recent = mediator.dispatch(new ListGreetingsQuery(limit));
+        return recent.stream().map(GreetingLogResource::toResponse).toList();
+    }
+
+    private static RecordedGreetingResponse toResponse(RecordedGreeting recorded) {
+        return new RecordedGreetingResponse(recorded.id(), recorded.name(), recorded.greetedAt());
+    }
+}

@@ -1,0 +1,53 @@
+package <%= basePackage %>.core.greetinglog
+
+import java.time.Instant
+
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.clock.fake.FakeClock
+import <%= basePackage %>.contract.greet.GreetRejected
+import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery
+import <%= basePackage %>.contract.greetinglog.RecordGreetingCommand
+import <%= basePackage %>.greetinglog.fake.FakeGreetingLog
+import <%= basePackage %>.unitofwork.fake.FakeUnitOfWork
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+
+class GreetingLogHandlersTest {
+
+    private val greetingLog = FakeGreetingLog()
+    private val clock = FakeClock(Instant.parse("2026-01-01T12:00:00Z"))
+    private val unitOfWork = FakeUnitOfWork()
+    private val record = RecordGreetingHandler(greetingLog, clock, unitOfWork)
+    private val list = ListGreetingsHandler(greetingLog)
+
+    @Test
+    fun recordsInsideOneUnitOfWork() {
+        val recorded = record.handle(RecordGreetingCommand("Ada"))
+
+        assertEquals("Ada", recorded.name)
+        assertEquals(Instant.parse("2026-01-01T12:00:00Z"), recorded.greetedAt)
+        assertEquals(1, unitOfWork.committed())
+    }
+
+    @Test
+    fun rejectsBlankNamesWithoutTouchingTheLog() {
+        assertThrows(GreetRejected::class.java) { record.handle(RecordGreetingCommand("  ")) }
+
+        assertEquals(0, unitOfWork.committed())
+        assertTrue(list.handle(ListGreetingsQuery(10)).isEmpty())
+    }
+
+    @Test
+    fun listsMostRecentFirstAndClampsTheLimit() {
+        record.handle(RecordGreetingCommand("Ada"))
+        record.handle(RecordGreetingCommand("Grace"))
+
+        val recent = list.handle(ListGreetingsQuery(0))
+
+        assertEquals(1, recent.size)
+        assertEquals("Grace", recent[0].name)
+    }
+}

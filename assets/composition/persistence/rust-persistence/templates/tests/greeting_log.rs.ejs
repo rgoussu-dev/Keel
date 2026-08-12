@@ -1,0 +1,74 @@
+//! DIP-strict tests of the greeting-log use cases: they know the
+//! contract face and the canonical fakes, never the core or a real
+//! database.
+
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+
+use <%= crateName %>::domain::{
+    new_greeting_log_use_cases, GreetingLogError, GreetingLogUseCases, ListGreetingsQuery,
+    RecordGreetingCommand,
+};
+use <%= crateName %>::infra::clock_fake::FakeClock;
+use <%= crateName %>::infra::greeting_log_fake::FakeGreetingLog;
+use <%= crateName %>::infra::uow_fake::FakeUnitOfWork;
+
+fn factory() -> (impl GreetingLogUseCases, Arc<FakeUnitOfWork>) {
+    let uow = Arc::new(FakeUnitOfWork::new());
+    let pinned = SystemTime::UNIX_EPOCH + Duration::from_secs(1_767_268_800);
+    let use_cases = new_greeting_log_use_cases(
+        Arc::new(FakeGreetingLog::new()),
+        Arc::new(FakeClock::at(pinned)),
+        uow.clone(),
+    );
+    (use_cases, uow)
+}
+
+#[test]
+fn records_inside_one_unit_of_work() {
+    let (use_cases, uow) = factory();
+
+    let recorded = use_cases
+        .record(RecordGreetingCommand {
+            name: "Ada".to_string(),
+        })
+        .expect("record");
+
+    assert_eq!(recorded.name, "Ada");
+    assert_eq!(uow.committed(), 1);
+}
+
+#[test]
+fn rejects_blank_names_without_touching_the_log() {
+    let (use_cases, uow) = factory();
+
+    let err = use_cases.record(RecordGreetingCommand {
+        name: "   ".to_string(),
+    });
+
+    assert!(matches!(err, Err(GreetingLogError::Rejected(_))));
+    assert_eq!(uow.committed(), 0);
+    let recent = use_cases
+        .list(ListGreetingsQuery { limit: 10 })
+        .expect("list");
+    assert!(recent.is_empty());
+}
+
+#[test]
+fn lists_most_recent_first_and_clamps_the_limit() {
+    let (use_cases, _) = factory();
+    for name in ["Ada", "Grace"] {
+        use_cases
+            .record(RecordGreetingCommand {
+                name: name.to_string(),
+            })
+            .expect("record");
+    }
+
+    let recent = use_cases
+        .list(ListGreetingsQuery { limit: 0 })
+        .expect("list");
+
+    assert_eq!(recent.len(), 1);
+    assert_eq!(recent[0].name, "Grace");
+}

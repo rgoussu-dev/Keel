@@ -1,0 +1,43 @@
+// Package greetinglogfake holds the in-memory GreetingLog — the
+// canonical reference implementation of the port's contract. Every
+// test that needs a greeting log wires this fake (never a mock).
+package greetinglogfake
+
+import (
+	"context"
+	"time"
+
+	"<%= modulePath %>/internal/domain"
+)
+
+// GreetingLog is the in-memory fake.
+type GreetingLog struct {
+	entries []domain.RecordedGreeting
+}
+
+// New returns an empty fake log.
+func New() *GreetingLog {
+	return &GreetingLog{}
+}
+
+// Append implements domain.GreetingLog with increasing ids.
+func (l *GreetingLog) Append(
+	_ context.Context, name string, greetedAt time.Time,
+) (domain.RecordedGreeting, error) {
+	recorded := domain.RecordedGreeting{
+		ID:        int64(len(l.entries) + 1),
+		Name:      name,
+		GreetedAt: greetedAt,
+	}
+	l.entries = append(l.entries, recorded)
+	return recorded, nil
+}
+
+// Recent implements domain.GreetingLog, most recent first.
+func (l *GreetingLog) Recent(_ context.Context, limit int) ([]domain.RecordedGreeting, error) {
+	recent := []domain.RecordedGreeting{}
+	for i := len(l.entries) - 1; i >= 0 && len(recent) < limit; i-- {
+		recent = append(recent, l.entries[i])
+	}
+	return recent, nil
+}

@@ -1,0 +1,12 @@
+import pg from 'pg';
+
+/** Default dev connection: the compose database (dev/compose.yaml). */
+const DEV_URL = 'postgres://app:app@localhost:5432/<%= databaseName %>';
+
+/**
+ * Creates the connection pool. 12-factor: `DB_URL` overrides the dev
+ * default in every deployed environment.
+ */
+export function createPgPool(): pg.Pool {
+  return new pg.Pool({ connectionString: process.env['DB_URL'] ?? DEV_URL });
+}

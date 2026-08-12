@@ -1,0 +1,215 @@
+//! The PostgreSQL secondary adapters of the persistence slice: the
+//! connection factory, the `GreetingLog` repository, and the
+//! `UnitOfWork`. They live in one module because the adapters share
+//! the connection — the walking-skeleton shape is one connection
+//! behind a mutex, with BEGIN/COMMIT/ROLLBACK issued as statements on
+//! it, so a unit of work and the repository calls inside it share the
+//! transaction without lifetime gymnastics. Production growth swaps
+//! in a pool with transaction-pinned connections behind the same
+//! ports. Zero business logic.
+
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
+use postgres::{Client, NoTls};
+
+use crate::domain::{GreetingLog, GreetingLogError, RecordedGreeting, UnitOfWork};
+
+/// Default dev connection: the compose database (dev/compose.yaml).
+/// 12-factor: `DB_URL` overrides it in every deployed environment.
+const DEV_URL: &str = "postgres://app:app@localhost:5432/<%= databaseName %>";
+
+/// The shared connection both adapters draw on.
+pub type SharedClient = Arc<Mutex<Client>>;
+
+/// Connects using `DB_URL` (or the dev default).
+pub fn connect() -> Result<SharedClient, GreetingLogError> {
+    let url = std::env::var("DB_URL").unwrap_or_else(|_| DEV_URL.to_string());
+    let client = Client::connect(&url, NoTls).map_err(store)?;
+    Ok(Arc::new(Mutex::new(client)))
+}
+
+fn store(err: postgres::Error) -> GreetingLogError {
+    GreetingLogError::Store(err.to_string())
+}
+
+fn poisoned() -> GreetingLogError {
+    GreetingLogError::Store("connection mutex poisoned".to_string())
+}
+
+/// `GreetingLog` over the `greeting` table (schema in
+/// `migrations/sql/`).
+pub struct PgGreetingLog {
+    client: SharedClient,
+}
+
+impl PgGreetingLog {
+    pub fn new(client: SharedClient) -> Self {
+        Self { client }
+    }
+}
+
+impl GreetingLog for PgGreetingLog {
+    fn append(
+        &self,
+        name: &str,
+        greeted_at: SystemTime,
+    ) -> Result<RecordedGreeting, GreetingLogError> {
+        let mut client = self.client.lock().map_err(|_| poisoned())?;
+        let row = client
+            .query_one(
+                "insert into greeting (name, greeted_at) values ($1, $2) \
+                 returning id, name, greeted_at",
+                &[&name, &greeted_at],
+            )
+            .map_err(store)?;
+        Ok(RecordedGreeting {
+            id: row.get(0),
+            name: row.get(1),
+            greeted_at: row.get(2),
+        })
+    }
+
+    fn recent(&self, limit: i64) -> Result<Vec<RecordedGreeting>, GreetingLogError> {
+        let mut client = self.client.lock().map_err(|_| poisoned())?;
+        let rows = client
+            .query(
+                "select id, name, greeted_at from greeting order by id desc limit $1",
+                &[&limit],
+            )
+            .map_err(store)?;
+        Ok(rows
+            .iter()
+            .map(|row| RecordedGreeting {
+                id: row.get(0),
+                name: row.get(1),
+                greeted_at: row.get(2),
+            })
+            .collect())
+    }
+}
+
+/// `UnitOfWork` over a PostgreSQL transaction on the shared
+/// connection: BEGIN before the block, COMMIT when it returns `Ok`,
+/// ROLLBACK when it returns `Err`. The lock is taken per statement,
+/// never across the block, so repository calls inside the block
+/// proceed — on the same connection, hence inside the transaction.
+pub struct PgUnitOfWork {
+    client: SharedClient,
+}
+
+impl PgUnitOfWork {
+    pub fn new(client: SharedClient) -> Self {
+        Self { client }
+    }
+
+    fn exec(&self, sql: &str) -> Result<(), GreetingLogError> {
+        self.client
+            .lock()
+            .map_err(|_| poisoned())?
+            .batch_execute(sql)
+            .map_err(store)
+    }
+}
+
+impl UnitOfWork for PgUnitOfWork {
+    fn in_transaction(
+        &self,
+        work: &mut dyn FnMut() -> Result<(), GreetingLogError>,
+    ) -> Result<(), GreetingLogError> {
+        self.exec("BEGIN")?;
+        match work() {
+            Ok(()) => self.exec("COMMIT"),
+            Err(err) => {
+                let _ = self.exec("ROLLBACK");
+                Err(err)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Contract test against a real PostgreSQL (Testcontainers), with
+    //! the schema applied from the same SQL the isolated migration
+    //! runner ships (`migrations/sql/`). Returns early (skips) when
+    //! no Docker daemon is available.
+
+    use std::fs;
+    use std::process::Command;
+    use std::time::{Duration, SystemTime};
+
+    use testcontainers_modules::postgres::Postgres;
+    use testcontainers_modules::testcontainers::runners::SyncRunner;
+    use testcontainers_modules::testcontainers::ImageExt;
+
+    use super::*;
+
+    fn docker_available() -> bool {
+        Command::new("docker")
+            .arg("info")
+            .output()
+            .is_ok_and(|out| out.status.success())
+    }
+
+    fn migrated_client(container_url: &str) -> SharedClient {
+        let client = Client::connect(container_url, NoTls).expect("connect to the container");
+        let shared: SharedClient = Arc::new(Mutex::new(client));
+        let mut migrations: Vec<_> = fs::read_dir("migrations/sql")
+            .expect("find migrations/sql")
+            .map(|entry| entry.expect("read entry").path())
+            .collect();
+        migrations.sort();
+        for migration in migrations {
+            let script = fs::read_to_string(&migration).expect("read migration");
+            shared
+                .lock()
+                .expect("lock")
+                .batch_execute(&script)
+                .expect("apply migration");
+        }
+        shared
+    }
+
+    #[test]
+    fn appends_reads_back_and_honours_the_unit_of_work() {
+        if !docker_available() {
+            eprintln!("skipping: no Docker daemon available");
+            return;
+        }
+        let container = Postgres::default()
+            .with_tag("18-alpine")
+            .start()
+            .expect("start postgres container");
+        let url = format!(
+            "postgres://postgres:postgres@{}:{}/postgres",
+            container.get_host().expect("host"),
+            container.get_host_port_ipv4(5432).expect("port"),
+        );
+        let client = migrated_client(&url);
+        let log = PgGreetingLog::new(client.clone());
+        let uow = PgUnitOfWork::new(client);
+        let at = SystemTime::UNIX_EPOCH + Duration::from_secs(1_767_268_800);
+
+        log.append("Ada", at).expect("append Ada");
+        let grace = log.append("Grace", at + Duration::from_secs(1)).expect("append Grace");
+        let recent = log.recent(10).expect("recent");
+        assert_eq!(recent.len(), 2);
+        assert_eq!(recent[0], grace);
+        assert_eq!(recent[1].name, "Ada");
+
+        // A failing block leaves no rows behind.
+        let before = log.recent(100).expect("recent").len();
+        let err = uow.in_transaction(&mut || {
+            log.append("Linus", at)?;
+            Err(GreetingLogError::Store("boom".to_string()))
+        });
+        assert!(err.is_err());
+        assert_eq!(log.recent(100).expect("recent").len(), before);
+
+        // A completed block commits.
+        uow.in_transaction(&mut || log.append("Linus", at).map(|_| ()))
+            .expect("commit");
+        assert_eq!(log.recent(100).expect("recent").len(), before + 1);
+    }
+}

@@ -1,0 +1,24 @@
+// Package greetinglog is the compiler-hidden core of the
+// greeting-log use cases: validation and clamping, pure functions.
+package greetinglog
+
+import (
+	"strings"
+
+	"<%= modulePath %>/internal/domain/internal/greet"
+)
+
+// ValidName trims the name and rejects a blank one with the domain's
+// ErrEmptyName.
+func ValidName(name string) (string, error) {
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" {
+		return "", greet.ErrEmptyName
+	}
+	return trimmed, nil
+}
+
+// ClampLimit bounds a read-window request to [1, 100].
+func ClampLimit(limit int) int {
+	return min(max(limit, 1), 100)
+}

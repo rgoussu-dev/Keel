@@ -1,0 +1,62 @@
+package <%= basePackage %>.unitofwork.jta;
+
+import java.util.function.Supplier;
+
+import jakarta.transaction.UserTransaction;
+
+import <%= basePackage %>.contract.UnitOfWork;
+
+/**
+ * {@link UnitOfWork} over a JTA {@link UserTransaction}: begins a
+ * transaction, runs the block, commits when it returns and rolls
+ * back when it throws. Framework-agnostic — any JTA-capable runtime
+ * (Quarkus, a Jakarta container, Spring with a JTA manager) supplies
+ * the {@link UserTransaction}, and connections drawn from a
+ * JTA-aware pool inside the block enlist automatically.
+ */
+public final class JtaUnitOfWork implements UnitOfWork {
+
+    private final UserTransaction transaction;
+
+    public JtaUnitOfWork(UserTransaction transaction) {
+        this.transaction = transaction;
+    }
+
+    @Override
+    public <T> T inTransaction(Supplier<T> work) {
+        begin();
+        T result;
+        try {
+            result = work.get();
+        } catch (RuntimeException e) {
+            rollback();
+            throw e;
+        }
+        commit();
+        return result;
+    }
+
+    private void begin() {
+        try {
+            transaction.begin();
+        } catch (Exception e) {
+            throw new IllegalStateException("could not begin the unit of work", e);
+        }
+    }
+
+    private void commit() {
+        try {
+            transaction.commit();
+        } catch (Exception e) {
+            throw new IllegalStateException("could not commit the unit of work", e);
+        }
+    }
+
+    private void rollback() {
+        try {
+            transaction.rollback();
+        } catch (Exception e) {
+            throw new IllegalStateException("could not roll back the unit of work", e);
+        }
+    }
+}

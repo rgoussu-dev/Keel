@@ -1,0 +1,31 @@
+package <%= basePackage %>.greetinglog.fake;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+import <%= basePackage %>.contract.greetinglog.GreetingLog;
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
+
+/**
+ * In-memory {@link GreetingLog} — the canonical reference
+ * implementation of the port's contract. Every test that needs a
+ * greeting log wires this fake (never a mock).
+ */
+public final class FakeGreetingLog implements GreetingLog {
+
+    private final List<RecordedGreeting> entries = new ArrayList<>();
+
+    @Override
+    public RecordedGreeting append(String name, Instant greetedAt) {
+        RecordedGreeting recorded = new RecordedGreeting(entries.size() + 1L, name, greetedAt);
+        entries.add(recorded);
+        return recorded;
+    }
+
+    @Override
+    public List<RecordedGreeting> recent(int limit) {
+        List<RecordedGreeting> newestFirst = new ArrayList<>(entries.reversed());
+        return List.copyOf(newestFirst.subList(0, Math.min(Math.max(limit, 0), newestFirst.size())));
+    }
+}

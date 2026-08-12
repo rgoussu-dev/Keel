@@ -1,0 +1,90 @@
+package <%= basePackage %>.greetinglog.jdbc;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Instant;
+import java.util.List;
+
+import javax.sql.DataSource;
+
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.postgresql.ds.PGSimpleDataSource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import <%= basePackage %>.contract.greetinglog.GreetingLog;
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/**
+ * Contract test of the JDBC adapter against a real PostgreSQL
+ * (Testcontainers), with the schema applied from the same SQL the
+ * isolated migration runner ships ({@code migrations/sql/}).
+ * Skipped when no Docker daemon is available.
+ */
+@Testcontainers(disabledWithoutDocker = true)
+class JdbcGreetingLogTest {
+
+    @Container
+    private static final PostgreSQLContainer<?> POSTGRES =
+            new PostgreSQLContainer<>("postgres:18-alpine");
+
+    private static DataSource dataSource;
+
+    @BeforeAll
+    static void migrate() {
+        PGSimpleDataSource ds = new PGSimpleDataSource();
+        ds.setUrl(POSTGRES.getJdbcUrl());
+        ds.setUser(POSTGRES.getUsername());
+        ds.setPassword(POSTGRES.getPassword());
+        dataSource = ds;
+        Flyway.configure()
+                .dataSource(ds)
+                .locations("filesystem:../../../migrations/sql")
+                .load()
+                .migrate();
+    }
+
+    @BeforeEach
+    void emptyLog() throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("truncate table greeting restart identity");
+        }
+    }
+
+    @Test
+    void appendsAndReadsBackMostRecentFirst() {
+        GreetingLog log = new JdbcGreetingLog(dataSource);
+        Instant first = Instant.parse("2026-01-01T12:00:00Z");
+        Instant second = Instant.parse("2026-01-01T12:00:01Z");
+
+        log.append("Ada", first);
+        RecordedGreeting grace = log.append("Grace", second);
+
+        List<RecordedGreeting> recent = log.recent(10);
+        assertEquals(2, recent.size());
+        assertEquals(grace, recent.get(0));
+        assertEquals("Ada", recent.get(1).name());
+        assertEquals(first, recent.get(1).greetedAt());
+    }
+
+    @Test
+    void limitsTheReadWindow() {
+        GreetingLog log = new JdbcGreetingLog(dataSource);
+        Instant at = Instant.parse("2026-01-01T12:00:00Z");
+        log.append("Ada", at);
+        log.append("Grace", at);
+        log.append("Linus", at);
+
+        List<RecordedGreeting> window = log.recent(2);
+        assertEquals(2, window.size());
+        assertEquals("Linus", window.get(0).name());
+    }
+}

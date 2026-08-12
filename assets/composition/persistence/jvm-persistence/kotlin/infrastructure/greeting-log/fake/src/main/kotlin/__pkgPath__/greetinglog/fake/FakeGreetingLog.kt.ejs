@@ -1,0 +1,25 @@
+package <%= basePackage %>.greetinglog.fake
+
+import java.time.Instant
+
+import <%= basePackage %>.contract.greetinglog.GreetingLog
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting
+
+/**
+ * In-memory [GreetingLog] — the canonical reference implementation
+ * of the port's contract. Every test that needs a greeting log wires
+ * this fake (never a mock).
+ */
+class FakeGreetingLog : GreetingLog {
+
+    private val entries = mutableListOf<RecordedGreeting>()
+
+    override fun append(name: String, greetedAt: Instant): RecordedGreeting {
+        val recorded = RecordedGreeting(entries.size + 1L, name, greetedAt)
+        entries.add(recorded)
+        return recorded
+    }
+
+    override fun recent(limit: Int): List<RecordedGreeting> =
+        entries.reversed().take(limit.coerceAtLeast(0))
+}

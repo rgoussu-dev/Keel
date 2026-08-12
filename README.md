@@ -209,6 +209,7 @@ bootstrap or layered on later with `keel add`:
 | [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                   | every stack                       |
 | [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own       | every stack (default on HTTP)     |
 | [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack | HTTP services only                |
+| [`persistence`](docs/verticals/persistence.md)           | PostgreSQL + Unit-of-Work port + isolated Flyway migrations unit          | every HTTP stack                  |
 | [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract            | peered projects (`keel link`)     |
 | [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native       | HTTP services + SPA               |
 | [`distribution`](docs/verticals/distribution.md)         | native CLI binaries cross-compiled and released on tag push               | Quarkus CLI (Gradle) today        |

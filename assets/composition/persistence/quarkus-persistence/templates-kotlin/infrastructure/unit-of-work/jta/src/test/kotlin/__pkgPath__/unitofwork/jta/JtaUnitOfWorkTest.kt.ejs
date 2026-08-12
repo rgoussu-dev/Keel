@@ -1,0 +1,61 @@
+package <%= basePackage %>.unitofwork.jta
+
+import jakarta.transaction.Status
+import jakarta.transaction.UserTransaction
+
+import org.junit.jupiter.api.Test
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+
+class JtaUnitOfWorkTest {
+
+    /** Hand-rolled recording transaction — a fake, not a mock. */
+    private class RecordingTransaction : UserTransaction {
+
+        private val events = StringBuilder()
+
+        override fun begin() {
+            events.append("begin ")
+        }
+
+        override fun commit() {
+            events.append("commit ")
+        }
+
+        override fun rollback() {
+            events.append("rollback ")
+        }
+
+        override fun setRollbackOnly() {
+            events.append("rollback-only ")
+        }
+
+        override fun getStatus(): Int = Status.STATUS_NO_TRANSACTION
+
+        override fun setTransactionTimeout(seconds: Int) {
+            events.append("timeout ")
+        }
+
+        fun events(): String = events.toString().trim()
+    }
+
+    private val transaction = RecordingTransaction()
+    private val unitOfWork = JtaUnitOfWork(transaction)
+
+    @Test
+    fun commitsWhenTheBlockReturns() {
+        assertEquals("done", unitOfWork.inTransaction { "done" })
+        assertEquals("begin commit", transaction.events())
+    }
+
+    @Test
+    fun rollsBackAndRethrowsWhenTheBlockThrows() {
+        val thrown = assertThrows(IllegalArgumentException::class.java) {
+            unitOfWork.inTransaction<Nothing> { throw IllegalArgumentException("boom") }
+        }
+
+        assertEquals("boom", thrown.message)
+        assertEquals("begin rollback", transaction.events())
+    }
+}

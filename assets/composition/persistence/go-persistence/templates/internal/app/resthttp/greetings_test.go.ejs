@@ -1,0 +1,86 @@
+package resthttp_test
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"<%= modulePath %>/internal/app/resthttp"
+	"<%= modulePath %>/internal/domain"
+	"<%= modulePath %>/internal/infra/clockfake"
+	"<%= modulePath %>/internal/infra/greetinglogfake"
+	"<%= modulePath %>/internal/infra/uowfake"
+)
+
+func greetingsServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	pinned := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)
+	useCases := domain.NewGreetingLogUseCases(
+		greetinglogfake.New(), clockfake.At(pinned), uowfake.New(),
+	)
+	server := httptest.NewServer(resthttp.WithGreetings(
+		http.NotFoundHandler(), useCases,
+	))
+	t.Cleanup(server.Close)
+	return server
+}
+
+func TestRecordsAGreetingAndListsItBack(t *testing.T) {
+	server := greetingsServer(t)
+
+	recorded, err := http.Post(
+		server.URL+"/greetings", "application/json", strings.NewReader(`{"name":"Romain"}`),
+	)
+	if err != nil {
+		t.Fatalf("POST /greetings: %v", err)
+	}
+	defer recorded.Body.Close()
+	if recorded.StatusCode != http.StatusCreated {
+		t.Fatalf("POST status = %d, want 201", recorded.StatusCode)
+	}
+
+	recent, err := http.Get(server.URL + "/greetings")
+	if err != nil {
+		t.Fatalf("GET /greetings: %v", err)
+	}
+	defer recent.Body.Close()
+	body := make([]byte, 4096)
+	n, _ := recent.Body.Read(body)
+	if got := string(body[:n]); !strings.Contains(got, `"name":"Romain"`) {
+		t.Fatalf("GET body = %s, want the recorded greeting", got)
+	}
+}
+
+func TestMapsARejectedRecordToProblemDetails(t *testing.T) {
+	server := greetingsServer(t)
+
+	rejected, err := http.Post(
+		server.URL+"/greetings", "application/json", strings.NewReader(`{"name":"  "}`),
+	)
+	if err != nil {
+		t.Fatalf("POST /greetings: %v", err)
+	}
+	defer rejected.Body.Close()
+	if rejected.StatusCode != http.StatusBadRequest {
+		t.Fatalf("POST status = %d, want 400", rejected.StatusCode)
+	}
+	if got := rejected.Header.Get("Content-Type"); got != "application/problem+json" {
+		t.Fatalf("Content-Type = %q, want application/problem+json", got)
+	}
+}
+
+// The decorator must leave unrelated routes to the wrapped handler.
+func TestFallsThroughToTheWrappedHandler(t *testing.T) {
+	server := greetingsServer(t)
+
+	response, err := http.Get(server.URL + "/greet")
+	if err != nil {
+		t.Fatalf("GET /greet: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want the wrapped handler's 404", response.StatusCode)
+	}
+}

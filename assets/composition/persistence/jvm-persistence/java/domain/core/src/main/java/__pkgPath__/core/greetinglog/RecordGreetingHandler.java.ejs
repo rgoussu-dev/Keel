@@ -1,0 +1,38 @@
+package <%= basePackage %>.core.greetinglog;
+
+import <%= basePackage %>.contract.Clock;
+import <%= basePackage %>.contract.UnitOfWork;
+import <%= basePackage %>.contract.greet.GreetRejected;
+import <%= basePackage %>.contract.greetinglog.GreetingLog;
+import <%= basePackage %>.contract.greetinglog.RecordGreetingCommand;
+import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
+import <%= basePackage %>.kernel.Command;
+import <%= basePackage %>.kernel.Handler;
+
+public final class RecordGreetingHandler
+        implements Handler<RecordGreetingCommand, RecordedGreeting> {
+
+    private final GreetingLog greetingLog;
+    private final Clock clock;
+    private final UnitOfWork unitOfWork;
+
+    public RecordGreetingHandler(GreetingLog greetingLog, Clock clock, UnitOfWork unitOfWork) {
+        this.greetingLog = greetingLog;
+        this.clock = clock;
+        this.unitOfWork = unitOfWork;
+    }
+
+    @Override
+    public boolean supports(Command<?> command) {
+        return command instanceof RecordGreetingCommand;
+    }
+
+    @Override
+    public RecordedGreeting handle(RecordGreetingCommand command) {
+        String name = command.name() == null ? "" : command.name().trim();
+        if (name.isEmpty()) {
+            throw new GreetRejected("name must not be blank");
+        }
+        return unitOfWork.inTransaction(() -> greetingLog.append(name, clock.now()));
+    }
+}

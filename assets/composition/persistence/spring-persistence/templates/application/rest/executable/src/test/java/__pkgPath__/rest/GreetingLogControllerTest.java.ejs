@@ -1,0 +1,64 @@
+package <%= basePackage %>.rest;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Drives the persistence slice end to end over real HTTP: the POST
+ * really commits to the Testcontainers PostgreSQL and the GET really
+ * reads rows back.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfiguration.class)
+class GreetingLogControllerTest {
+
+    @Value("${local.server.port}")
+    int port;
+
+    private final HttpClient client = HttpClient.newHttpClient();
+
+    private HttpResponse<String> post(String body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/greetings"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
+    void recordsAGreetingDurablyAndListsItBack() throws Exception {
+        HttpResponse<String> recorded = post("{\"name\":\"Romain\"}");
+
+        assertThat(recorded.statusCode()).isEqualTo(201);
+        assertThat(recorded.body()).contains("\"name\":\"Romain\"").contains("\"greetedAt\":");
+
+        HttpRequest list = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/greetings"))
+                .GET()
+                .build();
+        HttpResponse<String> recent = client.send(list, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(recent.statusCode()).isEqualTo(200);
+        assertThat(recent.body()).contains("\"name\":\"Romain\"");
+    }
+
+    @Test
+    void mapsARejectedRecordToProblemDetails() throws Exception {
+        HttpResponse<String> rejected = post("{\"name\":\"  \"}");
+
+        assertThat(rejected.statusCode()).isEqualTo(400);
+        assertThat(rejected.body())
+                .contains("\"type\":\"urn:problem-type:greet-rejected\"")
+                .contains("\"detail\":\"name must not be blank\"");
+    }
+}

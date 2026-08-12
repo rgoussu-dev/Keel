@@ -1,0 +1,24 @@
+package <%= basePackage %>.unitofwork.springtx
+
+import java.util.function.Supplier
+
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
+
+import <%= basePackage %>.contract.UnitOfWork
+
+/**
+ * [UnitOfWork] over Spring's transaction machinery: a
+ * [TransactionTemplate] begins a transaction, runs the block,
+ * commits when it returns and rolls back when it throws. Connections
+ * drawn inside the block participate when they come through a
+ * transaction-aware `DataSource` (the composition root wraps the
+ * pool in `TransactionAwareDataSourceProxy`).
+ */
+class SpringTxUnitOfWork(manager: PlatformTransactionManager) : UnitOfWork {
+
+    private val transaction = TransactionTemplate(manager)
+
+    override fun <T> inTransaction(work: Supplier<T>): T =
+        transaction.execute { work.get() }!!
+}
