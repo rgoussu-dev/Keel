@@ -20,7 +20,7 @@ import (
 
 // Default dev connection: the compose database (dev/compose.yaml).
 // 12-factor: DB_URL overrides it in every deployed environment.
-const devURL = "postgres://app:app@localhost:5432/<%= databaseName %>"
+const devURL = "<%= devUrl %>"
 
 // NewPool creates the connection pool from DB_URL (or the dev
 // default).

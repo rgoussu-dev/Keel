@@ -20,22 +20,12 @@ export interface SqlEngineSpec {
   readonly port: number;
   /** JDBC url for a host/database pair. */
   jdbcUrl(host: string, database: string): string;
-}
-
-const POSTGRES_PORT = 5432;
-
-/** PostgreSQL — the persistence vertical's sane default. */
-export const POSTGRES: SqlEngineSpec = {
-  id: 'postgres',
-  tag: 'db.postgres',
-  image: 'postgres:18-alpine',
-  port: POSTGRES_PORT,
-  jdbcUrl: (host, database) => `jdbc:postgresql://${host}:${POSTGRES_PORT}/${database}`,
-};
-
-/** Resolves the project's SQL engine (PostgreSQL until more land). */
-export function sqlEngine(): SqlEngineSpec {
-  return POSTGRES;
+  /**
+   * Driver-native url for a host/database pair, carrying the dev
+   * credentials — what the non-JVM datasources (pgx, node-postgres,
+   * sqlx) read as their dev default.
+   */
+  devUrl(host: string, database: string): string;
 }
 
 /** Dev-only database credentials every persistence contributor agrees on. */
@@ -43,6 +33,25 @@ export const DEV_DB_USER = 'app';
 
 /** Dev-only database password (dev compose only — never production). */
 export const DEV_DB_PASSWORD = 'app';
+
+/** PostgreSQL — the persistence vertical's sane default. */
+export const POSTGRES: SqlEngineSpec = {
+  id: 'postgres',
+  tag: 'db.postgres',
+  image: 'postgres:18-alpine',
+  port: 5432,
+  jdbcUrl(host, database) {
+    return `jdbc:postgresql://${host}:${this.port}/${database}`;
+  },
+  devUrl(host, database) {
+    return `postgres://${DEV_DB_USER}:${DEV_DB_PASSWORD}@${host}:${this.port}/${database}`;
+  },
+};
+
+/** Resolves the project's SQL engine (PostgreSQL until more land). */
+export function sqlEngine(): SqlEngineSpec {
+  return POSTGRES;
+}
 
 /**
  * The dev database name: the project name with `-` folded to `_` so

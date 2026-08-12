@@ -116,7 +116,7 @@ export const goPersistenceAdapter: Adapter = {
     const { modulePath } = goBootstrapAnswers(ctx.manifest, GO_PERSISTENCE_ID);
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       modulePath,
-      databaseName: databaseName(ctx.manifest),
+      devUrl: sqlEngine().devUrl('localhost', databaseName(ctx.manifest)),
     });
     return {
       files,

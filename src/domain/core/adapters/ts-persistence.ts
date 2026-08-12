@@ -199,7 +199,7 @@ export const tsPersistenceAdapter: Adapter = {
     const ws = tsWorkspaceVars(ctx.manifest.tags);
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       npmScope,
-      databaseName: databaseName(ctx.manifest),
+      devUrl: sqlEngine().devUrl('localhost', databaseName(ctx.manifest)),
       ...ws,
     });
     const workspaceDeps = (names: readonly string[]): Record<string, string> =>
