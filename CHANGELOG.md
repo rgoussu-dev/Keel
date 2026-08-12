@@ -33,6 +33,24 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `dev/compose.yaml`. Covered per stack by one predicate-selected
   adapter: Quarkus/Spring/Micronaut in Java and Kotlin (Gradle or
   Maven), `go-http`, `rust-http`, `ts-http`.
+- **`@DomainHandler` — container discovery of handlers on the JVM
+  stacks.** Handlers in scaffolded projects now carry a marker the
+  **domain owns** (`domain/contract`), so a new aggregate no longer
+  needs an edit in the composition root. No framework stereotype ever
+  appears in domain code: the marker is meta-annotated only with
+  Jakarta specification APIs (`jakarta.inject`,
+  `jakarta.enterprise.cdi-api`), declared `compileOnly`/`provided` so
+  neither reaches a runtime classpath, and each composition root reads
+  the same marker in its own idiom — a CDI stereotype for Quarkus (the
+  domain modules ship a `beans.xml` marking them bean archives), a
+  `@ComponentScan` include filter for Spring, and `@Import` for
+  Micronaut Java. Mediator factories now take the discovered
+  collection instead of constructing handlers by hand, and the
+  `persistence` vertical's greeting-log handlers ride the same
+  marker — so on Quarkus and Spring it no longer rewrites the
+  composition root at all, and on Micronaut Java it only names the
+  new package in `@Import` (which does not scan sub-packages).
+  Micronaut Kotlin keeps its explicit wiring in both verticals.
 - **Dedicated documentation under `docs/`** — cross-linked pages for
   every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
   `web-components`, fullstack) and every vertical

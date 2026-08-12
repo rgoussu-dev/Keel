@@ -39,8 +39,8 @@ import {
   jvmSharedPersistenceFiles,
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
-  patchJavaCompositionRoot,
   patchKotlinCompositionRoot,
+  patchMicronautImportPackages,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
@@ -240,7 +240,7 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
             target: `${mainRoot}/MediatorFactory.${kotlin ? 'kt' : 'java'}`,
             apply: kotlin
               ? patchKotlinCompositionRoot(id, basePackage)
-              : patchJavaCompositionRoot(id, basePackage),
+              : patchMicronautImportPackages(id, basePackage),
           },
           {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,

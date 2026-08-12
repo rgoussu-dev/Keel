@@ -1,27 +1,52 @@
 package <%= basePackage %>.cli;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import io.micronaut.context.BeanContext;
 import io.micronaut.context.annotation.Factory;
+import io.micronaut.context.annotation.Import;
 import jakarta.inject.Singleton;
 
 import <%= basePackage %>.core.RegistryMediator;
-import <%= basePackage %>.core.greet.GreetHandler;
 import <%= basePackage %>.kernel.Handler;
 import <%= basePackage %>.kernel.Mediator;
 
 /**
- * The channel's composition root: hand-wires the Mediator with every
- * domain Handler. Replace with container lookup of all
- * {@link Handler} beans once the project grows past one or two
- * handlers.
+ * The channel's composition root: collects every discovered domain
+ * {@link Handler} and builds the Mediator from them.
+ *
+ * <p>Micronaut resolves dependencies at compile time, so the domain
+ * modules — deliberately built without Micronaut's annotation
+ * processor — ship no bean definitions. {@link Import} bridges that
+ * gap: it admits the {@code @DomainHandler}-marked types from the
+ * listed packages without the domain's build ever naming Micronaut.
+ *
+ * <p>Packages are not scanned recursively, so each new
+ * {@code core.<aggregate>} package must be listed below. That is the
+ * price of keeping the domain build framework-free; the Quarkus and
+ * Spring bootstraps discover the same marker with no such list.
+ *
+ * <p>Handlers are gathered through {@link BeanContext} rather than by
+ * injecting a {@code List<Handler<?, ?>>}: an imported definition
+ * carries no resolved generic arguments, so it satisfies no
+ * parameterized injection point and such a list arrives empty. The
+ * lookup is confined to this composition root — no other class in the
+ * project touches the container.
  */
 @Factory
+@Import(
+    packages = "<%= basePackage %>.core.greet",
+    annotated = "<%= basePackage %>.contract.DomainHandler")
 public class MediatorFactory {
 
     @Singleton
-    public Mediator mediator() {
-        List<Handler<?, ?>> handlers = List.of(new GreetHandler());
+    @SuppressWarnings("rawtypes") // Handler.class is raw; each element widens safely below
+    public Mediator mediator(BeanContext beans) {
+        List<Handler<?, ?>> handlers = new ArrayList<>();
+        for (Handler<?, ?> handler : beans.getBeansOfType(Handler.class)) {
+            handlers.add(handler);
+        }
         return new RegistryMediator(handlers);
     }
 }

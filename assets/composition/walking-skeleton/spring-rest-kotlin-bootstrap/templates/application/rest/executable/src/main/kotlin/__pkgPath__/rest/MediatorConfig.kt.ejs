@@ -4,17 +4,18 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 import <%= basePackage %>.core.RegistryMediator
-import <%= basePackage %>.core.greet.GreetHandler
+import <%= basePackage %>.kernel.Handler
 import <%= basePackage %>.kernel.Mediator
 
 /**
- * The channel's composition root: hand-wires the Mediator with every
- * domain Handler. Replace with container lookup of all Handler beans
- * once the project grows past one or two handlers.
+ * The channel's composition root: collects every discovered domain
+ * [Handler] and builds the Mediator from them. Handlers reach this
+ * list via the `@DomainHandler` include filter on [Application], so
+ * adding an aggregate to the domain needs no edit here.
  */
 @Configuration
 class MediatorConfig {
 
     @Bean
-    fun mediator(): Mediator = RegistryMediator(listOf(GreetHandler()))
+    fun mediator(handlers: List<Handler<*, *>>): Mediator = RegistryMediator(handlers)
 }

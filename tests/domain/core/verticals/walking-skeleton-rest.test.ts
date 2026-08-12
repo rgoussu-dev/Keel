@@ -173,6 +173,38 @@ describe('walking-skeleton vertical (Quarkus REST)', () => {
     expect(handler).toContain('throw new GreetRejected("name must not be blank")');
   });
 
+  it('discovers handlers as a CDI stereotype, with the domain modules marked bean archives', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.server-http'));
+    cwds.push(cwd);
+
+    // The marker is the domain's own; only Jakarta specification APIs
+    // meta-annotate it, and they stay off every runtime classpath.
+    const marker =
+      tree
+        .read('domain/contract/src/main/java/com/example/contract/DomainHandler.java')
+        ?.toString() ?? '';
+    expect(marker).toContain('@Stereotype');
+    expect(marker).toContain('@Singleton');
+    expect(marker).not.toContain('io.quarkus');
+
+    const contractBuild = tree.read('domain/contract/build.gradle.kts')?.toString() ?? '';
+    expect(contractBuild).toContain('compileOnlyApi("jakarta.inject:jakarta.inject-api');
+    expect(contractBuild).toContain(
+      'compileOnlyApi("jakarta.enterprise:jakarta.enterprise.cdi-api',
+    );
+
+    // ArC only sees beans in modules that are bean archives.
+    expect(tree.read('domain/core/src/main/resources/META-INF/beans.xml')).not.toBeNull();
+    expect(tree.read('domain/contract/src/main/resources/META-INF/beans.xml')).not.toBeNull();
+
+    const producer =
+      tree
+        .read('application/rest/executable/src/main/java/com/example/rest/MediatorProducer.java')
+        ?.toString() ?? '';
+    expect(producer).toContain('Instance<Handler<?, ?>> handlers');
+    expect(producer).not.toContain('new GreetHandler()');
+  });
+
   it('emits the sample Clock port and FakeClock module in the REST shape too', async () => {
     const { tree, cwd } = await installWith(baseTags('arch.server-http'));
     cwds.push(cwd);

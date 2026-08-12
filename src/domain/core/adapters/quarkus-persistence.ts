@@ -21,10 +21,12 @@
  * The shared JVM trees and build-registration patches come from
  * {@link ../adapters/jvm-persistence.js}; this adapter owns the
  * Quarkus specifics: the JTA unit-of-work module, the framework
- * dependencies, the `application.properties` dialect, and the
- * `MediatorProducer` rewiring. Every patch is guarded so
- * re-installing is a no-op; migrations are owned by the sibling
- * `persistence/flyway-migrations` adapter.
+ * dependencies, and the `application.properties` dialect. The
+ * composition root needs no rewiring — the greeting-log handlers
+ * carry `@DomainHandler` and their ports are beans the
+ * `PersistenceProducer` already produces, so ArC discovers the slice.
+ * Every patch is guarded so re-installing is a no-op; migrations are
+ * owned by the sibling `persistence/flyway-migrations` adapter.
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
@@ -38,13 +40,11 @@ import {
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   observabilityInstalled,
-  patchJavaCompositionRoot,
-  patchKotlinCompositionRoot,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
 import { databaseName, sqlEngine } from './persistence-engine.js';
-import { eolAware, packageToPath } from '../util.js';
+import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const QUARKUS_PERSISTENCE_ID = 'persistence/quarkus-persistence';
@@ -119,15 +119,6 @@ quarkus.datasource.metrics.enabled=true
 ${telemetryLines}`;
 }
 
-/**
- * Rewires `MediatorProducer` with the greeting-log handlers.
- * Delegates to the shared Java composition-root patcher; exported
- * for the vertical tests.
- */
-export function patchMediatorProducer(basePackage: string): (existing: string) => string {
-  return patchJavaCompositionRoot(QUARKUS_PERSISTENCE_ID, basePackage);
-}
-
 function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
@@ -177,9 +168,6 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
       ]);
       const database = databaseName(ctx.manifest);
-      const rootTarget = kotlin
-        ? `application/rest/executable/src/main/kotlin/${packageToPath(basePackage)}/rest/MediatorProducer.kt`
-        : `application/rest/executable/src/main/java/${packageToPath(basePackage)}/rest/MediatorProducer.java`;
       return {
         files: [...shared, ...sources, ...build],
         patches: [
@@ -196,12 +184,6 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
                 observabilityInstalled(ctx.manifest),
               ).trim()}\n`;
             }),
-          },
-          {
-            target: rootTarget,
-            apply: kotlin
-              ? patchKotlinCompositionRoot(id, basePackage)
-              : patchJavaCompositionRoot(id, basePackage),
           },
           persistenceReadmePatch(),
         ],

@@ -52,7 +52,8 @@ A hexagonal multi-module project (Gradle Kotlin DSL or Maven POMs):
 my-service/
   domain/
     kernel/          # Command/Query, Result, Handler, Mediator — depends on nothing
-    contract/        # concrete commands, ports (e.g. Clock), read models
+    contract/        # concrete commands, ports (e.g. Clock), read models,
+                     # @DomainHandler — the domain's own wiring marker
     core/            # handlers + RegistryMediator, reachable only via factories
   application/
     cli/             # CLI shape: picocli entrypoint with a sample subcommand
@@ -72,6 +73,65 @@ The REST stacks additionally install
 [`observability`](../verticals/observability.md) (health probes,
 correlation ids, OpenTelemetry, and a Grafana monitoring stack wired
 into the dev compose) by default.
+
+## How handlers reach the mediator
+
+Handlers are marked with `@DomainHandler`, an annotation the **domain
+owns** (`domain/contract`). No framework stereotype ever appears in
+domain code. The marker carries only annotation-level Jakarta
+specification APIs (`jakarta.inject`, `jakarta.enterprise.cdi-api`),
+declared `compileOnly`/`provided` so neither reaches a runtime
+classpath.
+
+Each composition root then reads that same marker in its own idiom:
+
+| Stack             | Mechanism                                                               |
+| ----------------- | ----------------------------------------------------------------------- |
+| Quarkus (Java/KT) | `@DomainHandler` is a CDI stereotype; domain modules ship a `beans.xml` |
+| Spring (Java/KT)  | `@ComponentScan` include filter naming `DomainHandler.class`            |
+| Micronaut (Java)  | `@Import(packages = …, annotated = "…DomainHandler")` on the factory    |
+| Micronaut (KT)    | explicit list in `MediatorFactory` — see below                          |
+
+The mediator factory then takes the discovered collection
+(`List<Handler<?, ?>>` on Spring, CDI `Instance` on Quarkus), so
+adding an aggregate to the domain needs no edit in the composition
+root.
+
+Micronaut Java is the one that reads differently: an `@Import`ed bean
+definition carries no resolved generic arguments, so it satisfies no
+parameterized injection point and an injected `List<Handler<?, ?>>`
+would arrive empty. Its factory gathers handlers through `BeanContext`
+instead — a lookup deliberately confined to the composition root.
+
+**Micronaut Kotlin is the exception.** Micronaut resolves DI at
+compile time, so discovery needs its annotation processor to run over
+`domain/core` — which would put the framework inside the domain's own
+build. The Java bootstrap dodges that with `@Import`, but `@Import` is
+documented as Java-only, so the Kotlin bootstrap hand-wires its
+handler list instead. The domain stays framework-free; the list is
+explicit.
+
+**Dispatching from inside a handler.** `@Singleton` is a pseudo-scope,
+so beans get no client proxy and a handler that injected a `Mediator`
+directly would close a construction cycle (Quarkus rejects it at build
+time). Take a `Provider<Mediator>` instead — the one lazy seam CDI,
+Spring and Micronaut all honour:
+
+```java
+@DomainHandler
+public final class TransferHandler implements Handler<TransferCommand, Receipt> {
+
+    private final Provider<Mediator> mediator;
+
+    public TransferHandler(Provider<Mediator> mediator) {
+        this.mediator = mediator;
+    }
+    // … mediator.get().dispatch(…) inside handle()
+}
+```
+
+The pseudo-scope is also what keeps Kotlin's final-by-default classes
+usable as beans without the all-open compiler plugin.
 
 ## Verify it runs
 

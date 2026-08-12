@@ -268,57 +268,46 @@ export function persistenceReadmePatch(): ContributionPatch {
 }
 
 /**
- * Rewires a Java composition root (`MediatorProducer` /
- * `MediatorConfig` / `MediatorFactory` — the bodies are identical
- * across the three frameworks): `mediator()` takes the persistence
- * ports as parameters (the container injects the framework
- * producer's beans) and registers the greeting-log handlers. Throws
- * when the anchors drifted so the user gets a precise manual
+ * Names a new domain package in a Micronaut composition root's
+ * `@Import` list.
+ *
+ * Quarkus and Spring need no patch at all: their handlers carry
+ * `@DomainHandler` and their ports are already container beans, so
+ * discovery picks the greeting-log slice up untouched. Micronaut
+ * resolves DI at compile time and `@Import` does not scan
+ * sub-packages, so each new `core.<aggregate>` must be named — the
+ * one framework where a vertical still edits the composition root.
+ * Throws when the anchor drifted so the user gets a precise manual
  * instruction instead of a silently unwired slice.
  */
-export function patchJavaCompositionRoot(
+export function patchMicronautImportPackages(
   adapterId: string,
   basePackage: string,
 ): (existing: string) => string {
-  const importAnchor = `import ${basePackage}.core.greet.GreetHandler;`;
-  const imports = `import ${basePackage}.core.greetinglog.ListGreetingsHandler;
-import ${basePackage}.core.greetinglog.RecordGreetingHandler;
-import ${basePackage}.contract.Clock;
-import ${basePackage}.contract.UnitOfWork;
-import ${basePackage}.contract.greetinglog.GreetingLog;`;
-  const methodAnchor = 'public Mediator mediator() {';
-  const methodSignature =
-    'public Mediator mediator(GreetingLog greetingLog, Clock clock, UnitOfWork unitOfWork) {';
-  const listAnchor = '        List<Handler<?, ?>> handlers = List.of(new GreetHandler());';
-  const listWiring = `        List<Handler<?, ?>> handlers = List.of(
-                new GreetHandler(),
-                new RecordGreetingHandler(greetingLog, clock, unitOfWork),
-                new ListGreetingsHandler(greetingLog));`;
+  const anchor = `    packages = "${basePackage}.core.greet",`;
+  const wiring = `    packages = {"${basePackage}.core.greet", "${basePackage}.core.greetinglog"},`;
   return eolAware((existing) => {
-    if (existing.includes('RecordGreetingHandler')) return existing;
-    if (
-      !existing.includes(importAnchor) ||
-      !existing.includes(methodAnchor) ||
-      !existing.includes(listAnchor)
-    ) {
+    if (existing.includes(`${basePackage}.core.greetinglog`)) return existing;
+    if (!existing.includes(anchor)) {
       throw new Error(
-        `${adapterId}: the composition root has drifted from the walking-skeleton shape — register RecordGreetingHandler and ListGreetingsHandler with the mediator manually (inject GreetingLog, Clock and UnitOfWork)`,
+        `${adapterId}: the composition root has drifted from the walking-skeleton shape — add "${basePackage}.core.greetinglog" to the @Import packages on MediatorFactory so the greeting-log handlers are discovered`,
       );
     }
-    return existing
-      .replace(importAnchor, `${importAnchor}\n${imports}`)
-      .replace(methodAnchor, methodSignature)
-      .replace(listAnchor, listWiring);
+    return existing.replace(anchor, wiring);
   });
 }
 
 /**
- * Rewires a Kotlin composition root (`MediatorProducer` /
- * `MediatorConfig` / `MediatorFactory` — the single-expression body
- * is byte-identical across the three frameworks): `mediator()` takes
+ * Rewires the Micronaut Kotlin composition root: `mediator()` takes
  * the persistence ports as parameters and registers the greeting-log
- * handlers. Throws when the anchors drifted so the user gets a
- * precise manual instruction instead of a silently unwired slice.
+ * handlers by hand.
+ *
+ * This is the only composition root still rewired. Micronaut Kotlin
+ * cannot discover `@DomainHandler` — that would need its KSP
+ * processor over `domain/core` — and the `@Import` escape hatch its
+ * Java sibling uses is documented as Java-only. Throws when the
+ * anchors drifted so the user gets a precise manual instruction
+ * instead of a silently unwired slice.
  */
 export function patchKotlinCompositionRoot(
   adapterId: string,

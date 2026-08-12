@@ -1,9 +1,11 @@
 package <%= basePackage %>.core.greet;
 
+import <%= basePackage %>.contract.DomainHandler;
 import <%= basePackage %>.contract.greet.GreetCommand;
 import <%= basePackage %>.kernel.Command;
 import <%= basePackage %>.kernel.Handler;
 
+@DomainHandler
 public final class GreetHandler implements Handler<GreetCommand, String> {
 
     @Override

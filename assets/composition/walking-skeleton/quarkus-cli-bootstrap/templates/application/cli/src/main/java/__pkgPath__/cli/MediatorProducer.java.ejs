@@ -1,28 +1,29 @@
 package <%= basePackage %>.cli;
 
-import java.util.List;
-
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
 import <%= basePackage %>.kernel.Handler;
 import <%= basePackage %>.kernel.Mediator;
 import <%= basePackage %>.core.RegistryMediator;
-import <%= basePackage %>.core.greet.GreetHandler;
 
 /**
- * The channel's composition root: hand-wires the Mediator with every
- * domain Handler. Replace with CDI lookup of all {@link Handler}
- * beans once the project grows past one or two handlers.
+ * The channel's composition root: collects every discovered domain
+ * {@link Handler} and builds the Mediator from them.
+ *
+ * <p>ArC discovers handlers because {@code @DomainHandler} is a CDI
+ * stereotype and the domain modules ship a {@code beans.xml} marking
+ * them bean archives, so adding an aggregate to the domain needs no
+ * edit here.
  */
 @ApplicationScoped
 public class MediatorProducer {
 
     @Produces
     @Singleton
-    public Mediator mediator() {
-        List<Handler<?, ?>> handlers = List.of(new GreetHandler());
-        return new RegistryMediator(handlers);
+    public Mediator mediator(Instance<Handler<?, ?>> handlers) {
+        return new RegistryMediator(handlers.stream().toList());
     }
 }

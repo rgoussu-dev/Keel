@@ -1,5 +1,6 @@
 package <%= basePackage %>.core.greetinglog;
 
+import <%= basePackage %>.contract.DomainHandler;
 import <%= basePackage %>.contract.Clock;
 import <%= basePackage %>.contract.UnitOfWork;
 import <%= basePackage %>.contract.greet.GreetRejected;
@@ -9,6 +10,7 @@ import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
 import <%= basePackage %>.kernel.Command;
 import <%= basePackage %>.kernel.Handler;
 
+@DomainHandler
 public final class RecordGreetingHandler
         implements Handler<RecordGreetingCommand, RecordedGreeting> {
 

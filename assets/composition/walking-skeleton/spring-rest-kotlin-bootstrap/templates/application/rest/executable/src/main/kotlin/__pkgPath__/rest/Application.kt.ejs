@@ -2,13 +2,24 @@ package <%= basePackage %>.rest
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.FilterType
+
+import <%= basePackage %>.contract.DomainHandler
 
 /**
- * Boots the REST channel. Component scanning is rooted here, so the
- * controller, the error advice, and the composition root in this
- * package are picked up automatically.
+ * Boots the REST channel. The scan is declared explicitly because it
+ * spans two packages: this one — controller, error advice,
+ * composition root — and the domain's, whose handlers carry no Spring
+ * stereotype. They are admitted by the [DomainHandler] include filter
+ * instead, so the domain names no framework and the composition root
+ * names the domain's marker.
  */
 @SpringBootApplication
+@ComponentScan(
+    basePackages = ["<%= basePackage %>.rest", "<%= basePackage %>.core"],
+    includeFilters = [ComponentScan.Filter(type = FilterType.ANNOTATION, classes = [DomainHandler::class])],
+)
 class Application
 
 fun main(args: Array<String>) {

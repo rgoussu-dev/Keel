@@ -190,4 +190,27 @@ describe('walking-skeleton vertical (Micronaut CLI)', () => {
     expect(cliBuild).toContain('micronaut-picocli');
     expect(cliBuild).toContain('mainClass.set("com.example.cli.Main")');
   });
+
+  it('imports the @DomainHandler types instead of processing the domain build', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.server-http'));
+    cwds.push(cwd);
+
+    // Micronaut resolves DI at compile time, so discovery must not put
+    // its processor over domain/core — @Import bridges from the
+    // executable instead, filtering on the domain's own marker.
+    const factory =
+      tree
+        .read('application/rest/executable/src/main/java/com/example/rest/MediatorFactory.java')
+        ?.toString() ?? '';
+    expect(factory).toContain('@Import(');
+    expect(factory).toContain('annotated = "com.example.contract.DomainHandler"');
+    // An imported definition carries no resolved generic arguments, so a
+    // parameterized injection point would arrive empty; the lookup is
+    // confined to this composition root.
+    expect(factory).toContain('beans.getBeansOfType(Handler.class)');
+    expect(factory).not.toContain('new GreetHandler()');
+
+    const domainBuild = tree.read('domain/core/build.gradle.kts')?.toString() ?? '';
+    expect(domainBuild).not.toContain('micronaut');
+  });
 });

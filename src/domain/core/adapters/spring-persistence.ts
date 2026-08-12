@@ -39,8 +39,6 @@ import {
   jvmSharedPersistenceFiles,
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
-  patchJavaCompositionRoot,
-  patchKotlinCompositionRoot,
   persistenceReadmePatch,
   PROPERTIES_TARGET,
 } from './jvm-persistence.js';
@@ -238,7 +236,6 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
       ]);
       const database = databaseName(ctx.manifest);
-      const mainRoot = `application/rest/executable/src/main/${sourceDir}/${packageToPath(basePackage)}/rest`;
       const testRoot = `application/rest/executable/src/test/${sourceDir}/${packageToPath(basePackage)}/rest`;
       return {
         files: [...shared, ...sources, ...build],
@@ -253,12 +250,6 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
               if (existing.includes(PROPERTIES_GUARD)) return existing;
               return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database).trim()}\n`;
             }),
-          },
-          {
-            target: `${mainRoot}/MediatorConfig.${kotlin ? 'kt' : 'java'}`,
-            apply: kotlin
-              ? patchKotlinCompositionRoot(id, basePackage)
-              : patchJavaCompositionRoot(id, basePackage),
           },
           {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,

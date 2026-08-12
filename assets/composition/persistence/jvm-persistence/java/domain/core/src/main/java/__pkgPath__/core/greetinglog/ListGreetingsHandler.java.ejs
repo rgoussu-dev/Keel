@@ -2,12 +2,14 @@ package <%= basePackage %>.core.greetinglog;
 
 import java.util.List;
 
+import <%= basePackage %>.contract.DomainHandler;
 import <%= basePackage %>.contract.greetinglog.GreetingLog;
 import <%= basePackage %>.contract.greetinglog.ListGreetingsQuery;
 import <%= basePackage %>.contract.greetinglog.RecordedGreeting;
 import <%= basePackage %>.kernel.Command;
 import <%= basePackage %>.kernel.Handler;
 
+@DomainHandler
 public final class ListGreetingsHandler
         implements Handler<ListGreetingsQuery, List<RecordedGreeting>> {
 

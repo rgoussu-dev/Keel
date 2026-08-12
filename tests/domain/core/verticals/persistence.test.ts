@@ -26,9 +26,9 @@ import { persistenceVertical } from '../../../../src/domain/core/verticals/persi
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
+import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
 import { FLYWAY_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/flyway-migrations.js';
 import {
-  patchMediatorProducer,
   persistencePropertiesBlock,
   QUARKUS_PERSISTENCE_ID,
   QUARKUS_PERSISTENCE_KOTLIN_ID,
@@ -218,11 +218,20 @@ describe('persistence install on spring-rest and micronaut-rest (Gradle)', () =>
     expect(
       read(tree, 'application/rest/executable/src/main/resources/application-prod.properties'),
     ).toContain('spring.flyway.enabled=false');
+    // Discovery, not rewiring: the handlers carry the domain's marker
+    // and Spring's include filter already admits them, so the
+    // composition root is left exactly as the skeleton emitted it.
+    const recordHandler = read(
+      tree,
+      'domain/core/src/main/java/com/example/core/greetinglog/RecordGreetingHandler.java',
+    );
+    expect(recordHandler).toContain('@DomainHandler');
     const config = read(
       tree,
       'application/rest/executable/src/main/java/com/example/rest/MediatorConfig.java',
     );
-    expect(config).toContain('new RecordGreetingHandler(greetingLog, clock, unitOfWork)');
+    expect(config).toContain('mediator(List<Handler<?, ?>> handlers)');
+    expect(config).not.toContain('RecordGreetingHandler');
     const greetTest = read(
       tree,
       'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java',
@@ -262,11 +271,15 @@ describe('persistence install on spring-rest and micronaut-rest (Gradle)', () =>
       'datasources.default.url=${DB_URL:`jdbc:postgresql://localhost:5432/walking_skeleton`}',
     );
     expect(properties).toContain('flyway.datasources.default.enabled=true');
+    // Micronaut's @Import does not scan sub-packages, so the new
+    // aggregate package is named explicitly; the mediator body itself
+    // is untouched.
     const factory = read(
       tree,
       'application/rest/executable/src/main/java/com/example/rest/MediatorFactory.java',
     );
-    expect(factory).toContain('new ListGreetingsHandler(greetingLog));');
+    expect(factory).toContain('"com.example.core.greet", "com.example.core.greetinglog"');
+    expect(factory).not.toContain('new ListGreetingsHandler(greetingLog));');
     expect(
       read(
         tree,
@@ -301,14 +314,17 @@ describe('persistence install on quarkus-rest-kotlin (Gradle)', () => {
         'infrastructure/greeting-log/jdbc/src/test/kotlin/com/example/greetinglog/jdbc/JdbcGreetingLogTest.kt',
       ),
     ).toBe(true);
+    const recordHandler = read(
+      tree,
+      'domain/core/src/main/kotlin/com/example/core/greetinglog/RecordGreetingHandler.kt',
+    );
+    expect(recordHandler).toContain('@DomainHandler');
     const producer = read(
       tree,
       'application/rest/executable/src/main/kotlin/com/example/rest/MediatorProducer.kt',
     );
-    expect(producer).toContain(
-      'fun mediator(greetingLog: GreetingLog, clock: Clock, unitOfWork: UnitOfWork): Mediator',
-    );
-    expect(producer).toContain('RecordGreetingHandler(greetingLog, clock, unitOfWork)');
+    expect(producer).toContain('fun mediator(handlers: Instance<Handler<*, *>>): Mediator');
+    expect(producer).not.toContain('RecordGreetingHandler');
     expect(read(tree, 'settings.gradle.kts')).toContain(
       'include(":infrastructure:unit-of-work:jta")',
     );
@@ -490,16 +506,20 @@ describe('persistence install on quarkus-rest (Gradle)', () => {
     expect(properties).toContain('quarkus.datasource.health.enabled=true');
     expect(properties).not.toContain('quarkus.datasource.jdbc.telemetry=true');
 
-    // Composition root rewired with the new handlers.
+    // The composition root is NOT rewired: the handlers carry
+    // @DomainHandler and PersistenceProducer already exposes their
+    // ports as beans, so ArC discovers the whole slice.
+    const recordHandler = read(
+      tree,
+      'domain/core/src/main/java/com/example/core/greetinglog/RecordGreetingHandler.java',
+    );
+    expect(recordHandler).toContain('@DomainHandler');
     const producer = read(
       tree,
       'application/rest/executable/src/main/java/com/example/rest/MediatorProducer.java',
     );
-    expect(producer).toContain(
-      'public Mediator mediator(GreetingLog greetingLog, Clock clock, UnitOfWork unitOfWork) {',
-    );
-    expect(producer).toContain('new RecordGreetingHandler(greetingLog, clock, unitOfWork)');
-    expect(producer).toContain('new ListGreetingsHandler(greetingLog));');
+    expect(producer).toContain('mediator(Instance<Handler<?, ?>> handlers)');
+    expect(producer).not.toContain('RecordGreetingHandler');
 
     // The isolated migrations unit.
     expect(read(tree, 'migrations/sql/V1__create_greeting.sql')).toContain('create table greeting');
@@ -583,33 +603,31 @@ describe('persistence install on quarkus-rest (Maven)', () => {
 });
 
 describe('persistence patch helpers', () => {
-  it('rewires the template-shaped MediatorProducer once and only once', () => {
-    const original = `import java.util.List;
-
-import com.example.kernel.Handler;
-import com.example.core.greet.GreetHandler;
-
-public class MediatorProducer {
-
-    public Mediator mediator() {
-        List<Handler<?, ?>> handlers = List.of(new GreetHandler());
-        return new RegistryMediator(handlers);
-    }
+  it('names the new aggregate package in @Import once and only once', () => {
+    const original = `@Factory
+@Import(
+    packages = "com.example.core.greet",
+    annotated = "com.example.contract.DomainHandler")
+public class MediatorFactory {
 }
 `;
-    const patched = patchMediatorProducer('com.example')(original);
-    expect(patched).toContain('import com.example.contract.greetinglog.GreetingLog;');
-    expect(patched).toContain(
-      'public Mediator mediator(GreetingLog greetingLog, Clock clock, UnitOfWork unitOfWork) {',
-    );
-    expect(patched).toContain('new RecordGreetingHandler(greetingLog, clock, unitOfWork)');
-    expect(patchMediatorProducer('com.example')(patched)).toBe(patched);
+    const patched = patchMicronautImportPackages(
+      'persistence/micronaut-persistence',
+      'com.example',
+    )(original);
+    expect(patched).toContain('"com.example.core.greet", "com.example.core.greetinglog"');
+    expect(
+      patchMicronautImportPackages('persistence/micronaut-persistence', 'com.example')(patched),
+    ).toBe(patched);
   });
 
-  it('names the manual fix when MediatorProducer drifted from the skeleton shape', () => {
-    expect(() => patchMediatorProducer('com.example')('public class Custom {}')).toThrow(
-      /register RecordGreetingHandler and ListGreetingsHandler .* manually/,
-    );
+  it('names the manual fix when the @Import list drifted from the skeleton shape', () => {
+    expect(() =>
+      patchMicronautImportPackages(
+        'persistence/micronaut-persistence',
+        'com.example',
+      )('public class Custom {}'),
+    ).toThrow(/add "com\.example\.core\.greetinglog" to the @Import packages/);
   });
 
   it('merges package.json dependencies without clobbering existing entries', () => {

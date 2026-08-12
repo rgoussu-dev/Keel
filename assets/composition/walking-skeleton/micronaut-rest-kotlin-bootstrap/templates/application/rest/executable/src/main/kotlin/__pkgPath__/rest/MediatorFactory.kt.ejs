@@ -9,8 +9,15 @@ import <%= basePackage %>.kernel.Mediator
 
 /**
  * The channel's composition root: hand-wires the Mediator with every
- * domain Handler. Replace with container lookup of all Handler beans
- * once the project grows past one or two handlers.
+ * domain Handler. Add each new handler to the list below.
+ *
+ * This is the one bootstrap that does not discover `@DomainHandler`.
+ * Micronaut resolves dependencies at compile time, so discovery would
+ * require its KSP processor to run over `domain/core` — putting the
+ * framework inside the domain's own build. The `@Import` escape hatch
+ * the Java bootstrap uses to avoid that is documented as Java-only.
+ * An explicit list is the honest trade: the domain build stays
+ * framework-free, and the wiring stays visible in one place.
  */
 @Factory
 class MediatorFactory {

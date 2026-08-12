@@ -70,7 +70,44 @@ per-language (settled 2026-08-09):
   in `domain/core/`. Handlers self-declare via `supports()`. The
   Mediator implementation is constructed from a `Collection<Handler>`
   and builds its own registry — **never inject a Map**. No reflection,
-  no annotation scanning, no service locators.
+  no service locators.
+
+  **Handler discovery (amended 2026-08-12).** How that
+  `Collection<Handler>` is assembled is the composition root's
+  business, and container discovery is permitted under all four of
+  these constraints — otherwise wire the collection by hand:
+  1. The marker is **owned by the domain** — a project annotation
+     such as `@DomainHandler` in `domain/contract`, never a framework
+     stereotype (`@Component`, `@ApplicationScoped`, …) in domain
+     code.
+  2. Any annotation the marker itself carries is a **specification
+     API, not a framework**: `jakarta.inject` /
+     `jakarta.enterprise.cdi-api` and nothing else. They are declared
+     `compileOnly`/`provided` and never reach a runtime classpath.
+  3. Each composition root names the domain's marker in **its own**
+     idiom — a component-scan include filter, a CDI stereotype, an
+     explicit import — so no framework annotation is ever authored
+     inside the domain, and the domain's **build** never depends on
+     a container. A stack whose DI is resolved at compile time and
+     therefore needs its processor to run over `domain/core` fails
+     this constraint: hand-wire it. Where a container will only
+     surrender the collection through a lookup rather than an
+     injection point, that lookup is permitted **inside the
+     composition root and nowhere else** — the ban on service
+     locators governs domain and adapter code, which is precisely
+     what the composition root exists to keep clean.
+  4. Scope is a **pseudo-scope** (`@Singleton`), so beans need no
+     client proxy — which also keeps Kotlin's final-by-default classes
+     usable without the all-open compiler plugin. A handler that must
+     dispatch therefore takes a `Provider<Mediator>`, never a
+     `Mediator`: the pseudo-scope has no proxy to break the cycle
+     with, and `Provider` is the one lazy seam CDI, Spring and
+     Micronaut all honour.
+
+  Discovery buys one thing — a new aggregate needs no edit in the
+  composition root. It costs the single readable list of what is
+  wired. Both are legitimate; hand-wiring remains fully conformant.
+
 - **Rust**: per-use-case driving-port traits by default; where a
   unified seam is justified, commands become an enum dispatched by one
   exhaustive `match` — the compiler is the registry. A runtime
