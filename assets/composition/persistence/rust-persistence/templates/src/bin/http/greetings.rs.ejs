@@ -1,0 +1,197 @@
+//! The HTTP surface of the persistence slice: `POST /greetings`
+//! records a greeting durably, `GET /greetings?limit=…` reads the
+//! log back, most recent first. Maps transport DTOs to the
+//! greeting-log command/query and domain errors to RFC 9457 problem
+//! documents. Zero business logic. The sync domain runs on the
+//! blocking pool so the async runtime never stalls on the database.
+
+use std::sync::Arc;
+
+use axum::extract::{Query, State};
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use serde::{Deserialize, Serialize};
+
+use <%= crateName %>::domain::{
+    GreetingLogError, GreetingLogUseCases, ListGreetingsQuery, RecordGreetingCommand,
+    RecordedGreeting,
+};
+
+use crate::handler::Problem;
+
+/// The driving port as shared, thread-safe state.
+pub type SharedGreetings = Arc<dyn GreetingLogUseCases + Send + Sync>;
+
+#[derive(Deserialize)]
+pub struct RecordGreetingRequest {
+    pub name: String,
+}
+
+/// The transport shape of one recorded greeting.
+#[derive(Serialize)]
+pub struct RecordedGreetingResponse {
+    pub id: i64,
+    pub name: String,
+    #[serde(rename = "greetedAt")]
+    pub greeted_at: String,
+}
+
+#[derive(Deserialize)]
+struct ListParams {
+    limit: Option<i64>,
+}
+
+/// Returns the persistence slice's routes; the deployment unit
+/// merges them into the service router.
+pub fn router(greetings: SharedGreetings) -> Router {
+    Router::new()
+        .route("/greetings", post(record).get(recent))
+        .with_state(greetings)
+}
+
+async fn record(
+    State(greetings): State<SharedGreetings>,
+    Json(request): Json<RecordGreetingRequest>,
+) -> Response {
+    let outcome = tokio::task::spawn_blocking(move || {
+        greetings.record(RecordGreetingCommand { name: request.name })
+    })
+    .await;
+    match outcome {
+        Ok(Ok(recorded)) => {
+            (StatusCode::CREATED, Json(to_response(recorded))).into_response()
+        }
+        Ok(Err(err)) => problem(err),
+        Err(join) => problem(GreetingLogError::Store(join.to_string())),
+    }
+}
+
+async fn recent(
+    State(greetings): State<SharedGreetings>,
+    Query(params): Query<ListParams>,
+) -> Response {
+    let limit = params.limit.unwrap_or(10);
+    let outcome =
+        tokio::task::spawn_blocking(move || greetings.list(ListGreetingsQuery { limit })).await;
+    match outcome {
+        Ok(Ok(recent)) => {
+            let responses: Vec<RecordedGreetingResponse> =
+                recent.into_iter().map(to_response).collect();
+            Json(responses).into_response()
+        }
+        Ok(Err(err)) => problem(err),
+        Err(join) => problem(GreetingLogError::Store(join.to_string())),
+    }
+}
+
+fn to_response(recorded: RecordedGreeting) -> RecordedGreetingResponse {
+    RecordedGreetingResponse {
+        id: recorded.id,
+        name: recorded.name,
+        greeted_at: humantime::format_rfc3339_millis(recorded.greeted_at).to_string(),
+    }
+}
+
+fn problem(err: GreetingLogError) -> Response {
+    let status = match err {
+        GreetingLogError::Rejected(_) => StatusCode::BAD_REQUEST,
+        GreetingLogError::Store(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    let body = Problem {
+        problem_type: "about:blank".to_string(),
+        title: status.canonical_reason().unwrap_or_default().to_string(),
+        status: status.as_u16(),
+        detail: err.to_string(),
+    };
+    (
+        status,
+        [(header::CONTENT_TYPE, "application/problem+json")],
+        Json(body),
+    )
+        .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::SystemTime;
+
+    use axum::body::Body;
+    use axum::http::Request;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    use <%= crateName %>::domain::new_greeting_log_use_cases;
+    use <%= crateName %>::infra::clock_fake::FakeClock;
+    use <%= crateName %>::infra::greeting_log_fake::FakeGreetingLog;
+    use <%= crateName %>::infra::uow_fake::FakeUnitOfWork;
+
+    use super::*;
+
+    fn app() -> Router {
+        let use_cases: SharedGreetings = Arc::new(new_greeting_log_use_cases(
+            Arc::new(FakeGreetingLog::new()),
+            Arc::new(FakeClock::at(SystemTime::UNIX_EPOCH)),
+            Arc::new(FakeUnitOfWork::new()),
+        ));
+        router(use_cases)
+    }
+
+    #[tokio::test]
+    async fn records_a_greeting_and_lists_it_back() {
+        let app = app();
+
+        let recorded = app
+            .clone()
+            .oneshot(
+                Request::post("/greetings")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(r#"{"name":"Romain"}"#))
+                    .expect("build the request"),
+            )
+            .await
+            .expect("dispatch the request");
+        assert_eq!(recorded.status(), StatusCode::CREATED);
+
+        let recent = app
+            .oneshot(
+                Request::get("/greetings")
+                    .body(Body::empty())
+                    .expect("build the request"),
+            )
+            .await
+            .expect("dispatch the request");
+        assert_eq!(recent.status(), StatusCode::OK);
+        let bytes = recent
+            .into_body()
+            .collect()
+            .await
+            .expect("read the body")
+            .to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&bytes).expect("decode the body");
+        assert_eq!(parsed[0]["name"], "Romain");
+    }
+
+    #[tokio::test]
+    async fn maps_a_rejected_record_to_a_problem_document() {
+        let rejected = app()
+            .oneshot(
+                Request::post("/greetings")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(r#"{"name":"  "}"#))
+                    .expect("build the request"),
+            )
+            .await
+            .expect("dispatch the request");
+
+        assert_eq!(rejected.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            rejected
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("application/problem+json")
+        );
+    }
+}

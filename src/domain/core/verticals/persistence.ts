@@ -43,6 +43,7 @@ import { flywayMigrationsAdapter } from '../adapters/flyway-migrations.js';
 import { goPersistenceAdapter } from '../adapters/go-persistence.js';
 import { micronautPersistenceAdapter } from '../adapters/micronaut-persistence.js';
 import { quarkusPersistenceAdapter } from '../adapters/quarkus-persistence.js';
+import { rustPersistenceAdapter } from '../adapters/rust-persistence.js';
 import { springPersistenceAdapter } from '../adapters/spring-persistence.js';
 import { tsPersistenceAdapter } from '../adapters/ts-persistence.js';
 import type { Vertical } from '../../contract/composition.js';
@@ -64,6 +65,7 @@ export const persistenceVertical: Vertical = {
     micronautPersistenceAdapter,
     tsPersistenceAdapter,
     goPersistenceAdapter,
+    rustPersistenceAdapter,
     flywayMigrationsAdapter,
     databaseComposeAdapter,
   ],

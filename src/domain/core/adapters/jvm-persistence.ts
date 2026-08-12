@@ -102,13 +102,12 @@ export async function jvmSharedPersistenceFiles(
   language: JvmPersistenceLanguage,
   vars: Readonly<Record<string, string>>,
 ): Promise<ContributionFile[]> {
-  const buildDir =
-    language === 'kotlin'
-      ? `${jvmBuildSystem(ctx.manifest.tags)}-kotlin`
-      : jvmBuildSystem(ctx.manifest.tags);
+  // The module build files are language-agnostic: the Kotlin roots
+  // apply the Kotlin plugin (Gradle) / source directories (Maven) to
+  // every subproject, so `java-library` modules compile Kotlin too.
   const [sources, build] = await Promise.all([
     ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/${language}`, '', vars),
-    ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/build/${buildDir}`, '', vars),
+    ctx.templates.render(`${SHARED_TEMPLATE_ROOT}/build/${jvmBuildSystem(ctx.manifest.tags)}`, '', vars),
   ]);
   return [...sources, ...build];
 }

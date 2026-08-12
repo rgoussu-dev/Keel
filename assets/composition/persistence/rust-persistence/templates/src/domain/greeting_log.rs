@@ -1,0 +1,112 @@
+//! The greeting-log ports, commands, and use cases — the walking
+//! skeleton's persistence example. The domain appends and reads;
+//! where the rows live (PostgreSQL in production, an in-memory fake
+//! in tests) is an adapter concern under `infra`.
+
+use std::error::Error;
+use std::fmt;
+use std::sync::Arc;
+use std::time::SystemTime;
+
+use crate::domain::{Clock, GreetError, UnitOfWork};
+
+/// One greeting as the log recorded it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordedGreeting {
+    pub id: i64,
+    pub name: String,
+    pub greeted_at: SystemTime,
+}
+
+/// GreetingLogError reports why the greeting log could not be used.
+#[derive(Debug)]
+pub enum GreetingLogError {
+    /// The command was rejected by the domain (blank name).
+    Rejected(GreetError),
+    /// The store misbehaved (unreachable database, SQL failure, …).
+    Store(String),
+}
+
+impl fmt::Display for GreetingLogError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GreetingLogError::Rejected(err) => write!(f, "{err}"),
+            GreetingLogError::Store(detail) => write!(f, "greeting log unavailable: {detail}"),
+        }
+    }
+}
+
+impl Error for GreetingLogError {}
+
+/// GreetingLog is the secondary port onto the greeting log.
+pub trait GreetingLog {
+    /// Appends one greeting and returns it with its assigned id.
+    fn append(
+        &self,
+        name: &str,
+        greeted_at: SystemTime,
+    ) -> Result<RecordedGreeting, GreetingLogError>;
+    /// Returns at most `limit` greetings, most recent first.
+    fn recent(&self, limit: i64) -> Result<Vec<RecordedGreeting>, GreetingLogError>;
+}
+
+/// RecordGreetingCommand asks to record durably that `name` was
+/// greeted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordGreetingCommand {
+    pub name: String,
+}
+
+/// ListGreetingsQuery asks for the most recent greetings; the use
+/// case clamps `limit` to [1, 100].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ListGreetingsQuery {
+    pub limit: i64,
+}
+
+/// GreetingLogUseCases is the driving port for the greeting-log use
+/// cases. Primary adapters depend on this trait, never on the
+/// implementation.
+pub trait GreetingLogUseCases {
+    /// Validates and appends inside one unit of work.
+    fn record(&self, cmd: RecordGreetingCommand) -> Result<RecordedGreeting, GreetingLogError>;
+    /// Reads back the most recent greetings.
+    fn list(&self, q: ListGreetingsQuery) -> Result<Vec<RecordedGreeting>, GreetingLogError>;
+}
+
+/// Assembles the greeting-log use cases behind their driving port.
+/// The deployment unit wires the secondary ports by hand —
+/// constructor injection, no framework.
+pub fn new_greeting_log_use_cases(
+    log: Arc<dyn GreetingLog + Send + Sync>,
+    clock: Arc<dyn Clock + Send + Sync>,
+    uow: Arc<dyn UnitOfWork + Send + Sync>,
+) -> impl GreetingLogUseCases + Send + Sync + 'static {
+    DomainGreetingLogUseCases { log, clock, uow }
+}
+
+struct DomainGreetingLogUseCases {
+    log: Arc<dyn GreetingLog + Send + Sync>,
+    clock: Arc<dyn Clock + Send + Sync>,
+    uow: Arc<dyn UnitOfWork + Send + Sync>,
+}
+
+impl GreetingLogUseCases for DomainGreetingLogUseCases {
+    fn record(&self, cmd: RecordGreetingCommand) -> Result<RecordedGreeting, GreetingLogError> {
+        let name = cmd.name.trim().to_string();
+        if name.is_empty() {
+            return Err(GreetingLogError::Rejected(GreetError::EmptyName));
+        }
+        let greeted_at = self.clock.now();
+        let mut recorded: Option<RecordedGreeting> = None;
+        self.uow.in_transaction(&mut || {
+            recorded = Some(self.log.append(&name, greeted_at)?);
+            Ok(())
+        })?;
+        recorded.ok_or_else(|| GreetingLogError::Store("unit of work recorded nothing".to_string()))
+    }
+
+    fn list(&self, q: ListGreetingsQuery) -> Result<Vec<RecordedGreeting>, GreetingLogError> {
+        self.log.recent(q.limit.clamp(1, 100))
+    }
+}

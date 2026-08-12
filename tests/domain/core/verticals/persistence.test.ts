@@ -38,6 +38,7 @@ import {
 } from '../../../../src/domain/core/adapters/spring-persistence.js';
 import { MICRONAUT_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/micronaut-persistence.js';
 import { GO_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/go-persistence.js';
+import { RUST_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/rust-persistence.js';
 import {
   addPackageDependencies,
   patchMainTs,
@@ -137,6 +138,11 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
       ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
       GO_PERSISTENCE_ID,
     ],
+    [
+      'rust-http',
+      ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
+      RUST_PERSISTENCE_ID,
+    ],
   ])('selects the per-stack adapter on %s', (_label, tags, adapterId) => {
     const adapters = resolveVertical(persistenceVertical, tags);
     expect(adapters.map((a) => a.id).sort()).toEqual(
@@ -148,10 +154,6 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
     [
       'quarkus-rest-kotlin (no Kotlin twin yet)',
       ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
-    ],
-    [
-      'rust-http (no Rust adapter yet)',
-      ['lang.rust', 'arch.hexagonal', 'arch.server-http', 'pkg.cargo'],
     ],
     [
       'quarkus-cli (no HTTP shape)',
@@ -286,6 +288,29 @@ describe('persistence install on go-http', () => {
     expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
     expect(main).toContain('observability.RequestContext');
     expect(main.match(/"context"/g)?.length).toBe(1);
+  });
+});
+
+describe('persistence install on rust-http', () => {
+  it('lays the Rust slice: ports, postgres adapters, fakes, stitched modules, patched main', async () => {
+    const tags = ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'];
+    const { tree } = await installChain(tags);
+
+    expect(tree.exists('src/domain/greeting_log.rs')).toBe(true);
+    expect(tree.exists('src/domain/unit_of_work.rs')).toBe(true);
+    expect(tree.exists('src/infra/postgres.rs')).toBe(true);
+    expect(read(tree, 'src/domain.rs')).toContain('pub mod greeting_log;');
+    expect(read(tree, 'src/infra.rs')).toContain('pub mod postgres;');
+    const cargo = read(tree, 'Cargo.toml');
+    expect(cargo).toContain('postgres = "0.19"');
+    expect(cargo).toContain('testcontainers-modules');
+    const main = read(tree, 'src/bin/http/main.rs');
+    expect(main).toContain('mod greetings;');
+    expect(main).toContain('postgres::connect()');
+    expect(main).toContain('handler::router(greeter).merge(greetings::router(greetings))');
+    expect(read(tree, 'src/infra/postgres.rs')).toContain(
+      'postgres://app:app@localhost:5432/walking_skeleton',
+    );
   });
 });
 
