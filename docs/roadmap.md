@@ -226,11 +226,21 @@ extraction answer disagree.
   `enhancedResolveOptions: { extensions: ['.ts', …], exportsFields:
 ['exports'], conditionNames: ['import', 'default', 'types'] }`.
   Worth a test that asserts a known-bad import actually fails.
-- **Resolver** `ts-module-layout.ts` owns paths, the **package name**
-  (`@<scope>/<ctx>-domain-contract` for `modules/<ctx>/domain/contract`
-  — scope, context and depth all vary independently) and the
-  **workspace member list** (npm workspace globs match one level
-  only, so members must be enumerated).
+- **Resolver** `ts-module-layout.ts` owns paths and the **package
+  name** (`@<scope>/<ctx>-domain-contract` for
+  `modules/<ctx>/domain/contract` — scope, context and path depth all
+  vary independently, and none of them can be derived from another).
+  The workspace member list needs no special handling: nested globs
+  (`modules/*/domain/*`, or `modules/**`) resolve correctly under both
+  npm 10 and pnpm 10, verified.
+- **The `exports` map is coupled to the build mode**, which is the
+  trap easiest to get wrong across the two TypeScript stacks. With no
+  build step (`ts-http` today) the map points at `./src/index.ts` and
+  imports carry `.ts` specifiers; with an emitting build it must point
+  at `./dist/index.js` plus a `types` condition, and every import
+  specifier becomes `.js`. Mixing the two typechecks and then fails at
+  runtime. Whatever the resolver emits, the map and the specifier
+  convention have to be decided together.
 - **Watch `erasableSyntaxOnly`**, which `ts-http` already sets: Node's
   type-stripping rejects parameter properties and enums, so any
   entity template using `constructor(readonly id: string)` fails with
