@@ -384,6 +384,60 @@ for the least marginal gain over what I.1–I.3 will have proven.
 - **Adapters to touch:** `rust-cors`, `rust-observability`,
   `rust-persistence`, `rust-port-fake`, `rust-http-image`.
 
+#### The peer seam leaks, and I.4 builds to this rule (decided 2026-08-14)
+
+Compile-verified on rustc 1.94.1: Rust's crate graph prevents _naming_
+a crate you do not depend on, but not domain types _flowing_ across the
+peer seam. A gateway crate with no edge to `ordering-domain-contract`
+held a domain value returned through the service crate's public API and
+read its fields — no error, no warning. Inference supplies the type the
+consumer cannot write. So "the seam carries only the service crate's
+own DTOs" is a rule Rust does not hold for us, unlike the JVM (where
+build scope holds it) or Go (where unnameability does).
+
+**Ruling: option (a), reinforced structurally, with (c) staged behind
+stabilisation.** Reasoning, since the three candidates are not
+equally weighted:
+
+- **(b), a custom lint, is not actually available on stable.** Checking
+  "every type in the seam crate's public API is declared by that crate"
+  needs the public API surface, and on stable there is no supported way
+  to get it — `cargo public-api` and `cargo-semver-checks` both consume
+  rustdoc JSON, which is nightly-only; `cargo-deny` bans dependency
+  _edges_ and cannot see type flow at all; a clippy lint would have to
+  ship as a `dylint` crate pinned to its own nightly. So (b) needs
+  nightly too, and costs more than (c) for the same result. It is out.
+- **(c) is exact but disproportionate.** `-Z public-dependency` with
+  `public = false` and `#![deny(exported_private_dependencies)]` catches
+  leaked return types _and_ constructor parameters. But enabling it pins
+  the whole scaffolded project to nightly — every `rust-cli` and
+  `rust-http` user, including the `basic`-layout majority who have no
+  peer seam at all — to enforce one rule on one crate. That trades the
+  binding spec's "always latest stable" for a wall most projects will
+  never test. Not worth it today.
+- **(a) is weaker than it sounds, and stronger than it reads.** The rule
+  governs the `pub` items of exactly one small, rarely-edited crate per
+  context, whose entire purpose is to be that seam. It is not a rule
+  spread across a codebase; it is a rule about one file's public
+  signatures, and `cargo tree` names the one crate a reviewer must look
+  at.
+
+So I.4 emits a `<ctx>-user-side-service` whose public API is its own
+DTOs, states the rule in that crate's own module doc **at the point
+where it would be violated**, and carries it into the stack's
+`AGENTS.md` addendum. The upgrade path is pre-written so it is
+mechanical the day `public-dependency` stabilises: add `public = false`
+to the seam crate's `<ctx>-domain-contract` dependency and
+`#![deny(exported_private_dependencies)]` to its crate root — two lines,
+no restructuring.
+
+**This stays partially open, and should be described that way.** The
+_stance_ is decided; the _enforcement_ does not exist on stable, so
+Rust's peer seam is genuinely weaker than the JVM's and Go's. The
+comparison table should say so rather than imply parity. It does not
+block I.4 — the failure mode is coupling that compiles, not a broken
+build.
+
 **Commits.** `feat(walking-skeleton): modulith module layout for the Rust stacks`, then per vertical.
 
 ### Not in scope for I

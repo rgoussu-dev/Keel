@@ -86,6 +86,17 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `go-http-bootstrap`, `go-port-fake`, `go-cors` and `go-observability`
   all read from it instead of carrying path constants.
 
+- **The Rust peer-seam stance is settled for I.4.** Rust's crate graph
+  prevents naming a crate you do not depend on but not domain types
+  flowing across the peer seam, and nothing on stable catches it. The
+  ruling — recorded in [the roadmap](docs/roadmap.md) under I.4 — keeps
+  the discipline, states it in the seam crate's own module doc rather
+  than a checklist, and pre-writes the two-line switch to
+  `-Z public-dependency` for the day it stabilises. Pinning every
+  scaffolded Rust project to nightly to enforce one rule on one crate
+  is the trade being declined. The enforcement stays open; the stance
+  does not.
+
 ### Fixed
 
 - **`observability` emitted its package but never wired `main.go` on a
