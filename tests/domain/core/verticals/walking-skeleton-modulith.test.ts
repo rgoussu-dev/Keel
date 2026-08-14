@@ -317,6 +317,32 @@ describe('walking-skeleton under layout.modulith (Quarkus REST)', () => {
     expect(producer).toContain('new GreetingWelcome(greeting::get)');
   });
 
+  it('gives the Maven assembly real dependencies, not managed versions', async () => {
+    // Regression: a Quarkus pom opens with a <dependencyManagement>
+    // block, so anchoring the patch on the closing </dependencies>
+    // tag filed the peer modules under version management — where
+    // they pin versions and add nothing to the compile classpath.
+    // Only a real `mvn verify` caught it: `package ... does not exist`.
+    const { tree, cwd } = await install(walkingSkeletonVertical, [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.maven',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+      MODULITH_LAYOUT_TAG,
+      PEER_CONTEXT_TAG,
+    ]);
+    cwds.push(cwd);
+    const pom = tree.read('application/api/pom.xml')?.toString() ?? '';
+    const managed = /<dependencyManagement>[\s\S]*?<\/dependencyManagement>/.exec(pom)?.[0] ?? '';
+    expect(managed, 'peer modules must not be filed under dependencyManagement').not.toContain(
+      'guestbook',
+    );
+    expect(pom).toContain('<artifactId>guestbook-domain-core</artifactId>');
+    expect(pom).toContain('<artifactId>guestbook-infra-greeting-gateway</artifactId>');
+  });
+
   it('leaves the skeleton untouched when the peer context is not opted into', async () => {
     const { tree, cwd } = await install(
       walkingSkeletonVertical,

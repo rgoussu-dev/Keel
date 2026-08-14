@@ -170,25 +170,30 @@ function assemblyDepsPatch(
   const [, core, gateway] = peerModules() as unknown as [string, string, string];
   if (buildSystem === 'maven') {
     const guard = mavenArtifact(core);
-    const deps = [core, gateway]
-      .map(
-        (m) => `    <dependency>
+    const dependency = (artifactId: string): string => `    <dependency>
       <groupId>${basePackage}</groupId>
-      <artifactId>${mavenArtifact(m)}</artifactId>
+      <artifactId>${artifactId}</artifactId>
       <version>\${project.version}</version>
-    </dependency>`,
-      )
-      .join('\n');
+    </dependency>`;
+    const deps = [core, gateway].map((m) => dependency(mavenArtifact(m))).join('\n');
+    // Anchor on a dependency the modulith assembly always declares,
+    // never on the closing `</dependencies>` tag: a Quarkus pom opens
+    // with a `<dependencyManagement>` block that closes one of those
+    // first, so anchoring on the tag silently files the dependencies
+    // under version management — where they pin versions and add
+    // nothing to the classpath. That failed only under a real Maven
+    // build, with `package ... does not exist` in the assembly.
+    const anchor = dependency(mavenArtifact('modules/greeting/user-side/service'));
     return {
       target: `${assembly}/pom.xml`,
       apply: (existing) => {
         if (existing.includes(`<artifactId>${guard}</artifactId>`)) return existing;
-        if (!existing.includes('  </dependencies>')) {
+        if (!existing.includes(anchor)) {
           throw new Error(
-            `${JVM_PEER_CONTEXT_ID}: could not find the <dependencies> block in ${assembly}/pom.xml`,
+            `${JVM_PEER_CONTEXT_ID}: could not find the greeting-user-side-service dependency in ${assembly}/pom.xml`,
           );
         }
-        return existing.replace('  </dependencies>', `${deps}${eolOf(existing)}  </dependencies>`);
+        return existing.replace(anchor, `${anchor}${eolOf(existing)}${deps}`);
       },
     };
   }
