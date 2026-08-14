@@ -1,0 +1,9 @@
+package <%= basePackage %>.guestbook.domain.contract.signing;
+
+/** Raised when a {@link SignCommand} carries a blank visitor. */
+public final class SignRejected extends RuntimeException {
+
+    public SignRejected(String message) {
+        super(message);
+    }
+}

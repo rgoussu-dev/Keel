@@ -62,6 +62,11 @@ export function buildProgram(deps: CliDeps): Command {
       "module layout for stacks that offer a choice: 'basic' or 'modulith' (prompted when omitted)",
     )
     .option(
+      '--with-peer-context',
+      'under --module-layout=modulith, also scaffold a second bounded context that reaches the first only through its user-side/service seam',
+      false,
+    )
+    .option(
       '--set <kv...>',
       'preset an answer as adapterId:questionId=value (repeatable)',
       [] as string[],
@@ -74,6 +79,7 @@ export function buildProgram(deps: CliDeps): Command {
         layout?: string;
         buildSystem?: string;
         moduleLayout?: string;
+        withPeerContext: boolean;
         set: string[];
       }): Promise<void> => {
         const dir = cwd();
@@ -87,6 +93,7 @@ export function buildProgram(deps: CliDeps): Command {
             ...(opts.layout !== undefined ? { layout: opts.layout as RepoLayout } : {}),
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
             ...(opts.moduleLayout !== undefined ? { moduleLayout: opts.moduleLayout } : {}),
+            ...(opts.withPeerContext ? { withPeerContext: true } : {}),
           }),
         );
         const report = unwrap(result);

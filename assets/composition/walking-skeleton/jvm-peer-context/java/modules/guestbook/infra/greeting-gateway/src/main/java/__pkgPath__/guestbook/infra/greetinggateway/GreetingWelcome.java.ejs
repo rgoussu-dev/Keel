@@ -1,0 +1,50 @@
+package <%= basePackage %>.guestbook.infra.greetinggateway;
+
+import java.util.function.Supplier;
+
+import <%= basePackage %>.greeting.userside.service.GreetingService;
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor;
+import <%= basePackage %>.guestbook.domain.contract.signing.Welcome;
+import <%= basePackage %>.guestbook.domain.contract.signing.WelcomeMessage;
+
+/**
+ * The one class in the project that names two bounded contexts, and
+ * the only legal edge between them: it implements a port
+ * <em>guestbook</em> declared, over the in-process API
+ * <em>greeting</em> publishes.
+ *
+ * <p>What it cannot do is reach past that API. `greeting`'s domain is
+ * an implementation detail of `greeting-user-side-service` — declared
+ * {@code implementation} under Gradle, {@code optional} under Maven —
+ * so {@code GreetCommand} is not on this module's compile classpath
+ * and an import of it does not compile. The seam is held by the build,
+ * not by review.
+ *
+ * <p>Carving greeting out into its own service replaces this class
+ * with an HTTP twin built on {@code greeting/user-side/api/contract},
+ * and rebinds one line in the assembly. Nothing above this class
+ * changes.
+ *
+ * <p>The peer arrives as a {@link Supplier} rather than an instance,
+ * and that is load-bearing rather than fussy. The mediator is built
+ * by materialising every handler, so a handler whose port reaches
+ * back through the dispatch seam — as this one does — closes a
+ * construction cycle: mediator needs the handler, the handler needs
+ * this gateway, this gateway needs the peer's service, and that
+ * service needs the mediator. Resolving the peer per call instead of
+ * per construction breaks it. It is also what a remote gateway would
+ * do anyway, which is the tell that it is the honest shape.
+ */
+public final class GreetingWelcome implements Welcome {
+
+    private final Supplier<GreetingService> greeting;
+
+    public GreetingWelcome(Supplier<GreetingService> greeting) {
+        this.greeting = greeting;
+    }
+
+    @Override
+    public WelcomeMessage welcomeFor(Visitor visitor) {
+        return new WelcomeMessage(greeting.get().greetingFor(visitor.name()));
+    }
+}

@@ -1,0 +1,42 @@
+package <%= basePackage %>.guestbook.infra.greetinggateway;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.greeting.userside.service.GreetingService;
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor;
+import <%= basePackage %>.guestbook.domain.contract.signing.WelcomeMessage;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class GreetingWelcomeTest {
+
+    @Test
+    void mapsThePeersAnswerIntoGuestbooksOwnVocabulary() {
+        GreetingWelcome gateway = new GreetingWelcome(() -> name -> "Hello, " + name + "!");
+
+        WelcomeMessage message = gateway.welcomeFor(new Visitor("Romain"));
+
+        assertEquals(new WelcomeMessage("Hello, Romain!"), message);
+    }
+
+    @Test
+    void asksThePeerForTheVisitorItWasGiven() {
+        RecordingGreeting greeting = new RecordingGreeting();
+
+        new GreetingWelcome(() -> greeting).welcomeFor(new Visitor("Ada"));
+
+        assertEquals("Ada", greeting.asked);
+    }
+
+    /** A fake, not a mock — the house rule. */
+    private static final class RecordingGreeting implements GreetingService {
+
+        private String asked;
+
+        @Override
+        public String greetingFor(String name) {
+            asked = name;
+            return "Hello, " + name + "!";
+        }
+    }
+}

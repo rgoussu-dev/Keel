@@ -24,6 +24,7 @@ import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
+import { jvmPeerContextAdapter } from '../adapters/jvm-peer-context.js';
 import { mavenWrapperAdapter } from '../adapters/maven-wrapper.js';
 import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
 import { micronautCliKotlinBootstrapAdapter } from '../adapters/micronaut-cli-kotlin-bootstrap.js';
@@ -71,6 +72,7 @@ export const walkingSkeletonVertical: Vertical = {
     micronautRestKotlinBootstrapAdapter,
     samplePortFakeAdapter,
     samplePortFakeKotlinAdapter,
+    jvmPeerContextAdapter,
     gradleWrapperAdapter,
     mavenWrapperAdapter,
     goBootstrapAdapter,

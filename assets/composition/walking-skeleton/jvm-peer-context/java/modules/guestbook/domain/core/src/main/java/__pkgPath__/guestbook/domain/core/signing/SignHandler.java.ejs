@@ -1,0 +1,41 @@
+package <%= basePackage %>.guestbook.domain.core.signing;
+
+import <%= basePackage %>.guestbook.domain.contract.signing.GuestbookEntry;
+import <%= basePackage %>.guestbook.domain.contract.signing.SignCommand;
+import <%= basePackage %>.guestbook.domain.contract.signing.SignRejected;
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor;
+import <%= basePackage %>.guestbook.domain.contract.signing.Welcome;
+import <%= basePackage %>.platform.kernel.Command;
+import <%= basePackage %>.platform.kernel.DomainHandler;
+import <%= basePackage %>.platform.kernel.Handler;
+
+/**
+ * Guestbook's only use case. It reaches the greeting context through
+ * the {@link Welcome} port and never learns that is what happens: the
+ * assembly binds the port to a gateway, and swapping that binding for
+ * a remote one is the whole of carving greeting out into its own
+ * service.
+ */
+@DomainHandler
+public final class SignHandler implements Handler<SignCommand, GuestbookEntry> {
+
+    private final Welcome welcome;
+
+    public SignHandler(Welcome welcome) {
+        this.welcome = welcome;
+    }
+
+    @Override
+    public boolean supports(Command<?> command) {
+        return command instanceof SignCommand;
+    }
+
+    @Override
+    public GuestbookEntry handle(SignCommand command) {
+        String visitor = command.visitor() == null ? "" : command.visitor().trim();
+        if (visitor.isEmpty()) {
+            throw new SignRejected("visitor must not be blank");
+        }
+        return new GuestbookEntry(visitor, welcome.welcomeFor(new Visitor(visitor)).text());
+    }
+}

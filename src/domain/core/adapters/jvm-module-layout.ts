@@ -40,6 +40,29 @@ export const BASIC_LAYOUT_TAG: Tag = 'layout.basic';
 export const MODULITH_LAYOUT_TAG: Tag = 'layout.modulith';
 
 /**
+ * Capability tag seeding a **second bounded context** beside the
+ * skeleton's own, opted into with `keel new --with-peer-context`.
+ *
+ * The modulith's whole claim is that contexts meet only at
+ * `user-side/service`, and with one context that claim is asserted
+ * rather than exercised — nothing in the emitted project consumes the
+ * seam, so nothing proves it holds. This tag adds the consumer that
+ * does: a context declaring a driven port in its own vocabulary and
+ * reaching the first only through a gateway.
+ *
+ * Only meaningful together with {@link MODULITH_LAYOUT_TAG}, which is
+ * what creates the seam in the first place.
+ */
+export const PEER_CONTEXT_TAG: Tag = 'modules.peer-context';
+
+/**
+ * The consumer context scaffolded by `--with-peer-context`. It reads
+ * as a peer of {@link SKELETON_MODULE}: it needs a welcome to record,
+ * and greeting is the module that produces one.
+ */
+export const PEER_MODULE = 'guestbook';
+
+/**
  * The bounded context the walking skeleton scaffolds under the
  * modulith. One module is enough to establish the shape; the second
  * one is the user's first real design decision.
