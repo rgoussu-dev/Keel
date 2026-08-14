@@ -1,0 +1,50 @@
+package <%= basePackage %>.greeting.userside.api;
+
+import java.util.List;
+
+import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Body;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.QueryValue;
+
+import <%= basePackage %>.greeting.domain.contract.greetinglog.ListGreetingsQuery;
+import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordGreetingCommand;
+import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordedGreeting;
+import <%= basePackage %>.greeting.userside.api.contract.RecordGreetingRequest;
+import <%= basePackage %>.greeting.userside.api.contract.RecordedGreetingResponse;
+import <%= basePackage %>.platform.kernel.Mediator;
+
+/**
+ * HTTP entry point of the persistence slice: maps transport DTOs to
+ * the greeting-log command/query, dispatches via the mediator, and
+ * maps the results back. No business logic.
+ */
+@Controller("/greetings")
+public class GreetingLogController {
+
+    private final Mediator mediator;
+
+    public GreetingLogController(Mediator mediator) {
+        this.mediator = mediator;
+    }
+
+    @Post(consumes = MediaType.APPLICATION_JSON, produces = MediaType.APPLICATION_JSON)
+    public HttpResponse<RecordedGreetingResponse> record(@Body RecordGreetingRequest request) {
+        RecordedGreeting recorded = mediator.dispatch(new RecordGreetingCommand(request.name()));
+        return HttpResponse.created(toResponse(recorded));
+    }
+
+    @Get(produces = MediaType.APPLICATION_JSON)
+    public List<RecordedGreetingResponse> recent(
+            @QueryValue(value = "limit", defaultValue = "10") int limit) {
+        List<RecordedGreeting> recent = mediator.dispatch(new ListGreetingsQuery(limit));
+        return recent.stream().map(GreetingLogController::toResponse).toList();
+    }
+
+    private static RecordedGreetingResponse toResponse(RecordedGreeting recorded) {
+        return new RecordedGreetingResponse(recorded.id(), recorded.name(), recorded.greetedAt());
+    }
+}

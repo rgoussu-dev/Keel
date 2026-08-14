@@ -1,0 +1,9 @@
+package <%= basePackage %>.greeting.domain.contract.greetinglog
+
+import <%= basePackage %>.platform.kernel.Command
+
+/**
+ * Read back the most recent greetings. The handler clamps the limit
+ * to [1, 100].
+ */
+data class ListGreetingsQuery(val limit: Int) : Command<List<RecordedGreeting>>

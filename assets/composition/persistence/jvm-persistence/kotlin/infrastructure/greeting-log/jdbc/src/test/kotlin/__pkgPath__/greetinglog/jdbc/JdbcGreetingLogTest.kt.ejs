@@ -79,7 +79,7 @@ class JdbcGreetingLogTest {
             dataSource = ds
             Flyway.configure()
                 .dataSource(ds)
-                .locations("filesystem:../../../migrations/sql")
+                .locations("filesystem:<%= migrationsFromJdbcModule %>")
                 .load()
                 .migrate()
         }

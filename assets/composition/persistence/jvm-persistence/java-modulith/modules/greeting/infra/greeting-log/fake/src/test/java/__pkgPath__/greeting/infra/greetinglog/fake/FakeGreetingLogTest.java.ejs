@@ -1,0 +1,42 @@
+package <%= basePackage %>.greeting.infra.greetinglog.fake;
+
+import java.time.Instant;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordedGreeting;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class FakeGreetingLogTest {
+
+    private final FakeGreetingLog log = new FakeGreetingLog();
+    private final Instant at = Instant.parse("2026-01-01T12:00:00Z");
+
+    @Test
+    void assignsIncreasingIds() {
+        assertEquals(1L, log.append("Ada", at).id());
+        assertEquals(2L, log.append("Grace", at).id());
+    }
+
+    @Test
+    void readsBackMostRecentFirstWithinTheLimit() {
+        log.append("Ada", at);
+        log.append("Grace", at);
+        log.append("Linus", at);
+
+        List<RecordedGreeting> recent = log.recent(2);
+        assertEquals(2, recent.size());
+        assertEquals("Linus", recent.get(0).name());
+        assertEquals("Grace", recent.get(1).name());
+    }
+
+    @Test
+    void toleratesAnEmptyLogAndNonPositiveLimits() {
+        assertTrue(log.recent(10).isEmpty());
+        log.append("Ada", at);
+        assertTrue(log.recent(0).isEmpty());
+    }
+}

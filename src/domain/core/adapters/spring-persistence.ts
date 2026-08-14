@@ -13,9 +13,9 @@
  *     joins readiness and Hikari metrics join telemetry
  *     automatically.
  *   - **unit-of-work**: the `UnitOfWork` port with the Spring-tx
- *     adapter (`infrastructure/unit-of-work/spring-tx`, a
- *     `TransactionTemplate` over the auto-configured transaction
- *     manager); the composition root hands the JDBC repository a
+ *     adapter in the hexagon's `unit-of-work/spring-tx` driven
+ *     module (a `TransactionTemplate` over the auto-configured
+ *     transaction manager); the composition root hands the JDBC repository a
  *     `TransactionAwareDataSourceProxy` so its statements enlist.
  *   - **repository-example**: the shared `GreetingLog` slice up to
  *     `POST|GET /greetings`, with a `@SpringBootTest` +
@@ -25,26 +25,31 @@
  *     context with a datasource needs a database to boot against.
  *
  * Shared trees and build-registration patches come from
- * `jvm-persistence.ts`; every patch is guarded so re-installing is a
- * no-op.
+ * `jvm-persistence.ts`, which reads every path and anchor off
+ * `jvmLayout` — so the flat trisection and the modulith are both
+ * served, each from its own template tree. Every patch is guarded so
+ * re-installing is a no-op.
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
+import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
 import {
+  assemblySourceRoot,
   coreTestDepsPatch,
   executableProjectDepsPatch,
-  GRADLE_EXECUTABLE_TARGET,
+  gradleAssemblyTarget,
   jvmPersistenceBootstrapAnswers,
   jvmPersistenceVars,
   jvmSharedPersistenceFiles,
-  refuseOnModulith,
-  MAVEN_EXECUTABLE_TARGET,
+  layoutSuffix,
+  mavenAssemblyTarget,
+  migrationsLocations,
   moduleRegistrationPatch,
   persistenceReadmePatch,
-  PROPERTIES_TARGET,
+  propertiesTarget,
 } from './jvm-persistence.js';
 import { databaseName, sqlEngine } from './persistence-engine.js';
-import { eolAware, packageToPath } from '../util.js';
+import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const SPRING_PERSISTENCE_ID = 'persistence/spring-persistence';
@@ -112,7 +117,7 @@ const PROPERTIES_GUARD = '--- persistence (installed by keel)';
  * profile is the dev loop; the prod posture lives in the emitted
  * `application-prod.properties`. Exported for the vertical tests.
  */
-export function springPersistencePropertiesBlock(database: string): string {
+export function springPersistencePropertiesBlock(database: string, layout: JvmLayoutPaths): string {
   const engine = sqlEngine();
   return `# ${PROPERTIES_GUARD} ---------------------------------
 # PostgreSQL over JDBC (Hikari pool). These defaults are the dev
@@ -128,7 +133,7 @@ spring.datasource.url=\${DB_URL:${engine.jdbcUrl('localhost', database)}}
 spring.datasource.username=\${DB_USERNAME:app}
 spring.datasource.password=\${DB_PASSWORD:app}
 spring.flyway.enabled=true
-spring.flyway.locations=filesystem:../../../migrations/sql,filesystem:migrations/sql
+spring.flyway.locations=${migrationsLocations(layout)}
 `;
 }
 
@@ -160,10 +165,13 @@ export function patchGreetControllerTest(existing: string): string {
     );
 }
 
-function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch {
+function frameworkDepsPatch(
+  buildSystem: 'gradle' | 'maven',
+  layout: JvmLayoutPaths,
+): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
-      target: MAVEN_EXECUTABLE_TARGET,
+      target: mavenAssemblyTarget(layout),
       apply: eolAware((existing) => {
         if (existing.includes(DEPS_GUARD)) return existing;
         return existing
@@ -173,7 +181,7 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
     };
   }
   return {
-    target: GRADLE_EXECUTABLE_TARGET,
+    target: gradleAssemblyTarget(layout),
     apply: eolAware((existing) => {
       if (existing.includes(DEPS_GUARD)) return existing;
       return existing
@@ -223,41 +231,42 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.spring', 'arch.server-http', `lang.${language}`] },
     async contribute(ctx) {
-      refuseOnModulith('persistence/spring-persistence', ctx.manifest);
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
         id,
         'spring',
         language,
       );
-      const vars = jvmPersistenceVars(basePackage, projectName);
+      const layout = jvmLayout(ctx.manifest.tags);
+      const vars = jvmPersistenceVars(basePackage, projectName, layout);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
-        jvmSharedPersistenceFiles(ctx, language, vars),
-        ctx.templates.render(templateId, '', vars),
-        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+        jvmSharedPersistenceFiles(ctx, language, layout, vars),
+        ctx.templates.render(`${templateId}${suffix}`, '', vars),
+        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}${suffix}/${buildSystem}`, '', vars),
       ]);
       const database = databaseName(ctx.manifest);
-      const testRoot = `application/rest/executable/src/test/${sourceDir}/${packageToPath(basePackage)}/rest`;
+      const testRoot = assemblySourceRoot(layout, sourceDir, basePackage, 'test');
       return {
         files: [...shared, ...sources, ...build],
         patches: [
-          moduleRegistrationPatch(buildSystem, id, UOW_MODULE),
-          frameworkDepsPatch(buildSystem),
-          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
-          coreTestDepsPatch(buildSystem, basePackage),
+          moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
+          frameworkDepsPatch(buildSystem, layout),
+          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE, layout),
+          coreTestDepsPatch(buildSystem, basePackage, layout),
           {
-            target: PROPERTIES_TARGET,
+            target: propertiesTarget(layout),
             apply: eolAware((existing) => {
               if (existing.includes(PROPERTIES_GUARD)) return existing;
-              return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database).trim()}\n`;
+              return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database, layout).trim()}\n`;
             }),
           },
           {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
             apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
           },
-          persistenceReadmePatch(),
+          persistenceReadmePatch(layout),
         ],
         tagsAdd: [sqlEngine().tag],
       };

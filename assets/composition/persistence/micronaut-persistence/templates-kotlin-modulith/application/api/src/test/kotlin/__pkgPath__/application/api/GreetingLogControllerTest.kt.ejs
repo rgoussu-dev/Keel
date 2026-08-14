@@ -1,0 +1,55 @@
+package <%= basePackage %>.application.api
+
+import io.micronaut.http.HttpRequest
+import io.micronaut.http.client.HttpClient
+import io.micronaut.http.client.annotation.Client
+import io.micronaut.http.client.exceptions.HttpClientResponseException
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+import org.junit.jupiter.api.Test
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+
+/**
+ * Drives the persistence slice end to end on the embedded server:
+ * the POST really commits to the Testcontainers PostgreSQL and the
+ * GET really reads rows back.
+ */
+@MicronautTest
+class GreetingLogControllerTest(
+    @Client("/") private val client: HttpClient,
+) : PostgresTestFixture() {
+
+    @Test
+    fun recordsAGreetingDurablyAndListsItBack() {
+        val recorded = client.toBlocking().exchange(
+            HttpRequest.POST("/greetings", "{\"name\":\"Romain\"}")
+                .contentType("application/json"),
+            String::class.java,
+        )
+
+        assertEquals(201, recorded.status.code)
+        val recordedBody = recorded.getBody(String::class.java).orElse("")
+        assertTrue(recordedBody.contains("\"name\":\"Romain\""), recordedBody)
+
+        val recent = client.toBlocking().retrieve("/greetings")
+        assertTrue(recent.contains("\"name\":\"Romain\""), recent)
+    }
+
+    @Test
+    fun mapsARejectedRecordToProblemDetails() {
+        val rejected = assertThrows(HttpClientResponseException::class.java) {
+            client.toBlocking().exchange(
+                HttpRequest.POST("/greetings", "{\"name\":\"  \"}")
+                    .contentType("application/json"),
+                String::class.java,
+            )
+        }
+
+        assertEquals(400, rejected.status.code)
+        val body = rejected.response.getBody(String::class.java).orElse("")
+        assertTrue(body.contains("\"type\":\"urn:problem-type:greet-rejected\""), body)
+        assertTrue(body.contains("\"detail\":\"name must not be blank\""), body)
+    }
+}

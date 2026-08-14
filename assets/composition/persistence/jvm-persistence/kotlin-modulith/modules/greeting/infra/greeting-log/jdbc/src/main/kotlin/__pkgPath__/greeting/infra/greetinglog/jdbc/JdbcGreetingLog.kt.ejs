@@ -1,0 +1,60 @@
+package <%= basePackage %>.greeting.infra.greetinglog.jdbc
+
+import java.sql.Statement
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+
+import javax.sql.DataSource
+
+import <%= basePackage %>.greeting.domain.contract.greetinglog.GreetingLog
+import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordedGreeting
+
+/**
+ * [GreetingLog] over plain JDBC against the `greeting` table (schema
+ * in `migrations/sql/`). Zero business logic: SQL in, domain records
+ * out. Connections are drawn per call from the pool, so statements
+ * enlist automatically in the transaction a `UnitOfWork` block
+ * opened when the pool is transaction-aware.
+ */
+class JdbcGreetingLog(private val dataSource: DataSource) : GreetingLog {
+
+    override fun append(name: String, greetedAt: Instant): RecordedGreeting =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(INSERT, Statement.RETURN_GENERATED_KEYS).use { statement ->
+                statement.setString(1, name)
+                statement.setObject(2, OffsetDateTime.ofInstant(greetedAt, ZoneOffset.UTC))
+                statement.executeUpdate()
+                statement.generatedKeys.use { keys ->
+                    check(keys.next()) { "insert into greeting returned no key" }
+                    RecordedGreeting(keys.getLong("id"), name, greetedAt)
+                }
+            }
+        }
+
+    override fun recent(limit: Int): List<RecordedGreeting> =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(RECENT).use { statement ->
+                statement.setInt(1, limit)
+                statement.executeQuery().use { rows ->
+                    buildList {
+                        while (rows.next()) {
+                            add(
+                                RecordedGreeting(
+                                    rows.getLong("id"),
+                                    rows.getString("name"),
+                                    rows.getObject("greeted_at", OffsetDateTime::class.java)
+                                        .toInstant(),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    private companion object {
+        const val INSERT = "insert into greeting (name, greeted_at) values (?, ?)"
+        const val RECENT = "select id, name, greeted_at from greeting order by id desc limit ?"
+    }
+}

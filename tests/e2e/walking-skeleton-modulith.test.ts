@@ -7,6 +7,11 @@
  * assembly and verifies the same `/greet` wire contract the flat
  * layout serves.
  *
+ * A second case layers `keel add persistence` onto the same layout
+ * and builds again — the vertical splits across three modules there
+ * (context contract, context infra, assembly), which is exactly the
+ * kind of wiring only a compiler settles.
+ *
  * This is the layout's real proof: the shape is asserted by
  * `tests/domain/core/verticals/walking-skeleton-modulith.test.ts`,
  * but only a build says the carved-up module graph actually
@@ -18,19 +23,32 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, it } from 'vitest';
-import { E2E_TIMEOUT_MS, runJvmRestE2E, skipJvmRestE2E } from '../support/jvm-rest-e2e.js';
+import {
+  E2E_TIMEOUT_MS,
+  runJvmPersistenceE2E,
+  runJvmRestE2E,
+  skipJvmRestE2E,
+} from '../support/jvm-rest-e2e.js';
 
 let cwd: string;
 let gradleUserHome: string;
+let persistenceCwd: string;
+let persistenceGradleHome: string;
 
 beforeEach(async () => {
   cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-modulith-'));
   gradleUserHome = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-modulith-gradle-'));
+  persistenceCwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-modulith-pers-'));
+  persistenceGradleHome = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'keel-e2e-modulith-pers-gradle-'),
+  );
 });
 
 afterEach(async () => {
   await fs.remove(cwd);
   await fs.remove(gradleUserHome);
+  await fs.remove(persistenceCwd);
+  await fs.remove(persistenceGradleHome);
 });
 
 describe.skipIf(skipJvmRestE2E)('walking-skeleton modulith e2e', () => {
@@ -51,6 +69,26 @@ describe.skipIf(skipJvmRestE2E)('walking-skeleton modulith e2e', () => {
         },
         cwd,
         gradleUserHome,
+      ),
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'layers the persistence vertical onto the modulith and still builds',
+    () =>
+      runJvmPersistenceE2E(
+        {
+          stack: 'quarkus-rest',
+          moduleLayout: 'modulith',
+          bootstrapId: 'walking-skeleton/quarkus-rest-bootstrap',
+          runJar: ['application', 'api', 'build', 'quarkus-app', 'quarkus-run.jar'],
+          randomPortFlag: '-Dquarkus.http.port=0',
+          announceRe: /Listening on: https?:\/\/[^:\s]+:(\d+)/,
+          healthLivePath: '/q/health/live',
+          healthReadyPath: '/q/health/ready',
+        },
+        persistenceCwd,
+        persistenceGradleHome,
       ),
     E2E_TIMEOUT_MS,
   );

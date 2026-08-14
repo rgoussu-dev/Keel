@@ -1,0 +1,54 @@
+package <%= basePackage %>.greeting.infra.unitofwork.jta
+
+import java.util.function.Supplier
+
+import jakarta.transaction.UserTransaction
+
+import <%= basePackage %>.greeting.domain.contract.UnitOfWork
+
+/**
+ * [UnitOfWork] over a JTA [UserTransaction]: begins a transaction,
+ * runs the block, commits when it returns and rolls back when it
+ * throws. Framework-agnostic — any JTA-capable runtime supplies the
+ * [UserTransaction], and connections drawn from a JTA-aware pool
+ * inside the block enlist automatically.
+ */
+class JtaUnitOfWork(private val transaction: UserTransaction) : UnitOfWork {
+
+    override fun <T> inTransaction(work: Supplier<T>): T {
+        begin()
+        val result =
+            try {
+                work.get()
+            } catch (e: RuntimeException) {
+                rollback()
+                throw e
+            }
+        commit()
+        return result
+    }
+
+    private fun begin() {
+        try {
+            transaction.begin()
+        } catch (e: Exception) {
+            throw IllegalStateException("could not begin the unit of work", e)
+        }
+    }
+
+    private fun commit() {
+        try {
+            transaction.commit()
+        } catch (e: Exception) {
+            throw IllegalStateException("could not commit the unit of work", e)
+        }
+    }
+
+    private fun rollback() {
+        try {
+            transaction.rollback()
+        } catch (e: Exception) {
+            throw IllegalStateException("could not roll back the unit of work", e)
+        }
+    }
+}

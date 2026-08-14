@@ -18,7 +18,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 import { expectOk, installMediator } from './factory.js';
 
@@ -151,6 +151,16 @@ const toolingMissing = !onPath('gradle') || !onPath('java');
 /** Whether the JVM REST e2e tests should be skipped in this run. */
 export const skipJvmRestE2E = optedOut || toolingMissing || (onCI && !optedIn);
 
+/**
+ * Whether a Docker daemon answers. The persistence slice's own tests
+ * need one — Testcontainers for the JDBC contract test, the
+ * framework's throwaway database for the boot test — so without it
+ * those two task paths are excluded and the build proves compilation
+ * and wiring only.
+ */
+const dockerAvailable = (): boolean =>
+  spawnSync('docker', ['info'], { stdio: 'ignore' }).status === 0;
+
 /** Framework-specific parameters of one JVM REST e2e run. */
 export interface JvmRestE2ESpec {
   /** Stack preset to scaffold. */
@@ -176,17 +186,8 @@ export interface JvmRestE2ESpec {
   readonly extraJvmFlags?: readonly string[];
 }
 
-/**
- * Scaffolds `spec.stack` into `cwd`, builds it with the generated
- * wrapper (running the generated test suite transitively), boots the
- * packaged jar, and asserts the `/greet` wire contract — named,
- * defaulted, and rejected requests.
- */
-export async function runJvmRestE2E(
-  spec: JvmRestE2ESpec,
-  cwd: string,
-  gradleUserHome: string,
-): Promise<void> {
+/** Scaffolds `spec.stack` into `cwd` through the real mediator. */
+async function scaffold(spec: JvmRestE2ESpec, cwd: string): Promise<void> {
   const mediator = installMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: rewriteActions({
@@ -212,22 +213,97 @@ export async function runJvmRestE2E(
       }),
     ),
   );
+  await expect(fs.pathExists(path.join(cwd, 'gradlew'))).resolves.toBe(true);
+}
 
-  const gradlew = path.join(cwd, 'gradlew');
-  expect(await fs.pathExists(gradlew)).toBe(true);
+/** Layers `vertical` onto the project already scaffolded in `cwd`. */
+async function addVertical(vertical: string, cwd: string): Promise<void> {
+  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  expectOk(
+    await mediator.dispatch(
+      addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+    ),
+  );
+}
 
-  const env = { ...process.env, GRADLE_USER_HOME: gradleUserHome };
-  const build = runWithRetry(gradlew, ['--no-daemon', '--stacktrace', 'build'], {
-    cwd,
-    env,
-    encoding: 'utf8',
-  });
+/** Runs the generated wrapper's `build`, failing loudly with its output. */
+function gradleBuild(cwd: string, env: NodeJS.ProcessEnv, extraArgs: readonly string[]): void {
+  const build = runWithRetry(
+    path.join(cwd, 'gradlew'),
+    ['--no-daemon', '--stacktrace', 'build', ...extraArgs],
+    { cwd, env, encoding: 'utf8' },
+  );
   if (build.status !== 0) {
     throw new Error(
-      `./gradlew build failed (exit ${build.status})\n` +
+      `./gradlew build ${extraArgs.join(' ')} failed (exit ${build.status})\n` +
         `stdout:\n${build.stdout}\nstderr:\n${build.stderr}`,
     );
   }
+}
+
+/**
+ * Scaffolds `spec.stack`, layers the `persistence` vertical onto it,
+ * and builds — the proof that the slice's module graph compiles and
+ * wires under `spec.moduleLayout`.
+ *
+ * The generated persistence suite needs a database: the JDBC contract
+ * test takes one from Testcontainers and the framework's boot test
+ * from its own dev-services equivalent — and the boot test *fails*
+ * rather than skips without one, because a context carrying a
+ * datasource cannot start. Both are therefore excluded when no Docker
+ * daemon answers, so the run still proves compilation and wiring on a
+ * machine without one. Their `testClasses` are then requested by name:
+ * excluding a `test` task would otherwise take its test compilation
+ * with it, and the assembly's test sources are exactly where a
+ * cross-module reference goes wrong under the modulith.
+ */
+export async function runJvmPersistenceE2E(
+  spec: JvmRestE2ESpec,
+  cwd: string,
+  gradleUserHome: string,
+): Promise<void> {
+  await scaffold(spec, cwd);
+  await addVertical('persistence', cwd);
+
+  const env = { ...process.env, GRADLE_USER_HOME: gradleUserHome };
+  const dockerBound = [':modules:greeting:infra:greeting-log:jdbc', ':application:api'];
+  const withoutDocker = [
+    ...dockerBound.map((p) => `${p}:testClasses`),
+    ...dockerBound.flatMap((p) => ['-x', `${p}:test`]),
+  ];
+  gradleBuild(cwd, env, dockerAvailable() ? [] : withoutDocker);
+
+  // The port and its handlers belong to the bounded context; only the
+  // datasource wiring belongs to the assembly.
+  const inModule = 'modules/greeting/domain/contract/src/main/java/com/acme/e2e/greeting/domain';
+  await expect(fs.pathExists(path.join(cwd, inModule, 'contract/UnitOfWork.java'))).resolves.toBe(
+    true,
+  );
+  await expect(
+    fs.pathExists(
+      path.join(
+        cwd,
+        'application/api/src/main/java/com/acme/e2e/application/api/PersistenceProducer.java',
+      ),
+    ),
+  ).resolves.toBe(true);
+}
+
+/**
+ * Scaffolds `spec.stack` into `cwd`, builds it with the generated
+ * wrapper (running the generated test suite transitively), boots the
+ * packaged jar, and asserts the `/greet` wire contract — named,
+ * defaulted, and rejected requests.
+ */
+export async function runJvmRestE2E(
+  spec: JvmRestE2ESpec,
+  cwd: string,
+  gradleUserHome: string,
+): Promise<void> {
+  await scaffold(spec, cwd);
+
+  const env = { ...process.env, GRADLE_USER_HOME: gradleUserHome };
+  gradleBuild(cwd, env, []);
 
   const runJar = path.join(cwd, ...spec.runJar);
   expect(await fs.pathExists(runJar), `missing ${runJar}`).toBe(true);

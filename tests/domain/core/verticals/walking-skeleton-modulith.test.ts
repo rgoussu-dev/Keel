@@ -108,6 +108,41 @@ describe('jvmLayout', () => {
     const layout = jvmLayout([BASIC_LAYOUT_TAG]);
     expect(layout.restAdapters).toBe(layout.restRuntime);
   });
+
+  it('derives Maven artifactIds from the module path, dropping the modules/ prefix', () => {
+    // `modules/` is scaffolding, not identity: an artifact reads as
+    // <context>-<path> so its name states the module's address.
+    const basic = jvmLayout([]);
+    expect(basic.mavenArtifact('domain/core')).toBe('domain-core');
+    expect(basic.mavenArtifact(basic.infra('greeting-log/jdbc'))).toBe(
+      'infrastructure-greeting-log-jdbc',
+    );
+    const modulith = jvmLayout([MODULITH_LAYOUT_TAG]);
+    expect(modulith.mavenArtifact('platform/kernel')).toBe('platform-kernel');
+    expect(modulith.mavenArtifact(modulith.domainCore)).toBe('greeting-domain-core');
+    expect(modulith.mavenArtifact(modulith.infra('greeting-log/jdbc'))).toBe(
+      'greeting-infra-greeting-log-jdbc',
+    );
+  });
+
+  it('counts the way back to the project root, which both layouts do differently', () => {
+    // Maven's <relativePath> and Flyway's filesystem: locations both
+    // need this, and both get it wrong by hand.
+    expect(jvmLayout([]).upToRoot('application/rest/executable')).toBe('../../../');
+    expect(jvmLayout([MODULITH_LAYOUT_TAG]).upToRoot('application/api')).toBe('../../');
+    expect(jvmLayout([MODULITH_LAYOUT_TAG]).upToRoot('modules/greeting/domain/contract')).toBe(
+      '../../../../',
+    );
+  });
+
+  it('names a driven adapter package only where the layout has peers to disambiguate', () => {
+    // Under `basic` the adapters sit directly under the base package —
+    // `infrastructure/` is a build-module name, never a package segment.
+    expect(jvmLayout([]).infraPkg('clock.fake')).toBe('clock.fake');
+    expect(jvmLayout([MODULITH_LAYOUT_TAG]).infraPkg('clock.fake')).toBe(
+      'greeting.infra.clock.fake',
+    );
+  });
 });
 
 describe('walking-skeleton under layout.modulith (Quarkus REST)', () => {
@@ -250,12 +285,74 @@ describe('layout-dependent verticals under layout.modulith', () => {
     ).toContain('%X{correlationId}');
   });
 
-  it('persistence refuses rather than scattering files into directories that do not exist', async () => {
+  it('persistence puts the driven port in the module and the datasource in the assembly', async () => {
     const projectTags = tags('arch.server-http', 'persistence.sql', MODULITH_LAYOUT_TAG);
     const { tree, cwd } = await install(walkingSkeletonVertical, projectTags);
     cwds.push(cwd);
-    await expect(install(persistenceVertical, projectTags, tree, cwd)).rejects.toThrow(
-      /does not support the modulith module layout yet/,
+    await install(persistenceVertical, projectTags, tree, cwd);
+
+    // The port and its handlers belong to the bounded context…
+    expect(
+      tree.read(
+        'modules/greeting/domain/contract/src/main/java/com/example/greeting/domain/contract/greetinglog/GreetingLog.java',
+      ),
+    ).not.toBeNull();
+    expect(
+      tree.read(
+        'modules/greeting/domain/core/src/main/java/com/example/greeting/domain/core/greetinglog/RecordGreetingHandler.java',
+      ),
+    ).not.toBeNull();
+    // …its adapters to the context's driven side…
+    expect(
+      tree.read(
+        'modules/greeting/infra/greeting-log/jdbc/src/main/java/com/example/greeting/infra/greetinglog/jdbc/JdbcGreetingLog.java',
+      ),
+    ).not.toBeNull();
+    expect(
+      tree.read(
+        'modules/greeting/infra/unit-of-work/jta/src/main/java/com/example/greeting/infra/unitofwork/jta/JtaUnitOfWork.java',
+      ),
+    ).not.toBeNull();
+    // …the HTTP resource to the context's user side…
+    expect(
+      tree.read(
+        'modules/greeting/user-side/api/adapters/src/main/java/com/example/greeting/userside/api/GreetingLogResource.java',
+      ),
+    ).not.toBeNull();
+    // …and only the datasource wiring to the assembly.
+    expect(
+      tree.read(
+        'application/api/src/main/java/com/example/application/api/PersistenceProducer.java',
+      ),
+    ).not.toBeNull();
+    expect(tree.exists('domain/contract')).toBe(false);
+    expect(tree.exists('infrastructure')).toBe(false);
+
+    // The build registers the four new modules under the module root
+    // and the assembly depends on the two real adapters.
+    const settings = tree.read('settings.gradle.kts')?.toString() ?? '';
+    expect(settings).toContain('include(":modules:greeting:infra:greeting-log:jdbc")');
+    expect(settings).toContain('include(":modules:greeting:infra:unit-of-work:jta")');
+    expect(tree.read('application/api/build.gradle.kts')?.toString()).toContain(
+      'implementation(project(":modules:greeting:infra:greeting-log:jdbc"))',
     );
+    expect(tree.read('modules/greeting/domain/core/build.gradle.kts')?.toString()).toContain(
+      'testImplementation(project(":modules:greeting:infra:unit-of-work:fake"))',
+    );
+    // Flyway reaches migrations/ from two directories up, not three.
+    expect(
+      tree.read('application/api/src/main/resources/application.properties')?.toString(),
+    ).toContain('filesystem:../../migrations/sql');
+    // …and from the JDBC module — five deep, and running from its own
+    // directory — from five up. Both build systems run a test with the
+    // module as its working directory, so this depth is the difference
+    // between the contract test finding the schema and not.
+    expect(
+      tree
+        .read(
+          'modules/greeting/infra/greeting-log/jdbc/src/test/java/com/example/greeting/infra/greetinglog/jdbc/JdbcGreetingLogTest.java',
+        )
+        ?.toString(),
+    ).toContain('filesystem:../../../../../migrations/sql');
   });
 });

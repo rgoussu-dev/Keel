@@ -1,0 +1,39 @@
+package <%= basePackage %>.greeting.infra.unitofwork.fake;
+
+import java.util.function.Supplier;
+
+import <%= basePackage %>.greeting.domain.contract.UnitOfWork;
+
+/**
+ * In-memory {@link UnitOfWork} — the canonical reference
+ * implementation of the port's contract: runs the block synchronously
+ * and counts outcomes, so domain tests assert the transactional
+ * boundary (committed vs rolled back) without a transaction manager.
+ */
+public final class FakeUnitOfWork implements UnitOfWork {
+
+    private int committed;
+    private int rolledBack;
+
+    @Override
+    public <T> T inTransaction(Supplier<T> work) {
+        try {
+            T result = work.get();
+            committed++;
+            return result;
+        } catch (RuntimeException e) {
+            rolledBack++;
+            throw e;
+        }
+    }
+
+    /** Units of work that ran to completion. */
+    public int committed() {
+        return committed;
+    }
+
+    /** Units of work that ended in rollback. */
+    public int rolledBack() {
+        return rolledBack;
+    }
+}

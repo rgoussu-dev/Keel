@@ -1,0 +1,42 @@
+package <%= basePackage %>.application.api;
+
+import java.sql.Connection;
+import java.time.Instant;
+
+import javax.sql.DataSource;
+
+import io.micronaut.context.annotation.Factory;
+import io.micronaut.transaction.TransactionOperations;
+import jakarta.inject.Singleton;
+
+import <%= basePackage %>.greeting.domain.contract.Clock;
+import <%= basePackage %>.greeting.domain.contract.UnitOfWork;
+import <%= basePackage %>.greeting.domain.contract.greetinglog.GreetingLog;
+import <%= basePackage %>.greeting.infra.greetinglog.jdbc.JdbcGreetingLog;
+import <%= basePackage %>.greeting.infra.unitofwork.micronauttx.MicronautTxUnitOfWork;
+
+/**
+ * Composition-root wiring of the persistence slice: the real
+ * secondary adapters behind their ports — the JDBC greeting log on
+ * the Hikari pool (transaction-aware through Micronaut Data's JDBC
+ * transaction manager), the Micronaut-tx unit of work, and the
+ * system clock. No logic.
+ */
+@Factory
+public class PersistenceFactory {
+
+    @Singleton
+    public Clock clock() {
+        return Instant::now;
+    }
+
+    @Singleton
+    public UnitOfWork unitOfWork(TransactionOperations<Connection> transaction) {
+        return new MicronautTxUnitOfWork(transaction);
+    }
+
+    @Singleton
+    public GreetingLog greetingLog(DataSource dataSource) {
+        return new JdbcGreetingLog(dataSource);
+    }
+}

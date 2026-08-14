@@ -1,0 +1,83 @@
+package <%= basePackage %>.greeting.infra.unitofwork.micronauttx;
+
+import java.sql.Connection;
+import java.util.Optional;
+
+import io.micronaut.transaction.TransactionCallback;
+import io.micronaut.transaction.TransactionDefinition;
+import io.micronaut.transaction.TransactionOperations;
+import io.micronaut.transaction.TransactionStatus;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class MicronautTxUnitOfWorkTest {
+
+    /** Hand-rolled recording transaction runner — a fake, not a mock. */
+    private static final class RecordingTransactionOperations
+            implements TransactionOperations<Connection> {
+
+        private final StringBuilder events = new StringBuilder();
+
+        @Override
+        public Connection getConnection() {
+            throw new UnsupportedOperationException("no connection in the fake");
+        }
+
+        @Override
+        public boolean hasConnection() {
+            return false;
+        }
+
+        @Override
+        public Optional<? extends TransactionStatus<?>> findTransactionStatus() {
+            return Optional.empty();
+        }
+
+        @Override
+        public <R> R execute(
+                TransactionDefinition definition, TransactionCallback<Connection, R> callback) {
+            events.append("begin ");
+            try {
+                R result = callback.call(null);
+                events.append("commit ");
+                return result;
+            } catch (RuntimeException e) {
+                events.append("rollback ");
+                throw e;
+            } catch (Exception e) {
+                events.append("rollback ");
+                throw new IllegalStateException(e);
+            }
+        }
+
+        String events() {
+            return events.toString().trim();
+        }
+    }
+
+    private final RecordingTransactionOperations transaction = new RecordingTransactionOperations();
+    private final MicronautTxUnitOfWork unitOfWork = new MicronautTxUnitOfWork(transaction);
+
+    @Test
+    void commitsWhenTheBlockReturns() {
+        String result = unitOfWork.inTransaction(() -> "done");
+
+        assertEquals("done", result);
+        assertEquals("begin commit", transaction.events());
+    }
+
+    @Test
+    void rollsBackAndRethrowsWhenTheBlockThrows() {
+        IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> unitOfWork.inTransaction(() -> {
+                    throw new IllegalArgumentException("boom");
+                }));
+
+        assertEquals("boom", thrown.getMessage());
+        assertEquals("begin rollback", transaction.events());
+    }
+}

@@ -1,0 +1,22 @@
+package <%= basePackage %>.greeting.domain.contract;
+
+import java.util.function.Supplier;
+
+/**
+ * The transactional boundary as a domain concept — a secondary port
+ * shaped as a Unit of Work. Handlers wrap the state-changing work of
+ * one command in {@link #inTransaction(Supplier)} so every port
+ * touched inside the block commits or rolls back together. How
+ * atomicity is achieved (JTA, a framework transaction, a database
+ * session) is an adapter concern behind this interface — the domain
+ * only decides where the boundary sits.
+ */
+public interface UnitOfWork {
+
+    /**
+     * Runs {@code work} as one atomic unit: committed when the block
+     * returns, rolled back when it throws. Returns the block's
+     * result; runtime exceptions propagate unchanged after rollback.
+     */
+    <T> T inTransaction(Supplier<T> work);
+}

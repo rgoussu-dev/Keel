@@ -1,0 +1,62 @@
+package <%= basePackage %>.greeting.infra.unitofwork.springtx;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class SpringTxUnitOfWorkTest {
+
+    /** Hand-rolled recording transaction manager — a fake, not a mock. */
+    private static final class RecordingTransactionManager implements PlatformTransactionManager {
+
+        private final StringBuilder events = new StringBuilder();
+
+        @Override
+        public TransactionStatus getTransaction(TransactionDefinition definition) {
+            events.append("begin ");
+            return new SimpleTransactionStatus();
+        }
+
+        @Override
+        public void commit(TransactionStatus status) {
+            events.append("commit ");
+        }
+
+        @Override
+        public void rollback(TransactionStatus status) {
+            events.append("rollback ");
+        }
+
+        String events() {
+            return events.toString().trim();
+        }
+    }
+
+    private final RecordingTransactionManager manager = new RecordingTransactionManager();
+    private final SpringTxUnitOfWork unitOfWork = new SpringTxUnitOfWork(manager);
+
+    @Test
+    void commitsWhenTheBlockReturns() {
+        String result = unitOfWork.inTransaction(() -> "done");
+
+        assertEquals("done", result);
+        assertEquals("begin commit", manager.events());
+    }
+
+    @Test
+    void rollsBackAndRethrowsWhenTheBlockThrows() {
+        IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> unitOfWork.inTransaction(() -> {
+                    throw new IllegalArgumentException("boom");
+                }));
+
+        assertEquals("boom", thrown.getMessage());
+        assertEquals("begin rollback", manager.events());
+    }
+}

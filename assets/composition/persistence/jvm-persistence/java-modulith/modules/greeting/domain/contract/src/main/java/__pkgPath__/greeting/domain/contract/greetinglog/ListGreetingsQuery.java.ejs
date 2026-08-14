@@ -1,0 +1,11 @@
+package <%= basePackage %>.greeting.domain.contract.greetinglog;
+
+import java.util.List;
+
+import <%= basePackage %>.platform.kernel.Command;
+
+/**
+ * Read back the most recent greetings. The handler clamps the limit
+ * to [1, 100].
+ */
+public record ListGreetingsQuery(int limit) implements Command<List<RecordedGreeting>> {}

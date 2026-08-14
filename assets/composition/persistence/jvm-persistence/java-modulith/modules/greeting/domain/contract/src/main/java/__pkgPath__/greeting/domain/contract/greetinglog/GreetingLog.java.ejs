@@ -1,0 +1,19 @@
+package <%= basePackage %>.greeting.domain.contract.greetinglog;
+
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Secondary port onto the greeting log — the walking skeleton's
+ * persistence example. The domain appends and reads; where the rows
+ * live (PostgreSQL over JDBC in production, an in-memory fake in
+ * tests) is an adapter concern.
+ */
+public interface GreetingLog {
+
+    /** Appends one greeting and returns it with its assigned id. */
+    RecordedGreeting append(String name, Instant greetedAt);
+
+    /** Returns at most {@code limit} greetings, most recent first. */
+    List<RecordedGreeting> recent(int limit);
+}

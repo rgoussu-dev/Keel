@@ -27,6 +27,10 @@ import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/w
 import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
 import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
+import {
+  jvmLayout,
+  MODULITH_LAYOUT_TAG,
+} from '../../../../src/domain/core/adapters/jvm-module-layout.js';
 import { FLYWAY_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/flyway-migrations.js';
 import {
   persistencePropertiesBlock,
@@ -602,6 +606,9 @@ describe('persistence install on quarkus-rest (Maven)', () => {
   });
 });
 
+const BASIC_LAYOUT = jvmLayout([]);
+const MODULITH_LAYOUT = jvmLayout([MODULITH_LAYOUT_TAG]);
+
 describe('persistence patch helpers', () => {
   it('names the new aggregate package in @Import once and only once', () => {
     const original = `@Factory
@@ -614,10 +621,15 @@ public class MediatorFactory {
     const patched = patchMicronautImportPackages(
       'persistence/micronaut-persistence',
       'com.example',
+      BASIC_LAYOUT,
     )(original);
     expect(patched).toContain('"com.example.core.greet", "com.example.core.greetinglog"');
     expect(
-      patchMicronautImportPackages('persistence/micronaut-persistence', 'com.example')(patched),
+      patchMicronautImportPackages(
+        'persistence/micronaut-persistence',
+        'com.example',
+        BASIC_LAYOUT,
+      )(patched),
     ).toBe(patched);
   });
 
@@ -626,6 +638,7 @@ public class MediatorFactory {
       patchMicronautImportPackages(
         'persistence/micronaut-persistence',
         'com.example',
+        BASIC_LAYOUT,
       )('public class Custom {}'),
     ).toThrow(/add "com\.example\.core\.greetinglog" to the @Import packages/);
   });
@@ -662,14 +675,22 @@ class GreetControllerTest {
   });
 
   it('keeps the telemetry line out of the properties block until observability is installed', () => {
-    expect(persistencePropertiesBlock('app_db', false)).not.toContain(
+    expect(persistencePropertiesBlock('app_db', false, BASIC_LAYOUT)).not.toContain(
       'quarkus.datasource.jdbc.telemetry',
     );
-    expect(persistencePropertiesBlock('app_db', true)).toContain(
+    expect(persistencePropertiesBlock('app_db', true, BASIC_LAYOUT)).toContain(
       'quarkus.datasource.jdbc.telemetry=true',
     );
-    expect(persistencePropertiesBlock('app_db', true)).toContain(
+    expect(persistencePropertiesBlock('app_db', true, BASIC_LAYOUT)).toContain(
       'jdbc:postgresql://localhost:5432/app_db',
+    );
+    // The assembly sits three directories deep under `basic` and two
+    // under the modulith, so Flyway's filesystem location follows.
+    expect(persistencePropertiesBlock('app_db', false, BASIC_LAYOUT)).toContain(
+      'filesystem:../../../migrations/sql',
+    );
+    expect(persistencePropertiesBlock('app_db', false, MODULITH_LAYOUT)).toContain(
+      'filesystem:../../migrations/sql',
     );
   });
 });

@@ -1,0 +1,58 @@
+package <%= basePackage %>.application.api;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.greeting.userside.api.contract.ProblemDetails;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.notNullValue;
+
+/**
+ * Drives the persistence slice end to end: Quarkus Dev Services
+ * boots a throwaway PostgreSQL (Testcontainers) and Flyway applies
+ * {@code migrations/sql/} at startup, so the POST really commits and
+ * the GET really reads rows. Requires a Docker daemon.
+ */
+@QuarkusTest
+class GreetingLogResourceTest {
+
+    @Test
+    void recordsAGreetingDurablyAndListsItBack() {
+        Number id = given()
+                .contentType("application/json")
+                .body("{\"name\":\"Romain\"}")
+                .when()
+                .post("/greetings")
+                .then()
+                .statusCode(201)
+                .body("name", equalTo("Romain"))
+                .body("greetedAt", notNullValue())
+                .extract()
+                .path("id");
+
+        given()
+                .when()
+                .get("/greetings")
+                .then()
+                .statusCode(200)
+                .body("name", hasItem("Romain"))
+                .body("id", hasItem(id.intValue()));
+    }
+
+    @Test
+    void mapsARejectedRecordToProblemDetails() {
+        given()
+                .contentType("application/json")
+                .body("{\"name\":\"  \"}")
+                .when()
+                .post("/greetings")
+                .then()
+                .statusCode(400)
+                .contentType(ProblemDetails.PROBLEM_JSON)
+                .body("type", equalTo("urn:problem-type:greet-rejected"))
+                .body("detail", equalTo("name must not be blank"));
+    }
+}
