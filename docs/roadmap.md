@@ -202,22 +202,34 @@ emitted tree, so it goes first and proves the pattern.
 **Commits.** `feat(walking-skeleton): modulith module layout for the Go stacks`,
 then `feat(<vertical>): …` per vertical.
 
-### I.2 — `ts-http` (M) — _dial, defaulting to directories_
+### I.2 — `ts-http` (M) — _dial; modulith is one package per context_
 
-The interesting one, because the enforcement answer and the
-extraction answer disagree.
-
-- **Ruling: offer both, and `basic` stays the default.** Measured:
-  per-module workspace packages buy exactly one wall the directory
-  layout lacks (the `exports` map against deep package-specifier
-  imports) — and a relative path walks straight through it anyway.
-  Undeclared workspace dependencies resolve silently, and TS project
-  references do **not** restrict which projects a project may import.
-  So dependency-cruiser is load-bearing under _both_ layouts, and the
-  directory layout's lint config is the one harder to get wrong.
-  Packages win only on extraction: 0 import rewrites versus 3.
-  Ship `modulith` as packages for teams that have decided to extract;
-  don't make everyone pay up front for enforcement they don't get.
+- **Ruling: one workspace package per bounded context**, not one per
+  (context × layer). `@<scope>/<ctx>` owns `src/domain/{contract,core}`,
+  `src/user-side/…` and `src/infra/…` as plain directories, and its
+  `exports` map publishes exactly two entry points: `"."` (the facade)
+  and `"./service"` (the peer seam). Verified: both resolve, while
+  `@<scope>/<ctx>/src/domain/core/internal/…` is rejected by tsc
+  (`TS2307`) _and_ Node (`ERR_PACKAGE_PATH_NOT_EXPORTED`). This is Go's
+  facade rule expressed in TypeScript, and it is **1 manifest per
+  context instead of 3.5**.
+- **Why not package-per-layer, as the JVM and Rust do.** Because in
+  TypeScript the package graph enforces nothing to begin with:
+  undeclared workspace dependencies resolve silently (npm hoists every
+  member into the root `node_modules`) and TS project references do
+  **not** restrict which projects a project may import — the same
+  undeclared import builds clean under `tsc -b --force`. So splitting a
+  context into four packages buys four manifests and zero enforcement.
+  The `exports` map is the one real wall, and one package per context
+  keeps all of it.
+- **What that leaves to the linter** is the intra-context layering
+  (`domain` never imports `user-side`/`infra`) and the relative-path
+  bypass — both dependency-cruiser rules, both needed under any of the
+  candidate shapes, so neither is a cost of this one.
+- **Keep `basic` as the default anyway**, but for scope reasons rather
+  than ceremony: a single-context service gains nothing from a
+  `modules/<ctx>/` level. The dial is now cheap enough that switching
+  is a directory move plus one `package.json`.
 - **Ship the lint with the layout, and make it fail closed.**
   dependency-cruiser pointed at a TypeScript workspace with default
   options resolves every `@acme/*` import to a bare specifier and
@@ -226,10 +238,11 @@ extraction answer disagree.
   `enhancedResolveOptions: { extensions: ['.ts', …], exportsFields:
 ['exports'], conditionNames: ['import', 'default', 'types'] }`.
   Worth a test that asserts a known-bad import actually fails.
-- **Resolver** `ts-module-layout.ts` owns paths and the **package
-  name** (`@<scope>/<ctx>-domain-contract` for
-  `modules/<ctx>/domain/contract` — scope, context and path depth all
-  vary independently, and none of them can be derived from another).
+- **Resolver** `ts-module-layout.ts` owns paths, the **package name**
+  (`@<scope>/<ctx>` — the scope and the context vary independently) and
+  the **`exports` map**, which is now a layout decision rather than a
+  per-package detail: it is the aperture, so the resolver decides which
+  entry points exist.
   The workspace member list needs no special handling: nested globs
   (`modules/*/domain/*`, or `modules/**`) resolve correctly under both
   npm 10 and pnpm 10, verified.
@@ -253,12 +266,17 @@ extraction answer disagree.
 ### I.3 — `web-components` (M) — _modulith only_
 
 - **Ruling: no dial.** A browser app is multi-context before its
-  first release, per-module packages are already the route-level
-  code-split boundary, and a micro-frontend _is_ a carved-out module —
-  `basic` would have to be un-learned immediately. Note this inverts
-  I.2: the browser keeps per-module packages not for enforcement but
-  for code-splitting and independent deployment, which a directory
-  layout cannot serve.
+  first release, and a micro-frontend _is_ a carved-out module —
+  `basic` would have to be un-learned immediately.
+- **Same package shape as I.2: one package per context.** The context
+  is also the right code-split unit (route-level splitting is done by
+  dynamic import, not by package granularity), so nothing is lost
+  versus a package-per-layer split — and the `exports` map still hides
+  the core. The one addition over `ts-http` is a third entry point,
+  `"./elements"`, for the module's `define…Elements()` registration.
+- The `design-system` package stays a **separate top-level package**,
+  not a context: it is domain-blind, it is consumed by every context,
+  and it is the package the import map deduplicates.
 - **Also rename** `domain/domain-api` → `modules/<ctx>/domain/contract`
   while the tree is being rewritten; `domain-api` is the last
   pre-modulith name in the repo.
