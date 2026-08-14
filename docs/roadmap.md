@@ -139,11 +139,21 @@ Chromium) by hand-building throwaway two-context skeletons in each
 language with deliberate violation probes. Three findings change what
 keel should build, and one of them changes the shape of the feature:
 
-- **The dial is not worth offering everywhere.** `basic` vs
-  `modulith` is a JVM-shaped choice, justified there because a
-  context costs five or six build files. Go pays _zero_ manifest
-  files per context and the browser is multi-context from day one, so
-  both should ship one layout. Only `ts-http` and Rust want a dial.
+- **Every stack offers both layouts, `basic` default** (decided
+  2026-08-14). The measurements below argue that some stacks — Go
+  especially — pay almost nothing for the modulith, and an earlier
+  draft of this item concluded those stacks should ship it as their
+  only layout. That is not the ruling. Manifest count is not the only
+  cost: the modulith also adds levels of indirection (a facade, a
+  `modules/<ctx>/` level, a peer seam) that a single-context project
+  may simply not want, and a scaffold should let the user decline
+  them. **Optionality wins, uniformly** — the dial exists on all five
+  stack families, and the per-language cost figures become guidance on
+  _when to turn it_ rather than a reason to remove the choice.
+- **This also removes the only breaking change in the item.** With a
+  dial, `keel new --stack=go-http` and `--stack=web-components` keep
+  emitting exactly today's tree by default; the modulith is additive
+  everywhere. Nothing scaffolded before I lands changes shape.
 - **The trap is name derivation, not just path depth.** The JVM's
   recurring bug class was hand-computed depths (`upToRoot`) and
   artifact ids (`mavenArtifact`). Outside the JVM the _name_ is the
@@ -159,26 +169,31 @@ keel should build, and one of them changes the shape of the feature:
 ### I.0 — Generalise the layout dial (prerequisite, S)
 
 `ModuleLayoutOption.id` is typed `JvmModuleLayout` and `JVM_LAYOUTS`
-is JVM-specific. Widen the option type so a stack can declare its own
-layout set (or none), and keep `jvmLayout` as the first
-implementation of a per-language family. No behaviour change.
+is JVM-specific. Widen the option type so any stack can declare a
+layout set, and keep `jvmLayout` as the first implementation of a
+per-language family. Now that every stack family carries the dial,
+this is used by all five rather than being a one-off generalisation —
+so it is worth doing properly: one shared `ModuleLayout` vocabulary,
+one `--module-layout` flag, one interactive question, five resolvers
+behind it. No behaviour change on its own.
 
 **Commit.** `refactor(composition): generalise the module-layout dial beyond the JVM`
 
-### I.1 — Go (M) — _modulith only_
+### I.1 — Go (M) — _dial; `basic` default_
 
-Cheapest realization of the four and the one that most changes the
-emitted tree, so it goes first and proves the pattern.
+Cheapest realization of the four, so it goes first and proves the
+pattern for the other three.
 
-- **Ruling: no dial.** A Go context is a directory with a facade file
-  and an `internal/` beneath it — zero build files. `basic` and
-  `modulith` would differ by two directory levels and one facade, and
-  the facade is worth having at one context. `keel new` offers no
-  choice and seeds `layout.modulith`.
-- **Brownfield:** `goLayout()` must still resolve `basic` for
-  manifests with no `layout.*` tag, or `keel add` breaks on every
-  project scaffolded before this lands. The layout disappears from
-  the _prompt_, not from the resolver.
+- **Both layouts.** `basic` is exactly today's tree and stays the
+  default; `modulith` is the additive sibling. Go pays zero manifest
+  files for a context, which makes the modulith unusually cheap here —
+  but "cheap in build files" is not the same as "free", and the facade
+  plus the `modules/<ctx>/` level are indirection a single-context
+  service can reasonably decline.
+- **Brownfield is free.** `goLayout()` resolves `basic` for manifests
+  with no `layout.*` tag, which is also what every existing project
+  has — so `keel add` on anything scaffolded before this lands keeps
+  working, and no emitted tree changes shape.
 - **Resolver** `go-module-layout.ts` owns: module paths, the
   **import-path prefix** (`<modulePath>/internal/modules/<ctx>/internal/domain`
   — Go has no relative imports, so every template line concatenates
@@ -263,11 +278,20 @@ then `feat(<vertical>): …` per vertical.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for ts-http`, then per vertical.
 
-### I.3 — `web-components` (M) — _modulith only_
+### I.3 — `web-components` (M) — _dial; `basic` default_
 
-- **Ruling: no dial.** A browser app is multi-context before its
-  first release, and a micro-frontend _is_ a carved-out module —
-  `basic` would have to be un-learned immediately.
+- **Both layouts.** The architectural pull toward the modulith is
+  strongest here — a browser app is usually multi-context before its
+  first release, and a micro-frontend _is_ a carved-out module — so
+  this is the stack where the prompt's help text should most clearly
+  point at `modulith`. It is still a choice: a single-purpose widget,
+  an admin panel, or a demo SPA has one context and does not need the
+  `modules/<ctx>/` level.
+- **`basic` keeps today's tree**, `domain/domain-api` naming included.
+  Renaming that to `domain/contract` is worth doing — it is the last
+  pre-modulith name in the repo — but it is now a separate cosmetic
+  commit against the `basic` tree rather than a side effect of this
+  item.
 - **Same package shape as I.2: one package per context.** The context
   is also the right code-split unit (route-level splitting is done by
   dynamic import, not by package granularity), so nothing is lost
@@ -277,9 +301,6 @@ then `feat(<vertical>): …` per vertical.
 - The `design-system` package stays a **separate top-level package**,
   not a context: it is domain-blind, it is consumed by every context,
   and it is the package the import map deduplicates.
-- **Also rename** `domain/domain-api` → `modules/<ctx>/domain/contract`
-  while the tree is being rewritten; `domain-api` is the last
-  pre-modulith name in the repo.
 - **Ship the import map.** Browser-verified: two bundles each inlining
   an element-defining package throw
   `NotSupportedError: … has already been used with this registry`, and
@@ -298,7 +319,7 @@ then `feat(<vertical>): …` per vertical.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for web-components`, then per vertical.
 
-### I.4 — Rust (L) — _dial, `basic` default, and it stays default longer_
+### I.4 — Rust (L) — _dial; `basic` default, and it stays default longest_
 
 Heaviest of the four; last because it is the most template surface
 for the least marginal gain over what I.1–I.3 will have proven.
