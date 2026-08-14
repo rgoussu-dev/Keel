@@ -1,0 +1,37 @@
+package <%= basePackage %>.application.cli;
+
+import java.util.List;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import <%= basePackage %>.greeting.userside.service.GreetingService;
+import <%= basePackage %>.greeting.userside.service.GreetingServiceAdapter;
+import <%= basePackage %>.platform.kernel.Handler;
+import <%= basePackage %>.platform.kernel.Mediator;
+import <%= basePackage %>.platform.kernel.RegistryMediator;
+
+/**
+ * The channel's composition root: collects every discovered domain
+ * {@link Handler} and builds the Mediator from them. Handlers reach
+ * this list via the {@code @DomainHandler} include filter on
+ * {@link Main}, so adding an aggregate to the domain needs no edit
+ * here.
+ */
+@Configuration
+public class MediatorConfig {
+    @Bean
+    public Mediator mediator(List<Handler<?, ?>> handlers) {
+        return new RegistryMediator(handlers);
+    }
+
+    /**
+     * The greeting module's in-process API, offered to peer modules.
+     * Nothing consumes it yet — the second bounded context is the
+     * first thing that will, through a driven port of its own.
+     */
+    @Bean
+    public GreetingService greetingService(Mediator mediator) {
+        return new GreetingServiceAdapter(mediator);
+    }
+}

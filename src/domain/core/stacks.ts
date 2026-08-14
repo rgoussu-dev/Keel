@@ -31,6 +31,11 @@ import { observabilityVertical } from './verticals/observability.js';
 import { gatewayVertical } from './verticals/gateway.js';
 import { vcsVertical } from './verticals/vcs.js';
 import { walkingSkeletonVertical } from './verticals/walking-skeleton.js';
+import {
+  BASIC_LAYOUT_TAG,
+  MODULITH_LAYOUT_TAG,
+  type JvmModuleLayout,
+} from './adapters/jvm-module-layout.js';
 import type { Tag, Vertical } from '../contract/composition.js';
 
 /**
@@ -82,6 +87,42 @@ export const PNPM_BUILD: BuildSystemOption = {
   doc: 'Symlinked strict node_modules (no phantom dependencies) and workspace: protocol.',
 };
 
+/**
+ * One selectable module layout of a JVM stack. Like
+ * {@link BuildSystemOption}, the choice folds a capability tag into
+ * the manifest at install time; every path decision downstream is
+ * ordinary machinery reading that tag through `jvmLayout`.
+ */
+export interface ModuleLayoutOption {
+  /** User-facing id, `basic` or `modulith`. */
+  readonly id: JvmModuleLayout;
+  /** The `layout.*` tag the choice contributes. */
+  readonly tag: Tag;
+  /** One-line label shown as the interactive choice. */
+  readonly label: string;
+  /** Longer help text for the interactive prompt. */
+  readonly doc: string;
+}
+
+/** The flat trisection — one hexagon, one `domain/`, one `application/` per entrypoint. */
+export const BASIC_LAYOUT: ModuleLayoutOption = {
+  id: 'basic',
+  tag: BASIC_LAYOUT_TAG,
+  label: 'basic — flat trisection (domain/ + application/)',
+  doc: 'One hexagon for the whole service. The right shape while there is a single bounded context.',
+};
+
+/** The modulith — one hexagon per bounded context, composed by assemblies. */
+export const MODULITH_LAYOUT: ModuleLayoutOption = {
+  id: 'modulith',
+  tag: MODULITH_LAYOUT_TAG,
+  label: 'modulith — one hexagon per bounded context (modules/ + platform/ + application/)',
+  doc: 'Contexts under modules/, shared plumbing under platform/, one runnable assembly per delivery typology. Modules meet only at user-side/service, so carving one out into its own service is a wiring change.',
+};
+
+/** Both JVM module layouts, `basic` first as the default. */
+export const JVM_LAYOUTS: readonly ModuleLayoutOption[] = [BASIC_LAYOUT, MODULITH_LAYOUT];
+
 /** One service of a composite stack. */
 export interface StackService {
   /** Directory the service is scaffolded into, relative to cwd. */
@@ -109,6 +150,14 @@ export interface Stack {
    * Absent when the stack's `tags` already pin its only build system.
    */
   readonly buildSystems?: readonly BuildSystemOption[];
+  /**
+   * Module layouts this stack can be scaffolded on; the first entry
+   * is the default. Stacks declaring this omit the `layout.*` tag
+   * from `tags` — the install handler folds the chosen option's tag
+   * in. Absent for stacks that ship a single layout, whose adapters
+   * then resolve to `basic`.
+   */
+  readonly moduleLayouts?: readonly ModuleLayoutOption[];
   /** Verticals to install, in order. */
   readonly verticals: readonly Vertical[];
   /**
@@ -127,6 +176,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Quarkus 3 CLI (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'quarkus-rest': {
@@ -134,6 +184,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Quarkus 3 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
@@ -142,6 +193,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Quarkus 3 CLI (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'quarkus-rest-kotlin': {
@@ -149,6 +201,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Quarkus 3 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
@@ -157,6 +210,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Spring Boot 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'spring-rest': {
@@ -164,6 +218,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Spring Boot 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
@@ -172,6 +227,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Spring Boot 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'spring-rest-kotlin': {
@@ -179,6 +235,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Spring Boot 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
@@ -187,6 +244,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Micronaut 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'micronaut-rest': {
@@ -194,6 +252,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Micronaut 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },
@@ -202,6 +261,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Micronaut 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
   },
   'micronaut-rest-kotlin': {
@@ -215,6 +275,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: JVM_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },

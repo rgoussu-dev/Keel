@@ -1,0 +1,36 @@
+plugins {
+    id("com.google.devtools.ksp")
+    id("com.gradleup.shadow") version "8.3.9"
+    id("io.micronaut.application") version "4.6.2"
+}
+
+micronaut {
+    version("4.10.17")
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("<%= basePackage %>.*")
+    }
+}
+
+application {
+    mainClass.set("<%= basePackage %>.application.api.ApplicationKt")
+}
+
+dependencies {
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    implementation(project(":platform:kernel"))
+    implementation(project(":modules:greeting:domain:contract"))
+    implementation(project(":modules:greeting:domain:core"))
+    implementation(project(":modules:greeting:user-side:api:adapters"))
+    implementation(project(":modules:greeting:user-side:service"))
+    implementation(project(":modules:greeting:user-side:api:contract"))
+
+    runtimeOnly("ch.qos.logback:logback-classic")
+
+    testImplementation("io.micronaut:micronaut-http-client")
+}

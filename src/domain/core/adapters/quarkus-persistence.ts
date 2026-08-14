@@ -37,6 +37,7 @@ import {
   jvmPersistenceBootstrapAnswers,
   jvmPersistenceVars,
   jvmSharedPersistenceFiles,
+  refuseOnModulith,
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   observabilityInstalled,
@@ -154,6 +155,7 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.quarkus', 'arch.server-http', `lang.${language}`] },
     async contribute(ctx) {
+      refuseOnModulith('persistence/quarkus-persistence', ctx.manifest);
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
         id,

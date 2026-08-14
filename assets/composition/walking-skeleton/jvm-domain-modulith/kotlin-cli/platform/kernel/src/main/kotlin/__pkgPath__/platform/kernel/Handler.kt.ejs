@@ -1,0 +1,12 @@
+package <%= basePackage %>.platform.kernel
+
+/**
+ * A handler for one Command type. Handlers self-declare which
+ * commands they accept via [supports] — never inject a
+ * `Map<KClass<*>, Handler<*, *>>` and route by type tag.
+ */
+interface Handler<C : Command<R>, R> {
+    fun supports(command: Command<*>): Boolean
+
+    fun handle(command: C): R
+}

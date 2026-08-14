@@ -1,0 +1,31 @@
+package <%= basePackage %>.greeting.domain.core.greet;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand;
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class GreetTest {
+
+    @Test
+    void greetsByName() {
+        GreetHandler handler = new GreetHandler();
+
+        String greeting = handler.handle(new GreetCommand("Romain"));
+
+        assertEquals("Hello, Romain!", greeting);
+    }
+
+    @Test
+    void rejectsABlankName() {
+        GreetHandler handler = new GreetHandler();
+
+        GreetRejected rejected =
+                assertThrows(GreetRejected.class, () -> handler.handle(new GreetCommand("  ")));
+
+        assertEquals("name must not be blank", rejected.getMessage());
+    }
+}

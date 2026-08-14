@@ -15,10 +15,14 @@
  *     `distribution/quarkus-cli-native`.
  *
  * The artifact root follows the build system read from the manifest
- * tags: `build/` under `pkg.gradle`, `target/` under `pkg.maven`.
+ * tags (`build/` under `pkg.gradle`, `target/` under `pkg.maven`), and
+ * the module it sits in follows the module layout — the flat
+ * layout's lone executable, or the modulith's `application/api`
+ * assembly.
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { jvmLayout } from './jvm-module-layout.js';
 import {
   FLAVOR_QUESTION,
   imageFlavor,
@@ -47,6 +51,7 @@ export const quarkusRestImageAdapter: Adapter = {
         : buildTool;
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       flavor,
+      unitDir: jvmLayout(ctx.manifest.tags).restRuntime,
       buildRoot: JVM_BUILD_ROOT[build],
       buildCommand,
     });

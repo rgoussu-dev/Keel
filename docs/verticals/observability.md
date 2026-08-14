@@ -35,6 +35,15 @@ A sticky question picks the shape of the dev-time receiving end:
   provisioned Grafana — the base a production setup grows from.
 - **All-in-one**: the `grafana/otel-lgtm` dev container.
 
+## Module layout
+
+Correlation ids, probes and telemetry belong to the **deployment
+unit**, not to any one bounded context, so on a
+[`layout.modulith`](../stacks/jvm.md#module-layout) project every file
+this vertical writes lands in the `application/<typology>` assembly —
+`application/api/…/observability/` rather than the flat layout's lone
+executable. Nothing else differs.
+
 ## Prerequisites
 
 | Requirement          | When                                                                                                |

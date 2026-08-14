@@ -11,11 +11,14 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { jvmLayout } from './jvm-module-layout.js';
 import { eolOf, withEol } from '../util.js';
 
 export const QUARKUS_CORS_ID = 'gateway/quarkus-cors';
 
-const PROPERTIES_TARGET = 'application/rest/executable/src/main/resources/application.properties';
+/** Runtime configuration belongs to whichever module runs — see `jvmLayout`. */
+const propertiesTarget = (unit: string): string =>
+  `${unit}/src/main/resources/application.properties`;
 
 const CORS_BLOCK = [
   '# Allow the sibling SPA (Vite dev server) to call this API directly',
@@ -30,11 +33,11 @@ export const quarkusCorsAdapter: Adapter = {
   vertical: 'gateway',
   covers: [],
   predicate: { requires: ['framework.quarkus', 'arch.server-http', 'peer.ui.spa'] },
-  contribute() {
+  contribute(ctx) {
     return {
       patches: [
         {
-          target: PROPERTIES_TARGET,
+          target: propertiesTarget(jvmLayout(ctx.manifest.tags).restRuntime),
           apply: (existing) => {
             if (existing.includes('quarkus.http.cors')) return existing;
             const eol = eolOf(existing);

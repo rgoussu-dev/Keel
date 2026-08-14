@@ -52,6 +52,55 @@ cargo-deny, …); the composition-root exception is pinned to
 `application/<channel>/executable` only — violating it from
 `application/<channel>/contract` is still a build failure.
 
+### 1.1 One hexagon per bounded context — the modulith
+
+The layout above describes **one** hexagon. A system with several
+bounded contexts repeats it per context rather than merging them into
+one domain:
+
+```
+platform/<shared>/          # kernel first among them; depends on nothing
+modules/<context>/
+  user-side/                # driving adapters — libraries, never runnable
+    api/{contract,adapters} # the pair is earned by a consumable contract
+    consumers/
+    service/                # the in-process API a PEER MODULE consumes
+  domain/{contract,core}    # the hexagon, exactly as above
+  infra/                    # driven adapters
+application/<typology>/     # the runnable assemblies: api, consumer, cron
+```
+
+Three rules carry the shape:
+
+- **The deployment unit is the assembly, not the adapter.** One
+  `application/<typology>` per delivery typology, mounting the
+  matching user-side adapters of every module it composes. Nothing
+  under `modules/` produces a runnable artifact, and the assembly is
+  the only module allowed to see a `domain/core`.
+- **The dispatch seam is per module.** Each context gets its own
+  mediator over its own handlers. A repository-wide command bus is
+  forbidden: it would hand every adapter every context's vocabulary
+  and quietly re-merge the contexts.
+- **Modules meet only at `user-side/service`.** A module that needs a
+  peer declares a **driven port in its own vocabulary**, and its
+  `infra/` implements that port by delegating to the peer's
+  in-process service adapter. `modules/x/infra → modules/y/user-side/service`
+  is the single legal inter-module edge; the build must reject every
+  other one, and must keep the peer's domain off the consumer's
+  compile classpath (Gradle `implementation`, Maven scope + enforcer).
+
+Start flat when there is one genuine context — `modules/<the-only-one>/`
+buys nothing but a level of nesting — and promote the moment a second
+appears: the flat trisection maps onto `modules/<context>/`
+one-to-one, so it is a directory move plus a build file, never a
+redesign. Going the other way, extracting a context into its own
+service is a new assembly plus swapping one binding: the consumer's
+port stays, only the adapter behind it becomes a remote client built
+from the peer's `user-side/api/contract`.
+
+`keel new --module-layout=modulith` scaffolds this shape on the JVM
+stacks.
+
 ---
 
 ## 2. Business logic — commands through one dispatch seam

@@ -21,6 +21,7 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
+import { gradleProject, jvmLayout } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
@@ -35,9 +36,6 @@ export const SAMPLE_PORT_FAKE_ID = 'walking-skeleton/sample-port-fake';
 const TEMPLATE_ID = 'composition/walking-skeleton/sample-port-fake/templates';
 const BUILD_TEMPLATE_ROOT = 'composition/walking-skeleton/sample-port-fake/build';
 
-const FAKE_MODULE_INCLUDE = 'include(":infrastructure:clock:fake")';
-
-const MAVEN_MODULE = '<module>infrastructure/clock/fake</module>';
 const MAVEN_MODULES_END = '  </modules>';
 
 const BOOTSTRAP_IDS = [
@@ -72,41 +70,48 @@ export const samplePortFakeAdapter: Adapter = {
       pkgPath: packageToPath(basePackage),
     };
     const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+    const layout = jvmLayout(ctx.manifest.tags);
+    const suffix = layout.layout === 'modulith' ? '-modulith' : '';
+    const fakeModule = layout.infra('clock/fake');
     const [sources, build] = await Promise.all([
-      ctx.templates.render(TEMPLATE_ID, '', vars),
-      ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+      ctx.templates.render(`${TEMPLATE_ID}${suffix}`, '', vars),
+      ctx.templates.render(`${BUILD_TEMPLATE_ROOT}${suffix}/${buildSystem}`, '', vars),
     ]);
     return {
       files: [...sources, ...build],
-      patches: [buildSystem === 'maven' ? mavenModulePatch() : gradleIncludePatch()],
+      patches: [
+        buildSystem === 'maven' ? mavenModulePatch(fakeModule) : gradleIncludePatch(fakeModule),
+      ],
     };
   },
 };
 
-function gradleIncludePatch(): ContributionPatch {
+function gradleIncludePatch(fakeModule: string): ContributionPatch {
+  const include = `include("${gradleProject(fakeModule)}")`;
   return {
     target: 'settings.gradle.kts',
     apply: (existing) => {
-      if (existing.includes(FAKE_MODULE_INCLUDE)) return existing;
+      if (existing.includes(include)) return existing;
       const eol = eolOf(existing);
-      return `${existing.trimEnd()}${withEol(`\n${FAKE_MODULE_INCLUDE}\n`, eol)}`;
+      return `${existing.trimEnd()}${withEol(`\n${include}\n`, eol)}`;
     },
   };
 }
 
-function mavenModulePatch(): ContributionPatch {
+function mavenModulePatch(fakeModule: string): ContributionPatch {
+  const moduleEntry = `<module>${fakeModule}</module>`;
   return {
     target: 'pom.xml',
     apply: (existing) => {
-      if (existing.includes(MAVEN_MODULE)) return existing;
+      if (existing.includes(moduleEntry)) return existing;
       if (!existing.includes(MAVEN_MODULES_END)) {
         throw new Error(
-          `${SAMPLE_PORT_FAKE_ID}: could not find the <modules> block in the root pom.xml — add ${MAVEN_MODULE} manually`,
+          `${SAMPLE_PORT_FAKE_ID}: could not find the <modules> block in the root pom.xml — add ${moduleEntry} manually`,
         );
       }
       return existing.replace(
         MAVEN_MODULES_END,
-        `    ${MAVEN_MODULE}${eolOf(existing)}${MAVEN_MODULES_END}`,
+        `    ${moduleEntry}${eolOf(existing)}${MAVEN_MODULES_END}`,
       );
     },
   };

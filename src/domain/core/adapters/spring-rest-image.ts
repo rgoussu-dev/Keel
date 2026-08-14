@@ -23,6 +23,7 @@
  */
 
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import { gradleProject, jvmLayout } from './jvm-module-layout.js';
 import { eolOf, withEol } from '../util.js';
 import { FLAVOR_QUESTION, imageFlavor, imageTags, jvmBuildSystem } from './container-image.js';
 
@@ -30,21 +31,26 @@ export const SPRING_REST_IMAGE_ID = 'containerization/spring-rest-image';
 
 const TEMPLATE_ID = 'composition/containerization/spring-rest-image/templates';
 
-const MODULE = 'application/rest/executable';
-
-const JAR = 'application-rest-executable-0.1.0-SNAPSHOT.jar';
+/**
+ * The runnable module, and the jar it produces. Both follow the
+ * project's module layout: the flat layout's lone executable, or the
+ * modulith's `application/api` assembly. The archive base name is the
+ * module path with dashes under either build system — the jvm-build
+ * templates pin it that way on Gradle, and it is the Maven artifactId.
+ */
+const unitJar = (unit: string): string => `${unit.split('/').join('-')}-0.1.0-SNAPSHOT.jar`;
 
 /** Latest stable GraalVM Native Build Tools, Gradle and Maven alike. */
 const NATIVE_BUILD_TOOLS_VERSION = '1.1.8';
 
-const GRADLE_BUILD_FILE = `${MODULE}/build.gradle.kts`;
+const gradleBuildFile = (unit: string): string => `${unit}/build.gradle.kts`;
 
 const SPRING_PLUGIN_MARKER = 'id("org.springframework.boot")';
 
 const NATIVE_GRADLE_PLUGIN = `id("org.graalvm.buildtools.native") version "${NATIVE_BUILD_TOOLS_VERSION}"`;
 
-const gradleNativePatch = (): ContributionPatch => ({
-  target: GRADLE_BUILD_FILE,
+const gradleNativePatch = (unit: string): ContributionPatch => ({
+  target: gradleBuildFile(unit),
   apply: (existing) => {
     if (existing.includes('org.graalvm.buildtools.native')) return existing;
     const eol = eolOf(existing);
@@ -52,7 +58,7 @@ const gradleNativePatch = (): ContributionPatch => ({
     const boot = lines.findIndex((l) => l.includes(SPRING_PLUGIN_MARKER));
     if (boot === -1) {
       throw new Error(
-        `${SPRING_REST_IMAGE_ID}: cannot find the Spring Boot plugin in ${GRADLE_BUILD_FILE} to anchor the Native Build Tools plugin`,
+        `${SPRING_REST_IMAGE_ID}: cannot find the Spring Boot plugin in ${gradleBuildFile(unit)} to anchor the Native Build Tools plugin`,
       );
     }
     const indent = /^\s*/.exec(lines[boot]!)?.[0] ?? '    ';
@@ -61,7 +67,7 @@ const gradleNativePatch = (): ContributionPatch => ({
   },
 });
 
-const MAVEN_POM = `${MODULE}/pom.xml`;
+const mavenPom = (unit: string): string => `${unit}/pom.xml`;
 
 const MAVEN_NATIVE_PROFILE = `    <!-- The native profile spring-boot-starter-parent would provide;
          declared here because the reactor imports the BOM instead. -->
@@ -110,8 +116,8 @@ const MAVEN_NATIVE_PROFILE = `    <!-- The native profile spring-boot-starter-pa
       </build>
     </profile>`;
 
-const mavenNativePatch = (): ContributionPatch => ({
-  target: MAVEN_POM,
+const mavenNativePatch = (unit: string): ContributionPatch => ({
+  target: mavenPom(unit),
   apply: (existing) => {
     if (existing.includes('native-maven-plugin')) return existing;
     const eol = eolOf(existing);
@@ -127,7 +133,7 @@ const mavenNativePatch = (): ContributionPatch => ({
     }
     if (!existing.includes('</project>')) {
       throw new Error(
-        `${SPRING_REST_IMAGE_ID}: cannot find </project> in ${MAVEN_POM} to anchor the native profile`,
+        `${SPRING_REST_IMAGE_ID}: cannot find </project> in ${mavenPom(unit)} to anchor the native profile`,
       );
     }
     return existing.replace(
@@ -147,21 +153,22 @@ export const springRestImageAdapter: Adapter = {
     const build = jvmBuildSystem(ctx.manifest, SPRING_REST_IMAGE_ID);
     const flavor = imageFlavor(ctx.answer('flavor'), SPRING_REST_IMAGE_ID);
     const gradle = build === 'gradle';
+    const unit = jvmLayout(ctx.manifest.tags).restRuntime;
     const artifactPath =
       flavor === 'native'
         ? gradle
           ? // The one file nativeCompile leaves in its output directory;
             // globbed because the binary is named after the Gradle
             // project (`executable`), not the module path.
-            `${MODULE}/build/native/nativeCompile/*`
-          : `${MODULE}/target/application-rest-executable`
+            `${unit}/build/native/nativeCompile/*`
+          : `${unit}/target/${unit.split('/').join('-')}`
         : gradle
-          ? `${MODULE}/build/libs/${JAR}`
-          : `${MODULE}/target/${JAR}`;
+          ? `${unit}/build/libs/${unitJar(unit)}`
+          : `${unit}/target/${unitJar(unit)}`;
     const buildCommand =
       flavor === 'native'
         ? gradle
-          ? './gradlew :application:rest:executable:nativeCompile'
+          ? `./gradlew ${gradleProject(unit)}:nativeCompile`
           : './mvnw package -Pnative'
         : gradle
           ? './gradlew build'
@@ -174,7 +181,7 @@ export const springRestImageAdapter: Adapter = {
     return {
       files,
       ...(flavor === 'native'
-        ? { patches: [gradle ? gradleNativePatch() : mavenNativePatch()] }
+        ? { patches: [gradle ? gradleNativePatch(unit) : mavenNativePatch(unit)] }
         : {}),
       tagsAdd: imageTags(flavor),
     };

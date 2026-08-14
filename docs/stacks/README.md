@@ -29,6 +29,19 @@ The domain trisection is byte-for-byte identical across frameworks per
 language — only the application layer and build wiring change. **The
 conventions, not the framework, are the product.**
 
+## Module layout
+
+The twelve JVM stacks offer a second structural choice beside the
+build system, with `--module-layout` or its prompt:
+
+| Layout            | Shape                                                                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `basic` (default) | the flat trisection — one `domain/`, one `application/` per entrypoint. Right while the service holds a single bounded context.                                                                            |
+| `modulith`        | one hexagon per bounded context under `modules/<context>/`, shared plumbing under `platform/`, one runnable assembly per delivery typology under `application/`. Modules meet only at `user-side/service`. |
+
+→ [Module layout](jvm.md#module-layout). The other stacks ship
+`basic` only for now.
+
 ## What each shape installs by default
 
 | Shape                             | Verticals installed at bootstrap                                                                                                                                                |

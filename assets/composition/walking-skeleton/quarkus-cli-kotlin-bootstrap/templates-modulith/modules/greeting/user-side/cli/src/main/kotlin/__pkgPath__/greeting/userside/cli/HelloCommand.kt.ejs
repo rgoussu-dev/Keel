@@ -1,0 +1,17 @@
+package <%= basePackage %>.greeting.userside.cli
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand
+import <%= basePackage %>.platform.kernel.Mediator
+
+import picocli.CommandLine.Command
+import picocli.CommandLine.Option
+
+@Command(name = "hello", description = ["Print a friendly greeting."])
+class HelloCommand(private val mediator: Mediator) : Runnable {
+    @Option(names = ["--name"], defaultValue = "world", description = ["Recipient of the greeting."])
+    var name: String = "world"
+
+    override fun run() {
+        println(mediator.dispatch(GreetCommand(name)))
+    }
+}

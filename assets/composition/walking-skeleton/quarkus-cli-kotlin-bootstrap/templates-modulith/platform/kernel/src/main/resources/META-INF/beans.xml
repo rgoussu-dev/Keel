@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Marks the kernel as a CDI bean archive so ArC indexes @DomainHandler
+  and recognises it as a stereotype. Without this the annotation is
+  just metadata, the handlers in every module's domain/core stay
+  undiscovered, and the mediator dispatches into an empty registry.
+  Discovery stays `annotated`: only annotated types become beans — the
+  kernel is never scanned wholesale.
+-->
+<beans xmlns="https://jakarta.ee/xml/ns/jakartaee"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                           https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd"
+       version="4.0"
+       bean-discovery-mode="annotated">
+</beans>

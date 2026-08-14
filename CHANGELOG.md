@@ -8,6 +8,36 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The `modulith` module layout for the JVM stacks.**
+  `keel new --module-layout=modulith` (or the new interactive "Module
+  layout" question) scaffolds the walking skeleton carved one bounded context
+  at a time: `platform/kernel` for the dispatch vocabulary,
+  `modules/<context>/` for a whole hexagon
+  (`user-side/{api,cli,service}` + `domain/{contract,core}` +
+  `infra/`), and `application/<typology>` for the runnable assembly
+  that mounts them. All twelve JVM combinations (Quarkus / Spring /
+  Micronaut × CLI / REST × Java / Kotlin) on Gradle and Maven alike.
+  The distinguishing piece is `user-side/service`: the in-process
+  driving adapter a **peer module** consumes through a driven port it
+  declares in its own vocabulary — the only dependency edge allowed
+  between modules, and the seam that turns extracting a context into
+  its own service into a wiring change. The service module declares
+  its domain as `implementation` scope, so a peer physically cannot
+  compile against it. `basic` — the flat trisection — stays the
+  default, and a manifest carrying no `layout.*` tag resolves to it,
+  so nothing about existing projects changes. A new e2e test builds a
+  generated modulith project with the real toolchain, runs its suite
+  and drives `/greet` against the booted assembly, beside the existing
+  per-framework ones.
+- **Layout as a composition primitive.** `layout.basic` /
+  `layout.modulith` capability tags, a `Stack.moduleLayouts` option
+  list mirroring `buildSystems`, and `--module-layout` on `keel new`
+  (rejected, with a message, for stacks that ship one layout and for
+  composite stacks). Adapters that write outside their own template
+  tree now read paths and packages from `jvmLayout(tags)` instead of
+  naming a directory, so `observability`, `containerization` and
+  `gateway` compose on either layout: observability lands in the
+  assembly, where correlation ids and probes belong.
 - **The `persistence` vertical** — SQL persistence for every HTTP
   stack (`keel add persistence`), PostgreSQL as the default engine
   behind an extensible engine spec. Five dimensions: a `datasource`
@@ -64,6 +94,11 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **`keel add persistence` refuses on a `layout.modulith` project**
+  with a message naming the gap, rather than writing into `domain/`
+  and `infrastructure/` directories such a project does not have.
+  Porting the vertical is tracked in `docs/roadmap.md`; projects on
+  the default `basic` layout are unaffected.
 - **README reorganized for first-time users** — prose trimmed in
   favor of a stack matrix, per-family "How to" sections (command +
   what you get + prerequisites), a composition diagram, and a

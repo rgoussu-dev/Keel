@@ -14,12 +14,16 @@
  */
 
 import { packageToPath } from '../util.js';
-import type { Adapter } from '../../contract/composition.js';
+import type { Adapter, Tag } from '../../contract/composition.js';
+import { jvmModuleLayout } from './jvm-module-layout.js';
 import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
 
 export const SPRING_CORS_ID = 'gateway/spring-cors';
 
-const TEMPLATE_ID = 'composition/gateway/spring-cors/templates';
+const TEMPLATE_ROOT = 'composition/gateway/spring-cors';
+
+const templateId = (tags: readonly Tag[]): string =>
+  `${TEMPLATE_ROOT}/templates${jvmModuleLayout(tags) === 'modulith' ? '-modulith' : ''}`;
 
 export const springCorsAdapter: Adapter = {
   id: SPRING_CORS_ID,
@@ -33,7 +37,7 @@ export const springCorsAdapter: Adapter = {
         `${SPRING_CORS_ID}: requires '${SPRING_REST_BOOTSTRAP_ID}' to have run first; basePackage not in manifest`,
       );
     }
-    const files = await ctx.templates.render(TEMPLATE_ID, '', {
+    const files = await ctx.templates.render(templateId(ctx.manifest.tags), '', {
       basePackage,
       pkgPath: packageToPath(basePackage),
     });

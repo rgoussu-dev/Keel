@@ -16,6 +16,14 @@
  * per combination), selected at contribute time from the manifest's
  * `pkg.*` tag — the same sources scaffold onto Gradle or Maven.
  *
+ * The manifest's `layout.*` tag selects the module layout the same
+ * way: under `layout.modulith` every tree above has a `*-modulith`
+ * sibling emitting the same walking skeleton carved into
+ * `platform/` + `modules/<context>/` + `application/<typology>`. The
+ * two layouts are alternative *shapes* of one adapter, not two
+ * adapters, so the manifest answers and the adapter id are identical
+ * either way and downstream adapters keep reading them unchanged.
+ *
  * One adapter per (framework, arch, language) combination — the
  * resolver picks by predicate (`framework.*` + `arch.*` + `lang.*`),
  * per the composition contract's no-OR rule. All twelve share the
@@ -25,6 +33,7 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
+import { jvmModuleLayout } from './jvm-module-layout.js';
 import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
 import type { Adapter, Question } from '../../contract/composition.js';
 
@@ -86,8 +95,10 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
 export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
   const shortName = spec.id.split('/').pop() ?? spec.id;
   const combo = shortName.replace(/-bootstrap$/, '');
-  const domainTemplateId = `composition/walking-skeleton/jvm-domain/${spec.language}-${spec.arch}`;
-  const appTemplateId = `composition/walking-skeleton/${spec.templateDir}/templates`;
+  const domainTemplateId = (suffix: string): string =>
+    `composition/walking-skeleton/jvm-domain${suffix}/${spec.language}-${spec.arch}`;
+  const appTemplateId = (suffix: string): string =>
+    `composition/walking-skeleton/${spec.templateDir}/templates${suffix}`;
   return {
     id: spec.id,
     vertical: 'walking-skeleton',
@@ -105,11 +116,13 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
         pkgPath: packageToPath(basePackage),
       };
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-      const buildRoot = `composition/walking-skeleton/jvm-build/${buildSystem}`;
+      const modulith = jvmModuleLayout(ctx.manifest.tags) === 'modulith';
+      const suffix = modulith ? '-modulith' : '';
+      const buildRoot = `composition/walking-skeleton/jvm-build${suffix}/${buildSystem}`;
       const [domain, app, domainBuild, appBuild] = await Promise.all([
-        ctx.templates.render(domainTemplateId, '', vars),
-        ctx.templates.render(appTemplateId, '', vars),
-        ctx.templates.render(`${buildRoot}/domain`, '', vars),
+        ctx.templates.render(`${domainTemplateId(suffix)}`, '', vars),
+        ctx.templates.render(`${appTemplateId(suffix)}`, '', vars),
+        ctx.templates.render(`${buildRoot}/${modulith ? 'shared' : 'domain'}`, '', vars),
         ctx.templates.render(`${buildRoot}/${combo}`, '', vars),
       ]);
       return { files: [...domain, ...app, ...domainBuild, ...appBuild] };

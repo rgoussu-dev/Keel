@@ -58,6 +58,10 @@ export function buildProgram(deps: CliDeps): Command {
       "build system for stacks that offer a choice, e.g. 'gradle', 'maven', 'npm', 'pnpm' (prompted when omitted)",
     )
     .option(
+      '--module-layout <id>',
+      "module layout for stacks that offer a choice: 'basic' or 'modulith' (prompted when omitted)",
+    )
+    .option(
       '--set <kv...>',
       'preset an answer as adapterId:questionId=value (repeatable)',
       [] as string[],
@@ -69,6 +73,7 @@ export function buildProgram(deps: CliDeps): Command {
         dryRun: boolean;
         layout?: string;
         buildSystem?: string;
+        moduleLayout?: string;
         set: string[];
       }): Promise<void> => {
         const dir = cwd();
@@ -81,6 +86,7 @@ export function buildProgram(deps: CliDeps): Command {
             dryRun: opts.dryRun,
             ...(opts.layout !== undefined ? { layout: opts.layout as RepoLayout } : {}),
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
+            ...(opts.moduleLayout !== undefined ? { moduleLayout: opts.moduleLayout } : {}),
           }),
         );
         const report = unwrap(result);

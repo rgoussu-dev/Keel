@@ -50,6 +50,7 @@ import {
   getStack,
   listStackIds,
   type BuildSystemOption,
+  type ModuleLayoutOption,
   type Stack,
   type StackService,
 } from '../stacks.js';
@@ -128,12 +129,16 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const buildTag = await this.resolveBuildSystem(command, stack);
     if (!buildTag.ok) return buildTag;
 
+    const layoutTag = await this.resolveModuleLayout(command, stack);
+    if (!layoutTag.ok) return layoutTag;
+
     const now = this.deps.clock.nowIso();
     const staged = await this.stageStack({
       prefix: '',
       cwd: command.cwd,
       stack,
       buildTag: buildTag.value,
+      layoutTag: layoutTag.value,
       peers: [],
       services: [],
       skipVcs: false,
@@ -192,6 +197,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
+    if (command.moduleLayout !== undefined) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' is composite — its services scaffold on each service stack's default module layout, so --module-layout does not apply`,
+          'keel.invalid-module-layout',
+        ),
+      );
+    }
+
     const layout = await this.resolveLayout(command);
     if (!layout.ok) return layout;
 
@@ -217,6 +231,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           cwd: command.cwd,
           stack,
           buildTag: null,
+          layoutTag: null,
           peers: [],
           services: (stack.services ?? []).map((s: StackService) => ({
             path: s.path,
@@ -236,6 +251,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           cwd: path.join(command.cwd, service.path),
           stack: service.stack,
           buildTag: defaultBuildTag(service.stack),
+          layoutTag: defaultLayoutTag(service.stack),
           peers: peersFor(service, resolved),
           services: [],
           skipVcs: monorepo,
@@ -279,6 +295,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     stack: Stack;
     /** The chosen build system's `pkg.*` tag; null when the stack's `tags` pin it. */
     buildTag: Tag | null;
+    /** The chosen module layout's `layout.*` tag; null when the stack offers no choice. */
+    layoutTag: Tag | null;
     peers: readonly PeerLink[];
     services: ManifestV2['services'];
     skipVcs: boolean;
@@ -288,7 +306,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }): Promise<StagedScope> {
     let manifest: ManifestV2 = {
       ...emptyManifestV2(inputs.now, this.deps.keelVersion),
-      tags: [...inputs.stack.tags, ...(inputs.buildTag ? [inputs.buildTag] : [])].sort(),
+      tags: [
+        ...inputs.stack.tags,
+        ...(inputs.buildTag ? [inputs.buildTag] : []),
+        ...(inputs.layoutTag ? [inputs.layoutTag] : []),
+      ].sort(),
       answers: inputs.command.answers,
       projects: [...(inputs.stack.projects ?? [])],
       peers: inputs.peers,
@@ -382,6 +404,42 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     return ok(chosen.tag);
   }
 
+  /**
+   * Resolves the module layout for a single-service stack: the
+   * `--module-layout` id when supplied, the interactive choice when
+   * the stack declares more than one, the stack default otherwise.
+   * Returns `null` for stacks that offer no choice — their adapters
+   * resolve to `basic`.
+   */
+  private async resolveModuleLayout(
+    command: NewProjectCommand,
+    stack: Stack,
+  ): Promise<Result<Tag | null>> {
+    const options = stack.moduleLayouts ?? [];
+    const fallback = options[0];
+    if (!fallback) {
+      if (command.moduleLayout !== undefined) {
+        return err(
+          new DomainError(
+            `stack '${stack.id}' ships a single module layout — remove --module-layout`,
+            'keel.invalid-module-layout',
+          ),
+        );
+      }
+      return ok(null);
+    }
+    if (command.moduleLayout !== undefined) {
+      const chosen = options.find((o) => o.id === command.moduleLayout);
+      if (!chosen) return err(invalidModuleLayout(stack, command.moduleLayout, options));
+      return ok(chosen.tag);
+    }
+    if (!command.interactive || options.length === 1) return ok(fallback.tag);
+    const answer = (await this.deps.prompt.ask(moduleLayoutQuestion(options, fallback))).trim();
+    const chosen = options.find((o) => o.id === answer);
+    if (!chosen) return err(invalidModuleLayout(stack, answer, options));
+    return ok(chosen.tag);
+  }
+
   private async resolveLayout(command: NewProjectCommand): Promise<Result<RepoLayout>> {
     if (command.layout !== undefined) {
       if (command.layout !== 'monorepo' && command.layout !== 'polyrepo') {
@@ -422,6 +480,33 @@ function buildSystemQuestion(
   };
 }
 
+function moduleLayoutQuestion(
+  options: readonly ModuleLayoutOption[],
+  fallback: ModuleLayoutOption,
+): Question {
+  return {
+    id: 'moduleLayout',
+    prompt: 'Module layout',
+    doc: 'How the project is carved into modules. Not the repository layout — this is about bounded contexts, not repositories.',
+    choices: options.map((o) => ({ value: o.id, label: o.label, doc: o.doc })),
+    default: fallback.id,
+    memory: 'repeat',
+  };
+}
+
+function invalidModuleLayout(
+  stack: Stack,
+  requested: string,
+  options: readonly ModuleLayoutOption[],
+): DomainError {
+  return new DomainError(
+    `stack '${stack.id}' does not support module layout '${requested}' — available: ${options
+      .map((o) => o.id)
+      .join(', ')}`,
+    'keel.invalid-module-layout',
+  );
+}
+
 function invalidBuildSystem(
   stack: Stack,
   requested: string,
@@ -438,6 +523,11 @@ function invalidBuildSystem(
 /** The default build-system tag of a service stack, if it declares a choice. */
 function defaultBuildTag(stack: Stack): Tag | null {
   return stack.buildSystems?.[0]?.tag ?? null;
+}
+
+/** The default module-layout tag of a service stack, if it declares a choice. */
+function defaultLayoutTag(stack: Stack): Tag | null {
+  return stack.moduleLayouts?.[0]?.tag ?? null;
 }
 
 function alreadyInitialised(scopeRoot: string): DomainError {

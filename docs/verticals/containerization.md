@@ -41,6 +41,14 @@ promotes `runtime.graalvm-native`:
   Gradle plugin, or a `native` Maven profile mirroring the starter
   parent's.
 
+## Module layout
+
+The Dockerfile copies the artifact of whichever module runs, so on a
+[`layout.modulith`](../stacks/jvm.md#module-layout) project the JVM
+images point at `application/api` instead of
+`application/rest/executable`, and the build command they document
+names the matching Gradle project. The image content is unchanged.
+
 ## Prerequisites
 
 | Requirement             | When                                                                                           |

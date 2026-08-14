@@ -1,0 +1,29 @@
+package <%= basePackage %>.greeting.infra.clock.fake;
+
+import java.time.Instant;
+
+import <%= basePackage %>.greeting.domain.contract.Clock;
+
+/**
+ * A controllable Clock — set the current instant in tests, advance
+ * with {@link #setNow(Instant)}. No system-clock fall-through; the
+ * caller must seed it. Per the keel testing convention: a fake, not
+ * a mock.
+ */
+public final class FakeClock implements Clock {
+
+    private Instant fixed;
+
+    public FakeClock(Instant initial) {
+        this.fixed = initial;
+    }
+
+    @Override
+    public Instant now() {
+        return fixed;
+    }
+
+    public void setNow(Instant t) {
+        this.fixed = t;
+    }
+}

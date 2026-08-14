@@ -1,0 +1,64 @@
+package <%= basePackage %>.application.api;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import io.micronaut.context.BeanContext;
+import io.micronaut.context.annotation.Factory;
+import io.micronaut.context.annotation.Import;
+import jakarta.inject.Singleton;
+
+import <%= basePackage %>.greeting.userside.service.GreetingService;
+import <%= basePackage %>.greeting.userside.service.GreetingServiceAdapter;
+import <%= basePackage %>.platform.kernel.Handler;
+import <%= basePackage %>.platform.kernel.Mediator;
+import <%= basePackage %>.platform.kernel.RegistryMediator;
+
+/**
+ * The channel's composition root: collects every discovered domain
+ * {@link Handler} and builds the Mediator from them.
+ *
+ * <p>Micronaut resolves dependencies at compile time, so the domain
+ * modules — deliberately built without Micronaut's annotation
+ * processor — ship no bean definitions. {@link Import} bridges that
+ * gap: it admits the {@code @DomainHandler}-marked types from the
+ * listed packages without the domain's build ever naming Micronaut.
+ *
+ * <p>Packages are not scanned recursively, so each new
+ * {@code greeting.domain.core.<aggregate>} package — and each new
+ * module's core packages — must be listed below. That is the
+ * price of keeping the domain build framework-free; the Quarkus and
+ * Spring bootstraps discover the same marker with no such list.
+ *
+ * <p>Handlers are gathered through {@link BeanContext} rather than by
+ * injecting a {@code List<Handler<?, ?>>}: an imported definition
+ * carries no resolved generic arguments, so it satisfies no
+ * parameterized injection point and such a list arrives empty. The
+ * lookup is confined to this composition root — no other class in the
+ * project touches the container.
+ */
+@Factory
+@Import(
+    packages = "<%= basePackage %>.greeting.domain.core.greet",
+    annotated = "<%= basePackage %>.platform.kernel.DomainHandler")
+public class MediatorFactory {
+    @Singleton
+    @SuppressWarnings("rawtypes") // Handler.class is raw; each element widens safely below
+    public Mediator mediator(BeanContext beans) {
+        List<Handler<?, ?>> handlers = new ArrayList<>();
+        for (Handler<?, ?> handler : beans.getBeansOfType(Handler.class)) {
+            handlers.add(handler);
+        }
+        return new RegistryMediator(handlers);
+    }
+
+    /**
+     * The greeting module's in-process API, offered to peer modules.
+     * Nothing consumes it yet — the second bounded context is the
+     * first thing that will, through a driven port of its own.
+     */
+    @Singleton
+    public GreetingService greetingService(Mediator mediator) {
+        return new GreetingServiceAdapter(mediator);
+    }
+}

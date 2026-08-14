@@ -1,0 +1,37 @@
+package <%= basePackage %>.greeting.userside.api
+
+import jakarta.servlet.http.HttpServletRequest
+
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.RestControllerAdvice
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected
+import <%= basePackage %>.greeting.userside.api.contract.ProblemDetails
+
+/**
+ * Maps the domain's [GreetRejected] error to an RFC 9457 Problem
+ * Details response. The interface adapter owns the domain-error →
+ * transport translation; the domain never learns about HTTP.
+ */
+@RestControllerAdvice
+class GreetRejectedAdvice {
+    @ExceptionHandler(GreetRejected::class)
+    fun onGreetRejected(
+        rejected: GreetRejected,
+        request: HttpServletRequest,
+    ): ResponseEntity<ProblemDetails> {
+        val body = ProblemDetails(
+            "urn:problem-type:greet-rejected",
+            "Greeting rejected",
+            400,
+            rejected.message ?: "",
+            request.requestURI,
+        )
+        return ResponseEntity.status(400)
+            .contentType(MediaType.parseMediaType(ProblemDetails.PROBLEM_JSON))
+            .body(body)
+    }
+
+}

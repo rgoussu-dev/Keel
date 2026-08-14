@@ -1,0 +1,16 @@
+package <%= basePackage %>.greeting.userside.api.contract;
+
+/**
+ * RFC 9457 Problem Details body — the transport shape every error
+ * response of this channel uses.
+ *
+ * @param type     URI reference identifying the problem type
+ * @param title    short, human-readable summary of the problem type
+ * @param status   the HTTP status code for this occurrence
+ * @param detail   human-readable explanation of this occurrence
+ * @param instance URI reference identifying this occurrence
+ */
+public record ProblemDetails(String type, String title, int status, String detail, String instance) {
+    /** Media type RFC 9457 mandates for a Problem Details body. */
+    public static final String PROBLEM_JSON = "application/problem+json";
+}

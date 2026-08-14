@@ -11,11 +11,15 @@
  * bootstraps emit resources at the same path.
  */
 
-import type { Adapter } from '../../contract/composition.js';
+import type { Adapter, Tag } from '../../contract/composition.js';
+import { jvmModuleLayout } from './jvm-module-layout.js';
 
 export const MICRONAUT_CORS_ID = 'gateway/micronaut-cors';
 
-const TEMPLATE_ID = 'composition/gateway/micronaut-cors/templates';
+const TEMPLATE_ROOT = 'composition/gateway/micronaut-cors';
+
+const templateId = (tags: readonly Tag[]): string =>
+  `${TEMPLATE_ROOT}/templates${jvmModuleLayout(tags) === 'modulith' ? '-modulith' : ''}`;
 
 export const micronautCorsAdapter: Adapter = {
   id: MICRONAUT_CORS_ID,
@@ -23,7 +27,7 @@ export const micronautCorsAdapter: Adapter = {
   covers: [],
   predicate: { requires: ['framework.micronaut', 'arch.server-http', 'peer.ui.spa'] },
   async contribute(ctx) {
-    const files = await ctx.templates.render(TEMPLATE_ID, '', {});
+    const files = await ctx.templates.render(templateId(ctx.manifest.tags), '', {});
     return { files };
   },
 };

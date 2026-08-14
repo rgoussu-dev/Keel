@@ -187,7 +187,10 @@ assets/
   composition/            # adapter template trees (ejs), one
                           # directory per `<vertical>/<adapter>/`;
                           # plus shared trees several adapters
-                          # render (walking-skeleton/jvm-domain/)
+                          # render (walking-skeleton/jvm-domain/).
+                          # A `*-modulith` sibling tree is the same
+                          # content under the modulith module layout,
+                          # picked by the manifest's `layout.*` tag
   project/                # binding spec (AGENTS.md) — source of truth
                           # for the universal engineering conventions
 tests/                    # vitest; mirrors src/ (domain/, e2e/,

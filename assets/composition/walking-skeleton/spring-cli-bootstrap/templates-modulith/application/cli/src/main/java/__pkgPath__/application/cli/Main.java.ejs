@@ -1,0 +1,54 @@
+package <%= basePackage %>.application.cli;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.ExitCodeGenerator;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import picocli.CommandLine;
+import picocli.CommandLine.IFactory;
+
+import <%= basePackage %>.platform.kernel.DomainHandler;
+
+/**
+ * Boots the Spring container, then hands the raw arguments to
+ * picocli. Commands are Spring beans instantiated through the
+ * {@link IFactory} the picocli starter provides, so constructor
+ * injection works inside them.
+ *
+ * <p>The scan is declared explicitly because it spans the assembly's
+ * own package and the whole {@code greeting} module, whose command
+ * lives in its user-side adapter and whose handlers carry no Spring
+ * stereotype and are admitted by the {@link DomainHandler} include
+ * filter instead.
+ */
+@SpringBootApplication
+@ComponentScan(
+        basePackages = {"<%= basePackage %>.application.cli", "<%= basePackage %>.greeting"},
+        includeFilters =
+                @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = DomainHandler.class))
+public class Main implements CommandLineRunner, ExitCodeGenerator {
+    private final IFactory factory;
+    private final RootCommand rootCommand;
+    private int exitCode;
+
+    public Main(IFactory factory, RootCommand rootCommand) {
+        this.factory = factory;
+        this.rootCommand = rootCommand;
+    }
+
+    @Override
+    public void run(String... args) {
+        exitCode = new CommandLine(rootCommand, factory).execute(args);
+    }
+
+    @Override
+    public int getExitCode() {
+        return exitCode;
+    }
+
+    public static void main(String[] args) {
+        System.exit(SpringApplication.exit(SpringApplication.run(Main.class, args)));
+    }
+}

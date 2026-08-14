@@ -125,6 +125,24 @@ so it exercises the patch path of the composition contract.
 
 ## Backlog (unordered)
 
+- **`persistence` on the modulith layout** — `keel add persistence`
+  refuses on a `layout.modulith` project today: its module list,
+  composition-root patches and package strings all name `domain/…`
+  and `infrastructure/…` directly. Porting it means routing those
+  through `jvmLayout(tags)` the way `observability`,
+  `containerization` and `gateway` already do, plus a
+  `*-modulith` template tree per framework.
+- **The modulith layout beyond the JVM** — Go, Rust, `ts-http` and
+  `web-components` ship `basic` only. Each has an idiomatic
+  realization already designed (facade-fronted context packages
+  under `internal/modules/`, per-context crate clusters,
+  per-context workspace packages); what is missing is the template
+  trees and the `layout.*` option on those stacks.
+- **A second bounded context in the modulith skeleton** — the
+  walking skeleton emits one module plus its `user-side/service`
+  seam. A `keel add module <name>` command emitting the second
+  context, its peer port and the gateway wiring would make the seam
+  demonstrable rather than merely present.
 - **Persistence: more engines and migration tools** — the vertical
   covers every HTTP stack (Quarkus/Spring/Micronaut in Java and
   Kotlin, Go, Rust, TS); what remains is a second RDBMS via the

@@ -11,8 +11,9 @@ the build wiring change.
 | Spring Boot 4 | `spring-cli`    | `spring-rest`    | `spring-cli-kotlin`    | `spring-rest-kotlin`    |
 | Micronaut 4   | `micronaut-cli` | `micronaut-rest` | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` |
 
-All target **Java 25** (Kotlin twins on JVM 25) and build with
-**Gradle or Maven** — your pick.
+All target **Java 25** (Kotlin twins on JVM 25), build with **Gradle
+or Maven**, and scaffold on either **module layout** — `basic` (the
+flat trisection) or `modulith`. Both are your pick.
 
 ## How to
 
@@ -21,6 +22,7 @@ mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=quarkus-rest              # interactive
 npx @rgoussu.dev/keel new --stack=spring-rest --build-system maven
 npx @rgoussu.dev/keel new --stack=micronaut-cli-kotlin --yes
+npx @rgoussu.dev/keel new --stack=quarkus-rest --module-layout modulith
 ```
 
 ## Prerequisites
@@ -42,11 +44,14 @@ scaffold time.
 | Base package    | e.g. `com.acme.tool` — the root package of every module.                             |
 | Project name    | Used for artifact ids and the root directory naming inside build files.              |
 | Build system    | `gradle` (default) or `maven`; pin with `--build-system`, skip prompts with `--yes`. |
+| Module layout   | `basic` (default) or `modulith`; pin with `--module-layout`. See below.              |
 | `origin` remote | Optional; registered by [`vcs`](../verticals/vcs.md) if given.                       |
 
 ## What gets generated
 
-A hexagonal multi-module project (Gradle Kotlin DSL or Maven POMs):
+A hexagonal multi-module project (Gradle Kotlin DSL or Maven POMs).
+Its shape follows the **module layout** you picked; the `basic` layout
+is shown here, the `modulith` one in the [next section](#module-layout).
 
 ```
 my-service/
@@ -74,10 +79,81 @@ The REST stacks additionally install
 correlation ids, OpenTelemetry, and a Grafana monitoring stack wired
 into the dev compose) by default.
 
+## Module layout
+
+`basic` is the flat trisection above: one hexagon, one `domain/`, one
+`application/` per entrypoint. It is the right shape while the service
+holds a single bounded context, and it stays the default.
+
+`--module-layout=modulith` scaffolds the same walking skeleton carved
+one bounded context at a time:
+
+```
+my-service/
+  platform/
+    kernel/                      # Command, Handler, Mediator, RegistryMediator,
+                                 # @DomainHandler — depends on nothing
+  modules/
+    greeting/                    # one bounded context, one whole hexagon
+      domain/
+        contract/                # commands, domain errors, driven ports
+        core/                    # handlers, entities
+      user-side/                 # driving adapters — libraries, never runnable
+        api/
+          contract/              # transport DTOs; the artifact a client consumes
+          adapters/              # the HTTP resource + error mapper  (REST stacks)
+        cli/                     # the picocli subcommand              (CLI stacks)
+        service/                 # the in-process API a PEER MODULE consumes
+      infra/
+        clock/fake/              # driven adapters; the port example lands here
+  application/
+    api/ | cli/                  # the runnable assembly: main class, composition
+                                 # roots, runtime config, Dockerfile
+```
+
+What actually changes, beyond the directories:
+
+- **The deployment unit is the assembly, not the adapter.** `application/api`
+  mounts the user-side adapters of every module it composes; nothing
+  under `modules/` produces a runnable artifact. Six contexts exposing
+  HTTP still ship one container.
+- **The dispatch seam is per module.** Each context gets its own
+  mediator over its own handlers; `platform/kernel` holds the
+  vocabulary and the registry implementation, and no repository-wide
+  command bus exists.
+- **`user-side/service` is the composition seam.** A second context
+  reaches this one by declaring a driven port in _its own_ vocabulary
+  and implementing it in _its own_ `infra/` over `GreetingService`.
+  That is the only dependency edge allowed between modules — the
+  service module's build declares the greeting domain as
+  `implementation`, so a peer physically cannot compile against it.
+  Swapping that implementation for an HTTP client built from
+  `user-side/api/contract` is the whole of extracting the context into
+  its own service.
+- **Observability follows the assembly**, because correlation ids,
+  probes and telemetry belong to the deployment unit rather than to
+  any one context: its classes land in `application/api`.
+
+### Not supported yet on `modulith`
+
+[`persistence`](../verticals/persistence.md) still assumes the flat
+trisection — its module list, composition-root patches and package
+strings all name `domain/…` and `infrastructure/…` directly. Rather
+than scatter files into directories a modulith project does not have,
+`keel add persistence` **refuses with a message** on such a project.
+Add the driven port and its adapter under `modules/<context>/` by
+hand, or scaffold with `--module-layout=basic`. Tracked in
+[the roadmap](../roadmap.md).
+
+The non-JVM stacks (Go, Rust, ts-http, web-components) ship the
+`basic` layout only for now; their idiomatic modulith realizations are
+also on the roadmap.
+
 ## How handlers reach the mediator
 
 Handlers are marked with `@DomainHandler`, an annotation the **domain
-owns** (`domain/contract`). No framework stereotype ever appears in
+owns** (`domain/contract` under `basic`, `platform/kernel` under
+`modulith`). No framework stereotype ever appears in
 domain code. The marker carries only annotation-level Jakarta
 specification APIs (`jakarta.inject`, `jakarta.enterprise.cdi-api`),
 declared `compileOnly`/`provided` so neither reaches a runtime

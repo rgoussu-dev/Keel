@@ -1,0 +1,24 @@
+package <%= basePackage %>.application.cli;
+
+import <%= basePackage %>.greeting.userside.cli.HelloCommand;
+
+import io.quarkus.picocli.runtime.annotations.TopCommand;
+import picocli.CommandLine.Command;
+
+/**
+ * Top-level entry point for the {@value #NAME} CLI. Subcommands are
+ * declared on {@link Command#subcommands}; add a new one by writing
+ * a Runnable annotated with {@link Command} and listing it here.
+ */
+@TopCommand
+@Command(
+    name = Main.NAME,
+    mixinStandardHelpOptions = true,
+    description = "Walking skeleton CLI scaffolded by keel.",
+    subcommands = {HelloCommand.class}
+)
+public final class Main {
+    public static final String NAME = "<%= projectName %>";
+
+    private Main() {}
+}

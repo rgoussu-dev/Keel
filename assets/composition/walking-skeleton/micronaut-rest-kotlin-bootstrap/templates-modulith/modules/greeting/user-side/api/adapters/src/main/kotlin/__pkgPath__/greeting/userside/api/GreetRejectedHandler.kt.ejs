@@ -1,0 +1,36 @@
+package <%= basePackage %>.greeting.userside.api
+
+import io.micronaut.http.HttpRequest
+import io.micronaut.http.HttpResponse
+import io.micronaut.http.MutableHttpResponse
+import io.micronaut.http.annotation.Produces
+import io.micronaut.http.server.exceptions.ExceptionHandler
+import jakarta.inject.Singleton
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected
+import <%= basePackage %>.greeting.userside.api.contract.ProblemDetails
+
+/**
+ * Maps the domain's [GreetRejected] error to an RFC 9457 Problem
+ * Details response. The interface adapter owns the domain-error →
+ * transport translation; the domain never learns about HTTP.
+ */
+@Produces
+@Singleton
+class GreetRejectedHandler :
+    ExceptionHandler<GreetRejected, MutableHttpResponse<ProblemDetails>> {
+    override fun handle(
+        request: HttpRequest<*>,
+        rejected: GreetRejected,
+    ): MutableHttpResponse<ProblemDetails> {
+        val body = ProblemDetails(
+            "urn:problem-type:greet-rejected",
+            "Greeting rejected",
+            400,
+            rejected.message ?: "",
+            request.path,
+        )
+        return HttpResponse.badRequest(body).contentType(ProblemDetails.PROBLEM_JSON)
+    }
+
+}

@@ -1,0 +1,30 @@
+plugins {
+    java
+    id("com.gradleup.shadow") version "8.3.9"
+    id("io.micronaut.application") version "4.6.2"
+}
+
+micronaut {
+    version("4.10.17")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("<%= basePackage %>.*")
+    }
+}
+
+application {
+    mainClass.set("<%= basePackage %>.application.cli.Main")
+}
+
+dependencies {
+    implementation("io.micronaut.picocli:micronaut-picocli")
+
+    implementation(project(":platform:kernel"))
+    implementation(project(":modules:greeting:domain:contract"))
+    implementation(project(":modules:greeting:domain:core"))
+    implementation(project(":modules:greeting:user-side:cli"))
+    implementation(project(":modules:greeting:user-side:service"))
+
+    runtimeOnly("ch.qos.logback:logback-classic")
+}

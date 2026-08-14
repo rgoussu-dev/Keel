@@ -157,6 +157,8 @@ export interface JvmRestE2ESpec {
   readonly stack: string;
   /** Bootstrap adapter id the sticky answers are recorded under. */
   readonly bootstrapId: string;
+  /** Module layout to scaffold; the stack's default when omitted. */
+  readonly moduleLayout?: string;
   /** Path of the runnable jar relative to the project root. */
   readonly runJar: readonly string[];
   /** JVM flag that requests an ephemeral port. */
@@ -206,6 +208,7 @@ export async function runJvmRestE2E(
         },
         interactive: false,
         dryRun: false,
+        ...(spec.moduleLayout !== undefined ? { moduleLayout: spec.moduleLayout } : {}),
       }),
     ),
   );

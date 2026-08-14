@@ -37,6 +37,7 @@ import {
   jvmPersistenceBootstrapAnswers,
   jvmPersistenceVars,
   jvmSharedPersistenceFiles,
+  refuseOnModulith,
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   persistenceReadmePatch,
@@ -222,6 +223,7 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.spring', 'arch.server-http', `lang.${language}`] },
     async contribute(ctx) {
+      refuseOnModulith('persistence/spring-persistence', ctx.manifest);
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
         id,

@@ -62,6 +62,7 @@ and the **exact tree generated** — start at the
 
 ```sh
 npx @rgoussu.dev/keel new --stack=spring-rest   # or quarkus-rest, micronaut-rest, …-kotlin, …-cli
+npx @rgoussu.dev/keel new --stack=quarkus-rest --module-layout modulith
 ```
 
 You get a hexagonal multi-module Gradle-or-Maven project: the domain
@@ -71,6 +72,16 @@ or REST with `GET /greet`), a `Clock` sample port + fake module, a
 Quarkus/Spring/Micronaut test driving the slice end to end, and the
 build wrapper generated (`gradlew` / `mvnw`). Every stack has a Kotlin
 twin (`…-kotlin`).
+
+Two **module layouts** are on offer. `basic` (the default) is that
+flat trisection — the right shape for a single bounded context.
+`--module-layout=modulith` carves the same skeleton one context at a
+time: `modules/<context>/` holding a whole hexagon
+(`user-side/` + `domain/` + `infra/`), `platform/` for what every
+context shares, and `application/<typology>` for the runnable
+assemblies. Modules meet only at `user-side/service`, which is what
+makes extracting a context into its own service a wiring change
+rather than a rewrite. → [Module layout](docs/stacks/jvm.md#module-layout)
 
 **Prerequisites:** JDK 25, `gradle` _or_ `mvn` on PATH, `git`.
 → [JVM stacks](docs/stacks/jvm.md)

@@ -1,0 +1,25 @@
+package <%= basePackage %>.application.api.observability
+
+import jakarta.enterprise.context.ApplicationScoped
+import org.eclipse.microprofile.health.HealthCheck
+import org.eclipse.microprofile.health.HealthCheckResponse
+import org.eclipse.microprofile.health.Readiness
+
+/**
+ * Readiness gate for the service: `/q/health/ready` aggregates every
+ * `@Readiness` check, and the orchestrator routes traffic only while
+ * they all pass. Grow this check (or add siblings) as real
+ * dependencies appear — a datasource ping, a downstream probe, a
+ * cache warm flag.
+ *
+ * Keep dependency checks out of liveness (`/q/health/live`):
+ * liveness failing means "restart me", and a dead shared dependency
+ * would restart-storm the whole fleet instead of just draining it.
+ */
+@Readiness
+@ApplicationScoped
+class ServiceReadyCheck : HealthCheck {
+
+    override fun call(): HealthCheckResponse =
+        HealthCheckResponse.named("service-ready").up().build()
+}

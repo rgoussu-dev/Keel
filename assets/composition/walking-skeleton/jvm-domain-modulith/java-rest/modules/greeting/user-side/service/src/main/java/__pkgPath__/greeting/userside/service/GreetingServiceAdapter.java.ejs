@@ -1,0 +1,23 @@
+package <%= basePackage %>.greeting.userside.service;
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand;
+import <%= basePackage %>.platform.kernel.Mediator;
+
+/**
+ * Maps the peer-facing API onto the module's dispatch seam. Like
+ * every driving adapter it translates and never decides — the rule
+ * that keeps an in-process call and a remote one interchangeable.
+ */
+public final class GreetingServiceAdapter implements GreetingService {
+
+    private final Mediator mediator;
+
+    public GreetingServiceAdapter(Mediator mediator) {
+        this.mediator = mediator;
+    }
+
+    @Override
+    public String greetingFor(String name) {
+        return mediator.dispatch(new GreetCommand(name));
+    }
+}

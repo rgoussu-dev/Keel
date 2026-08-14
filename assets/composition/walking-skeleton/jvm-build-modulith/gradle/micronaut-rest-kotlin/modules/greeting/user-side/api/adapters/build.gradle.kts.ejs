@@ -1,0 +1,31 @@
+plugins {
+    `java-library`
+    id("com.google.devtools.ksp")
+    id("io.micronaut.library") version "4.6.2"
+}
+
+// Micronaut resolves beans at compile time, so a library module holding
+// adapters runs KSP itself; only the assembly applies the `application`
+// plugin.
+micronaut {
+    version("4.10.17")
+    processing {
+        incremental(true)
+        annotations("<%= basePackage %>.*")
+    }
+}
+
+// A driving adapter is a library the assembly mounts, never a
+// runnable unit: no framework application plugin, no main class,
+// no runtime configuration lives here.
+dependencies {
+    // ExceptionHandler and friends live in the server API; the `library`
+    // plugin brings no server runtime, unlike the assembly's `application`.
+    implementation("io.micronaut:micronaut-http-server")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    api(project(":modules:greeting:user-side:api:contract"))
+    implementation(project(":modules:greeting:domain:contract"))
+    implementation(project(":platform:kernel"))
+}
