@@ -319,22 +319,29 @@ function assemblyDepsPatch(
   };
 }
 
-/**
- * Fully-qualified names every binding needs, derived once so no
- * framework module spells a package by hand.
- */
-export function peerNames(basePackage: string): {
+/** The fully-qualified names a composition-root binding writes. */
+export interface PeerNames {
+  /** The port guestbook declares, and the assembly binds. */
   readonly welcome: string;
+  /** The one class naming two contexts. */
   readonly gateway: string;
-  readonly service: string;
+  /** The peer's in-process API the gateway calls through. */
   readonly serviceAdapter: string;
+  /** Guestbook's handler, and the package a container must be told to look in. */
   readonly handler: string;
   readonly handlerPkg: string;
-} {
+}
+
+/**
+ * Derives those names once, so no framework module spells a package
+ * by hand. The `infra.<ctx>gateway` segment in particular is a
+ * directory (`infra/greeting-gateway`) spelled differently from its
+ * package — exactly the kind of drift a second copy invites.
+ */
+export function peerNames(basePackage: string): PeerNames {
   return {
     welcome: `${basePackage}.${PEER_MODULE}.domain.contract.signing.Welcome`,
     gateway: `${basePackage}.${PEER_MODULE}.infra.${SKELETON_MODULE}gateway.GreetingWelcome`,
-    service: `${basePackage}.${SKELETON_MODULE}.userside.service.GreetingService`,
     serviceAdapter: `${basePackage}.${SKELETON_MODULE}.userside.service.GreetingServiceAdapter`,
     handler: `${basePackage}.${PEER_MODULE}.domain.core.signing.SignHandler`,
     handlerPkg: `${basePackage}.${PEER_MODULE}.domain.core.signing`,
