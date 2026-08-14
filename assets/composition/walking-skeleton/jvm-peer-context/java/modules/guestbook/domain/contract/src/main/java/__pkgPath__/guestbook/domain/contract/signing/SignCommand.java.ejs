@@ -1,0 +1,6 @@
+package <%= basePackage %>.guestbook.domain.contract.signing;
+
+import <%= basePackage %>.platform.kernel.Command;
+
+/** Sign the guestbook as {@code visitor}. */
+public record SignCommand(String visitor) implements Command<GuestbookEntry> {}

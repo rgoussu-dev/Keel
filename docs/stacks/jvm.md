@@ -15,6 +15,32 @@ All target **Java 25** (Kotlin twins on JVM 25), build with **Gradle
 or Maven**, and scaffold on either **module layout** — `basic` (the
 flat trisection) or `modulith`. Both are your pick.
 
+### A second bounded context
+
+`--with-peer-context` adds a consumer beside the skeleton's own
+context, so the seam is demonstrable rather than merely present:
+
+```
+modules/
+  greeting/                       the provider
+    user-side/service/            the in-process API peers consume
+  guestbook/                      the consumer
+    domain/contract/              declares Welcome, in its own words
+    domain/core/                  SignHandler, uses the port
+    infra/greeting-gateway/       the ONE class naming two contexts
+```
+
+`guestbook` never sees `greeting`'s domain: the service module
+declares its own contract non-transitively (`implementation` under
+Gradle, `optional` under Maven), so an import of
+`greeting.domain.contract` from the gateway does not compile.
+Replacing the gateway with an HTTP twin built on
+`greeting/user-side/api/contract` is the whole of carving greeting
+out into its own service.
+
+Quarkus + Java today; the Spring, Micronaut and Kotlin siblings are
+tracked in [the roadmap](../roadmap.md).
+
 ## How to
 
 ```sh

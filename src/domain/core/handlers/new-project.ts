@@ -45,6 +45,7 @@ import {
 } from '../../contract/manifest.js';
 import type { TreeChange } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
+import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from '../adapters/jvm-module-layout.js';
 import { installVertical } from '../install.js';
 import {
   getStack,
@@ -132,6 +133,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const layoutTag = await this.resolveModuleLayout(command, stack);
     if (!layoutTag.ok) return layoutTag;
 
+    const peerTag = peerContextTag(command, stack, layoutTag.value);
+    if (!peerTag.ok) return peerTag;
+
     const now = this.deps.clock.nowIso();
     const staged = await this.stageStack({
       prefix: '',
@@ -139,6 +143,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       stack,
       buildTag: buildTag.value,
       layoutTag: layoutTag.value,
+      peerTag: peerTag.value,
       peers: [],
       services: [],
       skipVcs: false,
@@ -202,6 +207,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         new DomainError(
           `stack '${stack.id}' is composite — its services scaffold on each service stack's default module layout, so --module-layout does not apply`,
           'keel.invalid-module-layout',
+        ),
+      );
+    }
+
+    if (command.withPeerContext === true) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' is composite — its services scaffold on each service stack's default module layout, so --with-peer-context does not apply`,
+          'keel.invalid-peer-context',
         ),
       );
     }
@@ -297,6 +311,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     buildTag: Tag | null;
     /** The chosen module layout's `layout.*` tag; null when the stack offers no choice. */
     layoutTag: Tag | null;
+    /** `modules.peer-context` when the second context was opted into; null otherwise. */
+    peerTag?: Tag | null;
     peers: readonly PeerLink[];
     services: ManifestV2['services'];
     skipVcs: boolean;
@@ -310,6 +326,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         ...inputs.stack.tags,
         ...(inputs.buildTag ? [inputs.buildTag] : []),
         ...(inputs.layoutTag ? [inputs.layoutTag] : []),
+        ...(inputs.peerTag ? [inputs.peerTag] : []),
       ].sort(),
       answers: inputs.command.answers,
       projects: [...(inputs.stack.projects ?? [])],
@@ -523,6 +540,35 @@ function invalidBuildSystem(
 /** The default build-system tag of a service stack, if it declares a choice. */
 function defaultBuildTag(stack: Stack): Tag | null {
   return stack.buildSystems?.[0]?.tag ?? null;
+}
+
+/**
+ * Resolves `--with-peer-context` into the tag that seeds the second
+ * bounded context, rejecting it where there would be no seam for that
+ * context to meet the first at.
+ *
+ * The flag is only meaningful under the modulith: the flat trisection
+ * has one hexagon and no `user-side/service`, so a peer would have
+ * nothing to reach through. Failing loudly beats silently scaffolding
+ * one context and leaving the user to wonder where the other went.
+ */
+function peerContextTag(
+  command: NewProjectCommand,
+  stack: Stack,
+  layoutTag: Tag | null,
+): Result<Tag | null> {
+  if (command.withPeerContext !== true) return ok(null);
+  if (layoutTag !== MODULITH_LAYOUT_TAG) {
+    return err(
+      new DomainError(
+        `--with-peer-context needs the modulith layout: a second bounded context meets the first at user-side/service, which the flat layout does not have. Add --module-layout=modulith${
+          stack.moduleLayouts === undefined ? ` (stack '${stack.id}' does not offer one)` : ''
+        }`,
+        'keel.invalid-peer-context',
+      ),
+    );
+  }
+  return ok(PEER_CONTEXT_TAG);
 }
 
 /** The default module-layout tag of a service stack, if it declares a choice. */

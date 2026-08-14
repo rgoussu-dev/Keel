@@ -1,0 +1,47 @@
+package <%= basePackage %>.guestbook.domain.core.signing;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.guestbook.domain.contract.signing.GuestbookEntry;
+import <%= basePackage %>.guestbook.domain.contract.signing.SignCommand;
+import <%= basePackage %>.guestbook.domain.contract.signing.SignRejected;
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor;
+import <%= basePackage %>.guestbook.domain.contract.signing.Welcome;
+import <%= basePackage %>.guestbook.domain.contract.signing.WelcomeMessage;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class SignTest {
+
+    @Test
+    void signsTheGuestbookWithTheWelcomeItWasGiven() {
+        SignHandler handler = new SignHandler(new FixedWelcome("Hello, Romain!"));
+
+        GuestbookEntry entry = handler.handle(new SignCommand("Romain"));
+
+        assertEquals(new GuestbookEntry("Romain", "Hello, Romain!"), entry);
+    }
+
+    @Test
+    void rejectsABlankVisitor() {
+        SignHandler handler = new SignHandler(new FixedWelcome("unused"));
+
+        SignRejected rejected =
+                assertThrows(SignRejected.class, () -> handler.handle(new SignCommand("  ")));
+
+        assertEquals("visitor must not be blank", rejected.getMessage());
+    }
+
+    /**
+     * A fake, not a mock — the house rule. The domain test never sees
+     * the greeting module: it stands the port up itself.
+     */
+    private record FixedWelcome(String text) implements Welcome {
+
+        @Override
+        public WelcomeMessage welcomeFor(Visitor visitor) {
+            return new WelcomeMessage(text);
+        }
+    }
+}

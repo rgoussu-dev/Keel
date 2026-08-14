@@ -64,6 +64,17 @@ export interface NewProjectCommand extends Command<InstallReport> {
    * *repository* layout of a composite install.
    */
   readonly moduleLayout?: string;
+  /**
+   * Also scaffold a second bounded context alongside the skeleton's
+   * own, reaching it only through its `user-side/service` seam — the
+   * inter-context edge made demonstrable rather than merely
+   * described.
+   *
+   * Only meaningful under the modulith layout, which is what creates
+   * the seam; rejected otherwise, since there would be nothing for
+   * the second context to meet the first at.
+   */
+  readonly withPeerContext?: boolean;
 }
 
 /** Layer an additional vertical onto an initialised project. */

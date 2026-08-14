@@ -27,6 +27,7 @@ import { QUARKUS_CLI_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/q
 import {
   BASIC_LAYOUT_TAG,
   MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
   jvmLayout,
   jvmModuleLayout,
 } from '../../../../src/domain/core/adapters/jvm-module-layout.js';
@@ -223,6 +224,133 @@ describe('walking-skeleton under layout.modulith (Quarkus REST)', () => {
     // compile classpath — the one thing the seam exists to prevent.
     expect(build).toContain('implementation(project(":modules:greeting:domain:contract"))');
     expect(build).not.toContain('api(project(":modules:greeting:domain:contract"))');
+  });
+
+  it('keeps a module out of its peers under Maven too: the domain dependency is optional', async () => {
+    // The Maven twin of the rule above, and a real regression: Maven's
+    // `compile` scope is transitive, so a plain dependency here hands
+    // the greeting domain to every peer that depends on this module —
+    // verified by building a three-module reactor, where the peer
+    // compiled `import …greeting.domain.contract…` with no dependency
+    // on it. `optional` is Maven's only non-transitive compile scope.
+    const { tree, cwd } = await install(walkingSkeletonVertical, [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.maven',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+      MODULITH_LAYOUT_TAG,
+    ]);
+    cwds.push(cwd);
+    const pom = tree.read('modules/greeting/user-side/service/pom.xml')?.toString() ?? '';
+    const contractDep =
+      /<dependency>(?:(?!<\/dependency>)[\s\S])*greeting-domain-contract[\s\S]*?<\/dependency>/.exec(
+        pom,
+      );
+    expect(contractDep, 'the service pom must declare greeting-domain-contract').not.toBeNull();
+    expect(contractDep?.[0]).toContain('<optional>true</optional>');
+    // `provided` would also be non-transitive but drops the contract
+    // from this module's runtime classpath, and the adapter dispatches
+    // a real GreetCommand — so it must not be used here.
+    expect(contractDep?.[0]).not.toContain('<scope>provided</scope>');
+  });
+
+  it('scaffolds a second bounded context that meets the first only at the service seam', async () => {
+    const { tree, cwd } = await install(
+      walkingSkeletonVertical,
+      tags('arch.server-http', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG),
+    );
+    cwds.push(cwd);
+
+    // The consumer owns the port, in its own vocabulary.
+    const port =
+      tree
+        .read(
+          'modules/guestbook/domain/contract/src/main/java/com/example/guestbook/domain/contract/signing/Welcome.java',
+        )
+        ?.toString() ?? '';
+    expect(port).toContain('WelcomeMessage welcomeFor(Visitor visitor)');
+    // The prose may name greeting to explain what it avoids; the code
+    // must not depend on it. Imports are the part that binds.
+    expect(
+      port.split('\n').filter((l) => l.startsWith('import ')),
+      'the consumer port must not import the provider',
+    ).toEqual([]);
+
+    // Exactly one class names two contexts, and it is the gateway.
+    const gateway =
+      tree
+        .read(
+          'modules/guestbook/infra/greeting-gateway/src/main/java/com/example/guestbook/infra/greetinggateway/GreetingWelcome.java',
+        )
+        ?.toString() ?? '';
+    expect(gateway).toContain('import com.example.greeting.userside.service.GreetingService;');
+    expect(
+      gateway.split('\n').filter((l) => l.startsWith('import ') && l.includes('greeting.domain')),
+      "the gateway must not reach past the seam into greeting's domain",
+    ).toEqual([]);
+
+    // The build graph gives the gateway the seam and nothing behind it.
+    const gatewayBuild =
+      tree.read('modules/guestbook/infra/greeting-gateway/build.gradle.kts')?.toString() ?? '';
+    expect(gatewayBuild).toContain('project(":modules:greeting:user-side:service")');
+    expect(gatewayBuild).not.toContain('project(":modules:greeting:domain:contract")');
+  });
+
+  it('binds the peer port lazily, or the container recurses until the stack runs out', async () => {
+    // Regression: the mediator is built by materialising every handler,
+    // so resolving the greeting service while producing Welcome closes
+    // a cycle — mediator → SignHandler → Welcome → GreetingService →
+    // mediator. The first build of this shape died with a
+    // StackOverflowError; a single-context skeleton cannot reach it.
+    const { tree, cwd } = await install(
+      walkingSkeletonVertical,
+      tags('arch.server-http', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG),
+    );
+    cwds.push(cwd);
+    const producer =
+      tree
+        .read('application/api/src/main/java/com/example/application/api/MediatorProducer.java')
+        ?.toString() ?? '';
+    expect(producer).toContain('public Welcome welcome(Instance<GreetingService> greeting)');
+    expect(producer).toContain('new GreetingWelcome(greeting::get)');
+  });
+
+  it('gives the Maven assembly real dependencies, not managed versions', async () => {
+    // Regression: a Quarkus pom opens with a <dependencyManagement>
+    // block, so anchoring the patch on the closing </dependencies>
+    // tag filed the peer modules under version management — where
+    // they pin versions and add nothing to the compile classpath.
+    // Only a real `mvn verify` caught it: `package ... does not exist`.
+    const { tree, cwd } = await install(walkingSkeletonVertical, [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.maven',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+      MODULITH_LAYOUT_TAG,
+      PEER_CONTEXT_TAG,
+    ]);
+    cwds.push(cwd);
+    const pom = tree.read('application/api/pom.xml')?.toString() ?? '';
+    const managed = /<dependencyManagement>[\s\S]*?<\/dependencyManagement>/.exec(pom)?.[0] ?? '';
+    expect(managed, 'peer modules must not be filed under dependencyManagement').not.toContain(
+      'guestbook',
+    );
+    expect(pom).toContain('<artifactId>guestbook-domain-core</artifactId>');
+    expect(pom).toContain('<artifactId>guestbook-infra-greeting-gateway</artifactId>');
+  });
+
+  it('leaves the skeleton untouched when the peer context is not opted into', async () => {
+    const { tree, cwd } = await install(
+      walkingSkeletonVertical,
+      tags('arch.server-http', MODULITH_LAYOUT_TAG),
+    );
+    cwds.push(cwd);
+    expect(tree.read('modules/guestbook/domain/contract/build.gradle.kts')).toBeNull();
+    expect(tree.read('settings.gradle.kts')?.toString()).not.toContain('guestbook');
   });
 
   it('the service adapter dispatches through the module mediator, not the handler', async () => {

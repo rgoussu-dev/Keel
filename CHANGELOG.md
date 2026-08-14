@@ -8,6 +8,57 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **A second bounded context in the modulith, on demand.**
+  `keel new --module-layout=modulith --with-peer-context` scaffolds a
+  `guestbook` context beside `greeting` and wires the seam between
+  them: `guestbook` declares a `Welcome` port in its own vocabulary,
+  `guestbook/infra/greeting-gateway` implements it over
+  `greeting/user-side/service`, and the assembly binds the two. It is
+  the only class in the project naming two contexts, and the build
+  graph is what keeps it that way — `greeting.domain.contract` is not
+  on its compile classpath, so reaching past the seam does not
+  compile.
+
+  Opt-in rather than default: a single-context service should not
+  carry a demo context it has to delete. Quarkus + Java for now; the
+  Spring, Micronaut and Kotlin siblings cover the same ground under
+  their own predicates.
+
+- **Maven end-to-end test coverage.** `tests/support/jvm-rest-e2e.ts`
+  was Gradle-only at every level, so no keel Maven output had ever
+  been built end to end on any of the twelve JVM stacks — the gap that
+  let both Maven defects below reach `main`. A spec's `buildSystem`
+  now selects `./gradlew build` or `./mvnw verify`, with the wrapper
+  assertion, retried deferred action, runnable-jar path (`build/` vs
+  `target/`) and dependency-cache isolation (`GRADLE_USER_HOME` vs
+  `-Dmaven.repo.local`) all following it. The first case exercises the
+  two-context modulith on Maven. Maven cases require `mvn` on PATH and
+  a JDK 25+ `JAVA_HOME`, and skip themselves otherwise — Gradle
+  provisions its own toolchain, Maven cannot.
+
+### Fixed
+
+- **The Maven modulith leaked the provider's domain past the peer
+  seam.** `greeting-user-side-service` declared
+  `greeting-domain-contract` at default `compile` scope, which Maven
+  resolves transitively — so any peer depending on the service module
+  also got the greeting domain on its compile classpath, and the
+  property the whole layout exists to enforce silently did not hold.
+  (The Gradle twin was always correct: `implementation` scope.) The
+  dependency is now `<optional>true</optional>`, Maven's only
+  non-transitive compile scope. Verified by building a three-module
+  reactor: the peer compiled an import of the provider's domain
+  before the fix and fails to resolve it after.
+
+- **The modulith's composition root could not survive a second
+  context.** Producing the peer-facing service eagerly while building
+  the mediator closes a construction cycle (mediator → handler →
+  port → service → mediator); the container recursed until the stack
+  ran out. The peer port is now bound from a lazily-resolved
+  `Instance`, which is also how a remote gateway would behave. Only
+  reachable with `--with-peer-context`, so no released project is
+  affected.
+
 - **The `modulith` module layout for the JVM stacks.**
   `keel new --module-layout=modulith` (or the new interactive "Module
   layout" question) scaffolds the walking skeleton carved one bounded context
