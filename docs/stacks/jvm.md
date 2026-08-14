@@ -38,8 +38,29 @@ Replacing the gateway with an HTTP twin built on
 `greeting/user-side/api/contract` is the whole of carving greeting
 out into its own service.
 
-Quarkus + Java today; the Spring, Micronaut and Kotlin siblings are
-tracked in [the roadmap](../roadmap.md).
+Available on all twelve stacks. The guestbook tree itself is
+framework-independent — what differs is how each assembly binds the
+`Welcome` port, and every binding resolves the peer through its
+container's deferred handle (CDI `Instance`, Spring `ObjectProvider`,
+Micronaut `BeanProvider`) rather than eagerly. Resolving it during
+construction closes a cycle: mediator → `SignHandler` → `Welcome` →
+`GreetingService` → mediator.
+
+| Stack             | Binding                                                                          |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Quarkus (Java/KT) | `@Produces` method on `MediatorProducer` + a `beans.xml` for the peer core       |
+| Spring (Java/KT)  | `@Bean` on `MediatorConfig` — **and** the peer package added to `@ComponentScan` |
+| Micronaut (Java)  | `@Factory` method — **and** the peer package added to `@Import(packages = …)`    |
+| Micronaut (KT)    | `@Factory` method + `SignHandler` added to the explicit handler list             |
+
+The two bold halves are the ones with no compile-time consequence:
+Spring's scan list and Micronaut's `@Import` list both name packages
+one by one, and a context missing from either is simply never
+discovered — no error, and an application that starts perfectly.
+That is why every combination also emits a `GuestbookWiringTest` in
+the assembly, which dispatches a `SignCommand` through the real
+container. It is the only thing in the project that goes red when a
+handler was never found.
 
 ## How to
 

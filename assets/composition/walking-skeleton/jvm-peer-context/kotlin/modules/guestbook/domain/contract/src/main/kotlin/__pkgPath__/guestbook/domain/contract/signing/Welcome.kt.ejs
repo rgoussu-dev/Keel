@@ -1,0 +1,18 @@
+package <%= basePackage %>.guestbook.domain.contract.signing
+
+/**
+ * The driven port guestbook needs to welcome a visitor — declared
+ * **here**, in guestbook's own words, because the consumer owns the
+ * port.
+ *
+ * Note what this signature does not mention: the greeting module, its
+ * commands, its DTOs, or the fact that a peer module answers it at
+ * all. Guestbook's domain has no opinion about where a welcome comes
+ * from, which is exactly what lets the implementation behind it change
+ * from an in-process call to an HTTP one without the domain noticing.
+ */
+interface Welcome {
+
+    /** The message this visitor should be welcomed with. */
+    fun welcomeFor(visitor: Visitor): WelcomeMessage
+}

@@ -24,13 +24,20 @@ import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
-import { jvmPeerContextAdapter } from '../adapters/jvm-peer-context.js';
+import {
+  micronautPeerContextAdapter,
+  micronautPeerContextKotlinAdapter,
+} from '../adapters/micronaut-peer-context.js';
 import { mavenWrapperAdapter } from '../adapters/maven-wrapper.js';
 import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
 import { micronautCliKotlinBootstrapAdapter } from '../adapters/micronaut-cli-kotlin-bootstrap.js';
 import { micronautRestBootstrapAdapter } from '../adapters/micronaut-rest-bootstrap.js';
 import { micronautRestKotlinBootstrapAdapter } from '../adapters/micronaut-rest-kotlin-bootstrap.js';
 import { npmInstallAdapter } from '../adapters/npm-install.js';
+import {
+  quarkusPeerContextAdapter,
+  quarkusPeerContextKotlinAdapter,
+} from '../adapters/quarkus-peer-context.js';
 import { pnpmInstallAdapter } from '../adapters/pnpm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
 import { quarkusCliKotlinBootstrapAdapter } from '../adapters/quarkus-cli-kotlin-bootstrap.js';
@@ -44,6 +51,10 @@ import { rustPortFakeAdapter } from '../adapters/rust-port-fake.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
 import { tsHttpBootstrapAdapter } from '../adapters/ts-http-bootstrap.js';
 import { tsPortFakeAdapter } from '../adapters/ts-port-fake.js';
+import {
+  springPeerContextAdapter,
+  springPeerContextKotlinAdapter,
+} from '../adapters/spring-peer-context.js';
 import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
 import { springCliKotlinBootstrapAdapter } from '../adapters/spring-cli-kotlin-bootstrap.js';
 import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
@@ -72,7 +83,12 @@ export const walkingSkeletonVertical: Vertical = {
     micronautRestKotlinBootstrapAdapter,
     samplePortFakeAdapter,
     samplePortFakeKotlinAdapter,
-    jvmPeerContextAdapter,
+    quarkusPeerContextAdapter,
+    quarkusPeerContextKotlinAdapter,
+    springPeerContextAdapter,
+    springPeerContextKotlinAdapter,
+    micronautPeerContextAdapter,
+    micronautPeerContextKotlinAdapter,
     gradleWrapperAdapter,
     mavenWrapperAdapter,
     goBootstrapAdapter,

@@ -1,0 +1,31 @@
+package <%= basePackage %>.guestbook.domain.core.signing
+
+import <%= basePackage %>.guestbook.domain.contract.signing.GuestbookEntry
+import <%= basePackage %>.guestbook.domain.contract.signing.SignCommand
+import <%= basePackage %>.guestbook.domain.contract.signing.SignRejected
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor
+import <%= basePackage %>.guestbook.domain.contract.signing.Welcome
+import <%= basePackage %>.platform.kernel.Command
+import <%= basePackage %>.platform.kernel.DomainHandler
+import <%= basePackage %>.platform.kernel.Handler
+
+/**
+ * Guestbook's only use case. It reaches the greeting context through
+ * the [Welcome] port and never learns that is what happens: the
+ * assembly binds the port to a gateway, and swapping that binding for
+ * a remote one is the whole of carving greeting out into its own
+ * service.
+ */
+@DomainHandler
+class SignHandler(private val welcome: Welcome) : Handler<SignCommand, GuestbookEntry> {
+
+    override fun supports(command: Command<*>): Boolean = command is SignCommand
+
+    override fun handle(command: SignCommand): GuestbookEntry {
+        val visitor = command.visitor?.trim().orEmpty()
+        if (visitor.isEmpty()) {
+            throw SignRejected("visitor must not be blank")
+        }
+        return GuestbookEntry(visitor, welcome.welcomeFor(Visitor(visitor)).text)
+    }
+}

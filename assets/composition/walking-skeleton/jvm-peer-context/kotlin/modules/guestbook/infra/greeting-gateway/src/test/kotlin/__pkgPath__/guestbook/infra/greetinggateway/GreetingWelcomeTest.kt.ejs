@@ -1,0 +1,41 @@
+package <%= basePackage %>.guestbook.infra.greetinggateway
+
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.greeting.userside.service.GreetingService
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor
+import <%= basePackage %>.guestbook.domain.contract.signing.WelcomeMessage
+
+import org.junit.jupiter.api.Assertions.assertEquals
+
+class GreetingWelcomeTest {
+
+    @Test
+    fun `maps the peer's answer into guestbook's own vocabulary`() {
+        val gateway = GreetingWelcome { RecordingGreeting() }
+
+        val message = gateway.welcomeFor(Visitor("Romain"))
+
+        assertEquals(WelcomeMessage("Hello, Romain!"), message)
+    }
+
+    @Test
+    fun `asks the peer for the visitor it was given`() {
+        val greeting = RecordingGreeting()
+
+        GreetingWelcome { greeting }.welcomeFor(Visitor("Ada"))
+
+        assertEquals("Ada", greeting.asked)
+    }
+
+    /** A fake, not a mock — the house rule. */
+    private class RecordingGreeting : GreetingService {
+
+        var asked: String? = null
+
+        override fun greetingFor(name: String): String {
+            asked = name
+            return "Hello, $name!"
+        }
+    }
+}

@@ -20,9 +20,31 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   compile.
 
   Opt-in rather than default: a single-context service should not
-  carry a demo context it has to delete. Quarkus + Java for now; the
-  Spring, Micronaut and Kotlin siblings cover the same ground under
-  their own predicates.
+  carry a demo context it has to delete. Available on **all twelve JVM
+  stacks** — three frameworks × two languages × both entrypoint
+  shapes. The guestbook tree is framework-independent (one tree per
+  language); what differs is how each assembly binds the port, and
+  every binding resolves the peer through its container's deferred
+  handle — CDI `Instance`, Spring `ObjectProvider`, Micronaut
+  `BeanProvider` — because resolving it during construction closes the
+  cycle mediator → `SignHandler` → `Welcome` → `GreetingService` →
+  mediator.
+
+  Two of those bindings also need the new context **named** somewhere
+  with no compile-time consequence: Spring's `@ComponentScan`
+  `basePackages` list and Micronaut Java's `@Import(packages = …)`.
+  Miss either and `SignHandler` is never discovered, the mediator is
+  short one handler, and the application starts perfectly. Micronaut
+  Kotlin has no discovery at all — `@Import` is Java-only there — so
+  the handler joins its explicit wiring list by hand.
+
+- **A container-level wiring test with the peer context.** Every
+  combination now emits a `GuestbookWiringTest` beside the assembly
+  that dispatches a `SignCommand` through the real `Mediator` out of
+  the real container. Nothing else in the emitted project can fail
+  when a handler was never discovered — the code still compiles and
+  the application still boots — so this is the gate that turns a
+  silently missing bean into a red build.
 
 - **Maven end-to-end test coverage.** `tests/support/jvm-rest-e2e.ts`
   was Gradle-only at every level, so no keel Maven output had ever

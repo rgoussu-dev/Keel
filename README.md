@@ -81,7 +81,10 @@ time: `modules/<context>/` holding a whole hexagon
 context shares, and `application/<typology>` for the runnable
 assemblies. Modules meet only at `user-side/service`, which is what
 makes extracting a context into its own service a wiring change
-rather than a rewrite. → [Module layout](docs/stacks/jvm.md#module-layout)
+rather than a rewrite. Add `--with-peer-context` and you get a second
+context to prove it: it reaches the first only through that seam, and
+the build graph is what stops it reaching further.
+→ [Module layout](docs/stacks/jvm.md#module-layout)
 
 **Prerequisites:** JDK 25, `gradle` _or_ `mvn` on PATH, `git`.
 → [JVM stacks](docs/stacks/jvm.md)
