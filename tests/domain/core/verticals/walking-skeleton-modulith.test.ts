@@ -225,6 +225,36 @@ describe('walking-skeleton under layout.modulith (Quarkus REST)', () => {
     expect(build).not.toContain('api(project(":modules:greeting:domain:contract"))');
   });
 
+  it('keeps a module out of its peers under Maven too: the domain dependency is optional', async () => {
+    // The Maven twin of the rule above, and a real regression: Maven's
+    // `compile` scope is transitive, so a plain dependency here hands
+    // the greeting domain to every peer that depends on this module —
+    // verified by building a three-module reactor, where the peer
+    // compiled `import …greeting.domain.contract…` with no dependency
+    // on it. `optional` is Maven's only non-transitive compile scope.
+    const { tree, cwd } = await install(walkingSkeletonVertical, [
+      'lang.java',
+      'runtime.jvm',
+      'pkg.maven',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+      MODULITH_LAYOUT_TAG,
+    ]);
+    cwds.push(cwd);
+    const pom = tree.read('modules/greeting/user-side/service/pom.xml')?.toString() ?? '';
+    const contractDep =
+      /<dependency>(?:(?!<\/dependency>)[\s\S])*greeting-domain-contract[\s\S]*?<\/dependency>/.exec(
+        pom,
+      );
+    expect(contractDep, 'the service pom must declare greeting-domain-contract').not.toBeNull();
+    expect(contractDep?.[0]).toContain('<optional>true</optional>');
+    // `provided` would also be non-transitive but drops the contract
+    // from this module's runtime classpath, and the adapter dispatches
+    // a real GreetCommand — so it must not be used here.
+    expect(contractDep?.[0]).not.toContain('<scope>provided</scope>');
+  });
+
   it('the service adapter dispatches through the module mediator, not the handler', async () => {
     const { tree, cwd } = await install(
       walkingSkeletonVertical,

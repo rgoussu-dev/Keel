@@ -15,18 +15,29 @@
 
   <dependencies>
     <!-- The peer-facing interface takes a Mediator, so the kernel is
-         part of this module's own API. The greeting commands behind it
-         are not: a peer depends on this module and programs against
-         GreetingService alone. -->
+         part of this module's own API. -->
     <dependency>
       <groupId><%= basePackage %></groupId>
       <artifactId>platform-kernel</artifactId>
       <version>${project.version}</version>
     </dependency>
+
+    <!-- The greeting commands behind that interface are NOT part of it.
+         Maven's `compile` scope is transitive, so without `optional` a
+         peer that depends on this module also gets the greeting domain
+         on its compile classpath — and the seam this whole layout
+         exists to enforce silently disappears. `optional` is Maven's
+         only non-transitive compile scope, and it is what the Gradle
+         twin spells `implementation`. `provided` would work at compile
+         time and break at runtime: the adapter dispatches a real
+         GreetCommand, so it needs the contract on its own runtime
+         classpath. The assembly declares the contract directly, so
+         nothing downstream is missing it. -->
     <dependency>
       <groupId><%= basePackage %></groupId>
       <artifactId>greeting-domain-contract</artifactId>
       <version>${project.version}</version>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
