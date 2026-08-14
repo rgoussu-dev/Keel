@@ -9,8 +9,9 @@ Since then the surface widened far past the original plan — see
 `CHANGELOG.md` for the details.
 
 Items are lettered continuing the old sequence. E and F are the
-recommended next steps; the rest are ordered by leverage, not by
-commitment.
+recommended next steps for breadth; **I** is the recommended next step
+for depth and is the only item here sized end-to-end. The rest are
+ordered by leverage, not by commitment.
 
 ## Landed since v0.5.0-alpha ✅
 
@@ -123,19 +124,209 @@ so it exercises the patch path of the composition contract.
 
 ---
 
+## I — The modulith layout beyond the JVM
+
+**Goal.** Go, Rust, `ts-http` and `web-components` ship `basic` only.
+The JVM's modulith (`platform/kernel`, `modules/<ctx>/`,
+`application/<typology>`) landed in #48/#49 behind
+`src/domain/core/adapters/jvm-module-layout.ts`. This item brings the
+same property — a bounded context carves out as a wiring change — to
+the other four stacks.
+
+The design work is done and was **stress-tested against real
+compilers** (Go 1.24.7, rustc 1.94.1, Node 22 + TypeScript 5.9,
+Chromium) by hand-building throwaway two-context skeletons in each
+language with deliberate violation probes. Three findings change what
+keel should build, and one of them changes the shape of the feature:
+
+- **The dial is not worth offering everywhere.** `basic` vs
+  `modulith` is a JVM-shaped choice, justified there because a
+  context costs five or six build files. Go pays _zero_ manifest
+  files per context and the browser is multi-context from day one, so
+  both should ship one layout. Only `ts-http` and Rust want a dial.
+- **The trap is name derivation, not just path depth.** The JVM's
+  recurring bug class was hand-computed depths (`upToRoot`) and
+  artifact ids (`mavenArtifact`). Outside the JVM the _name_ is the
+  more dangerous half — crate names, package names, import prefixes
+  and element tag prefixes are each spelled differently from the
+  directory path. Every resolver below owns name derivation too.
+- **Non-JVM verticals hard-code flat paths today.** Twelve adapters
+  (`{go,rust,ts}-{cors,observability,persistence}`, `ts-port-fake`,
+  `wc-gateway-rest`, `wc-sample-port-fake`) carry module-level path
+  constants like `const MAIN_TARGET = 'application/rest/src/main.ts'`.
+  Each must move to a resolver call, exactly as the JVM verticals did.
+
+### I.0 — Generalise the layout dial (prerequisite, S)
+
+`ModuleLayoutOption.id` is typed `JvmModuleLayout` and `JVM_LAYOUTS`
+is JVM-specific. Widen the option type so a stack can declare its own
+layout set (or none), and keep `jvmLayout` as the first
+implementation of a per-language family. No behaviour change.
+
+**Commit.** `refactor(composition): generalise the module-layout dial beyond the JVM`
+
+### I.1 — Go (M) — _modulith only_
+
+Cheapest realization of the four and the one that most changes the
+emitted tree, so it goes first and proves the pattern.
+
+- **Ruling: no dial.** A Go context is a directory with a facade file
+  and an `internal/` beneath it — zero build files. `basic` and
+  `modulith` would differ by two directory levels and one facade, and
+  the facade is worth having at one context. `keel new` offers no
+  choice and seeds `layout.modulith`.
+- **Brownfield:** `goLayout()` must still resolve `basic` for
+  manifests with no `layout.*` tag, or `keel add` breaks on every
+  project scaffolded before this lands. The layout disappears from
+  the _prompt_, not from the resolver.
+- **Resolver** `go-module-layout.ts` owns: module paths, the
+  **import-path prefix** (`<modulePath>/internal/modules/<ctx>/internal/domain`
+  — Go has no relative imports, so every template line concatenates
+  module path × layout depth × context name), and the **import-alias
+  rule** (`modules/ordering` and `modules/billing/gateway/ordering`
+  are both `package ordering`; any file importing both must alias
+  one, and generated code that forgets compiles until a second
+  context appears).
+- **Two corrections the compiler forced**, both of which the template
+  tree must encode: driven adapters go at
+  `internal/modules/<ctx>/infra/<tech>/` — _outside_ the context's
+  `internal/`, or `cmd/` cannot construct them — and the facade
+  re-exports **nothing** (no type aliases), which is what makes
+  "only the consumer's own directory may implement its ports" a
+  compile error rather than a lint rule.
+- **Trees:** `go-bootstrap-modulith`, plus modulith siblings for
+  `go-cli-bootstrap` / `go-http-bootstrap` (`cmd/<typology>/`).
+- **Adapters to touch:** `go-cors`, `go-observability`,
+  `go-persistence`, `go-port-fake`, `go-http-image`.
+
+**Commits.** `feat(walking-skeleton): modulith module layout for the Go stacks`,
+then `feat(<vertical>): …` per vertical.
+
+### I.2 — `ts-http` (M) — _dial, defaulting to directories_
+
+The interesting one, because the enforcement answer and the
+extraction answer disagree.
+
+- **Ruling: offer both, and `basic` stays the default.** Measured:
+  per-module workspace packages buy exactly one wall the directory
+  layout lacks (the `exports` map against deep package-specifier
+  imports) — and a relative path walks straight through it anyway.
+  Undeclared workspace dependencies resolve silently, and TS project
+  references do **not** restrict which projects a project may import.
+  So dependency-cruiser is load-bearing under _both_ layouts, and the
+  directory layout's lint config is the one harder to get wrong.
+  Packages win only on extraction: 0 import rewrites versus 3.
+  Ship `modulith` as packages for teams that have decided to extract;
+  don't make everyone pay up front for enforcement they don't get.
+- **Ship the lint with the layout, and make it fail closed.**
+  dependency-cruiser pointed at a TypeScript workspace with default
+  options resolves every `@acme/*` import to a bare specifier and
+  reports **zero** violations over a tree that is in violation. The
+  emitted `.dependency-cruiser.cjs` must carry
+  `enhancedResolveOptions: { extensions: ['.ts', …], exportsFields:
+['exports'], conditionNames: ['import', 'default', 'types'] }`.
+  Worth a test that asserts a known-bad import actually fails.
+- **Resolver** `ts-module-layout.ts` owns paths, the **package name**
+  (`@<scope>/<ctx>-domain-contract` for `modules/<ctx>/domain/contract`
+  — scope, context and depth all vary independently) and the
+  **workspace member list** (npm workspace globs match one level
+  only, so members must be enumerated).
+- **Watch `erasableSyntaxOnly`**, which `ts-http` already sets: Node's
+  type-stripping rejects parameter properties and enums, so any
+  entity template using `constructor(readonly id: string)` fails with
+  `TS1294` in exactly the stack that runs sources directly.
+- **Adapters to touch:** `ts-cors`, `ts-observability`,
+  `ts-persistence`, `ts-port-fake`, `ts-workspace`, `ts-http-image`.
+
+**Commits.** `feat(walking-skeleton): modulith module layout for ts-http`, then per vertical.
+
+### I.3 — `web-components` (M) — _modulith only_
+
+- **Ruling: no dial.** A browser app is multi-context before its
+  first release, per-module packages are already the route-level
+  code-split boundary, and a micro-frontend _is_ a carved-out module —
+  `basic` would have to be un-learned immediately. Note this inverts
+  I.2: the browser keeps per-module packages not for enforcement but
+  for code-splitting and independent deployment, which a directory
+  layout cannot serve.
+- **Also rename** `domain/domain-api` → `modules/<ctx>/domain/contract`
+  while the tree is being rewritten; `domain-api` is the last
+  pre-modulith name in the repo.
+- **Ship the import map.** Browser-verified: two bundles each inlining
+  an element-defining package throw
+  `NotSupportedError: … has already been used with this registry`, and
+  the throw kills the rest of that bundle's registrations — half the
+  page silently disappears. The design system must be emitted as an
+  external, deduplicated via an import map in `index.html`. This is a
+  correctness requirement, not an optimisation, and it is cheap: one
+  `<script type="importmap">` block plus an external marker in the
+  bundler config.
+- **Resolver** `wc-module-layout.ts` owns paths, package names, and
+  the **element tag prefix** (`<scope>-<context>-<element>`) — a
+  runtime string nothing checks, and the one place a typo survives
+  every gate.
+- **Adapters to touch:** `wc-gateway-rest`, `wc-sample-port-fake`,
+  `wc-design-system`, `wc-spa-bootstrap`, `wc-spa-image`.
+
+**Commits.** `feat(walking-skeleton): modulith module layout for web-components`, then per vertical.
+
+### I.4 — Rust (L) — _dial, `basic` default, and it stays default longer_
+
+Heaviest of the four; last because it is the most template surface
+for the least marginal gain over what I.1–I.3 will have proven.
+
+- **Ruling: offer both, default `basic`.** Four crates per context
+  minimum, each a `Cargo.toml` and a workspace member line. Unlike
+  Go there is no nearly-free modulith. Rust's walls are the strongest
+  of the four once paid for, so a project that _knows_ it has two
+  contexts should start at `modulith` — but that is the user's call,
+  not the default.
+- **Four crates is the floor, and only three of them are obvious.**
+  `<ctx>-user-side-service` must be its own crate: whatever crate owns
+  the peer API hands consumers everything else it exports, so folding
+  it into `domain-contract` gives every gateway a legal edge to the
+  peer's domain. Conversely the contract/core split is _not_ required
+  for the wall (a private `mod` does that) — it is bought for
+  incremental rebuild blast radius. Templates should still emit both,
+  but the README should say why.
+- **Resolver** `rust-module-layout.ts` owns paths, the **crate name**
+  and its **three spellings** (`modules/ordering/user-side/service` →
+  crate `ordering-user-side-service` → identifier
+  `ordering_user_side_service`, appearing in the member list,
+  `[dependencies]` keys and `use` statements respectively), and the
+  relative **`path =` depth** in every dependency entry — the exact
+  `upToRoot` bug, transplanted.
+- **`platform-kernel` is load-bearing here** in a way it is not on the
+  JVM: native `async fn` in traits is _still_ not dyn-compatible on
+  rustc 1.94, so the kernel must ship the `BoxFuture` alias and every
+  port template must return one. Emitting `async fn` in a port trait
+  produces a walking skeleton that does not compile the moment a
+  second adapter is wired as `Arc<dyn Port>`.
+- **Adapters to touch:** `rust-cors`, `rust-observability`,
+  `rust-persistence`, `rust-port-fake`, `rust-http-image`.
+
+**Commits.** `feat(walking-skeleton): modulith module layout for the Rust stacks`, then per vertical.
+
+### Not in scope for I
+
+`keel add module <name>` — emitting a _second_ bounded context with
+its peer port and gateway wiring — stays a separate backlog item. It
+is what makes the seam demonstrable rather than merely present, and it
+is worth far more once I.1–I.4 have settled each language's resolver.
+
+---
+
 ## Backlog (unordered)
 
-- **The modulith layout beyond the JVM** — Go, Rust, `ts-http` and
-  `web-components` ship `basic` only. Each has an idiomatic
-  realization already designed (facade-fronted context packages
-  under `internal/modules/`, per-context crate clusters,
-  per-context workspace packages); what is missing is the template
-  trees and the `layout.*` option on those stacks.
 - **A second bounded context in the modulith skeleton** — the
   walking skeleton emits one module plus its `user-side/service`
   seam. A `keel add module <name>` command emitting the second
   context, its peer port and the gateway wiring would make the seam
-  demonstrable rather than merely present.
+  demonstrable rather than merely present. Best done after **I**, so
+  it can be written once against five layout resolvers rather than
+  once per stack. Note it is also the only way the walls get
+  _exercised_: a one-context skeleton cannot violate an
+  inter-context rule, so today nothing proves the rules fire.
 - **Persistence: more engines and migration tools** — the vertical
   covers every HTTP stack (Quarkus/Spring/Micronaut in Java and
   Kotlin, Go, Rust, TS); what remains is a second RDBMS via the
