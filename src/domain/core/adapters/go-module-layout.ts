@@ -163,22 +163,21 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
 }
 
 /**
- * The import paths shared by every Go template tree, ready to
- * interpolate. Templates never concatenate a module path with a
- * directory — that is what makes the layout a one-line change here
- * rather than a sweep through the trees.
+ * The template variables every Go tree needs: the package name the
+ * assembly calls the context through, and the import path of the
+ * contract face its adapters are written against. Templates never
+ * concatenate a module path with a directory — that is what makes the
+ * layout a one-line change here rather than a sweep through the trees.
  *
- * Adapters with their own vocabulary (a persistence pool, an
- * observability middleware) add to this from the same resolver
- * rather than spelling a path out.
+ * Import *blocks* are not here, deliberately. gofmt sorts them, and
+ * which of two paths sorts first flips with the layout, so each
+ * adapter builds its own block from `importPath` and sorts it — a
+ * detail no template can be trusted with and no shared bundle can
+ * guess.
  */
 export function goTemplateVars(paths: GoLayoutPaths): Readonly<Record<string, string>> {
   return {
-    facadeImport: paths.importPath(paths.facade),
     facadePkg: paths.facadePkg,
     domainImport: paths.importPath(paths.domain),
-    cliImport: paths.importPath(paths.app('cli')),
-    restImport: paths.importPath(paths.app('resthttp')),
-    clockFakeImport: paths.importPath(paths.platform('clockfake')),
   };
 }
