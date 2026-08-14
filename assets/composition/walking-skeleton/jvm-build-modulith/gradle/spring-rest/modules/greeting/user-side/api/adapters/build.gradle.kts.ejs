@@ -1,0 +1,15 @@
+plugins {
+    `java-library`
+}
+
+// A driving adapter is a library the assembly mounts, never a
+// runnable unit: no framework application plugin, no main class,
+// no runtime configuration lives here.
+dependencies {
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+
+    api(project(":modules:greeting:user-side:api:contract"))
+    implementation(project(":modules:greeting:domain:contract"))
+    implementation(project(":platform:kernel"))
+}

@@ -1,0 +1,54 @@
+package <%= basePackage %>.application.api.observability;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+
+/**
+ * Drives the observability seam over the wire: both probes answer,
+ * the readiness aggregate includes the service's own check, and the
+ * correlation id round-trips (echoed when supplied, minted when
+ * absent).
+ */
+@QuarkusTest
+class ObservabilityTest {
+
+    @Test
+    void livenessProbeIsUp() {
+        given().when().get("/q/health/live").then().statusCode(200).body("status", is("UP"));
+    }
+
+    @Test
+    void readinessProbeAggregatesTheServiceReadyCheck() {
+        given().when()
+                .get("/q/health/ready")
+                .then()
+                .statusCode(200)
+                .body("status", is("UP"))
+                .body("checks.name", hasItem("service-ready"));
+    }
+
+    @Test
+    void echoesTheSuppliedCorrelationId() {
+        given().header(RequestContext.CORRELATION_ID_HEADER, "corr-123")
+                .when()
+                .get("/greet")
+                .then()
+                .statusCode(200)
+                .header(RequestContext.CORRELATION_ID_HEADER, is("corr-123"));
+    }
+
+    @Test
+    void mintsACorrelationIdWhenAbsent() {
+        given().when()
+                .get("/greet")
+                .then()
+                .statusCode(200)
+                .header(RequestContext.CORRELATION_ID_HEADER, not(emptyOrNullString()));
+    }
+}

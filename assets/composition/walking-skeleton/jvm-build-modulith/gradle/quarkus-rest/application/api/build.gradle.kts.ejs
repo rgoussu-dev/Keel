@@ -1,0 +1,19 @@
+plugins {
+    java
+    id("io.quarkus") version "3.34.6"
+}
+
+dependencies {
+    implementation(enforcedPlatform("io.quarkus.platform:quarkus-bom:3.34.6"))
+    implementation("io.quarkus:quarkus-rest-jackson")
+
+    implementation(project(":platform:kernel"))
+    implementation(project(":modules:greeting:domain:contract"))
+    implementation(project(":modules:greeting:domain:core"))
+    implementation(project(":modules:greeting:user-side:api:adapters"))
+    implementation(project(":modules:greeting:user-side:service"))
+    implementation(project(":modules:greeting:user-side:api:contract"))
+
+    testImplementation("io.quarkus:quarkus-junit5")
+    testImplementation("io.rest-assured:rest-assured")
+}

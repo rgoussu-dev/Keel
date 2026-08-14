@@ -53,6 +53,17 @@ export interface NewProjectCommand extends Command<InstallReport> {
    * stacks (their services scaffold on each service's default).
    */
   readonly buildSystem?: string;
+  /**
+   * Module-layout id (`basic`, `modulith`) for stacks that declare a
+   * choice. When absent, interactive installs prompt for it and
+   * non-interactive installs use the stack's default. Rejected for
+   * stacks with a single layout and for composite stacks (their
+   * services scaffold on each service's default).
+   *
+   * Distinct from {@link NewProjectCommand.layout}, which is the
+   * *repository* layout of a composite install.
+   */
+  readonly moduleLayout?: string;
 }
 
 /** Layer an additional vertical onto an initialised project. */

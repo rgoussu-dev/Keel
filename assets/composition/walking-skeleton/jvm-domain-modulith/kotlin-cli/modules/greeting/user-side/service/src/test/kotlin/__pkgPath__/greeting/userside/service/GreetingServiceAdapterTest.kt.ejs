@@ -1,0 +1,34 @@
+package <%= basePackage %>.greeting.userside.service
+
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand
+import <%= basePackage %>.platform.kernel.Command
+import <%= basePackage %>.platform.kernel.Mediator
+
+import org.junit.jupiter.api.Assertions.assertEquals
+
+class GreetingServiceAdapterTest {
+
+    @Test
+    fun `dispatches a greet command and returns what the module answered`() {
+        val mediator = RecordingMediator("Hello, Romain!")
+
+        val greeting = GreetingServiceAdapter(mediator).greetingFor("Romain")
+
+        assertEquals("Hello, Romain!", greeting)
+        assertEquals(GreetCommand("Romain"), mediator.dispatched)
+    }
+
+    /** A fake, not a mock — the house rule. */
+    private class RecordingMediator(private val answer: Any) : Mediator {
+
+        var dispatched: Command<*>? = null
+
+        @Suppress("UNCHECKED_CAST")
+        override fun <R> dispatch(command: Command<R>): R {
+            dispatched = command
+            return answer as R
+        }
+    }
+}

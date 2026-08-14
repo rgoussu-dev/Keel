@@ -1,0 +1,33 @@
+package <%= basePackage %>.greeting.userside.api
+
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.UriInfo
+import jakarta.ws.rs.ext.ExceptionMapper
+import jakarta.ws.rs.ext.Provider
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected
+import <%= basePackage %>.greeting.userside.api.contract.ProblemDetails
+
+/**
+ * Maps the domain's [GreetRejected] error to an RFC 9457 Problem
+ * Details response. The interface adapter owns the domain-error →
+ * transport translation; the domain never learns about HTTP.
+ */
+@Provider
+class GreetRejectedMapper : ExceptionMapper<GreetRejected> {
+    @Context
+    lateinit var uriInfo: UriInfo
+
+    override fun toResponse(rejected: GreetRejected): Response {
+        val body = ProblemDetails(
+            "urn:problem-type:greet-rejected",
+            "Greeting rejected",
+            400,
+            rejected.message ?: "",
+            uriInfo.requestUri.path,
+        )
+        return Response.status(400).type(ProblemDetails.PROBLEM_JSON).entity(body).build()
+    }
+
+}

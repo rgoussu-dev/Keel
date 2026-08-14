@@ -1,0 +1,12 @@
+package <%= basePackage %>.greeting.domain.contract
+
+import java.time.Instant
+
+/**
+ * A view onto wall-clock time. Domain code never reads
+ * [java.time.Instant.now] directly — it depends on this port so
+ * production wires a system clock and tests use a fake.
+ */
+interface Clock {
+    fun now(): Instant
+}

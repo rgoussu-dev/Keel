@@ -1,0 +1,36 @@
+package <%= basePackage %>.application.api
+
+import io.micronaut.context.annotation.Factory
+import jakarta.inject.Singleton
+
+import <%= basePackage %>.greeting.domain.core.greet.GreetHandler
+import <%= basePackage %>.greeting.userside.service.GreetingService
+import <%= basePackage %>.greeting.userside.service.GreetingServiceAdapter
+import <%= basePackage %>.platform.kernel.Mediator
+import <%= basePackage %>.platform.kernel.RegistryMediator
+
+/**
+ * The channel's composition root: hand-wires the Mediator with every
+ * domain Handler. Add each new handler to the list below.
+ *
+ * This is the one bootstrap that does not discover `@DomainHandler`.
+ * Micronaut resolves dependencies at compile time, so discovery would
+ * require its KSP processor to run over `domain/core` — putting the
+ * framework inside the domain's own build. The `@Import` escape hatch
+ * the Java bootstrap uses to avoid that is documented as Java-only.
+ * An explicit list is the honest trade: the domain build stays
+ * framework-free, and the wiring stays visible in one place.
+ */
+@Factory
+class MediatorFactory {
+    @Singleton
+    fun mediator(): Mediator = RegistryMediator(listOf(GreetHandler()))
+
+    /**
+     * The greeting module's in-process API, offered to peer modules.
+     * Nothing consumes it yet — the second bounded context is the
+     * first thing that will, through a driven port of its own.
+     */
+    @Singleton
+    fun greetingService(mediator: Mediator): GreetingService = GreetingServiceAdapter(mediator)
+}

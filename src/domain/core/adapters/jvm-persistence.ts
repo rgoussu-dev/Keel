@@ -23,6 +23,7 @@
  */
 
 import { jvmBuildSystem, type JvmBuildSystem } from './jvm-build-system.js';
+import { jvmModuleLayout } from './jvm-module-layout.js';
 import { eolAware, eolOf, packageToPath, withEol } from '../util.js';
 import type {
   ContributionFile,
@@ -74,6 +75,24 @@ a Testcontainers PostgreSQL, and the REST test boots one too.
  * time. Throws with the bootstrap's id when the walking skeleton has
  * not run.
  */
+/**
+ * The SQL persistence vertical still assumes the flat trisection: its
+ * module list, its composition-root patches and its package strings
+ * all name `domain/…` and `infrastructure/…` directly. Rather than
+ * scatter files into directories the modulith does not have, it
+ * refuses up front and says so. Porting it is tracked in
+ * `docs/roadmap.md`.
+ */
+export function refuseOnModulith(adapterId: string, manifest: ManifestV2): void {
+  if (jvmModuleLayout(manifest.tags) !== 'modulith') return;
+  throw new Error(
+    `${adapterId}: the SQL persistence vertical does not support the modulith module layout yet — ` +
+      `it would emit into 'domain/' and 'infrastructure/', which a modulith project does not have. ` +
+      `Add the driven port and its adapter under modules/<context>/ by hand for now, ` +
+      `or scaffold with --module-layout=basic.`,
+  );
+}
+
 export function jvmPersistenceBootstrapAnswers(
   manifest: ManifestV2,
   adapterId: string,

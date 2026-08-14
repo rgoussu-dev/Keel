@@ -1,0 +1,60 @@
+package <%= basePackage %>.application.api.observability
+
+import io.micrometer.core.instrument.MeterRegistry
+import io.micronaut.http.HttpRequest
+import io.micronaut.http.MutableHttpResponse
+import io.micronaut.http.annotation.RequestFilter
+import io.micronaut.http.annotation.ResponseFilter
+import io.micronaut.http.annotation.ServerFilter
+import io.opentelemetry.api.trace.Span
+import java.util.UUID
+import org.slf4j.MDC
+
+/**
+ * The one place the request context is established. On the way in:
+ * extract (or mint) the correlation id and the optional tenant id,
+ * store them in the request-scoped [RequestContext], mirror them
+ * into the MDC so every log line of the request carries them, tag
+ * the active OpenTelemetry server span, and count the request. On
+ * the way out: echo the correlation id so callers can quote it back,
+ * and clear the MDC.
+ */
+@ServerFilter(ServerFilter.MATCH_ALL_PATTERN)
+open class RequestContextFilter(
+    private val requestContext: RequestContext,
+    private val meterRegistry: MeterRegistry,
+) {
+
+    @RequestFilter
+    open fun incoming(request: HttpRequest<*>) {
+        val correlationId = header(request, RequestContext.CORRELATION_ID_HEADER)
+            ?: UUID.randomUUID().toString()
+        requestContext.correlationId = correlationId
+        MDC.put(CORRELATION_ID_MDC_KEY, correlationId)
+
+        val span = Span.current()
+        span.setAttribute("app.correlation_id", correlationId)
+        header(request, RequestContext.TENANT_ID_HEADER)?.let { tenantId ->
+            requestContext.tenantId = tenantId
+            MDC.put(TENANT_ID_MDC_KEY, tenantId)
+            span.setAttribute("app.tenant_id", tenantId)
+        }
+
+        meterRegistry.counter("app.http.requests", "http.route", request.path).increment()
+    }
+
+    @ResponseFilter
+    open fun outgoing(response: MutableHttpResponse<*>) {
+        response.header(RequestContext.CORRELATION_ID_HEADER, requestContext.correlationId)
+        MDC.remove(CORRELATION_ID_MDC_KEY)
+        MDC.remove(TENANT_ID_MDC_KEY)
+    }
+
+    private fun header(request: HttpRequest<*>, name: String): String? =
+        request.headers.get(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+    companion object {
+        private const val CORRELATION_ID_MDC_KEY = "correlationId"
+        private const val TENANT_ID_MDC_KEY = "tenantId"
+    }
+}

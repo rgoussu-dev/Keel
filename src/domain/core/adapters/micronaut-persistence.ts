@@ -37,6 +37,7 @@ import {
   jvmPersistenceBootstrapAnswers,
   jvmPersistenceVars,
   jvmSharedPersistenceFiles,
+  refuseOnModulith,
   MAVEN_EXECUTABLE_TARGET,
   moduleRegistrationPatch,
   patchKotlinCompositionRoot,
@@ -206,6 +207,7 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.micronaut', 'arch.server-http', `lang.${language}`] },
     async contribute(ctx) {
+      refuseOnModulith('persistence/micronaut-persistence', ctx.manifest);
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
         id,

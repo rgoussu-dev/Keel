@@ -1,0 +1,21 @@
+package <%= basePackage %>.greeting.domain.core.greet
+
+import <%= basePackage %>.platform.kernel.DomainHandler
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected
+import <%= basePackage %>.platform.kernel.Command
+import <%= basePackage %>.platform.kernel.Handler
+
+@DomainHandler
+class GreetHandler : Handler<GreetCommand, String> {
+
+    override fun supports(command: Command<*>): Boolean = command is GreetCommand
+
+    override fun handle(command: GreetCommand): String {
+        val name = command.name?.trim().orEmpty()
+        if (name.isEmpty()) {
+            throw GreetRejected("name must not be blank")
+        }
+        return "Hello, $name!"
+    }
+}

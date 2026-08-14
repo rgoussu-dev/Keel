@@ -1,0 +1,25 @@
+package <%= basePackage %>.greeting.domain.core.greet;
+
+import <%= basePackage %>.platform.kernel.DomainHandler;
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand;
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected;
+import <%= basePackage %>.platform.kernel.Command;
+import <%= basePackage %>.platform.kernel.Handler;
+
+@DomainHandler
+public final class GreetHandler implements Handler<GreetCommand, String> {
+
+    @Override
+    public boolean supports(Command<?> command) {
+        return command instanceof GreetCommand;
+    }
+
+    @Override
+    public String handle(GreetCommand command) {
+        String name = command.name() == null ? "" : command.name().trim();
+        if (name.isEmpty()) {
+            throw new GreetRejected("name must not be blank");
+        }
+        return "Hello, " + name + "!";
+    }
+}

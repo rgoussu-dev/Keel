@@ -103,6 +103,7 @@ describe('keel.new-project (keel new)', () => {
         'arch.hexagonal',
         'framework.quarkus',
         'lang.java',
+        'layout.basic',
         'pkg.gradle',
         'runtime.jvm',
       ].sort(),
@@ -336,6 +337,7 @@ describe('keel.new-project build-system selection', () => {
   it('asks interactively and honours the chosen build system', async () => {
     const prompt = new FakePrompt({
       buildSystem: 'maven',
+      moduleLayout: 'basic',
       remote: '',
       defaultBranch: 'main',
       basePackage: 'com.acme.cli',
@@ -413,6 +415,136 @@ describe('keel.new-project build-system selection', () => {
       ),
     );
     expect(error.code).toBe('keel.invalid-build-system');
+    expect(error.message).toMatch(/composite/);
+  });
+});
+
+describe('keel.new-project module-layout selection', () => {
+  it('defaults to the flat trisection, and records the tag', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.tags).toContain('layout.basic');
+    expect(await fs.pathExists(path.join(cwd, 'domain/kernel'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'modules'))).toBe(false);
+  });
+
+  it('honours --module-layout=modulith and scaffolds the carved tree', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          moduleLayout: 'modulith',
+        }),
+      ),
+    );
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.tags).toContain('layout.modulith');
+    expect(await fs.pathExists(path.join(cwd, 'platform/kernel'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'modules/greeting/user-side/service'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'application/cli'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'domain'))).toBe(false);
+  });
+
+  it('asks interactively and honours the chosen layout', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'modulith',
+      remote: '',
+      defaultBranch: 'main',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(prompt.asked).toContain('moduleLayout');
+    expect(await fs.pathExists(path.join(cwd, 'platform/kernel'))).toBe(true);
+  });
+
+  it('rejects a module layout the stack does not offer', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          moduleLayout: 'hexagon',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-module-layout');
+    expect(error.message).toMatch(/does not support module layout 'hexagon'/);
+    expect(error.message).toMatch(/basic, modulith/);
+  });
+
+  it('rejects --module-layout for a stack that ships a single layout', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          moduleLayout: 'modulith',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-module-layout');
+    expect(error.message).toMatch(/single module layout/);
+  });
+
+  it('rejects --module-layout on composite stacks', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          moduleLayout: 'modulith',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-module-layout');
     expect(error.message).toMatch(/composite/);
   });
 });

@@ -1,0 +1,29 @@
+package <%= basePackage %>.greeting.infra.clock.fake;
+
+import java.time.Instant;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class FakeClockTest {
+
+    @Test
+    void returnsTheConfiguredInstant() {
+        Instant t = Instant.parse("2026-04-26T12:00:00Z");
+        FakeClock clock = new FakeClock(t);
+
+        assertEquals(t, clock.now());
+    }
+
+    @Test
+    void canBeAdvanced() {
+        Instant a = Instant.parse("2026-04-26T12:00:00Z");
+        Instant b = Instant.parse("2026-04-26T13:00:00Z");
+        FakeClock clock = new FakeClock(a);
+
+        clock.setNow(b);
+
+        assertEquals(b, clock.now());
+    }
+}

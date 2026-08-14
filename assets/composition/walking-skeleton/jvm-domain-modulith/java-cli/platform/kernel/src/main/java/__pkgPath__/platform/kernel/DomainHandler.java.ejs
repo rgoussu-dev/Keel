@@ -1,0 +1,40 @@
+package <%= basePackage %>.platform.kernel;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import jakarta.enterprise.inject.Stereotype;
+import jakarta.inject.Singleton;
+
+/**
+ * Marks a {@link <%= basePackage %>.platform.kernel.Handler} implementation as
+ * one the channel's container should discover and hand to the
+ * Mediator.
+ *
+ * <p>The domain owns this annotation. Its meta-annotations are
+ * API-only Jakarta standards that describe intent — "one
+ * container-managed instance" — so the domain still names no
+ * framework, and neither API reaches a runtime classpath (both are
+ * declared {@code compileOnly}/{@code provided}).
+ *
+ * <p>Each composition root interprets the marker in its own idiom:
+ * Quarkus reads it as a CDI stereotype, Spring targets it with a
+ * component-scan include filter, and Micronaut (Java) imports it by
+ * name. Micronaut's Kotlin bootstrap wires handlers explicitly
+ * instead, so there the marker is documentation only.
+ *
+ * <p>{@link Singleton} is a pseudo-scope: no client proxy, so a
+ * handler that needs to dispatch must take a
+ * {@code Provider<Mediator>} rather than a {@code Mediator} — see the
+ * project's AGENTS.md §2.
+ */
+@Stereotype
+@Singleton
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface DomainHandler {
+}

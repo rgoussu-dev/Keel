@@ -1,0 +1,27 @@
+package <%= basePackage %>.application.api
+
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.FilterType
+
+import <%= basePackage %>.platform.kernel.DomainHandler
+
+/**
+ * Boots the REST channel. The scan is declared explicitly because it
+ * spans the assembly's own package — composition roots — and the whole
+ * `greeting` module, whose controller lives in its user-side adapter
+ * and whose handlers carry no Spring stereotype. Those are admitted by
+ * the [DomainHandler] include filter instead, so the domain names no
+ * framework and the composition root names the domain's marker.
+ */
+@SpringBootApplication
+@ComponentScan(
+    basePackages = ["<%= basePackage %>.application.api", "<%= basePackage %>.greeting"],
+    includeFilters = [ComponentScan.Filter(type = FilterType.ANNOTATION, classes = [DomainHandler::class])],
+)
+class Application
+
+fun main(args: Array<String>) {
+    runApplication<Application>(*args)
+}

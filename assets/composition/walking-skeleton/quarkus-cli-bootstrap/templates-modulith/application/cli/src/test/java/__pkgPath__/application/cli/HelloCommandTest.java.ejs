@@ -1,0 +1,19 @@
+package <%= basePackage %>.application.cli;
+
+import io.quarkus.test.junit.main.Launch;
+import io.quarkus.test.junit.main.LaunchResult;
+import io.quarkus.test.junit.main.QuarkusMainTest;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@QuarkusMainTest
+class HelloCommandTest {
+    @Test
+    @Launch({"hello", "--name", "Romain"})
+    void greetsByNameThroughMediator(LaunchResult result) {
+        assertEquals(0, result.exitCode());
+        assertTrue(result.getOutput().contains("Hello, Romain!"));
+    }
+}

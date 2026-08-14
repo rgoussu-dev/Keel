@@ -1,0 +1,33 @@
+package <%= basePackage %>.application.api.observability
+
+import io.micronaut.runtime.http.scope.RequestScope
+
+/**
+ * Per-request correlation context, populated by
+ * [RequestContextFilter] from the inbound headers before any
+ * controller code runs.
+ *
+ * Extension point: to propagate another field (a user id, a request
+ * source, …), add it here and parse it in [RequestContextFilter] —
+ * the tenant id below is the worked example. Keep all header parsing
+ * in the filter so the rest of the application only ever reads this
+ * bean.
+ */
+@RequestScope
+open class RequestContext {
+
+    // open: request-scoped beans are proxied by subclassing, and this
+    // class sits outside any allOpen annotation list.
+    open var correlationId: String = ""
+
+    /** The tenant id, or null outside multi-tenant calls. */
+    open var tenantId: String? = null
+
+    companion object {
+        /** Header carrying the caller-supplied correlation id. */
+        const val CORRELATION_ID_HEADER = "X-Correlation-Id"
+
+        /** Header carrying the tenant id in multi-tenant scenarios. */
+        const val TENANT_ID_HEADER = "X-Tenant-Id"
+    }
+}

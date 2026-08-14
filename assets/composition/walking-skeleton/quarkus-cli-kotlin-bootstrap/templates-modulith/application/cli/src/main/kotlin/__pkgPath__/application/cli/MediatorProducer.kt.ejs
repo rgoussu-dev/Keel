@@ -1,0 +1,36 @@
+package <%= basePackage %>.application.cli
+
+import jakarta.enterprise.context.ApplicationScoped
+import jakarta.enterprise.inject.Instance
+import jakarta.enterprise.inject.Produces
+import jakarta.inject.Singleton
+
+import <%= basePackage %>.greeting.userside.service.GreetingService
+import <%= basePackage %>.greeting.userside.service.GreetingServiceAdapter
+import <%= basePackage %>.platform.kernel.Handler
+import <%= basePackage %>.platform.kernel.Mediator
+import <%= basePackage %>.platform.kernel.RegistryMediator
+
+/**
+ * The channel's composition root: collects every discovered domain
+ * [Handler] and builds the Mediator from them.
+ *
+ * ArC discovers handlers because `@DomainHandler` is a CDI stereotype
+ * and the domain modules ship a `beans.xml` marking them bean
+ * archives, so adding an aggregate to the domain needs no edit here.
+ */
+@ApplicationScoped
+class MediatorProducer {
+    @Produces
+    @Singleton
+    fun mediator(handlers: Instance<Handler<*, *>>): Mediator = RegistryMediator(handlers.toList())
+
+    /**
+     * The greeting module's in-process API, offered to peer modules.
+     * Nothing consumes it yet — the second bounded context is the
+     * first thing that will, through a driven port of its own.
+     */
+    @Produces
+    @Singleton
+    fun greetingService(mediator: Mediator): GreetingService = GreetingServiceAdapter(mediator)
+}

@@ -54,6 +54,16 @@ Every stack ships three layers of tests:
   asserting the unit-of-work boundary: committed on success, rolled
   back — with nothing persisted — on rejection.
 
+## Module layout
+
+This vertical assumes the **`basic`** module layout. On a
+`layout.modulith` project it refuses with a message rather than
+writing into `domain/` and `infrastructure/`, which such a project
+does not have — add the driven port and its adapter under
+`modules/<context>/` by hand, or scaffold with
+`--module-layout=basic`. Porting it is tracked in the
+[roadmap](../roadmap.md).
+
 ## Prerequisites
 
 | Requirement                            | When                                                                                                            |

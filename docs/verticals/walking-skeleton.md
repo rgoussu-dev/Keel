@@ -29,6 +29,11 @@ Highlights that hold everywhere:
 - The **entrypoint shape is a predicate dimension**, not hard-coded:
   framework, language, and build system are ordinary tags, and the
   domain trisection is shared per language across frameworks.
+- The **module layout is a second dial** on the JVM stacks:
+  `layout.basic` (default) emits the flat trisection, `layout.modulith`
+  emits one hexagon per bounded context under `modules/` composed by
+  `application/<typology>` assemblies. Same adapters, same answers —
+  a different shape. → [Module layout](../stacks/jvm.md#module-layout)
 - Go and Rust entrypoints **compose** — a tag set carrying both
   `arch.cli` and `arch.server-http` ships both deployment units on one
   module/package.

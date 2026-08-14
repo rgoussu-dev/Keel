@@ -1,0 +1,40 @@
+package <%= basePackage %>.greeting.userside.service;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand;
+import <%= basePackage %>.platform.kernel.Command;
+import <%= basePackage %>.platform.kernel.Mediator;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class GreetingServiceAdapterTest {
+
+    @Test
+    void dispatchesAGreetCommandAndReturnsWhatTheModuleAnswered() {
+        RecordingMediator mediator = new RecordingMediator("Hello, Romain!");
+
+        String greeting = new GreetingServiceAdapter(mediator).greetingFor("Romain");
+
+        assertEquals("Hello, Romain!", greeting);
+        assertEquals(new GreetCommand("Romain"), mediator.dispatched);
+    }
+
+    /** A fake, not a mock — the house rule. */
+    private static final class RecordingMediator implements Mediator {
+
+        private final Object answer;
+        private Command<?> dispatched;
+
+        private RecordingMediator(Object answer) {
+            this.answer = answer;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <R> R dispatch(Command<R> command) {
+            dispatched = command;
+            return (R) answer;
+        }
+    }
+}

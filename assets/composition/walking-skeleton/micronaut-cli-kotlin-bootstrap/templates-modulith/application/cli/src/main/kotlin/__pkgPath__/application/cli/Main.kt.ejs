@@ -1,0 +1,30 @@
+package <%= basePackage %>.application.cli
+
+import <%= basePackage %>.greeting.userside.cli.HelloCommand
+
+import kotlin.system.exitProcess
+
+import io.micronaut.configuration.picocli.PicocliRunner
+import picocli.CommandLine.Command
+
+/**
+ * Top-level entry point for the CLI. Subcommands are declared on
+ * [Command.subcommands]; add a new one by writing a Runnable
+ * annotated with [Command] and listing it here.
+ */
+@Command(
+    name = Main.NAME,
+    mixinStandardHelpOptions = true,
+    description = ["Walking skeleton CLI scaffolded by keel."],
+    subcommands = [HelloCommand::class],
+)
+class Main {
+    companion object {
+        const val NAME = "<%= projectName %>"
+
+        @JvmStatic
+        fun main(args: Array<String>) {
+            exitProcess(PicocliRunner.execute(Main::class.java, *args))
+        }
+    }
+}

@@ -1,0 +1,9 @@
+package <%= basePackage %>.greeting.domain.contract.greet
+
+/**
+ * Raised when a [GreetCommand] carries a blank name. A domain
+ * error: primary adapters map it to their transport's error shape
+ * (RFC 9457 Problem Details for REST); the domain never learns about
+ * HTTP.
+ */
+class GreetRejected(message: String) : RuntimeException(message)

@@ -1,0 +1,13 @@
+package <%= basePackage %>.platform.kernel;
+
+/**
+ * A handler for one Command type. Handlers self-declare which
+ * commands they accept via {@link #supports(Command)} — never
+ * inject a {@code Map<Class<?>, Handler<?, ?>>} and route by type
+ * tag.
+ */
+public interface Handler<C extends Command<R>, R> {
+    boolean supports(Command<?> command);
+
+    R handle(C command);
+}

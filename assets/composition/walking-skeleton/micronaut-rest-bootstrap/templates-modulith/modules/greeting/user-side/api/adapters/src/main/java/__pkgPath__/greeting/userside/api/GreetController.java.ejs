@@ -1,0 +1,29 @@
+package <%= basePackage %>.greeting.userside.api;
+
+import io.micronaut.http.MediaType;
+import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.QueryValue;
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetCommand;
+import <%= basePackage %>.greeting.userside.api.contract.GreetResponse;
+import <%= basePackage %>.platform.kernel.Mediator;
+
+/**
+ * HTTP entry point of the walking skeleton: maps the query string to
+ * a {@link GreetCommand}, dispatches it via the mediator, and wraps
+ * the result in the channel's transport DTO. No business logic.
+ */
+@Controller("/greet")
+public class GreetController {
+    private final Mediator mediator;
+
+    public GreetController(Mediator mediator) {
+        this.mediator = mediator;
+    }
+
+    @Get(produces = MediaType.APPLICATION_JSON)
+    public GreetResponse greet(@QueryValue(value = "name", defaultValue = "world") String name) {
+        return new GreetResponse(mediator.dispatch(new GreetCommand(name)));
+    }
+}

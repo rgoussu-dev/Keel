@@ -19,13 +19,20 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { gradleProject, jvmLayout } from './jvm-module-layout.js';
 import { FLAVOR_QUESTION, imageFlavor, imageTags, jvmBuildSystem } from './container-image.js';
 
 export const MICRONAUT_REST_IMAGE_ID = 'containerization/micronaut-rest-image';
 
 const TEMPLATE_ID = 'composition/containerization/micronaut-rest-image/templates';
 
-const MODULE = 'application/rest/executable';
+/**
+ * The runnable module follows the project's module layout: the flat
+ * layout's lone executable, or the modulith's `application/api`
+ * assembly. Its archive base name is the module path with dashes
+ * under either build system.
+ */
+const unitBase = (unit: string): string => unit.split('/').join('-');
 
 export const micronautRestImageAdapter: Adapter = {
   id: MICRONAUT_REST_IMAGE_ID,
@@ -37,21 +44,22 @@ export const micronautRestImageAdapter: Adapter = {
     const build = jvmBuildSystem(ctx.manifest, MICRONAUT_REST_IMAGE_ID);
     const flavor = imageFlavor(ctx.answer('flavor'), MICRONAUT_REST_IMAGE_ID);
     const gradle = build === 'gradle';
+    const unit = jvmLayout(ctx.manifest.tags).restRuntime;
     const artifactPath =
       flavor === 'native'
         ? gradle
           ? // The one file nativeCompile leaves in its output directory;
             // globbed because the binary is named after the Gradle
             // project (`executable`), not the module path.
-            `${MODULE}/build/native/nativeCompile/*`
-          : `${MODULE}/target/application-rest-executable`
+            `${unit}/build/native/nativeCompile/*`
+          : `${unit}/target/${unitBase(unit)}`
         : gradle
-          ? `${MODULE}/build/libs/application-rest-executable-0.1.0-SNAPSHOT-all.jar`
-          : `${MODULE}/target/application-rest-executable-0.1.0-SNAPSHOT.jar`;
+          ? `${unit}/build/libs/${unitBase(unit)}-0.1.0-SNAPSHOT-all.jar`
+          : `${unit}/target/${unitBase(unit)}-0.1.0-SNAPSHOT.jar`;
     const buildCommand =
       flavor === 'native'
         ? gradle
-          ? './gradlew :application:rest:executable:nativeCompile'
+          ? `./gradlew ${gradleProject(unit)}:nativeCompile`
           : './mvnw package -Dpackaging=native-image'
         : gradle
           ? './gradlew build'

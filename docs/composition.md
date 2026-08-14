@@ -10,7 +10,7 @@ conceptual companion to the [stack catalog](stacks/README.md) and the
 ### Tags
 
 Flat strings with hierarchical-dot naming — `lang.java`,
-`framework.quarkus`, `arch.cli`, `pkg.gradle`,
+`framework.quarkus`, `arch.cli`, `pkg.gradle`, `layout.modulith`,
 `runtime.graalvm-native`, `arch.hexagonal`. Tags are **facts about the
 project**, captured in the manifest at install time and grown by
 adapters that promote new capabilities (via `tagsAdd` — e.g. every
@@ -53,6 +53,45 @@ composes the `vcs` and `walking-skeleton` verticals. `quarkus-rest`
 swaps `arch.cli` for `arch.server-http` and the same verticals compose
 the REST shape. Adding a stack is a couple of lines in
 [`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts).
+
+### Module layout
+
+A second structural dial beside the build system, carried by a
+`layout.*` tag and offered by the JVM stacks:
+
+| Tag                      | Shape                                                                                                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `layout.basic` (default) | the flat trisection — one `domain/` (kernel + contract + core) and one `application/` per entrypoint                                                            |
+| `layout.modulith`        | one hexagon per bounded context under `modules/<context>/`, shared plumbing under `platform/`, one runnable assembly per delivery typology under `application/` |
+
+Pick it with [`keel new --module-layout=<id>`](cli.md#keel-new) or
+answer the prompt. It is **not** a second set of adapters: the same
+adapter id renders a different shape, so the manifest answers, the
+`after` ordering and every downstream vertical are unchanged. Adapters
+that write outside their own template tree read the paths from
+`jvmLayout(tags)` in
+[`src/domain/core/adapters/jvm-module-layout.ts`](../src/domain/core/adapters/jvm-module-layout.ts)
+rather than naming a directory — that helper is the one place the two
+layouts are described.
+
+A manifest carrying neither tag resolves to `basic`, so brownfield
+`keel add` on a project scaffolded before the dial existed keeps
+working unchanged.
+
+> Not to be confused with the composite-stack **repository** layout
+> (`--layout=monorepo|polyrepo`) below, which decides how sibling
+> _services_ live in version control. Module layout is about bounded
+> contexts inside one service; repository layout is about
+> repositories.
+
+The modulith's whole point is the **`user-side/service` seam**: a
+module that needs a peer declares a driven port in its own vocabulary
+and implements it in its own `infra/` over the peer's in-process
+service adapter. That is the only dependency edge allowed between
+modules, and it is what turns "extract this context into its own
+service" into a wiring change. See
+[the JVM stack page](stacks/jvm.md#module-layout) for the generated
+tree.
 
 ## One install, end to end
 

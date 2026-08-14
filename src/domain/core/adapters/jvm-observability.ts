@@ -34,6 +34,7 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
+import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
 import { eolAware, packageToPath } from '../util.js';
 import type { JvmLanguage } from './jvm-bootstrap.js';
 import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
@@ -54,10 +55,18 @@ export interface JvmObservabilitySpec {
   readonly templateDir: string;
 }
 
-const GRADLE_TARGET = 'application/rest/executable/build.gradle.kts';
-const MAVEN_TARGET = 'application/rest/executable/pom.xml';
-const PROPERTIES_TARGET = 'application/rest/executable/src/main/resources/application.properties';
-const LOGBACK_TARGET = 'application/rest/executable/src/main/resources/logback.xml';
+/**
+ * Observability is assembly-level: correlation, probes and telemetry
+ * belong to the deployment unit, not to any one bounded context. Both
+ * layouts therefore target the module that runs — `application/…` under
+ * the modulith, the lone executable under the flat trisection.
+ */
+const gradleTarget = (l: JvmLayoutPaths): string => `${l.restRuntime}/build.gradle.kts`;
+const mavenTarget = (l: JvmLayoutPaths): string => `${l.restRuntime}/pom.xml`;
+const propertiesTarget = (l: JvmLayoutPaths): string =>
+  `${l.restRuntime}/src/main/resources/application.properties`;
+const logbackTarget = (l: JvmLayoutPaths): string =>
+  `${l.restRuntime}/src/main/resources/logback.xml`;
 
 /** Per-framework build + config wiring. */
 interface FrameworkWiring {
@@ -76,12 +85,12 @@ interface FrameworkWiring {
   /** The framework's readiness probe path, for the README section. */
   readonly readinessPath: string;
   /** Patches against the runtime configuration files. */
-  configPatches(): readonly ContributionPatch[];
+  configPatches(layout: JvmLayoutPaths): readonly ContributionPatch[];
 }
 
 const README_MARKER = '\n### Observability\n';
 
-const readmeSection = (wiring: FrameworkWiring): string =>
+const readmeSection = (wiring: FrameworkWiring, layout: JvmLayoutPaths): string =>
   `${README_MARKER}
 Liveness \`GET ${wiring.livenessPath}\` (process up — restart on failure)
 and readiness \`GET ${wiring.readinessPath}\` (dependencies ok — gate
@@ -91,7 +100,8 @@ dependency checks). Every request gets a correlation id:
 stamped on every log line (MDC), the OpenTelemetry span, and the
 \`app.http.requests\` counter. Add more propagated fields (e.g. a tenant
 id — \`X-Tenant-Id\` ships as the example) in the
-\`rest/observability/RequestContext\` + filter pair. Telemetry exports
+\`${layout.restRuntimePkg.split('.').join('/')}/observability/RequestContext\` + filter
+pair. Telemetry exports
 over OTLP; point it at a collector with the standard \`OTEL_*\` env vars.
 `;
 
@@ -178,9 +188,9 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
     </dependency>`,
     livenessPath: '/q/health/live',
     readinessPath: '/q/health/ready',
-    configPatches: () => [
+    configPatches: (layout) => [
       {
-        target: PROPERTIES_TARGET,
+        target: propertiesTarget(layout),
         apply: eolAware((existing) => {
           let next = existing;
           if (!next.includes(QUARKUS_LOG_FORMAT_MDC)) {
@@ -220,8 +230,12 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
     </dependency>`,
     livenessPath: '/actuator/health/liveness',
     readinessPath: '/actuator/health/readiness',
-    configPatches: () => [
-      appendBlock(PROPERTIES_TARGET, OBSERVABILITY_PROPERTIES_GUARD, SPRING_PROPERTIES_BLOCK),
+    configPatches: (layout) => [
+      appendBlock(
+        propertiesTarget(layout),
+        OBSERVABILITY_PROPERTIES_GUARD,
+        SPRING_PROPERTIES_BLOCK,
+      ),
     ],
   },
   micronaut: {
@@ -250,10 +264,14 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
     </dependency>`,
     livenessPath: '/health/liveness',
     readinessPath: '/health/readiness',
-    configPatches: () => [
-      appendBlock(PROPERTIES_TARGET, OBSERVABILITY_PROPERTIES_GUARD, MICRONAUT_PROPERTIES_BLOCK),
+    configPatches: (layout) => [
+      appendBlock(
+        propertiesTarget(layout),
+        OBSERVABILITY_PROPERTIES_GUARD,
+        MICRONAUT_PROPERTIES_BLOCK,
+      ),
       {
-        target: LOGBACK_TARGET,
+        target: logbackTarget(layout),
         apply: eolAware((existing) => {
           if (existing.includes('%X{correlationId}')) return existing;
           return existing.replace(MICRONAUT_LOGBACK_PATTERN_PLAIN, MICRONAUT_LOGBACK_PATTERN_MDC);
@@ -291,7 +309,8 @@ export function jvmRestBootstrapAnswers(
  */
 export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
   const wiring = WIRING[spec.framework];
-  const templateId = `composition/observability/${spec.templateDir}/templates`;
+  const templateId = (suffix: string): string =>
+    `composition/observability/${spec.templateDir}/templates${suffix}`;
   return {
     id: spec.id,
     vertical: 'observability',
@@ -302,11 +321,16 @@ export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
     async contribute(ctx) {
       const { basePackage, projectName } = jvmRestBootstrapAnswers(ctx.manifest, spec);
       const vars = { basePackage, projectName, pkgPath: packageToPath(basePackage) };
-      const files = await ctx.templates.render(templateId, '', vars);
+      const layout = jvmLayout(ctx.manifest.tags);
+      const files = await ctx.templates.render(
+        templateId(layout.layout === 'modulith' ? '-modulith' : ''),
+        '',
+        vars,
+      );
       const buildPatch: ContributionPatch =
         jvmBuildSystem(ctx.manifest.tags) === 'maven'
           ? {
-              target: MAVEN_TARGET,
+              target: mavenTarget(layout),
               apply: eolAware((existing) => {
                 if (existing.includes(wiring.guard)) return existing;
                 return existing.replace(
@@ -316,7 +340,7 @@ export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
               }),
             }
           : {
-              target: GRADLE_TARGET,
+              target: gradleTarget(layout),
               apply: eolAware((existing) => {
                 if (existing.includes(wiring.guard)) return existing;
                 return existing.replace(
@@ -329,12 +353,12 @@ export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
         files,
         patches: [
           buildPatch,
-          ...wiring.configPatches(),
+          ...wiring.configPatches(layout),
           {
             target: 'README.md',
             apply: eolAware((existing) => {
               if (existing.includes(README_MARKER)) return existing;
-              return `${existing.trimEnd()}\n${readmeSection(wiring)}`;
+              return `${existing.trimEnd()}\n${readmeSection(wiring, layout)}`;
             }),
           },
         ],
