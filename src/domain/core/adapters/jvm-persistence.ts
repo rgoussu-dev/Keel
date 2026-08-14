@@ -400,6 +400,16 @@ export function assemblySourceRoot(
 export function jvmPersistenceVars(
   basePackage: string,
   projectName: string,
+  layout: JvmLayoutPaths,
 ): Readonly<Record<string, string>> {
-  return { basePackage, projectName, pkgPath: packageToPath(basePackage) };
+  return {
+    basePackage,
+    projectName,
+    pkgPath: packageToPath(basePackage),
+    // The JDBC contract test applies `migrations/sql` itself, and both
+    // build systems run a test from its own module directory — so the
+    // way back to the root is layout-dependent: three levels under the
+    // flat trisection, five under the modulith.
+    migrationsFromJdbcModule: `${layout.upToRoot(layout.infra('greeting-log/jdbc'))}migrations/sql`,
+  };
 }

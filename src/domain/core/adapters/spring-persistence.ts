@@ -237,9 +237,9 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         'spring',
         language,
       );
-      const vars = jvmPersistenceVars(basePackage, projectName);
-      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const layout = jvmLayout(ctx.manifest.tags);
+      const vars = jvmPersistenceVars(basePackage, projectName, layout);
+      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
         jvmSharedPersistenceFiles(ctx, language, layout, vars),

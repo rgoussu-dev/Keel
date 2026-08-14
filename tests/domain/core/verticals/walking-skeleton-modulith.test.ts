@@ -343,5 +343,16 @@ describe('layout-dependent verticals under layout.modulith', () => {
     expect(
       tree.read('application/api/src/main/resources/application.properties')?.toString(),
     ).toContain('filesystem:../../migrations/sql');
+    // …and from the JDBC module — five deep, and running from its own
+    // directory — from five up. Both build systems run a test with the
+    // module as its working directory, so this depth is the difference
+    // between the contract test finding the schema and not.
+    expect(
+      tree
+        .read(
+          'modules/greeting/infra/greeting-log/jdbc/src/test/java/com/example/greeting/infra/greetinglog/jdbc/JdbcGreetingLogTest.java',
+        )
+        ?.toString(),
+    ).toContain('filesystem:../../../../../migrations/sql');
   });
 });
