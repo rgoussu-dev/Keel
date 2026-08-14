@@ -1,73 +1,36 @@
 /**
- * The JVM **module layout** dial — the second structural choice a JVM
- * project makes, beside its build system.
+ * The JVM half of the **module layout** dial: where each layout puts
+ * a JVM project's modules, and under which package.
  *
- * Two layouts are supported, selected by a `layout.*` capability tag
- * the stack seeds at `keel new` time:
+ * The dial itself — the two layout names, the `layout.*` tags, the
+ * context names, the selectable options — is language-neutral and
+ * lives in [`module-layout.ts`](./module-layout.ts). This file is one
+ * of its per-language resolvers, and the first: `jvmLayout` maps a
+ * manifest's tags to the twelve JVM stacks' module paths, package
+ * segments, Gradle project paths and Maven artifact ids.
  *
- * - **`basic`** (`layout.basic`) — the flat trisection: one
- *   `domain/` (kernel + contract + core) and one `application/` per
- *   entrypoint. The right shape while the service holds a single
- *   bounded context.
- * - **`modulith`** (`layout.modulith`) — one hexagon per bounded
- *   context under `modules/<context>/`, shared plumbing under
- *   `platform/`, and one runnable assembly per delivery typology
- *   under `application/`. Modules meet only at
- *   `user-side/service`, which is what makes carving a context out
- *   into its own service a wiring change.
+ * Under **`basic`** that is one `domain/` (kernel + contract + core)
+ * and one `application/` per entrypoint; under **`modulith`**, one
+ * hexagon per bounded context under `modules/<context>/`, shared
+ * plumbing under `platform/`, and one runnable assembly per delivery
+ * typology under `application/`.
  *
  * Adapters never hard-code a directory: they call {@link jvmLayout}
  * with the manifest's tags and read the module paths and package
  * segments from the result, so one set of templates serves both
- * layouts wherever the *content* is identical. A manifest with
- * neither tag — every project scaffolded before the dial existed —
- * resolves to `basic`, so brownfield `keel add` keeps working.
- *
- * Not to be confused with the composite-stack **repository** layout
- * (`monorepo`/`polyrepo`), which decides how sibling *services* live
- * in version control and is deliberately not a tag.
+ * layouts wherever the *content* is identical.
  */
 
 import type { Tag } from '../../contract/composition.js';
+import { type ModuleLayout, moduleLayoutOf, SKELETON_MODULE } from './module-layout.js';
 
-/** Module layouts the JVM template trees ship for. */
-export type JvmModuleLayout = 'basic' | 'modulith';
-
-/** Capability tag seeding the flat trisection. */
-export const BASIC_LAYOUT_TAG: Tag = 'layout.basic';
-
-/** Capability tag seeding the modulith. */
-export const MODULITH_LAYOUT_TAG: Tag = 'layout.modulith';
-
-/**
- * Capability tag seeding a **second bounded context** beside the
- * skeleton's own, opted into with `keel new --with-peer-context`.
- *
- * The modulith's whole claim is that contexts meet only at
- * `user-side/service`, and with one context that claim is asserted
- * rather than exercised — nothing in the emitted project consumes the
- * seam, so nothing proves it holds. This tag adds the consumer that
- * does: a context declaring a driven port in its own vocabulary and
- * reaching the first only through a gateway.
- *
- * Only meaningful together with {@link MODULITH_LAYOUT_TAG}, which is
- * what creates the seam in the first place.
- */
-export const PEER_CONTEXT_TAG: Tag = 'modules.peer-context';
-
-/**
- * The consumer context scaffolded by `--with-peer-context`. It reads
- * as a peer of {@link SKELETON_MODULE}: it needs a welcome to record,
- * and greeting is the module that produces one.
- */
-export const PEER_MODULE = 'guestbook';
-
-/**
- * The bounded context the walking skeleton scaffolds under the
- * modulith. One module is enough to establish the shape; the second
- * one is the user's first real design decision.
- */
-export const SKELETON_MODULE = 'greeting';
+export {
+  BASIC_LAYOUT_TAG,
+  MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
+  PEER_MODULE,
+  SKELETON_MODULE,
+} from './module-layout.js';
 
 /**
  * Where each part of a JVM project lives, and under which package,
@@ -76,7 +39,7 @@ export const SKELETON_MODULE = 'greeting';
  * project's `basePackage`.
  */
 export interface JvmLayoutPaths {
-  readonly layout: JvmModuleLayout;
+  readonly layout: ModuleLayout;
   /** Dispatch vocabulary: `Command`, `Handler`, `Mediator`, `DomainHandler`. */
   readonly kernel: string;
   readonly kernelPkg: string;
@@ -195,9 +158,13 @@ export function upToRoot(dir: string): string {
   return '../'.repeat(dir.split('/').length);
 }
 
-/** Resolves the JVM module layout from a manifest tag set. */
-export function jvmModuleLayout(tags: readonly Tag[]): JvmModuleLayout {
-  return tags.includes(MODULITH_LAYOUT_TAG) ? 'modulith' : 'basic';
+/**
+ * Resolves the module layout from a manifest tag set — the JVM
+ * spelling of {@link moduleLayoutOf}, re-exported here so a JVM
+ * adapter needs one import to get both the layout and its paths.
+ */
+export function jvmModuleLayout(tags: readonly Tag[]): ModuleLayout {
+  return moduleLayoutOf(tags);
 }
 
 /**

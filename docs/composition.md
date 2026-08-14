@@ -74,6 +74,15 @@ that write outside their own template tree read the paths from
 rather than naming a directory — that helper is the one place the two
 layouts are described.
 
+The dial itself is language-neutral and lives in
+[`src/domain/core/adapters/module-layout.ts`](../src/domain/core/adapters/module-layout.ts):
+the two layout names, the tags that seed them, and the selectable
+options a stack lists in `moduleLayouts`. `jvmLayout` is the first of
+its per-language **resolvers** — one per stack family, each owning the
+paths and the _name_ derivations (packages, artifact ids, import
+prefixes) that its language spells differently from the directory
+path.
+
 A manifest carrying neither tag resolves to `basic`, so brownfield
 `keel add` on a project scaffolded before the dial existed keeps
 working unchanged.

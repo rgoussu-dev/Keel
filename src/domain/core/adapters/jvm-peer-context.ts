@@ -42,8 +42,13 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
-import { PEER_MODULE, gradleProject, jvmLayout } from './jvm-module-layout.js';
-import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from './jvm-module-layout.js';
+import {
+  MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
+  PEER_MODULE,
+  gradleProject,
+  jvmLayout,
+} from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
