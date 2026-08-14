@@ -1,0 +1,6 @@
+package <%= basePackage %>.greeting.userside.api.contract;
+
+import java.time.Instant;
+
+/** Transport shape of one recorded greeting. */
+public record RecordedGreetingResponse(long id, String name, Instant greetedAt) {}

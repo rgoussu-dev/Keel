@@ -1,0 +1,75 @@
+package <%= basePackage %>.greeting.infra.unitofwork.jta;
+
+import jakarta.transaction.Status;
+import jakarta.transaction.UserTransaction;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class JtaUnitOfWorkTest {
+
+    /** Hand-rolled recording transaction — a fake, not a mock. */
+    private static final class RecordingTransaction implements UserTransaction {
+
+        private final StringBuilder events = new StringBuilder();
+
+        @Override
+        public void begin() {
+            events.append("begin ");
+        }
+
+        @Override
+        public void commit() {
+            events.append("commit ");
+        }
+
+        @Override
+        public void rollback() {
+            events.append("rollback ");
+        }
+
+        @Override
+        public void setRollbackOnly() {
+            events.append("rollback-only ");
+        }
+
+        @Override
+        public int getStatus() {
+            return Status.STATUS_NO_TRANSACTION;
+        }
+
+        @Override
+        public void setTransactionTimeout(int seconds) {
+            events.append("timeout ");
+        }
+
+        String events() {
+            return events.toString().trim();
+        }
+    }
+
+    private final RecordingTransaction transaction = new RecordingTransaction();
+    private final JtaUnitOfWork unitOfWork = new JtaUnitOfWork(transaction);
+
+    @Test
+    void commitsWhenTheBlockReturns() {
+        String result = unitOfWork.inTransaction(() -> "done");
+
+        assertEquals("done", result);
+        assertEquals("begin commit", transaction.events());
+    }
+
+    @Test
+    void rollsBackAndRethrowsWhenTheBlockThrows() {
+        IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> unitOfWork.inTransaction(() -> {
+                    throw new IllegalArgumentException("boom");
+                }));
+
+        assertEquals("boom", thrown.getMessage());
+        assertEquals("begin rollback", transaction.events());
+    }
+}

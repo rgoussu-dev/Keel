@@ -134,20 +134,21 @@ What actually changes, beyond the directories:
   probes and telemetry belong to the deployment unit rather than to
   any one context: its classes land in `application/api`.
 
-### Not supported yet on `modulith`
+- **Persistence follows the context**, because a repository port is a
+  bounded context's concern: `keel add persistence` puts the
+  `GreetingLog` and `UnitOfWork` ports in
+  `modules/greeting/domain/contract`, their JDBC and transaction
+  adapters in `modules/greeting/infra/`, the `/greetings` resource in
+  `modules/greeting/user-side/api/adapters`, and only the datasource
+  and migration config in `application/api`. Extracting the context
+  therefore takes its persistence with it. See
+  [the vertical's page](../verticals/persistence.md#module-layout).
 
-[`persistence`](../verticals/persistence.md) still assumes the flat
-trisection — its module list, composition-root patches and package
-strings all name `domain/…` and `infrastructure/…` directly. Rather
-than scatter files into directories a modulith project does not have,
-`keel add persistence` **refuses with a message** on such a project.
-Add the driven port and its adapter under `modules/<context>/` by
-hand, or scaffold with `--module-layout=basic`. Tracked in
-[the roadmap](../roadmap.md).
+### Not supported yet on `modulith`
 
 The non-JVM stacks (Go, Rust, ts-http, web-components) ship the
 `basic` layout only for now; their idiomatic modulith realizations are
-also on the roadmap.
+on [the roadmap](../roadmap.md).
 
 ## How handlers reach the mediator
 

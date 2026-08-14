@@ -125,13 +125,6 @@ so it exercises the patch path of the composition contract.
 
 ## Backlog (unordered)
 
-- **`persistence` on the modulith layout** — `keel add persistence`
-  refuses on a `layout.modulith` project today: its module list,
-  composition-root patches and package strings all name `domain/…`
-  and `infrastructure/…` directly. Porting it means routing those
-  through `jvmLayout(tags)` the way `observability`,
-  `containerization` and `gateway` already do, plus a
-  `*-modulith` template tree per framework.
 - **The modulith layout beyond the JVM** — Go, Rust, `ts-http` and
   `web-components` ship `basic` only. Each has an idiomatic
   realization already designed (facade-fronted context packages

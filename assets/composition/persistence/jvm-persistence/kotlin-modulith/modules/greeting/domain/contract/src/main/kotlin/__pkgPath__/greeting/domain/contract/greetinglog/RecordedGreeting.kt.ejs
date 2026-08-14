@@ -1,0 +1,6 @@
+package <%= basePackage %>.greeting.domain.contract.greetinglog
+
+import java.time.Instant
+
+/** One greeting as the log recorded it. */
+data class RecordedGreeting(val id: Long, val name: String, val greetedAt: Instant)

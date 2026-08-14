@@ -9,14 +9,20 @@
  *     PostgreSQL from Quarkus Dev Services (Testcontainers). Pool
  *     health feeds the readiness probe and pool metrics + JDBC spans
  *     feed telemetry when the observability vertical is installed.
- *   - **unit-of-work**: the `UnitOfWork` secondary port in
- *     `domain/contract` with the JTA adapter
- *     (`infrastructure/unit-of-work/jta`) — Quarkus's idiomatic
+ *   - **unit-of-work**: the `UnitOfWork` secondary port in the
+ *     hexagon's contract face with the JTA adapter in its
+ *     `unit-of-work/jta` driven module — Quarkus's idiomatic
  *     transaction machinery; connections drawn from Agroal enlist
  *     automatically — and the canonical fake.
  *   - **repository-example**: the `GreetingLog` port with a plain-JDBC
  *     adapter and its fake, plus the earned slice up to
  *     `POST|GET /greetings`.
+ *
+ * Both module layouts are served: paths and patch anchors come from
+ * `jvmLayout`, and the `-modulith` template trees put the driven
+ * adapters under `modules/<context>/infra/`, the REST resource in the
+ * module's `user-side/api/adapters`, and the datasource wiring in the
+ * `application/api` assembly.
  *
  * The shared JVM trees and build-registration patches come from
  * {@link ../adapters/jvm-persistence.js}; this adapter owns the
@@ -30,19 +36,21 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
+import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
 import {
   coreTestDepsPatch,
   executableProjectDepsPatch,
-  GRADLE_EXECUTABLE_TARGET,
+  gradleAssemblyTarget,
   jvmPersistenceBootstrapAnswers,
   jvmPersistenceVars,
   jvmSharedPersistenceFiles,
-  refuseOnModulith,
-  MAVEN_EXECUTABLE_TARGET,
+  layoutSuffix,
+  mavenAssemblyTarget,
+  migrationsLocations,
   moduleRegistrationPatch,
   observabilityInstalled,
   persistenceReadmePatch,
-  PROPERTIES_TARGET,
+  propertiesTarget,
 } from './jvm-persistence.js';
 import { databaseName, sqlEngine } from './persistence-engine.js';
 import { eolAware } from '../util.js';
@@ -84,8 +92,13 @@ const PROPERTIES_GUARD = '--- persistence (installed by keel)';
  * profiles, plus JDBC telemetry when the observability vertical is
  * already installed. Exported for the vertical tests.
  */
-export function persistencePropertiesBlock(database: string, telemetry: boolean): string {
+export function persistencePropertiesBlock(
+  database: string,
+  telemetry: boolean,
+  layout: JvmLayoutPaths,
+): string {
   const engine = sqlEngine();
+  const locations = migrationsLocations(layout);
   const telemetryLines = telemetry
     ? `# JDBC spans join the traces the observability vertical exports.
 quarkus.datasource.jdbc.telemetry=true
@@ -110,9 +123,9 @@ quarkus.datasource.devservices.image-name=${engine.image}
 # at startup for a tight local loop.
 quarkus.flyway.migrate-at-start=false
 %dev.quarkus.flyway.migrate-at-start=true
-%dev.quarkus.flyway.locations=filesystem:../../../migrations/sql,filesystem:migrations/sql
+%dev.quarkus.flyway.locations=${locations}
 %test.quarkus.flyway.migrate-at-start=true
-%test.quarkus.flyway.locations=filesystem:../../../migrations/sql,filesystem:migrations/sql
+%test.quarkus.flyway.locations=${locations}
 # Pool health feeds the readiness probe (with the observability
 # vertical's SmallRye Health); pool metrics feed telemetry.
 quarkus.datasource.health.enabled=true
@@ -120,10 +133,13 @@ quarkus.datasource.metrics.enabled=true
 ${telemetryLines}`;
 }
 
-function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch {
+function frameworkDepsPatch(
+  buildSystem: 'gradle' | 'maven',
+  layout: JvmLayoutPaths,
+): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
-      target: MAVEN_EXECUTABLE_TARGET,
+      target: mavenAssemblyTarget(layout),
       apply: eolAware((existing) => {
         if (existing.includes(DEPS_GUARD)) return existing;
         return existing.replace(
@@ -134,7 +150,7 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
     };
   }
   return {
-    target: GRADLE_EXECUTABLE_TARGET,
+    target: gradleAssemblyTarget(layout),
     apply: eolAware((existing) => {
       if (existing.includes(DEPS_GUARD)) return existing;
       return existing.replace(
@@ -155,7 +171,6 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.quarkus', 'arch.server-http', `lang.${language}`] },
     async contribute(ctx) {
-      refuseOnModulith('persistence/quarkus-persistence', ctx.manifest);
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
         id,
@@ -164,30 +179,33 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
       );
       const vars = jvmPersistenceVars(basePackage, projectName);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const layout = jvmLayout(ctx.manifest.tags);
+      const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
-        jvmSharedPersistenceFiles(ctx, language, vars),
-        ctx.templates.render(templateId, '', vars),
-        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+        jvmSharedPersistenceFiles(ctx, language, layout, vars),
+        ctx.templates.render(`${templateId}${suffix}`, '', vars),
+        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}${suffix}/${buildSystem}`, '', vars),
       ]);
       const database = databaseName(ctx.manifest);
       return {
         files: [...shared, ...sources, ...build],
         patches: [
-          moduleRegistrationPatch(buildSystem, id, UOW_MODULE),
-          frameworkDepsPatch(buildSystem),
-          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
-          coreTestDepsPatch(buildSystem, basePackage),
+          moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
+          frameworkDepsPatch(buildSystem, layout),
+          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE, layout),
+          coreTestDepsPatch(buildSystem, basePackage, layout),
           {
-            target: PROPERTIES_TARGET,
+            target: propertiesTarget(layout),
             apply: eolAware((existing) => {
               if (existing.includes(PROPERTIES_GUARD)) return existing;
               return `${existing.trimEnd()}\n\n${persistencePropertiesBlock(
                 database,
                 observabilityInstalled(ctx.manifest),
+                layout,
               ).trim()}\n`;
             }),
           },
-          persistenceReadmePatch(),
+          persistenceReadmePatch(layout),
         ],
         tagsAdd: [sqlEngine().tag],
       };

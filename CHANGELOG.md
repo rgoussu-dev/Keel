@@ -35,9 +35,13 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   (rejected, with a message, for stacks that ship one layout and for
   composite stacks). Adapters that write outside their own template
   tree now read paths and packages from `jvmLayout(tags)` instead of
-  naming a directory, so `observability`, `containerization` and
-  `gateway` compose on either layout: observability lands in the
-  assembly, where correlation ids and probes belong.
+  naming a directory, so `observability`, `containerization`,
+  `gateway` and `persistence` compose on either layout:
+  observability lands in the assembly, where correlation ids and
+  probes belong, and persistence in the bounded context, where its
+  port belongs. `jvmLayout` also derives Maven artifactIds and the
+  depth back to the project root, so no adapter hand-computes a
+  `<relativePath>` or a `filesystem:` migration location again.
 - **The `persistence` vertical** — SQL persistence for every HTTP
   stack (`keel add persistence`), PostgreSQL as the default engine
   behind an extensible engine spec. Five dimensions: a `datasource`
@@ -62,7 +66,15 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   database + healthcheck-gated migrations one-shot patched into
   `dev/compose.yaml`. Covered per stack by one predicate-selected
   adapter: Quarkus/Spring/Micronaut in Java and Kotlin (Gradle or
-  Maven), `go-http`, `rust-http`, `ts-http`.
+  Maven), `go-http`, `rust-http`, `ts-http`. On the JVM the vertical
+  serves **both module layouts**: under `layout.modulith` the driven
+  port and its handlers land in the bounded context
+  (`modules/<context>/domain/…`), the JDBC and unit-of-work adapters
+  in `modules/<context>/infra/`, the `/greetings` resource in the
+  context's `user-side/api/adapters`, and only the datasource,
+  migration config and framework boot test in the
+  `application/api` assembly — so extracting the context into its own
+  service takes its persistence with it.
 - **`@DomainHandler` — container discovery of handlers on the JVM
   stacks.** Handlers in scaffolded projects now carry a marker the
   **domain owns** (`domain/contract`), so a new aggregate no longer
@@ -94,11 +106,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- **`keel add persistence` refuses on a `layout.modulith` project**
-  with a message naming the gap, rather than writing into `domain/`
-  and `infrastructure/` directories such a project does not have.
-  Porting the vertical is tracked in `docs/roadmap.md`; projects on
-  the default `basic` layout are unaffected.
 - **README reorganized for first-time users** — prose trimmed in
   favor of a stack matrix, per-family "How to" sections (command +
   what you get + prerequisites), a composition diagram, and a

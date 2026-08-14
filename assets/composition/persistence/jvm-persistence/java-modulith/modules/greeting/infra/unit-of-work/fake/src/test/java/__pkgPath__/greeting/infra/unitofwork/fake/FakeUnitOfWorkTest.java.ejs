@@ -1,0 +1,30 @@
+package <%= basePackage %>.greeting.infra.unitofwork.fake;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class FakeUnitOfWorkTest {
+
+    private final FakeUnitOfWork unitOfWork = new FakeUnitOfWork();
+
+    @Test
+    void countsCompletedBlocksAsCommitted() {
+        assertEquals("done", unitOfWork.inTransaction(() -> "done"));
+        assertEquals(1, unitOfWork.committed());
+        assertEquals(0, unitOfWork.rolledBack());
+    }
+
+    @Test
+    void countsThrowingBlocksAsRolledBackAndRethrows() {
+        assertThrows(
+                IllegalStateException.class,
+                () -> unitOfWork.inTransaction(() -> {
+                    throw new IllegalStateException("boom");
+                }));
+
+        assertEquals(0, unitOfWork.committed());
+        assertEquals(1, unitOfWork.rolledBack());
+    }
+}

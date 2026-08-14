@@ -1,0 +1,40 @@
+package <%= basePackage %>.application.api
+
+import java.time.Instant
+
+import javax.sql.DataSource
+
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy
+import org.springframework.transaction.PlatformTransactionManager
+
+import <%= basePackage %>.greeting.domain.contract.Clock
+import <%= basePackage %>.greeting.domain.contract.UnitOfWork
+import <%= basePackage %>.greeting.domain.contract.greetinglog.GreetingLog
+import <%= basePackage %>.greeting.infra.greetinglog.jdbc.JdbcGreetingLog
+import <%= basePackage %>.greeting.infra.unitofwork.springtx.SpringTxUnitOfWork
+
+/**
+ * Composition-root wiring of the persistence slice: the real
+ * secondary adapters behind their ports — the JDBC greeting log over
+ * a transaction-aware view of the pool (so its statements enlist in
+ * the unit of work Spring manages), the Spring-tx unit of work, and
+ * the system clock. No logic.
+ */
+@Configuration
+class PersistenceConfig {
+
+    @Bean
+    fun clock(): Clock =
+        object : Clock {
+            override fun now(): Instant = Instant.now()
+        }
+
+    @Bean
+    fun unitOfWork(manager: PlatformTransactionManager): UnitOfWork = SpringTxUnitOfWork(manager)
+
+    @Bean
+    fun greetingLog(dataSource: DataSource): GreetingLog =
+        JdbcGreetingLog(TransactionAwareDataSourceProxy(dataSource))
+}

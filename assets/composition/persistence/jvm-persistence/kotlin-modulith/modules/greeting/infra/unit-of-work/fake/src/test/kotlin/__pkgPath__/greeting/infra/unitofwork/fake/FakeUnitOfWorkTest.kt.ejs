@@ -1,0 +1,28 @@
+package <%= basePackage %>.greeting.infra.unitofwork.fake
+
+import org.junit.jupiter.api.Test
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+
+class FakeUnitOfWorkTest {
+
+    private val unitOfWork = FakeUnitOfWork()
+
+    @Test
+    fun countsCompletedBlocksAsCommitted() {
+        assertEquals("done", unitOfWork.inTransaction { "done" })
+        assertEquals(1, unitOfWork.committed())
+        assertEquals(0, unitOfWork.rolledBack())
+    }
+
+    @Test
+    fun countsThrowingBlocksAsRolledBackAndRethrows() {
+        assertThrows(IllegalStateException::class.java) {
+            unitOfWork.inTransaction<Nothing> { error("boom") }
+        }
+
+        assertEquals(0, unitOfWork.committed())
+        assertEquals(1, unitOfWork.rolledBack())
+    }
+}

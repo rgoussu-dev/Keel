@@ -1,0 +1,56 @@
+package <%= basePackage %>.greeting.domain.core.greetinglog;
+
+import java.time.Instant;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.greeting.domain.contract.greet.GreetRejected;
+import <%= basePackage %>.greeting.domain.contract.greetinglog.ListGreetingsQuery;
+import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordGreetingCommand;
+import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordedGreeting;
+import <%= basePackage %>.greeting.infra.clock.fake.FakeClock;
+import <%= basePackage %>.greeting.infra.greetinglog.fake.FakeGreetingLog;
+import <%= basePackage %>.greeting.infra.unitofwork.fake.FakeUnitOfWork;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class GreetingLogHandlersTest {
+
+    private final FakeGreetingLog greetingLog = new FakeGreetingLog();
+    private final FakeClock clock = new FakeClock(Instant.parse("2026-01-01T12:00:00Z"));
+    private final FakeUnitOfWork unitOfWork = new FakeUnitOfWork();
+    private final RecordGreetingHandler record =
+            new RecordGreetingHandler(greetingLog, clock, unitOfWork);
+    private final ListGreetingsHandler list = new ListGreetingsHandler(greetingLog);
+
+    @Test
+    void recordsInsideOneUnitOfWork() {
+        RecordedGreeting recorded = record.handle(new RecordGreetingCommand("Ada"));
+
+        assertEquals("Ada", recorded.name());
+        assertEquals(Instant.parse("2026-01-01T12:00:00Z"), recorded.greetedAt());
+        assertEquals(1, unitOfWork.committed());
+    }
+
+    @Test
+    void rejectsBlankNamesWithoutTouchingTheLog() {
+        assertThrows(GreetRejected.class, () -> record.handle(new RecordGreetingCommand("  ")));
+
+        assertEquals(0, unitOfWork.committed());
+        assertTrue(list.handle(new ListGreetingsQuery(10)).isEmpty());
+    }
+
+    @Test
+    void listsMostRecentFirstAndClampsTheLimit() {
+        record.handle(new RecordGreetingCommand("Ada"));
+        record.handle(new RecordGreetingCommand("Grace"));
+
+        List<RecordedGreeting> recent = list.handle(new ListGreetingsQuery(0));
+
+        assertEquals(1, recent.size());
+        assertEquals("Grace", recent.get(0).name());
+    }
+}

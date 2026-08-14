@@ -1,0 +1,87 @@
+package <%= basePackage %>.greeting.infra.greetinglog.jdbc
+
+import java.time.Instant
+
+import javax.sql.DataSource
+
+import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.postgresql.ds.PGSimpleDataSource
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+
+import org.junit.jupiter.api.Assertions.assertEquals
+
+/**
+ * Contract test of the JDBC adapter against a real PostgreSQL
+ * (Testcontainers), with the schema applied from the same SQL the
+ * isolated migration runner ships (`migrations/sql/`). Skipped when
+ * no Docker daemon is available.
+ */
+@Testcontainers(disabledWithoutDocker = true)
+class JdbcGreetingLogTest {
+
+    @BeforeEach
+    fun emptyLog() {
+        dataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("truncate table greeting restart identity")
+            }
+        }
+    }
+
+    @Test
+    fun appendsAndReadsBackMostRecentFirst() {
+        val log = JdbcGreetingLog(dataSource)
+        val first = Instant.parse("2026-01-01T12:00:00Z")
+
+        log.append("Ada", first)
+        val grace = log.append("Grace", Instant.parse("2026-01-01T12:00:01Z"))
+
+        val recent = log.recent(10)
+        assertEquals(2, recent.size)
+        assertEquals(grace, recent[0])
+        assertEquals("Ada", recent[1].name)
+        assertEquals(first, recent[1].greetedAt)
+    }
+
+    @Test
+    fun limitsTheReadWindow() {
+        val log = JdbcGreetingLog(dataSource)
+        val at = Instant.parse("2026-01-01T12:00:00Z")
+        log.append("Ada", at)
+        log.append("Grace", at)
+        log.append("Linus", at)
+
+        val window = log.recent(2)
+        assertEquals(2, window.size)
+        assertEquals("Linus", window[0].name)
+    }
+
+    companion object {
+
+        @Container
+        @JvmStatic
+        private val POSTGRES = PostgreSQLContainer("postgres:18-alpine")
+
+        private lateinit var dataSource: DataSource
+
+        @BeforeAll
+        @JvmStatic
+        fun migrate() {
+            val ds = PGSimpleDataSource()
+            ds.setUrl(POSTGRES.jdbcUrl)
+            ds.user = POSTGRES.username
+            ds.password = POSTGRES.password
+            dataSource = ds
+            Flyway.configure()
+                .dataSource(ds)
+                .locations("filesystem:../../../migrations/sql")
+                .load()
+                .migrate()
+        }
+    }
+}

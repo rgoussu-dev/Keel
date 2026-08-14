@@ -1,0 +1,37 @@
+package <%= basePackage %>.greeting.infra.greetinglog.fake
+
+import java.time.Instant
+
+import org.junit.jupiter.api.Test
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+
+class FakeGreetingLogTest {
+
+    private val log = FakeGreetingLog()
+    private val at = Instant.parse("2026-01-01T12:00:00Z")
+
+    @Test
+    fun assignsIncreasingIds() {
+        assertEquals(1L, log.append("Ada", at).id)
+        assertEquals(2L, log.append("Grace", at).id)
+    }
+
+    @Test
+    fun readsBackMostRecentFirstWithinTheLimit() {
+        log.append("Ada", at)
+        log.append("Grace", at)
+        log.append("Linus", at)
+
+        val recent = log.recent(2)
+        assertEquals(listOf("Linus", "Grace"), recent.map { it.name })
+    }
+
+    @Test
+    fun toleratesAnEmptyLogAndNonPositiveLimits() {
+        assertTrue(log.recent(10).isEmpty())
+        log.append("Ada", at)
+        assertTrue(log.recent(0).isEmpty())
+    }
+}

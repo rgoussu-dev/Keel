@@ -12,8 +12,9 @@
  *     environment-only and disables in-process migrations — the
  *     isolated runner owns the schema.
  *   - **unit-of-work**: the `UnitOfWork` port with the Micronaut-tx
- *     adapter (`infrastructure/unit-of-work/micronaut-tx`, the
- *     framework's `TransactionOperations`) and the canonical fake.
+ *     adapter in the hexagon's `unit-of-work/micronaut-tx` driven
+ *     module (the framework's `TransactionOperations`) and the
+ *     canonical fake.
  *   - **repository-example**: the shared `GreetingLog` slice up to
  *     `POST|GET /greetings`, with an embedded-server test on a
  *     Testcontainers PostgreSQL (`PostgresTestFixture` implements
@@ -21,32 +22,37 @@
  *     test extends the same fixture via a patch — a context with a
  *     datasource needs a database to boot against.
  *
- * Micronaut's compile-time DI never sees the plain infrastructure
+ * Micronaut's compile-time DI never sees the plain driven-adapter
  * modules: the adapters are constructed in the `@Factory`
  * (`PersistenceFactory`), so no annotation processing is added to
  * them. Shared trees and build-registration patches come from
- * `jvm-persistence.ts`; every patch is guarded so re-installing is a
- * no-op.
+ * `jvm-persistence.ts`, which reads every path and anchor off
+ * `jvmLayout` — so the flat trisection and the modulith are both
+ * served, each from its own template tree. Every patch is guarded so
+ * re-installing is a no-op.
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
+import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
 import {
+  assemblySourceRoot,
   coreTestDepsPatch,
   executableProjectDepsPatch,
-  GRADLE_EXECUTABLE_TARGET,
+  gradleAssemblyTarget,
   jvmPersistenceBootstrapAnswers,
   jvmPersistenceVars,
   jvmSharedPersistenceFiles,
-  refuseOnModulith,
-  MAVEN_EXECUTABLE_TARGET,
+  layoutSuffix,
+  mavenAssemblyTarget,
+  migrationsLocations,
   moduleRegistrationPatch,
   patchKotlinCompositionRoot,
   patchMicronautImportPackages,
   persistenceReadmePatch,
-  PROPERTIES_TARGET,
+  propertiesTarget,
 } from './jvm-persistence.js';
 import { databaseName, sqlEngine } from './persistence-engine.js';
-import { eolAware, packageToPath } from '../util.js';
+import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const MICRONAUT_PERSISTENCE_ID = 'persistence/micronaut-persistence';
@@ -112,7 +118,10 @@ const PROPERTIES_GUARD = '--- persistence (installed by keel)';
  * environment is the dev loop; the prod posture lives in the emitted
  * `application-prod.properties`. Exported for the vertical tests.
  */
-export function micronautPersistencePropertiesBlock(database: string): string {
+export function micronautPersistencePropertiesBlock(
+  database: string,
+  layout: JvmLayoutPaths,
+): string {
   const engine = sqlEngine();
   return `# ${PROPERTIES_GUARD} ---------------------------------
 # PostgreSQL over JDBC (Hikari pool). These defaults are the dev
@@ -127,7 +136,7 @@ datasources.default.username=\${DB_USERNAME:app}
 datasources.default.password=\${DB_PASSWORD:app}
 datasources.default.driver-class-name=org.postgresql.Driver
 flyway.datasources.default.enabled=true
-flyway.datasources.default.locations=filesystem:../../../migrations/sql,filesystem:migrations/sql
+flyway.datasources.default.locations=${migrationsLocations(layout)}
 `;
 }
 
@@ -153,10 +162,13 @@ export function patchGreetControllerTest(existing: string): string {
   );
 }
 
-function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch {
+function frameworkDepsPatch(
+  buildSystem: 'gradle' | 'maven',
+  layout: JvmLayoutPaths,
+): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
-      target: MAVEN_EXECUTABLE_TARGET,
+      target: mavenAssemblyTarget(layout),
       apply: eolAware((existing) => {
         if (existing.includes(DEPS_GUARD)) return existing;
         return existing
@@ -166,7 +178,7 @@ function frameworkDepsPatch(buildSystem: 'gradle' | 'maven'): ContributionPatch 
     };
   }
   return {
-    target: GRADLE_EXECUTABLE_TARGET,
+    target: gradleAssemblyTarget(layout),
     apply: eolAware((existing) => {
       if (existing.includes(DEPS_GUARD)) return existing;
       return existing
@@ -207,7 +219,6 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.micronaut', 'arch.server-http', `lang.${language}`] },
     async contribute(ctx) {
-      refuseOnModulith('persistence/micronaut-persistence', ctx.manifest);
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
         id,
@@ -216,39 +227,41 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
       );
       const vars = jvmPersistenceVars(basePackage, projectName);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const layout = jvmLayout(ctx.manifest.tags);
+      const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
-        jvmSharedPersistenceFiles(ctx, language, vars),
-        ctx.templates.render(templateId, '', vars),
-        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}/${buildSystem}`, '', vars),
+        jvmSharedPersistenceFiles(ctx, language, layout, vars),
+        ctx.templates.render(`${templateId}${suffix}`, '', vars),
+        ctx.templates.render(`${BUILD_TEMPLATE_ROOT}${suffix}/${buildSystem}`, '', vars),
       ]);
       const database = databaseName(ctx.manifest);
-      const mainRoot = `application/rest/executable/src/main/${sourceDir}/${packageToPath(basePackage)}/rest`;
-      const testRoot = `application/rest/executable/src/test/${sourceDir}/${packageToPath(basePackage)}/rest`;
+      const mainRoot = assemblySourceRoot(layout, sourceDir, basePackage, 'main');
+      const testRoot = assemblySourceRoot(layout, sourceDir, basePackage, 'test');
       return {
         files: [...shared, ...sources, ...build],
         patches: [
-          moduleRegistrationPatch(buildSystem, id, UOW_MODULE),
-          frameworkDepsPatch(buildSystem),
-          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE),
-          coreTestDepsPatch(buildSystem, basePackage),
+          moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
+          frameworkDepsPatch(buildSystem, layout),
+          executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE, layout),
+          coreTestDepsPatch(buildSystem, basePackage, layout),
           {
-            target: PROPERTIES_TARGET,
+            target: propertiesTarget(layout),
             apply: eolAware((existing) => {
               if (existing.includes(PROPERTIES_GUARD)) return existing;
-              return `${existing.trimEnd()}\n\n${micronautPersistencePropertiesBlock(database).trim()}\n`;
+              return `${existing.trimEnd()}\n\n${micronautPersistencePropertiesBlock(database, layout).trim()}\n`;
             }),
           },
           {
             target: `${mainRoot}/MediatorFactory.${kotlin ? 'kt' : 'java'}`,
             apply: kotlin
-              ? patchKotlinCompositionRoot(id, basePackage)
-              : patchMicronautImportPackages(id, basePackage),
+              ? patchKotlinCompositionRoot(id, basePackage, layout)
+              : patchMicronautImportPackages(id, basePackage, layout),
           },
           {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
             apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
           },
-          persistenceReadmePatch(),
+          persistenceReadmePatch(layout),
         ],
         tagsAdd: [sqlEngine().tag],
       };

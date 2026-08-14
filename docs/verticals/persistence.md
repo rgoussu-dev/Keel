@@ -56,13 +56,24 @@ Every stack ships three layers of tests:
 
 ## Module layout
 
-This vertical assumes the **`basic`** module layout. On a
-`layout.modulith` project it refuses with a message rather than
-writing into `domain/` and `infrastructure/`, which such a project
-does not have — add the driven port and its adapter under
-`modules/<context>/` by hand, or scaffold with
-`--module-layout=basic`. Porting it is tracked in the
-[roadmap](../roadmap.md).
+Persistence is a **bounded context's** concern, not the deployment
+unit's, so on a
+[`layout.modulith`](../stacks/jvm.md#module-layout) project the slice
+follows the context rather than the assembly:
+
+| What                                                 | `basic`                     | `modulith`                                |
+| ---------------------------------------------------- | --------------------------- | ----------------------------------------- |
+| `GreetingLog` + `UnitOfWork` ports                   | `domain/contract`           | `modules/greeting/domain/contract`        |
+| greeting-log handlers                                | `domain/core`               | `modules/greeting/domain/core`            |
+| JDBC repository, unit-of-work adapter, the fakes     | `infrastructure/…`          | `modules/greeting/infra/…`                |
+| `POST\|GET /greetings` resource                      | the executable              | `modules/greeting/user-side/api/adapters` |
+| `RecordGreetingRequest` / `RecordedGreetingResponse` | `application/rest/contract` | `modules/greeting/user-side/api/contract` |
+| datasource + migration config, boot test             | the executable              | the `application/api` assembly            |
+
+Only the last row belongs to the assembly: the pool, the profile
+config and the framework boot test are deployment concerns. Carving
+the context out into its own service therefore takes its persistence
+with it.
 
 ## Prerequisites
 

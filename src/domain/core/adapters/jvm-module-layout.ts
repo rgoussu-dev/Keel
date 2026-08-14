@@ -91,9 +91,28 @@ export interface JvmLayoutPaths {
   infraPkg(name: string): string;
   /** Gradle project path of a module directory, e.g. `:domain:core`. */
   gradleProject(dir: string): string;
+  /**
+   * Maven artifactId of a module directory, e.g. `domain-core` under
+   * `basic` and `greeting-domain-core` under the modulith. The
+   * `modules/` prefix is dropped — it is scaffolding, not identity —
+   * so a context's artifacts read as `<context>-<path>`.
+   */
+  mavenArtifact(dir: string): string;
+  /**
+   * Relative path from a module directory back to the project root,
+   * e.g. `../../` for `application/api`. Maven `<relativePath>` and
+   * the `filesystem:` migration locations both need it, and both get
+   * it wrong by hand.
+   */
+  upToRoot(dir: string): string;
 }
 
-const BASIC: Omit<JvmLayoutPaths, 'infra' | 'infraPkg' | 'gradleProject'> = {
+type LayoutBase = Omit<
+  JvmLayoutPaths,
+  'infra' | 'infraPkg' | 'gradleProject' | 'mavenArtifact' | 'upToRoot'
+>;
+
+const BASIC: LayoutBase = {
   layout: 'basic',
   kernel: 'domain/kernel',
   kernelPkg: 'kernel',
@@ -115,7 +134,7 @@ const BASIC: Omit<JvmLayoutPaths, 'infra' | 'infraPkg' | 'gradleProject'> = {
 
 const MODULE_ROOT = `modules/${SKELETON_MODULE}`;
 
-const MODULITH: Omit<JvmLayoutPaths, 'infra' | 'infraPkg' | 'gradleProject'> = {
+const MODULITH: LayoutBase = {
   layout: 'modulith',
   kernel: 'platform/kernel',
   kernelPkg: 'platform.kernel',
@@ -140,6 +159,19 @@ export function gradleProject(dir: string): string {
   return `:${dir.split('/').join(':')}`;
 }
 
+/** Maven artifactId of a module directory, e.g. `greeting-infra-clock-fake`. */
+export function mavenArtifact(dir: string): string {
+  return dir
+    .replace(/^modules\//, '')
+    .split('/')
+    .join('-');
+}
+
+/** Relative path from a module directory back to the project root. */
+export function upToRoot(dir: string): string {
+  return '../'.repeat(dir.split('/').length);
+}
+
 /** Resolves the JVM module layout from a manifest tag set. */
 export function jvmModuleLayout(tags: readonly Tag[]): JvmModuleLayout {
   return tags.includes(MODULITH_LAYOUT_TAG) ? 'modulith' : 'basic';
@@ -153,11 +185,17 @@ export function jvmModuleLayout(tags: readonly Tag[]): JvmModuleLayout {
 export function jvmLayout(tags: readonly Tag[]): JvmLayoutPaths {
   const base = jvmModuleLayout(tags) === 'modulith' ? MODULITH : BASIC;
   const infraRoot = base.layout === 'modulith' ? `${MODULE_ROOT}/infra` : 'infrastructure';
-  const infraPkgRoot = base.layout === 'modulith' ? `${SKELETON_MODULE}.infra` : 'infrastructure';
+  // Under `basic` the driven adapters sit directly under the base
+  // package — the `infrastructure/` directory is a build-module name,
+  // never a package segment. The modulith does name it, because a
+  // context's adapters have to be distinguishable from its peers'.
+  const infraPkgRoot = base.layout === 'modulith' ? `${SKELETON_MODULE}.infra.` : '';
   return {
     ...base,
     infra: (name) => `${infraRoot}/${name}`,
-    infraPkg: (name) => `${infraPkgRoot}.${name}`,
+    infraPkg: (name) => `${infraPkgRoot}${name}`,
     gradleProject,
+    mavenArtifact,
+    upToRoot,
   };
 }
