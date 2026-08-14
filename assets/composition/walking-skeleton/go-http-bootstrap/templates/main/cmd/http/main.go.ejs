@@ -10,8 +10,7 @@ import (
 	"net/http"
 	"os"
 
-	"<%= modulePath %>/internal/app/resthttp"
-	"<%= modulePath %>/internal/domain"
+<%- projectImports %>
 )
 
 func main() {
@@ -25,6 +24,6 @@ func main() {
 	}
 	log.Printf("listening on %s", listener.Addr())
 
-	greeter := domain.NewGreeter()
+	greeter := <%= facadePkg %>.NewGreeter()
 	log.Fatal(http.Serve(listener, resthttp.NewHandler(greeter)))
 }

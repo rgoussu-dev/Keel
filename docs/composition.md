@@ -57,7 +57,7 @@ the REST shape. Adding a stack is a couple of lines in
 ### Module layout
 
 A second structural dial beside the build system, carried by a
-`layout.*` tag and offered by the JVM stacks:
+`layout.*` tag and offered by the JVM and Go stacks:
 
 | Tag                      | Shape                                                                                                                                                           |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -81,7 +81,10 @@ options a stack lists in `moduleLayouts`. `jvmLayout` is the first of
 its per-language **resolvers** — one per stack family, each owning the
 paths and the _name_ derivations (packages, artifact ids, import
 prefixes) that its language spells differently from the directory
-path.
+path. `goLayout` is the second, and the one where names matter most:
+Go has no relative imports, so every import line is the module path
+concatenated with layout depth and context name, and `goLayout` is the
+only place that concatenation happens.
 
 A manifest carrying neither tag resolves to `basic`, so brownfield
 `keel add` on a project scaffolded before the dial existed keeps

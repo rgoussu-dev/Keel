@@ -8,11 +8,15 @@
 The two entrypoints **compose**: a tag set carrying both ships both
 deployment units on one shared module.
 
+Both scaffold on either **module layout** — `basic` (the flat tree
+below) or `modulith`. Your pick; `basic` is the default.
+
 ## How to
 
 ```sh
 mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=go-http     # or go-cli
+npx @rgoussu.dev/keel new --stack=go-http --module-layout modulith
 ```
 
 ## Prerequisites
@@ -53,6 +57,63 @@ my-service/
 **No mediator object** — per the binding spec's Go stance, commands
 are structs and driving ports are per-use-case interfaces wired
 explicitly in `main`.
+
+## Module layout
+
+`--module-layout=modulith` carves the same skeleton one bounded
+context at a time. Go pays no manifest files for a context, which
+makes it the cheapest of the five stack families to turn on — but the
+facade and the `modules/<ctx>/` level are indirection a single-context
+service can reasonably decline, so `basic` stays the default.
+
+```
+my-service/
+  cmd/
+    http/ | cli/               # unchanged: one directory per deployment unit
+  internal/
+    platform/                  # what no bounded context owns
+      clock/                   # the ubiquitous Clock port
+      clockfake/               # and its canonical fake
+      observability/           # probes, correlation ids, telemetry
+    modules/
+      greeting/                # one bounded context
+        greeting.go            # THE FACADE — factories only
+        internal/
+          domain/              # commands, ports, factories
+            internal/          # the compiler-hidden core
+        userside/              # primary adapters (cli / resthttp)
+        infra/                 # secondary adapters, one per technology
+```
+
+Three placements are load-bearing, and the Go compiler enforces each
+of them rather than a linter:
+
+- **The context's core hides behind its own `internal/`.** Anything
+  under `modules/greeting/internal/` is importable from inside
+  `modules/greeting/` and nowhere else. An import from `cmd/` fails
+  with `use of internal package … not allowed`.
+- **Adapters sit beside that wall, not behind it.** `userside/` and
+  `infra/` are inside the context (so they may name its ports) but
+  outside its `internal/` — put either behind the wall and the
+  assembly cannot construct it.
+- **The facade re-exports nothing.** There is deliberately no
+  `type Greeter = domain.Greeter`: a consumer holds what the context
+  returns but cannot _name_ it, so it cannot declare its own
+  implementation of the context's ports either. `greeting.Greeter`
+  from `cmd/` fails with `undefined`. The assembly loses nothing —
+  `:=` infers the type it may not write.
+
+A second context is a sibling directory under `internal/modules/`,
+reaching this one through `greeting.go` and nothing else. Note that
+two contexts may declare the same package name — `modules/ordering`
+and `modules/billing/gateway/ordering` are both `package ordering` —
+so a file importing both must alias one.
+
+> **`keel add persistence` is flat-layout only for now.** The slice
+> spans five packages whose homes all move under the modulith, so it
+> refuses with an uncovered dimension rather than emitting at flat
+> paths and silently not wiring. Tracked on
+> [the roadmap](../roadmap.md).
 
 `go-http` additionally installs [`dev-env`](../verticals/dev-env.md)
 and [`observability`](../verticals/observability.md) by default

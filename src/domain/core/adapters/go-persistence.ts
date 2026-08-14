@@ -33,6 +33,7 @@
 import { goBootstrapAnswers } from './go-bootstrap.js';
 import { databaseName, sqlEngine } from './persistence-engine.js';
 import { eolAware } from '../util.js';
+import { MODULITH_LAYOUT_TAG } from './module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
 
 export const GO_PERSISTENCE_ID = 'persistence/go-persistence';
@@ -111,7 +112,16 @@ export const goPersistenceAdapter: Adapter = {
   id: GO_PERSISTENCE_ID,
   vertical: 'persistence',
   covers: ['datasource', 'unit-of-work', 'repository-example'],
-  predicate: { requires: ['lang.go', 'arch.server-http'] },
+  // Flat layout only, for now. The slice spans five packages whose
+  // homes all move under the modulith — the ports into the context's
+  // domain, the pgx adapters into modules/<ctx>/infra/, the system
+  // clock into platform/ — and half of its templates cross-import the
+  // others. Excluding the tag makes `keel add persistence` on a Go
+  // modulith fail loudly with an uncovered dimension, which is the
+  // right failure: emitting the slice at flat paths would compile and
+  // silently not wire, exactly as observability did before its own
+  // move.
+  predicate: { requires: ['lang.go', 'arch.server-http'], excludes: [MODULITH_LAYOUT_TAG] },
   async contribute(ctx) {
     const { modulePath } = goBootstrapAnswers(ctx.manifest, GO_PERSISTENCE_ID);
     const files = await ctx.templates.render(TEMPLATE_ID, '', {

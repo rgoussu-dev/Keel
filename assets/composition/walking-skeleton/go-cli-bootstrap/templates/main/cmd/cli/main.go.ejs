@@ -6,12 +6,11 @@ package main
 import (
 	"os"
 
-	"<%= modulePath %>/internal/app/cli"
-	"<%= modulePath %>/internal/domain"
+<%- projectImports %>
 )
 
 func main() {
-	greeter := domain.NewGreeter()
+	greeter := <%= facadePkg %>.NewGreeter()
 	app := cli.New(greeter)
 	os.Exit(app.Run(os.Args[1:], os.Stdout, os.Stderr))
 }

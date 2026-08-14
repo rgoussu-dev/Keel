@@ -1,8 +1,11 @@
-// Package domain is the contract face of the hexagon: the commands
-// and ports adapters are written against, plus the exported factories
-// that assemble the compiler-hidden core underneath internal/.
-// Deployment units and adapters import this package — never anything
-// below internal/domain/internal/.
+// Package domain is the contract face of this bounded context: the
+// commands and ports its adapters are written against, plus the
+// factories that assemble the compiler-hidden core underneath
+// internal/.
+//
+// It lives behind the context's own internal/, so only this context's
+// packages — its userside/ and infra/ adapters — may import it.
+// Everything outside comes through the facade instead.
 package domain
 
 import "<%= domainCoreImport %>"
@@ -26,8 +29,8 @@ type Greeter interface {
 var ErrEmptyName = greet.ErrEmptyName
 
 // NewGreeter assembles the greet use case and returns it behind its
-// driving port. Each cmd/ main wires it by hand — constructor
-// injection, no framework.
+// driving port. The facade is what the outside world calls; this is
+// what the facade calls.
 func NewGreeter() Greeter {
 	return greeter{}
 }

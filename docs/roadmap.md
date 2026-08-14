@@ -166,7 +166,7 @@ keel should build, and one of them changes the shape of the feature:
   constants like `const MAIN_TARGET = 'application/rest/src/main.ts'`.
   Each must move to a resolver call, exactly as the JVM verticals did.
 
-### I.0 — Generalise the layout dial (prerequisite, S)
+### I.0 — Generalise the layout dial (prerequisite, S) ✅
 
 `ModuleLayoutOption.id` is typed `JvmModuleLayout` and `JVM_LAYOUTS`
 is JVM-specific. Widen the option type so any stack can declare a
@@ -177,9 +177,14 @@ so it is worth doing properly: one shared `ModuleLayout` vocabulary,
 one `--module-layout` flag, one interactive question, five resolvers
 behind it. No behaviour change on its own.
 
+**Landed.** `adapters/module-layout.ts` owns the language-neutral
+vocabulary (layout names, `layout.*` tags, `modules.peer-context`, the
+context names, the selectable `ModuleLayoutOption`s); `jvmLayout` and
+`goLayout` are its first two per-language resolvers.
+
 **Commit.** `refactor(composition): generalise the module-layout dial beyond the JVM`
 
-### I.1 — Go (M) — _dial; `basic` default_
+### I.1 — Go (M) — _dial; `basic` default_ ✅
 
 Cheapest realization of the four, so it goes first and proves the
 pattern for the other three.
@@ -213,6 +218,31 @@ pattern for the other three.
   `go-cli-bootstrap` / `go-http-bootstrap` (`cmd/<typology>/`).
 - **Adapters to touch:** `go-cors`, `go-observability`,
   `go-persistence`, `go-port-fake`, `go-http-image`.
+
+**Landed**, with the four compiled constraints encoded as predicted
+and re-verified against Go 1.24.7: driven adapters at
+`internal/modules/<ctx>/infra/` (driving ones at `userside/`, same
+rule — inside the context directory, outside its `internal/`), a
+facade re-exporting nothing, the `Clock` port moved to
+`internal/platform/`, and every import path derived in `goLayout`
+rather than in a template. The e2e case drops two probe files into
+`cmd/` and requires the compiler to reject both — reaching into the
+context's `internal/` (`use of internal package … not allowed`) and
+naming what the facade returns (`undefined: greeting.Greeter`).
+
+One defect the design work had not predicted: `go-observability`
+anchored its `cmd/http/main.go` patch on the flat import path, so
+under the modulith it emitted its package and left `main.go`
+untouched. `go build` was green — unwired code compiles. It now
+resolves both the target and the import through `goLayout`, and sorts
+the two-line import block, because which of the two sorts first flips
+with the layout.
+
+**Still open:** `go-persistence` excludes `layout.modulith` — its slice
+spans five packages whose homes all move, so `keel add persistence`
+fails with an uncovered dimension rather than emitting at flat paths
+and silently not wiring, exactly as observability did. That is the
+remaining `feat(persistence): …` commit.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for the Go stacks`,
 then `feat(<vertical>): …` per vertical.

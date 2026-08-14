@@ -23,20 +23,17 @@
  */
 
 import { goBootstrapAnswers } from './go-bootstrap.js';
+import { goLayout, type GoLayoutPaths } from './go-module-layout.js';
 import type { Adapter, DeferredAction, DeferredActionEnv } from '../../contract/composition.js';
 import { eolAware } from '../util.js';
 
 export const GO_OBSERVABILITY_ID = 'observability/go-observability';
 
-const TEMPLATE_ID = 'composition/observability/go-observability/templates';
-
-const MAIN_TARGET = 'cmd/http/main.go';
-
-const OBSERVABILITY_IMPORT_GUARD = 'internal/app/observability';
+const TEMPLATE_ID = 'composition/observability/go-observability/templates/pkg';
 
 const README_MARKER = '\n### Observability\n';
 
-const readmeSection = (): string =>
+const readmeSection = (pkg: string): string =>
   `${README_MARKER}
 Liveness \`GET /health/live\` (process up — restart on failure) and
 readiness \`GET /health/ready\` (dependencies ok — gate traffic on it;
@@ -45,7 +42,7 @@ correlation id: \`X-Correlation-Id\` is accepted or minted, echoed on the
 response, stamped on every \`observability.Logger(ctx)\` log line, the
 OpenTelemetry span, and the \`app.http.requests\` counter. Add more
 propagated fields (e.g. a tenant id — \`X-Tenant-Id\` ships as the
-example) in \`internal/app/observability/context.go\`. Telemetry exports
+example) in \`${pkg}/context.go\`. Telemetry exports
 over OTLP/HTTP to \`OTEL_EXPORTER_OTLP_ENDPOINT\` (default
 \`http://localhost:4318\`); set \`OTEL_SDK_DISABLED=true\` to switch it off.
 `;
@@ -57,7 +54,16 @@ export const goObservabilityAdapter: Adapter = {
   predicate: { requires: ['lang.go', 'arch.server-http'] },
   async contribute(ctx) {
     const { modulePath, projectName } = goBootstrapAnswers(ctx.manifest, GO_OBSERVABILITY_ID);
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { modulePath, projectName });
+    const layout = goLayout(ctx.manifest.tags, modulePath);
+    // Correlation ids, probes and telemetry belong to the deployment
+    // unit, not to any bounded context — so under the modulith they
+    // land in platform/ rather than inside modules/<ctx>/.
+    const pkg = layout.crossCutting('observability');
+    const files = await ctx.templates.render(TEMPLATE_ID, pkg, {
+      modulePath,
+      projectName,
+      observabilityImport: layout.importPath(pkg),
+    });
     const action: DeferredAction = {
       id: GO_OBSERVABILITY_ID,
       description: 'go mod tidy (fetch the OpenTelemetry modules)',
@@ -80,14 +86,14 @@ export const goObservabilityAdapter: Adapter = {
       files,
       patches: [
         {
-          target: MAIN_TARGET,
-          apply: eolAware((existing) => patchMain(existing, modulePath, projectName)),
+          target: layout.main('http'),
+          apply: eolAware((existing) => patchMain(existing, layout, projectName)),
         },
         {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection()}`;
+            return `${existing.trimEnd()}\n${readmeSection(pkg)}`;
           }),
         },
       ],
@@ -102,10 +108,11 @@ export const goObservabilityAdapter: Adapter = {
  * the serve line wrapped with health mux + request-context
  * middleware. Exported for direct unit-testing of the anchors.
  */
-export function patchMain(existing: string, modulePath: string, projectName: string): string {
-  if (existing.includes(OBSERVABILITY_IMPORT_GUARD)) return existing;
+export function patchMain(existing: string, layout: GoLayoutPaths, projectName: string): string {
+  const observabilityPath = layout.importPath(layout.crossCutting('observability'));
+  if (existing.includes(`"${observabilityPath}"`)) return existing;
 
-  const restImport = `"${modulePath}/internal/app/resthttp"`;
+  const restImport = `"${layout.importPath(layout.app('resthttp'))}"`;
   const serveLine = 'log.Fatal(http.Serve(listener, resthttp.NewHandler(greeter)))';
   const mainOpen = 'func main() {\n';
   if (
@@ -119,12 +126,17 @@ export function patchMain(existing: string, modulePath: string, projectName: str
     return existing;
   }
 
-  return existing
-    .replace('\t"log"\n', '\t"context"\n\t"log"\n')
-    .replace(restImport, `"${modulePath}/internal/app/observability"\n\t${restImport}`)
-    .replace(
-      mainOpen,
-      `${mainOpen}\tobservability.SetupLogging()
+  return (
+    existing
+      .replace('\t"log"\n', '\t"context"\n\t"log"\n')
+      // Which of the two sorts first flips with the layout: under the
+      // modulith the context's adapter is under modules/ and the
+      // platform package is not, so gofmt wants them the other way
+      // round. Sort rather than assume.
+      .replace(restImport, [`"${observabilityPath}"`, restImport].sort().join('\n\t'))
+      .replace(
+        mainOpen,
+        `${mainOpen}\tobservability.SetupLogging()
 \totelShutdown, err := observability.SetupOTel(context.Background(), "${projectName}")
 \tif err != nil {
 \t\tlog.Fatal(err)
@@ -132,15 +144,16 @@ export function patchMain(existing: string, modulePath: string, projectName: str
 \tdefer otelShutdown(context.Background())
 
 `,
-    )
-    .replace(
-      serveLine,
-      `health := observability.NewHealth()
+      )
+      .replace(
+        serveLine,
+        `health := observability.NewHealth()
 \tmux := http.NewServeMux()
 \thealth.Register(mux)
 \tmux.Handle("/", observability.RequestContext(resthttp.NewHandler(greeter)))
 
 \thealth.SetReady(true)
 \tlog.Fatal(http.Serve(listener, mux))`,
-    );
+      )
+  );
 }

@@ -58,7 +58,44 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   a JDK 25+ `JAVA_HOME`, and skip themselves otherwise — Gradle
   provisions its own toolchain, Maven cannot.
 
+- **The module-layout dial reaches Go.** `keel new --stack=go-http`
+  (or `go-cli`) `--module-layout=modulith` carves the skeleton one
+  bounded context at a time: `internal/modules/<ctx>/` holds the whole
+  hexagon behind a facade, `internal/platform/` holds what no context
+  owns (the `Clock` port, its fake, the observability package), and
+  `cmd/<typology>/` stays the assembly point.
+
+  Three placements are enforced by the Go compiler rather than by
+  review, and the e2e case proves each by requiring a probe file to
+  fail to build: the context's core hides behind its own `internal/`
+  (`use of internal package … not allowed` from `cmd/`); its adapters
+  sit beside that wall rather than behind it, or the assembly could
+  not construct them; and the facade re-exports **nothing**, so a
+  consumer can hold what a context returns but cannot name it — and
+  therefore cannot implement its ports (`undefined: greeting.Greeter`).
+
+  `basic` stays the default and emits byte-identical output to the
+  previous release; the only manifest change is the `layout.basic` tag
+  recording the choice, which is what keeps `keel add` resolving the
+  same shape later.
+
+- **Go import paths are derived in one place.** `goLayout()` owns every
+  module-path × layout-depth × context-name concatenation, including
+  the gofmt sort order of an import block — which of two paths sorts
+  first flips between the layouts. `go-bootstrap`, `go-cli-bootstrap`,
+  `go-http-bootstrap`, `go-port-fake`, `go-cors` and `go-observability`
+  all read from it instead of carrying path constants.
+
 ### Fixed
+
+- **`observability` emitted its package but never wired `main.go` on a
+  Go modulith.** The `cmd/http/main.go` patch anchored on the flat
+  import path, so under `layout.modulith` it matched nothing and the
+  adapter's drift guard silently returned the file unchanged — probes,
+  correlation ids and telemetry all present on disk and none of them
+  reachable. `go build` stayed green throughout, because unwired code
+  compiles. Both the patch target and the import now resolve through
+  `goLayout`.
 
 - **The Maven modulith leaked the provider's domain past the peer
   seam.** `greeting-user-side-service` declared

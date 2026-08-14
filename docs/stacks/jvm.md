@@ -191,11 +191,12 @@ What actually changes, beyond the directories:
   therefore takes its persistence with it. See
   [the vertical's page](../verticals/persistence.md#module-layout).
 
-### Not supported yet on `modulith`
+### The other stacks
 
-The non-JVM stacks (Go, Rust, ts-http, web-components) ship the
-`basic` layout only for now; their idiomatic modulith realizations are
-on [the roadmap](../roadmap.md).
+The Go stacks carry the same dial —
+→ [Go module layout](go.md#module-layout). `ts-http`,
+`web-components` and the Rust stacks ship `basic` only for now; their
+idiomatic modulith realizations are on [the roadmap](../roadmap.md).
 
 ## How handlers reach the mediator
 

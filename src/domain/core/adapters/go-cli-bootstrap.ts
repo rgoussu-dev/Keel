@@ -14,12 +14,13 @@
  */
 
 import { GO_BOOTSTRAP_ID, goBootstrapAnswers } from './go-bootstrap.js';
+import { goLayout, goTemplateVars, type GoLayoutPaths } from './go-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
 import { eolOf, withEol } from '../util.js';
 
 export const GO_CLI_BOOTSTRAP_ID = 'walking-skeleton/go-cli-bootstrap';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/go-cli-bootstrap/templates';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/go-cli-bootstrap/templates';
 
 const README_MARKER = '\n### cli\n';
 
@@ -39,7 +40,19 @@ export const goCliBootstrapAdapter: Adapter = {
   after: [GO_BOOTSTRAP_ID],
   async contribute(ctx) {
     const { modulePath, projectName } = goBootstrapAnswers(ctx.manifest, GO_CLI_BOOTSTRAP_ID);
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { modulePath, projectName });
+    const layout = goLayout(ctx.manifest.tags, modulePath);
+    const vars = { modulePath, projectName, ...goTemplateVars(layout) };
+    const [main, adapter] = await Promise.all([
+      ctx.templates.render(`${TEMPLATE_ROOT}/main`, '', {
+        ...vars,
+        projectImports: mainImports(layout),
+      }),
+      ctx.templates.render(`${TEMPLATE_ROOT}/adapter`, layout.app('cli'), {
+        ...vars,
+        projectImports: adapterTestImports(layout),
+      }),
+    ]);
+    const files = [...main, ...adapter];
     return {
       files,
       patches: [
@@ -54,3 +67,28 @@ export const goCliBootstrapAdapter: Adapter = {
     };
   },
 };
+
+/**
+ * The assembly's project imports, sorted the way gofmt sorts them.
+ * Under the modulith the facade's path is a prefix of the adapter's,
+ * so it sorts first — the reverse of the flat layout, which is
+ * exactly the kind of derivation a template must not attempt.
+ */
+function mainImports(layout: GoLayoutPaths): string {
+  return [layout.importPath(layout.app('cli')), layout.importPath(layout.facade)]
+    .sort()
+    .map((p) => `\t"${p}"`)
+    .join('\n');
+}
+
+/**
+ * The adapter test's project imports, gofmt-sorted. It imports the
+ * package under test and the domain it depends on, and which of the
+ * two sorts first flips with the layout.
+ */
+function adapterTestImports(layout: GoLayoutPaths): string {
+  return [layout.importPath(layout.app('cli')), layout.importPath(layout.domain)]
+    .sort()
+    .map((p) => `\t"${p}"`)
+    .join('\n');
+}

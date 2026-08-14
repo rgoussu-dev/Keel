@@ -101,6 +101,12 @@ over a compiler-hidden core, a `Clock` port + fake under
 `internal/infra/`, and no mediator object — driving ports are
 per-use-case interfaces wired explicitly in `main`.
 
+Both Go stacks carry the same **module layout** dial as the JVM ones:
+`--module-layout=modulith` puts each bounded context under
+`internal/modules/<ctx>/` behind a facade that re-exports nothing, so
+"only this context implements its own ports" is a compile error rather
+than a review comment. → [Go module layout](docs/stacks/go.md#module-layout)
+
 **Prerequisites:** Go toolchain (`go` on PATH), `git`.
 → [Go stacks](docs/stacks/go.md)
 

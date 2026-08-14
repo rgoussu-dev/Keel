@@ -90,7 +90,11 @@ const goEnv = (): NodeJS.ProcessEnv => ({
   GOPATH: path.join(goHome, 'path'),
 });
 
-const generate = async (stack: string, projectName: string): Promise<void> => {
+const generate = async (
+  stack: string,
+  projectName: string,
+  moduleLayout?: string,
+): Promise<void> => {
   const mediator = installMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set(['vcs/git-init'])),
@@ -109,10 +113,74 @@ const generate = async (stack: string, projectName: string): Promise<void> => {
         },
         interactive: false,
         dryRun: false,
+        ...(moduleLayout !== undefined ? { moduleLayout } : {}),
       }),
     ),
   );
   expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
+};
+
+/**
+ * Boots the built HTTP unit on an OS-assigned port, reads the bound
+ * address from its startup log, and drives the wire contract plus the
+ * observability seam. Both layouts serve exactly the same surface —
+ * that they do is the point of the dial.
+ */
+const driveHttpUnit = async (binary: string): Promise<void> => {
+  const server = spawn(binary, [], {
+    cwd,
+    env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
+  });
+  try {
+    const port = await new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('server never announced its port')), 15_000);
+      const settle = (outcome: () => void): void => {
+        clearTimeout(timer);
+        outcome();
+      };
+      let buffered = '';
+      const sniff = (chunk: Buffer): void => {
+        buffered += chunk.toString();
+        const match = /listening on .*:(\d+)/.exec(buffered);
+        if (match?.[1]) {
+          const found = match[1];
+          settle(() => resolve(found));
+        }
+      };
+      server.stdout.on('data', sniff);
+      server.stderr.on('data', sniff);
+      server.on('error', (err) => settle(() => reject(err)));
+      server.on('exit', (code) =>
+        settle(() => reject(new Error(`server exited early (${code}): ${buffered}`))),
+      );
+    });
+
+    const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+
+    const defaulted = await fetch(`http://127.0.0.1:${port}/greet`);
+    expect(defaulted.status).toBe(200);
+    expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
+
+    const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=`);
+    expect(rejected.status).toBe(400);
+    expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+
+    // Observability seam: both probes answer, and the correlation id
+    // round-trips (echoed when supplied, minted when absent).
+    expect((await fetch(`http://127.0.0.1:${port}/health/live`)).status).toBe(200);
+    expect((await fetch(`http://127.0.0.1:${port}/health/ready`)).status).toBe(200);
+    const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
+      headers: { 'X-Correlation-Id': 'corr-e2e' },
+    });
+    expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+    const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+    expect(minted.headers.get('x-correlation-id')).toBeTruthy();
+  } finally {
+    server.removeAllListeners('exit');
+    server.kill();
+  }
 };
 
 const goRun = (args: readonly string[]): void => {
@@ -159,65 +227,69 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
       goRun(['test', './...']);
       goRun(['build', '-o', `bin/skel-http${EXE}`, './cmd/http']);
 
-      // Boot the unit on an OS-assigned port and read the bound
-      // address from its startup log.
-      const server = spawn(path.join(cwd, 'bin', `skel-http${EXE}`), [], {
+      await driveHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`));
+    },
+    E2E_TIMEOUT_MS,
+  );
+});
+
+/**
+ * The modulith layout, end to end.
+ *
+ * Two things need a real toolchain here and nothing else can supply
+ * them. The first is that the carved tree still compiles, vets and
+ * serves the same wire contract — the dial's whole promise is that
+ * the layout is the only thing that changed.
+ *
+ * The second is that the walls are walls. A one-context skeleton
+ * cannot violate an inter-context rule on its own, so this drops two
+ * probe files into `cmd/` and requires the compiler to reject both:
+ * reaching into the context's `internal/` and naming what the facade
+ * returns. Without them the layout's central claim — that a peer must
+ * come through the facade — would be asserted by prose alone.
+ */
+describe.skipIf(skipE2E)('walking-skeleton Go modulith e2e', () => {
+  it(
+    'go-http --module-layout=modulith: builds, serves /greet, and holds its walls',
+    async () => {
+      await generate('go-http', 'skel', 'modulith');
+
+      goRun(['vet', './...']);
+      goRun(['test', './...']);
+      goRun(['build', '-o', `bin/skel-http${EXE}`, './cmd/http']);
+
+      // The context's core is unreachable from the assembly.
+      const probe = path.join(cwd, 'cmd', 'http', 'probe.go');
+      await fs.writeFile(
+        probe,
+        'package main\n\nimport "example.com/skel/internal/modules/greeting/internal/domain"\n\nvar _ = domain.GreetCommand{}\n',
+      );
+      const reachedIn = spawnSync('go', ['build', './cmd/...'], {
         cwd,
-        env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
+        env: goEnv(),
+        encoding: 'utf8',
       });
-      try {
-        const port = await new Promise<string>((resolve, reject) => {
-          const timer = setTimeout(
-            () => reject(new Error('server never announced its port')),
-            15_000,
-          );
-          const settle = (outcome: () => void): void => {
-            clearTimeout(timer);
-            outcome();
-          };
-          let buffered = '';
-          const sniff = (chunk: Buffer): void => {
-            buffered += chunk.toString();
-            const match = /listening on .*:(\d+)/.exec(buffered);
-            if (match?.[1]) {
-              const port = match[1];
-              settle(() => resolve(port));
-            }
-          };
-          server.stdout.on('data', sniff);
-          server.stderr.on('data', sniff);
-          server.on('error', (err) => settle(() => reject(err)));
-          server.on('exit', (code) =>
-            settle(() => reject(new Error(`server exited early (${code}): ${buffered}`))),
-          );
-        });
+      expect(reachedIn.status, 'importing a context internal/ must not compile').not.toBe(0);
+      expect(`${reachedIn.stdout}${reachedIn.stderr}`).toContain('use of internal package');
 
-        const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
-        expect(ok.status).toBe(200);
-        expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+      // The facade re-exports nothing, so the assembly cannot name the
+      // port — and therefore cannot implement it either.
+      await fs.writeFile(
+        probe,
+        'package main\n\nimport "example.com/skel/internal/modules/greeting"\n\nvar _ greeting.Greeter\n',
+      );
+      const named = spawnSync('go', ['build', './cmd/...'], {
+        cwd,
+        env: goEnv(),
+        encoding: 'utf8',
+      });
+      expect(named.status, "naming the facade's port must not compile").not.toBe(0);
+      expect(`${named.stdout}${named.stderr}`).toContain('undefined: greeting.Greeter');
 
-        const defaulted = await fetch(`http://127.0.0.1:${port}/greet`);
-        expect(defaulted.status).toBe(200);
-        expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
+      await fs.remove(probe);
+      goRun(['build', './...']);
 
-        const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=`);
-        expect(rejected.status).toBe(400);
-        expect(rejected.headers.get('content-type')).toBe('application/problem+json');
-
-        // Observability seam: both probes answer, and the correlation
-        // id round-trips (echoed when supplied, minted when absent).
-        expect((await fetch(`http://127.0.0.1:${port}/health/live`)).status).toBe(200);
-        expect((await fetch(`http://127.0.0.1:${port}/health/ready`)).status).toBe(200);
-        const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
-          headers: { 'X-Correlation-Id': 'corr-e2e' },
-        });
-        expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
-        const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
-        expect(minted.headers.get('x-correlation-id')).toBeTruthy();
-      } finally {
-        server.removeAllListeners('exit');
-        server.kill();
-      }
+      await driveHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`));
     },
     E2E_TIMEOUT_MS,
   );

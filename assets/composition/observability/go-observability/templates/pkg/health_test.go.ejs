@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"<%= modulePath %>/internal/app/observability"
+	"<%= observabilityImport %>"
 )
 
 func probe(t *testing.T, mux *http.ServeMux, path string) *httptest.ResponseRecorder {
