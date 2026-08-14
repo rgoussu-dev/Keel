@@ -24,6 +24,18 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   Spring, Micronaut and Kotlin siblings cover the same ground under
   their own predicates.
 
+- **Maven end-to-end test coverage.** `tests/support/jvm-rest-e2e.ts`
+  was Gradle-only at every level, so no keel Maven output had ever
+  been built end to end on any of the twelve JVM stacks — the gap that
+  let both Maven defects below reach `main`. A spec's `buildSystem`
+  now selects `./gradlew build` or `./mvnw verify`, with the wrapper
+  assertion, retried deferred action, runnable-jar path (`build/` vs
+  `target/`) and dependency-cache isolation (`GRADLE_USER_HOME` vs
+  `-Dmaven.repo.local`) all following it. The first case exercises the
+  two-context modulith on Maven. Maven cases require `mvn` on PATH and
+  a JDK 25+ `JAVA_HOME`, and skip themselves otherwise — Gradle
+  provisions its own toolchain, Maven cannot.
+
 ### Fixed
 
 - **The Maven modulith leaked the provider's domain past the peer
