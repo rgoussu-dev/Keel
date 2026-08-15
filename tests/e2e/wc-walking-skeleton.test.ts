@@ -24,6 +24,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
@@ -84,48 +85,83 @@ const chromium = ((): string | null => {
   return null;
 })();
 
+const CONTENT_TYPES: Readonly<Record<string, string>> = {
+  '.css': 'text/css',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+};
+
 /**
- * Serves a built app on an ephemeral port with `vite preview`, loads
- * it in headless Chromium, and returns the DOM after the module graph
- * has run. `--virtual-time-budget` is what makes that deterministic:
- * it advances the page's clock to the budget and dumps once nothing
- * is pending, rather than sleeping and hoping.
+ * Serves a built bundle and returns the DOM headless Chromium renders
+ * from it.
+ *
+ * The server is twenty lines of `node:http` rather than `vite preview`
+ * behind `npx`, and that is the fix for a real CI failure rather than a
+ * preference. A built bundle is a directory of static files; standing
+ * up a dev-server binary to hand them over added an `npx` resolution,
+ * a fixed port to collide on, and a child process to wait for — three
+ * ways for this test to fail for reasons that have nothing to do with
+ * the bundle, and it failed for one of them the first time it ran on a
+ * runner, reporting only "never came up". Port 0 lets the OS choose,
+ * so parallel suites cannot collide either.
+ *
+ * `--virtual-time-budget` is what makes the render deterministic: it
+ * advances the page's clock to the budget and dumps once nothing is
+ * pending, rather than sleeping and hoping.
  */
-const renderInChromium = async (appDir: string): Promise<string> => {
-  const port = 4300 + Math.floor(process.pid % 500);
-  const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], {
-    cwd: appDir,
-    stdio: 'ignore',
+const renderInChromium = async (distDir: string): Promise<string> => {
+  const server = createServer((request, response) => {
+    const requested = decodeURIComponent((request.url ?? '/').split('?')[0] ?? '/');
+    const file = path.join(distDir, requested === '/' ? 'index.html' : requested);
+    // Nothing outside the bundle, however the URL is spelled.
+    if (!file.startsWith(distDir)) {
+      response.writeHead(403).end();
+      return;
+    }
+    fs.readFile(file)
+      .then((body) => {
+        const type = CONTENT_TYPES[path.extname(file)] ?? 'application/octet-stream';
+        response.writeHead(200, { 'content-type': type });
+        response.end(body);
+      })
+      .catch(() => response.writeHead(404).end());
   });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
-    const deadline = Date.now() + 30_000;
-    for (;;) {
-      try {
-        await fetch(`http://127.0.0.1:${port}/`);
-        break;
-      } catch {
-        if (Date.now() > deadline) throw new Error('vite preview never came up');
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-    }
-    const rendered = spawnSync(
-      chromium ?? 'chromium',
-      [
-        '--headless',
-        '--no-sandbox',
-        '--disable-gpu',
-        '--virtual-time-budget=5000',
-        '--dump-dom',
-        `http://127.0.0.1:${port}/`,
-      ],
-      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
-    );
-    if (rendered.status !== 0) {
-      throw new Error(`chromium failed (exit ${rendered.status})\n${rendered.stderr}`);
-    }
-    return rendered.stdout;
+    const address = server.address();
+    if (address === null || typeof address === 'string') throw new Error('no ephemeral port');
+    // `spawn`, not `spawnSync`: the server answering Chromium's
+    // requests lives in this process, and a synchronous spawn blocks
+    // the event loop that would serve them — the page would load
+    // nothing and the assertions would blame the bundle.
+    return await new Promise<string>((resolve, reject) => {
+      const browser = spawn(
+        chromium ?? 'chromium',
+        [
+          '--headless',
+          '--no-sandbox',
+          '--disable-gpu',
+          '--virtual-time-budget=5000',
+          '--dump-dom',
+          `http://127.0.0.1:${address.port}/`,
+        ],
+        { stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+      let dom = '';
+      let diagnostics = '';
+      browser.stdout.on('data', (chunk: Buffer) => (dom += chunk.toString()));
+      browser.stderr.on('data', (chunk: Buffer) => (diagnostics += chunk.toString()));
+      browser.on('error', reject);
+      browser.on('close', (code) =>
+        code === 0
+          ? resolve(dom)
+          : reject(new Error(`chromium failed (exit ${code})\n${diagnostics}`)),
+      );
+    });
   } finally {
-    server.kill();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 };
 
@@ -283,7 +319,7 @@ describe.skipIf(skipE2E)('web-components modulith e2e', () => {
     async () => {
       await scaffoldModulith();
       runStep(cwd, 'npm run build', ['run', 'build']);
-      const dom = await renderInChromium(path.join(cwd, 'application', 'web-app'));
+      const dom = await renderInChromium(path.join(cwd, 'application', 'web-app', 'dist'));
       // The context's element upgraded…
       expect(dom).toMatch(/<acme-greeting-view>[\s\S]*<form>/);
       // …and so did the design system's, through the import map.
