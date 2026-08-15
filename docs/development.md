@@ -109,9 +109,15 @@ KEEL_RUN_E2E=1 pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts
 ```
 
 CI runs them too, in a second job (`e2e`) with every toolchain
-installed — the `verify` matrix stays the fast gate. Locally you are
-more likely to have one JDK than two, which is where the next
-paragraph bites.
+installed — the `verify` matrix stays the fast gate.
+
+Vitest runs files in parallel workers but the tests *inside* a file in
+sequence, so a long case earns its own file rather than another `it` in
+a long one — which is why the modulith cases live in three
+(`-modulith`, `-persistence`, `-maven`).
+
+Locally you are more likely to have one JDK than two, which is where the
+next paragraph bites.
 
 **Maven cases need more than Gradle ones.** A JVM stack scaffolds onto
 either build system, and the e2e harness follows the spec's
@@ -133,7 +139,7 @@ running Gradle 8.x has to choose, and the usual choice is an older
 
 ```sh
 KEEL_RUN_E2E=1 JAVA_HOME=/path/to/jdk-25 \
-  pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts -t Maven
+  pnpm vitest run tests/e2e/walking-skeleton-modulith-maven.test.ts
 ```
 
 — or install a host Gradle 9.x, which is what CI does, and run
