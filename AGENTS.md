@@ -251,13 +251,26 @@ would ship as separate packages implementing the same port.
 
 ## 9. CI and release
 
-- `.github/workflows/ci.yml` runs on PRs and pushes to `main` in two
-  jobs. `verify` is the fast gate — lint, typecheck, test, build across
-  Node 22 and 24; `tests/e2e/` self-skips there, since it is opt-in on
-  CI. `e2e` is the other half: one runner with every toolchain keel
-  emits for (JDK 25 + Gradle 9.4.1 + Maven, Go, Rust, npm/pnpm, Chrome,
-  Docker) and `KEEL_RUN_E2E=1`. Between the two, nothing in the suite
-  is skipped for want of a tool.
+- `.github/workflows/ci.yml` runs on PRs and pushes to `main`. `verify`
+  is the fast gate — lint, typecheck, test, build across Node 22 and 24;
+  `tests/e2e/` self-skips there, since it is opt-in on CI. `e2e` is the
+  other half, running with `KEEL_RUN_E2E=1` and **sharded by toolchain**:
+  `jvm` (JDK 25 + Gradle 9.4.1 + Maven), `go` (Go + Docker), `rust`
+  (cargo), `web` (npm/pnpm + Chrome). Each shard provisions only what its
+  suites probe for. Between the two jobs, nothing in the suite is skipped
+  for want of a tool.
+- **The shard matrix names its files explicitly, and that is a hazard
+  with a guard.** A suite in no shard never runs, which looks exactly
+  like a suite that passed. `tests/ci-workflow.test.ts` parses the
+  workflow and fails in `verify` when the matrix and `tests/e2e/`
+  disagree — keep it when editing the matrix; it is the only thing
+  standing between a new suite and silent non-coverage.
+- **A test file is the unit of CI scheduling.** Vitest parallelises
+  across files and runs the tests inside one file in sequence, so the
+  slowest single file floors the whole job regardless of sharding. Long
+  e2e cases get their own file rather than another `it` in a long one —
+  which is why the modulith suite is `-modulith`, `-persistence` and
+  `-maven`.
 - **The e2e job's JDK and Gradle versions are coupled and neither is
   arbitrary.** The emitted JVM projects target release 25; Maven
   compiles with whatever JDK runs it, so an older `JAVA_HOME` makes the

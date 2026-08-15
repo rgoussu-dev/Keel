@@ -53,12 +53,64 @@ jobs:
   # and take tens of minutes. Splitting them off keeps the fast gate fast
   # while still running them on every PR; between the two jobs, nothing
   # in the suite is skipped for want of a tool.
+  #
+  # Sharded by toolchain, one job per stack family. Two reasons, and
+  # neither is wall clock alone:
+  #
+  #   - A shard installs only what its suites probe for. The Go, Rust
+  #     and web shards skip the JDK + Gradle + Maven provisioning
+  #     entirely, which is the slowest setup here.
+  #   - A red X reads `e2e (go)` instead of `e2e`, and re-running one
+  #     stack does not re-run the JVM builds.
+  #
+  # The `files` list is the shard's whole definition, and it is load
+  # bearing: a suite in no shard never runs, which looks exactly like a
+  # suite that passed. `tests/ci-workflow.test.ts` parses this file and
+  # fails in `verify` when tests/e2e/ and these lists disagree — that
+  # test is the only thing standing between a new suite and silent
+  # non-coverage, so do not delete it when editing the matrix.
+  #
+  # Vitest parallelises across files but runs the tests inside one file
+  # in sequence, so the slowest single *file* is this job's floor, not
+  # the slowest shard. That is why the modulith cases are three files.
   e2e:
-    name: e2e (real toolchains)
+    name: e2e (${{ matrix.shard.id }})
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       KEEL_RUN_E2E: '1'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - id: jvm
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/walking-skeleton.test.ts
+              tests/e2e/walking-skeleton-rest.test.ts
+              tests/e2e/walking-skeleton-spring.test.ts
+              tests/e2e/walking-skeleton-micronaut.test.ts
+              tests/e2e/walking-skeleton-kotlin.test.ts
+              tests/e2e/walking-skeleton-modulith.test.ts
+              tests/e2e/walking-skeleton-modulith-persistence.test.ts
+              tests/e2e/walking-skeleton-modulith-maven.test.ts
+          - id: go
+            tools: go docker
+            files: >-
+              tests/e2e/walking-skeleton-go.test.ts
+              tests/e2e/fullstack-go.test.ts
+          - id: rust
+            tools: cargo
+            files: >-
+              tests/e2e/walking-skeleton-rust.test.ts
+              tests/e2e/fullstack-rust.test.ts
+          - id: web
+            tools: npm pnpm browser
+            files: >-
+              tests/e2e/ts-walking-skeleton.test.ts
+              tests/e2e/wc-walking-skeleton.test.ts
+              tests/e2e/fullstack.test.ts
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -78,6 +130,7 @@ jobs:
       # care (its foojay resolver provisions a toolchain), which is why
       # this is the JDK the *Maven* half dictates.
       - name: Setup JDK 25
+        if: matrix.shard.id == 'jvm'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
@@ -90,6 +143,7 @@ jobs:
       # error message. Pinning the host to the same 9.4.1 keeps one JDK
       # serving both build systems.
       - name: Setup Gradle 9.4.1
+        if: matrix.shard.id == 'jvm'
         uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669 # v6.3.0
         with:
           gradle-version: '9.4.1'
@@ -103,34 +157,65 @@ jobs:
       # toolchain); setup-go pins GOTOOLCHAIN=local, so a runner on 1.24
       # cannot upgrade and the scaffold fails outright.
       - name: Setup Go
+        if: matrix.shard.id == 'go'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
           cache: false
 
       # Every suite skips itself when its toolchain is absent, so a
-      # missing tool reads as a pass. Print what the runner actually has
+      # missing tool reads as a pass. Print what this shard actually has
       # before anything runs, and fail here rather than silently cover
       # less than the job claims to.
-      - name: Verify the toolchains the suites probe for
+      #
+      # Two entries are not plain binaries. `docker` is probed as a
+      # daemon — the client is on every runner whether or not anything
+      # is listening, and the pgx contract test needs the daemon.
+      # `browser` is probed as any of the three names the web suite's
+      # own resolver accepts, because its Chromium render case is an
+      # `it.skipIf` and would otherwise vanish without a trace.
+      - name: Verify the toolchains this shard probes for
         run: |
           set -euo pipefail
-          for tool in java javac gradle mvn go cargo node npm pnpm; do
+          for tool in node ${{ matrix.shard.tools }}; do
+            case "$tool" in
+              docker)
+                docker info >/dev/null 2>&1 || { echo "::error::no Docker daemon"; exit 1; }
+                echo "docker   daemon available"
+                continue
+                ;;
+              browser)
+                for name in chromium chromium-browser google-chrome; do
+                  if command -v "$name" >/dev/null; then
+                    printf '%-8s %s\n' browser "$(command -v "$name")"
+                    continue 2
+                  fi
+                done
+                for root in "${PLAYWRIGHT_BROWSERS_PATH:-}" /opt/pw-browsers; do
+                  [ -n "$root" ] || continue
+                  for candidate in "$root"/*/chrome-linux/chrome; do
+                    if [ -x "$candidate" ]; then
+                      printf '%-8s %s\n' browser "$candidate"
+                      continue 4
+                    fi
+                  done
+                done
+                echo "::error::no browser found on PATH or under PLAYWRIGHT_BROWSERS_PATH"
+                exit 1
+                ;;
+            esac
             command -v "$tool" >/dev/null || { echo "::error::$tool is not on PATH"; exit 1; }
             printf '%-8s %s\n' "$tool" "$(command -v "$tool")"
           done
-          echo "JAVA_HOME=${JAVA_HOME:-<unset>}"
-          "${JAVA_HOME}/bin/javac" -version
-          gradle --version | sed -n '/^Gradle/p'
-          mvn --version | head -1
-          go version
-          cargo --version
-          # Testcontainers-backed suites skip without a daemon; the
-          # runner has one, and this says so out loud when it does not.
-          docker info >/dev/null 2>&1 && echo "docker: available" || echo "::warning::no Docker daemon — Testcontainers suites will skip"
+          if [ "${{ matrix.shard.id }}" = jvm ]; then
+            echo "JAVA_HOME=${JAVA_HOME:-unset}"
+            "${JAVA_HOME}/bin/javac" -version
+            gradle --version | sed -n '/^Gradle/p'
+            mvn --version | head -1
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: End-to-end tests
-        run: pnpm test:e2e
+        run: pnpm exec vitest run ${{ matrix.shard.files }}
