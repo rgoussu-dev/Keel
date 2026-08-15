@@ -190,15 +190,37 @@ jobs:
             files: >-
               tests/e2e/walking-skeleton-go.test.ts
               tests/e2e/fullstack-go.test.ts
-          # Five files now, and still deliberately one shard. Measured
-          # locally on the shipped shape: 179s of test time across the
-          # four cargo-compiling files finishing in 63s wall (divisor
-          # 2.86), against a longest single file of ~59s. That is
-          # floor-bound already — the three axum files each pay a cold
-          # crates.io compile that no split removes — so splitting
-          # would buy attribution and no wall clock, exactly the case
-          # `jvm-modulith-micronaut-kotlin` makes above. Revisit if a
-          # file lands that is not axum-bound, or if the floor moves.
+          # Six files, one shard — and unlike every earlier revision of
+          # this comment, that is now a choice with a cost rather than
+          # a free one. Re-measured on the shipped shape when the
+          # persistence cell landed (4-core box, all six files):
+          # 477.97s of test time in 196.68s wall, divisor 2.43, and a
+          # longest single file of 195.29s. The wall *is* that file.
+          #
+          # So the standing argument no longer applies as written. The
+          # old shape was floor-bound at ~59s by files that all paid
+          # the same cold axum compile, which is why splitting bought
+          # attribution and nothing else. `modulith-rust-persistence`
+          # pays a cold `postgres` compile on top of that one and takes
+          # ~99s run alone against ~105s for the next-slowest file, so
+          # peeling it into its own shard would genuinely halve this
+          # job's wall clock instead of merely relabelling it.
+          #
+          # Kept as one shard for now regardless: the numbers above are
+          # from a 4-core box where the six files starve each other,
+          # and the CI runner's own divisor has measured 2.86-2.92.
+          # Re-measure there before splitting — that is the number the
+          # decision turns on, and it is the one we do not have yet.
+          #
+          # `tools:` stays `cargo`, and the persistence cell is why
+          # that is worth stating: its contract test wants a Postgres
+          # through Testcontainers and gets none here. The emitted test
+          # probes for a daemon and returns early, so `cargo test`
+          # still compiles every crate — which is what the cell exists
+          # to prove — and skips one case. Adding `docker` here would
+          # buy that one assertion and a container pull per run. The
+          # JVM's `modulith-persistence` makes the same trade in a
+          # shard with no `docker` either.
           - id: rust
             tools: cargo
             files: >-
@@ -207,6 +229,7 @@ jobs:
               tests/e2e/modulith-rust-cli.test.ts
               tests/e2e/modulith-rust-http.test.ts
               tests/e2e/modulith-rust-peer-context.test.ts
+              tests/e2e/modulith-rust-persistence.test.ts
           - id: web
             tools: npm pnpm browser
             files: >-
