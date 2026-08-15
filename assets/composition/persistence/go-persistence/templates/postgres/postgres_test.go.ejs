@@ -13,8 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"<%= modulePath %>/internal/domain"
-	"<%= modulePath %>/internal/infra/postgres"
+<%- testImports %>
 )
 
 // Compile-time proof the adapters satisfy their ports.
@@ -47,7 +46,7 @@ func startPool(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("create pool: %v", err)
 	}
 	t.Cleanup(pool.Close)
-	migrations, err := filepath.Glob("../../../migrations/sql/*.sql")
+	migrations, err := filepath.Glob("<%= upToRoot %>migrations/sql/*.sql")
 	if err != nil || len(migrations) == 0 {
 		t.Fatalf("find migrations: %v (found %d)", err, len(migrations))
 	}

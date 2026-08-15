@@ -79,6 +79,26 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   recording the choice, which is what keeps `keel add` resolving the
   same shape later.
 
+- **`keel add persistence` on a Go modulith.** The SQL slice was
+  flat-layout only — it excluded `layout.modulith` and failed with an
+  uncovered dimension, deliberately, because its five packages all
+  move and emitting them at flat paths would have compiled and
+  silently not wired. Every destination now resolves through
+  `goLayout`: the `GreetingLog` + `UnitOfWork` ports join the context's
+  contract face, the pgx adapters and the fakes join
+  `modules/<ctx>/infra/`, the system clock leaves for
+  `platform/clocksys`, and the `/greetings` decorator joins
+  `modules/<ctx>/userside/resthttp`.
+
+  One thing the JVM never had to answer: under the modulith the
+  assembly cannot import the context's domain, so the factory it wires
+  has to live on the facade. The slice emits a second factory beside
+  `NewGreeter` — `NewGreetingLogUseCases` — which, like its neighbour,
+  re-exports nothing: `cmd/` passes in adapters and holds the result
+  without ever being able to name a domain type, so `greeting.GreetingLog`
+  from the assembly is still `undefined`. The e2e requires that probe
+  to fail to build.
+
 - **Go import paths are derived in one place.** `goLayout()` owns every
   module-path × layout-depth × context-name concatenation, including
   the gofmt sort order of an import block — which of two paths sorts

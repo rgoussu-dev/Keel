@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"<%= modulePath %>/internal/domain/internal/greetinglog"
+<%- projectImports %>
 )
 
 // RecordedGreeting is one greeting as the log recorded it.
@@ -50,13 +50,13 @@ type GreetingLogUseCases interface {
 // NewGreetingLogUseCases assembles the greeting-log use cases and
 // returns them behind their driving port. Each cmd/ main wires the
 // secondary ports by hand — constructor injection, no framework.
-func NewGreetingLogUseCases(log GreetingLog, clock Clock, uow UnitOfWork) GreetingLogUseCases {
+func NewGreetingLogUseCases(log GreetingLog, clock <%= clockType %>, uow UnitOfWork) GreetingLogUseCases {
 	return greetingLogUseCases{log: log, clock: clock, uow: uow}
 }
 
 type greetingLogUseCases struct {
 	log   GreetingLog
-	clock Clock
+	clock <%= clockType %>
 	uow   UnitOfWork
 }
 

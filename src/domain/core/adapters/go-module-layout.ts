@@ -72,6 +72,12 @@ export interface GoLayoutPaths {
   readonly domain: string;
   /** The compiler-hidden core behind it. */
   readonly domainCore: string;
+  /**
+   * One compiler-hidden core package behind the contract face — the
+   * pure functions of a single slice, e.g. `domainInternal('greet')`.
+   * {@link domainCore} is the walking skeleton's own.
+   */
+  domainInternal(name: string): string;
   /** A driving (primary) adapter, e.g. `app('resthttp')`. */
   app(name: string): string;
   /** A driven (secondary) adapter, e.g. `infra('postgres')`. */
@@ -105,6 +111,24 @@ export interface GoLayoutPaths {
   main(typology: string): string;
   /** Import path of a project directory. */
   importPath(dir: string): string;
+  /**
+   * The `../`-chain leading from a project directory back to the
+   * project root, trailing slash included (`''` for the root itself).
+   * Go source rarely needs it — imports are absolute — but a test that
+   * reads a file out of the repo (the pgx contract test replaying
+   * `migrations/sql/`) does, and its depth moves with the layout. This
+   * is the `upToRoot` bug the JVM kept re-introducing; deriving it here
+   * is what keeps a template from hand-counting `../`.
+   */
+  upToRoot(dir: string): string;
+  /**
+   * A gofmt-ordered import group for the project's own packages, ready
+   * to splice into a template through `<%- %>`. Which of two paths
+   * sorts first flips with the layout — under the modulith a context's
+   * `infra/` sorts before its `internal/domain`, the reverse of the
+   * flat tree — so no template may lay one out by hand.
+   */
+  importBlock(dirs: readonly string[]): string;
 }
 
 /**
@@ -127,6 +151,13 @@ export function goMain(tags: readonly Tag[], typology: string): string {
 export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPaths {
   const layout = moduleLayoutOf(tags);
   const importPath = (dir: string): string => `${modulePath}/${dir}`;
+  const upToRoot = (dir: string): string => '../'.repeat(dir.split('/').length);
+  const importBlock = (dirs: readonly string[]): string =>
+    dirs
+      .map((dir) => importPath(dir))
+      .sort()
+      .map((p) => `\t"${p}"`)
+      .join('\n');
   if (layout === 'basic') {
     return {
       layout,
@@ -134,6 +165,7 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
       facadePkg: 'domain',
       domain: 'internal/domain',
       domainCore: 'internal/domain/internal/greet',
+      domainInternal: (name) => `internal/domain/internal/${name}`,
       app: (name) => `internal/app/${name}`,
       infra: (name) => `internal/infra/${name}`,
       platform: (name) => `internal/infra/${name}`,
@@ -142,6 +174,8 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
       clockPkg: 'domain',
       main: (typology) => goMain(tags, typology),
       importPath,
+      upToRoot,
+      importBlock,
     };
   }
   const context = `internal/modules/${SKELETON_MODULE}`;
@@ -151,6 +185,7 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
     facadePkg: SKELETON_MODULE,
     domain: `${context}/internal/domain`,
     domainCore: `${context}/internal/domain/internal/greet`,
+    domainInternal: (name) => `${context}/internal/domain/internal/${name}`,
     app: (name) => `${context}/userside/${name}`,
     infra: (name) => `${context}/infra/${name}`,
     platform: (name) => `internal/platform/${name}`,
@@ -159,7 +194,49 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
     clockPkg: 'clock',
     main: (typology) => goMain(tags, typology),
     importPath,
+    upToRoot,
+    importBlock,
   };
+}
+
+/**
+ * Splices `dirs` into a Go file's project-import group and returns the
+ * group re-sorted, so a vertical adds packages to an assembly without
+ * guessing where they belong.
+ *
+ * Insertion-by-anchor is what the naive version does — replace the one
+ * import line you know is there with three — and it breaks twice: the
+ * line you anchored on moves with the layout, and a vertical that ran
+ * before you has already added lines your new ones must sort among.
+ * Rewriting the whole group from the paths actually present is immune
+ * to both.
+ *
+ * Throws when the file has no project imports at all: that is a file
+ * which has drifted past recognition, and the caller's drift guard
+ * should surface it rather than a silently unwired install.
+ */
+export function addProjectImports(
+  existing: string,
+  layout: GoLayoutPaths,
+  dirs: readonly string[],
+): string {
+  const prefix = `\t"${layout.importPath('')}`;
+  const lines = existing.split('\n');
+  const at = lines.flatMap((line, i) => (line.startsWith(prefix) ? [i] : []));
+  const first = at[0];
+  const last = at[at.length - 1];
+  if (first === undefined || last === undefined || last - first !== at.length - 1) {
+    throw new Error('no contiguous project-import group to extend');
+  }
+  const group = [
+    ...new Set([
+      ...at.map((i) => lines[i]?.trim() ?? ''),
+      ...dirs.map((dir) => `"${layout.importPath(dir)}"`),
+    ]),
+  ]
+    .sort()
+    .map((spec) => `\t${spec}`);
+  return [...lines.slice(0, first), ...group, ...lines.slice(last + 1)].join('\n');
 }
 
 /**
@@ -169,11 +246,10 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
  * concatenate a module path with a directory — that is what makes the
  * layout a one-line change here rather than a sweep through the trees.
  *
- * Import *blocks* are not here, deliberately. gofmt sorts them, and
- * which of two paths sorts first flips with the layout, so each
- * adapter builds its own block from `importPath` and sorts it — a
- * detail no template can be trusted with and no shared bundle can
- * guess.
+ * Import *blocks* are not here, deliberately: which packages a given
+ * file imports is that file's business, not the layout's. What the
+ * layout does own is their *order* — see {@link GoLayoutPaths.importBlock},
+ * which each adapter calls with its own list.
  */
 export function goTemplateVars(paths: GoLayoutPaths): Readonly<Record<string, string>> {
   return {

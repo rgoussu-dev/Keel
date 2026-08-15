@@ -41,10 +41,7 @@ export const goPortFakeAdapter: Adapter = {
       ctx.templates.render(`${TEMPLATE_ROOT}/templates/fake`, fakeDir, {
         modulePath,
         clockPkg: layout.clockPkg,
-        projectImports: [layout.importPath(layout.clockPort), layout.importPath(fakeDir)]
-          .sort()
-          .map((p) => `\t"${p}"`)
-          .join('\n'),
+        projectImports: layout.importBlock([layout.clockPort, fakeDir]),
       }),
     ]);
     return { files: [...port, ...fake] };

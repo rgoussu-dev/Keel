@@ -59,13 +59,7 @@ Every stack ships three layers of tests:
 Persistence is a **bounded context's** concern, not the deployment
 unit's, so on a
 [`layout.modulith`](../stacks/jvm.md#module-layout) project the slice
-follows the context rather than the assembly:
-
-> **Go + `layout.modulith` is not covered yet.** The Go slice spans
-> five packages whose homes all move under that layout, so the adapter
-> excludes the tag and `keel add persistence` fails with an uncovered
-> dimension rather than emitting at flat paths and silently not
-> wiring. Tracked on [the roadmap](../roadmap.md).
+follows the context rather than the assembly. On the JVM stacks:
 
 | What                                                 | `basic`                     | `modulith`                                |
 | ---------------------------------------------------- | --------------------------- | ----------------------------------------- |
@@ -80,6 +74,22 @@ Only the last row belongs to the assembly: the pool, the profile
 config and the framework boot test are deployment concerns. Carving
 the context out into its own service therefore takes its persistence
 with it.
+
+On Go the same rule reads in Go's spelling:
+
+| What                                | `basic`                    | `modulith`                                           |
+| ----------------------------------- | -------------------------- | ---------------------------------------------------- |
+| `GreetingLog` + `UnitOfWork` ports  | `internal/domain`          | `internal/modules/greeting/internal/domain`          |
+| greeting-log validation core        | `internal/domain/internal` | `internal/modules/greeting/internal/domain/internal` |
+| pgx adapters, the fakes             | `internal/infra/…`         | `internal/modules/greeting/infra/…`                  |
+| `POST\|GET /greetings` decorator    | `internal/app/resthttp`    | `internal/modules/greeting/userside/resthttp`        |
+| the system clock                    | `internal/infra/clocksys`  | `internal/platform/clocksys`                         |
+| `NewGreetingLogUseCases` for `cmd/` | the domain package itself  | a second factory on the context's facade             |
+
+That last row is the one Go forces and the JVM does not. Under the
+modulith the assembly cannot import the context's `domain` at all, so
+the factory it calls has to live on the facade — where, like
+`NewGreeter`, it hands back something `cmd/` can pass on but not name.
 
 ## Prerequisites
 

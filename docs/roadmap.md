@@ -238,11 +238,17 @@ resolves both the target and the import through `goLayout`, and sorts
 the two-line import block, because which of the two sorts first flips
 with the layout.
 
-**Still open:** `go-persistence` excludes `layout.modulith` — its slice
-spans five packages whose homes all move, so `keel add persistence`
-fails with an uncovered dimension rather than emitting at flat paths
-and silently not wiring, exactly as observability did. That is the
-remaining `feat(persistence): …` commit.
+**`go-persistence` closed it out.** The slice's five packages now
+resolve their homes through `goLayout` like everything else, and the
+move surfaced one constraint the JVM never had to answer: under the
+modulith the assembly cannot import the context's `domain`, so the
+factory `cmd/` wires has to live on the facade. The slice emits
+`NewGreetingLogUseCases` beside `NewGreeter`, re-exporting nothing —
+the e2e requires `greeting.GreetingLog` from the assembly to fail to
+build, so widening the aperture did not open it. The pgx contract
+test's `../../../migrations/sql` glob is derived from `upToRoot`
+rather than counted, which is the JVM's recurring bug in Go's
+spelling: absolute imports hide depth, a file read does not.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for the Go stacks`,
 then `feat(<vertical>): …` per vertical.
