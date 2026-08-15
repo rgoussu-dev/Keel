@@ -1,0 +1,11 @@
+[package]
+name = "<%= infraCrate %>"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+<%= contractCrate %> = { path = "<%= contractPath %>" }
+postgres = "0.19"
+
+[dev-dependencies]
+testcontainers-modules = { version = "0.15", features = ["blocking", "postgres"] }

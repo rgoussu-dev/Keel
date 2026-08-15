@@ -304,8 +304,37 @@ export interface RustLayoutPaths {
   binName(typology: string): string;
   /** The crate rooted at `dir`, for callers holding a path already. */
   crateAt(dir: string): RustCrate;
+  /**
+   * The `../`-prefix a *runtime* path inside `crate` needs to reach
+   * the project root — `''` for the single `basic` crate, `'../../'`
+   * and deeper for a workspace member. Always ends in `/` when
+   * non-empty, so a template writes `"<%= upToRoot %>migrations/sql"`
+   * with no separator of its own.
+   *
+   * Distinct from {@link RustCrate.pathFrom}, which answers the same
+   * question for one *manifest* pointing at another. This one exists
+   * because Cargo runs a test with the package root as its working
+   * directory, so a crate reading a file the whole project owns —
+   * `migrations/sql/` is the case that bites — must climb out by
+   * exactly as many levels as the layout buried it. Go's
+   * `goLayout.upToRoot` is the same primitive for the same reason.
+   */
+  upToRoot(crate: RustCrate): string;
   /** The context directory of a peer, e.g. `modules/guestbook`. */
   peerCrate(context: string, ...segments: readonly string[]): RustCrate;
+}
+
+/**
+ * The `../`-prefix a runtime path inside `crate` needs to reach the
+ * project root. Empty for a crate rooted at the project itself.
+ */
+function upToRootOf(crate: RustCrate): string {
+  if (crate.dir === '') return '';
+  return `${crate.dir
+    .split('/')
+    .filter((s) => s.length > 0)
+    .map(() => '..')
+    .join('/')}/`;
 }
 
 /** The typology whose binary keeps the bare project name. */
@@ -361,6 +390,7 @@ export function rustLayout(tags: readonly Tag[], projectName: string): RustLayou
       }),
       binName,
       crateAt,
+      upToRoot: upToRootOf,
       peerCrate: (context, ...segments) =>
         crateAt([MODULES_PREFIX, context, ...segments].join('/')),
     };
@@ -398,6 +428,7 @@ export function rustLayout(tags: readonly Tag[], projectName: string): RustLayou
     }),
     binName,
     crateAt,
+    upToRoot: upToRootOf,
     peerCrate: (peer, ...segments) => crateAt([MODULES_PREFIX, peer, ...segments].join('/')),
   };
 }

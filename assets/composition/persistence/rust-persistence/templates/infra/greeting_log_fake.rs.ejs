@@ -5,7 +5,7 @@
 use std::sync::Mutex;
 use std::time::SystemTime;
 
-use crate::domain::{GreetingLog, GreetingLogError, RecordedGreeting};
+use <%= portsUse %>::{GreetingLog, GreetingLogError, RecordedGreeting};
 
 #[derive(Default)]
 pub struct FakeGreetingLog {
