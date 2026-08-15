@@ -45,6 +45,11 @@ import {
 } from '../../../../src/domain/core/adapters/spring-persistence.js';
 import { MICRONAUT_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/micronaut-persistence.js';
 import { GO_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/go-persistence.js';
+import { tsLayout } from '../../../../src/domain/core/adapters/ts-module-layout.js';
+import {
+  BASIC_LAYOUT_TAG,
+  MODULITH_LAYOUT_TAG,
+} from '../../../../src/domain/core/adapters/module-layout.js';
 import { RUST_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/rust-persistence.js';
 import {
   addPackageDependencies,
@@ -656,10 +661,16 @@ public class MediatorFactory {
   });
 
   it('names the manual fix when the TS anchors drifted', () => {
-    expect(() => patchServerTs('acme')('const custom = true;')).toThrow(/route '\/greetings'/);
-    expect(() => patchMainTs('acme')('const custom = true;')).toThrow(
-      /wire createRecordGreetingHandler/,
-    );
+    // Both anchors are layout-derived — the package the assembly
+    // imports the domain from is the whole difference between them —
+    // so the guard is exercised under each layout rather than one.
+    for (const tag of [BASIC_LAYOUT_TAG, MODULITH_LAYOUT_TAG]) {
+      const layout = tsLayout([tag], 'acme');
+      expect(() => patchServerTs(layout)('const custom = true;')).toThrow(/route '\/greetings'/);
+      expect(() => patchMainTs(layout)('const custom = true;')).toThrow(
+        /wire createRecordGreetingHandler/,
+      );
+    }
   });
 
   it('patches the Spring boot test once and only once', () => {

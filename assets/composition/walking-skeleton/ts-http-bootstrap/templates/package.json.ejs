@@ -15,7 +15,7 @@
     "typecheck": "pnpm -r --if-present run typecheck"
   }
 <% } else { -%>
-  "workspaces": ["domain/*", "application/*", "infrastructure/*"],
+  "workspaces": [<%- workspaceGlobs %>],
   "scripts": {
     "dev": "node --watch application/rest/src/main.ts",
     "start": "node application/rest/src/main.ts",

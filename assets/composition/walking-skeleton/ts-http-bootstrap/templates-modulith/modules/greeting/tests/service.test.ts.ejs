@@ -1,0 +1,21 @@
+import { describe, expect, it } from 'vitest';
+import { createRegistryMediator } from '<%= kernelPkg %>';
+import { createGreetHandler } from '<%= contextPkg %>';
+import { createGreetingService } from '<%= contextPkg %>/service';
+
+/**
+ * The peer seam, exercised as a peer would use it: nothing here names
+ * a domain type, because a peer could not.
+ */
+const factory = (): ReturnType<typeof createGreetingService> =>
+  createGreetingService(createRegistryMediator([createGreetHandler()]));
+
+describe('the greeting service seam', () => {
+  it('answers a peer with its own DTO', async () => {
+    expect(await factory().greet('Ada')).toBe('Hello, Ada!');
+  });
+
+  it('propagates a rejection as the domain error', async () => {
+    await expect(factory().greet('   ')).rejects.toThrow('name must not be blank');
+  });
+});

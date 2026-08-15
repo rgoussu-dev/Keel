@@ -57,7 +57,7 @@ the REST shape. Adding a stack is a couple of lines in
 ### Module layout
 
 A second structural dial beside the build system, carried by a
-`layout.*` tag and offered by the JVM and Go stacks:
+`layout.*` tag and offered by the JVM, Go and `ts-http` stacks:
 
 | Tag                      | Shape                                                                                                                                                           |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |

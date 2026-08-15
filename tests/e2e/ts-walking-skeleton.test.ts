@@ -72,7 +72,15 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-const scaffold = async (buildSystem: 'npm' | 'pnpm'): Promise<void> => {
+const runFails = (cwd: string, cmd: string, args: readonly string[]): string => {
+  const r = spawnSync(cmd, [...args], { cwd, encoding: 'utf8' });
+  if (r.status === 0) {
+    throw new Error(`${cmd} ${args.join(' ')} unexpectedly succeeded\nstdout:\n${r.stdout}`);
+  }
+  return `${r.stdout}${r.stderr}`;
+};
+
+const scaffold = async (buildSystem: 'npm' | 'pnpm', moduleLayout?: string): Promise<void> => {
   const mediator = installMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set(['vcs/git-init'])),
@@ -92,6 +100,7 @@ const scaffold = async (buildSystem: 'npm' | 'pnpm'): Promise<void> => {
         interactive: false,
         dryRun: false,
         buildSystem,
+        ...(moduleLayout !== undefined ? { moduleLayout } : {}),
       }),
     ),
   );
@@ -129,3 +138,82 @@ describe.skipIf(optedOut || !onPath('pnpm') || (onCI && !optedIn))(
     );
   },
 );
+
+/**
+ * The modulith layout, end to end, on both package managers.
+ *
+ * Nothing about this layout can be checked without a real install.
+ * Its central claim is that a bounded context is reachable only
+ * through the two entry points its `exports` map publishes, and an
+ * `exports` map is inert until something resolves against it —
+ * emitted-file assertions would pass over a map that publishes
+ * everything. So each case installs for real and then requires three
+ * separate refusals: `tsc` on a deep package import, Node on the same
+ * import at runtime, and dependency-cruiser on the relative path that
+ * walks around both.
+ *
+ * The pnpm case is not a duplicate. npm hoists every workspace member
+ * into the root `node_modules`, which hides missing dependency
+ * declarations; pnpm's isolated store does not, so a package that
+ * borrows a type package from a sibling typechecks under one and
+ * fails under the other.
+ */
+const modulithSuite = (pm: 'npm' | 'pnpm'): void => {
+  describe.skipIf(optedOut || !onPath(pm) || (onCI && !optedIn))(
+    `ts-http modulith e2e (${pm})`,
+    () => {
+      it(
+        'installs, typechecks, tests, lints — and refuses every way past the aperture',
+        async () => {
+          await scaffold(pm, 'modulith');
+          runStep(cwd, `${pm} run typecheck`, pm, ['run', 'typecheck']);
+          runStep(cwd, `${pm} test`, pm, ['test']);
+          runStep(cwd, `${pm} run lint`, pm, ['run', 'lint']);
+
+          const deep = '@acme/greeting/src/domain/core/internal/greet-handler.ts';
+          const probe = path.join(cwd, 'application', 'rest', 'src', 'probe.ts');
+
+          // tsc refuses the deep import…
+          await fs.writeFile(probe, `export { createGreetHandler } from '${deep}';\n`);
+          expect(
+            runFails(path.join(cwd, 'application', 'rest'), 'npx', ['tsc', '--noEmit']),
+          ).toContain('TS2307');
+
+          // …and so does Node, which is the half a type-only wall
+          // would miss entirely. Probed from the assembly rather than
+          // the repo root: under pnpm only a package that declares
+          // the dependency can see it at all, and "not installed" is
+          // a different refusal from "not published".
+          expect(
+            runFails(path.join(cwd, 'application', 'rest'), 'node', [
+              '-e',
+              `import(${JSON.stringify(deep)})`,
+            ]),
+          ).toContain('ERR_PACKAGE_PATH_NOT_EXPORTED');
+
+          // The relative path walks around both, and is exactly what
+          // the emitted dependency-cruiser config is for.
+          await fs.writeFile(
+            probe,
+            "export { createGreetHandler } from '../../../modules/greeting/src/domain/core/internal/greet-handler.ts';\n",
+          );
+          expect(runFails(cwd, pm, ['run', 'lint'])).toContain('context-through-its-aperture');
+
+          // A domain file reaching for its own adapters is the other
+          // rule the map cannot see.
+          await fs.remove(probe);
+          const inward = path.join(cwd, 'modules', 'greeting', 'src', 'domain', 'core', 'probe.ts');
+          await fs.writeFile(inward, "export { systemClock } from '../../infra/clock/index.ts';\n");
+          expect(runFails(cwd, pm, ['run', 'lint'])).toContain('domain-owns-no-adapters');
+          await fs.remove(inward);
+
+          runStep(cwd, `${pm} run lint`, pm, ['run', 'lint']);
+        },
+        E2E_TIMEOUT_MS,
+      );
+    },
+  );
+};
+
+modulithSuite('npm');
+modulithSuite('pnpm');

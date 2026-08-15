@@ -14,6 +14,8 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { CONTAINER_IMAGE_TAG } from './container-image.js';
+import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
+import { tsLayout } from './ts-module-layout.js';
 
 export const TS_HTTP_IMAGE_ID = 'containerization/ts-http-image';
 
@@ -26,7 +28,17 @@ export const tsHttpImageAdapter: Adapter = {
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
   async contribute(ctx) {
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { pm });
+    // The image's CMD is the assembly's entry point, and where that
+    // sits is the module layout's answer — a Dockerfile naming it by
+    // hand builds fine and starts nothing.
+    const layout = tsLayout(
+      ctx.manifest.tags,
+      ctx.manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.npmScope ?? '',
+    );
+    const files = await ctx.templates.render(TEMPLATE_ID, '', {
+      pm,
+      entryPoint: `${layout.restSrc}/main.ts`,
+    });
     return { files, tagsAdd: [CONTAINER_IMAGE_TAG] };
   },
 };

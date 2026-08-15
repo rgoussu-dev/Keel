@@ -1,0 +1,24 @@
+import type { Command } from '<%= kernelPkg %>';
+
+/** Greet someone by name. The walking skeleton's only domain command. */
+export interface GreetCommand extends Command<Greeting> {
+  readonly kind: 'greet';
+  readonly name: string;
+}
+
+/** A greeting produced by the domain. */
+export interface Greeting {
+  readonly message: string;
+}
+
+/** Constructs a {@link GreetCommand}. Commands are plain data. */
+export function greetCommand(name: string): GreetCommand {
+  return { kind: 'greet', name };
+}
+
+/**
+ * Error code carried when a {@link GreetCommand} has a blank name.
+ * Primary adapters map it to their transport's error shape (RFC 9457
+ * Problem Details for REST); the domain never learns about HTTP.
+ */
+export const GREET_REJECTED = 'greet.rejected';

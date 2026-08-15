@@ -1,0 +1,61 @@
+import {
+  DomainError,
+  err,
+  ok,
+  type Command,
+  type Handler,
+  type Result,
+} from '<%= kernelSpec %>';
+import {
+  GREET_REJECTED,
+  type Clock,
+  type GreetingLog,
+  type ListGreetingsQuery,
+  type RecordGreetingCommand,
+  type RecordedGreeting,
+  type UnitOfWork,
+} from '<%= contractSpec %>';
+
+/**
+ * Handles {@link RecordGreetingCommand}: validates, then appends to
+ * the greeting log inside one unit of work.
+ */
+export function createRecordGreetingHandler(
+  greetingLog: GreetingLog,
+  clock: Clock,
+  unitOfWork: UnitOfWork,
+): Handler<RecordGreetingCommand> {
+  return {
+    supports(command: Command): command is RecordGreetingCommand {
+      return command.kind === 'greeting-log.record';
+    },
+    async handle(command: RecordGreetingCommand): Promise<Result<RecordedGreeting>> {
+      const name = command.name.trim();
+      if (name === '') {
+        return err(new DomainError('name must not be blank', GREET_REJECTED));
+      }
+      const recorded = await unitOfWork.inTransaction(() =>
+        greetingLog.append(name, clock.now()),
+      );
+      return ok(recorded);
+    },
+  };
+}
+
+/**
+ * Handles {@link ListGreetingsQuery}: reads the most recent
+ * greetings, clamping the limit to [1, 100].
+ */
+export function createListGreetingsHandler(
+  greetingLog: GreetingLog,
+): Handler<ListGreetingsQuery> {
+  return {
+    supports(command: Command): command is ListGreetingsQuery {
+      return command.kind === 'greeting-log.list';
+    },
+    async handle(command: ListGreetingsQuery): Promise<Result<readonly RecordedGreeting[]>> {
+      const limit = Math.min(Math.max(command.limit, 1), 100);
+      return ok(await greetingLog.recent(limit));
+    },
+  };
+}

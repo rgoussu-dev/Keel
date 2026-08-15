@@ -273,6 +273,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'TypeScript HTTP service on node:http (Node 22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.',
     tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
     projects: ['peer.api.rest'],
   },

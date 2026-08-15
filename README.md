@@ -137,6 +137,15 @@ sources directly): the trisected domain packages compiled with
 registry mediator behind a `node:http` server, and the `Clock` port +
 fake in `infrastructure/clock`.
 
+`ts-http` carries the **module layout** dial too, and here a context
+is _one workspace package_ rather than one per layer — because the
+package graph enforces nothing on its own (undeclared workspace deps
+resolve anyway) while the `exports` map enforces everything. So
+`--module-layout=modulith` buys the wall at 1 manifest per context
+instead of 3.5, and ships the dependency-cruiser config for the two
+rules resolution cannot see.
+→ [ts-http module layout](docs/stacks/ts-http.md#module-layout)
+
 **Prerequisites:** Node 22.18+, `npm` or `pnpm`, `git`.
 → [ts-http](docs/stacks/ts-http.md)
 

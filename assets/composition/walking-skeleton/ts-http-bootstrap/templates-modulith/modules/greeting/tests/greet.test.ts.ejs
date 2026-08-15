@@ -1,0 +1,39 @@
+import { describe, expect, it } from 'vitest';
+import { createRegistryMediator, type Mediator } from '<%= kernelPkg %>';
+import { createGreetHandler, greetCommand, GREET_REJECTED } from '<%= contextPkg %>';
+
+interface Scenario {
+  readonly name: string;
+  readonly expected: string;
+}
+
+const ada: Scenario = { name: 'Ada', expected: 'Hello, Ada!' };
+const padded: Scenario = { name: '  Grace  ', expected: 'Hello, Grace!' };
+
+const factory = (): Mediator => createRegistryMediator([createGreetHandler()]);
+
+describe('greet', () => {
+  it('greets the given name through the mediator', async () => {
+    const mediator = factory();
+    const result = await mediator.dispatch(greetCommand(ada.name));
+    expect(result.ok && result.value.message).toBe(ada.expected);
+  });
+
+  it('trims the name before greeting', async () => {
+    const mediator = factory();
+    const result = await mediator.dispatch(greetCommand(padded.name));
+    expect(result.ok && result.value.message).toBe(padded.expected);
+  });
+
+  it('rejects a blank name with a domain error', async () => {
+    const mediator = factory();
+    const result = await mediator.dispatch(greetCommand('   '));
+    expect(!result.ok && result.error.code).toBe(GREET_REJECTED);
+  });
+
+  it('resolves to kernel.no-handler for an unsupported command', async () => {
+    const mediator = createRegistryMediator([]);
+    const result = await mediator.dispatch(greetCommand('Ada'));
+    expect(!result.ok && result.error.code).toBe('kernel.no-handler');
+  });
+});

@@ -1,0 +1,23 @@
+{
+  "name": "<%= greetingLogPkg %>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+<%- infraExports %>
+  },
+  "dependencies": {
+    "<%= contractPkg %>": "<%= workspaceDep %>"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "<%= uowPkg %>": "<%= workspaceDep %>",
+    "@testcontainers/postgresql": "^10.18.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

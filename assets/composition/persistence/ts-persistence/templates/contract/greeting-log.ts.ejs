@@ -1,0 +1,46 @@
+import type { Command } from '<%= kernelSpec %>';
+
+/** One greeting as the log recorded it. */
+export interface RecordedGreeting {
+  readonly id: number;
+  readonly name: string;
+  readonly greetedAt: Date;
+}
+
+/**
+ * Secondary port onto the greeting log — the walking skeleton's
+ * persistence example. The domain appends and reads; where the rows
+ * live (PostgreSQL in production, an in-memory fake in tests) is an
+ * adapter concern.
+ */
+export interface GreetingLog {
+  /** Appends one greeting and resolves it with its assigned id. */
+  append(name: string, greetedAt: Date): Promise<RecordedGreeting>;
+  /** Resolves at most `limit` greetings, most recent first. */
+  recent(limit: number): Promise<readonly RecordedGreeting[]>;
+}
+
+/** Record durably that someone was greeted. */
+export interface RecordGreetingCommand extends Command<RecordedGreeting> {
+  readonly kind: 'greeting-log.record';
+  readonly name: string;
+}
+
+/** Constructs a {@link RecordGreetingCommand}. Commands are plain data. */
+export function recordGreetingCommand(name: string): RecordGreetingCommand {
+  return { kind: 'greeting-log.record', name };
+}
+
+/**
+ * Read back the most recent greetings. The handler clamps the limit
+ * to [1, 100].
+ */
+export interface ListGreetingsQuery extends Command<readonly RecordedGreeting[]> {
+  readonly kind: 'greeting-log.list';
+  readonly limit: number;
+}
+
+/** Constructs a {@link ListGreetingsQuery}. */
+export function listGreetingsQuery(limit: number): ListGreetingsQuery {
+  return { kind: 'greeting-log.list', limit };
+}

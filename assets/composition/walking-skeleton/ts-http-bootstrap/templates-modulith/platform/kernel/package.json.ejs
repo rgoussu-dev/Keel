@@ -1,0 +1,15 @@
+{
+  "name": "<%= kernelPkg %>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+<%- kernelExports %>
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

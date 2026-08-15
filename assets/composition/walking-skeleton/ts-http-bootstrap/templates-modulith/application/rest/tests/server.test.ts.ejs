@@ -1,0 +1,84 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import type { Server } from 'node:http';
+import { createRegistryMediator, type Mediator } from '<%= kernelPkg %>';
+import { createGreetHandler } from '<%= contextPkg %>';
+import { createGreetServer } from '../src/server.ts';
+
+const servers: Server[] = [];
+
+const factory = async (
+  mediator: Mediator = createRegistryMediator([createGreetHandler()]),
+): Promise<string> => {
+  const server = createGreetServer(mediator);
+  servers.push(server);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const address = server.address();
+  if (address === null || typeof address === 'string') throw new Error('no ephemeral port');
+  return `http://127.0.0.1:${address.port}`;
+};
+
+afterEach(async () => {
+  await Promise.all(
+    servers.splice(0).map((s) => new Promise<void>((resolve) => s.close(() => resolve()))),
+  );
+});
+
+describe('GET /greet', () => {
+  it('greets the given name', async () => {
+    const base = await factory();
+    const response = await fetch(`${base}/greet?name=Ada`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ greeting: 'Hello, Ada!' });
+  });
+
+  it('defaults to world when no name is given', async () => {
+    const base = await factory();
+    const response = await fetch(`${base}/greet`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ greeting: 'Hello, world!' });
+  });
+
+  it('maps a blank name to an RFC 9457 problem', async () => {
+    const base = await factory();
+    const response = await fetch(`${base}/greet?name=%20%20`);
+    expect(response.status).toBe(400);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+    const body = (await response.json()) as { title: string; status: number };
+    expect(body.status).toBe(400);
+    expect(body.title).toBe('greet.rejected');
+  });
+
+  it('maps unknown paths to a 404 problem', async () => {
+    const base = await factory();
+    const response = await fetch(`${base}/nope`);
+    expect(response.status).toBe(404);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+  });
+
+  it('maps a rejected dispatch to a 500 problem instead of hanging', async () => {
+    const failing: Mediator = { dispatch: () => Promise.reject(new Error('boom')) };
+    const base = await factory(failing);
+    const response = await fetch(`${base}/greet`);
+    expect(response.status).toBe(500);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+    const body = (await response.json()) as { status: number; detail: string };
+    expect(body.status).toBe(500);
+    expect(body.detail).toBe('boom');
+  });
+
+  it('redacts the 500 problem detail in production', async () => {
+    const failing: Mediator = { dispatch: () => Promise.reject(new Error('boom')) };
+    const base = await factory(failing);
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const response = await fetch(`${base}/greet`);
+      expect(response.status).toBe(500);
+      const body = (await response.json()) as { detail: string };
+      expect(body.detail).toBe('unexpected failure');
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
+  });
+});
