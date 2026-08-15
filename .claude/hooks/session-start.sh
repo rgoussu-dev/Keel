@@ -69,8 +69,9 @@ if [ -z "$version" ]; then
   exit 1
 fi
 
-# Known-good distribution hashes, keyed by version. See the note in
-# `docs/development.md` on what this pin does and does not prove.
+# Distribution hashes, keyed by version, each checked against Gradle's
+# published SHA-256 before being added — see `docs/development.md` for
+# how, since the sandbox cannot fetch them itself.
 declare -A GRADLE_SHA256=(
   [9.4.1]='2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb'
 )

@@ -36,18 +36,25 @@ It fixes two things the image gets wrong for this repo:
   like a passing one. The hook writes `JAVA_HOME` to
   `$CLAUDE_ENV_FILE`, which does apply.
 
-**On the pinned Gradle checksum.** `GRADLE_SHA256` in the hook makes
-the download reproducible and catches corruption or substitution, and
-the install aborts on a mismatch. Note what it is: a hash of the
-artifact that was downloaded and validated when the pin was added, not
-a value fetched from Gradle. The published checksums
+**On the pinned Gradle checksum.** `GRADLE_SHA256` in the hook is
+checked against Gradle's published SHA-256, and the install aborts on
+a mismatch rather than proceeding with unknown bytes.
+
+Adding an entry takes one manual step, because the sandbox cannot do
+it alone: the published checksums
 (`https://services.gradle.org/distributions/gradle-<version>-bin.zip.sha256`,
-or <https://gradle.org/release-checksums/>) are not reachable from the
-web sandbox — the proxy 403s them, while the distribution URL itself
-redirects to an allowlisted host — so verifying a pin against upstream
-has to happen from an unrestricted network. Bumping `GRADLE_VERSION`
-without adding a matching entry warns loudly and continues rather than
-bricking every session.
+or <https://gradle.org/release-checksums/>) are proxy-blocked from a
+web session — 403 on the CONNECT tunnel — while the distribution URL
+beside them is not, since it redirects to an allowlisted host. So the
+published value has to be fetched from an unrestricted network and
+compared there. A hash computed from our own download proves only that
+a later download matches the earlier one; it says nothing about
+whether either is the release Gradle shipped, and the two claims
+should not be confused.
+
+Bumping `GRADLE_VERSION` without adding a matching entry warns loudly
+and continues, rather than bricking every session over a routine
+version bump.
 
 ## The dev loop
 
