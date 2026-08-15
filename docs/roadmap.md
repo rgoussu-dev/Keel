@@ -669,7 +669,7 @@ is worth far more once I.1–I.4 have settled each language's resolver.
 
 ---
 
-## J — Close the JVM modulith grid, then put language on the CI axis
+## J — Close the JVM modulith grid, then put language on the CI axis ✅
 
 **Goal.** **H** closed the `basic` grid: all twelve JVM stacks are
 built, booted and driven. It did not close the **modulith** one, and
@@ -689,6 +689,12 @@ them have ever been through a compiler:
 | Quarkus CLI    | ⬜          | ⬜         | ⬜            | ⬜           |
 | Spring CLI     | ⬜          | ⬜         | ⬜            | ⬜           |
 | Micronaut CLI  | ⬜          | ⬜         | ⬜            | ⬜           |
+
+**Every ⬜ above is now a ✅**, and each is a suite of its own —
+`tests/e2e/modulith-<stack>-<build>.test.ts`, 24 files for 24 cells.
+The table is left as this item found it, because the shape of the gap
+is the part worth remembering: the empty cells came in _blocks_, and
+that is what made them expensive (see "What the grid caught").
 
 Everything in the empty cells is **written and shipped**. All twelve
 stacks carry a `templates-modulith/` tree,
@@ -716,6 +722,49 @@ The bill is stated rather than buried: 19 new suites at roughly
 3–5 minutes each, which J.4 has to absorb by resharding rather than by
 letting one job run 35 minutes.
 
+_Landed as **20**, not 19._ `quarkus-rest` on Gradle was counted as
+covered when this was written and was not — see J.2.
+
+### What the grid caught
+
+**Three shipped defects, and H's "expect green" did not hold.** H
+closed its grid without surfacing one, and this item was written
+expecting the same. It was wrong, and the reason is worth keeping:
+H's grid was framework × language × shape, and every cell of it had a
+_neighbour_ that had been built. This one had a **contiguous** hole —
+no Micronaut project had ever been built by Maven, in any layout or
+language, because the Maven e2e coverage added with the peer context
+reached Quarkus and Spring only. Three defects were living in it:
+
+1. **The reactor root managed no versions.** Only the assembly parents
+   `micronaut-parent`; every other module parents the reactor root,
+   and Maven allows one parent — so the library module holding the
+   framework-facing adapter declared `io.micronaut:*` with nothing to
+   resolve a version from. Maven failed while _reading the POMs_.
+2. **That module never ran the annotation processor.** Micronaut
+   resolves beans at compile time, per compiled module, and its Maven
+   pom had no `<build>` section at all. Silent in the worst way: it
+   compiled, packaged, started clean, and 404'd every route. Gradle
+   was never affected — `io.micronaut.library` is exactly this.
+3. **A protobuf version skew between the two build systems.**
+   `micronaut-micrometer-registry-otlp` ships protoc-4.x-generated
+   classes but asks for protobuf-java 4.28.3 in its Gradle module
+   metadata and 3.25.8 in its POM. Gradle reads the first and resolves
+   a working classpath; Maven reads the second and cannot instantiate
+   the meter registry at all.
+
+Defect 3 is **not modulith-specific** — checked rather than assumed:
+`micronaut-rest --build-system=maven` fails identically under `basic`.
+Its fix went into the shared observability wiring and repairs both
+layouts, which means this item fixed a stack combination outside the
+grid it set out to close.
+
+The lesson generalises past Micronaut: **a grid's value is highest
+where its unbuilt cells are adjacent**, because a lone unbuilt cell is
+usually a translation of a built neighbour, and a block of them is
+usually a capability nobody has ever exercised. Worth reading the next
+table for blocks rather than for counts.
+
 Ordering is the same rule **H** was built around and it still binds:
 **populate the grid first, shard second.** Language is not a CI axis
 today for exactly one reason — the modulith half has no Kotlin suite,
@@ -723,7 +772,7 @@ so `e2e (jvm-kotlin)` would be a check name over a cell nothing
 populates. J.1 is what makes the reshard legal, which is why the
 reshard is J.4 and not J.1.
 
-### J.0 — One file per cell (prerequisite, S)
+### J.0 — One file per cell (prerequisite, S) ✅
 
 A 24-cell grid needs its suites named after their cells, or the
 invariant "every cell has a suite" is unverifiable by reading
@@ -742,7 +791,11 @@ Pure rename plus a matrix update — no new coverage, and
 
 **Commit.** `refactor(e2e): name the modulith suites after their grid cell`
 
-### J.1 — The Kotlin REST modulith row (M)
+**Landed.** Five files became seven — the Maven pair split — and the
+matrix followed in the same commit. No coverage changed; both split
+cells were run before and after (Spring 150s, Quarkus 181s).
+
+### J.1 — The Kotlin REST modulith row (M) ✅
 
 Six cells: `quarkus-rest-kotlin`, `spring-rest-kotlin`,
 `micronaut-rest-kotlin`, each on Gradle and Maven, all
@@ -766,7 +819,18 @@ both typologies.
 
 **Commit.** `test(e2e): build the Kotlin moduliths`
 
-### J.2 — Close the Java REST square (S)
+**Landed, and this is where the item's expectation broke.** Five of
+the six passed as written. The sixth, Micronaut on Maven, failed
+before compiling anything — and behind it were **three** shipped
+defects rather than one, all in a single blind spot: no Micronaut
+project had ever been built by Maven, in any layout or language,
+because the Maven e2e coverage added with the peer context reached
+Quarkus and Spring only. See "What the grid caught" below.
+
+Micronaut's by-hand Kotlin `MediatorFactory` — the divergent code this
+phase was ordered around — compiled and wired on the first run.
+
+### J.2 — Close the Java REST square (S) ✅
 
 `micronaut-rest` on Maven with the peer context: the last empty Java
 REST modulith cell, and the only Micronaut modulith never built by
@@ -774,7 +838,18 @@ Maven. One file.
 
 **Commit.** `test(e2e): build the Micronaut modulith on Maven`
 
-### J.3 — The CLI modulith, all twelve cells (L)
+**Landed as two cells, not one, under**
+`test(e2e): close the Java REST modulith square`. `micronaut-rest` on
+Maven was the expected gap. `quarkus-rest` on **Gradle** was not: it
+looked covered, because `modulith-baseline` scaffolds that exact
+stack, layout and build system — but without `--with-peer-context`, so
+it exercises none of the peer family. Quarkus' peer binding had only
+ever been compiled by Maven; the Gradle peer patches only ever under
+Spring and Micronaut. **Quarkus × Gradle × peer was the empty
+intersection of two covered rows** — a gap a row-wise reading cannot
+see and a grid makes obvious. Both green (155s, 94s).
+
+### J.3 — The CLI modulith, all twelve cells (L) ✅
 
 **No CLI modulith has ever been built, in any configuration** — twelve
 empty cells, the largest contiguous block in the table, and after J.1
@@ -799,7 +874,11 @@ top.
 
 **Commit.** `test(e2e): build the JVM CLI moduliths`
 
-### J.4 — Reshard along the now-populated language axis (S)
+**Landed, all twelve, all green first time.** The wiring question
+resolved in the strong direction, as hoped rather than as assumed —
+so no cell in this grid rests on "compiles and packages".
+
+### J.4 — Reshard along the now-populated language axis (S) ✅
 
 Only once J.0–J.3 are green. Language is then populated on **both**
 typologies for the first time, so it becomes a legal axis — the
@@ -821,7 +900,45 @@ Reference, #54's four shards on real runners including setup:
 `jvm-quarkus` 400s, `jvm-modulith` 399s, `jvm-micronaut` 366s,
 `jvm-spring` 313s.
 
-**Commit.** `ci: <the shape actually chosen>`
+**Landed as nine JVM shards on a per-typology shape.** `basic` keeps
+its framework split (renamed `jvm-basic-<framework>`, four stacks
+each); `modulith` splits by framework × **language** —
+`jvm-modulith-<framework>-<java|kotlin>`, four cells each, six on
+`quarkus-java` which also carries the two non-cell variants.
+
+Language is an axis for the first time, and J.1 rather than an
+argument is what made it legal. It is deliberately _not_ an axis on
+the `basic` half: those shards already sit near their longest-file
+floor, so splitting them buys attribution and no seconds, at three
+more JDK provisionings.
+
+Measured per shard on the shape shipped (4 vCPUs, cold caches,
+sequential total → wall; every shard green):
+
+| Shard                           | Files | Sequential | Wall | Divisor | Longest file |
+| ------------------------------- | ----- | ---------- | ---- | ------- | ------------ |
+| `jvm-modulith-quarkus-java`     | 6     | 1015.3     | 415  | 2.45    | 259.7        |
+| `jvm-modulith-quarkus-kotlin`   | 4     | 658.7      | 291  | 2.26    | 229.1        |
+| `jvm-modulith-spring-java`      | 4     | 358.7      | 160  | 2.24    | 128.0        |
+| `jvm-modulith-spring-kotlin`    | 4     | 504.9      | 227  | 2.22    | 165.2        |
+| `jvm-modulith-micronaut-java`   | 4     | 457.5      | 201  | 2.28    | 162.7        |
+| `jvm-modulith-micronaut-kotlin` | 4     | 743.6      | 252  | 2.95    | 248.9        |
+
+The divisor is **2.22–2.45** — H.3's finding reproduced on a different
+shard shape and a different file set, with the same cause: each Gradle
+build is itself parallel, and concurrent ones contend. Nowhere near
+the 4 the core count suggests.
+
+**The split stops at nine on the floor, not on taste.**
+`micronaut-kotlin` runs 252s against a 249s longest file — already
+floor-bound, so halving it again buys attribution and no wall clock.
+`quarkus-java` is the only shard with real headroom left (415s against
+a 260s floor) and is where to split first if it grows. That is H.3's
+"limit rather than a verdict" applied: sharding pays until a shard's
+divided total approaches its longest file, and one shard here has
+reached that point.
+
+**Commit.** `ci: split the modulith shard by framework and language`
 
 ### Not in scope for J
 
