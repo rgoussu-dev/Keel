@@ -44,14 +44,36 @@ export const E2E_TIMEOUT_MS = 20 * 60 * 1000;
  * 5xx` (the wrapper's first-run download). Both surface 5xx responses
  * from release-assets.githubusercontent.com and are unrelated to keel;
  * without retry the suites are unreliable on cold caches.
+ *
+ * The last entry covers the same download failing *below* HTTP. A
+ * `Connection reset` during the TLS handshake never reaches a status
+ * code, so none of the patterns above see it, and the suite fails on
+ * its first attempt over a fault that has nothing to do with the
+ * project under test — observed on `e2e (jvm-basic-quarkus)`, on a
+ * commit whose only change was a Markdown file.
+ *
+ * It is anchored on `org.gradle.wrapper.Install`, the frame only the
+ * wrapper's own distribution fetch produces, so it can never swallow a
+ * socket error raised by the *generated* project's build or tests —
+ * which is the failure this harness exists to report.
  */
 const TRANSIENT_PATTERNS = [
   /Test of distribution url .* failed/,
   /Server returned HTTP response code: 5\d\d/,
   /HEAD request to .* failed: response code \(5\d\d\)/,
+  /(?:SocketException|SocketTimeoutException|SSLException|Unexpected end of file from server)[\s\S]*?org\.gradle\.wrapper\.Install/,
 ];
 
-const isTransient = (blob: string): boolean => TRANSIENT_PATTERNS.some((re) => re.test(blob));
+/**
+ * Whether a build's combined output is a known CDN flake rather than a
+ * failure of the project under test. Exported for
+ * `tests/jvm-e2e-transient.test.ts`, which pins the patterns against
+ * real captured output — a regex that silently stops matching turns a
+ * flake back into a red build, and one that matches too much hides a
+ * real one.
+ */
+export const isTransient = (blob: string): boolean =>
+  TRANSIENT_PATTERNS.some((re) => re.test(blob));
 
 /**
  * Rewrites the action list before handing it to the real runner:
