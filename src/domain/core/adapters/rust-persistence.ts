@@ -219,12 +219,18 @@ export const rustPersistenceAdapter: Adapter = {
  * modulith project dies on `patch target 'src/domain.rs' does not
  * exist in tree` — a true statement that explains nothing.
  *
- * Porting it is a bigger piece than the other three Rust verticals
- * rather than a longer one: the adapters become a crate of their own
+ * Porting it is a different *shape* of change from the other three
+ * Rust verticals rather than a longer one: they each needed a path
+ * resolved, while these adapters become a crate of their own
  * (`greeting-infra-postgres`) with a manifest, a workspace member and
- * an assembly dependency, and its tests need a Postgres through
- * Testcontainers — which the `rust` CI shard, provisioning `cargo`
- * alone, cannot run today. Tracked as roadmap I.5.
+ * an assembly dependency. Tracked as roadmap I.5.
+ *
+ * The CI story is *not* part of that, contrary to what I.4 recorded:
+ * the emitted contract test probes `docker_available()` and returns
+ * early without a daemon, so `cargo test` still compiles every crate
+ * — which is what proves the wiring — on a shard provisioning `cargo`
+ * alone. That is the JVM's own precedent, where
+ * `modulith-persistence` runs in a shard with no `docker` either.
  *
  * Failing here rather than at the first missing patch is the point:
  * the user learns what is unsupported and what to do instead, at the
