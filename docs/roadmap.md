@@ -941,6 +941,17 @@ is the band the modulith shards now sit in too.
 That run is also what confirms the 20 new suites off this box: every
 one of them passed on CI, on runners, before the reshard moved them.
 
+**Confirmed after the fact, on runners.** The reshard's own CI run put
+the six modulith shards at 426 / 300 / 197 / 225 / 233 / 321s
+(setup included), against local predictions of 415 / 291 / 160 / 227 /
+201 / 252 — close enough that a 4-vCPU box with the same JDK and
+Gradle is a usable proxy for the runner, which is worth knowing before
+the next rebalance. The e2e phase as a whole went from **1475s to
+426s**, a **3.46×** improvement, and all fourteen checks were green.
+
+The slowest shard is still `jvm-modulith-quarkus-java`, on the runner
+as locally — so it remains the one to split first.
+
 **The split stops at nine on the floor, not on taste.**
 `micronaut-kotlin` runs 252s against a 249s longest file — already
 floor-bound, so halving it again buys attribution and no wall clock.
