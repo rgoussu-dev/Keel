@@ -197,6 +197,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The Go persistence slice's pgx contract test could never pass
+  against a real Docker daemon.** It started its Testcontainers
+  PostgreSQL with no wait strategy, so the container was declared ready
+  the instant it started — and PostgreSQL restarts itself once after
+  first-time init, so the very next connection was reset
+  (`failed to receive message: unexpected EOF`). The test now passes
+  `postgres.BasicWaitStrategies()`, which waits for the readiness log
+  twice, exactly as the module ships it for.
+
+  It hid for as long as it did because the test skips itself without a
+  daemon, and no environment that ran it had one. Running the e2e suite
+  in CI is what surfaced it.
+
 - **`ts-http` documented a wall it does not have.** The emitted README,
   the stack page and the README all said the domain packages'
   `"types": []` made a domain import of `node:*` a compile error. It
