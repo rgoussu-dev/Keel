@@ -261,6 +261,21 @@ const WIRING: Readonly<Record<JvmObservabilityFramework, FrameworkWiring>> = {
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-exporter-otlp</artifactId>
+    </dependency>
+    <!-- Pinned because Maven and Gradle read different metadata for the
+         same artifact. micronaut-micrometer-registry-otlp ships
+         protobuf-generated classes that call
+         com.google.protobuf.RuntimeVersion, which exists only in
+         protobuf-java 4.x; its Gradle module metadata asks for 4.28.3
+         and its POM asks for 3.25.8, so Gradle resolves a working
+         classpath and Maven a broken one. Unpinned, the container
+         fails to start the meter registry with NoClassDefFoundError
+         com/google/protobuf/RuntimeVersion$RuntimeDomain. -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.28.3</version>
+      <scope>runtime</scope>
     </dependency>`,
     livenessPath: '/health/liveness',
     readinessPath: '/health/readiness',
