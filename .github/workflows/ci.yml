@@ -134,6 +134,12 @@ jobs:
               tests/e2e/modulith-spring-rest-gradle.test.ts
               tests/e2e/modulith-spring-rest-maven.test.ts
               tests/e2e/modulith-micronaut-rest-gradle.test.ts
+              tests/e2e/modulith-quarkus-rest-kotlin-gradle.test.ts
+              tests/e2e/modulith-quarkus-rest-kotlin-maven.test.ts
+              tests/e2e/modulith-spring-rest-kotlin-gradle.test.ts
+              tests/e2e/modulith-spring-rest-kotlin-maven.test.ts
+              tests/e2e/modulith-micronaut-rest-kotlin-gradle.test.ts
+              tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
           - id: go
             tools: go docker
             files: >-
