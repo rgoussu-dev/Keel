@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isTransient } from './support/jvm-e2e.js';
+import { RETRY_BACKOFF_MS, isTransient } from './support/jvm-e2e.js';
 
 /**
  * Captured from `e2e (jvm-basic-quarkus)` on a commit whose only
@@ -61,6 +61,18 @@ GreetControllerTest > greetsByNameThroughMediator FAILED
 \tat com.example.rest.GreetControllerTest.greetsByNameThroughMediator(GreetControllerTest.java:31)`;
 
     expect(isTransient(projectFailure)).toBe(false);
+  });
+
+  it('waits between attempts, since the faults it retries last seconds', () => {
+    // A retry with no gap is barely a retry: `e2e (jvm-basic-spring)`
+    // lost all four of its suites in 87s to one network fault, each
+    // having spent every attempt inside it. The schedule must stay
+    // non-empty and increasing, and long enough in total to outlast a
+    // blip rather than merely re-observe it.
+    expect(RETRY_BACKOFF_MS.length).toBeGreaterThan(0);
+    expect(RETRY_BACKOFF_MS.every((ms) => ms >= 1_000)).toBe(true);
+    expect([...RETRY_BACKOFF_MS].sort((a, b) => a - b)).toEqual([...RETRY_BACKOFF_MS]);
+    expect(RETRY_BACKOFF_MS.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(20_000);
   });
 
   it('does not retry an ordinary compile or assertion failure', () => {
