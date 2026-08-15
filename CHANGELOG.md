@@ -229,6 +229,20 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `micronaut-inject-java` as an annotation-processor path, through
   `kapt` on the Kotlin ones.
 
+- **Micronaut's OTLP registry resolved an unusable protobuf under
+  Maven.** `micronaut-micrometer-registry-otlp` ships
+  protobuf-generated classes that call
+  `com.google.protobuf.RuntimeVersion`, which exists only in
+  protobuf-java 4.x — but it asks for 4.28.3 in its Gradle module
+  metadata and 3.25.8 in its POM. Gradle reads the first and resolves
+  a working classpath; Maven reads the second and resolves a broken
+  one, where the meter registry cannot be instantiated
+  (`NoClassDefFoundError com/google/protobuf/RuntimeVersion$RuntimeDomain`)
+  and every `@MicronautTest` in the assembly fails before exercising a
+  route. The emitted pom now pins protobuf-java to the version Gradle
+  picks. Affects **both module layouts** — `basic` was equally broken,
+  and equally unbuilt.
+
 - **The Go persistence slice's pgx contract test could never pass
   against a real Docker daemon.** It started its Testcontainers
   PostgreSQL with no wait strategy, so the container was declared ready
