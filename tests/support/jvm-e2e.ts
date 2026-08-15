@@ -104,9 +104,41 @@ const rewriteActions =
     return runActions({ ...inputs, actions: rewritten });
   };
 
-const withRetry = async (fn: () => Promise<void>, attempts = 3): Promise<void> => {
+/**
+ * How long to wait before each retry, in milliseconds — one entry per
+ * gap, so three attempts have two gaps.
+ *
+ * Retrying immediately is barely retrying at all, which
+ * `e2e (jvm-basic-spring)` demonstrated: a network fault took every
+ * one of its four suites down inside 87 seconds, because each burned
+ * all three attempts in the seconds the fault lasted. Every other JVM
+ * shard passed on that same commit, against the same CDN, at the same
+ * moment — so what has to be survived is a blip on one runner, and a
+ * gap of nothing survives none of it.
+ *
+ * The cost is bounded and small: at most 25s added to a suite that
+ * already runs for minutes, and only on a build that has already
+ * failed once.
+ */
+export const RETRY_BACKOFF_MS: readonly number[] = [5_000, 20_000];
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/**
+ * Blocks the thread, because {@link runWithRetry} drives `spawnSync`
+ * and has no event loop to await on. `Atomics.wait` on a lock nobody
+ * else holds is the sanctioned way to do that.
+ */
+const sleepSync = (ms: number): void => {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+};
+
+const withRetry = async (fn: () => Promise<void>): Promise<void> => {
   let last: unknown;
-  for (let i = 0; i < attempts; i += 1) {
+  for (let i = 0; i <= RETRY_BACKOFF_MS.length; i += 1) {
     try {
       await fn();
       return;
@@ -114,6 +146,7 @@ const withRetry = async (fn: () => Promise<void>, attempts = 3): Promise<void> =
       last = err;
       const blob = err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err);
       if (!isTransient(blob)) throw err;
+      if (i < RETRY_BACKOFF_MS.length) await sleep(RETRY_BACKOFF_MS[i] as number);
     }
   }
   throw last;
@@ -134,14 +167,14 @@ const runWithRetry = (
   cmd: string,
   args: readonly string[],
   options: Parameters<typeof spawnSync>[2],
-  attempts = 3,
 ): RunResult => {
   let last: RunResult = { status: null, stdout: '', stderr: '' };
-  for (let i = 0; i < attempts; i += 1) {
+  for (let i = 0; i <= RETRY_BACKOFF_MS.length; i += 1) {
     const r = spawnSync(cmd, args, options);
     last = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
     if (last.status === 0) return last;
     if (!isTransient(`${last.stdout}\n${last.stderr}`)) return last;
+    if (i < RETRY_BACKOFF_MS.length) sleepSync(RETRY_BACKOFF_MS[i] as number);
   }
   return last;
 };
