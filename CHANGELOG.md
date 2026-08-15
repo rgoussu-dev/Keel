@@ -197,6 +197,38 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A Micronaut modulith on Maven could not be built at all.** Every
+  module of the reactor except the assembly parents the reactor root,
+  and that root managed no versions — so the one library module
+  carrying Micronaut types (`user-side/api/adapters` for REST,
+  `user-side/cli` for the CLI) declared `io.micronaut:*` coordinates
+  with no version anywhere to resolve them from. Maven failed before
+  compiling anything, while reading the POMs:
+  `'dependencies.dependency.version' for io.micronaut:… is missing`.
+  The reactor root now imports `io.micronaut.platform:micronaut-platform`
+  in `dependencyManagement`, which is the same BOM the assembly gets by
+  parenting `micronaut-parent`. Affects all four Micronaut modulith
+  stacks on Maven — REST and CLI, Java and Kotlin.
+
+  Gradle was never affected: the Micronaut plugin applies the platform
+  to each project it is applied to, so nothing there depends on the
+  root. The defect survived because no Micronaut project had ever been
+  built with Maven, in any layout or language — the Maven e2e coverage
+  added alongside the peer context only reached Quarkus and Spring.
+
+- **A Micronaut library module contributed no beans under Maven.**
+  Micronaut resolves beans at compile time and does it per compiled
+  module, so the modulith's one framework-facing library module — the
+  `@Controller` under `user-side/api/adapters`, the `@Command` under
+  `user-side/cli` — has to run the annotation processor itself. Its
+  Maven pom had no `<build>` section at all, so it did not. The
+  failure was entirely silent: sources compiled, the jar was produced,
+  the application started, and every route 404'd. The Gradle twin was
+  never affected — it applies `io.micronaut.library`, which is exactly
+  this. The four Micronaut modulith stacks now configure
+  `micronaut-inject-java` as an annotation-processor path, through
+  `kapt` on the Kotlin ones.
+
 - **The Go persistence slice's pgx contract test could never pass
   against a real Docker daemon.** It started its Testcontainers
   PostgreSQL with no wait strategy, so the container was declared ready
