@@ -12,11 +12,13 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { rustMain } from './rust-module-layout.js';
 import { eolOf, withEol } from '../util.js';
 
 export const RUST_CORS_ID = 'gateway/rust-cors';
 
-const MAIN_TARGET = 'src/bin/http/main.rs';
+/** The delivery typology this decoration wraps. */
+const TYPOLOGY = 'http';
 
 const SERVE_BLOCK = `    axum::serve(listener, handler::router(greeter))
         .await
@@ -89,11 +91,15 @@ export const rustCorsAdapter: Adapter = {
   vertical: 'gateway',
   covers: [],
   predicate: { requires: ['lang.rust', 'arch.server-http', 'peer.ui.spa'] },
-  contribute() {
+  contribute(ctx) {
+    // The assembly this decorates moves with the layout: `src/bin/
+    // http/main.rs` under `basic`, `application/http/src/main.rs`
+    // under the modulith. The anchors it patches do not.
+    const mainTarget = rustMain(ctx.manifest.tags, TYPOLOGY);
     return {
       patches: [
         {
-          target: MAIN_TARGET,
+          target: mainTarget,
           apply: (existing) => {
             // Multi-line anchors are LF-authored; convert them to the
             // file's own EOL so a CRLF checkout matches instead of
@@ -104,7 +110,7 @@ export const rustCorsAdapter: Adapter = {
             if (wrapped && decorated) return existing;
             if (wrapped || decorated) {
               throw new Error(
-                `${RUST_CORS_ID}: ${MAIN_TARGET} is partially CORS-decorated (${
+                `${RUST_CORS_ID}: ${mainTarget} is partially CORS-decorated (${
                   wrapped
                     ? 'the router is wrapped but with_cors is missing'
                     : 'with_cors is present but the router is unwrapped'
@@ -123,7 +129,7 @@ export const rustCorsAdapter: Adapter = {
                 .trimEnd()}${withEol(`\n${CORS_FN}`, eol)}`;
             }
             throw new Error(
-              `${RUST_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the rust-http bootstrap; layer a CORS decorator onto the router manually`,
+              `${RUST_CORS_ID}: could not find the serve call in ${mainTarget} — the assembly point has diverged from the rust-http bootstrap; layer a CORS decorator onto the router manually`,
             );
           },
         },

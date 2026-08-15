@@ -30,6 +30,7 @@ import {
   addWorkspaceMembers,
   hasPeerContext,
   rustLayout,
+  rustMain,
   rustPeerCrates,
   rustTemplateVars,
   toCrateIdent,
@@ -312,5 +313,22 @@ describe('addWorkspaceMembers', () => {
     expect(() => addWorkspaceMembers('[package]\nname = "skel"\n', ['application/cli'])).toThrow(
       /no workspace members list/,
     );
+  });
+});
+
+describe('rustMain', () => {
+  it('resolves the assembly point from tags alone, under both layouts', () => {
+    expect(rustMain([BASIC_LAYOUT_TAG], 'http')).toBe('src/bin/http/main.rs');
+    expect(rustMain([MODULITH_LAYOUT_TAG], 'http')).toBe('application/http/src/main.rs');
+  });
+
+  it('agrees with the full resolver — two derivations of one path is one too many', () => {
+    for (const tags of [[BASIC_LAYOUT_TAG], [MODULITH_LAYOUT_TAG]]) {
+      for (const typology of ['cli', 'http']) {
+        expect(rustMain(tags, typology)).toBe(
+          rustLayout(tags, PROJECT).assembly(typology).rootFile,
+        );
+      }
+    }
   });
 });
