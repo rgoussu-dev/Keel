@@ -5,13 +5,13 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use <%= crateName %>::domain::{
+use <%= contractUse %>::{
     new_greeting_log_use_cases, GreetingLogError, GreetingLogUseCases, ListGreetingsQuery,
     RecordGreetingCommand,
 };
-use <%= crateName %>::infra::clock_fake::FakeClock;
-use <%= crateName %>::infra::greeting_log_fake::FakeGreetingLog;
-use <%= crateName %>::infra::uow_fake::FakeUnitOfWork;
+use <%= clockFakeUse %>::FakeClock;
+use <%= logFakeUse %>::FakeGreetingLog;
+use <%= uowFakeUse %>::FakeUnitOfWork;
 
 fn factory() -> (impl GreetingLogUseCases, Arc<FakeUnitOfWork>) {
     let uow = Arc::new(FakeUnitOfWork::new());

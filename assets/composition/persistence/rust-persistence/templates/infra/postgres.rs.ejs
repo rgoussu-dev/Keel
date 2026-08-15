@@ -13,7 +13,7 @@ use std::time::SystemTime;
 
 use postgres::{Client, NoTls};
 
-use crate::domain::{GreetingLog, GreetingLogError, RecordedGreeting, UnitOfWork};
+use <%= portsUse %>::{GreetingLog, GreetingLogError, RecordedGreeting, UnitOfWork};
 
 /// Default dev connection: the compose database (dev/compose.yaml).
 /// 12-factor: `DB_URL` overrides it in every deployed environment.
@@ -155,7 +155,7 @@ mod tests {
     fn migrated_client(container_url: &str) -> SharedClient {
         let client = Client::connect(container_url, NoTls).expect("connect to the container");
         let shared: SharedClient = Arc::new(Mutex::new(client));
-        let mut migrations: Vec<_> = fs::read_dir("migrations/sql")
+        let mut migrations: Vec<_> = fs::read_dir("<%= upToRoot %>migrations/sql")
             .expect("find migrations/sql")
             .map(|entry| entry.expect("read entry").path())
             .collect();

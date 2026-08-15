@@ -49,6 +49,7 @@ import { tsLayout } from '../../../../src/domain/core/adapters/ts-module-layout.
 import {
   BASIC_LAYOUT_TAG,
   MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
 } from '../../../../src/domain/core/adapters/module-layout.js';
 import { RUST_PERSISTENCE_ID } from '../../../../src/domain/core/adapters/rust-persistence.js';
 import {
@@ -61,6 +62,37 @@ import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contrac
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 
 const read = (tree: FsTree, p: string): string => tree.read(p)?.toString() ?? '';
+
+/**
+ * The dependency **keys** of a Cargo manifest, per table.
+ *
+ * Substring-matching a manifest is how I.4 got an assertion to fail
+ * against a correct file: a comment mentioning the very crate the
+ * test was proving absent counted as a hit. Reading the keys means a
+ * `not.toContain` can only be satisfied by an actual missing edge.
+ */
+const parseCargoDependencies = (
+  manifest: string,
+): { dependencies: string[]; devDependencies: string[] } => {
+  const tables: Record<string, string[]> = { dependencies: [], devDependencies: [] };
+  let current: string[] | null = null;
+  for (const raw of manifest.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.startsWith('[')) {
+      current =
+        line === '[dependencies]'
+          ? tables.dependencies!
+          : line === '[dev-dependencies]'
+            ? tables.devDependencies!
+            : null;
+      continue;
+    }
+    if (current === null || line === '' || line.startsWith('#')) continue;
+    const key = /^([A-Za-z0-9_.-]+)\s*=/.exec(line);
+    if (key?.[1]) current.push(key[1]);
+  }
+  return { dependencies: tables.dependencies!, devDependencies: tables.devDependencies! };
+};
 
 const QUARKUS_JAVA = [
   'lang.java',
@@ -396,6 +428,100 @@ describe('persistence install on rust-http', () => {
     expect(read(tree, 'src/infra/postgres.rs')).toContain(
       'postgres://app:app@localhost:5432/walking_skeleton',
     );
+  });
+});
+
+describe('persistence install on rust-http under the modulith', () => {
+  const tags = [
+    'lang.rust',
+    'pkg.cargo',
+    'arch.hexagonal',
+    'arch.server-http',
+    MODULITH_LAYOUT_TAG,
+  ];
+  const CONTEXT = 'modules/greeting';
+  const CONTRACT = `${CONTEXT}/domain/contract`;
+  const INFRA = `${CONTEXT}/infra/postgres`;
+
+  it('files each half of the slice with the crate that owns it', async () => {
+    const { tree } = await installChain(tags);
+
+    // Ports on the contract face; adapters and their fakes in a crate
+    // of their own; a context-free clock in the kernel. An adapter
+    // emitted at the wrong crate's path still renders, so the homes
+    // are the assertion.
+    expect(tree.exists(`${CONTRACT}/src/greeting_log.rs`)).toBe(true);
+    expect(tree.exists(`${CONTRACT}/src/unit_of_work.rs`)).toBe(true);
+    expect(tree.exists(`${INFRA}/src/postgres.rs`)).toBe(true);
+    expect(tree.exists(`${INFRA}/src/greeting_log_fake.rs`)).toBe(true);
+    expect(tree.exists(`${INFRA}/src/uow_fake.rs`)).toBe(true);
+    expect(tree.exists('platform/kernel/src/clock_sys.rs')).toBe(true);
+    expect(tree.exists(`${CONTRACT}/tests/greeting_log.rs`)).toBe(true);
+    expect(tree.exists('application/http/src/greetings.rs')).toBe(true);
+    // None of the flat-layout homes exist under a workspace.
+    expect(tree.exists('src/infra/postgres.rs')).toBe(false);
+    expect(tree.exists('src/domain/greeting_log.rs')).toBe(false);
+  });
+
+  it('registers the new crate and gives every module the use path its position implies', async () => {
+    const { tree } = await installChain(tags);
+
+    expect(read(tree, 'Cargo.toml')).toContain(`"${INFRA}",`);
+    expect(read(tree, `${INFRA}/src/lib.rs`)).toContain('pub mod postgres;');
+    expect(read(tree, `${CONTRACT}/src/lib.rs`)).toContain('pub mod greeting_log;');
+    expect(read(tree, 'platform/kernel/src/lib.rs')).toContain('pub mod clock_sys;');
+    // The contract face reaches the Clock across a crate boundary now.
+    expect(read(tree, `${CONTRACT}/src/greeting_log.rs`)).toContain('use platform_kernel::Clock;');
+    expect(read(tree, `${INFRA}/src/postgres.rs`)).toContain('use greeting_domain_contract::{');
+    expect(read(tree, 'platform/kernel/src/clock_sys.rs')).toContain('use crate::clock::Clock;');
+    // Cargo runs a test from its package root, so the crate's own
+    // depth is what the path to the project's migrations must climb.
+    expect(read(tree, `${INFRA}/src/postgres.rs`)).toContain('"../../../../migrations/sql"');
+  });
+
+  it('puts each dependency on the crate that compiles against it, and nowhere else', async () => {
+    const { tree } = await installChain(tags);
+
+    const infra = parseCargoDependencies(read(tree, `${INFRA}/Cargo.toml`));
+    expect(infra.dependencies).toContain('postgres');
+    expect(infra.dependencies).toContain('greeting-domain-contract');
+    expect(infra.devDependencies).toContain('testcontainers-modules');
+
+    // The driver belongs to the adapter crate. On the workspace root
+    // or the contract face it would reach every crate that names the
+    // domain, which is the coupling the layout is bought to prevent.
+    expect(parseCargoDependencies(read(tree, 'Cargo.toml')).dependencies).not.toContain('postgres');
+    const contract = parseCargoDependencies(read(tree, `${CONTRACT}/Cargo.toml`));
+    expect(contract.dependencies).not.toContain('postgres');
+    expect(contract.dependencies).toContain('platform-kernel');
+    // The fakes its integration test wires live with the adapter, so
+    // the edge back is a dev-dependency and stays out of the library.
+    expect(contract.devDependencies).toContain('greeting-infra-postgres');
+
+    const assembly = parseCargoDependencies(read(tree, 'application/http/Cargo.toml'));
+    expect(assembly.dependencies).toContain('greeting-infra-postgres');
+    expect(assembly.dependencies).toContain('platform-kernel');
+    // Only the assembly formats a timestamp for the wire.
+    expect(assembly.dependencies).toContain('humantime');
+    expect(infra.dependencies).not.toContain('humantime');
+  });
+
+  it('merges the greetings router into the assembly rather than leaving it unbound', async () => {
+    const { tree } = await installChain(tags);
+
+    const main = read(tree, 'application/http/src/main.rs');
+    expect(main).toContain('mod greetings;');
+    expect(main).toContain('use greeting_infra_postgres::postgres;');
+    expect(main).toContain('use platform_kernel::clock_sys;');
+    expect(main).toContain('handler::router(greeter).merge(greetings::router(greetings))');
+  });
+
+  it('adds no second platform-kernel entry when the peer context already declared one', async () => {
+    const { tree } = await installChain([...tags, PEER_CONTEXT_TAG]);
+
+    const assembly = read(tree, 'application/http/Cargo.toml');
+    // Two entries under one key is a manifest Cargo rejects outright.
+    expect(assembly.match(/^platform-kernel = /gm)).toHaveLength(1);
   });
 });
 

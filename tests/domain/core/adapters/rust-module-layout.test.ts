@@ -129,6 +129,34 @@ describe('rustLayout — the path = depth', () => {
   });
 });
 
+describe('rustLayout — upToRoot', () => {
+  it('is empty for the single crate of a basic project, which is the root', () => {
+    expect(basic().upToRoot(basic().contract.crate)).toBe('');
+  });
+
+  it('climbs one level per directory segment, ending in a separator', () => {
+    const layout = modulith();
+
+    // modules/greeting/infra/postgres — four segments, four levels.
+    expect(layout.upToRoot(layout.infra('postgres').crate)).toBe('../../../../');
+  });
+
+  it('tracks the crate rather than the layout, so a shallower crate climbs less', () => {
+    const layout = modulith();
+
+    expect(layout.upToRoot(layout.assembly('http').crate)).toBe('../../');
+    expect(layout.upToRoot(layout.kernel.crate)).toBe('../../');
+  });
+
+  it('composes with a relative path to name a file the whole project owns', () => {
+    const layout = modulith();
+
+    expect(`${layout.upToRoot(layout.infra('postgres').crate)}migrations/sql`).toBe(
+      '../../../../migrations/sql',
+    );
+  });
+});
+
 describe('rustLayout — basic', () => {
   it('is a single crate at the project root, not a workspace', () => {
     const layout = basic();

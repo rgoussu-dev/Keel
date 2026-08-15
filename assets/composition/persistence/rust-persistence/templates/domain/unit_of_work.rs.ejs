@@ -4,7 +4,7 @@
 //! block commits or rolls back together; how atomicity is achieved
 //! is an adapter concern under `infra`.
 
-use crate::domain::GreetingLogError;
+use <%= siblingUse %>::GreetingLogError;
 
 pub trait UnitOfWork {
     /// Runs `work` as one atomic unit: committed when it returns

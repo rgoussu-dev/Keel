@@ -14,7 +14,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
-use <%= crateName %>::domain::{
+use <%= contractUse %>::{
     GreetingLogError, GreetingLogUseCases, ListGreetingsQuery, RecordGreetingCommand,
     RecordedGreeting,
 };
@@ -122,10 +122,10 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    use <%= crateName %>::domain::new_greeting_log_use_cases;
-    use <%= crateName %>::infra::clock_fake::FakeClock;
-    use <%= crateName %>::infra::greeting_log_fake::FakeGreetingLog;
-    use <%= crateName %>::infra::uow_fake::FakeUnitOfWork;
+    use <%= contractUse %>::new_greeting_log_use_cases;
+    use <%= clockFakeUse %>::FakeClock;
+    use <%= logFakeUse %>::FakeGreetingLog;
+    use <%= uowFakeUse %>::FakeUnitOfWork;
 
     use super::*;
 
