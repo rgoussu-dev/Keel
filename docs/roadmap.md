@@ -749,15 +749,20 @@ Three things worth recording:
   the cycle because a dev-dependency is not part of the library's own
   graph, so no consumer of the domain inherits it.
 - **The one-shard decision was re-measured and the answer moved.**
-  This cell is the new floor: all six files on a 4-core box give
-  477.97s of test time in 196.68s wall (divisor 2.43) against a
-  longest single file of 195.29s — the wall _is_ that file. Unlike
-  the old shape, where every file paid the same cold axum compile,
-  peeling this one out would cut real wall clock rather than relabel
-  it. Kept as one shard pending a measurement on the runner, whose
-  own divisor has been 2.86–2.92; the workflow comment records both
-  the number and what to re-measure. This is the first time the Rust
-  shard's split has had a case for it.
+  This cell is the new floor, on the runner and not just locally:
+  427.14s of test time in 180.08s wall (divisor 2.37) against a
+  longest single file of 178.88s — the wall _is_ that file, where the
+  five older files' longest is 91.97s. The job used to sit at ~98s.
+  Unlike the old shape, where every file paid the same cold axum
+  compile, peeling this one out would cut real wall clock rather than
+  relabel it, so for the first time the Rust shard's split has a case.
+
+  Not acted on, because the size of the win is estimated rather than
+  measured: 178.88s is the _contended_ cost, and run alone the file
+  would be faster (locally 98.99s alone against 195.29s contended), so
+  a split plausibly lands the job near ~120s rather than at the ~90s a
+  max-of-halves reading suggests. The missing figure is the
+  uncontended runner number, and the workflow comment says so.
 
 ### I.6 — the peer context beyond the JVM and Rust (M)
 

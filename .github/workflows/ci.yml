@@ -192,25 +192,29 @@ jobs:
               tests/e2e/fullstack-go.test.ts
           # Six files, one shard — and unlike every earlier revision of
           # this comment, that is now a choice with a cost rather than
-          # a free one. Re-measured on the shipped shape when the
-          # persistence cell landed (4-core box, all six files):
-          # 477.97s of test time in 196.68s wall, divisor 2.43, and a
-          # longest single file of 195.29s. The wall *is* that file.
+          # a free one. Measured on this runner when the persistence
+          # cell landed: 427.14s of test time in 180.08s wall, divisor
+          # 2.37, longest single file 178.88s. The wall *is* that file.
+          # The five older files sum to 248.27s with a longest of
+          # 91.97s, which is the ~98s floor this job used to sit at.
           #
           # So the standing argument no longer applies as written. The
-          # old shape was floor-bound at ~59s by files that all paid
-          # the same cold axum compile, which is why splitting bought
+          # old shape was floor-bound by files that all paid the same
+          # cold axum compile, which is why splitting bought
           # attribution and nothing else. `modulith-rust-persistence`
-          # pays a cold `postgres` compile on top of that one and takes
-          # ~99s run alone against ~105s for the next-slowest file, so
-          # peeling it into its own shard would genuinely halve this
-          # job's wall clock instead of merely relabelling it.
+          # pays a cold `postgres` compile on top of that one and is
+          # nearly twice the next-slowest file, so peeling it out would
+          # cut real wall clock rather than relabel it.
           #
-          # Kept as one shard for now regardless: the numbers above are
-          # from a 4-core box where the six files starve each other,
-          # and the CI runner's own divisor has measured 2.86-2.92.
-          # Re-measure there before splitting — that is the number the
-          # decision turns on, and it is the one we do not have yet.
+          # How much is not measured, and the honest bound matters:
+          # 178.88s is the *contended* cost — it shared four cores with
+          # five other files for its first ~92s. Run alone it would be
+          # faster (locally, 98.99s alone against 195.29s contended),
+          # so a split plausibly lands this job near ~120s rather than
+          # at the ~90s the arithmetic of "max of the two halves"
+          # suggests. Kept as one shard until someone measures the
+          # uncontended number instead of estimating it; that is the
+          # one figure the decision still turns on.
           #
           # `tools:` stays `cargo`, and the persistence cell is why
           # that is worth stating: its contract test wants a Postgres
