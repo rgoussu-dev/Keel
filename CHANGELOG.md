@@ -36,9 +36,29 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   implying parity, and the seam crate carries the rule — and the
   two-line upgrade for the day it stabilises — in its own module doc.
 
-  The binary keeps its name under either layout. `keel add
-persistence` does not support the Rust modulith yet and says so
-  when asked, rather than failing on a missing path (roadmap I.5).
+  The binary keeps its name under either layout, and every vertical
+  Rust offers — including `keel add persistence`, see below — works
+  under both.
+
+- **`keel add persistence` under the Rust modulith.** The last Rust
+  vertical to make the crossing, and the only one that changes shape
+  rather than just moving: its adapters become a crate of their own,
+  `modules/greeting/infra/postgres`, registered as a workspace member
+  and depended on by the assembly. The `GreetingLog` and `UnitOfWork`
+  ports join the context's contract crate, the `/greetings` router
+  joins the `application/http` assembly, and the system clock joins
+  `platform-kernel` beside the `Clock` port it implements.
+
+  The crate is the point. A Cargo dependency is inherited by every
+  dependent, so the `postgres` driver stays on the new crate's
+  manifest and off both the workspace root and the contract face —
+  nothing that merely names the domain compiles against a database
+  driver. `humantime` rides the assembly that formats timestamps for
+  the wire. `cargo tree -p greeting-domain-contract` is where a
+  reviewer checks it.
+
+  The `basic` output is byte-for-byte unchanged, so nothing scaffolded
+  before this shifts shape.
 
 - **A second bounded context in the modulith, on demand.**
   `keel new --module-layout=modulith --with-peer-context` scaffolds a

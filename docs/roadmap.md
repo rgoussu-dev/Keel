@@ -693,7 +693,7 @@ deliberately does not move with the layout.
 `feat(walking-skeleton): the Rust peer bounded context`,
 `feat(gateway): resolve the rust-cors assembly through the layout`.
 
-### I.5 — `rust-persistence` under the modulith (M)
+### I.5 — `rust-persistence` under the modulith (M) ✅
 
 The one Rust vertical I.4 did not port, and it is a different **shape**
 of job rather than a longer one. Its adapters must become a crate of
@@ -722,9 +722,42 @@ Docker to that shard.**
 
 Neither Rust stack carries persistence by default, so nothing
 scaffolds into this gap; only brownfield `keel add persistence` on a
-modulith project reaches it, and that fails at the front door with the
-reason and the workaround rather than on a missing patch target until
-this item lands.
+modulith project reaches it, and that failed at the front door with
+the reason and the workaround rather than on a missing patch target
+until this item landed.
+
+**Landed, and the correction above held.** No CI work, no Docker: the
+cell runs in the existing `rust` shard with `tools: cargo` and the
+emitted contract test skips its one Testcontainers case itself. One
+template tree still serves both layouts — every destination and every
+`use` spelling resolved through `rustLayout` — and the `basic` output
+is byte-for-byte unchanged, verified by diffing the emitted tree
+against the previous commit's rather than by assertion.
+
+Three things worth recording:
+
+- **`clock_sys` went to `platform-kernel`, deliberately.** The
+  alternative was a `platform/clock` crate beside it, and the cost of
+  the choice is real: the kernel stops being purely type-level
+  plumbing. Kernel won on the resolver's own standing reason — one
+  struct does not earn a manifest, and whatever holds it must be
+  depended on by every context anyway, which the kernel already is.
+  It is also where I.4 put the `Clock` port and its fake.
+- **The fakes ship in the infra crate, with the adapter they stand in
+  for**, which means the contract crate's integration test reaches
+  them through a _dev_-dependency back onto that crate. Cargo permits
+  the cycle because a dev-dependency is not part of the library's own
+  graph, so no consumer of the domain inherits it.
+- **The one-shard decision was re-measured and the answer moved.**
+  This cell is the new floor: all six files on a 4-core box give
+  477.97s of test time in 196.68s wall (divisor 2.43) against a
+  longest single file of 195.29s — the wall _is_ that file. Unlike
+  the old shape, where every file paid the same cold axum compile,
+  peeling this one out would cut real wall clock rather than relabel
+  it. Kept as one shard pending a measurement on the runner, whose
+  own divisor has been 2.86–2.92; the workflow comment records both
+  the number and what to re-measure. This is the first time the Rust
+  shard's split has had a case for it.
 
 ### I.6 — the peer context beyond the JVM and Rust (M)
 
