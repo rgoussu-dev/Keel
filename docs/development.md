@@ -8,6 +8,46 @@ side.
 
 - Node 22+
 - pnpm 10+
+- For the JVM e2e suites: **JDK 25** on `JAVA_HOME`, **Gradle 9.4.1**
+  on PATH, and Maven. Those three are coupled and none of them is
+  arbitrary — see [End-to-end tests](#end-to-end-tests).
+
+### Claude Code on the web
+
+`.claude/hooks/session-start.sh` provisions the above on session start,
+so a web session's toolchain matches CI's rather than the image's. It
+runs only when `CLAUDE_CODE_REMOTE=true`, so it never touches a
+developer's own `/opt`, and it is idempotent — a warm container
+re-runs it in about a second.
+
+It fixes two things the image gets wrong for this repo:
+
+- **Gradle 8.14.3 ships on the image and cannot start on JDK 25.**
+  `/opt/gradle` is a symlink already on PATH, so the hook downloads the
+  version keel pins and repoints it. That version is read from
+  `GRADLE_VERSION` in `src/domain/core/adapters/gradle-wrapper.ts` —
+  the constant every generated wrapper gets — rather than being a
+  third copy of the number to keep in sync.
+- **`JAVA_HOME` lands on 21**, because the image's shell profile
+  exports it and beats the `env` block in `.claude/settings.json`. That
+  one is quietly expensive: the Maven e2e suites skip themselves below
+  JDK 25, so a stale `JAVA_HOME` does not fail the Maven half of the
+  modulith grid, it runs none of it — and a skipped suite reads exactly
+  like a passing one. The hook writes `JAVA_HOME` to
+  `$CLAUDE_ENV_FILE`, which does apply.
+
+**On the pinned Gradle checksum.** `GRADLE_SHA256` in the hook makes
+the download reproducible and catches corruption or substitution, and
+the install aborts on a mismatch. Note what it is: a hash of the
+artifact that was downloaded and validated when the pin was added, not
+a value fetched from Gradle. The published checksums
+(`https://services.gradle.org/distributions/gradle-<version>-bin.zip.sha256`,
+or <https://gradle.org/release-checksums/>) are not reachable from the
+web sandbox — the proxy 403s them, while the distribution URL itself
+redirects to an allowlisted host — so verifying a pin against upstream
+has to happen from an unrestricted network. Bumping `GRADLE_VERSION`
+without adding a matching entry warns loudly and continues rather than
+bricking every session.
 
 ## The dev loop
 
