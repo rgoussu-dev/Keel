@@ -108,13 +108,23 @@ KEEL_RUN_E2E=1 pnpm test:e2e     # all of them
 KEEL_RUN_E2E=1 pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts
 ```
 
-CI runs them too, in a second job (`e2e`) with every toolchain
-installed — the `verify` matrix stays the fast gate.
+CI runs them too, in a second job — the `verify` matrix stays the fast
+gate. That job is **sharded by toolchain**, one runner per stack family
+(`e2e (jvm)`, `e2e (go)`, `e2e (rust)`, `e2e (web)`), so each shard
+provisions only what its suites probe for and a failure names the stack
+in the check title.
 
-Vitest runs files in parallel workers but the tests *inside* a file in
-sequence, so a long case earns its own file rather than another `it` in
-a long one — which is why the modulith cases live in three
-(`-modulith`, `-persistence`, `-maven`).
+Each shard lists its files explicitly in `.github/workflows/ci.yml`,
+which means **a new suite must be added to a shard or it never runs**.
+That is enforced, not remembered: `tests/ci-workflow.test.ts` parses the
+workflow and fails in `verify` when the matrix and `tests/e2e/` disagree.
+
+One scheduling detail shapes how these files are split. Vitest runs
+files in parallel workers but the tests _inside_ a file in sequence, so
+the slowest single file is the floor for the whole job — which is why
+the modulith cases live in three files (`-modulith`, `-persistence`,
+`-maven`) rather than four `it`s in one. When adding a long case, prefer
+a new file over another `it` in a long one.
 
 Locally you are more likely to have one JDK than two, which is where the
 next paragraph bites.
