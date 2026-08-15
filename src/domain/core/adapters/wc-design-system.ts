@@ -20,6 +20,13 @@
  * into `document.head` — so the emitted components (and the
  * organisms that compose them) render in the light DOM too.
  *
+ * It stays a **top-level package under both layouts**: it is
+ * domain-blind, every bounded context consumes it, and under the
+ * modulith it is the package the import map deduplicates. Folding it
+ * into a context would give that context ownership of everyone's
+ * buttons — and would put a second copy of an element-defining module
+ * in every bundle that is not that context's.
+ *
  * Composition: covers no dimension of `walking-skeleton` on its own;
  * it shares the bootstrap's predicate so the pair always co-fires,
  * and the bootstrap's templates (workspace globs, web-app deps, the
@@ -27,11 +34,12 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
+import { WC_SPA_BOOTSTRAP_ID, wcLayoutVars } from './wc-spa-bootstrap.js';
+import { wcLayout } from './wc-module-layout.js';
 
 export const WC_DESIGN_SYSTEM_ID = 'walking-skeleton/wc-design-system';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/wc-design-system/templates';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/wc-design-system/templates';
 
 export const wcDesignSystemAdapter: Adapter = {
   id: WC_DESIGN_SYSTEM_ID,
@@ -46,7 +54,16 @@ export const wcDesignSystemAdapter: Adapter = {
         `${WC_DESIGN_SYSTEM_ID}: requires '${WC_SPA_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
       );
     }
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { npmScope });
-    return { files };
+    const layout = wcLayout(ctx.manifest.tags, npmScope);
+    const vars = { npmScope, ...wcLayoutVars(layout) };
+    // Under the modulith the design system is loaded as an external
+    // and deduplicated through the app's import map, so it needs a
+    // build of its own — a manifest difference, not a source one.
+    const manifest = layout.layout === 'modulith' ? 'manifest-modulith' : 'manifest-basic';
+    const [common, packaged] = await Promise.all([
+      ctx.templates.render(`${TEMPLATE_ROOT}/common`, layout.designSystemRoot, vars),
+      ctx.templates.render(`${TEMPLATE_ROOT}/${manifest}`, layout.designSystemRoot, vars),
+    ]);
+    return { files: [...common, ...packaged] };
   },
 };

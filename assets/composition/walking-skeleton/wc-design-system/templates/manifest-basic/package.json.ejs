@@ -1,0 +1,21 @@
+{
+  "name": "<%= designSystemPkg %>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+<%- plainExports %>
+  },
+  "dependencies": {
+    "@rgoussu.dev/planks": "^0.2.1"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.9.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

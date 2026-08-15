@@ -1,0 +1,31 @@
+{
+  "name": "<%= projectName %>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+<% if (pm === 'pnpm') { -%>
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm -C application/web-app run dev",
+    "build": "pnpm -r --if-present --workspace-concurrency=1 run build",
+    "lint": "depcruise design-system platform modules application",
+    "test": "pnpm -r --if-present run test",
+    "typecheck": "pnpm -r --if-present run typecheck"
+  },
+<% } else { -%>
+  "workspaces": [<%- workspaceGlobs %>],
+  "scripts": {
+    "dev": "npm run dev --workspace application/web-app",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "depcruise design-system platform modules application",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+<% } -%>
+  "devDependencies": {
+    "dependency-cruiser": "^18.1.1"
+  }
+}

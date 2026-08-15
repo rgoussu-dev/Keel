@@ -79,6 +79,46 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   recording the choice, which is what keeps `keel add` resolving the
   same shape later.
 
+- **The `modulith` module layout for `web-components`.**
+  `keel new --stack=web-components --module-layout=modulith` carves the
+  SPA one bounded context at a time: `platform/context` for the WCCG
+  Context protocol, `modules/<ctx>/` for the hexagon — port-bound
+  elements included, since they are its driving adapters —
+  `application/web-app` still the shell. `basic` stays the default and
+  its output is unchanged, `domain/domain-api` naming included.
+
+  A context is one workspace package, as on `ts-http` and for the same
+  reason, with a **third entry point**: `"./elements"`, for
+  `defineGreetingElements()`. Registration is a side effect, and behind
+  its own subpath the facade stays importable from a DOM-less program
+  while the assembly can still order the definition after the context
+  provider is listening. `design-system` stays a top-level package
+  rather than becoming a context: it is domain-blind, every context
+  consumes it, and it is the package the import map deduplicates.
+
+- **An import map, and the design system as an external.** `index.html`
+  points `@scope/design-system` at `/vendor/design-system.js` and the
+  app's Vite build leaves the specifier alone. This is correctness, not
+  size: a package that defines custom elements must exist exactly once
+  per page, and two bundles each inlining a copy throw
+  `NotSupportedError` on the second registration — a throw that aborts
+  the rest of that bundle's registrations, so part of the page silently
+  stops upgrading. The e2e builds the bundle and checks the split (one
+  `customElements.define` in the app chunk, the design system's in the
+  external, the bare specifier intact), then loads the built page in
+  headless Chromium and requires both the context's element and the
+  design system's atoms to have upgraded.
+
+- **The element tag prefix is derived, and something fails when it is
+  wrong.** `<scope>-<context>-<element>` is a runtime string: not a
+  type, not a specifier, not a path. A typo leaves the build, the
+  typecheck and the tests green while the page renders an unknown
+  element as an empty inline box. `wcLayout()` derives it, and the
+  emitted context carries `tests/element-tags.test.ts`, which
+  re-derives the prefix from the package's own name — a different field
+  of the resolver than the one that produced the tag — so the two
+  disagreeing is a red test.
+
 - **The `modulith` module layout for `ts-http`.**
   `keel new --stack=ts-http --module-layout=modulith` scaffolds the
   same walking skeleton carved one bounded context at a time:

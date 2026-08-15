@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= projectName %></title>
+    <!--
+      The design system is loaded ONCE, as an external, and every
+      bundle that needs it resolves through this map to the same URL.
+
+      This is correctness, not size. A package that defines custom
+      elements must exist exactly once per page: two bundles each
+      inlining a copy throw `NotSupportedError: <tag> has already been
+      used with this registry` on the second registration, and the
+      throw aborts the rest of that bundle's registrations — so half
+      the page silently stops upgrading. With one context there is one
+      bundle and nothing to collide; the map is here so that carving a
+      context into its own bundle stays a wiring change.
+
+      An import map must precede the first module script, which is why
+      it is above the one below.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "<%= designSystemPkg %>": "/vendor/design-system.js"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="/vendor/design-system.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <center-pk gutters="var(--s1)">
+      <stack-pk space="var(--s2)">
+        <typography-pk variant="heading-1"><%= projectName %></typography-pk>
+        <<%= viewTag %>></<%= viewTag %>>
+      </stack-pk>
+    </center-pk>
+  </body>
+</html>

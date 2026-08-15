@@ -289,6 +289,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.spa',
     ],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [vcsVertical, walkingSkeletonVertical],
     projects: ['peer.ui.spa'],
   },

@@ -1,0 +1,27 @@
+import type { Greeting, GreetGateway } from '<%= contractSpec %>';
+
+interface GreetResponseBody {
+  readonly greeting: string;
+}
+
+/**
+ * The real GreetGateway adapter: `fetch` against the backend's
+ * `GET /greet?name=…`. `baseUrl` comes from the assembly point
+ * (`VITE_API_BASE_URL`, defaulting to the dev proxy's `/api`).
+ * An empty name omits the query parameter so the backend's own
+ * default applies.
+ */
+export function createRestGreetGateway(baseUrl: string): GreetGateway {
+  const root = baseUrl.replace(/\/$/, '');
+  return {
+    async fetchGreeting(name: string): Promise<Greeting> {
+      const query = name === '' ? '' : `?name=${encodeURIComponent(name)}`;
+      const response = await fetch(`${root}/greet${query}`);
+      if (!response.ok) {
+        throw new Error(`greet request failed: HTTP ${response.status}`);
+      }
+      const body = (await response.json()) as GreetResponseBody;
+      return { message: body.greeting };
+    },
+  };
+}

@@ -1,0 +1,15 @@
+/**
+ * This context's context keys — typed by its own ports, and part of
+ * what it publishes: the assembly needs them to answer requests, and
+ * the context's elements need them to ask. The domain never learns a
+ * DOM-flavoured DI mechanism exists; these sit beside it, not in it.
+ */
+
+import { createContext } from '<%= contextProtocolPkg %>';
+import type { Greet, GreetingReadModel } from './domain/contract/index';
+
+/** Delivers the greet driving port. */
+export const greetContext = createContext<Greet>('<%= npmScope %>.greeting.greet');
+
+/** Delivers the greeting read model. */
+export const greetingsContext = createContext<GreetingReadModel>('<%= npmScope %>.greeting.greetings');

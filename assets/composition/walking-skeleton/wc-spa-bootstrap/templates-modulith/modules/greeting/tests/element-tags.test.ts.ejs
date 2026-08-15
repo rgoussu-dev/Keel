@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest';
+import manifest from '../package.json' with { type: 'json' };
+import { GREETING_VIEW_TAG } from '../src/element-tags';
+
+/**
+ * The tag prefix is a runtime string nothing else checks: it is not a
+ * type, not a module specifier, and not a path. A typo in it produces
+ * a project that builds, typechecks and tests green while rendering
+ * an unknown element as an empty inline box.
+ *
+ * So it gets a consumer. This re-derives the prefix from the
+ * package's own name — a different field of the layout resolver than
+ * the one that produced the tag — and fails when the two disagree.
+ */
+describe('custom-element tags', () => {
+  const [scope, context] = manifest.name.replace('@', '').split('/');
+
+  it('prefixes every tag with <scope>-<context>-', () => {
+    expect(GREETING_VIEW_TAG).toBe(`${scope}-${context}-view`);
+  });
+
+  it('uses a valid custom-element name', () => {
+    // A tag with no dash is a built-in name and `define` throws.
+    expect(GREETING_VIEW_TAG).toMatch(/^[a-z][a-z0-9]*(-[a-z0-9]+)+$/);
+  });
+});

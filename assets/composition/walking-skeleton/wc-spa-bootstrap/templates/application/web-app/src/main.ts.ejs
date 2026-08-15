@@ -31,4 +31,4 @@ document.addEventListener('context-request', (event) => {
   request.callback(ports.get(request.context));
 });
 
-customElements.define('<%= npmScope %>-greeting', GreetingView);
+customElements.define('<%= viewTag %>', GreetingView);

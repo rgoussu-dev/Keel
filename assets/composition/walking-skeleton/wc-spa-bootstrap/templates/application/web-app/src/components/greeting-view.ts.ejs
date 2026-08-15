@@ -20,10 +20,10 @@ template.innerHTML = `
     <form>
       <cluster-pk space="var(--s-1)" align="center">
         <label>Name <input name="name" autocomplete="off" /></label>
-        <<%= npmScope %>-button type="submit">Greet</<%= npmScope %>-button>
+        <<%= buttonTag %> type="submit">Greet</<%= buttonTag %>>
       </cluster-pk>
     </form>
-    <<%= npmScope %>-greeting-card></<%= npmScope %>-greeting-card>
+    <<%= greetingCardTag %>></<%= greetingCardTag %>>
   </stack-pk>
 `;
 
@@ -40,13 +40,13 @@ export class GreetingView extends HTMLElement {
     const greet = this.#greet;
     const greetings = this.#greetings;
     if (!greet || !greetings) {
-      throw new Error('<<%= npmScope %>-greeting>: no context provider answered');
+      throw new Error('<<%= viewTag %>>: no context provider answered');
     }
 
     if (!this.querySelector('form')) this.append(template.content.cloneNode(true));
-    const card = this.querySelector('<%= npmScope %>-greeting-card');
+    const card = this.querySelector('<%= greetingCardTag %>');
     const form = this.querySelector('form');
-    if (!card || !form) throw new Error('<<%= npmScope %>-greeting>: template is missing nodes');
+    if (!card || !form) throw new Error('<<%= viewTag %>>: template is missing nodes');
 
     const render = (message: string): void => {
       card.setAttribute('message', message);

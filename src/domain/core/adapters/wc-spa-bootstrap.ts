@@ -23,11 +23,11 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
+import { wcLayout, type WcLayoutPaths } from './wc-module-layout.js';
 
 export const WC_SPA_BOOTSTRAP_ID = 'walking-skeleton/wc-spa-bootstrap';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/wc-spa-bootstrap/templates';
-const PNPM_TEMPLATE_ID = 'composition/walking-skeleton/wc-spa-bootstrap/pm/pnpm';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/wc-spa-bootstrap';
 
 const NPM_SCOPE_RE = /^[a-z][a-z0-9-]{0,38}$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -57,14 +57,50 @@ export const wcSpaBootstrapAdapter: Adapter = {
     const npmScope = validateNpmScope(ctx.answer('npmScope').trim());
     const projectName = validateProjectName(ctx.answer('projectName').trim());
     const ws = tsWorkspaceVars(ctx.manifest.tags);
-    const vars = { npmScope, projectName, ...ws };
-    const files = await ctx.templates.render(TEMPLATE_ID, '', vars);
+    const layout = wcLayout(ctx.manifest.tags, npmScope);
+    const suffix = layout.layout === 'modulith' ? '-modulith' : '';
+    const vars = { npmScope, projectName, ...ws, ...wcLayoutVars(layout) };
+    const files = await ctx.templates.render(`${TEMPLATE_ROOT}/templates${suffix}`, '', vars);
     if (ws.pm === 'pnpm') {
-      files.push(...(await ctx.templates.render(PNPM_TEMPLATE_ID, '', vars)));
+      files.push(...(await ctx.templates.render(`${TEMPLATE_ROOT}/pm${suffix}/pnpm`, '', vars)));
     }
     return { files };
   },
 };
+
+/**
+ * The template variables every `web-components` tree needs from the
+ * layout: the package names its manifests declare, the `exports` maps
+ * that decide what any of them can reach, and — the one nothing else
+ * would catch — the custom-element tags.
+ *
+ * The tags are here rather than in the templates because they are
+ * spelled in three unrelated places (the registration, the markup, the
+ * `HTMLElementTagNameMap` declaration) and agree only by construction.
+ * The maps and the globs are splice-with-`<%-` material: they carry
+ * quotes, and `<%=` would HTML-escape them into `&quot;`, which is a
+ * valid EJS render and an invalid `package.json`.
+ */
+export function wcLayoutVars(layout: WcLayoutPaths): Readonly<Record<string, string>> {
+  return {
+    designSystemPkg: layout.designSystemPkg,
+    contextProtocolPkg: layout.contextProtocolPkg ?? '',
+    contextPkg: layout.corePkg,
+    contractPkg: layout.contractPkg,
+    appPkg: layout.appPkg,
+    elementsPkg: layout.elementsPkg ?? '',
+    plainExports: layout.exportsMap('plain'),
+    contextExports: layout.exportsMap('context'),
+    workspaceGlobs: layout.workspaceGlobs.map((g) => JSON.stringify(g)).join(', '),
+    workspaceGlobLines: layout.workspaceGlobs.map((g) => `  - ${g}`).join('\n'),
+    // `greeting` under `basic`, `greeting-view` under the modulith:
+    // the element's short name is `view`, and the context qualifies it.
+    viewTag: layout.layout === 'basic' ? layout.elementTag('greeting') : layout.elementTag('view'),
+    buttonTag: `${layout.scope}-button`,
+    greetingCardTag: `${layout.scope}-greeting-card`,
+    designSystemDist: `../../${layout.designSystemRoot}/dist`,
+  };
+}
 
 function validateNpmScope(s: string): string {
   if (!NPM_SCOPE_RE.test(s)) {

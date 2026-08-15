@@ -1,0 +1,20 @@
+{
+  "name": "<%= commonsPkg %>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+<%- plainExports %>
+  },
+  "dependencies": {
+    "<%= contractPkg %>": "<%= workspaceDep %>"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

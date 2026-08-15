@@ -13,6 +13,8 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { CONTAINER_IMAGE_TAG } from './container-image.js';
+import { wcLayout } from './wc-module-layout.js';
+import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
 export const WC_SPA_IMAGE_ID = 'containerization/wc-spa-image';
 
@@ -25,8 +27,16 @@ export const wcSpaImageAdapter: Adapter = {
   predicate: { requires: ['framework.web-components', 'arch.spa'] },
   async contribute(ctx) {
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
+    // Which directory holds the bundle is the module layout's answer,
+    // not this adapter's — a Dockerfile that names it by hand builds
+    // an image serving an empty root.
+    const layout = wcLayout(
+      ctx.manifest.tags,
+      ctx.manifest.answers[WC_SPA_BOOTSTRAP_ID]?.npmScope ?? '',
+    );
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       buildCommand: `${pm} run build`,
+      bundleDir: `${layout.appRoot}/dist`,
     });
     return { files, tagsAdd: [CONTAINER_IMAGE_TAG] };
   },

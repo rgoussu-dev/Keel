@@ -1,0 +1,28 @@
+import type { Greeting, GreetingReadModel, Unsubscribe } from '../../contract/index';
+
+/**
+ * The write side of the greeting read model — held by the domain,
+ * handed to services; the driving side only ever sees the
+ * {@link GreetingReadModel} face.
+ */
+export interface GreetingStore extends GreetingReadModel {
+  /** Records a new greeting and notifies every subscriber. */
+  publish(greeting: Greeting): void;
+}
+
+/** Creates the in-memory greeting store backing the read model. */
+export function createGreetingStore(): GreetingStore {
+  let current: Greeting | null = null;
+  const listeners = new Set<(greeting: Greeting) => void>();
+  return {
+    current: () => current,
+    subscribe(listener: (greeting: Greeting) => void): Unsubscribe {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    publish(greeting: Greeting): void {
+      current = greeting;
+      for (const listener of listeners) listener(greeting);
+    },
+  };
+}

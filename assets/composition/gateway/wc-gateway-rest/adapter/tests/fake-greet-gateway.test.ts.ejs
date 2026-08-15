@@ -1,0 +1,28 @@
+import { describe, expect, it } from 'vitest';
+import type { GreetGateway } from '<%= contractSpec %>';
+import { createFakeGreetGateway } from '<%= fakeSpec %>';
+
+describe('FakeGreetGateway (GreetGateway contract)', () => {
+  it('greets the given name like the backend does', async () => {
+    const gateway: GreetGateway = createFakeGreetGateway();
+    await expect(gateway.fetchGreeting('Ada')).resolves.toEqual({ message: 'Hello, Ada!' });
+  });
+
+  it('falls back to "world" for an empty name, like the backend does', async () => {
+    const gateway: GreetGateway = createFakeGreetGateway();
+    await expect(gateway.fetchGreeting('')).resolves.toEqual({ message: 'Hello, world!' });
+  });
+
+  it('records every call in order', async () => {
+    const fake = createFakeGreetGateway();
+    await fake.fetchGreeting('Ada');
+    await fake.fetchGreeting('Grace');
+    expect(fake.calls).toEqual(['Ada', 'Grace']);
+  });
+
+  it('rejects once told to fail', async () => {
+    const fake = createFakeGreetGateway();
+    fake.failWith('backend down');
+    await expect(fake.fetchGreeting('Ada')).rejects.toThrow('backend down');
+  });
+});

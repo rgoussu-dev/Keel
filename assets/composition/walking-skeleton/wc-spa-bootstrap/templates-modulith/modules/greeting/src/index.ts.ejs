@@ -1,0 +1,17 @@
+/**
+ * The bounded context's facade — the DOM-less half of what it
+ * publishes, and the entry point a deployment unit or a peer's tests
+ * import to reach its domain.
+ *
+ * Custom-element registration is deliberately *not* here: it lives
+ * behind `<%= contextPkg %>/elements`, so importing this module in a
+ * DOM-less program (a domain test, a Node tool) does not define
+ * anything. The `exports` map is what makes that separation real —
+ * `<%= contextPkg %>/src/domain/core/internal/…` is a resolution
+ * error in tsc and in the browser alike.
+ */
+
+export * from './domain/contract/index';
+export { createGreet } from './domain/core/internal/greet-service';
+export { createGreetingStore, type GreetingStore } from './domain/core/internal/greeting-store';
+export { greetContext, greetingsContext } from './context-keys';
