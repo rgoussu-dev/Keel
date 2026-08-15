@@ -23,12 +23,19 @@ infrastructure/  — driven adapters (clock in `clock`; more as they
                  appear), real + fake side by side
 ```
 
-The walls are held by the workspace itself: package dependencies
-point inward only, deep imports die at each package's `exports` map,
-and the domain packages compile with `"types": []` — a domain import
-of `node:*` is a tsc error, not a convention. The
-`erasableSyntaxOnly` dial keeps every source file inside the syntax
-Node can strip.
+The wall that holds is each package's `exports` map: `domain/core`
+publishes its factories and nothing else, so a deep import of a
+handler is a `TS2307` from `tsc` and an
+`ERR_PACKAGE_PATH_NOT_EXPORTED` from Node. The `erasableSyntaxOnly`
+dial keeps every source file inside the syntax Node can strip.
+
+The domain packages also set `"types": []`, which is worth knowing
+for what it does **not** do: it suppresses the automatic global
+`@types`, while an explicit `import … from 'node:async_hooks'` still
+resolves and typechecks clean. "The domain never imports the
+platform" is a rule this project holds by review — or by a linter, as
+the `modulith` layout does with the `.dependency-cruiser.cjs` it
+emits.
 
 ## Run
 

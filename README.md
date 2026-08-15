@@ -132,10 +132,11 @@ npx @rgoussu.dev/keel new --stack=ts-http
 ```
 
 You get a no-build-step TypeScript workspace (Node 22.18+ runs the
-sources directly): the trisected domain packages compiled with
-`"types": []` so a domain import of `node:*` is a compile error, a
-registry mediator behind a `node:http` server, and the `Clock` port +
-fake in `infrastructure/clock`.
+sources directly): the trisected domain packages behind their
+`exports` maps, so a deep import of a handler is a `TS2307` from
+`tsc` and an `ERR_PACKAGE_PATH_NOT_EXPORTED` from Node; a registry
+mediator behind a `node:http` server; and the `Clock` port + fake in
+`infrastructure/clock`.
 
 `ts-http` carries the **module layout** dial too, and here a context
 is _one workspace package_ rather than one per layer — because the

@@ -11,9 +11,12 @@
  *
  * There is no build step: Node 22.18+ runs the TypeScript sources
  * directly (type stripping, held honest by `erasableSyntaxOnly`),
- * and per-package `tsc --noEmit` enforces the walls — domain
- * packages compile with `"types": []`, so a domain import of
- * `node:*` fails to compile.
+ * and the wall is each package's `exports` map — a deep import of a
+ * handler is a `TS2307` from `tsc` and an
+ * `ERR_PACKAGE_PATH_NOT_EXPORTED` from Node. The domain packages'
+ * `"types": []` is not a second wall: it suppresses the automatic
+ * global `@types` only, and an explicit `node:*` import still
+ * typechecks.
  *
  * The workspace shape is package-manager aware: the manifest's
  * `pkg.*` tag decides between npm (hoisted `workspaces`) and pnpm

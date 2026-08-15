@@ -157,6 +157,18 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`ts-http` documented a wall it does not have.** The emitted README,
+  the stack page and the README all said the domain packages'
+  `"types": []` made a domain import of `node:*` a compile error. It
+  does not: `types: []` suppresses the automatic global `@types`, while
+  an explicit `import … from 'node:async_hooks'` still resolves and
+  typechecks clean — checked against a scaffolded `basic` project, so
+  the claim was wrong from the start. The `exports` map is the wall
+  that does hold, and is now what the docs point at; "the domain never
+  imports the platform" is stated as a review rule under `basic` and
+  enforced by the `modulith` layout's `domain-knows-no-platform`
+  dependency-cruiser rule.
+
 - **`observability` emitted its package but never wired `main.go` on a
   Go modulith.** The `cmd/http/main.go` patch anchored on the flat
   import path, so under `layout.modulith` it matched nothing and the
