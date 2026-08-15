@@ -8,9 +8,10 @@
  * module's path still renders, and still produces a project that
  * builds while nothing is bound.
  *
- * Sibling of `walking-skeleton-modulith.test.ts`; see that file for
- * why the layout's cases live in separate files. Shared machinery and
- * skip rules live in `tests/support/jvm-rest-e2e.ts`.
+ * Not a cell of the modulith grid but a vertical layered onto one —
+ * sibling of `modulith-baseline.test.ts`; see that file for why the
+ * layout's cases live in separate files. Shared machinery and skip
+ * rules live in `tests/support/jvm-rest-e2e.ts`.
  */
 
 import path from 'node:path';
