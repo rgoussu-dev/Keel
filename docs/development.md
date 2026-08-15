@@ -120,18 +120,30 @@ CI runs them too, in a second job — the `verify` matrix stays the fast
 gate. That job is **sharded by toolchain**, so each shard provisions
 only what its suites probe for and a failure names the stack in the
 check title. The JVM is sharded again along the grid its suites
-populate: `e2e (jvm-quarkus)`, `e2e (jvm-spring)` and
-`e2e (jvm-micronaut)` each take that framework's four `basic` stacks
-(CLI and REST, Java and Kotlin), and `e2e (jvm-modulith)` takes the
-typology axis — the one no framework grouping captures, and the one
-that has actually shipped defects. `e2e (go)`, `e2e (rust)` and
-`e2e (web)` are unchanged.
+populate, and the two typologies take different shapes because their
+volumes differ. `e2e (jvm-basic-quarkus)`, `e2e (jvm-basic-spring)`
+and `e2e (jvm-basic-micronaut)` each take that framework's four
+`basic` stacks (CLI and REST, Java and Kotlin). The modulith is 25
+files and splits by framework **and language** —
+`e2e (jvm-modulith-quarkus-java)`, `…-quarkus-kotlin`,
+`…-spring-java`, and so on, four cells each. `e2e (go)`,
+`e2e (rust)` and `e2e (web)` are unchanged.
 
-Language is deliberately _not_ a further axis. A shard that runs
-nothing is worse than no shard, since the check name asserts coverage
-that does not exist; the `basic` half would split by language cleanly,
-but the modulith half has no Kotlin suite yet to put in a
-`jvm-kotlin` shard.
+Language is an axis on the modulith half only, and the grid is what
+made it one. A shard that runs nothing is worse than no shard, since
+the check name asserts coverage that does not exist — and before the
+modulith's Kotlin cells were built, `jvm-modulith-*-kotlin` would
+have been precisely that. On the `basic` half it stays out: those
+shards already sit near their longest-file floor, so splitting them
+by language would buy attribution and no wall clock, at the price of
+three more JDK provisionings.
+
+Measured on 4 vCPUs with cold caches, the modulith shards run
+160–415s against sequential totals of 359–1015s — a divisor of
+2.22–2.45, never near the 4 the core count suggests, because each
+Gradle build is itself parallel and concurrent ones contend.
+`jvm-modulith-micronaut-kotlin` is already floor-bound (252s wall
+against a 249s longest file), which is where splitting stops paying.
 
 Each shard lists its files explicitly in `.github/workflows/ci.yml`,
 which means **a new suite must be added to a shard or it never runs**.

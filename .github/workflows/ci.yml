@@ -63,20 +63,24 @@ jobs:
   #   - A red X reads `e2e (go)` instead of `e2e`, and re-running one
   #     stack does not re-run the JVM builds.
   #
-  # The JVM is then sharded again, along the grid its suites now
-  # populate: three frameworks plus `modulith`, the typology axis that
-  # no framework grouping captures and the one that has actually
-  # shipped defects. Each framework shard holds that framework's four
-  # `basic` stacks — CLI and REST, Java and Kotlin — so a red X names
-  # the container whose wiring broke, and the failing test inside it
-  # names the language and the shape.
+  # The JVM is then sharded again, along the grid its suites populate,
+  # and the two typologies are shaped differently because their volumes
+  # are. `basic` is twelve files and stays split by framework, four
+  # apiece — CLI and REST × Java and Kotlin — so a red X names the
+  # container whose wiring broke and the failing test inside it names
+  # the language and the shape. `modulith` is twenty-five and splits by
+  # framework × **language**, four apiece (six on Quarkus, which also
+  # carries the two non-cell variants).
   #
-  # Language is not a fourth axis, and the reason is a rule rather than
-  # a preference: a shard that runs nothing is worse than no shard,
-  # because the check name asserts coverage that does not exist. The
-  # `basic` half would split by language cleanly; the modulith half has
-  # no Kotlin suite to give a `jvm-kotlin` shard, so that axis waits
-  # until the grid populates it.
+  # Language is a legal axis here for the first time, and it is the
+  # grid rather than an argument that made it one: a shard that runs
+  # nothing is worse than no shard, because the check name asserts
+  # coverage that does not exist — and until the modulith's Kotlin
+  # cells were populated, `jvm-modulith-*-kotlin` would have been
+  # exactly that. It is not an axis on the `basic` half, because there
+  # a language split buys attribution and no wall clock: those shards
+  # already sit near their longest-file floor, and each extra shard
+  # costs a fresh JDK + Gradle provisioning.
   #
   # The `files` list is the shard's whole definition, and it is load
   # bearing: a suite in no shard never runs, which looks exactly like a
@@ -88,11 +92,19 @@ jobs:
   # Vitest parallelises across files but runs the tests inside one file
   # in sequence, so the slowest single *file* is a shard's floor. Four
   # concurrent JVM builds on a 4-vCPU runner do not get 4× though —
-  # measured speedup across a shard is closer to 2.3×, because each
-  # Gradle build is itself parallel and they contend. Both numbers move
-  # when suites are added; re-measure before rebalancing, and measure
-  # on the shard shape actually shipped, since a file timed against 16
-  # neighbours is far slower than the same file timed against three.
+  # measured across the six modulith shards the divisor is 2.22–2.45,
+  # because each Gradle build is itself parallel and they contend.
+  # Both numbers move when suites are added; re-measure before
+  # rebalancing, and measure on the shard shape actually shipped, since
+  # a file timed against 16 neighbours is far slower than the same file
+  # timed against three.
+  #
+  # The floor is why this split stops here rather than going finer.
+  # `jvm-modulith-micronaut-kotlin` runs 252s against a 249s longest
+  # file: it is already floor-bound, so halving it again would buy
+  # attribution and nothing else. `jvm-modulith-quarkus-java` is the
+  # one with headroom left (415s against a 260s floor) and is the place
+  # to split first if it grows.
   e2e:
     name: e2e (${{ matrix.shard.id }})
     runs-on: ubuntu-latest
@@ -104,54 +116,69 @@ jobs:
       fail-fast: false
       matrix:
         shard:
-          - id: jvm-quarkus
+          - id: jvm-basic-quarkus
             tools: java javac gradle
             files: >-
               tests/e2e/walking-skeleton.test.ts
               tests/e2e/walking-skeleton-quarkus-cli-kotlin.test.ts
               tests/e2e/walking-skeleton-rest.test.ts
               tests/e2e/walking-skeleton-kotlin.test.ts
-          - id: jvm-spring
+          - id: jvm-basic-spring
             tools: java javac gradle
             files: >-
               tests/e2e/walking-skeleton-spring-cli.test.ts
               tests/e2e/walking-skeleton-spring-cli-kotlin.test.ts
               tests/e2e/walking-skeleton-spring.test.ts
               tests/e2e/walking-skeleton-spring-kotlin.test.ts
-          - id: jvm-micronaut
+          - id: jvm-basic-micronaut
             tools: java javac gradle
             files: >-
               tests/e2e/walking-skeleton-micronaut-cli.test.ts
               tests/e2e/walking-skeleton-micronaut-cli-kotlin.test.ts
               tests/e2e/walking-skeleton-micronaut.test.ts
               tests/e2e/walking-skeleton-micronaut-kotlin.test.ts
-          - id: jvm-modulith
+          - id: jvm-modulith-quarkus-java
             tools: java javac gradle mvn
             files: >-
-              tests/e2e/modulith-baseline.test.ts
-              tests/e2e/modulith-persistence.test.ts
-              tests/e2e/modulith-quarkus-rest-maven.test.ts
-              tests/e2e/modulith-spring-rest-gradle.test.ts
-              tests/e2e/modulith-spring-rest-maven.test.ts
-              tests/e2e/modulith-micronaut-rest-gradle.test.ts
-              tests/e2e/modulith-quarkus-rest-kotlin-gradle.test.ts
-              tests/e2e/modulith-quarkus-rest-kotlin-maven.test.ts
-              tests/e2e/modulith-spring-rest-kotlin-gradle.test.ts
-              tests/e2e/modulith-spring-rest-kotlin-maven.test.ts
-              tests/e2e/modulith-micronaut-rest-kotlin-gradle.test.ts
-              tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
               tests/e2e/modulith-quarkus-rest-gradle.test.ts
-              tests/e2e/modulith-micronaut-rest-maven.test.ts
+              tests/e2e/modulith-quarkus-rest-maven.test.ts
               tests/e2e/modulith-quarkus-cli-gradle.test.ts
               tests/e2e/modulith-quarkus-cli-maven.test.ts
+              tests/e2e/modulith-baseline.test.ts
+              tests/e2e/modulith-persistence.test.ts
+          - id: jvm-modulith-quarkus-kotlin
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/modulith-quarkus-rest-kotlin-gradle.test.ts
+              tests/e2e/modulith-quarkus-rest-kotlin-maven.test.ts
               tests/e2e/modulith-quarkus-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-quarkus-cli-kotlin-maven.test.ts
+          - id: jvm-modulith-spring-java
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/modulith-spring-rest-gradle.test.ts
+              tests/e2e/modulith-spring-rest-maven.test.ts
               tests/e2e/modulith-spring-cli-gradle.test.ts
               tests/e2e/modulith-spring-cli-maven.test.ts
+          - id: jvm-modulith-spring-kotlin
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/modulith-spring-rest-kotlin-gradle.test.ts
+              tests/e2e/modulith-spring-rest-kotlin-maven.test.ts
               tests/e2e/modulith-spring-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-spring-cli-kotlin-maven.test.ts
+          - id: jvm-modulith-micronaut-java
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/modulith-micronaut-rest-gradle.test.ts
+              tests/e2e/modulith-micronaut-rest-maven.test.ts
               tests/e2e/modulith-micronaut-cli-gradle.test.ts
               tests/e2e/modulith-micronaut-cli-maven.test.ts
+          - id: jvm-modulith-micronaut-kotlin
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/modulith-micronaut-rest-kotlin-gradle.test.ts
+              tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-maven.test.ts
           - id: go

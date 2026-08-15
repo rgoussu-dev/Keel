@@ -255,17 +255,31 @@ would ship as separate packages implementing the same port.
   is the fast gate — lint, typecheck, test, build across Node 22 and 24;
   `tests/e2e/` self-skips there, since it is opt-in on CI. `e2e` is the
   other half, running with `KEEL_RUN_E2E=1` and **sharded by toolchain**:
-  four `jvm-*` shards (JDK 25 + Gradle 9.4.1, plus Maven on
-  `jvm-modulith`), `go` (Go + Docker), `rust` (cargo), `web` (npm/pnpm +
+  nine `jvm-*` shards (JDK 25 + Gradle 9.4.1, plus Maven on every
+  `jvm-modulith-*`), `go` (Go + Docker), `rust` (cargo), `web` (npm/pnpm +
   Chrome). Each shard provisions only what its suites probe for. Between
   the two jobs, nothing in the suite is skipped for want of a tool.
-- **The JVM shards follow the grid, and the grid comes first.** They are
-  `jvm-quarkus`, `jvm-spring`, `jvm-micronaut` — each holding that
-  framework's four `basic` stacks, CLI and REST × Java and Kotlin — and
-  `jvm-modulith` for the typology axis. Never shard onto a cell no suite
+- **The JVM shards follow the grid, and the grid comes first.** The
+  `basic` typology splits by framework — `jvm-basic-quarkus`,
+  `-spring`, `-micronaut`, four stacks each (CLI and REST × Java and
+  Kotlin). The `modulith` typology is 25 files and splits by framework
+  × **language**: `jvm-modulith-<framework>-<java|kotlin>`, four cells
+  each, six on `quarkus-java` which also carries `modulith-baseline`
+  and `modulith-persistence`. Never shard onto a cell no suite
   populates: a green `e2e (jvm-kotlin)` that runs nothing asserts
-  coverage that does not exist, and the check name hides it. That is why
-  language is not yet an axis — the modulith half has no Kotlin suite.
+  coverage that does not exist, and the check name hides it. Language
+  became a legal axis only once the modulith grid was closed (roadmap
+  J.1); it is deliberately _not_ an axis on the `basic` half, where a
+  further split buys attribution and no wall clock.
+- **The modulith grid is 24 cells and one file is one cell.**
+  12 stacks × 2 build systems, named
+  `tests/e2e/modulith-<stack>-<build>.test.ts` so "every cell has a
+  suite" is checkable from `ls`. `modulith-baseline` and
+  `modulith-persistence` are the two exceptions and neither is a cell:
+  the first is the only e2e scaffolding the layout _without_
+  `--with-peer-context` (what proves that adapter family is additive),
+  the second is a vertical layered onto a cell. A new stack or build
+  system means new cells, and they go in the matrix in the same change.
 - **The shard matrix names its files explicitly, and that is a hazard
   with a guard.** A suite in no shard never runs, which looks exactly
   like a suite that passed. `tests/ci-workflow.test.ts` parses the
