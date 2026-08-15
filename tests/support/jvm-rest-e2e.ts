@@ -295,7 +295,24 @@ function buildProject(
     mavenBuild(cwd, cache);
     return;
   }
-  gradleBuild(cwd, { ...process.env, GRADLE_USER_HOME: cache }, extraArgs);
+  gradleBuild(cwd, { ...jvmTestEnv(), GRADLE_USER_HOME: cache }, extraArgs);
+}
+
+/**
+ * The environment a generated project's build runs its tests in.
+ *
+ * `QUARKUS_HTTP_TEST_PORT=0` is the load-bearing entry, and it belongs
+ * here rather than in the emitted `application.properties`: a
+ * scaffolded project is perfectly correct binding the default 8081,
+ * and only *this harness* runs several Quarkus test JVMs at once —
+ * vitest executes e2e files in parallel, so two suites reach for the
+ * same port and the loser dies with `QuarkusBindException`. Nothing a
+ * keel user would ever hit, so nothing a keel user should have to
+ * carry in their config. Quarkus injects the port it actually bound
+ * into RestAssured, so the emitted tests need no change either.
+ */
+function jvmTestEnv(): NodeJS.ProcessEnv {
+  return { ...process.env, QUARKUS_HTTP_TEST_PORT: '0' };
 }
 
 /**
@@ -306,7 +323,7 @@ function mavenBuild(cwd: string, repoLocal: string): void {
   const build = runWithRetry(
     path.join(cwd, 'mvnw'),
     ['-B', '-ntp', `-Dmaven.repo.local=${repoLocal}`, 'verify'],
-    { cwd, env: process.env, encoding: 'utf8' },
+    { cwd, env: jvmTestEnv(), encoding: 'utf8' },
   );
   if (build.status !== 0) {
     throw new Error(
