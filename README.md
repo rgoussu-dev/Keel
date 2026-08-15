@@ -122,6 +122,15 @@ contract face over a private core module, a `Clock` port + fake under
 `src/infra/`, axum + tokio for the HTTP shape (`rust-cli` is
 dependency-free), and `cargo check` already run.
 
+`--module-layout=modulith` turns the package into a Cargo workspace,
+four crates per bounded context, where a forbidden dependency is a
+compile error rather than a review comment. It is the priciest dial
+of the five families and the strongest wall — but note that Rust's
+peer seam is weaker than the JVM's and Go's: the crate graph stops
+you _naming_ a foreign domain type, not one _flowing_ through the
+seam, and the enforcement for that does not exist on stable.
+→ [Rust module layout](docs/stacks/rust.md#module-layout)
+
 **Prerequisites:** Rust toolchain (`cargo` on PATH), `git`.
 → [Rust stacks](docs/stacks/rust.md)
 

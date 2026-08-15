@@ -15,6 +15,15 @@ mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=rust-http    # or rust-cli
 ```
 
+Both stacks offer a **module layout** — `basic` (the flat single
+crate below) or `modulith`. Your pick; `basic` is the default, and on
+Rust it stays the right default longer than elsewhere.
+
+```sh
+npx @rgoussu.dev/keel new --stack=rust-http --module-layout modulith
+npx @rgoussu.dev/keel new --stack=rust-http --module-layout modulith --with-peer-context
+```
+
 ## Prerequisites
 
 | Requirement     | Why                                                                       |
@@ -52,6 +61,110 @@ my-service/
 **No mediator object** — per the binding spec's Rust stance, commands
 are structs and driving ports are per-use-case traits wired explicitly
 in `main`.
+
+## Module layout
+
+`--module-layout=modulith` carves the same skeleton one bounded
+context at a time. Rust is the **most expensive** of the five stack
+families to turn on and the one whose walls are strongest once paid
+for: four crates per context minimum, each a `Cargo.toml` and a
+workspace member line. A project that knows it has two contexts
+should start here; a project that does not should not pay for it.
+
+```
+my-service/
+  Cargo.toml                        # the workspace; every crate is a member
+  platform/
+    kernel/                         # what no context owns: BoxFuture,
+                                    # block_on, the ubiquitous Clock + fake
+  modules/
+    greeting/                       # one bounded context
+      domain/
+        core/                       # pure functions; only contract depends on it
+        contract/                   # commands, driving ports, factories
+      user-side/
+        service/                    # THE PEER SEAM — its own DTOs only
+      infra/<tech>/                 # driven adapters, one crate each
+  application/
+    http/ | cli/                    # one assembly crate per deployment unit
+```
+
+**The binary keeps its name.** `my-service` and `my-service-http`
+under either layout — the dial is a structural choice, not a reason
+to rename your executable.
+
+**Ports return `BoxFuture`, not `async fn`.** This is not style. An
+`async fn` in a trait is not dyn-compatible, and every port here is
+wired behind `Arc<dyn Port>` at an assembly point, so an `async fn`
+port produces a skeleton that stops compiling the moment a second
+adapter is wired. `platform-kernel` ships the alias, the `boxed!`
+macro, and a `block_on` that lets the synchronous CLI assembly drive
+an async port without a runtime.
+
+### Why four crates
+
+Three are obvious; the fourth is the point. `domain/core` and
+`domain/contract` are the same wall a private `mod` builds under
+`basic` — split here for rebuild blast radius, not for the wall.
+`user-side/service` **must** be its own crate: a Cargo dependency
+hands the consumer everything the crate exports, so folding the seam
+into `domain/contract` gives every gateway a legal edge to the whole
+domain.
+
+### The peer seam is weaker in Rust than in the JVM or Go
+
+This is the one place the layouts are not at parity across stack
+families, and it is worth knowing before you choose.
+
+The rule for a seam crate is that every type in its public API is
+declared by that crate. What holds it:
+
+|                                             | JVM                               | Go                           | **Rust**                         |
+| ------------------------------------------- | --------------------------------- | ---------------------------- | -------------------------------- |
+| Consumer can **name** a foreign domain type | no — build scope                  | no — unexported              | **no** — `E0432`, unlinked crate |
+| Domain type can **flow** through the seam   | no — not on the compile classpath | no — unnameable, so unusable | **yes** — inference supplies it  |
+| Enforcement available on stable             | yes                               | yes                          | **no**                           |
+
+Verified on rustc 1.94.1: a gateway crate with no dependency on
+`greeting-domain-contract` held a value that crate declares, returned
+through the seam, and read its fields — no error, no warning. So in
+Rust the rule is a **convention held by review**, not a compiler
+guarantee. `cargo tree -p <consumer>` names the one crate a reviewer
+has to look at, and the seam crate states the rule in its own module
+doc at the point where it would be broken.
+
+There is no stable-Rust lint for this. The check needs the crate's
+public API surface, and every tool that computes one (`cargo
+public-api`, `cargo-semver-checks`) reads nightly-only rustdoc JSON;
+`cargo-deny` bans dependency edges and cannot see type flow at all.
+The exact fix — `public = false` on the seam crate's domain
+dependency plus `#![deny(exported_private_dependencies)]` — is
+`-Z public-dependency`, rejected by stable. Enabling it would pin
+every scaffolded project to nightly to enforce one rule on one crate,
+so keel does not. The upgrade is two lines and no restructuring the
+day it stabilises, and the seam crate's docs carry them ready to
+uncomment.
+
+### A second context
+
+`--with-peer-context` scaffolds `guestbook` beside `greeting`, with a
+gateway crate under `modules/guestbook/infra/greeting-gateway` that
+depends on `greeting-user-side-service` and on nothing else of
+greeting's. It is what makes the seam demonstrable rather than merely
+present — with one context, nothing in the project consumes the seam,
+so nothing proves it holds.
+
+Requires `--module-layout=modulith`; the flat layout has no
+`user-side/service` for a peer to reach through, and keel says so
+rather than silently scaffolding one context.
+
+### Not yet under the modulith
+
+[`keel add persistence`](../verticals/persistence.md) supports `basic`
+only on Rust and refuses the modulith with an explanation: its
+adapters need a crate of their own under `modules/<ctx>/infra/`.
+Tracked as roadmap I.5. `containerization` and `gateway` work under
+both.
 
 `rust-http` additionally installs [`dev-env`](../verticals/dev-env.md)
 and [`observability`](../verticals/observability.md) by default

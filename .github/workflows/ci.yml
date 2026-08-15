@@ -190,6 +190,15 @@ jobs:
             files: >-
               tests/e2e/walking-skeleton-go.test.ts
               tests/e2e/fullstack-go.test.ts
+          # Five files now, and still deliberately one shard. Measured
+          # locally on the shipped shape: 179s of test time across the
+          # four cargo-compiling files finishing in 63s wall (divisor
+          # 2.86), against a longest single file of ~59s. That is
+          # floor-bound already — the three axum files each pay a cold
+          # crates.io compile that no split removes — so splitting
+          # would buy attribution and no wall clock, exactly the case
+          # `jvm-modulith-micronaut-kotlin` makes above. Revisit if a
+          # file lands that is not axum-bound, or if the floor moves.
           - id: rust
             tools: cargo
             files: >-

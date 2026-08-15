@@ -271,6 +271,15 @@ would ship as separate packages implementing the same port.
   became a legal axis only once the modulith grid was closed (roadmap
   J.1); it is deliberately _not_ an axis on the `basic` half, where a
   further split buys attribution and no wall clock.
+- **The Rust grid is 2 stacks × 2 layouts**, cargo being the only
+  build system there, so the modulith half is
+  `tests/e2e/modulith-rust-{cli,http}.test.ts` plus
+  `modulith-rust-peer-context`, which is not a cell — it is the Rust
+  counterpart of `modulith-baseline`, the one suite proving the
+  peer-context adapter family is additive. All of it stays in the
+  single `rust` shard: measured on the shipped shape that shard is
+  already floor-bound by its slowest file, so a split would buy
+  attribution and no wall clock.
 - **The modulith grid is 24 cells and one file is one cell.**
   12 stacks × 2 build systems, named
   `tests/e2e/modulith-<stack>-<build>.test.ts` so "every cell has a

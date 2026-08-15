@@ -8,6 +8,38 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The module-layout dial reaches Rust, and item I is complete.**
+  `keel new --stack=rust-cli|rust-http --module-layout=modulith`
+  emits a Cargo **workspace**: `platform/kernel` for what no context
+  owns, four crates per bounded context under `modules/`, and one
+  assembly crate per deployment unit under `application/`. `basic`
+  stays the default and its output is byte-for-byte unchanged, so
+  nothing scaffolded before this shifts shape. With Rust done, every
+  service stack in the catalog now offers both layouts.
+
+  Rust is the most expensive family to turn the dial on and the one
+  whose walls are strongest once paid for — four manifests per
+  context, and a dependency that is a compile error rather than a
+  review comment. `--with-peer-context` works here too, scaffolding
+  `guestbook` with a gateway crate that reaches `greeting` only
+  through its `user-side/service` seam.
+
+  Two things are documented rather than glossed. `platform-kernel`
+  ships a `BoxFuture` alias and every port that crosses a context
+  boundary returns one, because `async fn` in a trait is still not
+  dyn-compatible on rustc 1.94 and every port here is wired behind
+  `Arc<dyn Port>`. And **Rust's peer seam is genuinely weaker than
+  the JVM's and Go's**: the crate graph stops a consumer _naming_ a
+  foreign domain type but not one _flowing_ through the seam, and the
+  exact enforcement (`-Z public-dependency`) does not exist on
+  stable. `docs/stacks/rust.md` states this plainly rather than
+  implying parity, and the seam crate carries the rule — and the
+  two-line upgrade for the day it stabilises — in its own module doc.
+
+  The binary keeps its name under either layout. `keel add
+persistence` does not support the Rust modulith yet and says so
+  when asked, rather than failing on a missing path (roadmap I.5).
+
 - **A second bounded context in the modulith, on demand.**
   `keel new --module-layout=modulith --with-peer-context` scaffolds a
   `guestbook` context beside `greeting` and wires the seam between
