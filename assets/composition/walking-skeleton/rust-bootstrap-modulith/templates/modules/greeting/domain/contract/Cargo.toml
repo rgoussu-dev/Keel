@@ -1,0 +1,7 @@
+[package]
+name = "greeting-domain-contract"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+greeting-domain-core = { path = "../core" }

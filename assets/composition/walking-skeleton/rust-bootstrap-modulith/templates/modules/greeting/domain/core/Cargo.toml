@@ -1,0 +1,6 @@
+[package]
+name = "greeting-domain-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

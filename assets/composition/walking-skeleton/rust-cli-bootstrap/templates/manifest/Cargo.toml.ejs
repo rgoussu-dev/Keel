@@ -1,0 +1,14 @@
+[package]
+name = "<%= assemblyCrate %>"
+version.workspace = true
+edition.workspace = true
+
+# The binary keeps the project's own name whichever module layout the
+# project uses — the layout dial is a structural choice, not a reason
+# to rename somebody's executable.
+[[bin]]
+name = "<%= binName %>"
+path = "src/main.rs"
+
+[dependencies]
+<%= contractCrate %> = { path = "<%= contractPath %>" }

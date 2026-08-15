@@ -1,0 +1,6 @@
+[package]
+name = "platform-kernel"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

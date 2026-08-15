@@ -11,7 +11,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
-use <%= crateName %>::domain::{GreetCommand, GreetError, Greeter};
+use <%= contractUse %>::{GreetCommand, GreetError, Greeter};
 
 /// The driving port as shared, thread-safe state — the shape axum
 /// hands to every request handler.
