@@ -88,6 +88,11 @@ jobs:
             tools: java javac gradle mvn
             files: >-
               tests/e2e/walking-skeleton.test.ts
+              tests/e2e/walking-skeleton-quarkus-cli-kotlin.test.ts
+              tests/e2e/walking-skeleton-spring-cli.test.ts
+              tests/e2e/walking-skeleton-spring-cli-kotlin.test.ts
+              tests/e2e/walking-skeleton-micronaut-cli.test.ts
+              tests/e2e/walking-skeleton-micronaut-cli-kotlin.test.ts
               tests/e2e/walking-skeleton-rest.test.ts
               tests/e2e/walking-skeleton-spring.test.ts
               tests/e2e/walking-skeleton-micronaut.test.ts
