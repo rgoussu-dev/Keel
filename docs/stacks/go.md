@@ -109,11 +109,12 @@ two contexts may declare the same package name — `modules/ordering`
 and `modules/billing/gateway/ordering` are both `package ordering` —
 so a file importing both must alias one.
 
-> **`keel add persistence` is flat-layout only for now.** The slice
-> spans five packages whose homes all move under the modulith, so it
-> refuses with an uncovered dimension rather than emitting at flat
-> paths and silently not wiring. Tracked on
-> [the roadmap](../roadmap.md).
+[`keel add persistence`](../verticals/persistence.md#module-layout)
+follows the same rules: its ports join the context's `domain`, its
+pgx adapters and fakes join `infra/`, the system clock joins
+`platform/`, and the facade grows a second factory —
+`NewGreetingLogUseCases` beside `NewGreeter` — because the assembly
+may not import the context's domain to reach one.
 
 `go-http` additionally installs [`dev-env`](../verticals/dev-env.md)
 and [`observability`](../verticals/observability.md) by default

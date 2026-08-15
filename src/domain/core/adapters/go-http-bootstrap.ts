@@ -76,10 +76,7 @@ export const goHttpBootstrapAdapter: Adapter = {
  * exactly the kind of derivation a template must not attempt.
  */
 function mainImports(layout: GoLayoutPaths): string {
-  return [layout.importPath(layout.app('resthttp')), layout.importPath(layout.facade)]
-    .sort()
-    .map((p) => `\t"${p}"`)
-    .join('\n');
+  return layout.importBlock([layout.app('resthttp'), layout.facade]);
 }
 
 /**
@@ -88,8 +85,5 @@ function mainImports(layout: GoLayoutPaths): string {
  * two sorts first flips with the layout.
  */
 function adapterTestImports(layout: GoLayoutPaths): string {
-  return [layout.importPath(layout.app('resthttp')), layout.importPath(layout.domain)]
-    .sort()
-    .map((p) => `\t"${p}"`)
-    .join('\n');
+  return layout.importBlock([layout.app('resthttp'), layout.domain]);
 }

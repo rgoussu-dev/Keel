@@ -30,7 +30,7 @@ import { installVertical } from '../../../../src/domain/core/install.js';
 import { observabilityVertical } from '../../../../src/domain/core/verticals/observability.js';
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
-import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { goLayout } from '../../../../src/domain/core/adapters/go-module-layout.js';
 import {
   BASIC_LAYOUT_TAG,
@@ -222,15 +222,125 @@ describe('the Go verticals follow the layout', () => {
     expect(main).toContain('observability.RequestContext(resthttp.NewHandler(greeter))');
   });
 
-  it('refuses persistence on the modulith rather than mis-wiring it', () => {
-    // The slice's five packages all move under this layout. Failing
-    // with an uncovered dimension is the honest outcome; emitting at
-    // flat paths would compile and silently do nothing.
-    expect(() =>
-      resolveVertical(persistenceVertical, tags('arch.server-http', MODULITH_LAYOUT_TAG)),
-    ).toThrow(ResolutionError);
-    expect(() =>
-      resolveVertical(persistenceVertical, tags('arch.server-http', BASIC_LAYOUT_TAG)),
-    ).not.toThrow();
+  it('covers persistence under both layouts', () => {
+    // The slice used to exclude the modulith: its five packages all
+    // move, and emitting them at flat paths would have compiled and
+    // silently not wired. Now that every destination is a `goLayout`
+    // call, both layouts resolve.
+    for (const layout of [BASIC_LAYOUT_TAG, MODULITH_LAYOUT_TAG]) {
+      expect(() =>
+        resolveVertical(persistenceVertical, tags('arch.server-http', layout)),
+      ).not.toThrow();
+    }
+  });
+
+  it('puts every package of the persistence slice at its layout home', async () => {
+    const tree = await install(
+      [walkingSkeletonVertical, persistenceVertical],
+      tags('arch.server-http', MODULITH_LAYOUT_TAG),
+    );
+    for (const p of [
+      // The ports are the context's contract face, behind its wall.
+      'internal/modules/greeting/internal/domain/greetinglog.go',
+      'internal/modules/greeting/internal/domain/unitofwork.go',
+      'internal/modules/greeting/internal/domain/internal/greetinglog/greetinglog.go',
+      // Adapters sit beside the wall so the assembly can construct them.
+      'internal/modules/greeting/infra/postgres/postgres.go',
+      'internal/modules/greeting/infra/greetinglogfake/greetinglog.go',
+      'internal/modules/greeting/infra/uowfake/uow.go',
+      'internal/modules/greeting/userside/resthttp/greetings.go',
+      // A clock belongs to no context.
+      'internal/platform/clocksys/clock.go',
+    ]) {
+      expect(tree.read(p), `missing ${p}`).not.toBeNull();
+    }
+    // None of the flat homes survive.
+    expect(tree.read('internal/domain/greetinglog.go')).toBeNull();
+    expect(tree.read('internal/infra/postgres/postgres.go')).toBeNull();
+  });
+
+  // The defect this whole shape exists to prevent: emit a correct
+  // package, leave the assembly untouched, and let `go build` stay
+  // green because unwired code compiles. Asserted on the wiring.
+  it('wires the persistence slice into the modulith assembly', async () => {
+    const tree = await install(
+      [walkingSkeletonVertical, persistenceVertical],
+      tags('arch.server-http', MODULITH_LAYOUT_TAG),
+    );
+    const main = read(tree, 'cmd/http/main.go');
+    expect(main).toContain(`"${MODULE}/internal/modules/greeting/infra/postgres"`);
+    expect(main).toContain(`"${MODULE}/internal/platform/clocksys"`);
+    expect(main).toContain('pool, err := postgres.NewPool(context.Background())');
+    expect(main).toContain('greetings := greeting.NewGreetingLogUseCases(');
+    expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
+    // And it reaches the slice through the facade, never through the
+    // context's domain — which it is not allowed to import at all.
+    expect(main).not.toContain(`"${MODULE}/internal/modules/greeting/internal/domain"`);
+  });
+
+  // The facade is the aperture for the whole context, so a vertical
+  // that adds a use case has to widen it rather than let `cmd/` reach
+  // past it. Same rule as NewGreeter: factories, no aliases.
+  it('extends the facade with the slice factory and still re-exports nothing', async () => {
+    const tree = await install(
+      [walkingSkeletonVertical, persistenceVertical],
+      tags('arch.server-http', MODULITH_LAYOUT_TAG),
+    );
+    const facade = read(tree, 'internal/modules/greeting/greetinglog.go');
+    expect(facade).toContain('func NewGreetingLogUseCases(');
+    expect(facade).toContain('domain.GreetingLogUseCases');
+    expect(facade).not.toMatch(/^type \w+ = /m);
+    expect(facade).not.toMatch(/^var \w+ = domain\./m);
+    // Under `basic` the facade *is* the domain package, so the slice
+    // adds no second file there.
+    const flat = await install(
+      [walkingSkeletonVertical, persistenceVertical],
+      tags('arch.server-http', BASIC_LAYOUT_TAG),
+    );
+    expect(flat.read('internal/domain/greetinglog.go')).not.toBeNull();
+  });
+
+  // Absolute imports hide depth; a test that reads a file out of the
+  // repo does not. This is the `upToRoot` bug's Go shape.
+  it('walks back to the repo root from wherever the pgx test landed', async () => {
+    const tree = await install(
+      [walkingSkeletonVertical, persistenceVertical],
+      tags('arch.server-http', MODULITH_LAYOUT_TAG),
+    );
+    expect(read(tree, 'internal/modules/greeting/infra/postgres/postgres_test.go')).toContain(
+      'filepath.Glob("../../../../../migrations/sql/*.sql")',
+    );
+    const flat = await install(
+      [walkingSkeletonVertical, persistenceVertical],
+      tags('arch.server-http', BASIC_LAYOUT_TAG),
+    );
+    expect(read(flat, 'internal/infra/postgres/postgres_test.go')).toContain(
+      'filepath.Glob("../../../migrations/sql/*.sql")',
+    );
+  });
+
+  // gofmt sorts an import group, and under the modulith a context's
+  // infra/ sorts before its internal/domain — the reverse of the flat
+  // tree. Every file the slice emits with more than one project
+  // import is exposed to that flip.
+  it('orders every emitted import group the way gofmt would', async () => {
+    for (const layout of [BASIC_LAYOUT_TAG, MODULITH_LAYOUT_TAG]) {
+      const tree = await install(
+        [walkingSkeletonVertical, persistenceVertical],
+        tags('arch.server-http', layout),
+      );
+      const go = tree
+        .changes()
+        .map((c) => c.path)
+        .filter((p) => p.endsWith('.go'));
+      expect(go.length).toBeGreaterThan(10);
+      for (const file of go) {
+        const project = read(tree, file)
+          .split('\n')
+          .filter((l) => l.startsWith(`\t"${MODULE}/`))
+          .map((l) => l.trim());
+        expect(project, `${file} under ${layout}`).toEqual([...project].sort());
+      }
+    }
   });
 });

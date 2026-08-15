@@ -1,0 +1,23 @@
+package <%= facadePkg %>
+
+import (
+<%- projectImports %>
+)
+
+// NewGreetingLogUseCases assembles the greeting-log use cases and
+// returns them behind their driving port. It is the persistence
+// slice's half of the context's aperture: the assembly constructs the
+// secondary adapters, hands them here, and gets back something it can
+// pass on but not name.
+//
+// Like NewGreeter this re-exports nothing. Every type in the
+// signature belongs to the context's domain, which sits behind this
+// context's internal/ — so a consumer cannot write those types down,
+// and therefore cannot declare its own GreetingLog either. The
+// convenience alias that would break that is the one line never to
+// add to this package.
+func NewGreetingLogUseCases(
+	log domain.GreetingLog, clock <%= clockPkg %>.Clock, uow domain.UnitOfWork,
+) domain.GreetingLogUseCases {
+	return domain.NewGreetingLogUseCases(log, clock, uow)
+}

@@ -7,11 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"<%= modulePath %>/internal/app/resthttp"
-	"<%= modulePath %>/internal/domain"
-	"<%= modulePath %>/internal/infra/clockfake"
-	"<%= modulePath %>/internal/infra/greetinglogfake"
-	"<%= modulePath %>/internal/infra/uowfake"
+<%- testImports %>
 )
 
 func greetingsServer(t *testing.T) *httptest.Server {

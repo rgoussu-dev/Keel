@@ -29,7 +29,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 import { expectOk, installMediator } from '../support/factory.js';
 
@@ -118,6 +118,21 @@ const generate = async (
     ),
   );
   expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
+};
+
+/**
+ * Layers a vertical onto the generated project, exactly as
+ * `keel add <vertical>` does. The Go verticals' deferred `go mod
+ * tidy` runs for real — fetching the modules the slice imports is
+ * part of what the install promises.
+ */
+const add = async (vertical: string): Promise<void> => {
+  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  expectOk(
+    await mediator.dispatch(
+      addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+    ),
+  );
 };
 
 /**
@@ -290,6 +305,49 @@ describe.skipIf(skipE2E)('walking-skeleton Go modulith e2e', () => {
       goRun(['build', './...']);
 
       await driveHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`));
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  /**
+   * `keel add persistence` on a modulith, which is the case the
+   * vertical used to refuse. Five packages move, so the toolchain is
+   * the only thing that can confirm they landed somewhere the compiler
+   * accepts — and `go build` alone cannot, because a slice emitted at
+   * the wrong paths and never wired compiles perfectly well. So this
+   * asserts the assembly, and then re-runs the facade probe: the new
+   * factory widens the aperture, and the wall has to survive it.
+   */
+  it(
+    'go-http --module-layout=modulith + persistence: compiles, wires, and keeps the aperture shut',
+    async () => {
+      await generate('go-http', 'skel', 'modulith');
+      await add('persistence');
+
+      goRun(['vet', './...']);
+      goRun(['test', './...']);
+      goRun(['build', './...']);
+
+      const main = await fs.readFile(path.join(cwd, 'cmd', 'http', 'main.go'), 'utf8');
+      expect(main).toContain('greetings := greeting.NewGreetingLogUseCases(');
+      expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
+
+      // The slice's ports are as unnameable from the assembly as the
+      // greet port was — adding a factory to the facade must not have
+      // leaked a type alias alongside it.
+      const probe = path.join(cwd, 'cmd', 'http', 'probe.go');
+      await fs.writeFile(
+        probe,
+        'package main\n\nimport "example.com/skel/internal/modules/greeting"\n\nvar _ greeting.GreetingLog\n',
+      );
+      const named = spawnSync('go', ['build', './cmd/...'], {
+        cwd,
+        env: goEnv(),
+        encoding: 'utf8',
+      });
+      expect(named.status, "naming the slice's port must not compile").not.toBe(0);
+      expect(`${named.stdout}${named.stderr}`).toContain('undefined: greeting.GreetingLog');
+      await fs.remove(probe);
     },
     E2E_TIMEOUT_MS,
   );

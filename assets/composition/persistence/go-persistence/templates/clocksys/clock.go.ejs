@@ -4,16 +4,16 @@ package clocksys
 import (
 	"time"
 
-	"<%= modulePath %>/internal/domain"
+<%- projectImports %>
 )
 
 // Clock reads the platform clock.
 type Clock struct{}
 
 // Compile-time proof the adapter satisfies its port.
-var _ domain.Clock = Clock{}
+var _ <%= clockRef %> = Clock{}
 
-// Now implements domain.Clock.
+// Now implements <%= clockRef %>.
 func (Clock) Now() time.Time {
 	return time.Now().UTC()
 }

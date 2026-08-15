@@ -6,10 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"<%= modulePath %>/internal/domain"
-	"<%= modulePath %>/internal/infra/clockfake"
-	"<%= modulePath %>/internal/infra/greetinglogfake"
-	"<%= modulePath %>/internal/infra/uowfake"
+<%- testImports %>
 )
 
 func factory() (domain.GreetingLogUseCases, *uowfake.UnitOfWork) {
