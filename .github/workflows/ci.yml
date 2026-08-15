@@ -94,10 +94,18 @@ jobs:
         with:
           gradle-version: '9.4.1'
 
+      # `stable`, not the `go 1.24` the emitted go.mod declares — that
+      # directive does not survive first contact. The OpenTelemetry
+      # modules the observability vertical pulls in require Go >= 1.25,
+      # so the bootstrap's own `go mod tidy` rewrites the line to
+      # `go 1.25.0`. On a developer's machine that is invisible
+      # (GOTOOLCHAIN defaults to `auto` and Go fetches the newer
+      # toolchain); setup-go pins GOTOOLCHAIN=local, so a runner on 1.24
+      # cannot upgrade and the scaffold fails outright.
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.24'
+          go-version: stable
           cache: false
 
       # Every suite skips itself when its toolchain is absent, so a
