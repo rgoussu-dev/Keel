@@ -1,0 +1,8 @@
+[package]
+name = "guestbook-domain-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+platform-kernel = { path = "../../../../platform/kernel" }
+guestbook-domain-contract = { path = "../contract" }

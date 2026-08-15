@@ -114,6 +114,8 @@ export interface RustProjectSpec {
    * (`fullstack-rust` → `backend`). The root itself when omitted.
    */
   readonly servicePath?: string;
+  /** Also scaffold the peer bounded context (modulith only). */
+  readonly withPeerContext?: boolean;
 }
 
 /**
@@ -167,6 +169,7 @@ export async function scaffold(
         interactive: false,
         dryRun: false,
         ...(spec.moduleLayout !== undefined ? { moduleLayout: spec.moduleLayout } : {}),
+        ...(spec.withPeerContext === true ? { withPeerContext: true } : {}),
       }),
     ),
   );

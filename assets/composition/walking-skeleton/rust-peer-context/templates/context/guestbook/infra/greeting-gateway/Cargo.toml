@@ -1,0 +1,15 @@
+[package]
+name = "guestbook-infra-greeting-gateway"
+version.workspace = true
+edition.workspace = true
+
+# The whole point of this crate is the edge it declares. It reaches
+# the greeting context through that context's seam crate and nothing
+# else: there is deliberately no `greeting-domain-contract` entry
+# here, and adding one would give this gateway the peer's entire
+# domain. `cargo tree -p guestbook-infra-greeting-gateway` is the
+# one-command review.
+[dependencies]
+platform-kernel = { path = "../../../../platform/kernel" }
+guestbook-domain-contract = { path = "../../domain/contract" }
+greeting-user-side-service = { path = "../../../greeting/user-side/service" }
