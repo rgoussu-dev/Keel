@@ -669,6 +669,168 @@ is worth far more once I.1–I.4 have settled each language's resolver.
 
 ---
 
+## J — Close the JVM modulith grid, then put language on the CI axis
+
+**Goal.** **H** closed the `basic` grid: all twelve JVM stacks are
+built, booted and driven. It did not close the **modulith** one, and
+the two are not the same table. A modulith cell is a stack _and_ a
+build system — the layout is where leaf project names repeat
+(`contract` under both `domain/` and `user-side/api/`), where the root
+build derives per-path groups to keep them apart, and where Gradle's
+coordinate resolution and Maven's reactor order genuinely diverge.
+Twelve stacks × two build systems is **24 cells**, and **five** of
+them have ever been through a compiler:
+
+|                | Java Gradle | Java Maven | Kotlin Gradle | Kotlin Maven |
+| -------------- | ----------- | ---------- | ------------- | ------------ |
+| Quarkus REST   | ✅          | ✅         | ⬜            | ⬜           |
+| Spring REST    | ✅          | ✅         | ⬜            | ⬜           |
+| Micronaut REST | ✅          | ⬜         | ⬜            | ⬜           |
+| Quarkus CLI    | ⬜          | ⬜         | ⬜            | ⬜           |
+| Spring CLI     | ⬜          | ⬜         | ⬜            | ⬜           |
+| Micronaut CLI  | ⬜          | ⬜         | ⬜            | ⬜           |
+
+Everything in the empty cells is **written and shipped**. All twelve
+stacks carry a `templates-modulith/` tree,
+`walking-skeleton/jvm-build-modulith/` has `gradle/` and `maven/`
+variants for all twelve, and the peer context has six adapter ids
+across four files in `src/domain/core/adapters/*-peer-context.ts` —
+one per (framework, language). Nothing here needs writing. What is
+missing is that almost none of it has ever been compiled.
+
+**All nineteen get built — one e2e suite per cell.** That is a
+deliberate choice against the cheaper one, and it costs roughly double
+the e2e runner time the JVM half spends today. The case for it is that
+every alternative is an argument about which cells are _redundant_,
+and such an argument is exactly what a grid exists to stop anyone
+having to make. A factorised subset — "the Kotlin binding is one file
+shared by both shapes, so Kotlin × CLI is the product of two covered
+factors" — is a plausible independence claim about code nobody has
+compiled, which is the same class of reasoning that left nineteen
+cells empty in the first place. An unstated gap is the failure mode
+this line of work exists to remove; a stated-but-guessed one is only
+marginally better. After J, the table has no `⬜` and no paragraph
+explaining why some `⬜` is fine.
+
+The bill is stated rather than buried: 19 new suites at roughly
+3–5 minutes each, which J.4 has to absorb by resharding rather than by
+letting one job run 35 minutes.
+
+Ordering is the same rule **H** was built around and it still binds:
+**populate the grid first, shard second.** Language is not a CI axis
+today for exactly one reason — the modulith half has no Kotlin suite,
+so `e2e (jvm-kotlin)` would be a check name over a cell nothing
+populates. J.1 is what makes the reshard legal, which is why the
+reshard is J.4 and not J.1.
+
+### J.0 — One file per cell (prerequisite, S)
+
+A 24-cell grid needs its suites named after their cells, or the
+invariant "every cell has a suite" is unverifiable by reading
+`tests/e2e/`. Today four files hold five cells under names that
+predate the grid (`walking-skeleton-modulith.test.ts` is
+Quarkus/Java/Gradle; `-maven.test.ts` holds _two_ cells, Quarkus and
+Spring). Rename the modulith suites to `modulith-<stack>-<build>.test.ts`
+and split the Maven pair, so the grid reads off `ls` and the shard
+matrix in `ci.yml` names cells rather than history.
+
+`modulith-persistence.test.ts` keeps a name of its own: it is not a
+grid cell but a vertical layered onto one.
+
+Pure rename plus a matrix update — no new coverage, and
+`tests/ci-workflow.test.ts` is what proves the matrix kept up.
+
+**Commit.** `refactor(e2e): name the modulith suites after their grid cell`
+
+### J.1 — The Kotlin REST modulith row (M)
+
+Six cells: `quarkus-rest-kotlin`, `spring-rest-kotlin`,
+`micronaut-rest-kotlin`, each on Gradle and Maven, all
+`--module-layout=modulith` with the peer context. Highest value in the
+table, and not because it is the biggest gap — because the Kotlin peer
+wiring is **different code, not a translation**. Micronaut's Kotlin
+composition root wires handlers **by hand**
+(`RegistryMediator(listOf(GreetHandler(), SignHandler(welcome)))` in a
+`MediatorFactory`), because `@Import(annotated = …)` is Java-only and
+annotation discovery would drag KSP into `domain/core`. That is the
+most divergent code in any peer-context adapter and it has never been
+compiled.
+
+`tests/support/jvm-rest-e2e.ts` already parameterises everything
+framework-specific, and `JvmProjectSpec` already carries
+`moduleLayout`, `buildSystem` and `withPeerContext`, so a REST
+modulith case is a spec object and a `describe` — no harness change.
+
+This is also what makes J.4 legal: after it, language is populated on
+both typologies.
+
+**Commit.** `test(e2e): build the Kotlin moduliths`
+
+### J.2 — Close the Java REST square (S)
+
+`micronaut-rest` on Maven with the peer context: the last empty Java
+REST modulith cell, and the only Micronaut modulith never built by
+Maven. One file.
+
+**Commit.** `test(e2e): build the Micronaut modulith on Maven`
+
+### J.3 — The CLI modulith, all twelve cells (L)
+
+**No CLI modulith has ever been built, in any configuration** — twelve
+empty cells, the largest contiguous block in the table, and after J.1
+and J.2 the only one left. The assembly differs from REST's
+(`application/cli`, not `application/api`), and the peer-context
+adapter resolves it from the `arch.cli` tag rather than hard-coding
+it, so the CLI half of that resolution has never run.
+
+The coverage these can claim is stronger than it looked going in. The
+open question was whether an emitted CLI modulith produces a peer
+wiring test the build runs, the way the REST assembly's
+`GuestbookWiringTest` does — if not, the cells would be provable only
+as "compiles and packages", which is weaker and would have to be said
+out loud rather than quietly accepted. It does:
+`jvmPeerContextAdapter` renders
+`jvm-peer-context/wiring/<framework>/<language>/` into the _resolved_
+assembly, whichever shape that is, and the test injects `Mediator` and
+dispatches a `SignCommand` — nothing in it is REST-specific. So a CLI
+modulith cell proves container discovery and peer binding, exactly as
+a REST one does, and the jar it then runs proves the picocli wiring on
+top.
+
+**Commit.** `test(e2e): build the JVM CLI moduliths`
+
+### J.4 — Reshard along the now-populated language axis (S)
+
+Only once J.0–J.3 are green. Language is then populated on **both**
+typologies for the first time, so it becomes a legal axis — the
+constraint that blocked it in H.3 is lifted by J.1, not by argument.
+
+The scale of the reshard is set by J.3, not by taste. `jvm-modulith`
+goes from 5 files to 25; at H.3's measured divisor that is over half
+an hour in one job, against a 400s shard today. So the question is not
+whether to split it but along which axes, and how far — and every
+answer must be justified on **measured wall clock on the shape
+actually shipped**, not on arithmetic. H.3's prediction failed
+precisely because it assumed a divisor of 4 where the measured one is
+2.15–2.42 in a four-file shard and 2.78 in a sixteen-file one.
+
+Re-measure per shard, put the numbers here, and justify the split on
+what a red X tells you as much as on seconds.
+
+Reference, #54's four shards on real runners including setup:
+`jvm-quarkus` 400s, `jvm-modulith` 399s, `jvm-micronaut` 366s,
+`jvm-spring` 313s.
+
+**Commit.** `ci: <the shape actually chosen>`
+
+### Not in scope for J
+
+Roadmap item **I.4** — the Rust modulith layout, the last stack family
+shipping `basic` only — is a session of its own and is not made easier
+or harder by this one.
+
+---
+
 ## Backlog (unordered)
 
 - **A second bounded context in the modulith skeleton** — the
