@@ -33,8 +33,9 @@
 
 import { databaseName, sqlEngine } from './persistence-engine.js';
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
+import { moduleLayoutOf } from './module-layout.js';
 import { eolAware } from '../util.js';
-import type { Adapter } from '../../contract/composition.js';
+import type { Adapter, Tag } from '../../contract/composition.js';
 
 export const RUST_PERSISTENCE_ID = 'persistence/rust-persistence';
 
@@ -140,6 +141,7 @@ export const rustPersistenceAdapter: Adapter = {
   covers: ['datasource', 'unit-of-work', 'repository-example'],
   predicate: { requires: ['lang.rust', 'arch.server-http'] },
   async contribute(ctx) {
+    rejectModulith(ctx.manifest.tags);
     const { projectName, crateName } = rustBootstrapAnswers(ctx.manifest, RUST_PERSISTENCE_ID);
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       projectName,
@@ -206,3 +208,33 @@ export const rustPersistenceAdapter: Adapter = {
     };
   },
 };
+
+/**
+ * Refuses the modulith layout, with the reason and the workaround.
+ *
+ * This vertical still emits the flat tree: ports as `domain`
+ * submodules, adapters under `src/infra/`, the repository wiring
+ * appended to `src/bin/http/main.rs`. None of those paths exist in a
+ * workspace, so without this guard `keel add persistence` on a
+ * modulith project dies on `patch target 'src/domain.rs' does not
+ * exist in tree` — a true statement that explains nothing.
+ *
+ * Porting it is a bigger piece than the other three Rust verticals
+ * rather than a longer one: the adapters become a crate of their own
+ * (`greeting-infra-postgres`) with a manifest, a workspace member and
+ * an assembly dependency, and its tests need a Postgres through
+ * Testcontainers — which the `rust` CI shard, provisioning `cargo`
+ * alone, cannot run today. Tracked as roadmap I.5.
+ *
+ * Failing here rather than at the first missing patch is the point:
+ * the user learns what is unsupported and what to do instead, at the
+ * moment they ask for it, with nothing half-written on disk.
+ */
+function rejectModulith(tags: readonly Tag[]): void {
+  if (moduleLayoutOf(tags) !== 'modulith') return;
+  throw new Error(
+    `${RUST_PERSISTENCE_ID}: the persistence vertical does not support the Rust modulith layout yet — ` +
+      'its adapters need a crate of their own under modules/<ctx>/infra/, which is roadmap I.5. ' +
+      'Scaffold with --module-layout=basic to use it today, or add the postgres adapter by hand.',
+  );
+}
