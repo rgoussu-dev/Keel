@@ -92,6 +92,8 @@ jobs:
               tests/e2e/walking-skeleton-spring.test.ts
               tests/e2e/walking-skeleton-micronaut.test.ts
               tests/e2e/walking-skeleton-kotlin.test.ts
+              tests/e2e/walking-skeleton-spring-kotlin.test.ts
+              tests/e2e/walking-skeleton-micronaut-kotlin.test.ts
               tests/e2e/walking-skeleton-modulith.test.ts
               tests/e2e/walking-skeleton-modulith-persistence.test.ts
               tests/e2e/walking-skeleton-modulith-maven.test.ts
