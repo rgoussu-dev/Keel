@@ -1,0 +1,12 @@
+[workspace]
+resolver = "3"
+members = [
+    "platform/kernel",
+    "modules/greeting/domain/contract",
+    "modules/greeting/domain/core",
+    "modules/greeting/user-side/service",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"

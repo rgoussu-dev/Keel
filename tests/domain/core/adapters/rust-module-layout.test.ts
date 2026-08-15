@@ -27,6 +27,7 @@ import {
   PEER_CONTEXT_TAG,
 } from '../../../../src/domain/core/adapters/module-layout.js';
 import {
+  addWorkspaceMembers,
   hasPeerContext,
   rustLayout,
   rustPeerCrates,
@@ -245,8 +246,8 @@ describe('rustTemplateVars', () => {
 
     expect(vars).toMatchObject({
       projectName: 'skel',
-      crateName: 'greeting-domain-contract',
-      crateIdent: 'greeting_domain_contract',
+      contractCrate: 'greeting-domain-contract',
+      contractIdent: 'greeting_domain_contract',
       contractUse: 'greeting_domain_contract',
       kernelCrate: 'platform-kernel',
       serviceCrate: 'greeting-user-side-service',
@@ -258,8 +259,8 @@ describe('rustTemplateVars', () => {
 
     expect(vars).toMatchObject({
       projectName: 'skel',
-      crateName: 'skel',
-      crateIdent: 'skel',
+      contractCrate: 'skel',
+      contractIdent: 'skel',
       contractUse: 'skel::domain',
     });
   });
@@ -268,5 +269,48 @@ describe('rustTemplateVars', () => {
 describe('layout resolution from tags', () => {
   it('defaults to basic when the manifest carries neither tag', () => {
     expect(rustLayout([], PROJECT).layout).toBe('basic');
+  });
+});
+
+describe('addWorkspaceMembers', () => {
+  const manifest = (members: readonly string[]): string =>
+    `[workspace]\nresolver = "3"\nmembers = [\n${members
+      .map((m) => `    "${m}",`)
+      .join('\n')}\n]\n\n[workspace.package]\nversion = "0.1.0"\n`;
+
+  it('adds a crate and keeps the list sorted', () => {
+    const got = addWorkspaceMembers(manifest(['platform/kernel']), ['application/cli']);
+
+    expect(got).toContain('"application/cli",');
+    expect(got.indexOf('"application/cli"')).toBeLessThan(got.indexOf('"platform/kernel"'));
+  });
+
+  it('is idempotent — re-applying adds nothing', () => {
+    const once = addWorkspaceMembers(manifest(['platform/kernel']), ['application/cli']);
+
+    expect(addWorkspaceMembers(once, ['application/cli'])).toBe(once);
+  });
+
+  it('preserves entries an earlier adapter already added', () => {
+    const got = addWorkspaceMembers(manifest(['platform/kernel', 'application/cli']), [
+      'modules/guestbook/domain/core',
+    ]);
+
+    for (const m of ['platform/kernel', 'application/cli', 'modules/guestbook/domain/core']) {
+      expect(got).toContain(`"${m}",`);
+    }
+  });
+
+  it('leaves the rest of the manifest untouched', () => {
+    const got = addWorkspaceMembers(manifest(['platform/kernel']), ['application/http']);
+
+    expect(got).toContain('[workspace.package]');
+    expect(got).toContain('resolver = "3"');
+  });
+
+  it('throws when there is no members list, rather than silently dropping the crate', () => {
+    expect(() => addWorkspaceMembers('[package]\nname = "skel"\n', ['application/cli'])).toThrow(
+      /no workspace members list/,
+    );
   });
 });

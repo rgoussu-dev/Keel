@@ -20,12 +20,13 @@
  */
 
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
+import { rustLayout } from './rust-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
 import { eolAware } from '../util.js';
 
 export const RUST_OBSERVABILITY_ID = 'observability/rust-observability';
 
-const TEMPLATE_ID = 'composition/observability/rust-observability/templates';
+const TEMPLATE_ROOT = 'composition/observability/rust-observability/templates';
 
 const DEPENDENCIES_MARKER = '[dependencies]';
 
@@ -37,7 +38,8 @@ tracing-opentelemetry = "0.33"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 uuid = { version = "1", features = ["v4"] }`;
 
-const MAIN_TARGET = 'src/bin/http/main.rs';
+/** The delivery typology this vertical decorates. */
+const TYPOLOGY = 'http';
 const MODS_PLAIN = 'mod handler;';
 const MODS_OBSERVED = 'mod handler;\nmod health;\nmod observability;';
 const MAIN_OPEN = 'async fn main() {\n';
@@ -80,12 +82,24 @@ export const rustObservabilityAdapter: Adapter = {
   predicate: { requires: ['lang.rust', 'arch.server-http'] },
   async contribute(ctx) {
     const { projectName } = rustBootstrapAnswers(ctx.manifest, RUST_OBSERVABILITY_ID);
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { projectName });
+    // Both the sibling modules and the manifest carrying their
+    // dependencies move with the layout: under the modulith the
+    // assembly is its own crate, so the telemetry stack belongs to
+    // that crate's manifest rather than to the workspace root.
+    const layout = rustLayout(ctx.manifest.tags, projectName);
+    const assembly = layout.assembly(TYPOLOGY);
+    const mainTarget = assembly.rootFile;
+    const manifestTarget = assembly.crate.manifest;
+    const files = await ctx.templates.render(
+      `${TEMPLATE_ROOT}/unit`,
+      mainTarget.slice(0, mainTarget.lastIndexOf('/')),
+      { projectName },
+    );
     return {
       files,
       patches: [
         {
-          target: 'Cargo.toml',
+          target: manifestTarget,
           apply: eolAware((existing) => {
             if (existing.includes('tracing-opentelemetry')) return existing;
             return existing.replace(
@@ -95,7 +109,7 @@ export const rustObservabilityAdapter: Adapter = {
           }),
         },
         {
-          target: MAIN_TARGET,
+          target: mainTarget,
           apply: eolAware((existing) => patchMainRs(existing, projectName)),
         },
         {

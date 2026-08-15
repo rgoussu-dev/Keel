@@ -204,6 +204,16 @@ function unitInRoot(crate: RustCrate, module: string): RustUnit {
   };
 }
 
+/** A secondary adapter of the single `basic` crate, under `src/infra/`. */
+function basicInfra(root: RustCrate, tech: string): RustUnit {
+  return {
+    crate: root,
+    rootFile: root.src(`infra/${tech}.rs`),
+    moduleFile: (name) => root.src(`infra/${tech}/${name}.rs`),
+    usePath: `${root.ident}::infra::${tech}`,
+  };
+}
+
 function unitAsCrate(crate: RustCrate): RustUnit {
   return {
     crate,
@@ -250,6 +260,14 @@ export interface RustLayoutPaths {
   readonly service: RustUnit;
   /** A driven (secondary) adapter, e.g. `infra('clock_fake')`. */
   infra(tech: string): RustUnit;
+  /**
+   * A driven adapter no bounded context owns — the system clock, the
+   * clock fake. Under `basic` it is an ordinary secondary adapter;
+   * under the modulith it joins the kernel, because a `Clock` that
+   * lived in `modules/<ctx>/` would make one context own everybody's
+   * time. The same reasoning as `goLayout.platform`.
+   */
+  platform(name: string): RustUnit;
   /** A driving (primary) adapter belonging to a context. */
   userSide(name: string): RustUnit;
   /**
@@ -291,7 +309,12 @@ export function rustLayout(tags: readonly Tag[], projectName: string): RustLayou
       layout,
       workspace: false,
       members: [],
-      kernel: unitInRoot(root, 'platform'),
+      // A `basic` project has one hexagon and therefore nowhere
+      // outside it to put a context-free port: `Clock` sits in the
+      // single domain face, which is where it sits today. Inventing a
+      // `src/platform.rs` nothing else uses would be a layout the
+      // templates do not emit.
+      kernel: contract,
       contract,
       // The core is a private module of the contract face here; its
       // `usePath` is the sibling-module spelling `domain::greet`,
@@ -303,12 +326,8 @@ export function rustLayout(tags: readonly Tag[], projectName: string): RustLayou
         usePath: `${root.ident}::domain`,
       },
       service: contract,
-      infra: (tech) => ({
-        crate: root,
-        rootFile: root.src(`infra/${tech}.rs`),
-        moduleFile: (name) => root.src(`infra/${tech}/${name}.rs`),
-        usePath: `${root.ident}::infra::${tech}`,
-      }),
+      infra: (tech) => basicInfra(root, tech),
+      platform: (name) => basicInfra(root, name),
       userSide: (name) => ({
         crate: root,
         rootFile: root.src(`app/${name}.rs`),
@@ -344,6 +363,15 @@ export function rustLayout(tags: readonly Tag[], projectName: string): RustLayou
     core: unitAsCrate(core),
     service: unitAsCrate(service),
     infra: (tech) => unitAsCrate(infra(tech)),
+    // A context-free adapter is a module of the kernel crate, not a
+    // crate of its own: one struct does not earn a manifest, and
+    // whatever holds it must be depended on by every context anyway.
+    platform: (name) => ({
+      crate: kernel,
+      rootFile: kernel.src(`${name}.rs`),
+      moduleFile: (sub) => kernel.src(`${name}/${sub}.rs`),
+      usePath: `${kernel.ident}::${name}`,
+    }),
     userSide: (name) => unitAsCrate(userSide(name)),
     assembly: (typology) => ({
       ...unitAsCrate(assembly(typology)),
@@ -353,6 +381,36 @@ export function rustLayout(tags: readonly Tag[], projectName: string): RustLayou
     crateAt,
     peerCrate: (peer, ...segments) => crateAt([MODULES_PREFIX, peer, ...segments].join('/')),
   };
+}
+
+/**
+ * Splices `dirs` into a workspace manifest's `members` list and
+ * returns it re-sorted, so an adapter adds a crate without guessing
+ * where the entry belongs.
+ *
+ * Rewriting the whole list from the entries actually present is what
+ * makes this idempotent and order-independent: an adapter that ran
+ * before you has already added lines yours must sort among, and
+ * anchoring on a line you expect to find breaks the moment it moves.
+ * The same reasoning as `addProjectImports` on the Go side.
+ *
+ * Throws when the manifest has no `members` list — that is a root
+ * `Cargo.toml` which has drifted past recognition (or a `basic`
+ * project, where no adapter should be calling this at all), and the
+ * caller's drift guard should surface it rather than leave a crate
+ * silently outside the build.
+ */
+export function addWorkspaceMembers(existing: string, dirs: readonly string[]): string {
+  const open = existing.indexOf('members = [');
+  const close = open === -1 ? -1 : existing.indexOf(']', open);
+  if (open === -1 || close === -1) {
+    throw new Error('no workspace members list to extend');
+  }
+  const body = existing.slice(existing.indexOf('[', open) + 1, close);
+  const present = [...body.matchAll(/"([^"]+)"/g)].map((m) => m[1] as string);
+  const merged = [...new Set([...present, ...dirs])].sort();
+  const entries = merged.map((m) => `    "${m}",`).join('\n');
+  return `${existing.slice(0, open)}members = [\n${entries}\n${existing.slice(close)}`;
 }
 
 /**
@@ -402,8 +460,13 @@ export function rustTemplateVars(
 ): Readonly<Record<string, string>> {
   return {
     projectName,
-    crateName: paths.contract.crate.name,
-    crateIdent: paths.contract.crate.ident,
+    // Deliberately *not* `crateName`: the single-crate `basic`
+    // templates already use that name for the root crate's Rust
+    // identifier (`ship_it`), and a package name (`ship-it`) is a
+    // different string. One name meaning two things is how a template
+    // silently renders the wrong one.
+    contractCrate: paths.contract.crate.name,
+    contractIdent: paths.contract.crate.ident,
     contractUse: paths.contract.usePath,
     kernelCrate: paths.kernel.crate.name,
     kernelUse: paths.kernel.usePath,

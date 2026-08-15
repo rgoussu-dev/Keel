@@ -1,0 +1,101 @@
+# <%= projectName %>
+
+Rust walking skeleton scaffolded by keel — hexagonal, **modulith
+layout**: one hexagon per bounded context, composed by an assembly
+per deployment unit. No mediator object: commands are structs,
+driving ports are per-use-case traits, and each assembly's `main` is
+the wiring.
+
+## Layout
+
+```
+Cargo.toml                          — the workspace; every crate below
+                                      is a member
+
+platform/kernel/                    — plumbing that belongs to no
+                                      context: BoxFuture, block_on.
+                                      Business vocabulary never goes
+                                      here
+
+modules/<context>/                  — one bounded context
+  domain/core/                      — pure functions, depends on
+                                      nothing; only domain/contract
+                                      depends on it
+  domain/contract/                  — the contract face: commands,
+                                      driving ports, factories
+  user-side/service/                — the peer seam: the only crate
+                                      another context may depend on
+  infra/<tech>/                     — driven adapters, one crate per
+                                      technology
+
+application/<typology>/             — one assembly per deployment
+                                      unit: wires contexts by hand
+                                      and contains no logic
+```
+
+## Why four crates per context
+
+Three of them are obvious; the fourth is the one that matters.
+
+- **`domain/core` and `domain/contract`** are the same wall a private
+  `mod` builds under the `basic` layout. Splitting them costs a
+  manifest and buys a smaller rebuild blast radius — a core edit
+  recompiles its dependents, not everything that ever named the
+  crate. If you want the wall and not the split, `basic` is a
+  supported choice, not a lesser one.
+- **`user-side/service` must be its own crate.** A Cargo dependency
+  hands the consumer everything the crate exports, so folding the
+  seam into `domain/contract` would give every gateway a legal edge
+  to this context's whole domain. Split out, a peer depends on the
+  seam and gets only the seam.
+- **`infra/<tech>`** are ordinary driven adapters. They may name the
+  context's ports because they sit inside the context; they are
+  separate crates so an assembly can construct them.
+
+## The peer seam, and what Rust does not enforce
+
+Contexts meet at `user-side/service` and nowhere else. That is what
+makes carving one out into its own service a wiring change.
+
+The rule for a seam crate is that **every type in its public API is
+declared by that crate** — its own DTOs, translated from the domain
+on the way out. Rust holds half of this for you and you should know
+which half:
+
+- **Naming is enforced.** A crate with no dependency on
+  `<ctx>-domain-contract` cannot write that path. `E0432`.
+- **Flow is not.** A consumer can bind whatever a public function
+  returns and read its fields — inference supplies the type it could
+  never write. So a seam that *returns* a domain type leaks it, with
+  no error and no warning.
+
+There is no stable-Rust lint for the second half: the check needs the
+crate's public API surface, and every tool that computes one reads
+nightly-only rustdoc JSON. So the rule is held by review, and
+`cargo tree -p <consumer>` names the one crate to look at. The
+upgrade is two lines the day `public-dependency` stabilises — see the
+module docs in `modules/greeting/user-side/service/src/lib.rs`, which
+state the rule at the point where it would be broken.
+
+## Async ports
+
+Ports that cross a context boundary return
+`platform_kernel::BoxFuture` rather than being `async fn`. This is
+not stylistic: `async fn` in a trait is not dyn-compatible, and every
+port here is wired behind `Arc<dyn Port>` at an assembly point. Use
+the `boxed!` macro to implement one.
+
+`platform_kernel::block_on` drives an async port from a synchronous
+assembly (the CLI) or from a test, without pulling in a runtime.
+
+## Test
+
+```sh
+cargo test --workspace
+```
+
+## Adding a context
+
+Add `modules/<name>/` with the crates above, list them in the
+workspace `members`, and wire it in the assembly. It reaches an
+existing context only through that context's `user-side/service`.

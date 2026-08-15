@@ -1,0 +1,8 @@
+[package]
+name = "greeting-user-side-service"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+platform-kernel = { path = "../../../../platform/kernel" }
+greeting-domain-contract = { path = "../../domain/contract" }

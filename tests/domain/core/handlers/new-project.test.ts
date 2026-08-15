@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
 import {
@@ -211,7 +212,11 @@ describe('keel.new-project (keel new)', () => {
     // Manifest was persisted with the stack's tags + answers.
     const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest).not.toBeNull();
-    expect(manifest!.tags).toEqual(['arch.cli', 'arch.hexagonal', 'lang.rust', 'pkg.cargo'].sort());
+    expect(manifest!.tags).toEqual(
+      // `layout.basic` is the dial's default, recorded so a later
+      // `keel add` resolves the same shape the project was built on.
+      ['arch.cli', 'arch.hexagonal', 'lang.rust', 'layout.basic', 'pkg.cargo'].sort(),
+    );
     expect(manifest!.answers['walking-skeleton/rust-bootstrap']).toEqual({
       projectName: 'shipper',
     });
@@ -514,22 +519,28 @@ describe('keel.new-project module-layout selection', () => {
     expect(error.message).toMatch(/basic, modulith/);
   });
 
-  it('rejects --module-layout for a stack that ships a single layout', async () => {
-    const mediator = installMediator();
-    const error = expectErr(
-      await mediator.dispatch(
-        newProjectCommand({
-          cwd,
-          stack: 'rust-cli',
-          answers: {},
-          interactive: false,
-          dryRun: false,
-          moduleLayout: 'modulith',
-        }),
-      ),
-    );
-    expect(error.code).toBe('keel.invalid-module-layout');
-    expect(error.message).toMatch(/single module layout/);
+  /**
+   * This replaces a test that used `rust-cli` as its example of a
+   * stack shipping one layout. Roadmap item I is what made that
+   * example impossible: with I.4 the fifth and last stack family got
+   * the dial, so **no service stack ships a single layout any more**
+   * and the `single module layout` branch in `new-project` is no
+   * longer reachable through any real stack.
+   *
+   * The branch is kept rather than deleted — a future stack that
+   * ships one layout must still reject the flag rather than silently
+   * accept one it cannot honour — but a test pinning it would have to
+   * invent a stack to do so. What is worth pinning instead is the
+   * invariant item I actually establishes, which is this one, and
+   * which would otherwise be asserted nowhere.
+   */
+  it('offers the module-layout dial on every service stack', () => {
+    const singleLayout = Object.values(STACKS)
+      .filter((stack) => stack.services === undefined)
+      .filter((stack) => stack.moduleLayouts === undefined)
+      .map((stack) => stack.id);
+
+    expect(singleLayout).toEqual([]);
   });
 
   it('rejects --module-layout on composite stacks', async () => {

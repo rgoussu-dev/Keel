@@ -32,10 +32,11 @@ import type {
 } from '../../contract/composition.js';
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
+import { rustLayout, rustTemplateVars } from './rust-module-layout.js';
 
 export const RUST_BOOTSTRAP_ID = 'walking-skeleton/rust-bootstrap';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/rust-bootstrap/templates';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/rust-bootstrap';
 
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
 
@@ -56,7 +57,13 @@ export const rustBootstrapAdapter: Adapter = {
   async contribute(ctx) {
     const projectName = validateProjectName(ctx.answer('projectName').trim());
     const crateName = toCrateName(projectName);
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { projectName, crateName });
+    const layout = rustLayout(ctx.manifest.tags, projectName);
+    const suffix = layout.layout === 'modulith' ? '-modulith' : '';
+    const files = await ctx.templates.render(`${TEMPLATE_ROOT}${suffix}/templates`, '', {
+      projectName,
+      crateName,
+      ...rustTemplateVars(layout, projectName),
+    });
     const action: DeferredAction = {
       id: RUST_BOOTSTRAP_ID,
       description: 'cargo check',
