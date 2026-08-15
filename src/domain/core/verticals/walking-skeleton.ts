@@ -55,6 +55,7 @@ import {
   springPeerContextAdapter,
   springPeerContextKotlinAdapter,
 } from '../adapters/spring-peer-context.js';
+import { rustPeerContextAdapter } from '../adapters/rust-peer-context.js';
 import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
 import { springCliKotlinBootstrapAdapter } from '../adapters/spring-cli-kotlin-bootstrap.js';
 import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
@@ -88,6 +89,7 @@ export const walkingSkeletonVertical: Vertical = {
     springPeerContextAdapter,
     springPeerContextKotlinAdapter,
     micronautPeerContextAdapter,
+    rustPeerContextAdapter,
     micronautPeerContextKotlinAdapter,
     gradleWrapperAdapter,
     mavenWrapperAdapter,

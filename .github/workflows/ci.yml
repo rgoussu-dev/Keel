@@ -197,6 +197,7 @@ jobs:
               tests/e2e/fullstack-rust.test.ts
               tests/e2e/modulith-rust-cli.test.ts
               tests/e2e/modulith-rust-http.test.ts
+              tests/e2e/modulith-rust-peer-context.test.ts
           - id: web
             tools: npm pnpm browser
             files: >-
