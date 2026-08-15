@@ -91,6 +91,28 @@ modulith the assembly cannot import the context's `domain` at all, so
 the factory it calls has to live on the facade — where, like
 `NewGreeter`, it hands back something `cmd/` can pass on but not name.
 
+And on Rust, where the unit that moves is the **crate**:
+
+| What                                             | `basic`                | `modulith`                                    |
+| ------------------------------------------------ | ---------------------- | --------------------------------------------- |
+| `GreetingLog` + `UnitOfWork` ports and use cases | `src/domain/`          | `modules/greeting/domain/contract`            |
+| postgres adapters + the fakes                    | `src/infra/`           | `modules/greeting/infra/postgres`             |
+| the system clock                                 | `src/infra/clock_sys`  | `platform/kernel`                             |
+| `POST\|GET /greetings` router                    | `src/bin/http/`        | the `application/http` assembly               |
+| DIP-strict use-case tests                        | the project's `tests/` | the contract crate's own `tests/`             |
+| the `postgres` driver                            | the one `Cargo.toml`   | the infra crate's manifest, and no one else's |
+
+The last row is what makes Rust's version a new crate rather than a
+new directory. A Cargo dependency is inherited by every dependent, so
+an adapter folded into `greeting-domain-contract` would put a database
+driver on the compile graph of everything that names the domain.
+`cargo tree -p greeting-domain-contract` is where you check it.
+
+The system clock joins `platform-kernel` for the mirror-image reason:
+it belongs to no context, and a `Clock` filed under `modules/greeting`
+would make one context own everybody's time. That is where
+`--module-layout=modulith` already puts the `Clock` port and its fake.
+
 ## Prerequisites
 
 | Requirement                            | When                                                                                                            |

@@ -158,13 +158,18 @@ Requires `--module-layout=modulith`; the flat layout has no
 `user-side/service` for a peer to reach through, and keel says so
 rather than silently scaffolding one context.
 
-### Not yet under the modulith
+### Verticals under the modulith
 
-[`keel add persistence`](../verticals/persistence.md) supports `basic`
-only on Rust and refuses the modulith with an explanation: its
-adapters need a crate of their own under `modules/<ctx>/infra/`.
-Tracked as roadmap I.5. `containerization` and `gateway` work under
-both.
+Every vertical Rust offers works under both layouts.
+[`keel add persistence`](../verticals/persistence.md) is the one that
+changes shape rather than just moving: its adapters become a crate of
+their own, `modules/greeting/infra/postgres`, added to the workspace
+members and depended on by the assembly. The ports join the context's
+contract crate, the system clock joins `platform-kernel`, and the
+`postgres` driver stays on the new crate's manifest and nowhere else —
+so nothing that merely names the domain compiles against a database
+driver. `containerization`, `gateway` and `observability` need no
+restructuring under either layout.
 
 `rust-http` additionally installs [`dev-env`](../verticals/dev-env.md)
 and [`observability`](../verticals/observability.md) by default
