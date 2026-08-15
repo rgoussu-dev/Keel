@@ -124,6 +124,100 @@ so it exercises the patch path of the composition contract.
 
 ---
 
+## H — Close the JVM e2e grid, then shard CI along it
+
+**Goal.** keel emits **twelve JVM stacks** — three frameworks × two
+languages × two entrypoint shapes — and `tests/e2e/` covers **four of
+them**. The gap is not cosmetic: every JVM defect that reached `main`
+so far was found by a build, never by a file assertion, and the two
+Maven modulith defects were found the week a build first ran that
+combination. Seven stacks currently ship on the strength of unit tests
+over emitted files.
+
+|           | Java CLI | Java REST | Kotlin CLI | Kotlin REST |
+| --------- | -------- | --------- | ---------- | ----------- |
+| Quarkus   | ✅       | ✅        | ❌         | ✅          |
+| Spring    | ❌       | ✅        | ❌         | ❌          |
+| Micronaut | ❌       | ✅        | ❌         | ❌          |
+
+The CI shape follows from this, not the other way round. `e2e (jvm)` is
+one job because the grid is too sparse to shard along: a
+framework × language matrix over today's files would mint
+`e2e (spring-kotlin)` as a green job that runs nothing, which asserts
+coverage that does not exist. **Populate the grid first; shard second.**
+
+### H.1 — The two missing REST stacks (S)
+
+`spring-rest-kotlin` and `micronaut-rest-kotlin` — the only REST cells
+still empty. Cheap, because `tests/support/jvm-rest-e2e.ts` already
+parameterises everything framework-specific into `JvmRestE2ESpec` —
+stack id, jar path, random-port flag, the log line announcing the port,
+health paths, telemetry-silencing flags. A new REST suite is a spec
+object and a `describe`, on the order of fifty lines, with no harness
+change. The two Java siblings are the specs to copy from.
+
+Expect these to fail before they pass. That is the point of the item.
+
+**Commit.** `test(e2e): cover the Kotlin REST stacks end to end`
+
+### H.1b — Modulith beyond Quarkus (S)
+
+The typology axis is sparser than the framework one. `modulith` has an
+e2e on Quarkus/Gradle, on Quarkus/Maven and on Spring/Maven — and
+nowhere else. **Micronaut has never had its modulith built**, in either
+language or either build system, and Spring's has only ever been built
+by Maven. Given that the peer-context wiring is the part that differs
+per container, and that both defects it has shipped were container
+wiring, this is the highest-value gap in the table.
+
+**Commit.** `test(e2e): build the Micronaut and Spring moduliths`
+
+### H.2 — Extract a CLI harness, then the five CLI stacks (M)
+
+The CLI half has no shared machinery: `tests/e2e/walking-skeleton.test.ts`
+carries the `quarkus-cli` flow inline — scaffold, build, then
+`java -jar … hello --name E2E` and assert on stdout. Extract it to
+`tests/support/jvm-cli-e2e.ts` with a `JvmCliE2ESpec` (stack, jar path,
+argv, expected stdout), leaving the Quarkus suite as its first caller
+and asserting the same things it asserts today. Then add
+`spring-cli`, `micronaut-cli` and the three Kotlin CLI stacks.
+
+Do the extraction as its own commit, and prove it green on the
+existing Quarkus case before any new stack lands — otherwise a broken
+extraction and a genuine stack defect arrive as one red build.
+
+**Commits.** `refactor(e2e): extract the JVM CLI harness` then
+`test(e2e): cover the remaining JVM CLI stacks`
+
+### H.3 — Reshard `e2e (jvm)` along the populated grid (S)
+
+Only once H.1 and H.2 are green. The axes are framework, language, and
+**typology** — `basic` against `modulith`, which is the axis that has
+actually shipped defects and the one no framework grouping captures.
+
+Sizing, measured on the sharded run of PR #53 (per-file, seconds):
+`rest` 228.6 · `modulith-persistence` 204.7 · `kotlin` 194.9 ·
+`modulith` 192.2 · `micronaut` 156.8 · `spring` 122.0 ·
+`walking-skeleton` + `modulith-maven` 298.1 combined.
+
+Two facts constrain any split. A runner has 4 vCPUs and vitest runs
+files in parallel but the tests inside a file in sequence, so a shard's
+wall clock is `max(longest file, total / 4)` — **228.6s is the floor
+for every arrangement**, and it moves only if the longest file is split
+again. And a shard costs about 25 seconds of setup, so shards that
+finish under a minute are mostly overhead.
+
+The consequence worth writing down: **beyond two JVM shards you are
+buying attribution, not speed.** Two balanced shards already reach the
+floor at roughly the current runner cost; six reach the same floor at
+nearly double it. Grid-shaped shards are worth having for what a red X
+tells you, and that is a real benefit — but justify them on that,
+never on wall clock, and re-measure before claiming otherwise.
+
+**Commit.** `ci: shard the JVM e2e job by framework, language and layout`
+
+---
+
 ## I — The modulith layout beyond the JVM
 
 **Goal.** Go, Rust, `ts-http` and `web-components` ship `basic` only.
