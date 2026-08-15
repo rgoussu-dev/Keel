@@ -47,10 +47,18 @@ my-service/
   AGENTS.md              # the binding spec; CLAUDE.md is a pointer to it
 ```
 
-The domain packages compile with `"types": []` and per-package
-`tsc --noEmit` walls — **a domain import of `node:*` is a compile
-error**, so the dependency rule is enforced by the compiler, not by
-review.
+Each package's `exports` map is the wall the compiler holds:
+`domain/core` publishes its factories and nothing else, so a deep
+import of a handler is a `TS2307` from `tsc` **and** an
+`ERR_PACKAGE_PATH_NOT_EXPORTED` from Node.
+
+The domain packages also set `"types": []`. That is worth stating
+precisely, because it is easy to over-read: it suppresses the
+automatic global `@types`, and an explicit
+`import … from 'node:async_hooks'` still resolves and typechecks
+clean. "The domain never imports the platform" is a rule `basic`
+holds by review; the [`modulith` layout](#module-layout) holds it with
+a `domain-knows-no-platform` lint.
 
 [`dev-env`](../verticals/dev-env.md) and
 [`observability`](../verticals/observability.md) are installed by
