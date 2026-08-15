@@ -20,16 +20,16 @@ Bootstrap a greenfield project from a [stack preset](stacks/README.md).
 keel new --stack=<id> [options]
 ```
 
-| Option                 | Meaning                                                                                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --stack <id>`     | Stack preset id (see the [stack catalog](stacks/README.md)). Defaults to `quarkus-cli`.                                                                                                                             |
-| `--layout <layout>`    | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                   |
-| `--build-system <id>`  | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks.                                                                                      |
-| `--module-layout <id>` | JVM, Go and `ts-http` stacks: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories. |
-| `--with-peer-context`  | JVM stacks, under `--module-layout=modulith`: also scaffold a second bounded context reaching the first only through its `user-side/service` seam.                                                                  |
-| `-y, --yes`            | Non-interactive — use defaults for unanswered questions.                                                                                                                                                            |
-| `--dry-run`            | Print the plan without writing any file.                                                                                                                                                                            |
-| `--set <k=v>`          | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                      |
+| Option                 | Meaning                                                                                                                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-s, --stack <id>`     | Stack preset id (see the [stack catalog](stacks/README.md)). Defaults to `quarkus-cli`.                                                                                                                                               |
+| `--layout <layout>`    | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                     |
+| `--build-system <id>`  | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks.                                                                                                        |
+| `--module-layout <id>` | JVM, Go, `ts-http` and `web-components` stacks: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories. |
+| `--with-peer-context`  | JVM stacks, under `--module-layout=modulith`: also scaffold a second bounded context reaching the first only through its `user-side/service` seam.                                                                                    |
+| `-y, --yes`            | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                              |
+| `--dry-run`            | Print the plan without writing any file.                                                                                                                                                                                              |
+| `--set <k=v>`          | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                        |
 
 Examples:
 

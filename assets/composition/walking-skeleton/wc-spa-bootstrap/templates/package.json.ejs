@@ -15,7 +15,7 @@
     "typecheck": "pnpm -r --if-present run typecheck"
   }
 <% } else { -%>
-  "workspaces": ["design-system", "domain/*", "application/*", "infrastructure/*"],
+  "workspaces": [<%- workspaceGlobs %>],
   "scripts": {
     "dev": "npm run dev --workspace application/web-app",
     "build": "npm run build --workspaces --if-present",

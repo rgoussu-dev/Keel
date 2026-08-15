@@ -1,0 +1,16 @@
+import type { Greet, GreetCommand } from '../../contract/index';
+import type { GreetingStore } from './greeting-store';
+
+/**
+ * Factory for the greet driving port. The assembly point calls this
+ * with the store (and decorates the result there for cross-cutting
+ * concerns); elements receive the port through its context key.
+ */
+export function createGreet(greetings: GreetingStore): Greet {
+  return {
+    execute(command: GreetCommand): void {
+      const name = command.name.trim();
+      greetings.publish({ message: `Hello, ${name === '' ? 'world' : name}!` });
+    },
+  };
+}

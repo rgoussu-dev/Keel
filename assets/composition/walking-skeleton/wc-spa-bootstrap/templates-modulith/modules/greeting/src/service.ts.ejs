@@ -1,0 +1,42 @@
+import type { Greet, GreetingReadModel } from './domain/contract/index';
+
+/**
+ * What this context offers a **peer context** — the seam that makes
+ * carving it out (into another bundle, another team's repo, its own
+ * micro-frontend) a wiring change rather than a rewrite. A peer
+ * depends on `<%= contextPkg %>/service` and on nothing else of ours.
+ *
+ * Every type crossing the seam is declared here. `greet` takes a
+ * plain `string` and `latest` returns one, rather than this context's
+ * `GreetCommand` and `Greeting`: a DTO of our own can change shape
+ * without a peer's compile breaking, and a domain type handed across
+ * would let a consumer bind to our vocabulary without importing our
+ * facade at all. The rule governs this file's exported signatures and
+ * only this file's.
+ *
+ * The factory's parameters are the exception that proves it: they are
+ * this context's ports, so only the **assembly** can call it — which
+ * is correct, because the assembly is what wires contexts together. A
+ * peer receives the built `GreetingService`, never constructs one.
+ */
+export interface GreetingService {
+  /** Asks for a greeting; the result arrives through {@link latest}. */
+  greet(name: string): void;
+  /** The latest greeting's message, or null before the first one. */
+  latest(): string | null;
+}
+
+/** Builds the peer-facing service over this context's own ports. */
+export function createGreetingService(
+  greet: Greet,
+  greetings: GreetingReadModel,
+): GreetingService {
+  return {
+    greet(name: string): void {
+      greet.execute({ name });
+    },
+    latest(): string | null {
+      return greetings.current()?.message ?? null;
+    },
+  };
+}

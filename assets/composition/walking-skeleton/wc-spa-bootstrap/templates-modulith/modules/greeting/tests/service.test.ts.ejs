@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest';
+import { createGreetingStore } from '<%= contextPkg %>';
+import { createGreetingService } from '<%= contextPkg %>/service';
+
+/**
+ * The peer seam, exercised through the entry point a peer imports.
+ * Nothing here names a domain type in its own signatures, because a
+ * peer could not.
+ *
+ * The greet port is stubbed rather than assembled from the real
+ * factory on purpose: what the seam is responsible for is the mapping
+ * between a peer's `string` and this context's vocabulary, and that
+ * should keep being tested when the use case behind it grows a
+ * gateway, a decorator, or an argument.
+ */
+const factory = (): ReturnType<typeof createGreetingService> => {
+  const greetings = createGreetingStore();
+  return createGreetingService(
+    { execute: ({ name }) => greetings.publish({ message: `Hello, ${name}!` }) },
+    greetings,
+  );
+};
+
+describe('the greeting service seam', () => {
+  it('answers a peer with its own DTO', () => {
+    const service = factory();
+    service.greet('Ada');
+    expect(service.latest()).toBe('Hello, Ada!');
+  });
+
+  it('has nothing to report before the first greeting', () => {
+    expect(factory().latest()).toBeNull();
+  });
+});

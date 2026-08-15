@@ -1,0 +1,47 @@
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { Plugin } from 'vite';
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Puts the design system's own build output where the import map in
+ * `index.html` says it is.
+ *
+ * Leaving the design system **external** is the point of the map: a
+ * package that defines custom elements must exist exactly once per
+ * page, and inlining it into every bundle that uses it guarantees the
+ * opposite the moment there is a second bundle — the second
+ * registration throws `NotSupportedError` and aborts the rest of that
+ * bundle's registrations, so part of the page silently stops
+ * upgrading. Copying rather than re-bundling is what keeps the map's
+ * target and the file it points at from drifting.
+ *
+ * It lives in its own module because more than one Vite config needs
+ * it: adding a dev-server proxy (the `gateway` vertical) must not
+ * cost the page its single design system.
+ */
+export function vendorDesignSystem(): Plugin {
+  const dist = resolve(here, '<%= designSystemDist %>');
+  return {
+    name: 'vendor-design-system',
+    apply: 'build',
+    closeBundle(): void {
+      const out = resolve(here, 'dist/vendor');
+      mkdirSync(out, { recursive: true });
+      for (const asset of ['design-system.js', 'design-system.css']) {
+        const from = resolve(dist, asset);
+        if (!existsSync(from)) {
+          throw new Error(
+            `vendor-design-system: ${from} is missing — build the design system first (the root \`build\` script does, in workspace order).`,
+          );
+        }
+        copyFileSync(from, resolve(out, asset));
+      }
+    },
+  };
+}
+
+/** The specifier the import map resolves, and the bundler leaves alone. */
+export const DESIGN_SYSTEM = '<%= designSystemPkg %>';

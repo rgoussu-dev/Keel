@@ -162,6 +162,16 @@ over the WCCG Context protocol, a Vite deployment unit, and an atomic
 design-system package on [planks](https://github.com/rgoussu-dev/planks)
 layout primitives — installed and ready to `npm run dev`.
 
+The **module layout** dial is here too, and it is the stack whose pull
+toward `modulith` is strongest: a browser app is usually multi-context
+before its first release, and a micro-frontend _is_ a carved-out
+module. A context becomes one workspace package publishing three entry
+points — the facade, `./elements`, `./service` — and the design system
+stays a top-level package, emitted as an **external** and deduplicated
+through an import map in `index.html`, because a package that defines
+custom elements has to exist exactly once per page.
+→ [web-components module layout](docs/stacks/web-components.md#module-layout)
+
 **Prerequisites:** Node 22+, `npm` or `pnpm`, `git`.
 → [web-components](docs/stacks/web-components.md)
 

@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+import {
+  createGreet,
+  createGreetingStore,
+  type Greet,
+  type Greeting,
+  type GreetingReadModel,
+} from '<%= contextPkg %>';
+
+interface Scenario {
+  readonly name: string;
+  readonly expected: string;
+}
+
+const ada: Scenario = { name: 'Ada', expected: 'Hello, Ada!' };
+const blank: Scenario = { name: '   ', expected: 'Hello, world!' };
+
+interface Sut {
+  readonly greet: Greet;
+  readonly greetings: GreetingReadModel;
+}
+
+const factory = (): Sut => {
+  const store = createGreetingStore();
+  return { greet: createGreet(store), greetings: store };
+};
+
+describe('greet', () => {
+  it('publishes a greeting for the given name', () => {
+    const { greet, greetings } = factory();
+    greet.execute({ name: ada.name });
+    expect(greetings.current()?.message).toBe(ada.expected);
+  });
+
+  it('falls back to "world" for a blank name', () => {
+    const { greet, greetings } = factory();
+    greet.execute({ name: blank.name });
+    expect(greetings.current()?.message).toBe(blank.expected);
+  });
+
+  it('notifies subscribers until they unsubscribe', () => {
+    const { greet, greetings } = factory();
+    const seen: Greeting[] = [];
+    const unsubscribe = greetings.subscribe((greeting) => seen.push(greeting));
+
+    greet.execute({ name: ada.name });
+    unsubscribe();
+    greet.execute({ name: 'Grace' });
+
+    expect(seen.map((g) => g.message)).toEqual([ada.expected]);
+  });
+});

@@ -1,0 +1,156 @@
+# <%= projectName %>
+
+Web-components SPA walking skeleton scaffolded by keel — hexagonal, framework-free:
+the browser and the DOM API are the framework.
+
+## Layout
+
+```
+design-system/   — the project's design language: atomic design on top
+                   of @rgoussu.dev/planks. Domain-blind, consumed by
+                   every context, and NOT a context itself — it is the
+                   package the import map deduplicates
+platform/
+  context/       — the WCCG Context protocol primitives, owned by no
+                   context: every module's elements ask through them,
+                   the assembly answers through them
+modules/
+  greeting/      — ONE package per bounded context
+    src/
+      index.ts        — THE FACADE: contract face, factories, context keys
+      elements.ts     — THE REGISTRATION: define<%= '' %>GreetingElements() + the tags
+      service.ts      — THE PEER SEAM: what another context may call
+      domain/
+        contract/     — ports, commands, read models; DOM-less
+        core/internal/ — services and stores; unreachable from outside
+      user-side/
+        elements/     — port-bound custom elements (driving adapters)
+      infra/          — driven adapters wrapping browser capabilities
+    tests/
+application/
+  web-app/       — the deployment unit: index.html + main.ts (the
+                   assembly point)
+```
+
+**One workspace package per context, deliberately.** In a TypeScript
+workspace the package graph enforces nothing on its own: an
+*undeclared* workspace dependency still resolves (the package manager
+hoists members into the root `node_modules`), and TypeScript project
+references do not restrict which projects a project may import.
+Splitting a context into four packages buys four manifests and no
+wall.
+
+What is enforced is the `exports` map. This context publishes exactly
+three entry points:
+
+| Specifier                       | Reaches                                      |
+| ------------------------------- | -------------------------------------------- |
+| `<%= contextPkg %>`          | the facade — contract, factories, context keys |
+| `<%= contextPkg %>/elements` | `defineGreetingElements()`                    |
+| `<%= contextPkg %>/service`  | the peer seam — another context's only way in  |
+
+Anything deeper is a `TS2307` from `tsc` and an
+`ERR_PACKAGE_PATH_NOT_EXPORTED` in the browser. Widening that map is
+the single edit that undoes the layout.
+
+Registration lives behind its own entry point rather than the facade
+because it is a *side effect*: importing the facade from a DOM-less
+program (a domain test, a Node tool) must not define anything, and
+the assembly needs to be able to order the definition after the
+context provider is listening.
+
+## The element tag prefix
+
+`<scope>-<context>-<element>` — here `<%= viewTag %>`.
+
+This is the one string in the layout that nothing checks. It is not a
+type, not a module specifier and not a path: get the prefix wrong and
+the build is green, the typecheck is green, the tests are green, and
+the page renders an unknown element as an empty inline box. So it has
+a consumer — `modules/greeting/tests/element-tags.test.ts` re-derives
+the prefix from the package's own name and fails when the two
+disagree. Keep that test when you add elements, and add your tag to it.
+
+## The import map
+
+`index.html` carries a `<script type="importmap">` pointing
+`<%= designSystemPkg %>` at `/vendor/design-system.js`, and the app's
+Vite build leaves it **external**.
+
+This is correctness, not size. A package that defines custom elements
+must exist exactly once per page: two bundles each inlining a copy
+throw `NotSupportedError: <tag> has already been used with this
+registry` on the second registration, and that throw aborts the rest
+of that bundle's registrations — so half the page silently stops
+upgrading, with no error anyone sees. With a single context there is
+one bundle and nothing to collide; the map is here so that carving a
+context into its own bundle stays a wiring change rather than a
+debugging session.
+
+The root `build` script builds the design system first (workspace
+order) and the app's Vite plugin copies its output to `dist/vendor/`,
+failing loudly if it is missing.
+
+## Wiring
+
+No mediator. Each use case is a driving port delivered to elements over
+the [WCCG Context protocol](https://github.com/webcomponents-cc/community-protocols/blob/main/proposals/context.md):
+`main.ts` constructs adapters and domain factories, registers one
+`context-request` listener, then calls each context's
+`define…Elements()` — provider first, definitions last. Cross-cutting
+concerns decorate the factories at the assembly point.
+
+Adding a bounded context is three lines in `main.ts` — its ports, its
+context keys, its `define…Elements()` — plus a sibling package under
+`modules/`. It reaches this one through
+`<%= contextPkg %>/service` and nothing else.
+
+## Design system
+
+Atomic design and the hexagon compose: the hexagon organises the
+application, atomic design organises the inside of the driving adapter.
+The line through the hierarchy is **port-awareness**:
+
+- **Sub-atomic** — [planks](https://github.com/rgoussu-dev/planks)
+  layout primitives (`<stack-pk>`, `<box-pk>`, …) and its token scale,
+  plus the project's brand layer in `design-system/src/tokens.css`.
+- **Atoms & molecules** — `design-system/src/atoms/`,
+  `design-system/src/molecules/`: attributes in, `CustomEvent`s out,
+  never a domain import.
+- **Port-bound organisms** — `modules/<ctx>/src/user-side/elements/`:
+  where ports meet design-system children; they push read-model state
+  down as attributes and translate child events up into commands.
+  Under this layout they belong to their context, not to the shell.
+- **Templates & pages** — the shell's `index.html` and its router as
+  it grows.
+
+Everything renders in the light DOM: planks styles by tag-scoped
+stylesheets injected into `document.head` (they would not pierce a
+shadow root), and the design system follows the same convention.
+
+## Run
+
+```sh
+<%= pm %> run dev        # Vite dev server for application/web-app
+```
+
+## Test
+
+```sh
+<%= pm %> test           # domain + fake contract tests in Node; design-system
+                   # component tests under happy-dom
+<%= pm %> run typecheck  # per-package tsc — enforces the lib walls
+<%= pm %> run lint       # the walls resolution cannot hold
+```
+
+The emitted `.dependency-cruiser.cjs` carries an
+`enhancedResolveOptions` block, and it is load-bearing rather than
+tuning: with default options dependency-cruiser resolves every
+`@<%= npmScope %>/*` import to a bare specifier, records no edge for
+it, and reports zero violations over a tree that is in violation.
+
+## Build
+
+```sh
+<%= pm %> run build      # application/web-app/dist — static files, ready to serve
+```

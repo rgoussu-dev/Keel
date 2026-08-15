@@ -341,7 +341,7 @@ tree — the layout commit leaves `basic` byte-identical.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for ts-http`, then per vertical.
 
-### I.3 — `web-components` (M) — _dial; `basic` default_
+### I.3 — `web-components` (M) — _dial; `basic` default_ ✅
 
 - **Both layouts.** The architectural pull toward the modulith is
   strongest here — a browser app is usually multi-context before its
@@ -379,6 +379,35 @@ tree — the layout commit leaves `basic` byte-identical.
   every gate.
 - **Adapters to touch:** `wc-gateway-rest`, `wc-sample-port-fake`,
   `wc-design-system`, `wc-spa-bootstrap`, `wc-spa-image`.
+
+**Landed**, with every ruling above holding as stated.
+
+One package per context with a third `"./elements"` entry point,
+`design-system` as a top-level package, and the tag prefix owned by
+`wcLayout()` all survived a real install and a real build. The import
+map is browser-verified rather than asserted: the e2e builds the
+bundle, checks the design system left the app chunk (one
+`customElements.define` in the app, sixteen in the external) with the
+bare specifier intact for the map to resolve, then loads the built
+page in headless Chromium and requires the context's element _and_ the
+design system's atoms to have upgraded.
+
+The tag prefix got the consumer it needed. The emitted context carries
+`tests/element-tags.test.ts`, which re-derives
+`<scope>-<context>-<element>` from the package's own name — a
+different field of the resolver than the one that produced the tag —
+so a typo in `wcLayout` fails a test rather than rendering an empty
+inline box.
+
+Two things the design work had not spelled out. The peer seam's
+factory takes the context's assembled ports rather than building its
+own slice: a seam that constructs its use case breaks the moment a
+vertical rewires the factory behind it (the `gateway` vertical does
+exactly that), and a peer receives the built service anyway. And the
+`gateway` vertical rewrites the app's Vite config to add its dev
+proxy — which, under this layout, must keep the design system external
+or it silently re-inlines an element-defining package. That is
+asserted.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for web-components`, then per vertical.
 

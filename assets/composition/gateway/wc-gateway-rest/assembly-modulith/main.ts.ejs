@@ -1,0 +1,41 @@
+/**
+ * The assembly point — the only place that knows the whole graph.
+ *
+ * Order is load-bearing. The design system registers the planks
+ * primitives and the project's atoms/molecules (domain-blind, so they
+ * may upgrade immediately). Then the driven adapters — here the REST
+ * gateway to the backend — and each context's ports, published on the
+ * context protocol. Only then are the contexts' elements defined: a
+ * definition upgrades parsed markup and fires `connectedCallback`
+ * synchronously, so the provider must already be listening.
+ */
+
+import '<%= designSystemPkg %>';
+import { type Context, ContextRequestEvent } from '<%= contextProtocolPkg %>';
+import {
+  createGreet,
+  createGreetingStore,
+  createRestGreetGateway,
+  greetContext,
+  greetingsContext,
+} from '<%= contextPkg %>';
+import { defineGreetingElements } from '<%= elementsPkg %>';
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+const gateway = createRestGreetGateway(apiBaseUrl);
+const greetings = createGreetingStore();
+const greet = createGreet(gateway, greetings);
+
+const ports = new Map<Context<unknown>, unknown>([
+  [greetContext, greet],
+  [greetingsContext, greetings],
+]);
+
+document.addEventListener('context-request', (event) => {
+  const request = event as ContextRequestEvent<unknown>;
+  if (!ports.has(request.context)) return;
+  request.stopPropagation();
+  request.callback(ports.get(request.context));
+});
+
+defineGreetingElements();

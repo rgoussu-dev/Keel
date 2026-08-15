@@ -1,0 +1,71 @@
+import { ensureStructuralStyle } from '../internal/structural-style';
+
+const TAG = '<%= greetingCardTag %>';
+
+const STRUCTURAL_CSS = `
+  ${TAG} { display: block; color: var(--color-ink); }
+  ${TAG}[hidden] { display: none; }
+`;
+
+/**
+ * Greeting-card molecule: presents a message inside planks
+ * primitives (`<box-pk>` + `<typography-pk>`). Purely presentational
+ * — a `message` attribute in, nothing out; hidden until it has one.
+ * The domain never appears here: port-bound organisms push state
+ * down into this attribute.
+ */
+export class GreetingCard extends HTMLElement {
+  static get observedAttributes(): string[] {
+    return ['message'];
+  }
+
+  /** The message to present; absent or empty hides the card. */
+  get message(): string {
+    return this.getAttribute('message') ?? '';
+  }
+
+  set message(value: string) {
+    this.setAttribute('message', value);
+  }
+
+  #text: Text | null = null;
+
+  connectedCallback(): void {
+    ensureStructuralStyle(TAG, () => STRUCTURAL_CSS);
+    if (!this.#text) {
+      const box = document.createElement('box-pk');
+      box.setAttribute('padding', 'var(--s0)');
+      box.setAttribute('borderWidth', 'var(--border-thin)');
+      box.setAttribute('borderColor', 'var(--color-brand)');
+      box.setAttribute('borderRadius', 'var(--radius-control)');
+      box.setAttribute('backgroundColor', 'var(--color-surface)');
+      const text = document.createElement('typography-pk');
+      text.setAttribute('variant', 'body');
+      this.#text = document.createTextNode('');
+      text.append(this.#text);
+      box.append(text);
+      this.append(box);
+      this.setAttribute('role', 'status');
+    }
+    this.#render();
+  }
+
+  attributeChangedCallback(): void {
+    if (this.isConnected) this.#render();
+  }
+
+  #render(): void {
+    this.hidden = this.message === '';
+    if (this.#text) this.#text.data = this.message;
+  }
+}
+
+if (!customElements.get(TAG)) {
+  customElements.define(TAG, GreetingCard);
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    '<%= greetingCardTag %>': GreetingCard;
+  }
+}
