@@ -65,10 +65,23 @@ afterEach(async () => {
   await fs.remove(goHome);
 });
 
+/**
+ * The Go environment every spawned toolchain call gets: a temp cache
+ * and GOPATH for hermeticity, and `-modcacherw` so the module cache
+ * they fill stays writable.
+ *
+ * That last flag is a teardown fix, not a build one. Go writes the
+ * module cache read-only, so removing the temp GOPATH afterwards fails
+ * with `EACCES: permission denied, rmdir …/pkg/mod/…` for any user who
+ * is not root — invisible in a root container, fatal on a CI runner,
+ * and it surfaces as a suite-level failure that says nothing about
+ * cleanup.
+ */
 const goEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
   GOCACHE: path.join(goHome, 'cache'),
   GOPATH: path.join(goHome, 'path'),
+  GOFLAGS: '-modcacherw',
 });
 
 const goRun = (backend: string, args: readonly string[]): void => {
