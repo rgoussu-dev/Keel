@@ -695,20 +695,36 @@ deliberately does not move with the layout.
 
 ### I.5 — `rust-persistence` under the modulith (M)
 
-The one Rust vertical I.4 did not port, and it is a different size of
-job rather than a longer one. Its adapters must become a crate of
+The one Rust vertical I.4 did not port, and it is a different **shape**
+of job rather than a longer one. Its adapters must become a crate of
 their own under `modules/<ctx>/infra/postgres` — manifest, workspace
 member, assembly dependency — where the other three verticals only
-needed a path resolved. Its contract test also wants a Postgres
-through Testcontainers, which the `rust` CI shard cannot provide: it
-provisions `cargo` alone, so a modulith persistence cell needs Docker
-added to that shard, or the suite placed elsewhere.
+needed a path resolved. That is the whole of it: a template and
+adapter restructure, no new primitives, no CI work.
+
+**Correction (2026-08-15).** I.4 recorded that the cell was also
+blocked on Docker — that the contract test wants a Postgres through
+Testcontainers, which the `rust` shard cannot provide. That was
+written without checking the precedent and it is wrong. The JVM
+already runs `tests/e2e/modulith-persistence.test.ts` in
+`jvm-modulith-quarkus-java`, whose `tools:` line is `java javac gradle
+mvn` and carries no `docker`: `tests/support/jvm-rest-e2e.ts` excludes
+the Testcontainers _test_ tasks while still compiling them, so the run
+proves the module graph wires and skips only the database assertion.
+Rust needs even less than that. The emitted contract test already
+probes `docker_available()` and returns early with `skipping: no
+Docker daemon available`, so the skip lives in the generated code
+rather than in the harness — `cargo test` compiles every crate, which
+is what proves the wiring, and the one Testcontainers test skips
+itself. A `modulith-rust-persistence` cell therefore belongs in the
+existing `rust` shard with `tools: cargo`, unchanged. **Do not add
+Docker to that shard.**
 
 Neither Rust stack carries persistence by default, so nothing
 scaffolds into this gap; only brownfield `keel add persistence` on a
-modulith project reaches it, and that now fails at the front door
-with the reason and the workaround rather than on a missing patch
-target.
+modulith project reaches it, and that fails at the front door with the
+reason and the workaround rather than on a missing patch target until
+this item lands.
 
 ### I.6 — the peer context beyond the JVM and Rust (M)
 
