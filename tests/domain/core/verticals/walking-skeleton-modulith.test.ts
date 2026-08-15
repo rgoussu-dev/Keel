@@ -484,3 +484,89 @@ describe('layout-dependent verticals under layout.modulith', () => {
     ).toContain('filesystem:../../../../../migrations/sql');
   });
 });
+
+describe('the Micronaut modulith reactor on Maven', () => {
+  // Only the assembly parents `micronaut-parent`; every other module
+  // parents the reactor root, and Maven allows one parent. So the
+  // root has to import the platform BOM itself, or the library module
+  // holding the framework-facing adapter declares `io.micronaut:*`
+  // with no version and Maven cannot even read the reactor. A real
+  // defect: it shipped, and stayed invisible for as long as no
+  // Micronaut project had been built by Maven in any layout.
+  const combos = [
+    {
+      arch: 'arch.server-http',
+      lang: 'lang.java',
+      module: 'modules/greeting/user-side/api/adapters',
+    },
+    {
+      arch: 'arch.server-http',
+      lang: 'lang.kotlin',
+      module: 'modules/greeting/user-side/api/adapters',
+    },
+    { arch: 'arch.cli', lang: 'lang.java', module: 'modules/greeting/user-side/cli' },
+    { arch: 'arch.cli', lang: 'lang.kotlin', module: 'modules/greeting/user-side/cli' },
+  ] as const;
+
+  for (const { arch, lang, module } of combos) {
+    it(`manages Micronaut versions from the root for ${lang} ${arch}`, async () => {
+      const { tree, cwd } = await install(walkingSkeletonVertical, [
+        lang,
+        'runtime.jvm',
+        'pkg.maven',
+        'framework.micronaut',
+        'arch.hexagonal',
+        arch,
+        MODULITH_LAYOUT_TAG,
+      ]);
+      cwds.push(cwd);
+
+      const root = tree.read('pom.xml')?.toString() ?? '';
+      const managed =
+        /<dependencyManagement>[\s\S]*?<\/dependencyManagement>/.exec(root)?.[0] ?? '';
+      expect(managed, 'the reactor root must manage dependency versions').not.toBe('');
+      expect(managed).toContain('<groupId>io.micronaut.platform</groupId>');
+      expect(managed).toContain('<artifactId>micronaut-platform</artifactId>');
+      expect(managed).toContain('<scope>import</scope>');
+
+      // …which is load-bearing precisely because this module asks for
+      // Micronaut without naming a version, and does not inherit one.
+      const pom = tree.read(`${module}/pom.xml`)?.toString() ?? '';
+      const micronautDep =
+        /<dependency>(?:(?!<\/dependency>)[\s\S])*<groupId>io\.micronaut[\s\S]*?<\/dependency>/.exec(
+          pom,
+        );
+      expect(micronautDep, `${module} must depend on Micronaut`).not.toBeNull();
+      expect(micronautDep?.[0]).not.toContain('<version>');
+      expect(pom).toContain('<relativePath>');
+    });
+
+    it(`runs the Micronaut annotation processor in ${module} for ${lang} ${arch}`, async () => {
+      // Micronaut resolves beans at compile time, per compiled module.
+      // The assembly's own processor does not reach into a sibling
+      // jar, so a library module holding a @Controller or @Command
+      // that does not process itself contributes no bean definition —
+      // and nothing says so: it compiles, packages, and starts, then
+      // 404s every route. The Gradle twin gets this from applying
+      // `io.micronaut.library`.
+      const { tree, cwd } = await install(walkingSkeletonVertical, [
+        lang,
+        'runtime.jvm',
+        'pkg.maven',
+        'framework.micronaut',
+        'arch.hexagonal',
+        arch,
+        MODULITH_LAYOUT_TAG,
+      ]);
+      cwds.push(cwd);
+
+      const pom = tree.read(`${module}/pom.xml`)?.toString() ?? '';
+      expect(pom).toContain('<annotationProcessorPath');
+      expect(pom).toContain('<artifactId>micronaut-inject-java</artifactId>');
+      if (lang === 'lang.kotlin') {
+        // On Kotlin the processor runs through kapt, not javac.
+        expect(pom).toContain('<goal>kapt</goal>');
+      }
+    });
+  }
+});

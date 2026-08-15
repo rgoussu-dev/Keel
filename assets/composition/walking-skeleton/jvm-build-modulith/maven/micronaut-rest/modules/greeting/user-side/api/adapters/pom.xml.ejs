@@ -71,4 +71,34 @@
       <scope>runtime</scope>
     </dependency>
   </dependencies>
+
+  <!-- Micronaut resolves beans at compile time and does it per
+       compiled module, so a library module holding framework-annotated
+       types has to run the processor itself — its Gradle twin says the
+       same thing by applying `io.micronaut.library`. Without this the
+       sources compile, the jar is produced and the application starts
+       clean; there is simply no bean definition, so every route 404s.
+       The processor version is left to the platform BOM the reactor
+       root imports (maven-compiler-plugin 3.12+ resolves it from
+       dependencyManagement). -->
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths combine.children="append">
+            <path>
+              <groupId>io.micronaut</groupId>
+              <artifactId>micronaut-inject-java</artifactId>
+            </path>
+          </annotationProcessorPaths>
+          <compilerArgs>
+            <arg>-Amicronaut.processing.group=<%= basePackage %></arg>
+            <arg>-Amicronaut.processing.module=greeting-user-side-api-adapters</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

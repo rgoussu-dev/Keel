@@ -26,6 +26,26 @@
     <micronaut.version>4.10.17</micronaut.version>
   </properties>
 
+  <!-- The assembly parents `micronaut-parent` and inherits its
+       dependency management from there; every other module parents
+       this reactor root instead, and Maven allows only one parent. So
+       the root imports the same platform BOM those modules need, or
+       their `io.micronaut:*` coordinates carry no version and the
+       reactor cannot even be read. Gradle needs no equivalent — the
+       Micronaut plugin applies the platform to each project it is
+       applied to. -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.micronaut.platform</groupId>
+        <artifactId>micronaut-platform</artifactId>
+        <version>${micronaut.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <!-- Inherited by every module: the whole reactor is Kotlin. -->
   <dependencies>
     <dependency>

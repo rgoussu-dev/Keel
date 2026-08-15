@@ -83,4 +83,43 @@
       <scope>runtime</scope>
     </dependency>
   </dependencies>
+
+  <!-- Micronaut resolves beans at compile time and does it per
+       compiled module, so a library module holding framework-annotated
+       types has to run the processor itself — its Gradle twin says the
+       same thing by applying `io.micronaut.library`. Without this the
+       sources compile, the jar is produced and the application starts
+       clean; there is simply no bean definition, so every route 404s.
+       The processor version is left to the platform BOM the reactor
+       root imports (maven-compiler-plugin 3.12+ resolves it from
+       dependencyManagement). -->
+  <build>
+    <plugins>
+      <!-- On Kotlin sources the processor runs through kapt, exactly as
+           in the assembly; the Gradle twin reaches the same place
+           through KSP. -->
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <version>${kotlin.version}</version>
+        <executions>
+          <execution>
+            <id>kapt</id>
+            <goals>
+              <goal>kapt</goal>
+            </goals>
+            <configuration>
+              <annotationProcessorPaths combine.self="override">
+                <annotationProcessorPath>
+                  <groupId>io.micronaut</groupId>
+                  <artifactId>micronaut-inject-java</artifactId>
+                  <version>${micronaut.version}</version>
+                </annotationProcessorPath>
+              </annotationProcessorPaths>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
