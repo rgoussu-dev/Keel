@@ -38,7 +38,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 import { expectOk, installMediator } from './factory.js';
 
@@ -178,6 +178,28 @@ export async function scaffold(
     root: spec.servicePath === undefined ? cwd : path.join(cwd, spec.servicePath),
     cargoHome,
   };
+}
+
+/**
+ * Layers `vertical` onto an already-scaffolded project through the
+ * real mediator.
+ *
+ * The vertical's own deferred `cargo check` is faked for the same
+ * reason the bootstrap's is: every suite here runs an explicit `cargo
+ * test`, which verifies strictly more, and the real one would compile
+ * the new dependency graph a second time against the developer's
+ * `~/.cargo` rather than the isolated home.
+ */
+export async function addVertical(vertical: string, cwd: string): Promise<void> {
+  const mediator = installMediator({
+    keelVersion: '0.0.0-e2e',
+    runDeferred: stubActions(new Set([`${vertical}/rust-${vertical}`])),
+  });
+  expectOk(
+    await mediator.dispatch(
+      addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+    ),
+  );
 }
 
 /** Runs `cargo` in the project, failing loudly with its output. */
