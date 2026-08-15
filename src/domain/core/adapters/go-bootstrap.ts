@@ -22,6 +22,7 @@
  * against the local toolchain once the files are on disk.
  */
 
+import { goLayout, goTemplateVars } from './go-module-layout.js';
 import type {
   Adapter,
   DeferredAction,
@@ -33,7 +34,7 @@ import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-
 
 export const GO_BOOTSTRAP_ID = 'walking-skeleton/go-bootstrap';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/go-bootstrap/templates';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/go-bootstrap';
 
 const MODULE_PATH_RE = /^[a-z0-9][a-z0-9.-]*(\/[A-Za-z0-9._~-]+)*$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -62,7 +63,14 @@ export const goBootstrapAdapter: Adapter = {
   async contribute(ctx) {
     const modulePath = validateModulePath(ctx.answer('modulePath').trim());
     const projectName = validateProjectName(ctx.answer('projectName').trim());
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { modulePath, projectName });
+    const layout = goLayout(ctx.manifest.tags, modulePath);
+    const suffix = layout.layout === 'modulith' ? '-modulith' : '';
+    const files = await ctx.templates.render(`${TEMPLATE_ROOT}${suffix}/templates`, '', {
+      modulePath,
+      projectName,
+      ...goTemplateVars(layout),
+      domainCoreImport: layout.importPath(layout.domainCore),
+    });
     const action: DeferredAction = {
       id: GO_BOOTSTRAP_ID,
       description: 'go mod tidy',

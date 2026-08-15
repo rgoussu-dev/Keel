@@ -1,0 +1,71 @@
+// Package resthttp is the HTTP primary adapter: it maps transport
+// DTOs to domain commands, dispatches through the driving port, and
+// maps domain errors to RFC 9457 problem documents. Zero business
+// logic.
+package resthttp
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"<%= domainImport %>"
+)
+
+// GreetingResponse is the transport shape of a successful greeting —
+// the REST seam contract shared with the other backend stacks
+// (`{"greeting": …}`), so a frontend gateway works against any of
+// them.
+type GreetingResponse struct {
+	Greeting string `json:"greeting"`
+}
+
+// Problem is an RFC 9457 problem document — the transport shape of
+// every error this adapter reports.
+type Problem struct {
+	Type   string `json:"type"`
+	Title  string `json:"title"`
+	Status int    `json:"status"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// NewHandler returns the HTTP surface of the service:
+// GET /greet?name=… dispatched through greeter.
+func NewHandler(greeter domain.Greeter) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /greet", func(w http.ResponseWriter, r *http.Request) {
+		// An absent name defaults at the transport boundary, per the
+		// seam contract; a name that is present but blank still
+		// reaches the domain and is rejected there.
+		name := "world"
+		if r.URL.Query().Has("name") {
+			name = r.URL.Query().Get("name")
+		}
+		message, err := greeter.Greet(domain.GreetCommand{Name: name})
+		if err != nil {
+			writeProblem(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, "application/json", GreetingResponse{Greeting: message})
+	})
+	return mux
+}
+
+func writeProblem(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	if errors.Is(err, domain.ErrEmptyName) {
+		status = http.StatusBadRequest
+	}
+	writeJSON(w, status, "application/problem+json", Problem{
+		Type:   "about:blank",
+		Title:  http.StatusText(status),
+		Status: status,
+		Detail: err.Error(),
+	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, contentType string, body any) {
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}

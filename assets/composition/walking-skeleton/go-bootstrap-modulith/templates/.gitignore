@@ -1,0 +1,6 @@
+# build output
+/bin/
+
+# test artifacts
+*.test
+cover.out

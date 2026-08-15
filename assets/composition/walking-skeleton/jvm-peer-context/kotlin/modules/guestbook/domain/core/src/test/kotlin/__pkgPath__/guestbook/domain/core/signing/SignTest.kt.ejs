@@ -1,0 +1,43 @@
+package <%= basePackage %>.guestbook.domain.core.signing
+
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+
+import <%= basePackage %>.guestbook.domain.contract.signing.GuestbookEntry
+import <%= basePackage %>.guestbook.domain.contract.signing.SignCommand
+import <%= basePackage %>.guestbook.domain.contract.signing.SignRejected
+import <%= basePackage %>.guestbook.domain.contract.signing.Visitor
+import <%= basePackage %>.guestbook.domain.contract.signing.Welcome
+import <%= basePackage %>.guestbook.domain.contract.signing.WelcomeMessage
+
+class SignTest {
+
+    @Test
+    fun `signs the guestbook with the welcome it was given`() {
+        val handler = SignHandler(FixedWelcome("Hello, Romain!"))
+
+        val entry = handler.handle(SignCommand("Romain"))
+
+        assertEquals(GuestbookEntry("Romain", "Hello, Romain!"), entry)
+    }
+
+    @Test
+    fun `rejects a blank visitor`() {
+        val handler = SignHandler(FixedWelcome("unused"))
+
+        val rejected =
+            assertThrows(SignRejected::class.java) { handler.handle(SignCommand("  ")) }
+
+        assertEquals("visitor must not be blank", rejected.message)
+    }
+
+    /**
+     * A fake, not a mock — the house rule. The domain test never sees
+     * the greeting module: it stands the port up itself.
+     */
+    private class FixedWelcome(private val text: String) : Welcome {
+
+        override fun welcomeFor(visitor: Visitor): WelcomeMessage = WelcomeMessage(text)
+    }
+}

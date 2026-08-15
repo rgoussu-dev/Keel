@@ -1,6 +1,7 @@
 /**
- * `walking-skeleton/jvm-peer-context` adapter — scaffolds a **second
- * bounded context** beside the skeleton's own, opted into with
+ * Shared machinery for the JVM **peer context** adapters — the
+ * `walking-skeleton/<framework>-peer-context` family scaffolding a
+ * second bounded context beside the skeleton's own, opted into with
  * `keel new --module-layout=modulith --with-peer-context`.
  *
  * The modulith exists to make one claim true: contexts meet only at
@@ -9,9 +10,9 @@
  * in the emitted project consumes the seam, so nothing proves it
  * holds. (That gap is not hypothetical: the Maven twin of the seam
  * shipped without its non-transitive scope, and no generated project
- * could have caught it.) This adapter emits the consumer that closes
- * it: `guestbook` declares a `Welcome` port in its own vocabulary,
- * and reaches `greeting` only through a gateway over
+ * could have caught it.) These adapters emit the consumer that closes
+ * it: `guestbook` declares a `Welcome` port in its own vocabulary, and
+ * reaches `greeting` only through a gateway over
  * `greeting/user-side/service`.
  *
  * What the emitted code demonstrates, and what a compiler enforces
@@ -22,99 +23,202 @@
  *   types, so guestbook's domain has no opinion about where a welcome
  *   comes from.
  * - **One class names two contexts.** `GreetingWelcome` is the only
- *   inter-context edge in the build graph, and `cargo`-style
- *   grep-ability is the point: one directory lists every such edge.
+ *   inter-context edge in the build graph, and grep-ability is the
+ *   point: one directory lists every such edge.
  * - **The seam cannot be reached past.** `greeting-user-side-service`
  *   declares its own domain non-transitively — `implementation` under
  *   Gradle, `optional` under Maven — so `greeting.domain.contract` is
  *   not on the gateway's compile classpath. An import of it does not
  *   compile, which is the whole property under test.
  *
- * Covers no dimension deliberately: it is additive, selected purely
- * by the `modules.peer-context` tag, so the walking skeleton resolves
- * identically with the flag absent.
+ * - **The wiring is exercised, not asserted.** Every combination
+ *   emits a `GuestbookWiringTest` in the assembly that dispatches a
+ *   `SignCommand` through the real Mediator out of the real
+ *   container. Nothing else can catch a handler the container never
+ *   discovered: that costs nothing at compile time and the
+ *   application still starts.
  *
- * Quarkus + Java first; the Spring, Micronaut and Kotlin siblings
- * cover the same ground under their own predicates, differing only in
- * how the assembly binds the port (a CDI producer here, an
- * `@Bean` method under Spring, a `@Factory` under Micronaut) and in
- * Spring's explicit `@ComponentScan` package list.
+ * Everything above is framework-independent, and so is everything in
+ * this file: the guestbook sources (one tree per language), its build
+ * files (one tree per build system), and the registration of its three
+ * modules with the root build. What each framework brings is the
+ * **binding** — how its container is told that `Welcome` is answered
+ * by `GreetingWelcome` — and that is the {@link JvmPeerContextSpec.bind}
+ * hook, implemented once per (framework, language) in
+ * `quarkus-peer-context.ts`, `spring-peer-context.ts` and
+ * `micronaut-peer-context.ts`.
+ *
+ * Two rules every binding obeys, both learned from a container that
+ * did not:
+ *
+ * - **Resolve the peer lazily.** A composition root materialises every
+ *   handler to build the mediator, so a handler whose port reaches
+ *   back through the dispatch seam closes a construction cycle:
+ *   mediator → SignHandler → Welcome → GreetingService → mediator.
+ *   Every binding takes the peer as its container's deferred handle
+ *   (CDI `Instance`, Spring `ObjectProvider`, Micronaut `BeanProvider`)
+ *   and hands the gateway a supplier.
+ * - **Say the new context's name wherever the container needs it
+ *   spelled.** Spring's `@ComponentScan` and Micronaut's `@Import`
+ *   both take explicit package lists; a context missing from one is
+ *   simply never discovered, with no error and no bean.
+ *
+ * Covers no dimension deliberately: the family is additive, selected
+ * purely by the `modules.peer-context` tag, so the walking skeleton
+ * resolves identically with the flag absent.
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
-import { PEER_MODULE, gradleProject, jvmLayout } from './jvm-module-layout.js';
-import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from './jvm-module-layout.js';
+import type { JvmLanguage } from './jvm-bootstrap.js';
+import {
+  MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
+  PEER_MODULE,
+  SKELETON_MODULE,
+  gradleProject,
+  jvmLayout,
+} from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
-import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
-import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
-
-export const JVM_PEER_CONTEXT_ID = 'walking-skeleton/jvm-peer-context';
 
 const SOURCE_TEMPLATE_ROOT = 'composition/walking-skeleton/jvm-peer-context';
 
 const MAVEN_MODULES_END = '  </modules>';
 
-const BOOTSTRAP_IDS = [QUARKUS_REST_BOOTSTRAP_ID, QUARKUS_CLI_BOOTSTRAP_ID] as const;
+/** The gateway module's directory name under `modules/<peer>/infra/`. */
+const GATEWAY_MODULE = `${SKELETON_MODULE}-gateway`;
 
 /** The three modules the peer context contributes, in build order. */
 const peerModules = (): readonly string[] => [
   `modules/${PEER_MODULE}/domain/contract`,
   `modules/${PEER_MODULE}/domain/core`,
-  `modules/${PEER_MODULE}/infra/greeting-gateway`,
+  `modules/${PEER_MODULE}/infra/${GATEWAY_MODULE}`,
 ];
 
-export const jvmPeerContextAdapter: Adapter = {
-  id: JVM_PEER_CONTEXT_ID,
-  vertical: 'walking-skeleton',
-  covers: [],
-  predicate: {
-    requires: [
-      'runtime.jvm',
-      'lang.java',
-      'framework.quarkus',
-      MODULITH_LAYOUT_TAG,
-      PEER_CONTEXT_TAG,
-    ],
-  },
-  after: [...BOOTSTRAP_IDS],
-  async contribute(ctx) {
-    const bootstrap = BOOTSTRAP_IDS.map((id) => ctx.manifest.answers[id]).find(
-      (answers) => answers?.basePackage,
-    );
-    const basePackage = bootstrap?.basePackage;
-    const projectName = bootstrap?.projectName;
-    if (!basePackage || !projectName) {
-      throw new Error(
-        `${JVM_PEER_CONTEXT_ID}: requires a Quarkus walking-skeleton bootstrap (one of ${BOOTSTRAP_IDS.join(', ')}) to have run first; basePackage/projectName not in manifest`,
-      );
-    }
-    const vars = { basePackage, projectName, pkgPath: packageToPath(basePackage) };
-    const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-    const layout = jvmLayout(ctx.manifest.tags);
-    const assembly = ctx.manifest.tags.includes('arch.cli')
-      ? layout.cliRuntime
-      : layout.restRuntime;
-    const assemblyPkg = ctx.manifest.tags.includes('arch.cli')
-      ? layout.cliRuntimePkg
-      : layout.restRuntimePkg;
+/**
+ * What a framework's binding needs to know about the assembly it is
+ * patching. Everything here is derived from the layout resolver and
+ * the bootstrap's answers — no binding computes a path itself.
+ */
+export interface PeerBinding {
+  /** The project's root package, e.g. `com.example`. */
+  readonly basePackage: string;
+  /** The assembly's module directory, e.g. `application/api`. */
+  readonly assembly: string;
+  /** The assembly's package segment, e.g. `application.api`. */
+  readonly assemblyPkg: string;
+  /**
+   * Path of a source file in the assembly's own package, e.g.
+   * `sourceFile('MediatorConfig')` →
+   * `application/api/src/main/java/com/example/application/api/MediatorConfig.java`.
+   * The language's source root and extension come from the spec, so a
+   * binding never spells `src/main/kotlin` by hand.
+   */
+  sourceFile(className: string): string;
+}
 
-    const [sources, beans, build] = await Promise.all([
-      ctx.templates.render(`${SOURCE_TEMPLATE_ROOT}/java`, '', vars),
-      ctx.templates.render(`${SOURCE_TEMPLATE_ROOT}/quarkus`, '', vars),
-      ctx.templates.render(`${SOURCE_TEMPLATE_ROOT}/build/${buildSystem}`, '', vars),
-    ]);
+/** Declaration of one JVM peer-context combination. */
+export interface JvmPeerContextSpec {
+  /** Full adapter id, e.g. `walking-skeleton/spring-peer-context`. */
+  readonly id: string;
+  /** Framework tag suffix: `quarkus`, `spring`, `micronaut`. */
+  readonly framework: string;
+  readonly language: JvmLanguage;
+  /**
+   * The bootstraps this peer context layers onto — the CLI and REST
+   * bootstrap of the same framework and language. One of them holds
+   * the `basePackage` / `projectName` answers.
+   */
+  readonly bootstrapIds: readonly string[];
+  /**
+   * Template subtrees under `jvm-peer-context/` rendered on top of the
+   * language sources — Quarkus' bean-archive marker is the only one
+   * so far.
+   */
+  readonly frameworkTemplates?: readonly string[];
+  /** Patches binding guestbook's `Welcome` port at the composition root. */
+  readonly bind: (binding: PeerBinding) => readonly ContributionPatch[];
+}
 
-    return {
-      files: [...sources, ...beans, ...build],
-      patches: [
-        buildSystem === 'maven' ? mavenModulesPatch() : gradleIncludesPatch(),
-        assemblyDepsPatch(buildSystem, basePackage, assembly, layout.mavenArtifact),
-        compositionRootPatch(basePackage, assembly, assemblyPkg),
+const SOURCE_ROOT: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotlin: 'kotlin' };
+const EXTENSION: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotlin: 'kt' };
+
+/**
+ * Builds the peer-context adapter for one JVM (framework, language)
+ * combination. Both entrypoint shapes are served by the one adapter:
+ * the assembly it patches is resolved from the `arch.*` tag, exactly
+ * as the layout resolver does everywhere else.
+ */
+export function jvmPeerContextAdapter(spec: JvmPeerContextSpec): Adapter {
+  return {
+    id: spec.id,
+    vertical: 'walking-skeleton',
+    covers: [],
+    predicate: {
+      requires: [
+        'runtime.jvm',
+        `lang.${spec.language}`,
+        `framework.${spec.framework}`,
+        MODULITH_LAYOUT_TAG,
+        PEER_CONTEXT_TAG,
       ],
-    };
-  },
-};
+    },
+    after: [...spec.bootstrapIds],
+    async contribute(ctx) {
+      const bootstrap = spec.bootstrapIds
+        .map((id) => ctx.manifest.answers[id])
+        .find((answers) => answers?.basePackage);
+      const basePackage = bootstrap?.basePackage;
+      const projectName = bootstrap?.projectName;
+      if (!basePackage || !projectName) {
+        throw new Error(
+          `${spec.id}: requires a walking-skeleton bootstrap (one of ${spec.bootstrapIds.join(', ')}) to have run first; basePackage/projectName not in manifest`,
+        );
+      }
+      const vars = { basePackage, projectName, pkgPath: packageToPath(basePackage) };
+      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
+      const layout = jvmLayout(ctx.manifest.tags);
+      const cli = ctx.manifest.tags.includes('arch.cli');
+      const assembly = cli ? layout.cliRuntime : layout.restRuntime;
+      const assemblyPkg = cli ? layout.cliRuntimePkg : layout.restRuntimePkg;
+
+      const trees = [
+        `${SOURCE_TEMPLATE_ROOT}/${SOURCE_ROOT[spec.language]}`,
+        ...(spec.frameworkTemplates ?? []).map((t) => `${SOURCE_TEMPLATE_ROOT}/${t}`),
+        `${SOURCE_TEMPLATE_ROOT}/build/${buildSystem}`,
+      ];
+      // The wiring test lands in the assembly, whose directory and
+      // package are both layout decisions — so it renders under the
+      // resolved assembly rather than at a path of its own.
+      const wiring = `${SOURCE_TEMPLATE_ROOT}/wiring/${spec.framework}/${spec.language}`;
+      const rendered = await Promise.all([
+        ...trees.map((t) => ctx.templates.render(t, '', vars)),
+        ctx.templates.render(wiring, assembly, {
+          ...vars,
+          assemblyPkg,
+          assemblyPkgPath: assemblyPkg.replace(/\./g, '/'),
+        }),
+      ]);
+
+      const binding: PeerBinding = {
+        basePackage,
+        assembly,
+        assemblyPkg,
+        sourceFile: (className) =>
+          `${assembly}/src/main/${SOURCE_ROOT[spec.language]}/${packageToPath(basePackage)}/${assemblyPkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
+      };
+
+      return {
+        files: rendered.flat(),
+        patches: [
+          buildSystem === 'maven' ? mavenModulesPatch(spec.id) : gradleIncludesPatch(),
+          assemblyDepsPatch(spec.id, buildSystem, basePackage, assembly, layout.mavenArtifact),
+          ...spec.bind(binding),
+        ],
+      };
+    },
+  };
+}
 
 /** Registers the peer context's three modules with `settings.gradle.kts`. */
 function gradleIncludesPatch(): ContributionPatch {
@@ -133,7 +237,7 @@ function gradleIncludesPatch(): ContributionPatch {
 }
 
 /** Registers the peer context's three modules with the root pom. */
-function mavenModulesPatch(): ContributionPatch {
+function mavenModulesPatch(adapterId: string): ContributionPatch {
   const entries = peerModules()
     .map((m) => `    <module>${m}</module>`)
     .join('\n');
@@ -144,7 +248,7 @@ function mavenModulesPatch(): ContributionPatch {
       if (existing.includes(guard)) return existing;
       if (!existing.includes(MAVEN_MODULES_END)) {
         throw new Error(
-          `${JVM_PEER_CONTEXT_ID}: could not find the <modules> block in the root pom.xml — add the ${PEER_MODULE} modules manually`,
+          `${adapterId}: could not find the <modules> block in the root pom.xml — add the ${PEER_MODULE} modules manually`,
         );
       }
       return existing.replace(
@@ -162,6 +266,7 @@ function mavenModulesPatch(): ContributionPatch {
  * depends on either — everything else meets them through ports.
  */
 function assemblyDepsPatch(
+  adapterId: string,
   buildSystem: 'gradle' | 'maven',
   basePackage: string,
   assembly: string,
@@ -183,14 +288,14 @@ function assemblyDepsPatch(
     // under version management — where they pin versions and add
     // nothing to the classpath. That failed only under a real Maven
     // build, with `package ... does not exist` in the assembly.
-    const anchor = dependency(mavenArtifact('modules/greeting/user-side/service'));
+    const anchor = dependency(mavenArtifact(`modules/${SKELETON_MODULE}/user-side/service`));
     return {
       target: `${assembly}/pom.xml`,
       apply: (existing) => {
         if (existing.includes(`<artifactId>${guard}</artifactId>`)) return existing;
         if (!existing.includes(anchor)) {
           throw new Error(
-            `${JVM_PEER_CONTEXT_ID}: could not find the greeting-user-side-service dependency in ${assembly}/pom.xml`,
+            `${adapterId}: could not find the ${SKELETON_MODULE}-user-side-service dependency in ${assembly}/pom.xml`,
           );
         }
         return existing.replace(anchor, `${anchor}${eolOf(existing)}${deps}`);
@@ -206,7 +311,7 @@ function assemblyDepsPatch(
       const anchor = `    implementation(project("${gradleProject('platform/kernel')}"))`;
       if (!existing.includes(anchor)) {
         throw new Error(
-          `${JVM_PEER_CONTEXT_ID}: could not find the platform:kernel dependency in ${assembly}/build.gradle.kts`,
+          `${adapterId}: could not find the platform:kernel dependency in ${assembly}/build.gradle.kts`,
         );
       }
       return existing.replace(anchor, [anchor, ...deps].join(eolOf(existing)));
@@ -214,63 +319,59 @@ function assemblyDepsPatch(
   };
 }
 
+/** The fully-qualified names a composition-root binding writes. */
+export interface PeerNames {
+  /** The port guestbook declares, and the assembly binds. */
+  readonly welcome: string;
+  /** The one class naming two contexts. */
+  readonly gateway: string;
+  /** The peer's in-process API the gateway calls through. */
+  readonly serviceAdapter: string;
+  /** Guestbook's handler, and the package a container must be told to look in. */
+  readonly handler: string;
+  readonly handlerPkg: string;
+}
+
 /**
- * Binds the port at the composition root — the one line the whole
- * layout exists to make swappable. Replacing `GreetingWelcome` with
- * an HTTP twin here is the entire carve-out, which is why the
- * emitted comment says so at the binding site rather than in a
- * README nobody opens.
+ * Derives those names once, so no framework module spells a package
+ * by hand. The `infra.<ctx>gateway` segment in particular is a
+ * directory (`infra/greeting-gateway`) spelled differently from its
+ * package — exactly the kind of drift a second copy invites.
  */
-function compositionRootPatch(
-  basePackage: string,
-  assembly: string,
-  assemblyPkg: string,
-): ContributionPatch {
-  const anchorImport = `import ${basePackage}.greeting.userside.service.GreetingServiceAdapter;`;
-  const addedImports = [
-    anchorImport,
-    `import ${basePackage}.guestbook.domain.contract.signing.Welcome;`,
-    `import ${basePackage}.guestbook.infra.greetinggateway.GreetingWelcome;`,
-  ].join('\n');
-  const stale =
-    '     * Nothing consumes it yet — the second bounded context is the\n     * first thing that will, through a driven port of its own.';
-  const fresh =
-    '     * `guestbook` consumes it through its own {@link Welcome}\n     * port, bound below.';
-  const producer = `
-    /**
-     * Binds guestbook's {@link Welcome} port to the greeting module.
-     * This is the carve-out seam: swapping {@link GreetingWelcome}
-     * for an HTTP twin built on greeting's published API moves that
-     * module into its own service, and nothing above this line
-     * changes.
-     *
-     * <p>The peer is injected as {@link Instance} and handed over as
-     * a supplier, not resolved here. The mediator is built by
-     * materialising every handler, so resolving the greeting service
-     * at this point would close a construction cycle — mediator →
-     * SignHandler → Welcome → GreetingService → mediator — and the
-     * container would recurse until the stack ran out. Deferring the
-     * lookup to the first call breaks it.
-     */
-    @Produces
-    @Singleton
-    public Welcome welcome(Instance<GreetingService> greeting) {
-        return new GreetingWelcome(greeting::get);
-    }
-}`;
+export function peerNames(basePackage: string): PeerNames {
   return {
-    target: `${assembly}/src/main/java/${packageToPath(basePackage)}/${assemblyPkg.replace(/\./g, '/')}/MediatorProducer.java`,
-    apply: (existing) => {
-      if (existing.includes('GreetingWelcome')) return existing;
-      if (!existing.includes(anchorImport)) {
-        throw new Error(
-          `${JVM_PEER_CONTEXT_ID}: could not find the GreetingServiceAdapter import in the composition root`,
-        );
-      }
-      const withImports = existing.replace(anchorImport, addedImports);
-      const withDoc = withImports.replace(stale, fresh);
-      const end = withDoc.lastIndexOf('}');
-      return `${withDoc.slice(0, end)}${producer.trimStart()}${withDoc.slice(end + 1)}`;
-    },
+    welcome: `${basePackage}.${PEER_MODULE}.domain.contract.signing.Welcome`,
+    gateway: `${basePackage}.${PEER_MODULE}.infra.${SKELETON_MODULE}gateway.GreetingWelcome`,
+    serviceAdapter: `${basePackage}.${SKELETON_MODULE}.userside.service.GreetingServiceAdapter`,
+    handler: `${basePackage}.${PEER_MODULE}.domain.core.signing.SignHandler`,
+    handlerPkg: `${basePackage}.${PEER_MODULE}.domain.core.signing`,
   };
+}
+
+/**
+ * The line every modulith composition root carries above its
+ * `greetingService` producer, and which the peer context makes
+ * obsolete: something does consume the seam now.
+ */
+export const STALE_SERVICE_DOC =
+  '     * Nothing consumes it yet — the second bounded context is the\n     * first thing that will, through a driven port of its own.';
+
+/** Its replacement, in Javadoc (`{@link}`) or KDoc (`[…]`) spelling. */
+export function freshServiceDoc(language: JvmLanguage): string {
+  const link = language === 'java' ? '{@link Welcome}' : '[Welcome]';
+  return `     * \`${PEER_MODULE}\` consumes it through its own ${link}\n     * port, bound below.`;
+}
+
+/**
+ * Appends a member to the last class body in a source file — the
+ * shape every composition-root binding takes, since each is one more
+ * producer method on the root that is already there.
+ *
+ * `member` carries its own indentation and stops before the class's
+ * closing brace, which this puts back after a blank line — so the
+ * result reads like the hand-written members above it.
+ */
+export function appendToClassBody(source: string, member: string): string {
+  const end = source.lastIndexOf('}');
+  return `${source.slice(0, end).trimEnd()}\n\n${member}\n}${source.slice(end + 1)}`;
 }

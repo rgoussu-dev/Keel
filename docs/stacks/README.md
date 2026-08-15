@@ -31,16 +31,19 @@ conventions, not the framework, are the product.**
 
 ## Module layout
 
-The twelve JVM stacks offer a second structural choice beside the
-build system, with `--module-layout` or its prompt:
+The twelve JVM stacks and the two Go stacks offer a second structural
+choice beside the build system, with `--module-layout` or its prompt:
 
 | Layout            | Shape                                                                                                                                                                                                      |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `basic` (default) | the flat trisection — one `domain/`, one `application/` per entrypoint. Right while the service holds a single bounded context.                                                                            |
 | `modulith`        | one hexagon per bounded context under `modules/<context>/`, shared plumbing under `platform/`, one runnable assembly per delivery typology under `application/`. Modules meet only at `user-side/service`. |
 
-→ [Module layout](jvm.md#module-layout). The other stacks ship
-`basic` only for now.
+Each family spells the shape in its own idiom — packages and import
+paths in Go, Gradle/Maven modules on the JVM — but the dial, the tag
+and the flag are the same.
+→ [JVM](jvm.md#module-layout) · [Go](go.md#module-layout). `ts-http`,
+`web-components` and the Rust stacks ship `basic` only for now.
 
 ## What each shape installs by default
 

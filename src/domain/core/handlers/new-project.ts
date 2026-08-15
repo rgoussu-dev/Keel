@@ -45,13 +45,16 @@ import {
 } from '../../contract/manifest.js';
 import type { TreeChange } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
-import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from '../adapters/jvm-module-layout.js';
+import {
+  MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
+  type ModuleLayoutOption,
+} from '../adapters/module-layout.js';
 import { installVertical } from '../install.js';
 import {
   getStack,
   listStackIds,
   type BuildSystemOption,
-  type ModuleLayoutOption,
   type Stack,
   type StackService,
 } from '../stacks.js';

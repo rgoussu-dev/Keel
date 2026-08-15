@@ -31,6 +31,7 @@ import {
   GO_OBSERVABILITY_ID,
   patchMain,
 } from '../../../../src/domain/core/adapters/go-observability.js';
+import { goLayout } from '../../../../src/domain/core/adapters/go-module-layout.js';
 import { RUST_OBSERVABILITY_ID } from '../../../../src/domain/core/adapters/rust-observability.js';
 import {
   TS_OBSERVABILITY_ID,
@@ -367,7 +368,7 @@ describe('observability on the Go HTTP skeleton', () => {
 
   it('leaves a hand-edited main.go unchanged (drift guard)', () => {
     const drifted = 'package main\n\nfunc main() { custom() }\n';
-    expect(patchMain(drifted, 'example.com/walking-skeleton', 'demo')).toBe(drifted);
+    expect(patchMain(drifted, goLayout([], 'example.com/walking-skeleton'), 'demo')).toBe(drifted);
   });
 });
 

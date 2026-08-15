@@ -16,11 +16,12 @@
  */
 
 import { GO_BOOTSTRAP_ID, goBootstrapAnswers } from './go-bootstrap.js';
+import { goLayout } from './go-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
 
 export const GO_PORT_FAKE_ID = 'walking-skeleton/go-port-fake';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/go-port-fake/templates';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/go-port-fake';
 
 export const goPortFakeAdapter: Adapter = {
   id: GO_PORT_FAKE_ID,
@@ -30,7 +31,22 @@ export const goPortFakeAdapter: Adapter = {
   after: [GO_BOOTSTRAP_ID],
   async contribute(ctx) {
     const { modulePath } = goBootstrapAnswers(ctx.manifest, GO_PORT_FAKE_ID);
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { modulePath });
-    return { files };
+    const layout = goLayout(ctx.manifest.tags, modulePath);
+    const suffix = layout.layout === 'modulith' ? '-modulith' : '';
+    const fakeDir = layout.platform('clockfake');
+    const [port, fake] = await Promise.all([
+      ctx.templates.render(`${TEMPLATE_ROOT}/templates${suffix}/port`, layout.clockPort, {
+        modulePath,
+      }),
+      ctx.templates.render(`${TEMPLATE_ROOT}/templates/fake`, fakeDir, {
+        modulePath,
+        clockPkg: layout.clockPkg,
+        projectImports: [layout.importPath(layout.clockPort), layout.importPath(fakeDir)]
+          .sort()
+          .map((p) => `\t"${p}"`)
+          .join('\n'),
+      }),
+    ]);
+    return { files: [...port, ...fake] };
   },
 };

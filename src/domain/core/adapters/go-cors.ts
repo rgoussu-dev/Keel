@@ -9,12 +9,11 @@
  * same-origin through the reverse proxy) never serve the dev origin.
  */
 
+import { goMain } from './go-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
 import { eolOf, withEol } from '../util.js';
 
 export const GO_CORS_ID = 'gateway/go-cors';
-
-const MAIN_TARGET = 'cmd/http/main.go';
 
 const SERVE_LINE = 'log.Fatal(http.Serve(listener, resthttp.NewHandler(greeter)))';
 const SERVE_LINE_WRAPPED =
@@ -60,11 +59,12 @@ export const goCorsAdapter: Adapter = {
   vertical: 'gateway',
   covers: [],
   predicate: { requires: ['lang.go', 'arch.server-http', 'peer.ui.spa'] },
-  contribute() {
+  contribute(ctx) {
+    const mainTarget = goMain(ctx.manifest.tags, 'http');
     return {
       patches: [
         {
-          target: MAIN_TARGET,
+          target: mainTarget,
           apply: (existing) => {
             const wrapped =
               existing.includes(SERVE_LINE_WRAPPED) || existing.includes(OBSERVED_LINE_WRAPPED);
@@ -72,7 +72,7 @@ export const goCorsAdapter: Adapter = {
             if (wrapped && decorated) return existing;
             if (wrapped || decorated) {
               throw new Error(
-                `${GO_CORS_ID}: ${MAIN_TARGET} is partially CORS-decorated (${
+                `${GO_CORS_ID}: ${mainTarget} is partially CORS-decorated (${
                   wrapped
                     ? 'the serve call is wrapped but withCORS is missing'
                     : 'withCORS is present but the serve call is unwrapped'
@@ -91,7 +91,7 @@ export const goCorsAdapter: Adapter = {
                 .trimEnd()}${withEol(`\n${CORS_FUNC}`, eol)}`;
             }
             throw new Error(
-              `${GO_CORS_ID}: could not find the serve call in ${MAIN_TARGET} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,
+              `${GO_CORS_ID}: could not find the serve call in ${mainTarget} — the assembly point has diverged from the go-http bootstrap; wrap resthttp.NewHandler with a CORS decorator manually`,
             );
           },
         },

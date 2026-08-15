@@ -1,0 +1,24 @@
+// Package greeting is the bounded context's facade — the one package
+// a deployment unit or a peer context imports to reach it.
+//
+// It exports factories and NOTHING else. There is deliberately no
+// `type Greeter = domain.Greeter` and no `var ErrEmptyName =
+// domain.ErrEmptyName` here, however convenient they would be: the
+// domain package sits behind this context's internal/, so a consumer
+// that cannot name its types cannot declare its own implementation of
+// this context's ports either. That turns "only the owning context
+// implements its ports" from a review comment into a compile error.
+//
+// The assembly loses nothing by it. `greeter := greeting.NewGreeter()`
+// infers a type main.go is not allowed to write down, and hands it
+// straight to the adapter that can.
+package greeting
+
+import "<%= domainImport %>"
+
+// NewGreeter assembles the greet use case and returns it behind its
+// driving port. Each cmd/ main wires it by hand — constructor
+// injection, no framework.
+func NewGreeter() domain.Greeter {
+	return domain.NewGreeter()
+}

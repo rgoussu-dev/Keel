@@ -1,0 +1,6 @@
+package <%= basePackage %>.guestbook.domain.contract.signing
+
+import <%= basePackage %>.platform.kernel.Command
+
+/** Sign the guestbook as [visitor]. */
+data class SignCommand(val visitor: String?) : Command<GuestbookEntry>

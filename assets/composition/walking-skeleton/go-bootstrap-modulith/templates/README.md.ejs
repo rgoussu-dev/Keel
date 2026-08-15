@@ -1,0 +1,65 @@
+# <%= projectName %>
+
+Go walking skeleton scaffolded by keel — hexagonal, one module, no
+mediator object: commands are structs, driving ports are per-use-case
+interfaces, and each `cmd/` main is the assembly point.
+
+Carved on the **modulith** layout: one bounded context per directory
+under `internal/modules/`, each a whole hexagon.
+
+## Layout
+
+```
+cmd/                    — one directory per deployment unit; each
+                          main.go wires the hexagon by hand
+internal/
+  platform/             — what no bounded context owns: the Clock
+                          port and its adapters, correlation ids
+  modules/
+    greeting/           — one bounded context
+      greeting.go       — THE FACADE: factories only, no type
+                          aliases. A consumer holds what this
+                          returns; it cannot name it
+      internal/
+        domain/         — the contract face: commands, ports, and
+                          the factories the facade calls
+          internal/     — the compiler-hidden core
+      userside/         — primary adapters: transport → command →
+                          port → transport; zero business logic
+      infra/            — secondary adapters, one per technology
+```
+
+Three placements are load-bearing, and Go's compiler enforces each:
+
+- **`internal/` hides the context's core.** Anything under
+  `modules/greeting/internal/` is importable from inside
+  `modules/greeting/` and from nowhere else.
+- **Adapters sit beside that wall, not behind it.** `userside/` and
+  `infra/` are inside the context (so they may name its ports) but
+  outside its `internal/` — otherwise `cmd/` could not construct
+  them.
+- **The facade re-exports nothing.** No `type Greeter = …`, no
+  `var ErrEmptyName = …`. That is what makes "only this context may
+  implement its own ports" a compile error rather than a review
+  comment, and it costs the assembly nothing: `:=` infers the type
+  it may not write.
+
+A second context is a sibling directory under `internal/modules/`.
+It reaches this one through `greeting.go` and through nothing else —
+and note that two contexts can declare the same package name
+(`modules/ordering` and `modules/billing/gateway/ordering` are both
+`package ordering`), so a file importing both must alias one.
+
+Cross-cutting concerns (logging, metrics, tx) wrap the driving ports
+as decorator functions applied at the assembly point.
+
+## Test
+
+```sh
+go test ./...
+```
+
+## Deployment units
+
+Each `cmd/` directory is one deployment unit; its `main.go` import
+list reads like the ops runbook.

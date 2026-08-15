@@ -1,0 +1,58 @@
+package observability_test
+
+import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"<%= observabilityImport %>"
+)
+
+func probe(t *testing.T, mux *http.ServeMux, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+	return recorder
+}
+
+func TestLivenessIsUpFromTheStart(t *testing.T) {
+	health := observability.NewHealth()
+	mux := http.NewServeMux()
+	health.Register(mux)
+
+	if got := probe(t, mux, "/health/live").Code; got != http.StatusOK {
+		t.Fatalf("expected live 200, got %d", got)
+	}
+}
+
+func TestReadinessGatesOnSetReady(t *testing.T) {
+	health := observability.NewHealth()
+	mux := http.NewServeMux()
+	health.Register(mux)
+
+	if got := probe(t, mux, "/health/ready").Code; got != http.StatusServiceUnavailable {
+		t.Fatalf("expected ready 503 before SetReady, got %d", got)
+	}
+	health.SetReady(true)
+	if got := probe(t, mux, "/health/ready").Code; got != http.StatusOK {
+		t.Fatalf("expected ready 200 after SetReady, got %d", got)
+	}
+}
+
+func TestReadinessAggregatesDependencyChecks(t *testing.T) {
+	health := observability.NewHealth()
+	mux := http.NewServeMux()
+	health.Register(mux)
+	health.SetReady(true)
+
+	health.AddReadinessCheck("db", func() error { return errors.New("connection refused") })
+	if got := probe(t, mux, "/health/ready").Code; got != http.StatusServiceUnavailable {
+		t.Fatalf("expected ready 503 on failing check, got %d", got)
+	}
+
+	health.AddReadinessCheck("db", func() error { return nil })
+	if got := probe(t, mux, "/health/ready").Code; got != http.StatusOK {
+		t.Fatalf("expected ready 200 once the check recovers, got %d", got)
+	}
+}

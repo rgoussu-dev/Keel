@@ -1,0 +1,39 @@
+package <%= basePackage %>.<%= assemblyPkg %>
+
+import io.quarkus.test.junit.QuarkusTest
+import jakarta.inject.Inject
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.guestbook.domain.contract.signing.GuestbookEntry
+import <%= basePackage %>.guestbook.domain.contract.signing.SignCommand
+import <%= basePackage %>.platform.kernel.Mediator
+
+import org.junit.jupiter.api.Assertions.assertEquals
+
+/**
+ * The one test that fails if the peer context is emitted but not
+ * wired. Everything else about guestbook is provable without a
+ * container: the domain test stands the port up itself, the gateway
+ * test fakes the peer. Discovery is not — a handler the container
+ * never finds costs nothing at compile time, the application starts
+ * perfectly, and the omission surfaces only when someone dispatches
+ * the command it was supposed to handle.
+ *
+ * So this dispatches it. Through the real Mediator, out of the real
+ * container: it proves SignHandler was wired, that its Welcome port
+ * was bound, that the binding reaches greeting through the service
+ * seam, and that resolving the peer does not close a construction
+ * cycle.
+ */
+@QuarkusTest
+class GuestbookWiringTest {
+    @Inject
+    lateinit var mediator: Mediator
+
+    @Test
+    fun `dispatches the guestbook command to a handler the container found`() {
+        val entry = mediator.dispatch(SignCommand("Romain"))
+
+        assertEquals(GuestbookEntry("Romain", "Hello, Romain!"), entry)
+    }
+}

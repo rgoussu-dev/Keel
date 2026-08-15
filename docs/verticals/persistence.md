@@ -61,6 +61,12 @@ unit's, so on a
 [`layout.modulith`](../stacks/jvm.md#module-layout) project the slice
 follows the context rather than the assembly:
 
+> **Go + `layout.modulith` is not covered yet.** The Go slice spans
+> five packages whose homes all move under that layout, so the adapter
+> excludes the tag and `keel add persistence` fails with an uncovered
+> dimension rather than emitting at flat paths and silently not
+> wiring. Tracked on [the roadmap](../roadmap.md).
+
 | What                                                 | `basic`                     | `modulith`                                |
 | ---------------------------------------------------- | --------------------------- | ----------------------------------------- |
 | `GreetingLog` + `UnitOfWork` ports                   | `domain/contract`           | `modules/greeting/domain/contract`        |

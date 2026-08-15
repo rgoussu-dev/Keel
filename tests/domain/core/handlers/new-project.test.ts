@@ -160,7 +160,9 @@ describe('keel.new-project (keel new)', () => {
     const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest).not.toBeNull();
     expect(manifest!.tags).toEqual(
-      ['arch.cli', 'arch.hexagonal', 'lang.go', 'pkg.go-modules'].sort(),
+      // `layout.basic` is the dial's default, recorded so a later
+      // `keel add` resolves the same shape the project was built on.
+      ['arch.cli', 'arch.hexagonal', 'lang.go', 'layout.basic', 'pkg.go-modules'].sort(),
     );
     expect(manifest!.answers['walking-skeleton/go-bootstrap']).toEqual({
       modulePath: 'github.com/acme/shipper',
@@ -518,7 +520,7 @@ describe('keel.new-project module-layout selection', () => {
       await mediator.dispatch(
         newProjectCommand({
           cwd,
-          stack: 'go-cli',
+          stack: 'rust-cli',
           answers: {},
           interactive: false,
           dryRun: false,

@@ -1,0 +1,31 @@
+package clockfake_test
+
+import (
+	"testing"
+	"time"
+
+<%- projectImports %>
+)
+
+// The fake must satisfy the port it stands in for.
+var _ <%= clockPkg %>.Clock = (*clockfake.Clock)(nil)
+
+func TestNowReturnsThePinnedInstant(t *testing.T) {
+	pinned := time.Date(2026, time.April, 26, 12, 0, 0, 0, time.UTC)
+	clock := clockfake.At(pinned)
+
+	if got := clock.Now(); !got.Equal(pinned) {
+		t.Fatalf("Now = %v, want %v", got, pinned)
+	}
+}
+
+func TestAdvanceMovesTheInstantForward(t *testing.T) {
+	pinned := time.Date(2026, time.April, 26, 12, 0, 0, 0, time.UTC)
+	clock := clockfake.At(pinned)
+
+	clock.Advance(90 * time.Minute)
+
+	if got, want := clock.Now(), pinned.Add(90*time.Minute); !got.Equal(want) {
+		t.Fatalf("Now = %v, want %v", got, want)
+	}
+}

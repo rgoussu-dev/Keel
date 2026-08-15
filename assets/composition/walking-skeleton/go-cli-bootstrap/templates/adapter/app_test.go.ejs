@@ -1,0 +1,64 @@
+package cli_test
+
+import (
+	"bytes"
+	"strings"
+	"testing"
+
+<%- projectImports %>
+)
+
+// fakeGreeter is a hand-rolled fake of the driving port: it records
+// the dispatched command and replies with a canned outcome.
+type fakeGreeter struct {
+	got   domain.GreetCommand
+	reply string
+	err   error
+}
+
+func (f *fakeGreeter) Greet(cmd domain.GreetCommand) (string, error) {
+	f.got = cmd
+	return f.reply, f.err
+}
+
+func TestRunMapsFlagsToTheCommandAndPrintsTheReply(t *testing.T) {
+	fake := &fakeGreeter{reply: "Hello, Ada!"}
+	app := cli.New(fake)
+	var stdout, stderr bytes.Buffer
+
+	code := app.Run([]string{"--name", "Ada"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("Run = %d, want 0 (stderr: %s)", code, stderr.String())
+	}
+	if f := fake.got.Name; f != "Ada" {
+		t.Fatalf("dispatched name = %q, want %q", f, "Ada")
+	}
+	if got := stdout.String(); got != "Hello, Ada!\n" {
+		t.Fatalf("stdout = %q, want %q", got, "Hello, Ada!\n")
+	}
+}
+
+func TestRunMapsADomainRejectionToStderrAndUsageExitCode(t *testing.T) {
+	fake := &fakeGreeter{err: domain.ErrEmptyName}
+	app := cli.New(fake)
+	var stdout, stderr bytes.Buffer
+
+	code := app.Run([]string{"--name", "  "}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("Run = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "name must not be empty") {
+		t.Fatalf("stderr = %q, want the rejection reason", stderr.String())
+	}
+}
+
+func TestRunMapsAFlagErrorToUsageExitCode(t *testing.T) {
+	app := cli.New(&fakeGreeter{})
+	var stdout, stderr bytes.Buffer
+
+	if code := app.Run([]string{"--no-such-flag"}, &stdout, &stderr); code != 2 {
+		t.Fatalf("Run = %d, want 2", code)
+	}
+}

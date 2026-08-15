@@ -1,0 +1,42 @@
+// Package domain is the contract face of this bounded context: the
+// commands and ports its adapters are written against, plus the
+// factories that assemble the compiler-hidden core underneath
+// internal/.
+//
+// It lives behind the context's own internal/, so only this context's
+// packages — its userside/ and infra/ adapters — may import it.
+// Everything outside comes through the facade instead.
+package domain
+
+import "<%= domainCoreImport %>"
+
+// GreetCommand asks for a greeting addressed to Name.
+type GreetCommand struct {
+	Name string
+}
+
+// Greeter is the driving port for the greet use case. Primary
+// adapters depend on this interface, never on the implementation;
+// cross-cutting concerns stack as decorators around it at the
+// assembly point.
+type Greeter interface {
+	// Greet composes the greeting for the command's addressee.
+	// Returns ErrEmptyName when the name is blank.
+	Greet(cmd GreetCommand) (string, error)
+}
+
+// ErrEmptyName reports a greet command with nobody to address.
+var ErrEmptyName = greet.ErrEmptyName
+
+// NewGreeter assembles the greet use case and returns it behind its
+// driving port. The facade is what the outside world calls; this is
+// what the facade calls.
+func NewGreeter() Greeter {
+	return greeter{}
+}
+
+type greeter struct{}
+
+func (greeter) Greet(cmd GreetCommand) (string, error) {
+	return greet.Message(cmd.Name)
+}
