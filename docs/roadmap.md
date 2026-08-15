@@ -569,7 +569,7 @@ asserted.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for web-components`, then per vertical.
 
-### I.4 — Rust (L) — _dial; `basic` default, and it stays default longest_
+### I.4 — Rust (L) — _dial; `basic` default, and it stays default longest_ ✅
 
 Heaviest of the four; last because it is the most template surface
 for the least marginal gain over what I.1–I.3 will have proven.
@@ -658,7 +658,68 @@ comparison table should say so rather than imply parity. It does not
 block I.4 — the failure mode is coupling that compiles, not a broken
 build.
 
-**Commits.** `feat(walking-skeleton): modulith module layout for the Rust stacks`, then per vertical.
+**Landed.** `rust-module-layout.ts` owns the crate name, its three
+spellings and the `path =` depth (35 unit tests, written before any
+template — they caught the `basic` root crate deriving an empty
+package name from its empty directory). `rust-bootstrap-modulith`
+emits the workspace; the entrypoints serve both layouts from one
+template tree, since only the destination and the registration
+differ. `platform-kernel` ships `BoxFuture`, `boxed!` and a
+`block_on` for the synchronous CLI assembly, and pins
+dyn-compatibility in its own tests.
+
+Two design points moved during the work, both recorded in the PR:
+
+- **The peer context ships on Rust**, reversing the reading that
+  I.1–I.3's precedent implied otherwise. It is what makes the seam
+  demonstrable, which matters more here than elsewhere given how weak
+  the seam is.
+- **The seam ruling was re-verified rather than assumed**, on rustc
+  1.94.1: naming a crate with no edge fails (`E0432`); a domain type
+  flowing through the seam is read by a consumer with no edge, no
+  warning; `-Z public-dependency` is rejected by stable. All three as
+  the 2026-08-14 ruling states.
+
+`rust-cors` moved to `rustMain(tags, typology)`, the Rust `goMain`.
+`rust-observability` moved to the full resolver — its hard-coded
+`src/bin/http/main.rs` was the flat-path trap this item named, and it
+blocked the `rust-http` cell loudly rather than emitting an unbound
+file. `rust-http-image` needed no change, because the binary name
+deliberately does not move with the layout.
+
+**Commits.** `refactor(e2e): extract the Rust e2e harness`,
+`feat(walking-skeleton): rust module layout resolver`,
+`feat(walking-skeleton): modulith module layout for the Rust stacks`,
+`feat(walking-skeleton): the Rust peer bounded context`,
+`feat(gateway): resolve the rust-cors assembly through the layout`.
+
+### I.5 — `rust-persistence` under the modulith (M)
+
+The one Rust vertical I.4 did not port, and it is a different size of
+job rather than a longer one. Its adapters must become a crate of
+their own under `modules/<ctx>/infra/postgres` — manifest, workspace
+member, assembly dependency — where the other three verticals only
+needed a path resolved. Its contract test also wants a Postgres
+through Testcontainers, which the `rust` CI shard cannot provide: it
+provisions `cargo` alone, so a modulith persistence cell needs Docker
+added to that shard, or the suite placed elsewhere.
+
+Neither Rust stack carries persistence by default, so nothing
+scaffolds into this gap; only brownfield `keel add persistence` on a
+modulith project reaches it, and that now fails at the front door
+with the reason and the workaround rather than on a missing patch
+target.
+
+### I.6 — the peer context beyond the JVM and Rust (M)
+
+`--with-peer-context` now exists on the twelve JVM stacks and on the
+two Rust ones. Go, `ts-http` and `web-components` shipped their
+modulith without it, which leaves their seam asserted rather than
+exercised — the same hole I.4 closed for Rust. Worth closing for the
+same reason, and it is the natural predecessor of `keel add module
+<name>` rather than a competitor to it: a second context emitted by
+flag is most of the machinery a second context emitted by command
+would need.
 
 ### Not in scope for I
 
