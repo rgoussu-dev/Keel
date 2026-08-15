@@ -63,6 +63,21 @@ jobs:
   #   - A red X reads `e2e (go)` instead of `e2e`, and re-running one
   #     stack does not re-run the JVM builds.
   #
+  # The JVM is then sharded again, along the grid its suites now
+  # populate: three frameworks plus `modulith`, the typology axis that
+  # no framework grouping captures and the one that has actually
+  # shipped defects. Each framework shard holds that framework's four
+  # `basic` stacks — CLI and REST, Java and Kotlin — so a red X names
+  # the container whose wiring broke, and the failing test inside it
+  # names the language and the shape.
+  #
+  # Language is not a fourth axis, and the reason is a rule rather than
+  # a preference: a shard that runs nothing is worse than no shard,
+  # because the check name asserts coverage that does not exist. The
+  # `basic` half would split by language cleanly; the modulith half has
+  # no Kotlin suite to give a `jvm-kotlin` shard, so that axis waits
+  # until the grid populates it.
+  #
   # The `files` list is the shard's whole definition, and it is load
   # bearing: a suite in no shard never runs, which looks exactly like a
   # suite that passed. `tests/ci-workflow.test.ts` parses this file and
@@ -71,8 +86,13 @@ jobs:
   # non-coverage, so do not delete it when editing the matrix.
   #
   # Vitest parallelises across files but runs the tests inside one file
-  # in sequence, so the slowest single *file* is this job's floor, not
-  # the slowest shard. That is why the modulith cases are three files.
+  # in sequence, so the slowest single *file* is a shard's floor. Four
+  # concurrent JVM builds on a 4-vCPU runner do not get 4× though —
+  # measured speedup across a shard is closer to 2.3×, because each
+  # Gradle build is itself parallel and they contend. Both numbers move
+  # when suites are added; re-measure before rebalancing, and measure
+  # on the shard shape actually shipped, since a file timed against 16
+  # neighbours is far slower than the same file timed against three.
   e2e:
     name: e2e (${{ matrix.shard.id }})
     runs-on: ubuntu-latest
@@ -84,21 +104,30 @@ jobs:
       fail-fast: false
       matrix:
         shard:
-          - id: jvm
-            tools: java javac gradle mvn
+          - id: jvm-quarkus
+            tools: java javac gradle
             files: >-
               tests/e2e/walking-skeleton.test.ts
               tests/e2e/walking-skeleton-quarkus-cli-kotlin.test.ts
+              tests/e2e/walking-skeleton-rest.test.ts
+              tests/e2e/walking-skeleton-kotlin.test.ts
+          - id: jvm-spring
+            tools: java javac gradle
+            files: >-
               tests/e2e/walking-skeleton-spring-cli.test.ts
               tests/e2e/walking-skeleton-spring-cli-kotlin.test.ts
+              tests/e2e/walking-skeleton-spring.test.ts
+              tests/e2e/walking-skeleton-spring-kotlin.test.ts
+          - id: jvm-micronaut
+            tools: java javac gradle
+            files: >-
               tests/e2e/walking-skeleton-micronaut-cli.test.ts
               tests/e2e/walking-skeleton-micronaut-cli-kotlin.test.ts
-              tests/e2e/walking-skeleton-rest.test.ts
-              tests/e2e/walking-skeleton-spring.test.ts
               tests/e2e/walking-skeleton-micronaut.test.ts
-              tests/e2e/walking-skeleton-kotlin.test.ts
-              tests/e2e/walking-skeleton-spring-kotlin.test.ts
               tests/e2e/walking-skeleton-micronaut-kotlin.test.ts
+          - id: jvm-modulith
+            tools: java javac gradle mvn
+            files: >-
               tests/e2e/walking-skeleton-modulith.test.ts
               tests/e2e/walking-skeleton-modulith-spring.test.ts
               tests/e2e/walking-skeleton-modulith-micronaut.test.ts
@@ -138,8 +167,13 @@ jobs:
       # Maven suites skip themselves rather than fail. Gradle would not
       # care (its foojay resolver provisions a toolchain), which is why
       # this is the JDK the *Maven* half dictates.
+      #
+      # Every `jvm-*` shard gets it, not only the one holding the Maven
+      # suite: the prefix is the whole condition, so a new JVM shard is
+      # provisioned by being named, and one that is not named simply
+      # skips every suite it was given.
       - name: Setup JDK 25
-        if: matrix.shard.id == 'jvm'
+        if: startsWith(matrix.shard.id, 'jvm')
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
@@ -152,7 +186,7 @@ jobs:
       # error message. Pinning the host to the same 9.4.1 keeps one JDK
       # serving both build systems.
       - name: Setup Gradle 9.4.1
-        if: matrix.shard.id == 'jvm'
+        if: startsWith(matrix.shard.id, 'jvm')
         uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669 # v6.3.0
         with:
           gradle-version: '9.4.1'
@@ -216,12 +250,14 @@ jobs:
             command -v "$tool" >/dev/null || { echo "::error::$tool is not on PATH"; exit 1; }
             printf '%-8s %s\n' "$tool" "$(command -v "$tool")"
           done
-          if [ "${{ matrix.shard.id }}" = jvm ]; then
-            echo "JAVA_HOME=${JAVA_HOME:-unset}"
-            "${JAVA_HOME}/bin/javac" -version
-            gradle --version | sed -n '/^Gradle/p'
-            mvn --version | head -1
-          fi
+          case "${{ matrix.shard.id }}" in
+            jvm-*)
+              echo "JAVA_HOME=${JAVA_HOME:-unset}"
+              "${JAVA_HOME}/bin/javac" -version
+              gradle --version | sed -n '/^Gradle/p'
+              case " ${{ matrix.shard.tools }} " in *' mvn '*) mvn --version | head -1 ;; esac
+              ;;
+          esac
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

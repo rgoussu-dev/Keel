@@ -255,10 +255,17 @@ would ship as separate packages implementing the same port.
   is the fast gate — lint, typecheck, test, build across Node 22 and 24;
   `tests/e2e/` self-skips there, since it is opt-in on CI. `e2e` is the
   other half, running with `KEEL_RUN_E2E=1` and **sharded by toolchain**:
-  `jvm` (JDK 25 + Gradle 9.4.1 + Maven), `go` (Go + Docker), `rust`
-  (cargo), `web` (npm/pnpm + Chrome). Each shard provisions only what its
-  suites probe for. Between the two jobs, nothing in the suite is skipped
-  for want of a tool.
+  four `jvm-*` shards (JDK 25 + Gradle 9.4.1, plus Maven on
+  `jvm-modulith`), `go` (Go + Docker), `rust` (cargo), `web` (npm/pnpm +
+  Chrome). Each shard provisions only what its suites probe for. Between
+  the two jobs, nothing in the suite is skipped for want of a tool.
+- **The JVM shards follow the grid, and the grid comes first.** They are
+  `jvm-quarkus`, `jvm-spring`, `jvm-micronaut` — each holding that
+  framework's four `basic` stacks, CLI and REST × Java and Kotlin — and
+  `jvm-modulith` for the typology axis. Never shard onto a cell no suite
+  populates: a green `e2e (jvm-kotlin)` that runs nothing asserts
+  coverage that does not exist, and the check name hides it. That is why
+  language is not yet an axis — the modulith half has no Kotlin suite.
 - **The shard matrix names its files explicitly, and that is a hazard
   with a guard.** A suite in no shard never runs, which looks exactly
   like a suite that passed. `tests/ci-workflow.test.ts` parses the

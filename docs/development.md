@@ -108,11 +108,30 @@ KEEL_RUN_E2E=1 pnpm test:e2e     # all of them
 KEEL_RUN_E2E=1 pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts
 ```
 
+Most of a JVM suite is shared. `tests/support/jvm-e2e.ts` carries the
+three steps every one of them runs — scaffold through the real
+mediator, build with the generated wrapper, locate the runnable jar —
+behind a `JvmProjectSpec`. What happens next is the only difference:
+`jvm-rest-e2e.ts` boots the jar and drives the `/greet` wire contract,
+`jvm-cli-e2e.ts` runs it once with an argv and asserts on stdout. A new
+JVM stack is usually a spec object and a `describe`.
+
 CI runs them too, in a second job — the `verify` matrix stays the fast
-gate. That job is **sharded by toolchain**, one runner per stack family
-(`e2e (jvm)`, `e2e (go)`, `e2e (rust)`, `e2e (web)`), so each shard
-provisions only what its suites probe for and a failure names the stack
-in the check title.
+gate. That job is **sharded by toolchain**, so each shard provisions
+only what its suites probe for and a failure names the stack in the
+check title. The JVM is sharded again along the grid its suites
+populate: `e2e (jvm-quarkus)`, `e2e (jvm-spring)` and
+`e2e (jvm-micronaut)` each take that framework's four `basic` stacks
+(CLI and REST, Java and Kotlin), and `e2e (jvm-modulith)` takes the
+typology axis — the one no framework grouping captures, and the one
+that has actually shipped defects. `e2e (go)`, `e2e (rust)` and
+`e2e (web)` are unchanged.
+
+Language is deliberately _not_ a further axis. A shard that runs
+nothing is worse than no shard, since the check name asserts coverage
+that does not exist; the `basic` half would split by language cleanly,
+but the modulith half has no Kotlin suite yet to put in a
+`jvm-kotlin` shard.
 
 Each shard lists its files explicitly in `.github/workflows/ci.yml`,
 which means **a new suite must be added to a shard or it never runs**.
@@ -125,6 +144,15 @@ the slowest single file is the floor for the whole job — which is why
 the modulith cases live in three files (`-modulith`, `-persistence`,
 `-maven`) rather than four `it`s in one. When adding a long case, prefer
 a new file over another `it` in a long one.
+
+The other half of that detail is that parallel workers do not divide the
+work by their number. Each Gradle build is itself parallel, so four of
+them on a 4-vCPU runner contend: measured across the JVM shards, a
+shard's wall clock is closer to `total ÷ 2.3` than to `total ÷ 4`. The
+practical consequence is for measurement rather than for design — a file
+timed while sixteen neighbours race it reads far slower than the same
+file timed against three, so **re-measure on the shard shape you intend
+to ship** before rebalancing the matrix.
 
 Locally you are more likely to have one JDK than two, which is where the
 next paragraph bites.
