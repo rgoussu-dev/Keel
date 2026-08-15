@@ -99,6 +99,10 @@ jobs:
   # a file timed against 16 neighbours is far slower than the same file
   # timed against three.
   #
+  # For scale: the commit before this split ran all 25 modulith files
+  # as one job and took 1475s on a runner, against a slowest shard of
+  # 415s here — the split is worth ~3.5x, not attribution alone.
+  #
   # The floor is why this split stops here rather than going finer.
   # `jvm-modulith-micronaut-kotlin` runs 252s against a 249s longest
   # file: it is already floor-bound, so halving it again would buy

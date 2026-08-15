@@ -929,6 +929,18 @@ shard shape and a different file set, with the same cause: each Gradle
 build is itself parallel, and concurrent ones contend. Nowhere near
 the 4 the core count suggests.
 
+**The before number is a real runner's, not a model's.** The commit
+preceding the reshard ran all 25 modulith files as one job on CI and
+took **1475s** (24m35s) — green, but inside a 60-minute timeout with
+less margin than it looks, since a cold Gradle CDN adds minutes and
+the retry paths exist because that happens. Against a slowest shard of
+415s the split is worth roughly **3.5×** in wall clock, and the
+same run put the unchanged `basic` shards at 337s / 304s / 284s, which
+is the band the modulith shards now sit in too.
+
+That run is also what confirms the 20 new suites off this box: every
+one of them passed on CI, on runners, before the reshard moved them.
+
 **The split stops at nine on the floor, not on taste.**
 `micronaut-kotlin` runs 252s against a 249s longest file — already
 floor-bound, so halving it again buys attribution and no wall clock.
