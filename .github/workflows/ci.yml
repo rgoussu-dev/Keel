@@ -128,11 +128,12 @@ jobs:
           - id: jvm-modulith
             tools: java javac gradle mvn
             files: >-
-              tests/e2e/walking-skeleton-modulith.test.ts
-              tests/e2e/walking-skeleton-modulith-spring.test.ts
-              tests/e2e/walking-skeleton-modulith-micronaut.test.ts
-              tests/e2e/walking-skeleton-modulith-persistence.test.ts
-              tests/e2e/walking-skeleton-modulith-maven.test.ts
+              tests/e2e/modulith-baseline.test.ts
+              tests/e2e/modulith-persistence.test.ts
+              tests/e2e/modulith-quarkus-rest-maven.test.ts
+              tests/e2e/modulith-spring-rest-gradle.test.ts
+              tests/e2e/modulith-spring-rest-maven.test.ts
+              tests/e2e/modulith-micronaut-rest-gradle.test.ts
           - id: go
             tools: go docker
             files: >-

@@ -1,6 +1,6 @@
 /**
- * The `modulith` layout under Spring on Gradle, with the peer bounded
- * context.
+ * Grid cell: **Spring REST · Java · Gradle**, `modulith` layout with
+ * the peer bounded context.
  *
  * Spring's modulith had only ever been built by Maven
  * (`walking-skeleton-modulith-maven.test.ts`). That is coverage of the
@@ -20,9 +20,10 @@
  * `SignCommand` through the real container, which is what makes that a
  * red build rather than a green one over less behaviour.
  *
- * Sibling of `walking-skeleton-modulith.test.ts`; see that file for
- * why the layout's cases live in separate files. Shared machinery and
- * skip rules live in `tests/support/jvm-rest-e2e.ts`.
+ * One of the 24 cells of the modulith grid (12 stacks × 2 build
+ * systems), each of which gets a file of its own — see
+ * `docs/roadmap.md` item J. Shared machinery and skip rules live in
+ * `tests/support/jvm-rest-e2e.ts`.
  */
 
 import path from 'node:path';

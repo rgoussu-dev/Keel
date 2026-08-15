@@ -1,11 +1,19 @@
 /**
- * End-to-end test for the `modulith` module layout: scaffolds
- * `quarkus-rest --module-layout=modulith`, builds it — which compiles
- * `platform/kernel`, the whole `modules/greeting` hexagon and the
- * `application/api` assembly, and runs every generated test including
- * the in-process service adapter's — then boots the packaged
+ * The `modulith` layout **without** the peer bounded context:
+ * scaffolds `quarkus-rest --module-layout=modulith`, builds it — which
+ * compiles `platform/kernel`, the whole `modules/greeting` hexagon and
+ * the `application/api` assembly, and runs every generated test
+ * including the in-process service adapter's — then boots the packaged
  * assembly and verifies the same `/greet` wire contract the flat
  * layout serves.
+ *
+ * Not a cell of the modulith grid but the baseline underneath it. The
+ * 24 grid cells all scaffold `--with-peer-context`, which is the
+ * layout's fullest configuration; this is the only e2e proving the
+ * peer-context family is genuinely additive — that with the flag
+ * absent no adapter of it fires and a one-context modulith still
+ * builds, wires and serves. Its sibling variant is
+ * `modulith-persistence.test.ts`, the vertical layered on top.
  *
  * This is the layout's real proof: the shape is asserted by
  * `tests/domain/core/verticals/walking-skeleton-modulith.test.ts`,
@@ -13,13 +21,11 @@
  * compiles and wires. Shared machinery and skip rules live in
  * `tests/support/jvm-rest-e2e.ts`.
  *
- * The layout's other e2e cases are deliberately separate files rather
- * than further `it`s here. Vitest parallelises across files but runs
- * the tests inside one file in sequence, so a file is the unit of
- * scheduling: four JVM builds in one file is a single ~9-minute block
- * that pins the whole suite's wall clock no matter how the CI job is
- * sharded. The siblings are `-persistence` (the vertical layered on
- * top) and `-maven` (the Maven half, with the peer bounded context).
+ * The grid's cases are deliberately separate files rather than further
+ * `it`s here. Vitest parallelises across files but runs the tests
+ * inside one file in sequence, so a file is the unit of scheduling:
+ * four JVM builds in one file is a single ~9-minute block that pins
+ * the whole suite's wall clock no matter how the CI job is sharded.
  */
 
 import path from 'node:path';

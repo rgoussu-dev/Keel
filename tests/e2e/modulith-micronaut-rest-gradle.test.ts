@@ -1,6 +1,6 @@
 /**
- * The `modulith` layout under Micronaut, with the peer bounded
- * context.
+ * Grid cell: **Micronaut REST · Java · Gradle**, `modulith` layout
+ * with the peer bounded context.
  *
  * Micronaut's modulith had never been built — not in either language,
  * not under either build system — which made it the emptiest cell in
@@ -21,10 +21,10 @@
  * `SignCommand` through the real container, so the build is what turns
  * that into a red X.
  *
- * Sibling of `walking-skeleton-modulith.test.ts` (Quarkus/Gradle) and
- * `walking-skeleton-modulith-maven.test.ts` (the Maven half); see the
- * first for why the layout's cases live in separate files. Shared
- * machinery and skip rules live in `tests/support/jvm-rest-e2e.ts`.
+ * One of the 24 cells of the modulith grid (12 stacks × 2 build
+ * systems), each of which gets a file of its own — see
+ * `docs/roadmap.md` item J. Shared machinery and skip rules live in
+ * `tests/support/jvm-rest-e2e.ts`.
  */
 
 import path from 'node:path';
