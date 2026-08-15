@@ -104,8 +104,14 @@ anywhere when the toolchain is missing, and opted out with
 `KEEL_SKIP_E2E=1`. Run one with:
 
 ```sh
+KEEL_RUN_E2E=1 pnpm test:e2e     # all of them
 KEEL_RUN_E2E=1 pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts
 ```
+
+CI runs them too, in a second job (`e2e`) with every toolchain
+installed — the `verify` matrix stays the fast gate. Locally you are
+more likely to have one JDK than two, which is where the next
+paragraph bites.
 
 **Maven cases need more than Gradle ones.** A JVM stack scaffolds onto
 either build system, and the e2e harness follows the spec's
@@ -117,6 +123,21 @@ matching toolchain itself, while Maven compiles with whatever JDK runs
 it, so an older `JAVA_HOME` fails with `release version 25 not
 supported`. Maven cases skip themselves rather than fail when either
 prerequisite is missing.
+
+The catch is that the host `gradle` — the one that generates the
+wrapper — **cannot start on JDK 25 before Gradle 9**: 8.x fails with
+the version string as the entire error message. So a single-JDK box
+running Gradle 8.x has to choose, and the usual choice is an older
+`JAVA_HOME` (Gradle green, Maven skipping). Two ways out: point
+`JAVA_HOME` at a 25+ JDK for the Maven cases alone —
+
+```sh
+KEEL_RUN_E2E=1 JAVA_HOME=/path/to/jdk-25 \
+  pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts -t Maven
+```
+
+— or install a host Gradle 9.x, which is what CI does, and run
+everything on one JDK 25.
 
 ## Adding surface
 

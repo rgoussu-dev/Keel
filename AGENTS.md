@@ -126,6 +126,7 @@ pnpm install
 pnpm lint          # eslint (flat config, src + tests) + prettier --check . + depcruise src
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
+pnpm test:e2e      # vitest run tests/e2e (opt in with KEEL_RUN_E2E=1)
 pnpm test:watch    # vitest watch
 pnpm build         # tsc -p tsconfig.build.json → dist/
 pnpm format        # prettier --write .
@@ -250,8 +251,21 @@ would ship as separate packages implementing the same port.
 
 ## 9. CI and release
 
-- `.github/workflows/ci.yml` runs on PRs and pushes to `main` — lint,
-  typecheck, test, build across Node 22 and 24.
+- `.github/workflows/ci.yml` runs on PRs and pushes to `main` in two
+  jobs. `verify` is the fast gate — lint, typecheck, test, build across
+  Node 22 and 24; `tests/e2e/` self-skips there, since it is opt-in on
+  CI. `e2e` is the other half: one runner with every toolchain keel
+  emits for (JDK 25 + Gradle 9.4.1 + Maven, Go, Rust, npm/pnpm, Chrome,
+  Docker) and `KEEL_RUN_E2E=1`. Between the two, nothing in the suite
+  is skipped for want of a tool.
+- **The e2e job's JDK and Gradle versions are coupled and neither is
+  arbitrary.** The emitted JVM projects target release 25; Maven
+  compiles with whatever JDK runs it, so an older `JAVA_HOME` makes the
+  Maven suites skip themselves. Gradle would not care — its foojay
+  resolver provisions a toolchain — except that Gradle 8.x cannot
+  _start_ on JDK 25, and the host `gradle` is what generates the
+  wrapper. Pinning the host to 9.4.1 (the wrapper's own version) lets
+  one JDK serve both build systems. Change one, check the other.
 - `.github/workflows/release.yml` runs on `v*` tag push — verifies the tag
   matches `package.json`, reruns verification, publishes to npm with
   provenance, creates a GitHub Release. Dist-tag is derived from the
