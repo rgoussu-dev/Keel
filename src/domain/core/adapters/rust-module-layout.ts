@@ -110,6 +110,25 @@ export function toCrateName(dir: string): string {
   return significant.join('-');
 }
 
+/**
+ * The assembly point of one deployment unit, resolved from tags
+ * alone: `src/bin/<typology>/main.rs` under `basic`,
+ * `application/<typology>/src/main.rs` under the modulith.
+ *
+ * Exists for the same reason `goMain` does. An adapter that only
+ * *patches* the assembly — `rust-cors` wraps one line of it — should
+ * not have to know which layout put it where, and should certainly
+ * not have to read the bootstrap's answers for a project name it has
+ * no other use for. Requiring that answer makes the adapter fail in
+ * any scenario that did not record one, which is a coupling the
+ * decoration never asked for.
+ */
+export function rustMain(tags: readonly Tag[], typology: string): string {
+  return moduleLayoutOf(tags) === 'basic'
+    ? `src/bin/${typology}/main.rs`
+    : `${APPLICATION_PREFIX}/${typology}/src/main.rs`;
+}
+
 /** One crate of the emitted project, in all three of its spellings. */
 export interface RustCrate {
   /**
