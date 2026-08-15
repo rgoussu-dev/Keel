@@ -1,0 +1,34 @@
+import type { UnitOfWork } from '<%= contractSpec %>';
+
+/** A {@link UnitOfWork} fake that also reports outcome counts. */
+export interface FakeUnitOfWork extends UnitOfWork {
+  /** Units of work that ran to completion. */
+  committed(): number;
+  /** Units of work that ended in rollback. */
+  rolledBack(): number;
+}
+
+/**
+ * In-memory {@link UnitOfWork} — the canonical reference
+ * implementation of the port's contract: runs the block and counts
+ * outcomes, so domain tests assert the transactional boundary
+ * without a database.
+ */
+export function createFakeUnitOfWork(): FakeUnitOfWork {
+  let committed = 0;
+  let rolledBack = 0;
+  return {
+    async inTransaction<T>(work: () => Promise<T>): Promise<T> {
+      try {
+        const result = await work();
+        committed += 1;
+        return result;
+      } catch (error) {
+        rolledBack += 1;
+        throw error;
+      }
+    },
+    committed: () => committed,
+    rolledBack: () => rolledBack,
+  };
+}

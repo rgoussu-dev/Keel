@@ -1,0 +1,17 @@
+import { createRegistryMediator } from '<%= kernelPkg %>';
+import { createGreetHandler } from '<%= contextPkg %>';
+import { createGreetServer } from './server.ts';
+
+/**
+ * The assembly point: collect each context's handlers behind the
+ * platform's mediator, hand it to the HTTP unit, listen. Adding a
+ * bounded context is one import and one array entry here —
+ * cross-cutting concerns decorate the handlers or the server right
+ * here, nowhere else.
+ */
+const mediator = createRegistryMediator([createGreetHandler()]);
+const port = Number(process.env['PORT'] ?? 8080);
+
+createGreetServer(mediator).listen(port, () => {
+  console.log(`listening on http://localhost:${port} — try /greet?name=World`);
+});

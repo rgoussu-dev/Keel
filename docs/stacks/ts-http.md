@@ -26,6 +26,7 @@ npx @rgoussu.dev/keel new --stack=ts-http
 | npm scope       | e.g. `@acme` — workspace package naming.                       |
 | Project name    | Workspace + package naming.                                    |
 | Package manager | `npm` (default) or `pnpm`; pin with `--build-system`.          |
+| Module layout   | `basic` (default) or `modulith`; pin with `--module-layout`.   |
 | `origin` remote | Optional; registered by [`vcs`](../verticals/vcs.md) if given. |
 
 ## What gets generated
@@ -55,6 +56,79 @@ review.
 [`observability`](../verticals/observability.md) are installed by
 default (hand-rolled health endpoints, correlation-id middleware,
 OpenTelemetry over OTLP).
+
+## Module layout
+
+`--module-layout=modulith` carves the same skeleton one bounded
+context at a time — and here a context is **one workspace package**,
+not one per layer:
+
+```
+my-service/
+  platform/
+    kernel/              # @scope/platform-kernel: the dispatch vocabulary +
+                         # createRegistryMediator. Owned by no context
+  modules/
+    greeting/            # @scope/greeting: ONE package for the whole hexagon
+      src/
+        index.ts         # THE FACADE — what the assembly wires through
+        service.ts       # THE PEER SEAM — what another context may call
+        domain/
+          contract/      # commands, ports, domain error codes
+          core/internal/  # handlers; unreachable from outside the package
+        infra/           # driven adapters (clock; more as verticals land)
+      tests/
+  application/
+    rest/                # the deployment unit, unchanged
+  .dependency-cruiser.cjs
+```
+
+**One package per context, deliberately.** In a TypeScript workspace
+the package graph enforces nothing to begin with: an _undeclared_
+workspace dependency still resolves (npm hoists every member into the
+root `node_modules`), and TypeScript project references do not
+restrict which projects a project may import — the same undeclared
+import builds clean under `tsc -b --force`. Splitting a context into
+four packages therefore buys four manifests and no wall.
+
+What is enforced is the `exports` map, and one package per context
+keeps all of it at 1 manifest instead of 3.5:
+
+| Specifier                 | Reaches                                      |
+| ------------------------- | -------------------------------------------- |
+| `@scope/greeting`         | the facade — contract face + factories       |
+| `@scope/greeting/service` | the peer seam — a peer context's only way in |
+
+`@scope/greeting/src/domain/core/internal/…` is a `TS2307` from `tsc`
+and an `ERR_PACKAGE_PATH_NOT_EXPORTED` from Node. Widening that map is
+the single edit that undoes the layout.
+
+**The map is coupled to the build mode.** `ts-http` has no build step,
+so the map points at `./src/index.ts` and every import specifier ends
+in `.ts`. An emitting build would need `./dist/index.js` plus a
+`types` condition and `.js` specifiers — and mixing the two typechecks
+before failing at runtime, so the two are decided together.
+
+**The lint ships with the layout**, because two rules are outside what
+resolution can see: a relative path that walks into another package's
+tree, and an import that crosses layers inside one package (including
+`node:*` from `src/domain/` — one package per context means one
+`types` setting for the whole hexagon, so that wall moves from `tsc`
+to the linter).
+
+```sh
+npm run lint      # depcruise platform modules application
+```
+
+The emitted `.dependency-cruiser.cjs` carries an
+`enhancedResolveOptions` block, and it is load-bearing rather than
+tuning: with default options dependency-cruiser resolves every
+`@scope/*` import to a bare specifier, records no edge for it, and
+reports **zero** violations over a tree that is in violation.
+
+A second context is a sibling package under `modules/`, reaching this
+one through `@scope/greeting/service` and nothing else — and when it
+should become its own service, that seam is the only thing to replace.
 
 ## Verify it runs
 

@@ -79,6 +79,44 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   recording the choice, which is what keeps `keel add` resolving the
   same shape later.
 
+- **The `modulith` module layout for `ts-http`.**
+  `keel new --stack=ts-http --module-layout=modulith` scaffolds the
+  same walking skeleton carved one bounded context at a time:
+  `platform/kernel` for the dispatch vocabulary and the registry
+  mediator, `modules/<ctx>/` for the hexagon, `application/rest` still
+  the assembly. `basic` stays the default and its output is unchanged.
+
+  A context is **one workspace package**, not one per layer, and that
+  is a wall decision rather than a tidiness one. In a TypeScript
+  workspace the package graph enforces nothing to begin with — an
+  undeclared workspace dependency resolves anyway because npm hoists
+  every member into the root `node_modules`, and TS project references
+  do not restrict which projects a project may import. Four packages
+  per context would buy four manifests and no enforcement. The
+  `exports` map is the one real wall, and one package keeps all of it
+  at 1 manifest instead of 3.5: `@scope/<ctx>` reaches the facade,
+  `@scope/<ctx>/service` the peer seam, and anything deeper is a
+  `TS2307` from `tsc` and an `ERR_PACKAGE_PATH_NOT_EXPORTED` from
+  Node. `tsLayout()` owns the map, because the aperture is a layout
+  decision — and owns it together with the specifier convention, since
+  the two are coupled: with no build step the map points at
+  `./src/index.ts` and imports carry `.ts`, while an emitting build
+  needs `./dist/index.js` and `.js`, and mixing them typechecks before
+  failing at runtime.
+
+- **A dependency-cruiser config emitted with the layout, and it fails
+  closed.** Two rules are outside what module resolution can see: a
+  relative path that walks into another package's tree, and an import
+  that crosses layers inside one package. The emitted
+  `.dependency-cruiser.cjs` carries an `enhancedResolveOptions` block
+  with `extensions`, `exportsFields` and `conditionNames`, without
+  which dependency-cruiser resolves every `@scope/*` import to a bare
+  specifier, records no edge for it, and reports zero violations over
+  a tree that is in violation — measured on the emitted project: the
+  four `application/ → modules/greeting` edges disappear entirely. The
+  e2e requires each rule to actually fail on a planted import, on both
+  npm and pnpm.
+
 - **`keel add persistence` on a Go modulith.** The SQL slice was
   flat-layout only — it excluded `layout.modulith` and failed with an
   uncovered dimension, deliberately, because its five packages all

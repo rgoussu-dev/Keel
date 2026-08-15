@@ -253,7 +253,7 @@ spelling: absolute imports hide depth, a file read does not.
 **Commits.** `feat(walking-skeleton): modulith module layout for the Go stacks`,
 then `feat(<vertical>): …` per vertical.
 
-### I.2 — `ts-http` (M) — _dial; modulith is one package per context_
+### I.2 — `ts-http` (M) — _dial; modulith is one package per context_ ✅
 
 - **Ruling: one workspace package per bounded context**, not one per
   (context × layer). `@<scope>/<ctx>` owns `src/domain/{contract,core}`,
@@ -311,6 +311,33 @@ then `feat(<vertical>): …` per vertical.
   `TS1294` in exactly the stack that runs sources directly.
 - **Adapters to touch:** `ts-cors`, `ts-observability`,
   `ts-persistence`, `ts-port-fake`, `ts-workspace`, `ts-http-image`.
+
+**Landed**, with every ruling above holding as stated and one thing
+the design work had not predicted.
+
+The `exports` map, the coupling to the build mode, one package per
+context, and the `enhancedResolveOptions` requirement all survived
+contact with a real install on npm **and** pnpm — the second is not a
+duplicate run, since npm's hoisting hides a missing dependency
+declaration that pnpm's isolated store exposes. Removing the
+`enhancedResolveOptions` block from the emitted config was measured
+rather than assumed: the four `application/ → modules/greeting` edges
+vanish from the graph and the lint passes over a violating tree.
+
+**The unpredicted part: `"types": []` is not the wall the stack
+claims it is.** `ts-http`'s domain packages set it, and both this
+repo's docs and the emitted README say a domain import of `node:*` is
+therefore a compile error. It is not — `types: []` suppresses the
+automatic global `@types`, while an explicit
+`import … from 'node:async_hooks'` still resolves and typechecks
+clean. Verified under `basic` as well, so the claim was already
+wrong before this item. The modulith would have made it worse (one
+package per context means one `types` setting for the whole hexagon,
+and its `infra/` legitimately needs Node), so the rule moves to a
+`domain-knows-no-platform` dependency-cruiser rule that is required to
+fail on a planted import. Correcting the claim wherever it is written
+is a separate `fix(walking-skeleton)` commit against the `basic`
+tree — the layout commit leaves `basic` byte-identical.
 
 **Commits.** `feat(walking-skeleton): modulith module layout for ts-http`, then per vertical.
 

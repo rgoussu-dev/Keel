@@ -1,0 +1,56 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import type pg from 'pg';
+import type { UnitOfWork } from '<%= contractSpec %>';
+
+/**
+ * The transaction context: while a unit of work is open, the
+ * transaction's client rides the async context, so every query made
+ * through {@link transactionalQueryable} inside the block lands on
+ * the same transaction — no client threading through the domain.
+ */
+const transactionClient = new AsyncLocalStorage<pg.PoolClient>();
+
+/**
+ * {@link UnitOfWork} over a PostgreSQL transaction: takes a client
+ * from the pool, BEGINs, runs the block with the client bound to the
+ * async context, COMMITs when it resolves and ROLLBACKs when it
+ * rejects.
+ */
+export function createPgUnitOfWork(pool: pg.Pool): UnitOfWork {
+  return {
+    async inTransaction<T>(work: () => Promise<T>): Promise<T> {
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        let result: T;
+        try {
+          result = await transactionClient.run(client, work);
+        } catch (error) {
+          await client.query('rollback');
+          throw error;
+        }
+        await client.query('commit');
+        return result;
+      } finally {
+        client.release();
+      }
+    },
+  };
+}
+
+/** The SQL seam repository adapters query through. */
+export interface TransactionalQueryable {
+  query(text: string, values?: readonly unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
+}
+
+/**
+ * A queryable view of the pool that joins the open unit of work when
+ * one is bound to the async context, and falls back to a pooled
+ * auto-commit connection otherwise (reads outside a transaction).
+ */
+export function transactionalQueryable(pool: pg.Pool): TransactionalQueryable {
+  return {
+    query: (text, values) =>
+      (transactionClient.getStore() ?? pool).query(text, values as unknown[]),
+  };
+}

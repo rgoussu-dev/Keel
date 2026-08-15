@@ -12,10 +12,10 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { eolOf, withEol } from '../util.js';
+import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
+import { tsLayout } from './ts-module-layout.js';
 
 export const TS_CORS_ID = 'gateway/ts-cors';
-
-const MAIN_TARGET = 'application/rest/src/main.ts';
 
 const SERVE_CALL = 'createGreetServer(mediator).listen(port, () => {';
 const SERVE_CALL_WRAPPED = 'withCors(createGreetServer(mediator)).listen(port, () => {';
@@ -61,11 +61,18 @@ export const tsCorsAdapter: Adapter = {
   vertical: 'gateway',
   covers: [],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http', 'peer.ui.spa'] },
-  contribute() {
+  contribute(ctx) {
+    // Both layouts assemble in application/rest, but which directory
+    // that is stays the layout's answer to give.
+    const layout = tsLayout(
+      ctx.manifest.tags,
+      ctx.manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.npmScope ?? '',
+    );
+    const mainTarget = `${layout.restSrc}/main.ts`;
     return {
       patches: [
         {
-          target: MAIN_TARGET,
+          target: mainTarget,
           apply: (existing) => {
             const wrapped =
               existing.includes(SERVE_CALL_WRAPPED) || existing.includes(OBSERVED_CALL_WRAPPED);
@@ -73,7 +80,7 @@ export const tsCorsAdapter: Adapter = {
             if (wrapped && decorated) return existing;
             if (wrapped || decorated) {
               throw new Error(
-                `${TS_CORS_ID}: ${MAIN_TARGET} is partially CORS-decorated (${
+                `${TS_CORS_ID}: ${mainTarget} is partially CORS-decorated (${
                   wrapped
                     ? 'the listen call is wrapped but withCors is missing'
                     : 'withCors is present but the listen call is unwrapped'
@@ -87,7 +94,7 @@ export const tsCorsAdapter: Adapter = {
                 : null;
             if (anchor === null) {
               throw new Error(
-                `${TS_CORS_ID}: could not find the listen call in ${MAIN_TARGET} — the assembly point has diverged from the ts-http bootstrap; decorate the server with a CORS wrapper manually`,
+                `${TS_CORS_ID}: could not find the listen call in ${mainTarget} — the assembly point has diverged from the ts-http bootstrap; decorate the server with a CORS wrapper manually`,
               );
             }
             const eol = eolOf(existing);

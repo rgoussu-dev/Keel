@@ -1,0 +1,33 @@
+import type { Mediator } from '<%= kernelPkg %>';
+import { greetCommand } from './domain/contract/index.ts';
+
+/**
+ * What this context offers a **peer context** — the seam that makes
+ * carving it out into its own service a wiring change rather than a
+ * rewrite. A peer depends on this entry point (`<%= contextPkg %>/service`)
+ * and on nothing else of ours; swap it for an HTTP client and the
+ * consumer does not change.
+ *
+ * Every type crossing this seam is declared here. `greet` returns a
+ * `string`, not the domain's `Greeting`, on purpose: a DTO of our own
+ * can change shape without a peer's compile breaking, and — the part
+ * TypeScript will not catch for us — a domain type handed across
+ * would let a consumer bind to our vocabulary without ever importing
+ * our package. The rule governs this file's exported signatures and
+ * only this file's.
+ */
+export interface GreetingService {
+  /** Greets `name`, or rejects with the domain's message. */
+  greet(name: string): Promise<string>;
+}
+
+/** Builds the peer-facing service over the assembled mediator. */
+export function createGreetingService(mediator: Mediator): GreetingService {
+  return {
+    async greet(name: string): Promise<string> {
+      const result = await mediator.dispatch(greetCommand(name));
+      if (!result.ok) throw result.error;
+      return result.value.message;
+    },
+  };
+}

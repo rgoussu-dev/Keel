@@ -21,12 +21,12 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 
 export const TS_HTTP_BOOTSTRAP_ID = 'walking-skeleton/ts-http-bootstrap';
 
-const TEMPLATE_ID = 'composition/walking-skeleton/ts-http-bootstrap/templates';
-const PNPM_TEMPLATE_ID = 'composition/walking-skeleton/ts-http-bootstrap/pm/pnpm';
+const TEMPLATE_ROOT = 'composition/walking-skeleton/ts-http-bootstrap';
 
 const NPM_SCOPE_RE = /^[a-z][a-z0-9-]{0,38}$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -56,14 +56,35 @@ export const tsHttpBootstrapAdapter: Adapter = {
     const npmScope = validateNpmScope(ctx.answer('npmScope').trim());
     const projectName = validateProjectName(ctx.answer('projectName').trim());
     const ws = tsWorkspaceVars(ctx.manifest.tags);
-    const vars = { npmScope, projectName, ...ws };
-    const files = await ctx.templates.render(TEMPLATE_ID, '', vars);
+    const layout = tsLayout(ctx.manifest.tags, npmScope);
+    const suffix = layout.layout === 'modulith' ? '-modulith' : '';
+    const vars = { npmScope, projectName, ...ws, ...tsLayoutVars(layout) };
+    const files = await ctx.templates.render(`${TEMPLATE_ROOT}/templates${suffix}`, '', vars);
     if (ws.pm === 'pnpm') {
-      files.push(...(await ctx.templates.render(PNPM_TEMPLATE_ID, '', vars)));
+      files.push(...(await ctx.templates.render(`${TEMPLATE_ROOT}/pm${suffix}/pnpm`, '', vars)));
     }
     return { files };
   },
 };
+
+/**
+ * The template variables every `ts-http` tree needs from the layout:
+ * the package names its manifests declare, and the `exports` maps that
+ * decide what any of them can reach. Both are splice-with-`<%-`
+ * material — they carry quotes, and `<%=` would HTML-escape them into
+ * `&quot;`, which is a valid EJS render and an invalid `package.json`.
+ */
+function tsLayoutVars(layout: TsLayoutPaths): Readonly<Record<string, string>> {
+  return {
+    kernelPkg: layout.kernelPkg,
+    contextPkg: layout.corePkg,
+    restPkg: layout.restPkg,
+    kernelExports: layout.exportsMap('kernel'),
+    contextExports: layout.exportsMap('domain'),
+    workspaceGlobs: layout.workspaceGlobs.map((g) => JSON.stringify(g)).join(', '),
+    workspaceGlobLines: layout.workspaceGlobs.map((g) => `  - ${g}`).join('\n'),
+  };
+}
 
 function validateNpmScope(s: string): string {
   if (!NPM_SCOPE_RE.test(s)) {

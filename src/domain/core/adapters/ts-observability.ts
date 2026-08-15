@@ -19,6 +19,7 @@
  *     re-runs the bootstrap's install — a fast no-op).
  */
 
+import { tsLayout } from './ts-module-layout.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
 import type {
@@ -31,10 +32,7 @@ import { eolAware } from '../util.js';
 
 export const TS_OBSERVABILITY_ID = 'observability/ts-observability';
 
-const TEMPLATE_ID = 'composition/observability/ts-observability/templates';
-
-const PACKAGE_TARGET = 'application/rest/package.json';
-const MAIN_TARGET = 'application/rest/src/main.ts';
+const TEMPLATE_ROOT = 'composition/observability/ts-observability/templates';
 
 const OTEL_DEPENDENCIES: Readonly<Record<string, string>> = {
   '@opentelemetry/api': '^1.9.1',
@@ -58,7 +56,7 @@ server.listen(port, () => {
 
 const README_MARKER = '\n### Observability\n';
 
-const readmeSection = (): string =>
+const readmeSection = (contextFile: string): string =>
   `${README_MARKER}
 Liveness \`GET /health/live\` (process up — restart on failure) and
 readiness \`GET /health/ready\` (dependencies ok — gate traffic on it;
@@ -68,7 +66,7 @@ response, stamped on every \`logger.*\` line via the AsyncLocalStorage
 request context, the OpenTelemetry span, and the \`app.http.requests\`
 counter. Add more propagated fields (e.g. a tenant id —
 \`X-Tenant-Id\` ships as the example) in
-\`application/rest/src/observability/context.ts\`. Telemetry exports over
+\`${contextFile}\`. Telemetry exports over
 OTLP/HTTP to \`OTEL_EXPORTER_OTLP_ENDPOINT\` (default
 \`http://localhost:4318\`); set \`OTEL_SDK_DISABLED=true\` to switch it off.
 `;
@@ -81,7 +79,18 @@ export const tsObservabilityAdapter: Adapter = {
   async contribute(ctx) {
     const projectName = tsBootstrapProjectName(ctx.manifest);
     const { pm } = tsWorkspaceVars(ctx.manifest.tags);
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { projectName });
+    // Correlation ids, probes and telemetry belong to the deployment
+    // unit, not to any bounded context, so both layouts put them in
+    // the assembly — but the assembly is the layout's to name, and an
+    // adapter that spells the path itself is one layout change away
+    // from emitting a package nothing imports.
+    const layout = tsLayout(ctx.manifest.tags, tsBootstrapNpmScope(ctx.manifest));
+    const observability = `${layout.restSrc}/observability`;
+    const [sources, tests] = await Promise.all([
+      ctx.templates.render(`${TEMPLATE_ROOT}/observability`, observability, { projectName }),
+      ctx.templates.render(`${TEMPLATE_ROOT}/tests`, layout.restTests, { projectName }),
+    ]);
+    const files = [...sources, ...tests];
     const action: DeferredAction = {
       id: TS_OBSERVABILITY_ID,
       description: `${pm} install (fetch the OpenTelemetry packages)`,
@@ -105,18 +114,18 @@ export const tsObservabilityAdapter: Adapter = {
       files,
       patches: [
         {
-          target: PACKAGE_TARGET,
+          target: `${layout.restRoot}/package.json`,
           apply: eolAware(addOtelDependencies),
         },
         {
-          target: MAIN_TARGET,
+          target: `${layout.restSrc}/main.ts`,
           apply: eolAware(patchMainTs),
         },
         {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection()}`;
+            return `${existing.trimEnd()}\n${readmeSection(`${observability}/context.ts`)}`;
           }),
         },
       ],
@@ -124,6 +133,16 @@ export const tsObservabilityAdapter: Adapter = {
     };
   },
 };
+
+function tsBootstrapNpmScope(manifest: ManifestV2): string {
+  const npmScope = manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.npmScope;
+  if (!npmScope) {
+    throw new Error(
+      `${TS_OBSERVABILITY_ID}: requires '${TS_HTTP_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
+    );
+  }
+  return npmScope;
+}
 
 function tsBootstrapProjectName(manifest: ManifestV2): string {
   const projectName = manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.projectName;
