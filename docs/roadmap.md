@@ -255,18 +255,26 @@ seconds → shard wall clock):
 | `jvm-micronaut` | 280.3 · 248.9 · 184.4 · 184.4               | 371.5 |
 | `jvm-modulith`  | 276.9 · 238.1 · 204.7 · 191.1 (+ Maven 119) | 398.3 |
 
+The same files as **one** shard, measured on the same box for the
+comparison: **1326.0s** (16 of them; the Maven suite skips there, for
+want of a host Gradle 9). Against a slowest shard of 462.6s, the split
+is worth **2.9× in wall clock** — not attribution alone.
+
 The prediction this item shipped with was wrong in a way worth
 correcting rather than quietly dropping. It modelled a shard as
 `max(longest file, total ÷ 4)` and concluded that **beyond two JVM
-shards you buy attribution, not speed**. The divisor is the error: four
-concurrent Gradle builds on 4 vCPUs do not get 4× because each build is
-itself parallel and they contend. Measured across the four shards the
-speedup is **2.15–2.42×**, call it 2.3. So the conclusion inverts for
-today's file count — sharding is still buying real wall clock at four,
-because `total ÷ 2.3` is well above the longest-file floor.
+shards you buy attribution, not speed**. The divisor is the error: 4
+vCPUs do not give 4×, because each Gradle build is itself parallel and
+concurrent ones contend. Measured, the divisor is **2.15–2.42 inside a
+four-file shard** and **2.78 across the sixteen-file single shard** —
+it climbs with the file count, since more files fill each other's idle
+stretches. Nowhere near 4 either way, and either way the conclusion
+inverts for today's file count: `total ÷ 2.8` sits well above the
+longest-file floor, so sharding is still buying real wall clock at
+four.
 
 The old advice survives as a limit rather than a verdict: it applies
-once a shard's total ÷ 2.3 approaches its longest file, and
+once a shard's divided total approaches its longest file, and
 `jvm-spring` (288.1s wall against a 209.5s longest file) is already
 close. Split that one again and you would be buying attribution.
 

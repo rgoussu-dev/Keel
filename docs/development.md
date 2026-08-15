@@ -146,9 +146,10 @@ the modulith cases live in three files (`-modulith`, `-persistence`,
 a new file over another `it` in a long one.
 
 The other half of that detail is that parallel workers do not divide the
-work by their number. Each Gradle build is itself parallel, so four of
-them on a 4-vCPU runner contend: measured across the JVM shards, a
-shard's wall clock is closer to `total ÷ 2.3` than to `total ÷ 4`. The
+work by their number. Each Gradle build is itself parallel, so
+concurrent ones contend on a 4-vCPU runner: measured, the divisor is
+about 2.3 inside a four-file JVM shard and 2.8 across a sixteen-file
+one — it climbs with the file count and never approaches 4. The
 practical consequence is for measurement rather than for design — a file
 timed while sixteen neighbours race it reads far slower than the same
 file timed against three, so **re-measure on the shard shape you intend
