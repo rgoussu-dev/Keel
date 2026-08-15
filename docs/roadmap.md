@@ -124,29 +124,43 @@ so it exercises the patch path of the composition contract.
 
 ---
 
-## H — Close the JVM e2e grid, then shard CI along it
+## H — Close the JVM e2e grid, then shard CI along it ✅
 
 **Goal.** keel emits **twelve JVM stacks** — three frameworks × two
-languages × two entrypoint shapes — and `tests/e2e/` covers **four of
-them**. The gap is not cosmetic: every JVM defect that reached `main`
-so far was found by a build, never by a file assertion, and the two
-Maven modulith defects were found the week a build first ran that
-combination. Seven stacks currently ship on the strength of unit tests
-over emitted files.
+languages × two entrypoint shapes — and `tests/e2e/` covered **four of
+them**. The gap was not cosmetic: every JVM defect that reached `main`
+was found by a build, never by a file assertion, and the two Maven
+modulith defects were found the week a build first ran that
+combination. Seven stacks shipped on the strength of unit tests over
+emitted files.
+
+All twelve are now built, booted and driven end to end:
 
 |           | Java CLI | Java REST | Kotlin CLI | Kotlin REST |
 | --------- | -------- | --------- | ---------- | ----------- |
-| Quarkus   | ✅       | ✅        | ❌         | ✅          |
-| Spring    | ❌       | ✅        | ❌         | ❌          |
-| Micronaut | ❌       | ✅        | ❌         | ❌          |
+| Quarkus   | ✅       | ✅        | ✅         | ✅          |
+| Spring    | ✅       | ✅        | ✅         | ✅          |
+| Micronaut | ✅       | ✅        | ✅         | ✅          |
 
-The CI shape follows from this, not the other way round. `e2e (jvm)` is
-one job because the grid is too sparse to shard along: a
-framework × language matrix over today's files would mint
+…and the `modulith` typology, which the table above does not have an
+axis for, now has an e2e on every framework rather than on Quarkus
+alone.
+
+The CI shape followed from this, not the other way round. `e2e (jvm)`
+was one job because the grid was too sparse to shard along: a
+framework × language matrix over the old files would have minted
 `e2e (spring-kotlin)` as a green job that runs nothing, which asserts
-coverage that does not exist. **Populate the grid first; shard second.**
+coverage that does not exist. **Populate the grid first; shard
+second** — and that constraint still binds the shape that landed, which
+is why language is not an axis of it (H.3).
 
-### H.1 — The two missing REST stacks (S)
+**Not a single new defect surfaced.** Ten new suites, every one green
+as written. That is a weaker result than the item budgeted for and
+worth recording plainly: the value delivered is that seven stacks and
+three modulith cells stopped being assumed, not that anything was
+caught.
+
+### H.1 — The two missing REST stacks (S) ✅
 
 `spring-rest-kotlin` and `micronaut-rest-kotlin` — the only REST cells
 still empty. Cheap, because `tests/support/jvm-rest-e2e.ts` already
@@ -158,9 +172,14 @@ change. The two Java siblings are the specs to copy from.
 
 Expect these to fail before they pass. That is the point of the item.
 
+**Landed.** Two files, no harness change — the bet the sizing rested on
+held. Both passed first time, so the expectation above was wrong; the
+suites now pin Spring's `kotlin("plugin.spring")` and Micronaut's KSP
+processing, neither of which a file assertion reaches.
+
 **Commit.** `test(e2e): cover the Kotlin REST stacks end to end`
 
-### H.1b — Modulith beyond Quarkus (S)
+### H.1b — Modulith beyond Quarkus (S) ✅
 
 The typology axis is sparser than the framework one. `modulith` has an
 e2e on Quarkus/Gradle, on Quarkus/Maven and on Spring/Maven — and
@@ -170,9 +189,14 @@ by Maven. Given that the peer-context wiring is the part that differs
 per container, and that both defects it has shipped were container
 wiring, this is the highest-value gap in the table.
 
+**Landed.** `walking-skeleton-modulith-micronaut.test.ts` and
+`walking-skeleton-modulith-spring.test.ts`, both on Gradle and both
+with the peer bounded context — Micronaut's first modulith build in any
+configuration, Spring's first on Gradle. Both green.
+
 **Commit.** `test(e2e): build the Micronaut and Spring moduliths`
 
-### H.2 — Extract a CLI harness, then the five CLI stacks (M)
+### H.2 — Extract a CLI harness, then the five CLI stacks (M) ✅
 
 The CLI half has no shared machinery: `tests/e2e/walking-skeleton.test.ts`
 carries the `quarkus-cli` flow inline — scaffold, build, then
@@ -186,33 +210,65 @@ Do the extraction as its own commit, and prove it green on the
 existing Quarkus case before any new stack lands — otherwise a broken
 extraction and a genuine stack defect arrive as one red build.
 
+**Landed** as three support files rather than two. The split fell
+naturally: `tests/support/jvm-e2e.ts` holds the scaffold, both build
+systems, the transient-flake retries and the skip rules behind a
+`JvmProjectSpec`; `jvm-rest-e2e.ts` keeps the boot-and-drive half and
+`jvm-cli-e2e.ts` adds the run-and-read one. The inline copy in
+`walking-skeleton.test.ts` was the second copy of that machinery; there
+is now one. Extraction proved green on Quarkus CLI and on
+`walking-skeleton-rest` (the REST harness moved too) before any new
+stack landed.
+
 **Commits.** `refactor(e2e): extract the JVM CLI harness` then
 `test(e2e): cover the remaining JVM CLI stacks`
 
-### H.3 — Reshard `e2e (jvm)` along the populated grid (S)
+### H.3 — Reshard `e2e (jvm)` along the populated grid (S) ✅
 
 Only once H.1 and H.2 are green. The axes are framework, language, and
 **typology** — `basic` against `modulith`, which is the axis that has
 actually shipped defects and the one no framework grouping captures.
 
-Sizing, measured on the sharded run of PR #53 (per-file, seconds):
-`rest` 228.6 · `modulith-persistence` 204.7 · `kotlin` 194.9 ·
-`modulith` 192.2 · `micronaut` 156.8 · `spring` 122.0 ·
-`walking-skeleton` + `modulith-maven` 298.1 combined.
-
 Two facts constrain any split. A runner has 4 vCPUs and vitest runs
-files in parallel but the tests inside a file in sequence, so a shard's
-wall clock is `max(longest file, total / 4)` — **228.6s is the floor
-for every arrangement**, and it moves only if the longest file is split
-again. And a shard costs about 25 seconds of setup, so shards that
-finish under a minute are mostly overhead.
+files in parallel but the tests inside a file in sequence, so the
+longest single file is a floor no arrangement gets under. And a shard
+costs about 25 seconds of setup, so shards that finish under a minute
+are mostly overhead.
 
-The consequence worth writing down: **beyond two JVM shards you are
-buying attribution, not speed.** Two balanced shards already reach the
-floor at roughly the current runner cost; six reach the same floor at
-nearly double it. Grid-shaped shards are worth having for what a red X
-tells you, and that is a real benefit — but justify them on that,
-never on wall clock, and re-measure before claiming otherwise.
+**Landed as four shards on two axes, not three.** `jvm-quarkus`,
+`jvm-spring` and `jvm-micronaut` each hold that framework's four
+`basic` stacks — CLI and REST × Java and Kotlin — and `jvm-modulith`
+holds the typology axis, its five files including the Maven pair.
+Language is _not_ an axis, and the reason is the rule this whole item
+was ordered around: the `basic` half would split by language cleanly,
+but the modulith half has no Kotlin suite, so a `jvm-kotlin` shard
+would be a check name over a cell nothing populates. That axis waits
+until the grid populates it.
+
+Re-measured on the shard shape shipped (4 vCPUs, cold caches, per-file
+seconds → shard wall clock):
+
+| Shard           | Files                                       | Wall  |
+| --------------- | ------------------------------------------- | ----- |
+| `jvm-quarkus`   | 268.7 · 264.3 · 238.3 · 221.5               | 462.6 |
+| `jvm-spring`    | 209.5 · 202.8 · 198.3 · 86.8                | 288.1 |
+| `jvm-micronaut` | 280.3 · 248.9 · 184.4 · 184.4               | 371.5 |
+| `jvm-modulith`  | 276.9 · 238.1 · 204.7 · 191.1 (+ Maven 119) | 398.3 |
+
+The prediction this item shipped with was wrong in a way worth
+correcting rather than quietly dropping. It modelled a shard as
+`max(longest file, total ÷ 4)` and concluded that **beyond two JVM
+shards you buy attribution, not speed**. The divisor is the error: four
+concurrent Gradle builds on 4 vCPUs do not get 4× because each build is
+itself parallel and they contend. Measured across the four shards the
+speedup is **2.15–2.42×**, call it 2.3. So the conclusion inverts for
+today's file count — sharding is still buying real wall clock at four,
+because `total ÷ 2.3` is well above the longest-file floor.
+
+The old advice survives as a limit rather than a verdict: it applies
+once a shard's total ÷ 2.3 approaches its longest file, and
+`jvm-spring` (288.1s wall against a 209.5s longest file) is already
+close. Split that one again and you would be buying attribution.
 
 **Commit.** `ci: shard the JVM e2e job by framework, language and layout`
 
