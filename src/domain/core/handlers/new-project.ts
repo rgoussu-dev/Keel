@@ -48,6 +48,8 @@ import { runActions } from '../actions.js';
 import {
   MODULITH_LAYOUT_TAG,
   PEER_CONTEXT_TAG,
+  PEER_MODULE,
+  SKELETON_MODULE,
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
 import { emitsFor } from '../adapters/context-support.js';
@@ -337,6 +339,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       projects: [...(inputs.stack.projects ?? [])],
       peers: inputs.peers,
       services: inputs.services,
+      modules: scaffoldedModules(inputs.layoutTag, inputs.peerTag ?? null, inputs.now),
     };
 
     const tree = this.deps.trees(inputs.cwd);
@@ -595,6 +598,34 @@ function peerContextTag(
     );
   }
   return ok(PEER_CONTEXT_TAG);
+}
+
+/**
+ * The bounded contexts a fresh install starts life with.
+ *
+ * Empty under the flat layout — `basic` is one hexagon and has no
+ * contexts to name. Under the modulith it is the skeleton's own
+ * context, plus the `--with-peer-context` one when that was opted
+ * into.
+ *
+ * **Only the skeleton's context carries a seam.** The peer is a pure
+ * consumer: it declares a driven port in its own vocabulary and
+ * reaches the skeleton through a gateway, but publishes no
+ * `user-side/service` of its own, so nothing can consume *it*. That
+ * asymmetry is a fact about every family's emitted tree, and recording
+ * it here is what lets `keel add module x --consumes guestbook` fail at
+ * the front door instead of emitting a gateway over a package that is
+ * not there.
+ */
+function scaffoldedModules(
+  layoutTag: Tag | null,
+  peerTag: Tag | null,
+  now: string,
+): ManifestV2['modules'] {
+  if (layoutTag !== MODULITH_LAYOUT_TAG) return [];
+  const skeleton = { name: SKELETON_MODULE, installedAt: now, seam: true };
+  if (peerTag !== PEER_CONTEXT_TAG) return [skeleton];
+  return [skeleton, { name: PEER_MODULE, installedAt: now, seam: false }];
 }
 
 /** The tag set a single-service install of `stack` would carry. */
