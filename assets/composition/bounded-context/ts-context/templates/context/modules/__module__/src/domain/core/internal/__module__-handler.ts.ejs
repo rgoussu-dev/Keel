@@ -1,0 +1,41 @@
+import {
+  DomainError,
+  err,
+  ok,
+  type Command,
+  type Handler,
+  type Result,
+} from '<%= kernelPkg %>';
+import {
+<% if (hasConsumes) { %>  <%= CONSUMES %>_UNREACHABLE,
+  type <%= Consumes %>Client,
+<% } %>  <%= MODULE %>_REJECTED,
+  type <%= Module %>Command,
+  type <%= Module %>Result,
+} from '../../contract/index.ts';
+
+/** Handles this context's one command. */
+export function create<%= Module %>Handler(<% if (hasConsumes) { %><%= consumes %>: <%= Consumes %>Client<% } %>): Handler<<%= Module %>Command> {
+  return {
+    supports(command: Command): command is <%= Module %>Command {
+      return command.kind === '<%= module %>';
+    },
+    async handle(command: <%= Module %>Command): Promise<Result<<%= Module %>Result>> {
+      const subject = command.subject.trim();
+      if (subject === '') {
+        return err(new DomainError('subject must not be blank', <%= MODULE %>_REJECTED));
+      }
+<% if (hasConsumes) { %>      try {
+        return ok({ detail: await <%= consumes %>.askFor(subject) });
+      } catch (cause) {
+        return err(
+          new DomainError(
+            `<%= consumes %> unreachable: ${cause instanceof Error ? cause.message : String(cause)}`,
+            <%= CONSUMES %>_UNREACHABLE,
+          ),
+        );
+      }
+<% } else { %>      return ok({ detail: `<%= module %>: ${subject}` });
+<% } %>    },
+  };
+}

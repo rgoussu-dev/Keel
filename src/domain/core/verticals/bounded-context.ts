@@ -30,11 +30,12 @@
 
 import { goContextAdapter } from '../adapters/go-context.js';
 import { rustContextAdapter } from '../adapters/rust-context.js';
+import { tsContextAdapter } from '../adapters/ts-context.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const boundedContextVertical: Vertical = {
   id: 'bounded-context',
   description: 'One named bounded context under the modulith, and its optional consumer edge.',
   dimensions: [],
-  adapters: [rustContextAdapter, goContextAdapter],
+  adapters: [rustContextAdapter, goContextAdapter, tsContextAdapter],
 };

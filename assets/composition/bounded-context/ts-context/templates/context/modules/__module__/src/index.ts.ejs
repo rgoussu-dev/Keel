@@ -1,0 +1,18 @@
+/**
+ * The bounded context's facade — the one entry point a deployment
+ * unit imports to reach it, and one of exactly two this package
+ * publishes (the other is `./service`, for peer contexts).
+ *
+ * It exports the contract face and the factory that assembles the
+ * core. What it deliberately does not export is anything else under
+ * `domain/core/internal/`: the `exports` map makes
+ * `<%= contextPkg %>/src/domain/core/internal/…` a resolution error in
+ * tsc *and* in Node, which is what turns "only this context builds its
+ * own handlers" into a failure rather than a review comment. Widening
+ * the map is the one edit that undoes it.
+ */
+
+export * from './domain/contract/index.ts';
+export { create<%= Module %>Handler } from './domain/core/internal/<%= module %>-handler.ts';
+<% if (hasConsumes) { %>export { create<%= Consumes %>Gateway } from './infra/<%= consumes %>-gateway/index.ts';
+<% } %>

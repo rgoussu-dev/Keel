@@ -1,0 +1,43 @@
+import type { Command } from '<%= kernelPkg %>';
+
+/**
+ * Ask the <%= module %> context to handle `subject`. This context's
+ * one command.
+ *
+ * **Rename me.** `keel add module <%= module %>` knows the context's
+ * name and nothing about what it is for, so it cannot invent a use
+ * case: this is a stand-in with the right shape, and turning it into
+ * your first real one is meant to be the first thing you do here.
+ */
+export interface <%= Module %>Command extends Command<<%= Module %>Result> {
+  readonly kind: '<%= module %>';
+  readonly subject: string;
+}
+
+/** What the <%= module %> context produced. */
+export interface <%= Module %>Result {
+  readonly detail: string;
+}
+
+/** Constructs a {@link <%= Module %>Command}. Commands are plain data. */
+export function <%= module %>Command(subject: string): <%= Module %>Command {
+  return { kind: '<%= module %>', subject };
+}
+<% if (hasConsumes) { %>
+/**
+ * The driven port through which this context reaches <%= consumes %>.
+ *
+ * Declared in **<%= module %>'s** vocabulary, and that is the whole
+ * point: which context answers is a fact of the gateway under
+ * `src/infra/` and of the assembly, and of nowhere else.
+ */
+export interface <%= Consumes %>Client {
+  /** Asks <%= consumes %> about `subject`. */
+  askFor(subject: string): Promise<string>;
+}
+
+/** Error code carried when <%= consumes %> could not be reached. */
+export const <%= CONSUMES %>_UNREACHABLE = '<%= module %>.<%= consumes %>-unreachable';
+<% } %>
+/** Error code carried when a {@link <%= Module %>Command} names nothing. */
+export const <%= MODULE %>_REJECTED = '<%= module %>.rejected';
