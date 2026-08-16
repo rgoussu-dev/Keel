@@ -35,6 +35,7 @@ import {
   freshServiceDoc,
   jvmPeerContextAdapter,
   peerNames,
+  PEER_PORT,
   STALE_SERVICE_DOC,
   type PeerBinding,
 } from './jvm-peer-context.js';
@@ -42,7 +43,7 @@ import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
 import { MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID } from './micronaut-cli-kotlin-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
 import { MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID } from './micronaut-rest-kotlin-bootstrap.js';
-import { SKELETON_MODULE } from './module-layout.js';
+import { PEER_MODULE, SKELETON_MODULE } from './module-layout.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const MICRONAUT_PEER_CONTEXT_ID = 'walking-skeleton/micronaut-peer-context';
@@ -136,7 +137,10 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
         const withImports = existing
           .replace(providerAnchor, `import io.micronaut.context.BeanProvider;\n${providerAnchor}`)
           .replace(anchorImport, imports);
-        const withDoc = withImports.replace(STALE_SERVICE_DOC, freshServiceDoc('java'));
+        const withDoc = withImports.replace(
+          STALE_SERVICE_DOC,
+          freshServiceDoc('java', PEER_MODULE, PEER_PORT, null),
+        );
         return appendToClassBody(withDoc, bean);
       },
     },
@@ -184,7 +188,10 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
         const withImports = existing
           .replace(providerAnchor, `import io.micronaut.context.BeanProvider\n${providerAnchor}`)
           .replace(anchorImport, imports);
-        const withDoc = withImports.replace(STALE_SERVICE_DOC, freshServiceDoc('kotlin'));
+        const withDoc = withImports.replace(
+          STALE_SERVICE_DOC,
+          freshServiceDoc('kotlin', PEER_MODULE, PEER_PORT, null),
+        );
         const wired = withDoc.replace(staleWiring, freshWiring);
         return appendToClassBody(wired, bean);
       },

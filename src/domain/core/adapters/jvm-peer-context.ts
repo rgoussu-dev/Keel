@@ -350,17 +350,49 @@ export function peerNames(basePackage: string): PeerNames {
 
 /**
  * The line every modulith composition root carries above its
- * `greetingService` producer, and which the peer context makes
+ * `greetingService` producer, and which a second bounded context makes
  * obsolete: something does consume the seam now.
  */
 export const STALE_SERVICE_DOC =
   '     * Nothing consumes it yet — the second bounded context is the\n     * first thing that will, through a driven port of its own.';
 
-/** Its replacement, in Javadoc (`{@link}`) or KDoc (`[…]`) spelling. */
-export function freshServiceDoc(language: JvmLanguage): string {
-  const link = language === 'java' ? '{@link Welcome}' : '[Welcome]';
-  return `     * \`${PEER_MODULE}\` consumes it through its own ${link}\n     * port, bound below.`;
+/**
+ * Its replacement, in Javadoc (`{@link}`) or KDoc (`[…]`) spelling.
+ *
+ * Parameterised by which context consumes the seam, through which
+ * port, and where the binding lives, because two doors reach this
+ * line: `--with-peer-context`, which binds guestbook's `Welcome` in
+ * this same class, and `keel add module <name> --consumes greeting`,
+ * which binds the new context's port in a wiring class of its own. A
+ * doc comment that says "nothing consumes it yet" beside a producer
+ * something now consumes is the kind of small lie that makes a reader
+ * stop trusting the rest of the generated prose — and so is one that
+ * points at a binding that is not there.
+ *
+ * @param consumer the bounded context that now reaches this seam
+ * @param port the simple name of the driven port it reaches through
+ * @param boundIn the class holding the binding, or `null` for this one
+ */
+export function freshServiceDoc(
+  language: JvmLanguage,
+  consumer: string,
+  port: string,
+  boundIn: string | null,
+): string {
+  const link = (name: string): string => (language === 'java' ? `{@link ${name}}` : `[${name}]`);
+  const code = (name: string): string => (language === 'java' ? `{@code ${name}}` : `\`${name}\``);
+  // Linked when the binding is in this class, because then the port is
+  // one of its imports; spelled as code otherwise, since a wiring class
+  // of its own leaves the port unimported here — and two contexts
+  // consuming this seam would each contribute a different type of the
+  // same simple name, which no link could disambiguate.
+  const where = boundIn === null ? 'bound below' : `bound in ${link(boundIn)}`;
+  const named = boundIn === null ? link(port) : code(port);
+  return `     * \`${consumer}\` consumes it through its own ${named}\n     * port, ${where}.`;
 }
+
+/** The port `--with-peer-context` binds, named once for its doc line. */
+export const PEER_PORT = 'Welcome';
 
 /**
  * Appends a member to the last class body in a source file — the

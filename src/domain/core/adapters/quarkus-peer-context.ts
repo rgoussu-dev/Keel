@@ -18,9 +18,11 @@ import {
   freshServiceDoc,
   jvmPeerContextAdapter,
   peerNames,
+  PEER_PORT,
   STALE_SERVICE_DOC,
   type PeerBinding,
 } from './jvm-peer-context.js';
+import { PEER_MODULE } from './module-layout.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
@@ -85,7 +87,10 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
           );
         }
         const withImports = existing.replace(anchorImport, imports);
-        const withDoc = withImports.replace(STALE_SERVICE_DOC, freshServiceDoc('java'));
+        const withDoc = withImports.replace(
+          STALE_SERVICE_DOC,
+          freshServiceDoc('java', PEER_MODULE, PEER_PORT, null),
+        );
         return appendToClassBody(withDoc, producer);
       },
     },
@@ -111,7 +116,10 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
           );
         }
         const withImports = existing.replace(anchorImport, imports);
-        const withDoc = withImports.replace(STALE_SERVICE_DOC, freshServiceDoc('kotlin'));
+        const withDoc = withImports.replace(
+          STALE_SERVICE_DOC,
+          freshServiceDoc('kotlin', PEER_MODULE, PEER_PORT, null),
+        );
         return appendToClassBody(withDoc, producer);
       },
     },
