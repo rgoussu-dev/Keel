@@ -1,0 +1,44 @@
+package <%= basePackage %>.<%= assemblyPkg %>
+
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+import jakarta.inject.Inject
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Command
+import <%= basePackage %>.platform.kernel.Mediator
+
+import org.junit.jupiter.api.Assertions.assertFalse
+
+/**
+ * The one test that fails if the <%= module %> context is emitted but
+ * not wired. Everything else about it is provable without a container:
+ * the domain test stands its port up itself, the seam test fakes the
+ * mediator. Discovery is not — a handler the container never finds
+ * costs nothing at compile time, the application starts perfectly, and
+ * the omission surfaces only when someone dispatches the command it
+ * was supposed to handle.
+ *
+ * So this dispatches it. Through the real Mediator, out of the real
+ * container: it proves the handler was discovered<% if (hasConsumes) { %>, that its
+ * [<%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client]
+ * port was bound, that the binding reaches <%= consumes %> through the
+ * service seam, and that resolving the peer does not close a
+ * construction cycle<% } %>.
+ *
+ * It asserts the shape of the answer rather than its text: the
+ * placeholder use case is the first thing you are meant to rename, and
+ * a test pinning its wording would fail for the right reason at the
+ * wrong moment.
+ */
+@MicronautTest
+class <%= Module %>WiringTest {
+    @Inject
+    lateinit var mediator: Mediator
+
+    @Test
+    fun `dispatches the <%= module %> command to a handler the container found`() {
+        val result = mediator.dispatch(<%= Module %>Command("Ada"))
+
+        assertFalse(result.detail.isBlank())
+    }
+}

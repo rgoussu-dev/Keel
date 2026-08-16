@@ -1,0 +1,36 @@
+package <%= basePackage %>.<%= module %>.domain.core
+
+<% if (hasConsumes) { %>import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client
+<% } %>import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Command
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Rejected
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Result
+import <%= basePackage %>.platform.kernel.Command
+import <%= basePackage %>.platform.kernel.DomainHandler
+import <%= basePackage %>.platform.kernel.Handler
+
+/**
+ * The <%= module %> context's placeholder use case — see
+ * [<%= Module %>Command], and rename both together.
+<% if (hasConsumes) { %> *
+ * It reaches the <%= consumes %> context through the
+ * [<%= Consumes %>Client] port and never learns that is what happens:
+ * the assembly binds the port to a gateway, and swapping that binding
+ * for a remote one is the whole of carving <%= consumes %> out into
+ * its own service.
+<% } %> */
+@DomainHandler
+<% if (hasConsumes) { %>class <%= Module %>Handler(private val <%= consumes %>: <%= Consumes %>Client) :
+    Handler<<%= Module %>Command, <%= Module %>Result> {
+<% } else { %>class <%= Module %>Handler : Handler<<%= Module %>Command, <%= Module %>Result> {
+<% } %>
+    override fun supports(command: Command<*>): Boolean = command is <%= Module %>Command
+
+    override fun handle(command: <%= Module %>Command): <%= Module %>Result {
+        val subject = command.subject.trim()
+        if (subject.isEmpty()) {
+            throw <%= Module %>Rejected("subject must not be empty")
+        }
+<% if (hasConsumes) { %>        return <%= Module %>Result(<%= consumes %>.askFor(subject))
+<% } else { %>        return <%= Module %>Result("<%= module %>: $subject")
+<% } %>    }
+}

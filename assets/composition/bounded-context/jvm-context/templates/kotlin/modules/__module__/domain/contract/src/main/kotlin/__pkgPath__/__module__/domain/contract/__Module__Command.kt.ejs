@@ -1,0 +1,22 @@
+package <%= basePackage %>.<%= module %>.domain.contract
+
+import <%= basePackage %>.platform.kernel.Command
+
+/**
+ * Asks the <%= module %> context to handle [subject].
+ *
+ * **Rename me.** `keel add module <%= module %>` knows this context's
+ * *name* and nothing about what it is for, so it cannot invent a use
+ * case. This is a stand-in with the right shape — a command in, a
+ * result or a rejection out — and replacing it with your first real
+ * use case is meant to be the first thing you do here.
+ *
+ * What is *not* a placeholder is the structure around it: the
+ * command/result pair, the rejection this context owns, and the fact
+ * that nothing in this module names another bounded context.
+ *
+ * @property subject what this use case acts on — deliberately
+ *   anonymous, which is what a placeholder can honestly call the thing
+ *   it was handed.
+ */
+data class <%= Module %>Command(val subject: String) : Command<<%= Module %>Result>

@@ -140,6 +140,54 @@ const MODULITH: LayoutBase = {
   servicePkg: `${SKELETON_MODULE}.userside.service`,
 };
 
+/**
+ * The module directories of **one bounded context** under the
+ * modulith, in build order.
+ *
+ * {@link JvmLayoutPaths} answers the same question for the skeleton's
+ * context, and only for it — every field there is a constant with
+ * `greeting` baked in, because the greenfield adapters have exactly
+ * one context to place. `keel add module <name>` has a name it was
+ * handed, so it needs the shape as a function of that name instead.
+ *
+ * Four, where the `--with-peer-context` context has three: an added
+ * context publishes a seam, because the next `keel add module <other>
+ * --consumes <this>` needs one to bind to.
+ */
+export interface JvmContextModules {
+  /** Ports, commands, domain errors — and the driven port under `--consumes`. */
+  readonly contract: string;
+  /** Handlers. */
+  readonly core: string;
+  /** The in-process API a peer context consumes. */
+  readonly seam: string;
+  /** The one module naming two contexts, or `null` under no `--consumes`. */
+  readonly gateway: string | null;
+}
+
+/** Where one added context's modules live, given its name. */
+export function jvmContextModules(name: string, consumes: string | null): JvmContextModules {
+  const root = `modules/${name}`;
+  return {
+    contract: `${root}/domain/contract`,
+    core: `${root}/domain/core`,
+    seam: `${root}/user-side/service`,
+    gateway: consumes === null ? null : `${root}/infra/${consumes}-gateway`,
+  };
+}
+
+/**
+ * The seam module of *any* context, the skeleton's included.
+ *
+ * That it is one expression rather than a branch is the JVM spelling
+ * of the invariant every family holds: an added context's seam sits
+ * where the skeleton's sits, with its own name in it, so a gateway
+ * template reaches either without keel keeping a table.
+ */
+export function jvmSeamModule(context: string): string {
+  return `modules/${context}/user-side/service`;
+}
+
 /** Gradle project path of a module directory, e.g. `:modules:greeting:infra:clock:fake`. */
 export function gradleProject(dir: string): string {
   return `:${dir.split('/').join(':')}`;

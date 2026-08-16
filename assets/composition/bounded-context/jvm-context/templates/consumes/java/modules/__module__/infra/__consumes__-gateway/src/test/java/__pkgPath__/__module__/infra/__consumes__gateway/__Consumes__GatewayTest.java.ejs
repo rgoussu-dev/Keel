@@ -1,0 +1,38 @@
+package <%= basePackage %>.<%= module %>.infra.<%= consumes %>gateway;
+
+import org.junit.jupiter.api.Test;
+
+import <%= basePackage %>.<%= consumes %>.userside.service.<%= Consumes %>Service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class <%= Consumes %>GatewayTest {
+
+    @Test
+    void handsBackWhatThePeerAnswered() {
+        <%= Consumes %>Gateway gateway = new <%= Consumes %>Gateway(() -> subject -> "Hello, " + subject + "!");
+
+        assertEquals("Hello, Ada!", gateway.askFor("Ada"));
+    }
+
+    @Test
+    void asksThePeerForTheSubjectItWasGiven() {
+        Recording<%= Consumes %> <%= consumes %> = new Recording<%= Consumes %>();
+
+        new <%= Consumes %>Gateway(() -> <%= consumes %>).askFor("Ada");
+
+        assertEquals("Ada", <%= consumes %>.asked);
+    }
+
+    /** A fake, not a mock — the house rule. */
+    private static final class Recording<%= Consumes %> implements <%= Consumes %>Service {
+
+        private String asked;
+
+        @Override
+        public String <%= consumes %>For(String subject) {
+            asked = subject;
+            return "Hello, " + subject + "!";
+        }
+    }
+}

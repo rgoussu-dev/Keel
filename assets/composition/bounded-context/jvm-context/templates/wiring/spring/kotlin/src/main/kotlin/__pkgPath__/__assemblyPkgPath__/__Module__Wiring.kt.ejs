@@ -1,0 +1,62 @@
+package <%= basePackage %>.<%= assemblyPkg %>
+
+<% if (hasConsumes) { %>import org.springframework.beans.factory.ObjectProvider
+<% } %>import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+<% if (hasConsumes) { %>import <%= basePackage %>.<%= consumes %>.userside.service.<%= Consumes %>Service
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client
+import <%= basePackage %>.<%= module %>.infra.<%= consumes %>gateway.<%= Consumes %>Gateway
+<% } %>import <%= basePackage %>.<%= module %>.userside.service.<%= Module %>Service
+import <%= basePackage %>.<%= module %>.userside.service.<%= Module %>ServiceAdapter
+import <%= basePackage %>.platform.kernel.Mediator
+
+/**
+ * Everything this assembly has to be told about the <%= module %>
+ * context, in one class of its own.
+ *
+ * Deliberately not more bean methods on the shared composition root.
+ * Two contexts reaching the same third one each declare a client port
+ * and a gateway named after it — different types, identical simple
+ * names — and one import block cannot name both. A class per context
+ * has its own imports, and arrives as a new file rather than as a
+ * patch to a file every other context is also patching.
+ *
+ * It is discovered because the assembly's own package is in the boot
+ * class's `@ComponentScan` list, which is also where this context's
+ * package was added so its handler is found.
+ */
+@Configuration
+class <%= Module %>Wiring {
+
+    /**
+     * The <%= module %> module's in-process API, offered to peer
+     * modules. Emitted rather than left for you to write, because this
+     * is what `keel add module <other> --consumes <%= module %>` binds
+     * to: without it the seam module compiles and nothing can reach
+     * it.
+     */
+    @Bean
+    fun <%= module %>Service(mediator: Mediator): <%= Module %>Service =
+        <%= Module %>ServiceAdapter(mediator)
+<% if (hasConsumes) { %>
+    /**
+     * Binds <%= module %>'s [<%= Consumes %>Client] port to the
+     * <%= consumes %> module. This is the carve-out seam: swapping
+     * [<%= Consumes %>Gateway] for an HTTP twin built on
+     * <%= consumes %>'s published API moves that module into its own
+     * service, and nothing in <%= module %> changes.
+     *
+     * The peer is injected as an [ObjectProvider] and handed over as a
+     * supplier, not resolved here. The mediator is built from every
+     * discovered handler, so resolving the <%= consumes %> service at
+     * this point would close a construction cycle — mediator →
+     * <%= Module %>Handler → <%= Consumes %>Client →
+     * <%= Consumes %>Service → mediator — which Spring refuses as a
+     * circular reference. Deferring the lookup to the first call
+     * breaks it.
+     */
+    @Bean
+    fun <%= module %><%= Consumes %>Client(<%= consumes %>: ObjectProvider<<%= Consumes %>Service>): <%= Consumes %>Client =
+        <%= Consumes %>Gateway { <%= consumes %>.getObject() }
+<% } %>}

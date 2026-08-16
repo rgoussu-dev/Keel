@@ -1,0 +1,65 @@
+package <%= basePackage %>.<%= module %>.domain.core
+
+import org.junit.jupiter.api.Test
+
+<% if (hasConsumes) { %>import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client
+<% } %>import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Command
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Rejected
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Result
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.assertThrows
+
+class <%= Module %>Test {
+
+<% if (hasConsumes) { %>    @Test
+    fun `produces a result from what the peer answered`() {
+        val handler = <%= Module %>Handler(Fixed<%= Consumes %>("Hello, Ada!"))
+
+        val result = handler.handle(<%= Module %>Command("Ada"))
+
+        assertEquals(<%= Module %>Result("Hello, Ada!"), result)
+    }
+
+    @Test
+    fun `rejects a blank subject without asking the peer`() {
+        val <%= consumes %> = Recording<%= Consumes %>()
+
+        assertThrows<<%= Module %>Rejected> { <%= Module %>Handler(<%= consumes %>).handle(<%= Module %>Command("  ")) }
+
+        assertNull(<%= consumes %>.asked)
+    }
+
+    /**
+     * A fake, not a mock — the house rule. The domain test never sees
+     * the <%= consumes %> module: it stands the port up itself.
+     */
+    private class Fixed<%= Consumes %>(private val answer: String) : <%= Consumes %>Client {
+        override fun askFor(subject: String): String = answer
+    }
+
+    /** The same fake, recording what it was asked. */
+    private class Recording<%= Consumes %> : <%= Consumes %>Client {
+        var asked: String? = null
+
+        override fun askFor(subject: String): String {
+            asked = subject
+            return "unused"
+        }
+    }
+<% } else { %>    @Test
+    fun `produces a result for a named subject`() {
+        val result = <%= Module %>Handler().handle(<%= Module %>Command("Ada"))
+
+        assertEquals(<%= Module %>Result("<%= module %>: Ada"), result)
+    }
+
+    @Test
+    fun `rejects a blank subject`() {
+        val rejected =
+            assertThrows<<%= Module %>Rejected> { <%= Module %>Handler().handle(<%= Module %>Command("  ")) }
+
+        assertEquals("subject must not be empty", rejected.message)
+    }
+<% } %>}

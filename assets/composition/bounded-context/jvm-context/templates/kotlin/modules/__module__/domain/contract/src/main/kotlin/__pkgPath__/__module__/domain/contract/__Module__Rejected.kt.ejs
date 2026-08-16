@@ -1,0 +1,4 @@
+package <%= basePackage %>.<%= module %>.domain.contract
+
+/** Why the <%= module %> context refused a [<%= Module %>Command]. */
+class <%= Module %>Rejected(message: String) : RuntimeException(message)

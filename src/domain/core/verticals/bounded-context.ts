@@ -29,7 +29,13 @@
  */
 
 import { goContextAdapter } from '../adapters/go-context.js';
+import {
+  micronautContextAdapter,
+  micronautContextKotlinAdapter,
+} from '../adapters/micronaut-context.js';
+import { quarkusContextAdapter, quarkusContextKotlinAdapter } from '../adapters/quarkus-context.js';
 import { rustContextAdapter } from '../adapters/rust-context.js';
+import { springContextAdapter, springContextKotlinAdapter } from '../adapters/spring-context.js';
 import { tsContextAdapter } from '../adapters/ts-context.js';
 import { wcContextAdapter } from '../adapters/wc-context.js';
 import type { Vertical } from '../../contract/composition.js';
@@ -38,5 +44,16 @@ export const boundedContextVertical: Vertical = {
   id: 'bounded-context',
   description: 'One named bounded context under the modulith, and its optional consumer edge.',
   dimensions: [],
-  adapters: [rustContextAdapter, goContextAdapter, tsContextAdapter, wcContextAdapter],
+  adapters: [
+    rustContextAdapter,
+    goContextAdapter,
+    tsContextAdapter,
+    wcContextAdapter,
+    quarkusContextAdapter,
+    quarkusContextKotlinAdapter,
+    springContextAdapter,
+    springContextKotlinAdapter,
+    micronautContextAdapter,
+    micronautContextKotlinAdapter,
+  ],
 };
