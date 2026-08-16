@@ -40,6 +40,15 @@
  * rule derives. Hence {@link TS_SKELETON_SEAM_METHOD}, one constant
  * rather than a table. Rust and Go need no equivalent — their
  * skeleton seams are already the shape an added context follows.
+ *
+ * **It also installs.** A workspace package the root manifest now
+ * lists but the store has never seen is not resolvable — nothing
+ * symlinks it into `node_modules`, so every import of it is a
+ * `TS2307` and the project keel just reported as ready does not
+ * typecheck. `keel new` gets the install for free from the walking
+ * skeleton's own `npm-install` adapter running last; a context layered
+ * onto a live project has to ask for it, exactly as `ts-persistence`
+ * does when it adds its packages.
  */
 
 import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
@@ -54,7 +63,7 @@ import {
   TS_SKELETON_SEAM_METHOD,
   type TsLayoutPaths,
 } from './ts-module-layout.js';
-import { tsWorkspaceVars } from './ts-workspace.js';
+import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
 import { beforeFirstImport, eolAware } from '../util.js';
 
 export const TS_CONTEXT_ID = 'bounded-context/ts-context';
@@ -133,6 +142,9 @@ export const tsContextAdapter: Adapter = {
           ? []
           : [dependencyPatch(layout, `@${layout.scope}/${added.consumes}`, workspaceDep)]),
         wiringPatch(layout, added.name),
+      ],
+      actions: [
+        workspaceInstall(TS_CONTEXT_ID, pm, `link the new ${added.name} workspace package`),
       ],
     };
   },

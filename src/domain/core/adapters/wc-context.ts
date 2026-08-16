@@ -34,12 +34,21 @@
  * this command runs once per context. So the ports entry goes in
  * before the map's closing bracket, found by scanning, and each patch
  * returns the file unchanged when its own mark is already present.
+ *
+ * **It also installs.** A workspace package the root manifest now
+ * lists but the store has never seen is not resolvable — nothing
+ * symlinks it into `node_modules`, so every import of it is a
+ * `TS2307` and the project keel just reported as ready does not
+ * typecheck. `keel new` gets the install for free from the walking
+ * skeleton's own `npm-install` adapter running last; a context layered
+ * onto a live project has to ask for it, exactly as `ts-persistence`
+ * does when it adds its packages.
  */
 
 import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
 import { addedContext, CONTEXT_TAG } from './added-context.js';
 import { MODULITH_LAYOUT_TAG, SKELETON_MODULE } from './module-layout.js';
-import { tsWorkspaceVars } from './ts-workspace.js';
+import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 import {
   wcContextPackage,
@@ -155,6 +164,9 @@ export const wcContextAdapter: Adapter = {
           wiringArgs(added.consumes, consumesIsSkeleton),
         ),
         markupPatch(layout, viewTag),
+      ],
+      actions: [
+        workspaceInstall(WC_CONTEXT_ID, pm, `link the new ${added.name} workspace package`),
       ],
     };
   },
