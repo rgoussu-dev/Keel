@@ -191,12 +191,64 @@ What actually changes, beyond the directories:
   therefore takes its persistence with it. See
   [the vertical's page](../verticals/persistence.md#module-layout).
 
+### Adding contexts afterwards
+
+[The second one](#a-second-bounded-context) arrives with
+`--with-peer-context`, a flag on `keel new`, so it fires once at
+scaffold time on a name keel chose. Growing the project afterwards is
+[`keel add module <name>`](../cli.md#keel-add-module), which emits a
+context of the same shape **plus a `user-side/service` seam of its
+own** — the one thing the peer context deliberately lacks, because
+nothing in the emitted project consumes _it_. That seam is what lets
+contexts compose: `--consumes <other>` accepts any context that
+publishes one, so the second command is `keel add module shipping
+--consumes ordering`.
+
+Four modules per context, against the peer's three:
+
+| Module                             | Holds                                                                 |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `modules/<name>/domain/contract`   | `<Name>Command`, `<Name>Result`, `<Name>Rejected`, `<Consumes>Client` |
+| `modules/<name>/domain/core`       | `<Name>Handler`, marked `@DomainHandler`                              |
+| `modules/<name>/user-side/service` | `<Name>Service` + `<Name>ServiceAdapter` — the seam                   |
+| `modules/<name>/infra/<c>-gateway` | `<Consumes>Gateway`, under `--consumes` only                          |
+
+The seam is spelled like `greeting`'s with the new context's name in
+it: `OrderingService.orderingFor(String) -> String`, against
+`GreetingService.greetingFor(String)`. That is what lets one gateway
+template reach any context — keel's own skeleton or one you added —
+without a table of per-context spellings to go stale.
+
+**Each context binds in a wiring class of its own**,
+`<Name>Wiring` in the assembly's package, rather than as more producer
+methods on `MediatorProducer` / `MediatorConfig` / `MediatorFactory`.
+Two contexts reaching the same third one each declare a
+`<Consumes>Client` and a `<Consumes>Gateway` in their own packages —
+different types, identical simple names — and one Java import block
+cannot name both.
+
+**What the container still has to be told varies by framework**, and
+each of those lists grows once per context:
+
+| Stack             | What `keel add module` widens                                        |
+| ----------------- | -------------------------------------------------------------------- |
+| Quarkus (Java/KT) | nothing — a `beans.xml` in the new `domain/core` is enough for ArC   |
+| Spring (Java/KT)  | the boot class's `@ComponentScan(basePackages = …)`                  |
+| Micronaut (Java)  | `@Import(packages = …)` on `MediatorFactory`                         |
+| Micronaut (KT)    | `mediator`'s hand-wired `listOf(…)`, plus the handler as a parameter |
+
+A context missing from any of those is never discovered: no error, no
+bean, and an application that starts perfectly. That is why every
+added context also emits a `<Name>WiringTest` in the assembly, which
+dispatches its command through the real Mediator out of the real
+container.
+
 ### The other stacks
 
-The Go stacks carry the same dial —
-→ [Go module layout](go.md#module-layout). `ts-http`,
-`web-components` and the Rust stacks ship `basic` only for now; their
-idiomatic modulith realizations are on [the roadmap](../roadmap.md).
+Every other stack family carries the same dial —
+→ [Go](go.md#module-layout), [Rust](rust.md#module-layout),
+[`ts-http`](ts-http.md#module-layout),
+[`web-components`](web-components.md#module-layout).
 
 ## How handlers reach the mediator
 

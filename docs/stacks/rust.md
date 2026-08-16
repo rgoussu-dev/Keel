@@ -158,6 +158,29 @@ Requires `--module-layout=modulith`; the flat layout has no
 `user-side/service` for a peer to reach through, and keel says so
 rather than silently scaffolding one context.
 
+**And a third, and a fourth.** `--with-peer-context` is a flag on
+`keel new`, so it grows the project exactly once. Growing it
+afterwards is [`keel add module <name>`](../cli.md#keel-add-module),
+which emits a context of the same shape **plus a
+`user-side/service` seam of its own** — the one thing the peer context
+deliberately lacks, because nothing in the emitted project consumes
+_it_. That seam is what lets contexts compose: `--consumes <other>`
+accepts any context that publishes one, so the second command is
+`keel add module shipping --consumes ordering`, reaching a context
+that did not exist when keel was written.
+
+The seam is spelled like `greeting`'s with the new context's name in
+it — `OrderingService::ordering_for(&str) -> Result<Ordering,
+OrderingUnavailable>` — which is what lets one gateway template reach
+any context without keel keeping a table of per-context spellings.
+Reaching one differs from reaching the skeleton in exactly one way,
+and it is the reason three contexts is the shape that finds bugs:
+`greeting`'s core takes no dependencies, so its seam self-assembles
+and the consumer calls `new_greeting_service()` directly, while an
+added context's core may itself hold a gateway to a third context — so
+its seam comes from that context's own `wire_service()` in the same
+assembly.
+
 ### Verticals under the modulith
 
 Every vertical Rust offers works under both layouts.

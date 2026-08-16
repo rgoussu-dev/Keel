@@ -8,6 +8,85 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel add module <name>` — a second bounded context by command,
+  not by flag.** `keel new --with-peer-context` grows a modulith
+  exactly once, at scaffold time. This grows it whenever, by name, on
+  every stack family that ships a modulith: the twelve JVM stacks, Go,
+  Rust, `ts-http` and `web-components`.
+
+  What lands is a **structural shell** in the layout the stack already
+  uses — a contract face, a core with one handler, and a
+  `user-side/service` seam of its own — plus, under
+  `--consumes <other>`, a driven port `<Other>Client` and an
+  `<Other>Gateway` over that context's seam. All of the vocabulary
+  derives from names keel actually holds: `<Name>Command` /
+  `<Name>Result` for the placeholder use case, which carries a doc
+  comment saying that renaming it is the first thing to do.
+
+  **An added context always publishes a seam, and the peer context
+  never does.** That asymmetry is the load-bearing decision. The
+  `--with-peer-context` context is a pure consumer — verified in all
+  five families: contract face, core, gateway, and no
+  `user-side/service` — because nothing in the emitted project
+  consumes _it_. A context you add is different: the obvious second
+  command is `keel add module shipping --consumes ordering`, and that
+  needs `ordering` to have published a seam when it was added. So the
+  manifest records `seam` per context, and `--consumes guestbook`
+  names a real context and an impossible target.
+
+  **The seam is spelled like the skeleton's, with the new context's
+  name in it** — `OrderingService.orderingFor` against
+  `GreetingService.greetingFor`, `ordering_for` against
+  `greeting_for`. One gateway template therefore reaches _any_
+  context, keel's own skeleton included, with no table of per-context
+  seam spellings to go stale.
+
+  **Three contexts is the shape that finds bugs, and everything here
+  was built against it.** The skeleton's seam self-assembles — its
+  core takes no dependencies — and no added context's can, because an
+  added context's core may itself hold a gateway to a third. So a
+  consumer constructs the skeleton's seam directly and reaches an
+  added context through _that context's own wiring function_. With two
+  contexts the consumed one is always the skeleton and that branch is
+  unreachable. Every family's e2e now builds three.
+
+  Per-family notes, because the walls differ:
+  - **JVM** — four modules per context against the peer's three, six
+    (framework, language) bindings, both build systems. Each context
+    binds in a `<Name>Wiring` class of its own rather than as more
+    producer methods on the shared composition root: two contexts
+    reaching the same third one each declare a `<Consumes>Client`, and
+    one Java import block cannot name two types of that simple name.
+    Every list a container reads — Spring's `@ComponentScan`,
+    Micronaut Java's `@Import`, Micronaut Kotlin's hand-wired handler
+    list — is parsed, added to, and re-emitted in a form the same
+    patch can parse again, because this command runs once per context
+    and the peer context's single-shot patches anchor on text their
+    own edit destroys.
+  - **Go** — the alias hazard fires at **two** contexts, not the three
+    `goLayout`'s doc predicted: an added context publishes a seam, so
+    its own wiring file names two `package service` imports the moment
+    `--consumes` is given. Every seam import is aliased
+    `<context>service` rather than only the one that collides.
+  - **Rust** — four crates; the driving port is `<Name>Port` rather
+    than `<Name>`, because the seam crate owns a DTO called `<Name>`
+    and the seam's own `lib.rs` imports both.
+  - **`ts-http` / `web-components`** — the `exports` map holds depth
+    (`TS2307`), `peers-meet-at-the-service-seam` holds the peer rule,
+    and that rule's `pathNot` backreference is now exercised between
+    two _added_ contexts, which it had never seen.
+
+  Seven front-door refusals, each naming what to do about it: the name
+  (one lowercase word, validated against the intersection of what all
+  six identifier spellings accept), no project here, the flat `basic`
+  layout, a composite product root, a name already taken, a
+  `--consumes` that names nothing / itself / a context with no seam,
+  and — the one that would otherwise be silent — a stack with no
+  bounded-context adapter, where the command would scaffold nothing at
+  all and report success.
+
+  → [`keel add module`](docs/cli.md#keel-add-module)
+
 - **`--with-peer-context` on `web-components`.** Scaffolds
   `guestbook` beside `greeting` as one more workspace package, with a
   gateway at `src/infra/greeting-gateway/` importing
@@ -366,6 +445,24 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   does not.
 
 ### Fixed
+
+- **Reserved module names now cover every target language's
+  keywords.** `parseModuleName` claimed to reject anything "reserved
+  in at least one of Go, Rust, Java or Kotlin" and rejected about a
+  third of them: `keel add module case` scaffolded a tree whose Java
+  package clause is a syntax error, `keel add module map` one whose Go
+  package clause is. The list is now four per-language arrays plus the
+  structural one, so the claim is checkable against each language's
+  grammar rather than invisible in a merged list.
+
+- **`keel add module` installs the workspace it just widened**, on
+  `ts-http` and `web-components`. A workspace package the root
+  manifest now lists but the store has never seen is not resolvable —
+  nothing symlinks it into `node_modules` — so every import of the new
+  context was a `TS2307` and a project keel had just reported as ready
+  did not typecheck. `keel new` gets the install for free from the
+  walking skeleton's own adapter running last; anything layered onto a
+  live project has to ask for it, as `ts-persistence` already did.
 
 - **`--with-peer-context` on a stack that has no peer context was a
   silent no-op.** `keel new --stack=go-http|ts-http|web-components
