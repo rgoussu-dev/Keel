@@ -319,8 +319,12 @@ would ship as separate packages implementing the same port.
   numbers are on the runner.** `jvm-modulith-quarkus-java` was
   recorded at 415s against a 260s floor when J.1 shipped, and called
   "the only shard with real headroom left". Measured with these two
-  files in it: **565.60s wall, 1453.50s of test time across eight
-  files, longest file `add-module-jvm` at 391.27s.** On `web`, the
+  files in it: **483.25s wall, 1234.37s of test time across eight
+  files, longest file `add-module-jvm` at 262.28s** — a floor at 54%
+  of the wall, so the headroom that made it the shard to split first
+  is still there. (It was 565.60s against a 391.27s floor until the
+  cache fix below; both numbers are from the runner, one commit
+  apart.) On `web`, the
   floor changed hands outright: **188.68s wall over eleven files,
   longest `add-module-wc` at 110.94s**, where the standing note says
   `modulith-wc-peer-context` "is the floor and will stay the floor" —
@@ -336,12 +340,14 @@ would ship as separate packages implementing the same port.
   fetched. On the runner that showed as `add-module-jvm` = 257.95s +
   **133.32s**. Moving the cache to `beforeAll` — one home per file,
   the project tree still per case — takes the second case to
-  **23.50s**, measured locally on the same box in the same run.
+  **25.92s**, the file from 391.27s to **262.28s**, and the shard from
+  565.60s to **483.25s**. All four figures are from the runner, one
+  commit apart.
 
   That answers the split question, and inverts the obvious reading of
   it. Two long cases in one file look like a file wanting to be two;
   splitting these would hand the second case its own cold Gradle
-  resolve again and cost ~110s to buy attribution. It is the run-217
+  resolve back and cost ~107s to buy attribution. It is the run-217
   `go` lesson with a number attached: **fix the cache, not the file
   layout**. So `add-module-jvm` stays one file, and any future suite
   running two real builds should share its home from the start.

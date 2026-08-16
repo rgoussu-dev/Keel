@@ -446,6 +446,36 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`--with-peer-context` on Rust no longer warns.** The emitted
+  `guestbook.rs` wiring exposed `pub fn wire()`, which nothing in
+  `main` calls, so every `cargo build` of a Rust peer-context project
+  reported `function 'wire' is never used`. The added-context
+  templates already carry `#[allow(dead_code)]` with an explanation
+  telling you to delete it once `main` calls the function; the peer's
+  wiring now says the same thing, including the part that catches
+  people out — the test below it drives `wire()`, and that is not a
+  use `cargo build` counts.
+
+- **The web-components wiring test drives the real seam of an added
+  context, not a fake of it.** When `--consumes` named a context that
+  `keel add module` had itself added, the emitted assembly test stood
+  up a hand-written `<Consumes>Service` object, because building the
+  real one would have meant knowing what _that_ context consumes —
+  which only its own wiring module knows.
+
+  So the wiring module now says it. Every web-components context
+  gains `create<Name>ContextService()`, a fresh self-contained
+  instance that assembles its own consumed chain, which is the shape
+  `ts-http`, Rust and Go already had and the invariant the family was
+  missing: a consumer reaches an added context through _that
+  context's own wiring function_. The test calls it and never names
+  what the consumed context consumes.
+
+  It is deliberately separate from `create<Name>Wiring`, which stays
+  the single live instance `main.ts` holds — a second call there
+  would build a second store and split the page's state from its
+  peers', which is what that function's own note warns about.
+
 - **Reserved module names now cover every target language's
   keywords.** `parseModuleName` claimed to reject anything "reserved
   in at least one of Go, Rust, Java or Kotlin" and rejected about a
