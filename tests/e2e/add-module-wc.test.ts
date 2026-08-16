@@ -98,6 +98,15 @@ describe.skipIf(skipWebE2E('npm'))('web-components add-module e2e', () => {
         main.indexOf("document.addEventListener('context-request'"),
       );
 
+      // The consumed seam is the real one, not a fake. A context added
+      // by `keel add module` is reached through its own
+      // `create<Name>ContextService()`, which assembles that context
+      // and whatever *it* consumes — so this test never has to name
+      // ordering's own edge, and never has to stand in for it.
+      const wiring = await read('application/web-app/tests/shipping-wiring.test.ts');
+      expect(wiring).toContain('createOrderingContextService()');
+      expect(wiring).not.toMatch(/orderingFor: \(\) =>/);
+
       runStep(cwd, 'npm run typecheck', 'npm', ['run', 'typecheck']);
       runStep(cwd, 'npm run lint', 'npm', ['run', 'lint']);
       runStep(cwd, 'npm test', 'npm', ['test']);
