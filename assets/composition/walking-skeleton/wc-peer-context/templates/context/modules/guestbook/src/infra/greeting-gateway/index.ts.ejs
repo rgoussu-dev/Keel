@@ -1,0 +1,36 @@
+import type { GreetingService } from '<%= servicePkg %>';
+import type { Welcome } from '../../domain/contract/index';
+
+/**
+ * The gateway translating guestbook's `Welcome` port into a call on
+ * the greeting context's seam.
+ *
+ * This is the only file in guestbook that knows greeting exists, and
+ * it is a driven adapter — so the dependency points from
+ * infrastructure inwards, never between two domains.
+ *
+ * The seam is fire-and-observe rather than request/response, because
+ * that is the shape a browser context publishes: `greet` records and
+ * notifies, `latest` reads. Asking for a welcome therefore *does*
+ * publish a greeting, which the greeting view on the page will render
+ * — the cross-context call is visible, which is the point of having
+ * a peer at all.
+ *
+ * Its import list is the review, and it is worth knowing what does
+ * **not** enforce it. Nothing in the toolchain stops this file
+ * writing `from '<%= contextPkg %>'` and helping itself to greeting's
+ * whole contract face. The `exports` map holds the depth rule —
+ * `<%= contextPkg %>/src/domain/…` is a TS2307 — and the peer rule is
+ * `peers-meet-at-the-service-seam` in the workspace's
+ * `.dependency-cruiser.cjs`, checked by `<%= pm %> run lint`.
+ */
+export function createGreetingWelcome(greeting: GreetingService): Welcome {
+  return {
+    // The seam hands back a string, never greeting's `Greeting`, so
+    // none of the peer's vocabulary crosses into ours.
+    welcomeFor(visitor: string): string | null {
+      greeting.greet(visitor);
+      return greeting.latest();
+    },
+  };
+}

@@ -30,10 +30,11 @@ import { installVertical } from '../../../../src/domain/core/install.js';
 import { containerizationVertical } from '../../../../src/domain/core/verticals/containerization.js';
 import { gatewayVertical } from '../../../../src/domain/core/verticals/gateway.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
-import { wcLayout } from '../../../../src/domain/core/adapters/wc-module-layout.js';
+import { wcLayout, wcPeerPackage } from '../../../../src/domain/core/adapters/wc-module-layout.js';
 import {
   BASIC_LAYOUT_TAG,
   MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
 } from '../../../../src/domain/core/adapters/module-layout.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -302,5 +303,144 @@ describe('the web-components verticals follow the layout', () => {
       const appRoot = wcLayout([tag], SCOPE).appRoot;
       expect(read(tree, 'Dockerfile')).toContain(`COPY ${appRoot}/dist/ /usr/share/nginx/html/`);
     }
+  });
+});
+
+/**
+ * The peer context — `--with-peer-context`.
+ *
+ * What is worth asserting from emitted text is the *edge*, the
+ * *binding* and the *tag*: that the gateway imports greeting's seam
+ * and nothing else of greeting's, that the assembly publishes the
+ * peer's ports and defines its element after the provider is
+ * listening, and that the two contexts' views cannot collide.
+ *
+ * The wall itself is not attempted here. The peer rule is a
+ * dependency-cruiser rule rather than anything tsc holds, so only a
+ * real `depcruise` run settles it — and only a real browser settles
+ * whether the element upgrades.
+ * `tests/e2e/modulith-wc-peer-context.test.ts` settles both.
+ */
+describe('the web-components peer context', () => {
+  const peerTags = tags(MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG);
+
+  it('resolves the peer to one package, and to none under basic', () => {
+    const peer = wcPeerPackage(wcLayout([MODULITH_LAYOUT_TAG], SCOPE));
+    expect(peer?.root).toBe('modules/guestbook');
+    expect(peer?.pkg).toBe('@acme/guestbook');
+    expect(peer?.elementsPkg).toBe('@acme/guestbook/elements');
+    expect(peer?.gatewaySrc).toBe('modules/guestbook/src/infra/greeting-gateway');
+
+    expect(wcPeerPackage(wcLayout([BASIC_LAYOUT_TAG], SCOPE))).toBeNull();
+  });
+
+  /**
+   * The tag rule exists for exactly this case, and nothing else in
+   * the emitted project would notice it breaking: two views sharing a
+   * tag is a `NotSupportedError` on the second registration, which
+   * aborts the rest of that bundle's registrations and leaves half
+   * the page silently un-upgraded.
+   */
+  it('gives each context its own element tag', () => {
+    const layout = wcLayout([MODULITH_LAYOUT_TAG], SCOPE);
+    const peer = wcPeerPackage(layout);
+
+    expect(peer?.elementTag('view')).toBe('acme-guestbook-view');
+    expect(peer?.elementTag('view')).not.toBe(layout.elementTag('view'));
+  });
+
+  it('emits nothing without the tag', async () => {
+    const tree = await install([walkingSkeletonVertical], tags(MODULITH_LAYOUT_TAG));
+    expect(tree.read('modules/guestbook/package.json')).toBeNull();
+    expect(tree.read('application/web-app/src/guestbook.ts')).toBeNull();
+    expect(read(tree, 'application/web-app/index.html')).not.toContain('guestbook');
+  });
+
+  it('emits one package publishing a facade and its elements, but no seam', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    for (const p of [
+      'modules/guestbook/package.json',
+      'modules/guestbook/src/index.ts',
+      'modules/guestbook/src/elements.ts',
+      'modules/guestbook/src/element-tags.ts',
+      'modules/guestbook/src/context-keys.ts',
+      'modules/guestbook/src/domain/contract/sign.ts',
+      'modules/guestbook/src/domain/core/internal/sign-service.ts',
+      'modules/guestbook/src/domain/core/internal/entry-store.ts',
+      'modules/guestbook/src/infra/greeting-gateway/index.ts',
+      'modules/guestbook/src/user-side/elements/guestbook-view.ts',
+      'modules/guestbook/tests/element-tags.test.ts',
+      'modules/guestbook/tests/greeting-gateway.test.ts',
+      'modules/guestbook/tests/sign.test.ts',
+    ]) {
+      expect(tree.read(p), `missing ${p}`).not.toBeNull();
+    }
+
+    // Guestbook is the consumer of this pair, so it publishes no
+    // `./service`: a seam exists to be reached, and nothing reaches
+    // guestbook yet.
+    expect(json(tree, 'modules/guestbook/package.json')['exports']).toEqual({
+      '.': './src/index.ts',
+      './elements': './src/elements.ts',
+    });
+  });
+
+  it('gives the gateway an edge to the seam and to no other greeting entry point', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    const gateway = read(tree, 'modules/guestbook/src/infra/greeting-gateway/index.ts');
+    // Comments first: the gateway's doc comment names the specifier
+    // it must *not* write, so scanning the raw text would match the
+    // prose documenting the rule and fail a file that obeys it.
+    const code = gateway.replace(/\/\*[\s\S]*?\*\//g, '');
+    const specifiers = [...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
+
+    expect(specifiers).toContain('@acme/greeting/service');
+    expect(specifiers).not.toContain('@acme/greeting');
+  });
+
+  /**
+   * The binding, and its order. A definition upgrades parsed markup
+   * and fires `connectedCallback` synchronously, so registering the
+   * peer's element before the provider is listening makes the view
+   * ask for ports nobody answers — the emitted element throws exactly
+   * that rather than rendering empty.
+   */
+  it('publishes the peer ports before defining its element', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    const main = read(tree, 'application/web-app/src/main.ts');
+
+    expect(main).toContain("import { createGuestbookPorts } from './guestbook';");
+    expect(main).toContain('...createGuestbookPorts(greet, greetings),');
+    expect(main).toContain('defineGuestbookElements();');
+
+    const listener = main.indexOf("document.addEventListener('context-request'");
+    expect(main.indexOf('...createGuestbookPorts')).toBeLessThan(listener);
+    expect(main.indexOf('defineGuestbookElements();')).toBeGreaterThan(listener);
+  });
+
+  it('puts the peer element on the page beside the skeleton’s', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    const markup = read(tree, 'application/web-app/index.html');
+
+    expect(markup).toContain('<acme-greeting-view></acme-greeting-view>');
+    expect(markup).toContain('<acme-guestbook-view></acme-guestbook-view>');
+  });
+
+  /**
+   * The one test that drives the real seam has to live in the
+   * assembly — the same test inside `modules/guestbook/` would import
+   * greeting's facade and fail `peers-meet-at-the-service-seam` — so
+   * the app package gains a `test` script to run it.
+   */
+  it('ships a wiring test in the assembly, and a script that runs it', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+
+    expect(read(tree, 'application/web-app/tests/guestbook-wiring.test.ts')).toContain(
+      "createGuestbookPorts } from '../src/guestbook'",
+    );
+    const manifest = json(tree, 'application/web-app/package.json');
+    expect(manifest['scripts']).toMatchObject({ test: 'vitest run' });
+    expect(manifest['devDependencies']).toMatchObject({ vitest: '^3.2.0' });
+    expect(manifest['dependencies']).toMatchObject({ '@acme/guestbook': '*' });
   });
 });
