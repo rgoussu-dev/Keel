@@ -83,7 +83,9 @@ assemblies. Modules meet only at `user-side/service`, which is what
 makes extracting a context into its own service a wiring change
 rather than a rewrite. Add `--with-peer-context` and you get a second
 context to prove it: it reaches the first only through that seam, and
-the build graph is what stops it reaching further.
+the build graph is what stops it reaching further. Every stack that
+offers the modulith now offers the peer context — see each family's
+page for what its own wall is made of, because they differ.
 → [Module layout](docs/stacks/jvm.md#module-layout)
 
 **Prerequisites:** JDK 25, `gradle` _or_ `mvn` on PATH, `git`.
@@ -105,7 +107,11 @@ Both Go stacks carry the same **module layout** dial as the JVM ones:
 `--module-layout=modulith` puts each bounded context under
 `internal/modules/<ctx>/` behind a facade that re-exports nothing, so
 "only this context implements its own ports" is a compile error rather
-than a review comment. → [Go module layout](docs/stacks/go.md#module-layout)
+than a review comment. `--with-peer-context` adds the second context
+that proves it — and Go's wall is its own rather than the JVM's: the
+peer's gateway cannot _reach_ greeting's domain at all, because
+`internal/` puts it out of range.
+→ [Go module layout](docs/stacks/go.md#module-layout)
 
 **Prerequisites:** Go toolchain (`go` on PATH), `git`.
 → [Go stacks](docs/stacks/go.md)
@@ -153,7 +159,10 @@ package graph enforces nothing on its own (undeclared workspace deps
 resolve anyway) while the `exports` map enforces everything. So
 `--module-layout=modulith` buys the wall at 1 manifest per context
 instead of 3.5, and ships the dependency-cruiser config for the two
-rules resolution cannot see.
+rules resolution cannot see. `--with-peer-context` adds the second
+context that proves it, and the docs are precise about which tool
+holds which rule: the `exports` map is the compiler's, the peer rule
+is the linter's.
 → [ts-http module layout](docs/stacks/ts-http.md#module-layout)
 
 **Prerequisites:** Node 22.18+, `npm` or `pnpm`, `git`.
@@ -179,6 +188,9 @@ points — the facade, `./elements`, `./service` — and the design system
 stays a top-level package, emitted as an **external** and deduplicated
 through an import map in `index.html`, because a package that defines
 custom elements has to exist exactly once per page.
+`--with-peer-context` adds a second context with a UI of its own,
+which is what finally exercises the `<scope>-<context>-<element>` tag
+rule: two contexts, two registrations, one registry.
 → [web-components module layout](docs/stacks/web-components.md#module-layout)
 
 **Prerequisites:** Node 22+, `npm` or `pnpm`, `git`.
