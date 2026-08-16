@@ -14,6 +14,13 @@ use guestbook_infra_greeting_gateway::GreetingWelcome;
 use greeting_user_side_service::new_greeting_service;
 
 /// Assembles the guestbook context over the greeting seam.
+///
+/// `allow(dead_code)` because nothing calls it yet: exposing a second
+/// context through this deployment unit's entry point is a decision
+/// about *your* CLI surface, and keel will not guess it. The test
+/// below drives it, which is not a use `cargo build` counts. Delete
+/// the attribute the moment `main` calls this.
+#[allow(dead_code)]
 pub fn wire() -> impl Guestbook {
     let greeting = Arc::new(new_greeting_service());
     new_guestbook(Arc::new(GreetingWelcome::new(greeting)))
