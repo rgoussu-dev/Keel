@@ -25,7 +25,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   addModule,
   buildProject,
@@ -52,14 +52,26 @@ const GATEWAY = `modules/shipping/infra/ordering-gateway/${SRC}/shipping/infra/o
 let cwd: string;
 let mavenRepo: string;
 
+/**
+ * One local repository for the whole file, for the reason its Gradle
+ * twin shares one Gradle home: it is a dependency cache, and a
+ * per-case repository makes the second case re-resolve every artifact
+ * the first already fetched.
+ */
+beforeAll(async () => {
+  mavenRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-add-module-mvn-repo-'));
+});
+
+afterAll(async () => {
+  await fs.remove(mavenRepo);
+});
+
 beforeEach(async () => {
   cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-add-module-mvn-'));
-  mavenRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-add-module-mvn-repo-'));
 });
 
 afterEach(async () => {
   await fs.remove(cwd);
-  await fs.remove(mavenRepo);
 });
 
 const read = (rel: string): Promise<string> =>

@@ -315,24 +315,36 @@ would ship as separate packages implementing the same port.
   scope holding the seam wall is spelled differently there
   (`optional`, not `implementation`) and the peer context's Maven half
   once shipped without it.
-- **They moved the floor of the shard they landed in, and the numbers
-  are on the runner.** `jvm-modulith-quarkus-java` was recorded at
-  415s against a 260s floor when J.1 shipped, and called "the only
-  shard with real headroom left". Measured with these two files in it:
-  **565.60s wall, 1453.50s of test time across eight files, longest
-  file `add-module-jvm` at 391.27s.** The floor is now a file this
-  work added, and the shard's headroom is what it was in absolute
-  terms (174s) while resting on one case rather than a spread.
+- **They moved the floors of the shards they landed in, and the
+  numbers are on the runner.** `jvm-modulith-quarkus-java` was
+  recorded at 415s against a 260s floor when J.1 shipped, and called
+  "the only shard with real headroom left". Measured with these two
+  files in it: **565.60s wall, 1453.50s of test time across eight
+  files, longest file `add-module-jvm` at 391.27s.** On `web`, the
+  floor changed hands outright: **188.68s wall over eleven files,
+  longest `add-module-wc` at 110.94s**, where the standing note says
+  `modulith-wc-peer-context` "is the floor and will stay the floor" —
+  it is now second at 103.75s. The one-shard conclusion survives (the
+  floor is 59% of the wall, as it was), but the file named in it does
+  not.
 
-  So the standing advice — split `quarkus-java` first if it grows —
-  still holds and now has a specific target. `add-module-jvm`'s two
-  cases are 257.95s and 133.32s, which by the convention above is a
-  file wanting to be two. That split is **not** made here, for the
-  reason the `go` shard learned the hard way in run 217: peeling a
-  case into its own file bought it a second cold toolchain compile
-  and made the job slower. Whether these two cases share enough warm
-  Gradle state for a split to pay is the one figure the decision turns
-  on, and nobody has measured it.
+- **A shared dependency cache per file is worth more than a split,
+  and here that is measured rather than assumed.** Both JVM
+  `add-module` suites first shipped taking a fresh `GRADLE_USER_HOME`
+  / `-Dmaven.repo.local` in `beforeEach`, so their second case
+  re-resolved and re-downloaded everything the first had just
+  fetched. On the runner that showed as `add-module-jvm` = 257.95s +
+  **133.32s**. Moving the cache to `beforeAll` — one home per file,
+  the project tree still per case — takes the second case to
+  **23.50s**, measured locally on the same box in the same run.
+
+  That answers the split question, and inverts the obvious reading of
+  it. Two long cases in one file look like a file wanting to be two;
+  splitting these would hand the second case its own cold Gradle
+  resolve again and cost ~110s to buy attribution. It is the run-217
+  `go` lesson with a number attached: **fix the cache, not the file
+  layout**. So `add-module-jvm` stays one file, and any future suite
+  running two real builds should share its home from the start.
 
 - **The shard matrix names its files explicitly, and that is a hazard
   with a guard.** A suite in no shard never runs, which looks exactly

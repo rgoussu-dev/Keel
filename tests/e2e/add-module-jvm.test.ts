@@ -38,7 +38,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   addModule,
   buildProject,
@@ -63,14 +63,32 @@ const GATEWAY = `modules/shipping/infra/ordering-gateway/${SRC}/shipping/infra/o
 let cwd: string;
 let gradleUserHome: string;
 
+/**
+ * One Gradle home for the whole file, not one per case.
+ *
+ * It is a dependency cache, so sharing it is safe, and not sharing it
+ * is expensive: each case here runs a full `./gradlew build` over a
+ * fresh project, and a per-case home makes the second one re-resolve
+ * and re-download everything the first already had. That is the cost
+ * `sharedGoHome()` was introduced to stop paying — see `AGENTS.md §9`
+ * on run 217, where splitting a file bought a second cold compile and
+ * a slower job. The project tree stays per-case, because each one
+ * scaffolds its own.
+ */
+beforeAll(async () => {
+  gradleUserHome = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-add-module-jvm-gradle-'));
+});
+
+afterAll(async () => {
+  await fs.remove(gradleUserHome);
+});
+
 beforeEach(async () => {
   cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-add-module-jvm-'));
-  gradleUserHome = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-add-module-jvm-gradle-'));
 });
 
 afterEach(async () => {
   await fs.remove(cwd);
-  await fs.remove(gradleUserHome);
 });
 
 const read = (rel: string): Promise<string> =>
