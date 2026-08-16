@@ -561,3 +561,126 @@ describe('keel.new-project module-layout selection', () => {
     expect(error.message).toMatch(/composite/);
   });
 });
+
+describe('keel.new-project peer-context selection', () => {
+  /**
+   * Every single-service stack, with the flag and the layout it
+   * needs. Used by both invariant tests below, which between them
+   * partition this list: a stack either scaffolds the peer or is
+   * named as unable to, and neither set may be silent.
+   */
+  const singleServiceStacks = Object.values(STACKS).filter((stack) => stack.services === undefined);
+
+  /** Dispatches `keel new --module-layout=modulith --with-peer-context`. */
+  const withPeer = async (stack: string, dryRun = true) => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    return mediator.dispatch(
+      newProjectCommand({
+        cwd,
+        stack,
+        answers: {},
+        interactive: false,
+        dryRun,
+        moduleLayout: 'modulith',
+        withPeerContext: true,
+      }),
+    );
+  };
+
+  /**
+   * The bug this guard exists for: `--with-peer-context` on a stack
+   * with no peer-context adapter used to exit 0 having emitted
+   * nothing. The resolver cannot catch it — those adapters declare
+   * `covers: []`, so no dimension goes uncovered — which is why the
+   * check sits at the front door instead.
+   */
+  it('rejects the flag on a stack whose modulith has no peer context', async () => {
+    const error = expectErr(await withPeer('go-http'));
+
+    expect(error.code).toBe('keel.invalid-peer-context');
+    expect(error.message).toMatch(/stack 'go-http' has no peer-context adapter/);
+    expect(error.message).toMatch(/would scaffold nothing/);
+  });
+
+  /**
+   * The rejection names the alternatives, and the list is derived
+   * from the adapters rather than written down — so this asserts the
+   * derivation, not a copy of it. A stack that scaffolds the peer
+   * must be listed; one that does not must not be.
+   */
+  it('names exactly the stacks that do support it', async () => {
+    const error = expectErr(await withPeer('go-http'));
+    const listed = new Set(
+      (/Stacks that support it: (.*)$/.exec(error.message)?.[1] ?? '').split(', '),
+    );
+
+    for (const stack of singleServiceStacks) {
+      const result = await withPeer(stack.id);
+      const rejected = !result.ok && result.error.code === 'keel.invalid-peer-context';
+      expect({ stack: stack.id, rejected }).toEqual({
+        stack: stack.id,
+        rejected: !listed.has(stack.id),
+      });
+    }
+  });
+
+  /**
+   * And every listed stack emits a second context rather than merely
+   * accepting the flag — which is the whole failure this guard was
+   * written against, restated as a positive.
+   */
+  it('scaffolds a guestbook context on every stack it accepts', async () => {
+    for (const stack of singleServiceStacks) {
+      const result = await withPeer(stack.id);
+      if (!result.ok) continue;
+      expect({
+        stack: stack.id,
+        peer: result.value.changes.some((change) => change.path.includes('guestbook')),
+      }).toEqual({ stack: stack.id, peer: true });
+    }
+  });
+
+  it('rejects the flag under the flat layout, and says which layout it needs', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          moduleLayout: 'basic',
+          withPeerContext: true,
+        }),
+      ),
+    );
+
+    expect(error.code).toBe('keel.invalid-peer-context');
+    expect(error.message).toMatch(/needs the modulith layout/);
+    // Language-neutral: `user-side/service` is the JVM and Rust
+    // spelling of the seam, and Go has no such path at all.
+    expect(error.message).not.toMatch(/user-side\/service/);
+  });
+
+  it('rejects the flag on composite stacks', async () => {
+    const mediator = installMediator();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          withPeerContext: true,
+        }),
+      ),
+    );
+
+    expect(error.code).toBe('keel.invalid-peer-context');
+    expect(error.message).toMatch(/composite/);
+  });
+});
