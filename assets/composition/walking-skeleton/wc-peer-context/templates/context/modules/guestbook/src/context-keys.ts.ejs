@@ -1,0 +1,14 @@
+/**
+ * This context's context keys — typed by its own ports, and part of
+ * what it publishes: the assembly needs them to answer requests, and
+ * the context's elements need them to ask.
+ */
+
+import { createContext } from '<%= contextProtocolPkg %>';
+import type { EntriesReadModel, Sign } from './domain/contract/index';
+
+/** Delivers the sign driving port. */
+export const signContext = createContext<Sign>('<%= scope %>.guestbook.sign');
+
+/** Delivers the entries read model. */
+export const entriesContext = createContext<EntriesReadModel>('<%= scope %>.guestbook.entries');

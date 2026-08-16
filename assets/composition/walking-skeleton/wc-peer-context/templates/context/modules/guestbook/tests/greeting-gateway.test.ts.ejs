@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import type { GreetingService } from '<%= servicePkg %>';
+import { createGreetingWelcome } from '../src/index';
+
+/** The canonical fake of the seam port: records the ask, replies. */
+const seam = (reply: string | null): GreetingService & { asked: string[] } => {
+  const asked: string[] = [];
+  return {
+    asked,
+    greet(name: string): void {
+      asked.push(name);
+    },
+    latest: () => reply,
+  };
+};
+
+describe('the greeting gateway', () => {
+  it('hands back the words the peer composed', () => {
+    const greeting = seam('Hello, Ada!');
+
+    assert.equal(createGreetingWelcome(greeting).welcomeFor('Ada'), 'Hello, Ada!');
+    assert.deepEqual(greeting.asked, ['Ada']);
+  });
+
+  it('reports no welcome when the peer produced none', () => {
+    assert.equal(createGreetingWelcome(seam(null)).welcomeFor('Ada'), null);
+  });
+});

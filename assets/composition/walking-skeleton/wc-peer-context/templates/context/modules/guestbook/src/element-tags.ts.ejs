@@ -1,0 +1,12 @@
+/**
+ * This context's custom-element tags.
+ *
+ * The context segment is why a second context can exist at all
+ * without a rename: `<%= viewTag %>` and the greeting context's own
+ * view would collide on a bare `<%= scope %>-view`, and a collision is
+ * a silent blank box rather than an error. `tests/element-tags.test.ts`
+ * re-derives the prefix from this package's own name so a typo fails.
+ */
+
+/** The guestbook view's custom-element tag. */
+export const GUESTBOOK_VIEW_TAG = '<%= viewTag %>';

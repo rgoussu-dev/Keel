@@ -1,0 +1,23 @@
+{
+  "name": "<%= peerPkg %>",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./elements": "./src/elements.ts"
+  },
+  "dependencies": {
+    "<%= contextProtocolPkg %>": "<%= workspaceDep %>",
+    "<%= designSystemPkg %>": "<%= workspaceDep %>",
+    "<%= contextPkg %>": "<%= workspaceDep %>"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

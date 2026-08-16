@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import { createGreet, createGreetingStore } from '<%= contextPkg %>';
+import { entriesContext, signContext, type EntriesReadModel, type Sign } from '<%= peerPkg %>';
+import { createGuestbookPorts } from '../src/guestbook';
+
+/**
+ * The cross-context call, driven for real: no fakes anywhere, so what
+ * this proves is that the two contexts are wired to each other and
+ * that the words the guestbook records are the ones greeting
+ * composed.
+ *
+ * It lives in the assembly because the assembly is the only place
+ * allowed to name both contexts. The same test inside
+ * `modules/guestbook/` would import greeting's facade and fail
+ * `peers-meet-at-the-service-seam` — correctly, which is worth
+ * knowing before anyone moves it.
+ *
+ * It is also DOM-less: `createGuestbookPorts` wires ports and defines
+ * no element, which is exactly why element registration sits behind
+ * its own entry point.
+ */
+describe('the wired guestbook', () => {
+  const wire = (): ReadonlyMap<unknown, unknown> => {
+    const greetings = createGreetingStore();
+    return new Map(createGuestbookPorts(createGreet(greetings), greetings));
+  };
+
+  it('records a welcome composed by the peer', () => {
+    const ports = wire();
+
+    (ports.get(signContext) as Sign).execute({ visitor: 'Ada' });
+
+    assert.deepEqual((ports.get(entriesContext) as EntriesReadModel).latest(), {
+      visitor: 'Ada',
+      welcome: 'Hello, Ada!',
+    });
+  });
+
+  it('records nothing for an anonymous visitor', () => {
+    const ports = wire();
+
+    (ports.get(signContext) as Sign).execute({ visitor: '   ' });
+
+    assert.equal((ports.get(entriesContext) as EntriesReadModel).latest(), null);
+  });
+});

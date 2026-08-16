@@ -36,7 +36,12 @@
  */
 
 import type { Tag } from '../../contract/composition.js';
-import { type ModuleLayout, moduleLayoutOf, SKELETON_MODULE } from './module-layout.js';
+import {
+  type ModuleLayout,
+  moduleLayoutOf,
+  PEER_MODULE,
+  SKELETON_MODULE,
+} from './module-layout.js';
 
 export { moduleLayoutOf as wcModuleLayout } from './module-layout.js';
 
@@ -284,5 +289,50 @@ export function wcLayout(tags: readonly Tag[], scope: string): WcLayoutPaths {
             },
       ),
     specifierFrom: (fromDir, toFile) => publishedAs(toFile) ?? relativeSpecifier(fromDir, toFile),
+  };
+}
+
+/**
+ * Where the peer context's files live, what its package is called,
+ * and — the part no compiler checks — what its elements are tagged.
+ *
+ * A bounded context is one workspace package here, the same ruling
+ * `tsLayout` records, so the peer is one manifest. It publishes two
+ * of the three entry points: the facade and `./elements`. There is
+ * deliberately no `./service`, because guestbook is the consumer of
+ * this pair — a seam exists to be reached, and nothing reaches
+ * guestbook yet.
+ *
+ * `null` under `basic`, which is a single hexagon with no peer to
+ * compose with.
+ */
+export function wcPeerPackage(layout: WcLayoutPaths): {
+  readonly root: string;
+  readonly pkg: string;
+  readonly elementsPkg: string;
+  readonly contractSrc: string;
+  readonly coreInternal: string;
+  readonly gatewaySrc: string;
+  readonly elementsDir: string;
+  readonly tests: string;
+  elementTag(name: string): string;
+} | null {
+  if (layout.layout === 'basic') return null;
+  const root = `modules/${PEER_MODULE}`;
+  const pkg = `@${layout.scope}/${PEER_MODULE}`;
+  return {
+    root,
+    pkg,
+    elementsPkg: `${pkg}/elements`,
+    contractSrc: `${root}/src/domain/contract`,
+    coreInternal: `${root}/src/domain/core/internal`,
+    gatewaySrc: `${root}/src/infra/${SKELETON_MODULE}-gateway`,
+    elementsDir: `${root}/src/user-side/elements`,
+    tests: `${root}/tests`,
+    // Same rule as the skeleton's, and this is exactly why the rule
+    // exists: two contexts would collide on `<scope>-view` without
+    // the context segment, and a collision is a silent blank box
+    // rather than an error.
+    elementTag: (name) => `${layout.scope}-${PEER_MODULE}-${name}`,
   };
 }

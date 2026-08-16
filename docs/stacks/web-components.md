@@ -150,6 +150,64 @@ dependency-cruiser resolves every `@scope/*` import to a bare
 specifier, records no edge, and reports zero violations over a tree in
 violation.
 
+### A second context
+
+`--with-peer-context` scaffolds `guestbook` beside `greeting` — one
+sibling package under `modules/`, with a gateway at
+`src/infra/greeting-gateway/` that imports `@scope/greeting/service`
+and nothing else of greeting's. It is what makes the seam
+demonstrable rather than merely present: with one context, nothing in
+the workspace consumes the seam, so nothing proves it holds.
+
+**The peer ships a UI, and on this stack that is the point.** A
+browser context is elements bound to ports over the Context protocol,
+so a peer with no element would leave the assembly's whole ordering
+rule untested. `guestbook` brings a `<scope>-guestbook-view`, its own
+context keys, and its own tag prefix — which is where the second
+context earns [the tag rule](#the-element-tag-prefix): a bare
+`<scope>-view` would collide with greeting's, and a custom-element
+collision is a `NotSupportedError` that aborts the rest of that
+bundle's registrations, leaving half the page silently un-upgraded.
+
+**The seam is fire-and-observe**, because that is the shape a browser
+context publishes: `greet` records and notifies, `latest` reads. So
+asking for a welcome genuinely publishes a greeting, and the greeting
+view re-renders when you sign the guestbook. The cross-context call is
+visible on the page, which is as exercised as a seam gets.
+
+**Which wall holds which rule** — they are not the same wall:
+
+| rule                             | held by                   | how it fails                                         |
+| -------------------------------- | ------------------------- | ---------------------------------------------------- |
+| no deep import past the aperture | the `exports` map         | `TS2307` from tsc, and the bundler cannot resolve it |
+| a peer reaches only `./service`  | `.dependency-cruiser.cjs` | `peers-meet-at-the-service-seam`, on `npm run lint`  |
+
+Only the first is the compiler. The second cannot be: greeting's
+facade legitimately publishes its contract face, so
+`from '@scope/greeting'` inside the gateway typechecks perfectly and
+lints red. So this stack's peer seam is enforced at lint time, weaker
+than the JVM's build scope and Go's `internal/`, and it is stated here
+rather than implied away.
+
+The assembly binds it in three places, and all three are load-bearing:
+`application/web-app/src/guestbook.ts` builds the peer's ports,
+`main.ts` publishes them **before** defining the element (a definition
+upgrades parsed markup and fires `connectedCallback` synchronously, so
+the provider has to be listening first), and `index.html` puts the
+element on the page. Drop the last and the context is wired to a
+provider nobody asks.
+
+The app package also gains a `test` script, and the reason is worth
+knowing before anyone moves the test: the one case that drives the
+real seam with no fakes has to live in the assembly, because the
+assembly is the only place allowed to name both contexts. The same
+test inside `modules/guestbook/` would import greeting's facade and
+fail `peers-meet-at-the-service-seam` — correctly.
+
+Requires `--module-layout=modulith`; the flat layout is a single
+hexagon with no seam to cross, and keel says so rather than silently
+scaffolding one context.
+
 ## Verify it runs
 
 ```sh

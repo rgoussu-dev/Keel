@@ -1,0 +1,36 @@
+import type { Context } from '<%= contextProtocolPkg %>';
+import type { Greet, GreetingReadModel } from '<%= contextPkg %>';
+import { createGreetingService } from '<%= servicePkg %>';
+import {
+  createEntryStore,
+  createGreetingWelcome,
+  createSign,
+  entriesContext,
+  signContext,
+} from '<%= peerPkg %>';
+
+/**
+ * Wiring for the guestbook context.
+ *
+ * Guestbook reaches greeting through one edge and one only: the
+ * gateway below is constructed over `<%= servicePkg %>`, the peer's
+ * seam. Nothing here hands guestbook a greeting *domain* type — this
+ * file is where a violation would be written, so this is where the
+ * rule is stated.
+ *
+ * The seam is built from greeting's assembled ports rather than from
+ * a slice this function constructs: a seam that builds its own breaks
+ * the moment a vertical rewires the factory behind it, and the
+ * assembly has the ports in hand anyway.
+ */
+export function createGuestbookPorts(
+  greet: Greet,
+  greetings: GreetingReadModel,
+): readonly (readonly [Context<unknown>, unknown])[] {
+  const entries = createEntryStore();
+  const sign = createSign(entries, createGreetingWelcome(createGreetingService(greet, greetings)));
+  return [
+    [signContext, sign],
+    [entriesContext, entries],
+  ];
+}

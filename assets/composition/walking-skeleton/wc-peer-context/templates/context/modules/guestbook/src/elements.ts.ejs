@@ -1,0 +1,27 @@
+/**
+ * This context's custom-element registrations.
+ *
+ * Registration is a side effect, which is why it is a function and
+ * why it sits behind its own entry point (`<%= peerPkg %>/elements`)
+ * rather than the facade: defining an element upgrades already-parsed
+ * markup and fires `connectedCallback` synchronously, so the assembly
+ * has to be able to order it after the context provider is listening.
+ */
+
+import { GUESTBOOK_VIEW_TAG } from './element-tags';
+import { GuestbookView } from './user-side/elements/guestbook-view';
+
+export { GUESTBOOK_VIEW_TAG } from './element-tags';
+
+/** Registers this context's elements. Idempotent. */
+export function defineGuestbookElements(): void {
+  if (!customElements.get(GUESTBOOK_VIEW_TAG)) {
+    customElements.define(GUESTBOOK_VIEW_TAG, GuestbookView);
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    '<%= viewTag %>': GuestbookView;
+  }
+}

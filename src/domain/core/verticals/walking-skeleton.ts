@@ -24,6 +24,7 @@ import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
 import { goPeerContextAdapter } from '../adapters/go-peer-context.js';
 import { tsPeerContextAdapter } from '../adapters/ts-peer-context.js';
+import { wcPeerContextAdapter } from '../adapters/wc-peer-context.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
 import {
@@ -100,6 +101,7 @@ export const walkingSkeletonVertical: Vertical = {
     goHttpBootstrapAdapter,
     goPeerContextAdapter,
     tsPeerContextAdapter,
+    wcPeerContextAdapter,
     goPortFakeAdapter,
     rustBootstrapAdapter,
     rustCliBootstrapAdapter,

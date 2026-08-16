@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import pkg from '../package.json' with { type: 'json' };
+import { GUESTBOOK_VIEW_TAG } from '../src/element-tags';
+
+/**
+ * The tag prefix is the one part of the layout no compiler checks:
+ * spell it wrong and every build stays green while the page renders
+ * an empty inline box. So it is re-derived here from this package's
+ * own name, which is the only way a typo becomes a failure.
+ */
+describe('element tags', () => {
+  it('carries the scope and the context, so two contexts cannot collide', () => {
+    const [scope, context] = pkg.name.replace('@', '').split('/');
+
+    assert.equal(GUESTBOOK_VIEW_TAG, `${scope}-${context}-view`);
+  });
+});

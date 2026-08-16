@@ -1,0 +1,70 @@
+/**
+ * Port-bound custom element for the sign use case — a driving
+ * adapter's part, built exactly like the greeting context's view:
+ * context-supplied ports on one side, design-system children on the
+ * other. It subscribes to the entries read model and pushes state
+ * down as an attribute; it translates its form's submit up into a
+ * command on the driving port.
+ *
+ * It names no greeting type. What it renders came from the other
+ * context, and it arrived through this context's own `Entry`.
+ */
+
+import { ContextRequestEvent } from '<%= contextProtocolPkg %>';
+import type { EntriesReadModel, Sign, Unsubscribe } from '../../domain/contract/index';
+import { entriesContext, signContext } from '../../context-keys';
+import { GUESTBOOK_VIEW_TAG } from '../../element-tags';
+
+const template = document.createElement('template');
+template.innerHTML = `
+  <stack-pk space="var(--s0)">
+    <form>
+      <cluster-pk space="var(--s-1)" align="center">
+        <label>Visitor <input name="visitor" autocomplete="off" /></label>
+        <<%= scope %>-button type="submit">Sign the guestbook</<%= scope %>-button>
+      </cluster-pk>
+    </form>
+    <<%= scope %>-greeting-card></<%= scope %>-greeting-card>
+  </stack-pk>
+`;
+
+export class GuestbookView extends HTMLElement {
+  #sign?: Sign;
+  #entries?: EntriesReadModel;
+  #unsubscribe?: Unsubscribe;
+
+  connectedCallback(): void {
+    this.dispatchEvent(new ContextRequestEvent(signContext, (port) => (this.#sign = port)));
+    this.dispatchEvent(
+      new ContextRequestEvent(entriesContext, (readModel) => (this.#entries = readModel)),
+    );
+    const sign = this.#sign;
+    const entries = this.#entries;
+    if (!sign || !entries) {
+      throw new Error(`<${GUESTBOOK_VIEW_TAG}>: no context provider answered`);
+    }
+
+    if (!this.querySelector('form')) this.append(template.content.cloneNode(true));
+    const card = this.querySelector('<%= scope %>-greeting-card');
+    const form = this.querySelector('form');
+    if (!card || !form) throw new Error(`<${GUESTBOOK_VIEW_TAG}>: template is missing nodes`);
+
+    const render = (entry: { visitor: string; welcome: string }): void => {
+      card.setAttribute('message', `${entry.visitor} was welcomed with: ${entry.welcome}`);
+    };
+    const current = entries.latest();
+    if (current) render(current);
+    this.#unsubscribe = entries.subscribe(render);
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      sign.execute({ visitor: String(data.get('visitor') ?? '') });
+    });
+  }
+
+  disconnectedCallback(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
+  }
+}

@@ -8,6 +8,36 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`--with-peer-context` on `web-components`.** Scaffolds
+  `guestbook` beside `greeting` as one more workspace package, with a
+  gateway at `src/infra/greeting-gateway/` importing
+  `@scope/greeting/service` and nothing else of greeting's.
+
+  **The peer ships a UI, and on this stack that is the point.** A
+  browser context is elements bound to ports over the Context
+  protocol, so a peer without one would leave the assembly's whole
+  ordering rule untested. It brings a `<scope>-guestbook-view` with
+  its own context keys and its own tag prefix — which is where the
+  second context finally earns the tag rule: a bare `<scope>-view`
+  would collide with greeting's, and a custom-element collision
+  aborts the rest of that bundle's registrations and leaves half the
+  page silently un-upgraded.
+
+  The seam is fire-and-observe, because that is what a browser
+  context publishes, so asking for a welcome genuinely publishes a
+  greeting and the greeting view re-renders when the guestbook is
+  signed. The cross-context call is visible on the page.
+
+  Three patches bind it and all three are load-bearing: the ports are
+  published **before** the element is defined (a definition upgrades
+  parsed markup and fires `connectedCallback` synchronously), and
+  `index.html` gains the element itself — without that last one the
+  context is wired to a provider nobody asks. The app package also
+  gains a `test` script, because the one case that drives the real
+  seam with no fakes has to live in the assembly: the same test
+  inside `modules/guestbook/` would import greeting's facade and fail
+  `peers-meet-at-the-service-seam`, correctly.
+
 - **`--with-peer-context` on `ts-http`.** Scaffolds `guestbook`
   beside `greeting` as one more workspace package — a bounded context
   is one package here, so the peer costs one manifest against Rust's
