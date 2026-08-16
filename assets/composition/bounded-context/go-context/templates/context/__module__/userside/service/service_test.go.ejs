@@ -1,0 +1,43 @@
+package service_test
+
+import (
+	"errors"
+	"testing"
+
+<%- seamTestImports %>
+)
+
+// fakeInner is the canonical fake of this context's driving port:
+// replies with a canned outcome and records nothing else.
+type fakeInner struct {
+	result domain.Result
+	err    error
+}
+
+func (f fakeInner) Handle(domain.Command) (domain.Result, error) {
+	return f.result, f.err
+}
+
+func Test<%= Module %>ForCarriesTheAnswerInTheSeamsOwnType(t *testing.T) {
+	seam := <%= seamAlias %>.New(fakeInner{result: domain.Result{Detail: "Hello, Ada!"}})
+
+	got, err := seam.<%= Module %>For("Ada")
+	if err != nil {
+		t.Fatalf("<%= Module %>For returned an unexpected error: %v", err)
+	}
+	if want := "Hello, Ada!"; got.Message != want {
+		t.Fatalf("<%= Module %>For message = %q, want %q", got.Message, want)
+	}
+}
+
+func Test<%= Module %>ForReportsRefusalAsItsOwnError(t *testing.T) {
+	seam := <%= seamAlias %>.New(fakeInner{err: errors.New("subject must not be empty")})
+
+	_, err := seam.<%= Module %>For("   ")
+
+	// The domain's error value stays behind the facade; what crosses
+	// is this package's own type, which a peer can name and match on.
+	if _, ok := err.(<%= seamAlias %>.Unavailable); !ok {
+		t.Fatalf("<%= Module %>For error = %T, want <%= seamAlias %>.Unavailable", err)
+	}
+}

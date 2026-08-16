@@ -1,0 +1,64 @@
+package domain_test
+
+import (
+	"errors"
+	"testing"
+
+<%- domainTestImports %>
+)
+<% if (hasConsumes) { %>
+// fake<%= Consumes %> is the canonical fake of the driven port:
+// replies with a canned outcome and records nothing else.
+type fake<%= Consumes %> struct {
+	reply string
+	err   error
+}
+
+func (f fake<%= Consumes %>) AskFor(string) (string, error) {
+	return f.reply, f.err
+}
+
+func TestHandleProducesAResultFromWhatThePeerReturned(t *testing.T) {
+	<%= module %> := domain.New<%= Module %>(fake<%= Consumes %>{reply: "Hello, Ada!"})
+
+	got, err := <%= module %>.Handle(domain.Command{Subject: "Ada"})
+	if err != nil {
+		t.Fatalf("Handle returned an unexpected error: %v", err)
+	}
+	if want := "Hello, Ada!"; got.Detail != want {
+		t.Fatalf("Handle detail = %q, want %q", got.Detail, want)
+	}
+}
+
+func TestHandleRejectsAnEmptySubjectWithoutAskingThePeer(t *testing.T) {
+	<%= module %> := domain.New<%= Module %>(fake<%= Consumes %>{err: errors.New("should not be asked")})
+
+	_, err := <%= module %>.Handle(domain.Command{Subject: "   "})
+
+	if !errors.Is(err, domain.ErrEmptySubject) {
+		t.Fatalf("Handle error = %v, want ErrEmptySubject", err)
+	}
+}
+<% } else { %>
+func TestHandleProducesAResultForANamedSubject(t *testing.T) {
+	<%= module %> := domain.New<%= Module %>()
+
+	got, err := <%= module %>.Handle(domain.Command{Subject: "Ada"})
+	if err != nil {
+		t.Fatalf("Handle returned an unexpected error: %v", err)
+	}
+	if want := "<%= module %>: Ada"; got.Detail != want {
+		t.Fatalf("Handle detail = %q, want %q", got.Detail, want)
+	}
+}
+
+func TestHandleRejectsAnEmptySubject(t *testing.T) {
+	<%= module %> := domain.New<%= Module %>()
+
+	_, err := <%= module %>.Handle(domain.Command{Subject: "   "})
+
+	if !errors.Is(err, domain.ErrEmptySubject) {
+		t.Fatalf("Handle error = %v, want ErrEmptySubject", err)
+	}
+}
+<% } %>

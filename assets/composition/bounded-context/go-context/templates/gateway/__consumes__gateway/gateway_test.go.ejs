@@ -1,0 +1,44 @@
+package <%= consumes %>gateway_test
+
+import (
+	"testing"
+
+<%- gatewayTestImports %>
+)
+
+// fakeSeam is the canonical fake of the peer's seam port: replies with
+// a canned outcome and records nothing else.
+type fakeSeam struct {
+	reply <%= consumesSeamAlias %>.<%= Consumes %>
+	err   error
+}
+
+func (f fakeSeam) <%= Consumes %>For(string) (<%= consumesSeamAlias %>.<%= Consumes %>, error) {
+	return f.reply, f.err
+}
+
+func TestAskForHandsBackWhatThePeerAnswered(t *testing.T) {
+	gateway := <%= consumes %>gateway.New(fakeSeam{
+		reply: <%= consumesSeamAlias %>.<%= Consumes %>{Message: "Hello, Ada!"},
+	})
+
+	got, err := gateway.AskFor("Ada")
+	if err != nil {
+		t.Fatalf("AskFor returned an unexpected error: %v", err)
+	}
+	if want := "Hello, Ada!"; got != want {
+		t.Fatalf("AskFor = %q, want %q", got, want)
+	}
+}
+
+func TestAskForPropagatesThePeerRefusal(t *testing.T) {
+	gateway := <%= consumes %>gateway.New(fakeSeam{
+		err: <%= consumesSeamAlias %>.Unavailable{Reason: "subject must not be empty"},
+	})
+
+	_, err := gateway.AskFor("  ")
+
+	if err == nil {
+		t.Fatal("AskFor returned no error for a refused subject")
+	}
+}

@@ -1,0 +1,16 @@
+package main
+
+import "testing"
+
+// The wiring lives in this package, so this test failing to compile is
+// itself the assertion: it proves the context was wired *here*, in the
+// assembly, rather than in some package that merely compiles.
+func TestWire<%= Module %>ReachesTheContextThroughItsSeam(t *testing.T) {
+	got, err := wire<%= Module %>().<%= Module %>For("Ada")
+	if err != nil {
+		t.Fatalf("<%= Module %>For returned an unexpected error: %v", err)
+	}
+	if got.Message == "" {
+		t.Fatal("<%= Module %>For returned an empty message")
+	}
+}
