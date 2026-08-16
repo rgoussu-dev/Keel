@@ -1,0 +1,43 @@
+// Package <%= gatewayPkg %> translates guestbook's Welcome port into a
+// call on the greeting context's seam.
+//
+// This is the only file in guestbook that knows greeting exists, and
+// it is a driven adapter — so the dependency points from
+// infrastructure inwards, never between two domains.
+//
+// Its import block is the review. It names greeting's seam package
+// and nothing else of greeting's, and it could not name more if it
+// tried: greeting's domain sits behind that context's internal/, so
+// importing it does not compile from here. What crosses is a
+// service.Greeting and a service.Unavailable — greeting's own DTOs,
+// which this adapter maps into guestbook's vocabulary before anything
+// else in guestbook sees them.
+package <%= gatewayPkg %>
+
+import (
+<%- sourceImports %>
+)
+
+// GreetingWelcome obtains a welcome by asking greeting for one.
+type GreetingWelcome struct {
+	greeting greetingservice.GreetingService
+}
+
+// New returns a gateway delegating to greeting's seam.
+func New(greeting greetingservice.GreetingService) GreetingWelcome {
+	return GreetingWelcome{greeting: greeting}
+}
+
+// Compile-time proof that this adapter satisfies the port it was
+// written for. Guestbook's domain is nameable here — this package is
+// inside the context, beside its internal/ rather than behind it.
+var _ domain.Welcome = GreetingWelcome{}
+
+// WelcomeFor asks greeting for a greeting and hands back the words.
+func (g GreetingWelcome) WelcomeFor(visitor string) (string, error) {
+	got, err := g.greeting.GreetingFor(visitor)
+	if err != nil {
+		return "", err
+	}
+	return got.Message, nil
+}

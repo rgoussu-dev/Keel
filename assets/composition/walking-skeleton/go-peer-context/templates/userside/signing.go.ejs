@@ -1,0 +1,38 @@
+// Package signing is guestbook's driving adapter for the assembly: it
+// turns the primitives an assembly can spell into this context's
+// command, and the resulting Entry back into primitives.
+//
+// It exists for the same reason greeting's userside/cli and
+// userside/resthttp do. A cmd/ main cannot name domain.SignCommand —
+// the context's domain sits behind its internal/ — so the
+// translation has to happen inside the context, in a primary
+// adapter. This is the smallest one that is honest about it.
+package signing
+
+import "<%= peerDomainImport %>"
+
+// Signed is a completed signing, in this package's own type.
+type Signed struct {
+	Visitor string
+	Welcome string
+}
+
+// Signer records visitors in the guestbook.
+type Signer struct {
+	guestbook domain.Guestbook
+}
+
+// New returns a Signer over the context's driving port.
+func New(guestbook domain.Guestbook) Signer {
+	return Signer{guestbook: guestbook}
+}
+
+// Sign records visitor and returns the welcome they were recorded
+// with.
+func (s Signer) Sign(visitor string) (Signed, error) {
+	entry, err := s.guestbook.Sign(domain.SignCommand{Visitor: visitor})
+	if err != nil {
+		return Signed{}, err
+	}
+	return Signed{Visitor: entry.Visitor, Welcome: entry.Welcome}, nil
+}

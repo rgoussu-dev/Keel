@@ -1,0 +1,62 @@
+package domain_test
+
+import (
+	"errors"
+	"testing"
+
+	"<%= peerDomainImport %>"
+)
+
+// The canonical fake of the Welcome driven port: a canned outcome and
+// a record of whether it was asked at all.
+type fakeWelcome struct {
+	words  string
+	err    error
+	asked  bool
+	forWho string
+}
+
+func (f *fakeWelcome) WelcomeFor(visitor string) (string, error) {
+	f.asked = true
+	f.forWho = visitor
+	return f.words, f.err
+}
+
+func TestSignRecordsTheVisitorWithTheWelcomeItObtained(t *testing.T) {
+	welcome := &fakeWelcome{words: "Hello, Ada!"}
+	guestbook := domain.NewGuestbook(welcome)
+
+	got, err := guestbook.Sign(domain.SignCommand{Visitor: "  Ada  "})
+	if err != nil {
+		t.Fatalf("Sign returned an unexpected error: %v", err)
+	}
+	if want := (domain.Entry{Visitor: "Ada", Welcome: "Hello, Ada!"}); got != want {
+		t.Fatalf("Sign = %+v, want %+v", got, want)
+	}
+	if welcome.forWho != "Ada" {
+		t.Errorf("the port was asked for %q, want the normalised visitor", welcome.forWho)
+	}
+}
+
+func TestSignRejectsAnAnonymousVisitorWithoutAskingForAWelcome(t *testing.T) {
+	welcome := &fakeWelcome{words: "should not be asked"}
+	guestbook := domain.NewGuestbook(welcome)
+
+	_, err := guestbook.Sign(domain.SignCommand{Visitor: "   "})
+	if !errors.Is(err, domain.ErrAnonymousVisitor) {
+		t.Fatalf("Sign error = %v, want ErrAnonymousVisitor", err)
+	}
+	if welcome.asked {
+		t.Error("the Welcome port was asked for a visitor this context had already rejected")
+	}
+}
+
+func TestSignReportsAnUnobtainableWelcome(t *testing.T) {
+	boom := errors.New("greeting unavailable")
+	guestbook := domain.NewGuestbook(&fakeWelcome{err: boom})
+
+	_, err := guestbook.Sign(domain.SignCommand{Visitor: "Ada"})
+	if !errors.Is(err, boom) {
+		t.Fatalf("Sign error = %v, want it to wrap the port's failure", err)
+	}
+}

@@ -73,7 +73,12 @@
  */
 
 import type { Tag } from '../../contract/composition.js';
-import { type ModuleLayout, moduleLayoutOf, SKELETON_MODULE } from './module-layout.js';
+import {
+  type ModuleLayout,
+  moduleLayoutOf,
+  PEER_MODULE,
+  SKELETON_MODULE,
+} from './module-layout.js';
 
 export { moduleLayoutOf as goModuleLayout } from './module-layout.js';
 
@@ -281,6 +286,45 @@ export function addProjectImports(
     .sort()
     .map((spec) => `\t${spec}`);
   return [...lines.slice(0, first), ...group, ...lines.slice(last + 1)].join('\n');
+}
+
+/**
+ * The peer context's packages, filed the way the skeleton's are.
+ *
+ * The peer exists to make the seam *demonstrable* rather than merely
+ * present: `guestbook` needs a welcome to record, `greeting` is the
+ * context that composes one, and the only edge between them runs
+ * through a gateway under `modules/guestbook/infra/`. That gateway's
+ * import block is the file a reviewer checks — it must name
+ * greeting's seam package and nothing else of greeting's.
+ *
+ * Every name here is a *package* name as well as a directory, which
+ * is the Go-specific trap: `greetinggateway` runs together because a
+ * Go package name may not carry a dash, and a directory whose last
+ * segment does not match its package clause compiles but reads as a
+ * different package at every import site.
+ */
+export function goPeerPackages(): {
+  readonly facade: string;
+  readonly facadePkg: string;
+  readonly domain: string;
+  readonly domainCore: string;
+  readonly userSide: string;
+  readonly userSidePkg: string;
+  readonly gateway: string;
+  readonly gatewayPkg: string;
+} {
+  const context = `internal/modules/${PEER_MODULE}`;
+  return {
+    facade: context,
+    facadePkg: PEER_MODULE,
+    domain: `${context}/internal/domain`,
+    domainCore: `${context}/internal/domain/internal/sign`,
+    userSide: `${context}/userside/signing`,
+    userSidePkg: 'signing',
+    gateway: `${context}/infra/${SKELETON_MODULE}gateway`,
+    gatewayPkg: `${SKELETON_MODULE}gateway`,
+  };
 }
 
 /**

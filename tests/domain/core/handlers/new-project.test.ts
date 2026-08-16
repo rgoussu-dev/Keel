@@ -590,46 +590,81 @@ describe('keel.new-project peer-context selection', () => {
   };
 
   /**
-   * The bug this guard exists for: `--with-peer-context` on a stack
-   * with no peer-context adapter used to exit 0 having emitted
-   * nothing. The resolver cannot catch it — those adapters declare
-   * `covers: []`, so no dimension goes uncovered — which is why the
-   * check sits at the front door instead.
+   * The bug this guard exists for, stated as the invariant rather
+   * than pinned to an example stack: `--with-peer-context` used to
+   * exit 0 having emitted nothing, and the resolver cannot catch that
+   * because a peer-context adapter declares `covers: []` and leaves
+   * no dimension uncovered. So the flag must be accepted exactly
+   * where it scaffolds a second context, and rejected everywhere
+   * else — never accepted in silence.
+   *
+   * Deliberately not written against a named unsupported stack. That
+   * is what the first version did, and it went stale in the same
+   * commit that gave Go its adapter.
    */
-  it('rejects the flag on a stack whose modulith has no peer context', async () => {
-    const error = expectErr(await withPeer('go-http'));
-
-    expect(error.code).toBe('keel.invalid-peer-context');
-    expect(error.message).toMatch(/stack 'go-http' has no peer-context adapter/);
-    expect(error.message).toMatch(/would scaffold nothing/);
-  });
-
-  /**
-   * The rejection names the alternatives, and the list is derived
-   * from the adapters rather than written down — so this asserts the
-   * derivation, not a copy of it. A stack that scaffolds the peer
-   * must be listed; one that does not must not be.
-   */
-  it('names exactly the stacks that do support it', async () => {
-    const error = expectErr(await withPeer('go-http'));
-    const listed = new Set(
-      (/Stacks that support it: (.*)$/.exec(error.message)?.[1] ?? '').split(', '),
-    );
-
+  it('is accepted exactly where it scaffolds a second context', async () => {
+    const outcomes: Record<string, string> = {};
     for (const stack of singleServiceStacks) {
       const result = await withPeer(stack.id);
-      const rejected = !result.ok && result.error.code === 'keel.invalid-peer-context';
-      expect({ stack: stack.id, rejected }).toEqual({
-        stack: stack.id,
-        rejected: !listed.has(stack.id),
-      });
+      outcomes[stack.id] = result.ok
+        ? result.value.changes.some((change) => change.path.includes('guestbook'))
+          ? 'scaffolded'
+          : 'accepted in silence'
+        : result.error.code === 'keel.invalid-peer-context'
+          ? 'rejected'
+          : `failed with ${result.error.code}`;
     }
+
+    const wrong = Object.entries(outcomes).filter(
+      ([, outcome]) => outcome !== 'scaffolded' && outcome !== 'rejected',
+    );
+    expect(wrong).toEqual([]);
   });
 
   /**
-   * And every listed stack emits a second context rather than merely
-   * accepting the flag — which is the whole failure this guard was
-   * written against, restated as a positive.
+   * The rejection names the stack and the alternatives, and the list
+   * is derived from the adapters rather than written down — so this
+   * asserts the derivation, not a copy of it.
+   *
+   * The list is also what makes the message survive: once every stack
+   * in the catalog has a peer-context adapter, no real stack reaches
+   * this branch, and the assertion below says so rather than
+   * quietly testing nothing. Same shape as the `single module layout`
+   * branch above, and for the same reason.
+   */
+  it('names the stack and the alternatives when it rejects', async () => {
+    const rejected: string[] = [];
+    let message = '';
+    for (const stack of singleServiceStacks) {
+      const result = await withPeer(stack.id);
+      if (!result.ok && result.error.code === 'keel.invalid-peer-context') {
+        rejected.push(stack.id);
+        message = result.error.message;
+      }
+    }
+
+    if (rejected.length === 0) {
+      // Unreachable through any shipped stack. Kept rather than
+      // deleted: a future family arrives without an adapter, and must
+      // still be told rather than silently handed one context.
+      const supported = singleServiceStacks.map((s) => s.id);
+      expect(rejected).toEqual([]);
+      expect(supported.length).toBeGreaterThan(0);
+      return;
+    }
+
+    const named = rejected[rejected.length - 1] as string;
+    expect(message).toMatch(new RegExp(`stack '${named}' has no peer-context adapter`));
+    expect(message).toMatch(/would scaffold nothing/);
+    const listed = (/Stacks that support it: (.*)$/.exec(message)?.[1] ?? '').split(', ');
+    expect(listed).not.toContain(named);
+    expect(listed.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * And every accepted stack emits a second context rather than
+   * merely tolerating the flag — the same failure again, restated as
+   * a positive so a regression reads as a missing guestbook.
    */
   it('scaffolds a guestbook context on every stack it accepts', async () => {
     for (const stack of singleServiceStacks) {

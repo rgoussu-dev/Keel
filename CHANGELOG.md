@@ -8,6 +8,37 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`--with-peer-context` on the Go stacks.** `keel new
+--stack=go-cli|go-http --module-layout=modulith
+--with-peer-context` scaffolds `guestbook` beside `greeting`, with
+  a gateway at `modules/guestbook/infra/greetinggateway` that imports
+  greeting's seam and nothing else of greeting's. With one context
+  the modulith's central claim is asserted by nothing; this is the
+  consumer that exercises it.
+
+  **The forbidden import does not compile.** Add
+  `modules/greeting/internal/domain` to that gateway and `go build`
+  fails with `use of internal package … not allowed`. On that one
+  point Go's wall is stronger than Rust's, where a domain type can
+  still _flow_ across the seam because inference supplies the name
+  the consumer cannot write — here the package cannot be reached at
+  all.
+
+  **Binding needed no patch, which is a difference and not an
+  omission.** `rust-peer-context` patches `mod guestbook;` into the
+  assembly root and the JVM family tells its container to scan,
+  because both can emit a context that compiles and is wired into
+  nothing. A Go file in a `cmd/` directory joins that package by
+  existing, so `cmd/<unit>/guestbook.go` is bound the moment it
+  lands. The emitted `cmd/<unit>/guestbook_test.go` drives the
+  cross-context call for real, with no fakes anywhere.
+
+  Five packages to Rust's four crates. The extra one,
+  `userside/signing`, is a driving adapter rather than padding: a
+  `cmd/` main cannot name `domain.SignCommand`, so the translation
+  from primitives into the context's command happens inside the
+  context, as `userside/cli` already does for greeting.
+
 - **The Go modulith gains a peer seam, `userside/service`.** Every
   other family's modulith shipped one; Go's did not, so a second
   bounded context had the facade and nothing else to reach through.

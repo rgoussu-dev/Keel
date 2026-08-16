@@ -31,10 +31,11 @@ import { observabilityVertical } from '../../../../src/domain/core/verticals/obs
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
-import { goLayout } from '../../../../src/domain/core/adapters/go-module-layout.js';
+import { goLayout, goPeerPackages } from '../../../../src/domain/core/adapters/go-module-layout.js';
 import {
   BASIC_LAYOUT_TAG,
   MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
 } from '../../../../src/domain/core/adapters/module-layout.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -379,5 +380,123 @@ describe('the Go verticals follow the layout', () => {
         expect(project, `${file} under ${layout}`).toEqual([...project].sort());
       }
     }
+  });
+});
+
+/**
+ * The peer context — `--with-peer-context`.
+ *
+ * What is worth asserting from emitted text is the *edge*: that the
+ * gateway's import block names greeting's seam and nothing else of
+ * greeting's, and that the wiring lands in the assembly's own
+ * package. That the forbidden import fails to build, and that the
+ * cross-context call really runs, are claims only a compiler can
+ * settle — `tests/e2e/modulith-go-peer-context.test.ts` settles them.
+ */
+describe('the Go peer context', () => {
+  const peerTags = (arch: string): string[] => tags(arch, MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG);
+
+  it('files the peer beside the skeleton, in Go-legal package names', () => {
+    const peer = goPeerPackages();
+    expect(peer.facade).toBe('internal/modules/guestbook');
+    expect(peer.domain).toBe('internal/modules/guestbook/internal/domain');
+    // Beside the wall, not behind it: the assembly must be able to
+    // construct both, and neither may sit under the context's
+    // internal/.
+    expect(peer.gateway).toBe('internal/modules/guestbook/infra/greetinggateway');
+    expect(peer.userSide).toBe('internal/modules/guestbook/userside/signing');
+    expect(peer.gateway.includes('/internal/')).toBe(false);
+    expect(peer.userSide.includes('/internal/')).toBe(false);
+    // A Go package name carries no dash, so the directory cannot
+    // either — `greeting-gateway` is the Rust spelling and would
+    // leave the package clause disagreeing with its own path.
+    expect(peer.gatewayPkg).toBe('greetinggateway');
+    expect(peer.gatewayPkg).not.toContain('-');
+  });
+
+  it('emits nothing without the tag', async () => {
+    const tree = await install([walkingSkeletonVertical], tags('arch.cli', MODULITH_LAYOUT_TAG));
+    expect(tree.read('internal/modules/guestbook/guestbook.go')).toBeNull();
+    expect(tree.read('cmd/cli/guestbook.go')).toBeNull();
+  });
+
+  it('emits the context, its gateway and its driving adapter', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags('arch.cli'));
+    for (const p of [
+      'internal/modules/guestbook/guestbook.go',
+      'internal/modules/guestbook/internal/domain/sign.go',
+      'internal/modules/guestbook/internal/domain/sign_test.go',
+      'internal/modules/guestbook/internal/domain/internal/sign/sign.go',
+      'internal/modules/guestbook/userside/signing/signing.go',
+      'internal/modules/guestbook/userside/signing/signing_test.go',
+      'internal/modules/guestbook/infra/greetinggateway/gateway.go',
+      'internal/modules/guestbook/infra/greetinggateway/gateway_test.go',
+    ]) {
+      expect(tree.read(p), `missing ${p}`).not.toBeNull();
+    }
+  });
+
+  /**
+   * The edge that defines the seam. Read the import *lines* rather
+   * than substring the file: the gateway's doc comment explains what
+   * it must not import, so a substring check matches the prose that
+   * documents the rule and fails a file that obeys it.
+   */
+  it('gives the gateway an edge to the seam and to no other greeting package', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags('arch.server-http'));
+    const gateway = read(tree, 'internal/modules/guestbook/infra/greetinggateway/gateway.go');
+    const imports = gateway
+      .split('\n')
+      .filter((l) => l.includes(`"${MODULE}/`))
+      .map((l) => l.trim());
+
+    expect(imports).toEqual([
+      `greetingservice "${MODULE}/internal/modules/greeting/userside/service"`,
+      `"${MODULE}/internal/modules/guestbook/internal/domain"`,
+    ]);
+    // Which is also gofmt's order, and the check has to sort by the
+    // quoted *path* to see it: gofmt orders by path and never by the
+    // name a file calls it, so sorting the rendered lines would rank
+    // the aliased one last and disagree with the formatter.
+    const paths = imports.map((line) => /"([^"]+)"/.exec(line)?.[1] ?? '');
+    expect(paths).toEqual([...paths].sort());
+  });
+
+  /**
+   * Go's version of "the wiring is declared in the assembly". Rust
+   * patches `mod guestbook;` into the assembly root and the JVM tells
+   * its container to scan; a Go file in a `cmd/` directory joins that
+   * package by existing. So there is no declaration to check — what
+   * there is to check is that the file landed in the assembly and
+   * claims its package.
+   */
+  it('lands the wiring inside each assembly package', async () => {
+    const both = await install(
+      [walkingSkeletonVertical],
+      tags('arch.cli', 'arch.server-http', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG),
+    );
+    for (const typology of ['cli', 'http']) {
+      const wiring = read(both, `cmd/${typology}/guestbook.go`);
+      expect(wiring, `cmd/${typology}/guestbook.go`).toContain('package main');
+      expect(wiring).toContain('func wireGuestbook() signing.Signer');
+      expect(read(both, `cmd/${typology}/guestbook_test.go`)).toContain('wireGuestbook()');
+    }
+  });
+
+  /**
+   * The assembly may name both contexts — it is the one place that
+   * legitimately knows the whole graph — but the wiring is written
+   * against the seam, so that copying it into a gateway does not
+   * carry a domain edge along with it.
+   */
+  it('wires through the seam rather than through either domain', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags('arch.cli'));
+    const wiring = read(tree, 'cmd/cli/guestbook.go');
+
+    expect(wiring).toContain(
+      `greetingservice "${MODULE}/internal/modules/greeting/userside/service"`,
+    );
+    expect(wiring).not.toContain(`${MODULE}/internal/modules/greeting/internal/domain`);
+    expect(wiring).not.toContain(`${MODULE}/internal/modules/guestbook/internal/domain`);
   });
 });

@@ -1,0 +1,25 @@
+package main
+
+import "testing"
+
+// The cross-context call, driven for real: no fakes anywhere, so what
+// this proves is that the two contexts are wired to each other and
+// that the words guestbook records are the ones greeting composed.
+func TestTheWiredGuestbookRecordsAWelcomeComposedByThePeer(t *testing.T) {
+	got, err := wireGuestbook().Sign("Ada")
+	if err != nil {
+		t.Fatalf("Sign returned an unexpected error: %v", err)
+	}
+	if got.Visitor != "Ada" {
+		t.Errorf("Visitor = %q, want %q", got.Visitor, "Ada")
+	}
+	if want := "Hello, Ada!"; got.Welcome != want {
+		t.Errorf("Welcome = %q, want %q — the peer's greeting did not cross the seam", got.Welcome, want)
+	}
+}
+
+func TestTheWiredGuestbookRejectsAnAnonymousVisitor(t *testing.T) {
+	if _, err := wireGuestbook().Sign("   "); err == nil {
+		t.Fatal("Sign(\"   \") returned no error, want the context's rejection")
+	}
+}
