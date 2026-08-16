@@ -1,0 +1,45 @@
+package service_test
+
+import (
+	"errors"
+	"testing"
+
+	"<%= domainImport %>"
+	"<%= serviceImport %>"
+)
+
+// The seam is driven the way a peer drives it — through the port,
+// over the context's real driving port — because what is worth
+// asserting is the translation, not the greeting.
+
+func TestGreetingForCarriesTheWordsInThisPackagesOwnType(t *testing.T) {
+	seam := service.New(domain.NewGreeter())
+
+	got, err := seam.GreetingFor("Ada")
+
+	if err != nil {
+		t.Fatalf("GreetingFor(Ada) = %v, want no error", err)
+	}
+	if got.Message != "Hello, Ada!" {
+		t.Errorf("Message = %q, want %q", got.Message, "Hello, Ada!")
+	}
+}
+
+func TestGreetingForReportsUnavailableInItsOwnVocabulary(t *testing.T) {
+	seam := service.New(domain.NewGreeter())
+
+	_, err := seam.GreetingFor("")
+
+	var unavailable service.Unavailable
+	if !errors.As(err, &unavailable) {
+		t.Fatalf("GreetingFor(\"\") = %v, want a service.Unavailable", err)
+	}
+	// The domain's own error value stays behind the facade: what
+	// crosses is a reason, not something a peer could match on.
+	if unavailable.Reason == "" {
+		t.Error("Unavailable.Reason is empty, want the domain's reason")
+	}
+	if errors.Is(err, domain.ErrEmptyName) {
+		t.Error("the domain's error value crossed the seam")
+	}
+}

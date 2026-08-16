@@ -82,6 +82,7 @@ my-service/
           domain/              # commands, ports, factories
             internal/          # the compiler-hidden core
         userside/              # primary adapters (cli / resthttp)
+          service/             # THE PEER SEAM — what a peer may import
         infra/                 # secondary adapters, one per technology
 ```
 
@@ -103,10 +104,44 @@ of them rather than a linter:
   from `cmd/` fails with `undefined`. The assembly loses nothing —
   `:=` infers the type it may not write.
 
+### The peer seam, and what Go actually holds
+
 A second context is a sibling directory under `internal/modules/`,
-reaching this one through `greeting.go` and nothing else. Note that
-two contexts may declare the same package name — `modules/ordering`
-and `modules/billing/gateway/ordering` are both `package ordering` —
+and it reaches this one through `userside/service`.
+
+That seam is here for a different reason than the JVM's or Rust's.
+There it _narrows_ what a peer may reach — build scope and the crate
+graph make everything else unreachable. **Go has no such lever**:
+`internal/` is scoped to the project root, so every package under it
+may import every other, this context's facade included, and the seam
+narrows nothing.
+
+What Go enforces is _where the domain sits_. It is behind
+`modules/greeting/internal/`, so a peer that imports it fails to
+build with `use of internal package … not allowed` — greeting's
+commands, its ports and its error values are unreachable from any
+other context, as a compile error and not a review comment. A peer
+can still reach the facade, and cannot name one thing it returns.
+
+The tempting stronger claim is false, and keel does not make it:
+**unnameability does not stop a peer calling through.** Go's
+assignability is structural for unnamed types, so a foreign package
+can write `greeting.NewGreeter().Greet(struct{ Name string }{…})` and
+it compiles, with `greeting.Greeter` and `domain.GreetCommand` both
+`undefined` there. What that buys is coupling nothing declares, to a
+shape that breaks the first time greeting adds a field — an argument
+for using the seam rather than a hole in it.
+
+So `userside/service` is the package that declares the types a peer
+may write down, and they are this context's own. What crosses is a
+`service.Greeting` and a `service.Unavailable`, never a domain type
+and never a domain error value. Its `New` takes the context's
+assembled driving port, which is why only the assembly can call it: a
+peer receives the built `GreetingService` and never constructs one.
+
+Note that two contexts may declare the same package name —
+`modules/ordering` and `modules/billing/gateway/ordering` are both
+`package ordering`, and every context's seam is `package service` —
 so a file importing both must alias one.
 
 [`keel add persistence`](../verticals/persistence.md#module-layout)

@@ -34,6 +34,30 @@
  *   context's ports. `:=` supplies the type the consumer may not
  *   write. Adding one convenience alias here quietly turns that
  *   compile error back into a code-review rule.
+ * - **The seam is a second aperture, and Go needs it for the
+ *   opposite reason the JVM does.** On the JVM and in Rust
+ *   `user-side/service` *narrows* what a peer may reach. Go has no
+ *   such lever: `internal/` is scoped to the project root, so every
+ *   package under it may import every other, and this seam narrows
+ *   nothing. What Go enforces is **placement** — greeting's domain
+ *   sits behind `modules/greeting/internal/`, so its commands, its
+ *   ports and its error values are unreachable from any other
+ *   context, as a compile error rather than a convention. A peer can
+ *   still reach the facade, and it cannot name one thing the facade
+ *   returns. `userside/service` is the package that hands a peer
+ *   types it *may* write down, and they are the context's own — so
+ *   the seam is not a narrowing of a wide aperture but the only
+ *   aperture a peer can usefully hold.
+ *
+ *   Verified on go1.24, because the sharper claim is false and worth
+ *   not making: unnameability does not stop a peer *calling* through
+ *   the facade. Go's assignability is structural for unnamed types,
+ *   so `greeting.NewGreeter().Greet(struct{ Name string }{…})`
+ *   compiles from a foreign context even though `greeting.Greeter`
+ *   and `domain.GreetCommand` are both `undefined` there. What that
+ *   buys a peer is coupling nothing declares, to a shape that breaks
+ *   silently on the first added field — which is an argument for the
+ *   seam, not a hole in it.
  * - **Ubiquitous ports leave the contexts.** A `Clock` belongs to no
  *   bounded context, so it sits at `internal/platform/`, importable
  *   by all of them.
@@ -68,6 +92,22 @@ export interface GoLayoutPaths {
   readonly facade: string;
   /** Package name of {@link facade}: `domain` or the context's name. */
   readonly facadePkg: string;
+  /**
+   * The context's **peer seam**: the package a foreign context
+   * imports, and the only thing of this context's it should. `null`
+   * under `basic`, which is a single hexagon with no peer to meet.
+   *
+   * Go cannot enforce the "and only" — `internal/` is scoped to the
+   * project root, so any package under it is importable from any
+   * other, facade included. What Go enforces is where the domain
+   * sits: behind `modules/<ctx>/internal/`, unreachable from any
+   * other context. So a peer cannot name one type the facade
+   * returns, and this is the package that hands it types it may
+   * write down — the context's own.
+   */
+  readonly service: string | null;
+  /** Package name of {@link service}, or `null` under `basic`. */
+  readonly servicePkg: string | null;
   /** The context's contract face: commands, ports, factories. */
   readonly domain: string;
   /** The compiler-hidden core behind it. */
@@ -163,6 +203,8 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
       layout,
       facade: 'internal/domain',
       facadePkg: 'domain',
+      service: null,
+      servicePkg: null,
       domain: 'internal/domain',
       domainCore: 'internal/domain/internal/greet',
       domainInternal: (name) => `internal/domain/internal/${name}`,
@@ -183,6 +225,8 @@ export function goLayout(tags: readonly Tag[], modulePath: string): GoLayoutPath
     layout,
     facade: context,
     facadePkg: SKELETON_MODULE,
+    service: `${context}/userside/service`,
+    servicePkg: 'service',
     domain: `${context}/internal/domain`,
     domainCore: `${context}/internal/domain/internal/greet`,
     domainInternal: (name) => `${context}/internal/domain/internal/${name}`,

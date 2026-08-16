@@ -8,6 +8,34 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The Go modulith gains a peer seam, `userside/service`.** Every
+  other family's modulith shipped one; Go's did not, so a second
+  bounded context had the facade and nothing else to reach through.
+  `internal/modules/<ctx>/userside/service` now declares the types a
+  peer may write down — a `Greeting` DTO, an `Unavailable` error, and
+  the `GreetingService` port over them — built by a `New` that takes
+  the context's assembled driving port, so only the assembly can call
+  it.
+
+  The seam is here for a different reason than the JVM's or Rust's,
+  and `docs/stacks/go.md` says which. There it _narrows_ what a peer
+  may reach; Go has no such lever, since `internal/` is scoped to the
+  project root and every package under it may import every other.
+  What Go enforces is where the domain sits — behind
+  `modules/<ctx>/internal/`, so a peer importing it fails to build.
+
+  What the docs now decline to claim is the stronger version, which
+  is false and was verified false on go1.24 rather than assumed:
+  unnameability does not stop a peer calling through. Go's
+  assignability is structural for unnamed types, so a foreign package
+  can write `greeting.NewGreeter().Greet(struct{ Name string }{…})`
+  and it compiles with both names undefined there. That buys coupling
+  nothing declares, to a shape that breaks on the first added field —
+  an argument for the seam, not a hole in it.
+
+  `basic` is untouched: it is a single hexagon, `goLayout().service`
+  is `null` there, and no file moved.
+
 - **The module-layout dial reaches Rust, and item I is complete.**
   `keel new --stack=rust-cli|rust-http --module-layout=modulith`
   emits a Cargo **workspace**: `platform/kernel` for what no context

@@ -1,0 +1,94 @@
+// Package service is this bounded context's peer seam — what a
+// *foreign* context imports to reach greeting, and the one package of
+// greeting's it should name.
+//
+// It exists for a different reason than its JVM and Rust
+// equivalents, and the difference is worth knowing before anyone
+// relies on it. There the seam *narrows* what a consumer may reach —
+// build scope and the crate graph make everything else unreachable.
+// Go has no such lever: `internal/` is scoped to the project root, so
+// every package under it may import every other, this context's
+// facade included, and nothing here narrows anything.
+//
+// What Go does enforce is where the domain sits. It is behind
+// `modules/greeting/internal/`, so a foreign context importing it
+// fails to build — `use of internal package … not allowed` — and
+// greeting's commands, ports and error values are unreachable
+// outside this context, as a compile error rather than a review
+// comment.
+//
+// A peer can therefore reach the facade, and cannot name one thing
+// the facade returns. It is worth being precise about what that does
+// and does not buy, because the appealing stronger claim is false:
+// unnameability does not stop a peer calling through. Go's
+// assignability is structural for unnamed types, so a foreign
+// package can write
+// `greeting.NewGreeter().Greet(struct{ Name string }{…})` and it
+// compiles, with both names still undefined there. What it gets is
+// coupling nothing declares, to a shape that breaks the first time
+// greeting adds a field.
+//
+// So this package is where greeting says what a peer may write down,
+// and every type here is greeting's own. It hands back a `Greeting`,
+// never the domain's message plus the domain's error value: a DTO
+// can change shape without a peer's build breaking, and an error a
+// peer cannot name is an error it can only print.
+//
+// The rule governs this file's exported signatures and only this
+// file's. `New` is the exception that proves it — its parameter is
+// this context's own driving port, so only code that can name one
+// may call it, which means the assembly. A peer receives the built
+// GreetingService and never constructs one.
+package service
+
+import "<%= domainImport %>"
+
+// Greeting is what crosses the seam: the words greeting composed,
+// carried in this package's own type.
+type Greeting struct {
+	Message string
+}
+
+// Unavailable reports that no greeting could be composed, with a
+// reason a peer can read. Greeting's own error values stay behind the
+// facade — a consumer that cannot name one cannot match on it either,
+// so handing one across would give a peer an error it can only print.
+type Unavailable struct {
+	Reason string
+}
+
+func (e Unavailable) Error() string {
+	return "greeting unavailable: " + e.Reason
+}
+
+// GreetingService is the port a peer context depends on. Swap the
+// implementation for an HTTP client the day greeting becomes its own
+// service and the consumer does not change — which is the whole claim
+// the modulith makes.
+type GreetingService interface {
+	// GreetingFor composes a greeting addressed to name, or returns
+	// an [Unavailable] saying why it could not.
+	GreetingFor(name string) (Greeting, error)
+}
+
+// New returns the seam over this context's assembled driving port.
+//
+// It takes the port rather than calling the facade itself: a seam
+// that builds its own slice breaks the moment a vertical rewires the
+// factory behind it, and the assembly has the built port in hand
+// anyway.
+func New(greeter domain.Greeter) GreetingService {
+	return seam{greeter: greeter}
+}
+
+type seam struct {
+	greeter domain.Greeter
+}
+
+func (s seam) GreetingFor(name string) (Greeting, error) {
+	message, err := s.greeter.Greet(domain.GreetCommand{Name: name})
+	if err != nil {
+		return Greeting{}, Unavailable{Reason: err.Error()}
+	}
+	return Greeting{Message: message}, nil
+}
