@@ -1,0 +1,104 @@
+/**
+ * The `ts-http` modulith cell on **pnpm** —
+ * `--module-layout=modulith --build-system=pnpm`.
+ *
+ * Nothing about this layout can be checked without a real install.
+ * Its central claim is that a bounded context is reachable only
+ * through the two entry points its `exports` map publishes, and an
+ * `exports` map is inert until something resolves against it —
+ * emitted-file assertions would pass over a map that publishes
+ * everything. So this installs for real and then requires three
+ * separate refusals: `tsc` on a deep package import, Node on the same
+ * import at runtime, and dependency-cruiser on the relative path that
+ * walks around both.
+ *
+ * The two package managers are not duplicates of each other, which is
+ * why they are two cells. npm hoists every workspace member into the
+ * root `node_modules`, hiding missing dependency declarations; pnpm's
+ * isolated store does not, so a package that borrows a type package
+ * from a sibling typechecks under one and fails under the other.
+ */
+
+import path from 'node:path';
+import fs from 'fs-extra';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  E2E_TIMEOUT_MS,
+  mkTempDir,
+  runFails,
+  runStep,
+  scaffold,
+  skipWebE2E,
+} from '../support/web-e2e.js';
+
+const PM = 'pnpm' as const;
+
+let cwd: string;
+
+beforeEach(async () => {
+  cwd = await mkTempDir('keel-ts-modulith-pnpm-e2e-');
+});
+
+afterEach(async () => {
+  await fs.remove(cwd);
+});
+
+describe.skipIf(skipWebE2E(PM))(`ts-http modulith e2e (${PM})`, () => {
+  it(
+    'installs, typechecks, tests, lints — and refuses every way past the aperture',
+    async () => {
+      await scaffold(
+        {
+          stack: 'ts-http',
+          projectName: 'walking-skeleton-e2e',
+          buildSystem: PM,
+          moduleLayout: 'modulith',
+        },
+        cwd,
+      );
+      runStep(cwd, `${PM} run typecheck`, PM, ['run', 'typecheck']);
+      runStep(cwd, `${PM} test`, PM, ['test']);
+      runStep(cwd, `${PM} run lint`, PM, ['run', 'lint']);
+
+      const deep = '@acme/greeting/src/domain/core/internal/greet-handler.ts';
+      const probe = path.join(cwd, 'application', 'rest', 'src', 'probe.ts');
+
+      // tsc refuses the deep import…
+      await fs.writeFile(probe, `export { createGreetHandler } from '${deep}';\n`);
+      expect(runFails(path.join(cwd, 'application', 'rest'), 'npx', ['tsc', '--noEmit'])).toContain(
+        'TS2307',
+      );
+
+      // …and so does Node, which is the half a type-only wall would
+      // miss entirely. Probed from the assembly rather than the repo
+      // root: under pnpm only a package that declares the dependency
+      // can see it at all, and "not installed" is a different refusal
+      // from "not published".
+      expect(
+        runFails(path.join(cwd, 'application', 'rest'), 'node', [
+          '-e',
+          `import(${JSON.stringify(deep)})`,
+        ]),
+      ).toContain('ERR_PACKAGE_PATH_NOT_EXPORTED');
+
+      // The relative path walks around both, and is exactly what the
+      // emitted dependency-cruiser config is for.
+      await fs.writeFile(
+        probe,
+        "export { createGreetHandler } from '../../../modules/greeting/src/domain/core/internal/greet-handler.ts';\n",
+      );
+      expect(runFails(cwd, PM, ['run', 'lint'])).toContain('context-through-its-aperture');
+
+      // A domain file reaching for its own adapters is the other rule
+      // the map cannot see.
+      await fs.remove(probe);
+      const inward = path.join(cwd, 'modules', 'greeting', 'src', 'domain', 'core', 'probe.ts');
+      await fs.writeFile(inward, "export { systemClock } from '../../infra/clock/index.ts';\n");
+      expect(runFails(cwd, PM, ['run', 'lint'])).toContain('domain-owns-no-adapters');
+      await fs.remove(inward);
+
+      runStep(cwd, `${PM} run lint`, PM, ['run', 'lint']);
+    },
+    E2E_TIMEOUT_MS,
+  );
+});

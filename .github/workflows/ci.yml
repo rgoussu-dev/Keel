@@ -185,10 +185,23 @@ jobs:
               tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-maven.test.ts
+          # Six files where there were two, and the split is the
+          # modulith grid arriving rather than a rebalance. Measured
+          # locally on the shipped shape: the whole shard is ~55s of
+          # test time, longest single file `walking-skeleton-go.test.ts`
+          # at 42.8s (its `go-http` case pays the cold OpenTelemetry
+          # fetch), against `modulith-go-http` 15.5s,
+          # `modulith-go-cli` 14.4s and `modulith-go-peer-context`
+          # 14.4s. Nothing new is near the floor, so this stays one
+          # shard: splitting would buy attribution and no wall clock,
+          # and `docker` is still here for `fullstack-go` alone.
           - id: go
             tools: go docker
             files: >-
               tests/e2e/walking-skeleton-go.test.ts
+              tests/e2e/modulith-go-cli.test.ts
+              tests/e2e/modulith-go-http.test.ts
+              tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/fullstack-go.test.ts
           # Six files, one shard — and unlike every earlier revision of
           # this comment, that is now a choice with a cost rather than
@@ -234,11 +247,31 @@ jobs:
               tests/e2e/modulith-rust-http.test.ts
               tests/e2e/modulith-rust-peer-context.test.ts
               tests/e2e/modulith-rust-persistence.test.ts
+          # Nine files where there were three. The modulith halves of
+          # the two TypeScript stacks used to ride inside their
+          # `walking-skeleton-*` files; they are cells, so they are
+          # files now, and `modulith-web-components-pnpm` is a cell
+          # that had never been built at all.
+          #
+          # Measured locally on the shipped shape: every file here
+          # sits between 17s and 48s, longest
+          # `modulith-wc-peer-context` at 47.9s — it installs three
+          # workspaces and renders two of them in Chromium. The old
+          # `wc-walking-skeleton.test.ts` ran the basic case *and*
+          # both modulith cases in sequence, so peeling those out cut
+          # this shard's floor rather than raising it. One shard, and
+          # `browser` stays in `tools:` because two suites now render.
           - id: web
             tools: npm pnpm browser
             files: >-
               tests/e2e/ts-walking-skeleton.test.ts
+              tests/e2e/modulith-ts-http-npm.test.ts
+              tests/e2e/modulith-ts-http-pnpm.test.ts
+              tests/e2e/modulith-ts-peer-context.test.ts
               tests/e2e/wc-walking-skeleton.test.ts
+              tests/e2e/modulith-web-components-npm.test.ts
+              tests/e2e/modulith-web-components-pnpm.test.ts
+              tests/e2e/modulith-wc-peer-context.test.ts
               tests/e2e/fullstack.test.ts
 
     steps:
