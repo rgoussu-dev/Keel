@@ -40,7 +40,7 @@
 import { databaseName, sqlEngine } from './persistence-engine.js';
 import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
 import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
-import { tsWorkspaceVars } from './ts-workspace.js';
+import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
 import { eolAware, eolOf, withEol } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
@@ -342,26 +342,7 @@ export const tsPersistenceAdapter: Adapter = {
         },
       ],
       actions: [
-        {
-          id: TS_PERSISTENCE_ID,
-          description: `${ws.pm} install (fetch pg and the new workspace packages)`,
-          run: async ({ cwd, processes }) => {
-            const args = ws.pm === 'npm' ? ['install', '--no-fund', '--no-audit'] : ['install'];
-            const result = await processes.run(ws.pm, args, { cwd });
-            if (result.startFailure) {
-              throw new Error(
-                `'${ws.pm}' is not on PATH — run '${ws.pm} install' in the project root to fetch pg and the new workspace packages`,
-              );
-            }
-            if (result.status !== 0) {
-              throw new Error(
-                [`'${ws.pm} install' failed`, result.stderr, result.stdout]
-                  .filter(Boolean)
-                  .join('\n'),
-              );
-            }
-          },
-        },
+        workspaceInstall(TS_PERSISTENCE_ID, ws.pm, 'fetch pg and the new workspace packages'),
       ],
       tagsAdd: [sqlEngine().tag],
     };
