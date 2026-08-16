@@ -92,6 +92,22 @@ describe('parseModuleName', () => {
     expect(rejected('internal')).toContain('reserved');
   });
 
+  // One word per language whose *other* three targets accept it
+  // happily. Each of these scaffolded a tree that then refused to
+  // compile — `package com.acme.case;` in Java, `package map` in Go —
+  // which is the exact failure this file exists to convert into a
+  // sentence at the front door.
+  it.each([
+    ['case', 'Java and Go'],
+    ['when', 'Kotlin'],
+    ['map', 'Go'],
+    ['match', 'Rust'],
+    ['public', 'Java'],
+    ['struct', 'Go and Rust'],
+  ])('rejects %s, a keyword in %s', (name) => {
+    expect(rejected(name)).toContain('reserved');
+  });
+
   it.each(['modules', 'platform', 'application', 'domain', 'service', 'kernel'])(
     'rejects %s, a directory the layouts already own',
     (name) => {
