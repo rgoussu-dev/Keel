@@ -83,62 +83,35 @@ const SOURCE_ROOT: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotli
 const EXTENSION: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotlin: 'kt' };
 
 /**
- * The names one added context spends its own name on, derived once so
- * no framework binding spells a package by hand.
+ * The fully-qualified names a framework **binding** writes, derived
+ * once so no binding spells a package by hand.
  *
- * The `infra.<consumes>gateway` segment in particular is a directory
- * (`infra/greeting-gateway`) spelled differently from its package —
- * exactly the kind of drift a second copy invites.
+ * Deliberately only the names a binding needs. Every other name this
+ * context spends its own on — the seam, its adapter, the driven port,
+ * the gateway — is written by the template tree from the flat `vars`
+ * record, so listing them here would be a second derivation of the
+ * same strings with nothing checking the two agree.
  */
 export interface JvmContextNames {
   /** e.g. `Ordering`. */
   readonly Module: string;
-  /** e.g. `com.example.ordering.domain.contract`. */
-  readonly contractPkg: string;
+  /** The context's own package root, e.g. `com.example.ordering`. */
+  readonly contextPkg: string;
   /** e.g. `com.example.ordering.domain.core` — what a container must be told to look in. */
   readonly corePkg: string;
   /** e.g. `com.example.ordering.domain.core.OrderingHandler`. */
   readonly handler: string;
-  /** e.g. `com.example.ordering.userside.service`. */
-  readonly seamPkg: string;
-  /** e.g. `com.example.ordering.userside.service.OrderingService`. */
-  readonly service: string;
-  /** e.g. `com.example.ordering.userside.service.OrderingServiceAdapter`. */
-  readonly serviceAdapter: string;
-  /** The context's own package root, e.g. `com.example.ordering`. */
-  readonly contextPkg: string;
-  /** The driven port, e.g. `com.example.ordering.domain.contract.GreetingClient`. */
-  readonly client: string | null;
-  /** Its adapter, e.g. `com.example.ordering.infra.greetinggateway.GreetingGateway`. */
-  readonly gateway: string | null;
-  /** The consumed context's seam, e.g. `com.example.greeting.userside.service.GreetingService`. */
-  readonly consumedService: string | null;
 }
 
-/** Derives every name one added context needs, from its own. */
+/** Derives the names the bindings need, from the context's own. */
 export function jvmContextNames(basePackage: string, added: AddedContext): JvmContextNames {
   const Module = pascal(added.name);
   const contextPkg = `${basePackage}.${added.name}`;
-  const seamPkg = `${contextPkg}.userside.service`;
-  const consumed = added.consumes;
   return {
     Module,
     contextPkg,
-    contractPkg: `${contextPkg}.domain.contract`,
     corePkg: `${contextPkg}.domain.core`,
     handler: `${contextPkg}.domain.core.${Module}Handler`,
-    seamPkg,
-    service: `${seamPkg}.${Module}Service`,
-    serviceAdapter: `${seamPkg}.${Module}ServiceAdapter`,
-    client: consumed === null ? null : `${contextPkg}.domain.contract.${pascal(consumed)}Client`,
-    gateway:
-      consumed === null
-        ? null
-        : `${contextPkg}.infra.${consumed}gateway.${pascal(consumed)}Gateway`,
-    consumedService:
-      consumed === null
-        ? null
-        : `${basePackage}.${consumed}.userside.service.${pascal(consumed)}Service`,
   };
 }
 
@@ -329,15 +302,14 @@ function seamDocPatch(spec: JvmContextSpec, binding: JvmContextBinding): Contrib
   return {
     target: binding.sourceFile(spec.rootClass),
     apply: (existing) =>
-      existing.replace(
-        STALE_SERVICE_DOC,
+      existing.replace(STALE_SERVICE_DOC, () =>
         freshServiceDoc(spec.language, binding.added.name, port, wiringClass(binding.names)),
       ),
   };
 }
 
 /** The assembly class holding one context's bindings. */
-export function wiringClass(names: JvmContextNames): string {
+function wiringClass(names: JvmContextNames): string {
   return `${names.Module}Wiring`;
 }
 
@@ -498,7 +470,10 @@ export function rewriteList(
   const listed = found.slice(1).find((group) => group !== undefined) ?? '';
   const entries = splitTopLevel(listed).filter((item) => !item.startsWith('//'));
   if (entries.includes(entry)) return source;
-  return source.replace(whole, render([...entries, entry]));
+  // A function replacer, not the rendered string: `String.replace`
+  // reads `$&` and friends out of its replacement, and what `render`
+  // produces is emitted source rather than a pattern.
+  return source.replace(whole, () => render([...entries, entry]));
 }
 
 /**
