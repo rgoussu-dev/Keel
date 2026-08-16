@@ -1,0 +1,39 @@
+import type { Command } from '<%= kernelPkg %>';
+
+/** Record `visitor` in the guestbook. This context's one command. */
+export interface SignCommand extends Command<Entry> {
+  readonly kind: 'sign';
+  readonly visitor: string;
+}
+
+/** What the guestbook recorded: who signed, and how they were welcomed. */
+export interface Entry {
+  readonly visitor: string;
+  readonly welcome: string;
+}
+
+/** Constructs a {@link SignCommand}. Commands are plain data. */
+export function signCommand(visitor: string): SignCommand {
+  return { kind: 'sign', visitor };
+}
+
+/**
+ * The driven port through which this context obtains the words it
+ * records.
+ *
+ * Declared in **guestbook's** vocabulary, and that is the whole
+ * point: the context asks for a welcome, and does not know — must not
+ * know — that some other bounded context composes greetings. Which
+ * one does is a fact of the gateway under `src/infra/` and of the
+ * assembly, and of nowhere else.
+ */
+export interface Welcome {
+  /** Returns the words to record for `visitor`. */
+  welcomeFor(visitor: string): Promise<string>;
+}
+
+/** Error code carried when a {@link SignCommand} names nobody. */
+export const SIGN_REJECTED = 'sign.rejected';
+
+/** Error code carried when no welcome could be obtained. */
+export const WELCOME_UNAVAILABLE = 'sign.welcome-unavailable';

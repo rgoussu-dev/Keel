@@ -30,10 +30,11 @@ import { containerizationVertical } from '../../../../src/domain/core/verticals/
 import { observabilityVertical } from '../../../../src/domain/core/verticals/observability.js';
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
-import { tsLayout } from '../../../../src/domain/core/adapters/ts-module-layout.js';
+import { tsLayout, tsPeerPackage } from '../../../../src/domain/core/adapters/ts-module-layout.js';
 import {
   BASIC_LAYOUT_TAG,
   MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
 } from '../../../../src/domain/core/adapters/module-layout.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -333,6 +334,132 @@ describe('the TypeScript verticals follow the layout', () => {
       const entry = tsLayout([tag], SCOPE).restSrc;
       expect(read(tree, 'Dockerfile')).toContain(`CMD ["node", "${entry}/main.ts"]`);
       expect(tree.read(`${entry}/main.ts`)).not.toBeNull();
+    }
+  });
+});
+
+/**
+ * The peer context — `--with-peer-context`.
+ *
+ * What is worth asserting from emitted text is the *edge* and the
+ * *binding*: that the gateway imports greeting's seam and nothing
+ * else of greeting's, and that the assembly actually loads the
+ * wiring — an unimported TypeScript module runs in nothing.
+ *
+ * What is deliberately not attempted here is the wall. The peer rule
+ * is a dependency-cruiser rule rather than anything tsc holds, so
+ * only a real `depcruise` run can settle it, and only a real `tsc`
+ * run can settle the exports map's depth rule.
+ * `tests/e2e/modulith-ts-peer-context.test.ts` settles both.
+ */
+describe('the ts-http peer context', () => {
+  const peerTags = tags(MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG);
+
+  it('resolves the peer to one package, and to none under basic', () => {
+    const peer = tsPeerPackage(tsLayout([MODULITH_LAYOUT_TAG], SCOPE));
+    expect(peer?.root).toBe('modules/guestbook');
+    expect(peer?.pkg).toBe('@acme/guestbook');
+    expect(peer?.gatewaySrc).toBe('modules/guestbook/src/infra/greeting-gateway');
+
+    expect(tsPeerPackage(tsLayout([BASIC_LAYOUT_TAG], SCOPE))).toBeNull();
+  });
+
+  it('emits nothing without the tag', async () => {
+    const tree = await install([walkingSkeletonVertical], tags(MODULITH_LAYOUT_TAG));
+    expect(tree.read('modules/guestbook/package.json')).toBeNull();
+    expect(tree.read('application/rest/src/guestbook.ts')).toBeNull();
+    expect(read(tree, 'application/rest/src/main.ts')).not.toContain('guestbook');
+  });
+
+  it('emits one package with a single aperture', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    for (const p of [
+      'modules/guestbook/package.json',
+      'modules/guestbook/tsconfig.json',
+      'modules/guestbook/src/index.ts',
+      'modules/guestbook/src/domain/contract/sign.ts',
+      'modules/guestbook/src/domain/core/internal/sign-handler.ts',
+      'modules/guestbook/src/infra/greeting-gateway/index.ts',
+      'modules/guestbook/tests/sign.test.ts',
+      'modules/guestbook/tests/greeting-gateway.test.ts',
+    ]) {
+      expect(tree.read(p), `missing ${p}`).not.toBeNull();
+    }
+
+    // Guestbook is the consumer of this pair and publishes no
+    // `./service`: a seam exists to be reached, and nothing reaches
+    // guestbook yet.
+    expect(json(tree, 'modules/guestbook/package.json')['exports']).toEqual({
+      '.': './src/index.ts',
+    });
+  });
+
+  it('gives the gateway an edge to the seam and to no other greeting entry point', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    const gateway = read(tree, 'modules/guestbook/src/infra/greeting-gateway/index.ts');
+    // Comments first. The gateway's doc comment explains which
+    // specifier it must *not* write, so scanning the raw text matches
+    // the prose documenting the rule and fails a file that obeys it.
+    const code = gateway.replace(/\/\*[\s\S]*?\*\//g, '');
+    const specifiers = [...code.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
+
+    expect(specifiers).toContain('@acme/greeting/service');
+    expect(specifiers).not.toContain('@acme/greeting');
+  });
+
+  /**
+   * The binding. Without the `main.ts` patch the peer would
+   * typecheck, lint and be loaded by nothing — the JVM failure this
+   * adapter family exists to prevent, and the one thing here that a
+   * file-existence check would miss.
+   */
+  it('loads the wiring from the assembly, and declares the peer on its manifest', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+
+    const main = read(tree, 'application/rest/src/main.ts');
+    expect(main).toContain("import { createGuestbookHandler } from './guestbook.ts';");
+    expect(main).toContain(
+      'createRegistryMediator([createGreetHandler(), createGuestbookHandler()])',
+    );
+
+    const manifest = json(tree, 'application/rest/package.json');
+    expect(manifest['dependencies']).toMatchObject({ '@acme/guestbook': '*' });
+  });
+
+  /**
+   * The assembly may legitimately name both contexts, but the wiring
+   * is written against the seam so that copying it into a gateway
+   * does not carry a domain edge along with it.
+   */
+  it('wires through the seam, and ships a test that drives it for real', async () => {
+    const tree = await install([walkingSkeletonVertical], peerTags);
+    const wiring = read(tree, 'application/rest/src/guestbook.ts');
+
+    expect(wiring).toContain("from '@acme/greeting/service'");
+    expect(wiring).toContain('export function createGuestbookHandler()');
+    // The test calls the same function main.ts does, rather than
+    // rebuilding the graph beside it.
+    expect(read(tree, 'application/rest/tests/guestbook-wiring.test.ts')).toContain(
+      "createGuestbookHandler } from '../src/guestbook.ts'",
+    );
+  });
+
+  it('declares greeting on the peer manifest under either package manager', async () => {
+    for (const [pmTag, dep] of [
+      ['pkg.npm', '*'],
+      ['pkg.pnpm', 'workspace:*'],
+    ] as const) {
+      const projectTags = [
+        ...tags(MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG).filter((t) => !t.startsWith('pkg.')),
+        pmTag,
+      ];
+      const tree = await install([walkingSkeletonVertical], projectTags);
+      expect(json(tree, 'modules/guestbook/package.json')['dependencies']).toMatchObject({
+        '@acme/greeting': dep,
+      });
+      expect(json(tree, 'application/rest/package.json')['dependencies']).toMatchObject({
+        '@acme/guestbook': dep,
+      });
     }
   });
 });

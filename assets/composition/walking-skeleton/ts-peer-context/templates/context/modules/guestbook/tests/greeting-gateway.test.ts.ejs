@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import type { GreetingService } from '<%= servicePkg %>';
+import { createGreetingWelcome } from '../src/index.ts';
+
+/** The canonical fake of the seam port: a canned reply, nothing else. */
+const seam = (reply: () => Promise<string>): GreetingService => ({ greet: reply });
+
+describe('the greeting gateway', () => {
+  it('hands back the words the peer composed', async () => {
+    const welcome = createGreetingWelcome(seam(() => Promise.resolve('Hello, Ada!')));
+
+    assert.equal(await welcome.welcomeFor('Ada'), 'Hello, Ada!');
+  });
+
+  it('lets the peer rejection surface for this context to name', async () => {
+    const welcome = createGreetingWelcome(
+      seam(() => Promise.reject(new Error('name must not be blank'))),
+    );
+
+    await assert.rejects(() => welcome.welcomeFor('  '), /name must not be blank/);
+  });
+});
