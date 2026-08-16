@@ -14,6 +14,12 @@ adapter matches your project's tags for a dimension, the install
 **hard-fails naming the gap** instead of half-installing. See the
 [composition model](../composition.md) for the machinery.
 
+There is one vertical `keel add` deliberately cannot name:
+`bounded-context`. Every vertical here is a capability the project
+either has or lacks, and a bounded context is a thing with a _name_ —
+so it is reached through [`keel add module <name>`](../cli.md#keel-add-module)
+instead, which has a name to give it.
+
 ## The verticals
 
 | Vertical                                  | One-liner                                                           | Dimensions                                                                           |
