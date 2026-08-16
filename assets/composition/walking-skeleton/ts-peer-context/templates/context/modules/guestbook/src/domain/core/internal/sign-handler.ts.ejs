@@ -1,0 +1,49 @@
+import {
+  DomainError,
+  err,
+  ok,
+  type Command,
+  type Handler,
+  type Result,
+} from '<%= kernelPkg %>';
+import {
+  SIGN_REJECTED,
+  WELCOME_UNAVAILABLE,
+  type Entry,
+  type SignCommand,
+  type Welcome,
+} from '../../contract/index.ts';
+
+/**
+ * Handles this context's one command, over the Welcome port.
+ *
+ * The port is a constructor parameter rather than something this
+ * factory builds: which adapter satisfies it is the assembly's
+ * decision, and the only adapter that does happens to reach another
+ * bounded context. Nothing here knows that.
+ */
+export function createSignHandler(welcome: Welcome): Handler<SignCommand> {
+  return {
+    supports(command: Command): command is SignCommand {
+      return command.kind === 'sign';
+    },
+    async handle(command: SignCommand): Promise<Result<Entry>> {
+      const visitor = command.visitor.trim();
+      if (visitor === '') {
+        return err(new DomainError('visitor must not be blank', SIGN_REJECTED));
+      }
+      try {
+        return ok({ visitor, welcome: await welcome.welcomeFor(visitor) });
+      } catch (cause) {
+        // Reported in this context's vocabulary. What the port threw
+        // is the other context's business, and stays there.
+        return err(
+          new DomainError(
+            `no welcome for ${visitor}: ${cause instanceof Error ? cause.message : String(cause)}`,
+            WELCOME_UNAVAILABLE,
+          ),
+        );
+      }
+    },
+  };
+}

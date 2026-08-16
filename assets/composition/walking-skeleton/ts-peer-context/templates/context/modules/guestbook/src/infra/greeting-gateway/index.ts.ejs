@@ -1,0 +1,31 @@
+import type { GreetingService } from '<%= servicePkg %>';
+import type { Welcome } from '../../domain/contract/index.ts';
+
+/**
+ * The gateway translating guestbook's `Welcome` port into a call on
+ * the greeting context's seam.
+ *
+ * This is the only file in guestbook that knows greeting exists, and
+ * it is a driven adapter — so the dependency points from
+ * infrastructure inwards, never between two domains.
+ *
+ * Its import list is the review, and it is worth knowing what does
+ * **not** enforce it. Nothing in the toolchain stops this file
+ * writing `from '<%= contextPkg %>'` and helping itself to greeting's
+ * whole contract face: an undeclared workspace dependency resolves
+ * anyway under hoisting, and project references do not restrict which
+ * project may import which. The `exports` map holds the depth rule —
+ * `<%= contextPkg %>/src/domain/…` is a TS2307 — and the peer rule is
+ * `peers-meet-at-the-service-seam` in the workspace's
+ * `.dependency-cruiser.cjs`, checked by `<%= pm %> run lint`. A lint
+ * rather than a compiler, which is exactly why it is a lint that
+ * runs in the build and not a line in a style guide.
+ */
+export function createGreetingWelcome(greeting: GreetingService): Welcome {
+  return {
+    // The seam hands back its own DTO — a string here, never
+    // greeting's `Greeting` — so what crosses this boundary carries
+    // none of the peer's vocabulary into ours.
+    welcomeFor: (visitor: string): Promise<string> => greeting.greet(visitor),
+  };
+}

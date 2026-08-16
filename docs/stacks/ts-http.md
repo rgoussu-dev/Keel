@@ -134,9 +134,53 @@ tuning: with default options dependency-cruiser resolves every
 `@scope/*` import to a bare specifier, records no edge for it, and
 reports **zero** violations over a tree that is in violation.
 
-A second context is a sibling package under `modules/`, reaching this
-one through `@scope/greeting/service` and nothing else — and when it
-should become its own service, that seam is the only thing to replace.
+### A second context
+
+`--with-peer-context` scaffolds `guestbook` beside `greeting` — one
+sibling package under `modules/`, with a gateway at
+`src/infra/greeting-gateway/` that imports `@scope/greeting/service`
+and nothing else of greeting's. It is what makes the seam
+demonstrable rather than merely present: with one context, nothing in
+the workspace consumes the seam, so nothing proves it holds.
+
+The gateway is a driven adapter, so the dependency points from
+infrastructure inwards and never between two domains. Guestbook's
+`Welcome` port is declared in guestbook's vocabulary — the context
+asks for a welcome and does not know that another context composes
+greetings.
+
+**Be clear about which wall holds which rule**, because they are not
+the same wall:
+
+| rule                             | held by                   | how it fails                                                 |
+| -------------------------------- | ------------------------- | ------------------------------------------------------------ |
+| no deep import past the aperture | the `exports` map         | `TS2307` from tsc, `ERR_PACKAGE_PATH_NOT_EXPORTED` from Node |
+| a peer reaches only `./service`  | `.dependency-cruiser.cjs` | `peers-meet-at-the-service-seam`, on `npm run lint`          |
+
+Only the first is the compiler. The second cannot be: greeting's
+facade legitimately publishes its contract face, so
+`from '@scope/greeting'` inside the gateway typechecks perfectly and
+lints red. An undeclared workspace dependency resolves anyway under
+hoisting, and project references restrict nothing — so TypeScript's
+peer seam is enforced at lint time, which is weaker than the JVM's
+build scope and Go's `internal/`. It is stated here rather than
+implied away, and it is why the rule ships in a config the build runs
+rather than in a style guide.
+
+The assembly binds the context in `application/rest/src/guestbook.ts`
+— `createGuestbookHandler()`, which `main.ts` imports and puts in the
+mediator's handler list. That import is load-bearing: an unimported
+TypeScript module is never loaded, so the peer would typecheck, lint
+and run in nothing without it. The emitted
+`application/rest/tests/guestbook-wiring.test.ts` calls that same
+function and drives the cross-context call for real, with no fakes.
+
+When guestbook should become its own service, that seam is the only
+thing to replace.
+
+Requires `--module-layout=modulith`; the flat layout is a single
+hexagon with no seam to cross, and keel says so rather than silently
+scaffolding one context.
 
 ## Verify it runs
 

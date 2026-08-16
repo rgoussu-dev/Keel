@@ -8,6 +8,35 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`--with-peer-context` on `ts-http`.** Scaffolds `guestbook`
+  beside `greeting` as one more workspace package — a bounded context
+  is one package here, so the peer costs one manifest against Rust's
+  four crates — with a gateway at `src/infra/greeting-gateway/` that
+  imports `@scope/greeting/service` and nothing else of greeting's.
+
+  **Which wall holds which rule is documented rather than blurred**,
+  because they are not the same wall. The `exports` map is real
+  enforcement for depth: `@scope/greeting/src/domain/…` is a `TS2307`
+  from tsc and an `ERR_PACKAGE_PATH_NOT_EXPORTED` from Node. It
+  cannot hold the _peer_ rule, because greeting's facade legitimately
+  publishes its contract face — `from '@scope/greeting'` inside the
+  gateway typechecks perfectly. That rule is
+  `peers-meet-at-the-service-seam` in the emitted
+  `.dependency-cruiser.cjs`, checked by `npm run lint`. Verified both
+  ways: the facade import passes `tsc` and fails `depcruise`. So
+  TypeScript's peer seam is enforced at lint time, weaker than the
+  JVM's build scope and Go's `internal/`, and `docs/stacks/ts-http.md`
+  says so instead of implying parity.
+
+  The assembly binds it in `application/rest/src/guestbook.ts`, which
+  `main.ts` imports and adds to the handler list — one import and one
+  array entry, which is what that file's own comment promises a new
+  context costs. The import is load-bearing: an unimported TypeScript
+  module is never loaded, so without it the peer would typecheck,
+  lint and run in nothing. `guestbook-wiring.test.ts` calls the same
+  function `main.ts` calls and drives the cross-context call for
+  real, with no fakes.
+
 - **`--with-peer-context` on the Go stacks.** `keel new
 --stack=go-cli|go-http --module-layout=modulith
 --with-peer-context` scaffolds `guestbook` beside `greeting`, with

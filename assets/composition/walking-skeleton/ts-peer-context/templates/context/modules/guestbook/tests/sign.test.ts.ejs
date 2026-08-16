@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import { createSignHandler, signCommand, type Welcome } from '../src/index.ts';
+
+/** The canonical fake of the Welcome driven port. */
+const welcoming = (words: string): Welcome => ({
+  welcomeFor: (): Promise<string> => Promise.resolve(words),
+});
+
+const failing = (why: string): Welcome => ({
+  welcomeFor: (): Promise<string> => Promise.reject(new Error(why)),
+});
+
+describe('sign', () => {
+  it('records the visitor with the welcome it obtained', async () => {
+    const result = await createSignHandler(welcoming('Hello, Ada!')).handle(
+      signCommand('  Ada  '),
+    );
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.ok && result.value, { visitor: 'Ada', welcome: 'Hello, Ada!' });
+  });
+
+  it('rejects an anonymous visitor without asking for a welcome', async () => {
+    let asked = false;
+    const port: Welcome = {
+      welcomeFor: (): Promise<string> => {
+        asked = true;
+        return Promise.resolve('should not be asked');
+      },
+    };
+
+    const result = await createSignHandler(port).handle(signCommand('   '));
+
+    assert.equal(result.ok, false);
+    assert.equal(asked, false);
+  });
+
+  it('reports an unobtainable welcome in its own vocabulary', async () => {
+    const result = await createSignHandler(failing('greeting unavailable')).handle(
+      signCommand('Ada'),
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(!result.ok && result.error.code, 'sign.welcome-unavailable');
+  });
+});

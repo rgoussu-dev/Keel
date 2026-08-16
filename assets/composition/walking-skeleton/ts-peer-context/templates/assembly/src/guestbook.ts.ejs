@@ -1,0 +1,30 @@
+import { createRegistryMediator, type Handler } from '<%= kernelPkg %>';
+import { createGreetHandler } from '<%= contextPkg %>';
+import { createGreetingService } from '<%= servicePkg %>';
+import {
+  createGreetingWelcome,
+  createSignHandler,
+  type SignCommand,
+} from '<%= peerPkg %>';
+
+/**
+ * Wiring for the guestbook context.
+ *
+ * Guestbook reaches greeting through one edge and one only: the
+ * gateway below is constructed over `<%= servicePkg %>`, the peer's
+ * seam. Nothing in this assembly hands guestbook a greeting *domain*
+ * type — this file is where a violation would be written, so this is
+ * where the rule is stated.
+ *
+ * The seam dispatches into greeting's own handlers rather than into
+ * the assembly-wide mediator, and that is the design rather than an
+ * accident of ordering: a peer reaches greeting exactly as an
+ * out-of-process consumer would, so the day greeting moves out, this
+ * file changes and nothing else does. Wiring the seam through the
+ * shared mediator would make it a local shortcut no remote
+ * implementation could honour.
+ */
+export function createGuestbookHandler(): Handler<SignCommand> {
+  const greeting = createGreetingService(createRegistryMediator([createGreetHandler()]));
+  return createSignHandler(createGreetingWelcome(greeting));
+}

@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import { signCommand } from '<%= peerPkg %>';
+import { createGuestbookHandler } from '../src/guestbook.ts';
+
+/**
+ * The cross-context call, driven for real: no fakes anywhere, so what
+ * this proves is that the two contexts are wired to each other and
+ * that the words guestbook records are the ones greeting composed.
+ */
+describe('the wired guestbook', () => {
+  it('records a welcome composed by the peer', async () => {
+    const result = await createGuestbookHandler().handle(signCommand('Ada'));
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.ok && result.value, {
+      visitor: 'Ada',
+      welcome: 'Hello, Ada!',
+    });
+  });
+
+  it('rejects an anonymous visitor', async () => {
+    const result = await createGuestbookHandler().handle(signCommand('   '));
+
+    assert.equal(result.ok, false);
+  });
+});

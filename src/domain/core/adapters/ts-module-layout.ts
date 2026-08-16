@@ -52,7 +52,12 @@
  */
 
 import type { Tag } from '../../contract/composition.js';
-import { type ModuleLayout, moduleLayoutOf, SKELETON_MODULE } from './module-layout.js';
+import {
+  type ModuleLayout,
+  moduleLayoutOf,
+  PEER_MODULE,
+  SKELETON_MODULE,
+} from './module-layout.js';
 
 export { moduleLayoutOf as tsModuleLayout } from './module-layout.js';
 
@@ -342,5 +347,49 @@ export function tsLayout(tags: readonly Tag[], scope: string): TsLayoutPaths {
     specifierFrom,
     internalSpecifierFrom,
     upToRoot,
+  };
+}
+
+/**
+ * Where the peer context's files live, and what the package that
+ * holds them is called.
+ *
+ * A bounded context is **one** workspace package here, so the peer is
+ * one manifest and one `exports` map — not the four crates Rust pays
+ * for. `null` under `basic`, which is a single hexagon with no peer
+ * to compose with.
+ *
+ * The gateway is the point of the whole thing: it sits at
+ * `src/infra/greeting-gateway/` inside guestbook's package, imports
+ * `@<scope>/greeting/service` and nothing else of greeting's. Note
+ * what does *not* enforce that. An undeclared workspace dependency
+ * resolves anyway under npm hoisting, and TypeScript project
+ * references do not restrict which projects a project may import —
+ * so unlike the JVM's build scope and Rust's crate graph, nothing in
+ * the toolchain stops the gateway importing `@<scope>/greeting`
+ * whole. The `exports` map holds the *depth* rule (a deep import is a
+ * `TS2307`), and the peer rule is
+ * `peers-meet-at-the-service-seam` in the emitted
+ * `.dependency-cruiser.cjs`. Lint, not compiler, and the docs say so.
+ */
+export function tsPeerPackage(layout: TsLayoutPaths): {
+  readonly root: string;
+  readonly pkg: string;
+  readonly index: string;
+  readonly contractSrc: string;
+  readonly coreInternal: string;
+  readonly gatewaySrc: string;
+  readonly tests: string;
+} | null {
+  if (layout.layout === 'basic') return null;
+  const root = `modules/${PEER_MODULE}`;
+  return {
+    root,
+    pkg: `@${layout.scope}/${PEER_MODULE}`,
+    index: `${root}/src/index.ts`,
+    contractSrc: `${root}/src/domain/contract`,
+    coreInternal: `${root}/src/domain/core/internal`,
+    gatewaySrc: `${root}/src/infra/${SKELETON_MODULE}-gateway`,
+    tests: `${root}/tests`,
   };
 }
