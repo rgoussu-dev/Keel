@@ -31,6 +31,7 @@ import {
   freshServiceDoc,
   jvmPeerContextAdapter,
   peerNames,
+  PEER_PORT,
   STALE_SERVICE_DOC,
   type PeerBinding,
 } from './jvm-peer-context.js';
@@ -159,7 +160,10 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
             `import org.springframework.beans.factory.ObjectProvider;\n${providerAnchor}`,
           )
           .replace(anchorImport, imports);
-        const withDoc = withImports.replace(STALE_SERVICE_DOC, freshServiceDoc('java'));
+        const withDoc = withImports.replace(
+          STALE_SERVICE_DOC,
+          freshServiceDoc('java', PEER_MODULE, PEER_PORT, null),
+        );
         return appendToClassBody(withDoc, bean);
       },
     },
@@ -192,7 +196,10 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
             `import org.springframework.beans.factory.ObjectProvider\n${providerAnchor}`,
           )
           .replace(anchorImport, imports);
-        const withDoc = withImports.replace(STALE_SERVICE_DOC, freshServiceDoc('kotlin'));
+        const withDoc = withImports.replace(
+          STALE_SERVICE_DOC,
+          freshServiceDoc('kotlin', PEER_MODULE, PEER_PORT, null),
+        );
         return appendToClassBody(withDoc, bean);
       },
     },
