@@ -50,8 +50,8 @@ import {
   PEER_CONTEXT_TAG,
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
+import { emitsFor } from '../adapters/context-support.js';
 import { installVertical } from '../install.js';
-import { matches } from '../predicate.js';
 import {
   getStack,
   listStackIds,
@@ -606,21 +606,13 @@ function stackTags(stack: Stack, buildTag: Tag | null, layoutTag: Tag | null): r
  * Whether any adapter this stack would install actually emits the
  * second bounded context for `tags`.
  *
- * Derived from the adapter set rather than from a list of stack ids,
- * so the day a family gains its peer-context adapter the front door
- * opens by itself. A hard-coded list would be the same class of bug
- * as the one this guard fixes: it goes stale in silence, and the
- * symptom is again a flag that does nothing.
+ * The `Stack`-shaped face of {@link emitsFor}, which `keel add module`
+ * calls with the verticals of a project already on disk. Same probe,
+ * because a second copy is exactly how the check this guard replaced
+ * went stale.
  */
 function emitsPeerContext(stack: Stack, tags: readonly Tag[]): boolean {
-  const tagSet = new Set<Tag>([...tags, PEER_CONTEXT_TAG]);
-  return stack.verticals.some((vertical) =>
-    vertical.adapters.some(
-      (adapter) =>
-        (adapter.predicate.requires ?? []).includes(PEER_CONTEXT_TAG) &&
-        matches(adapter.predicate, tagSet),
-    ),
-  );
+  return emitsFor(stack.verticals, PEER_CONTEXT_TAG, tags);
 }
 
 /**
