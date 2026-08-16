@@ -185,25 +185,37 @@ jobs:
               tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-maven.test.ts
-          # Six files where there were two, and the shape came from the
-          # runner rather than from a laptop — which mattered, because
-          # the laptop had it wrong. Measured on run 216 when the
-          # modulith cells first landed: 341.77s of test time in
-          # 137.07s wall, divisor 2.49, and `modulith-go-http` alone
-          # was 135.97s. The file *was* the job.
+          # Six files where there were two, and the shape came from
+          # measurements that twice contradicted the obvious answer.
+          # Both are kept, because either one alone reads as an
+          # argument for the wrong thing.
           #
-          # It held two long cases running in sequence — the cell at
-          # 87.96s and `keel add persistence` at 47.63s — so the fix
-          # was the standing convention rather than a shard split:
-          # a long case gets its own file, and `modulith-go-persistence`
-          # is now one. The JVM splits `modulith-persistence` off its
-          # cell for exactly this reason. That should put the floor at
-          # `fullstack-go` (86.67s) with the wall near it.
+          # Run 216, when the modulith cells first landed: 341.77s of
+          # test time in 137.07s wall, and `modulith-go-http` alone
+          # was 135.97s — the file *was* the job. It held two long
+          # cases in sequence, the cell at 87.96s and `keel add
+          # persistence` at 47.63s, so the standing convention applied:
+          # a long case gets its own file.
           #
-          # Still one shard. Once the persistence case is out, no file
-          # is close to being the job, so splitting would buy
-          # attribution and no wall clock. `docker` remains for
-          # `fullstack-go` alone.
+          # Run 217, after that split: 159.37s wall, and the
+          # persistence case had gone from 47.63s to 100.03s. The
+          # split made the job *slower*. Cause: each suite took a
+          # fresh GOCACHE/GOPATH in its own `beforeAll`, so a file
+          # peeled off the end paid a cold stdlib-and-dependencies
+          # compile that it used to inherit warm. Splitting a file
+          # bought a second cold compile and sold nothing.
+          #
+          # The fix was the cache, not the file layout:
+          # `sharedGoHome()` gives every suite in a run one
+          # content-addressed cache, so the cold compile happens once
+          # per run instead of once per file. Measured locally on the
+          # six-file shape, both runs starting cold: 123.09s wall
+          # before, 85.81s after, with the persistence file at 68.05s
+          # against 103.73s. The runner number for this shape is not
+          # in yet — when it lands, put it here and delete this
+          # sentence rather than reasoning about it.
+          #
+          # Still one shard. `docker` remains for `fullstack-go` alone.
           - id: go
             tools: go docker
             files: >-
