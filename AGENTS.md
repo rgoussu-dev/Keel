@@ -315,6 +315,25 @@ would ship as separate packages implementing the same port.
   scope holding the seam wall is spelled differently there
   (`optional`, not `implementation`) and the peer context's Maven half
   once shipped without it.
+- **They moved the floor of the shard they landed in, and the numbers
+  are on the runner.** `jvm-modulith-quarkus-java` was recorded at
+  415s against a 260s floor when J.1 shipped, and called "the only
+  shard with real headroom left". Measured with these two files in it:
+  **565.60s wall, 1453.50s of test time across eight files, longest
+  file `add-module-jvm` at 391.27s.** The floor is now a file this
+  work added, and the shard's headroom is what it was in absolute
+  terms (174s) while resting on one case rather than a spread.
+
+  So the standing advice — split `quarkus-java` first if it grows —
+  still holds and now has a specific target. `add-module-jvm`'s two
+  cases are 257.95s and 133.32s, which by the convention above is a
+  file wanting to be two. That split is **not** made here, for the
+  reason the `go` shard learned the hard way in run 217: peeling a
+  case into its own file bought it a second cold toolchain compile
+  and made the job slower. Whether these two cases share enough warm
+  Gradle state for a split to pay is the one figure the decision turns
+  on, and nobody has measured it.
+
 - **The shard matrix names its files explicitly, and that is a hazard
   with a guard.** A suite in no shard never runs, which looks exactly
   like a suite that passed. `tests/ci-workflow.test.ts` parses the
