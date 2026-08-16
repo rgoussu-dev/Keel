@@ -249,6 +249,29 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`--with-peer-context` on a stack that has no peer context was a
+  silent no-op.** `keel new --stack=go-http|ts-http|web-components
+--module-layout=modulith --with-peer-context` accepted the flag,
+  emitted a single bounded context, and exited 0 — the user asked for
+  two contexts, was told nothing, and got one. The flag is now
+  rejected at the front door with the stack named and the supported
+  stacks listed.
+
+  The gap was structural rather than an oversight. Every other "no
+  adapter for this stack" is caught by the resolver's
+  uncovered-dimension hard-fail, and a peer-context adapter declares
+  `covers: []` — it contributes a _context_, not a dimension — so a
+  family with no such adapter resolves cleanly and emits nothing.
+  The new check is derived from the adapter set rather than from a
+  list of stack ids, so a family gaining its adapter opens the front
+  door by itself; a written-down list would go stale in the same
+  silence.
+
+  The layout rejection's wording changed with it. It said a second
+  context "meets the first at user-side/service", which is the JVM
+  and Rust spelling of the seam — Go has no such path — so it now
+  names the seam without spelling a path no stack of that family has.
+
 - **A Micronaut modulith on Maven could not be built at all.** Every
   module of the reactor except the assembly parents the reactor root,
   and that root managed no versions — so the one library module

@@ -51,9 +51,11 @@ import {
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
 import { installVertical } from '../install.js';
+import { matches } from '../predicate.js';
 import {
   getStack,
   listStackIds,
+  STACKS,
   type BuildSystemOption,
   type Stack,
   type StackService,
@@ -136,7 +138,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const layoutTag = await this.resolveModuleLayout(command, stack);
     if (!layoutTag.ok) return layoutTag;
 
-    const peerTag = peerContextTag(command, stack, layoutTag.value);
+    const peerTag = peerContextTag(command, stack, buildTag.value, layoutTag.value);
     if (!peerTag.ok) return peerTag;
 
     const now = this.deps.clock.nowIso();
@@ -547,31 +549,93 @@ function defaultBuildTag(stack: Stack): Tag | null {
 
 /**
  * Resolves `--with-peer-context` into the tag that seeds the second
- * bounded context, rejecting it where there would be no seam for that
- * context to meet the first at.
+ * bounded context, rejecting it wherever the request cannot be
+ * honoured. Two gates, and the second exists because the resolver
+ * cannot keep it.
  *
- * The flag is only meaningful under the modulith: the flat trisection
- * has one hexagon and no `user-side/service`, so a peer would have
- * nothing to reach through. Failing loudly beats silently scaffolding
- * one context and leaving the user to wonder where the other went.
+ * **The layout gate.** The flag is only meaningful under the
+ * modulith: the flat trisection is a single hexagon, so there is no
+ * boundary for a second context to reach across.
+ *
+ * **The coverage gate.** Every other "no adapter for this stack" is
+ * caught by the resolver's uncovered-dimension hard-fail. That
+ * structurally cannot fire here: a peer-context adapter declares
+ * `covers: []`, because it contributes a *context* and not a
+ * dimension, so a family with no such adapter resolves cleanly and
+ * emits nothing. Without this check the flag is a silent no-op — the
+ * user asks for two bounded contexts, is told nothing, and gets one.
+ *
+ * Both fail at the front door with the stack named, which beats
+ * scaffolding half of what was asked for and leaving the user to
+ * wonder where the other context went.
  */
 function peerContextTag(
   command: NewProjectCommand,
   stack: Stack,
+  buildTag: Tag | null,
   layoutTag: Tag | null,
 ): Result<Tag | null> {
   if (command.withPeerContext !== true) return ok(null);
   if (layoutTag !== MODULITH_LAYOUT_TAG) {
     return err(
       new DomainError(
-        `--with-peer-context needs the modulith layout: a second bounded context meets the first at user-side/service, which the flat layout does not have. Add --module-layout=modulith${
+        `--with-peer-context needs the modulith layout: a second bounded context reaches the first only through the peer-facing seam the modulith puts between them, and the flat layout is a single hexagon with no seam to cross. Add --module-layout=modulith${
           stack.moduleLayouts === undefined ? ` (stack '${stack.id}' does not offer one)` : ''
         }`,
         'keel.invalid-peer-context',
       ),
     );
   }
+  if (!emitsPeerContext(stack, stackTags(stack, buildTag, layoutTag))) {
+    return err(
+      new DomainError(
+        `stack '${stack.id}' has no peer-context adapter — --with-peer-context would scaffold nothing at all. Stacks that support it: ${peerContextStackIds().join(', ')}`,
+        'keel.invalid-peer-context',
+      ),
+    );
+  }
   return ok(PEER_CONTEXT_TAG);
+}
+
+/** The tag set a single-service install of `stack` would carry. */
+function stackTags(stack: Stack, buildTag: Tag | null, layoutTag: Tag | null): readonly Tag[] {
+  return [...stack.tags, ...(buildTag ? [buildTag] : []), ...(layoutTag ? [layoutTag] : [])];
+}
+
+/**
+ * Whether any adapter this stack would install actually emits the
+ * second bounded context for `tags`.
+ *
+ * Derived from the adapter set rather than from a list of stack ids,
+ * so the day a family gains its peer-context adapter the front door
+ * opens by itself. A hard-coded list would be the same class of bug
+ * as the one this guard fixes: it goes stale in silence, and the
+ * symptom is again a flag that does nothing.
+ */
+function emitsPeerContext(stack: Stack, tags: readonly Tag[]): boolean {
+  const tagSet = new Set<Tag>([...tags, PEER_CONTEXT_TAG]);
+  return stack.verticals.some((vertical) =>
+    vertical.adapters.some(
+      (adapter) =>
+        (adapter.predicate.requires ?? []).includes(PEER_CONTEXT_TAG) &&
+        matches(adapter.predicate, tagSet),
+    ),
+  );
+}
+
+/**
+ * Every single-service stack whose modulith carries a peer context,
+ * for the rejection message. Derived the same way, on the same
+ * defaults `keel new` itself would pick.
+ */
+function peerContextStackIds(): readonly string[] {
+  return Object.values(STACKS)
+    .filter((stack) => stack.services === undefined)
+    .filter((stack) =>
+      emitsPeerContext(stack, stackTags(stack, defaultBuildTag(stack), MODULITH_LAYOUT_TAG)),
+    )
+    .map((stack) => stack.id)
+    .sort();
 }
 
 /** The default module-layout tag of a service stack, if it declares a choice. */
