@@ -144,6 +144,48 @@ Note that two contexts may declare the same package name —
 `package ordering`, and every context's seam is `package service` —
 so a file importing both must alias one.
 
+### A second context
+
+`--with-peer-context` scaffolds `guestbook` beside `greeting`, with a
+gateway package at `modules/guestbook/infra/greetinggateway` that
+imports `greeting/userside/service` and nothing else of greeting's.
+It is what makes the seam demonstrable rather than merely present —
+with one context, nothing in the project consumes the seam, so
+nothing proves it holds.
+
+The gateway is a driven adapter, so the dependency points from
+infrastructure inwards and never between two domains. Guestbook's own
+`Welcome` port is declared in guestbook's vocabulary: the context asks
+for a welcome and does not know that some other context composes
+greetings. Only the gateway knows, and only the assembly wires it.
+
+**The forbidden import does not compile**, which is the part worth
+having. Add `modules/greeting/internal/domain` to that gateway and
+`go build` fails with `use of internal package … not allowed`. On
+that one point Go's wall is stronger than Rust's, where a domain type
+can still _flow_ across the seam because inference supplies the name
+the consumer cannot write — here there is nothing to flow, because
+the package cannot be reached.
+
+Binding differs too, and in Go's favour. Rust must patch
+`mod guestbook;` into the assembly root and the JVM must tell its
+container to scan the new package, since both can emit a context that
+compiles and is wired into nothing. A Go file in a `cmd/` directory
+joins that package by existing, so `cmd/<unit>/guestbook.go` is bound
+the moment it lands — there is no declaration to forget. It ships
+with `cmd/<unit>/guestbook_test.go`, which drives the cross-context
+call for real, with no fakes anywhere.
+
+The peer ships five packages to Rust's four crates. The extra one is
+`userside/signing`, a driving adapter, and it is not padding: a `cmd/`
+main cannot name `domain.SignCommand`, so the translation from the
+assembly's primitives into the context's command has to happen inside
+the context — exactly as `userside/cli` does it for greeting.
+
+Requires `--module-layout=modulith`; the flat layout is a single
+hexagon with no seam to cross, and keel says so rather than silently
+scaffolding one context.
+
 [`keel add persistence`](../verticals/persistence.md#module-layout)
 follows the same rules: its ports join the context's `domain`, its
 pgx adapters and fakes join `infra/`, the system clock joins

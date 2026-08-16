@@ -22,6 +22,7 @@ import { claudeCoreAdapter } from '../adapters/claude-core.js';
 import { goBootstrapAdapter } from '../adapters/go-bootstrap.js';
 import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
+import { goPeerContextAdapter } from '../adapters/go-peer-context.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
 import {
@@ -96,6 +97,7 @@ export const walkingSkeletonVertical: Vertical = {
     goBootstrapAdapter,
     goCliBootstrapAdapter,
     goHttpBootstrapAdapter,
+    goPeerContextAdapter,
     goPortFakeAdapter,
     rustBootstrapAdapter,
     rustCliBootstrapAdapter,

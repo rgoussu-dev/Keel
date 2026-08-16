@@ -1,0 +1,34 @@
+// Wiring for the guestbook context, in this deployment unit's
+// assembly package.
+//
+// Guestbook reaches greeting through one edge and one only: the
+// gateway below is constructed over greeting's seam, and nothing in
+// this file hands guestbook a greeting domain type — nothing could,
+// since greeting's domain is behind that context's internal/.
+//
+// Go binds this differently from the other families, and the
+// difference is worth knowing rather than papering over. Rust needs
+// `mod guestbook;` patched into the assembly root and the JVM needs
+// the container told to scan the new package, because both can emit
+// a context that compiles and is wired into nothing. A file in a
+// cmd/ directory is part of that directory's package by existing, so
+// there is no declaration here to forget — the equivalent mistake in
+// Go is landing this file somewhere that is not the assembly, and
+// that is what the emitted tests and the suite assert instead.
+package main
+
+import (
+<%- projectImports %>
+)
+
+// wireGuestbook assembles the guestbook context over greeting's seam
+// and returns its driving adapter.
+//
+// Every value here is passed rather than named: this package cannot
+// spell domain.Greeter, domain.Welcome or domain.Guestbook, and does
+// not need to. `:=` supplies each type the assembly may not write.
+func wireGuestbook() signing.Signer {
+	seam := greetingservice.New(<%= facadePkg %>.NewGreeter())
+	gateway := <%= gatewayPkg %>.New(seam)
+	return signing.New(<%= peerFacadePkg %>.NewGuestbook(gateway))
+}

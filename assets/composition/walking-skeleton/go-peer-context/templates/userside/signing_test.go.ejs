@@ -1,0 +1,39 @@
+package signing_test
+
+import (
+	"errors"
+	"testing"
+
+<%- projectImports %>
+)
+
+// The canonical fake of the Welcome driven port.
+type fakeWelcome struct {
+	words string
+	err   error
+}
+
+func (f fakeWelcome) WelcomeFor(string) (string, error) {
+	return f.words, f.err
+}
+
+func TestSignTranslatesPrimitivesIntoTheContextCommand(t *testing.T) {
+	signer := signing.New(domain.NewGuestbook(fakeWelcome{words: "Hello, Ada!"}))
+
+	got, err := signer.Sign("Ada")
+	if err != nil {
+		t.Fatalf("Sign returned an unexpected error: %v", err)
+	}
+	if want := (signing.Signed{Visitor: "Ada", Welcome: "Hello, Ada!"}); got != want {
+		t.Fatalf("Sign = %+v, want %+v", got, want)
+	}
+}
+
+func TestSignSurfacesTheContextRejection(t *testing.T) {
+	signer := signing.New(domain.NewGuestbook(fakeWelcome{words: "unused"}))
+
+	_, err := signer.Sign("   ")
+	if !errors.Is(err, domain.ErrAnonymousVisitor) {
+		t.Fatalf("Sign error = %v, want ErrAnonymousVisitor", err)
+	}
+}

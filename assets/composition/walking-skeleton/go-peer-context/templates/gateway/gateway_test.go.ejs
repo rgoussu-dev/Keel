@@ -1,0 +1,47 @@
+package <%= gatewayPkg %>_test
+
+import (
+	"errors"
+	"testing"
+
+<%- testImports %>
+)
+
+// The canonical fake of the seam port: a canned outcome, nothing else.
+type fakeGreeting struct {
+	greeting greetingservice.Greeting
+	err      error
+}
+
+func (f fakeGreeting) GreetingFor(string) (greetingservice.Greeting, error) {
+	return f.greeting, f.err
+}
+
+func TestHandsBackTheWordsThePeerComposed(t *testing.T) {
+	gateway := <%= gatewayPkg %>.New(fakeGreeting{
+		greeting: greetingservice.Greeting{Message: "Hello, Ada!"},
+	})
+
+	got, err := gateway.WelcomeFor("Ada")
+	if err != nil {
+		t.Fatalf("WelcomeFor returned an unexpected error: %v", err)
+	}
+	if want := "Hello, Ada!"; got != want {
+		t.Fatalf("WelcomeFor = %q, want %q", got, want)
+	}
+}
+
+func TestSurfacesThePeerRejection(t *testing.T) {
+	unavailable := greetingservice.Unavailable{Reason: "name must not be empty"}
+	gateway := <%= gatewayPkg %>.New(fakeGreeting{err: unavailable})
+
+	_, err := gateway.WelcomeFor("  ")
+
+	var got greetingservice.Unavailable
+	if !errors.As(err, &got) {
+		t.Fatalf("WelcomeFor error = %v, want the seam's Unavailable", err)
+	}
+	if got.Reason != unavailable.Reason {
+		t.Errorf("Reason = %q, want %q", got.Reason, unavailable.Reason)
+	}
+}

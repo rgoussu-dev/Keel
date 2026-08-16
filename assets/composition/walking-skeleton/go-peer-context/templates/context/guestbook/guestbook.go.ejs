@@ -1,0 +1,25 @@
+// Package guestbook is this bounded context's facade — the package a
+// deployment unit imports to assemble it.
+//
+// Same rule as greeting's: factories and NOTHING else. No
+// `type Guestbook = domain.Guestbook`, no
+// `var ErrAnonymousVisitor = domain.ErrAnonymousVisitor`, however
+// convenient. The domain sits behind this context's internal/, so a
+// consumer that cannot name its types cannot declare its own
+// implementation of its ports either.
+//
+// NewGuestbook takes the driven port the context needs, which means
+// only a caller holding one can assemble it — and the only thing that
+// holds one is the assembly, which is where contexts are wired
+// together. That is deliberate: a peer receives what this context
+// returns, it does not build one.
+package guestbook
+
+import "<%= peerDomainImport %>"
+
+// NewGuestbook assembles the sign use case over the Welcome port and
+// returns it behind its driving port. Each cmd/ main wires it by
+// hand — constructor injection, no framework.
+func NewGuestbook(welcome domain.Welcome) domain.Guestbook {
+	return domain.NewGuestbook(welcome)
+}

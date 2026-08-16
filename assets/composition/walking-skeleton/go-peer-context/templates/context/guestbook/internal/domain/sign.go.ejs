@@ -1,0 +1,72 @@
+// Package domain is the contract face of the guestbook context: the
+// commands and ports its adapters are written against, plus the
+// factories that assemble the compiler-hidden core underneath
+// internal/.
+//
+// Nothing here names greeting. The words this context records arrive
+// through the Welcome port below, declared in guestbook's own
+// vocabulary — a driven port, so the dependency points inwards from
+// whichever adapter satisfies it. That some other bounded context
+// happens to compose greetings is a fact of the assembly, and of one
+// gateway under infra/, and of nowhere else.
+package domain
+
+import (
+	"fmt"
+
+	"<%= peerCoreImport %>"
+)
+
+// SignCommand asks for Visitor to be recorded in the guestbook.
+type SignCommand struct {
+	Visitor string
+}
+
+// Entry is what the guestbook recorded: who signed, and the words
+// they were welcomed with.
+type Entry struct {
+	Visitor string
+	Welcome string
+}
+
+// Welcome is the driven port through which this context obtains the
+// words it records. It asks for a welcome; it does not know, and must
+// not know, who composes one.
+type Welcome interface {
+	// WelcomeFor returns the words to record for visitor.
+	WelcomeFor(visitor string) (string, error)
+}
+
+// Guestbook is the driving port for the sign use case.
+type Guestbook interface {
+	// Sign records the command's visitor, obtaining their welcome
+	// through the Welcome port. Returns ErrAnonymousVisitor when the
+	// command names nobody.
+	Sign(cmd SignCommand) (Entry, error)
+}
+
+// ErrAnonymousVisitor reports a sign command with nobody to record.
+var ErrAnonymousVisitor = sign.ErrAnonymousVisitor
+
+// NewGuestbook assembles the sign use case over its driven port and
+// returns it behind its driving port. The facade is what the outside
+// world calls; this is what the facade calls.
+func NewGuestbook(welcome Welcome) Guestbook {
+	return guestbook{welcome: welcome}
+}
+
+type guestbook struct {
+	welcome Welcome
+}
+
+func (g guestbook) Sign(cmd SignCommand) (Entry, error) {
+	visitor, err := sign.Visitor(cmd.Visitor)
+	if err != nil {
+		return Entry{}, err
+	}
+	words, err := g.welcome.WelcomeFor(visitor)
+	if err != nil {
+		return Entry{}, fmt.Errorf("no welcome for %s: %w", visitor, err)
+	}
+	return Entry{Visitor: visitor, Welcome: words}, nil
+}
