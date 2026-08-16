@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 <% if (hasConsumes && consumesIsSkeleton) { %>import { create<%= SkeletonPort %>, create<%= Skeleton %>Store } from '<%= consumesPkg %>';
-<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>import type { <%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>import { create<%= Consumes %>ContextService } from '../src/<%= consumes %>';
 <% } %>import {
   <%= module %>Context,
   <%= module %>RecordsContext,
@@ -20,18 +20,23 @@ import { create<%= Module %>Wiring } from '../src/<%= module %>';
  * `modules/<%= module %>/` would import <%= consumes %>'s facade and
  * fail `peers-meet-at-the-service-seam` — correctly, which is worth
  * knowing before anyone moves it.
-<% } %><% if (hasConsumes && !consumesIsSkeleton) { %> * The cross-context call, driven through a **fake** of
- * <%= consumes %>'s seam rather than the real thing — and that is a
- * deliberate limit, not an oversight. <%= Consumes %> is itself a
- * context somebody added, so what *its* wiring needs is a fact of
- * that context and not of this one; `main.ts` knows, because the
- * `const <%= consumes %> = …` line was written when <%= consumes %>
- * was added, and this test does not.
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %> * The cross-context call, driven for real: no fakes anywhere, so what
+ * this proves is that the two contexts are wired to each other and
+ * that what <%= module %> records is what <%= consumes %> produced.
  *
- * A fake of the seam is the honest substitute and still proves the
- * half that is this context's: that its ports are published, that its
- * gateway is on the other side of them, and that nothing but the seam
- * type crosses.
+ * <%= Consumes %> is itself a context somebody added, so what *its*
+ * wiring needs is a fact of that context and not of this one — which
+ * is why the seam comes from `create<%= Consumes %>ContextService()`
+ * in that context's own wiring module rather than being rebuilt here.
+ * That function assembles a fresh <%= consumes %>, its own consumed
+ * chain included, so this test reaches a real seam without ever
+ * naming what <%= consumes %> consumes.
+ *
+ * It lives in the assembly because the assembly is the only place
+ * allowed to name both contexts. The same test inside
+ * `modules/<%= module %>/` would import <%= consumes %>'s facade and
+ * fail `peers-meet-at-the-service-seam` — correctly, which is worth
+ * knowing before anyone moves it.
 <% } %><% if (!hasConsumes) { %> * The context, driven through the ports the assembly publishes rather
  * than through its factories, so what this proves is that the two are
  * the same object graph.
@@ -46,11 +51,7 @@ describe('the wired <%= module %> context', () => {
     return new Map(
       create<%= Module %>Wiring(create<%= SkeletonPort %>(<%= SkeletonReadModelVar %>), <%= SkeletonReadModelVar %>).ports,
     );
-<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>    const <%= consumes %>: <%= Consumes %>Service = {
-      <%= consumes %>For: () => undefined,
-      latest: () => '<%= consumes %>: Ada',
-    };
-    return new Map(create<%= Module %>Wiring(<%= consumes %>).ports);
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>    return new Map(create<%= Module %>Wiring(create<%= Consumes %>ContextService()).ports);
 <% } %><% if (!hasConsumes) { %>    return new Map(create<%= Module %>Wiring().ports);
 <% } %>  };
 

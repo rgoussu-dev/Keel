@@ -1,7 +1,16 @@
 import type { Context } from '<%= contextProtocolPkg %>';
-<% if (hasConsumes && consumesIsSkeleton) { %>import type { <%= SkeletonPort %>, <%= Skeleton %>ReadModel } from '<%= consumesPkg %>';
+<% if (hasConsumes && consumesIsSkeleton) { %>import {
+  create<%= SkeletonPort %>,
+  create<%= Skeleton %>Store,
+  type <%= SkeletonPort %>,
+  type <%= Skeleton %>ReadModel,
+} from '<%= consumesPkg %>';
 import { create<%= Consumes %>Service } from '<%= consumesSeamPkg %>';
 <% } %><% if (hasConsumes && !consumesIsSkeleton) { %>import type { <%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+// A fresh <%= consumes %> for the self-contained assembler below, from
+// that context's own wiring module beside this one: what <%= consumes %>
+// needs is a fact of *that* context, and only that module has it.
+import { create<%= Consumes %>ContextService } from './<%= consumes %>';
 <% } %>import {
   create<%= Module %>,
   create<%= Module %>Store,
@@ -55,3 +64,29 @@ export function create<%= Module %>Wiring(
     service: create<%= Module %>Service(<%= module %>, records),
   };
 }
+
+/**
+ * A **fresh, self-contained** <%= module %> — its own store, and its
+ * own consumed chain built the same way.
+ *
+ * This is what `keel add module <other> --consumes <%= module %>`
+ * binds its test to, and why it exists at all: a peer's assembly test
+ * needs a real seam of this context, and reconstructing one at the
+ * call site would mean knowing what *this* context consumes. Only this
+ * module knows that, so only this module can build it — the same rule
+ * the wiring above states about gateways, applied one level up.
+ *
+ * **Never call this from `main.ts`.** It builds a second store, which
+ * is precisely the split-state bug the note on
+ * {@link <%= Module %>Wiring} exists to prevent: the page would render
+ * one instance's state while a peer read another's. `main.ts` holds
+ * the one live wiring and passes its `service` on; this is for tests,
+ * where a fresh instance per case is the point.
+ */
+export function create<%= Module %>ContextService(): <%= Module %>Service {
+<% if (hasConsumes && consumesIsSkeleton) { %>  const <%= SkeletonReadModelVar %> = create<%= Skeleton %>Store();
+  return create<%= Module %>Wiring(create<%= SkeletonPort %>(<%= SkeletonReadModelVar %>), <%= SkeletonReadModelVar %>)
+    .service;
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>  return create<%= Module %>Wiring(create<%= Consumes %>ContextService()).service;
+<% } %><% if (!hasConsumes) { %>  return create<%= Module %>Wiring().service;
+<% } %>}
