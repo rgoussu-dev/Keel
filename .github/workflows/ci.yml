@@ -185,22 +185,32 @@ jobs:
               tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-maven.test.ts
-          # Six files where there were two, and the split is the
-          # modulith grid arriving rather than a rebalance. Measured
-          # locally on the shipped shape: the whole shard is ~55s of
-          # test time, longest single file `walking-skeleton-go.test.ts`
-          # at 42.8s (its `go-http` case pays the cold OpenTelemetry
-          # fetch), against `modulith-go-http` 15.5s,
-          # `modulith-go-cli` 14.4s and `modulith-go-peer-context`
-          # 14.4s. Nothing new is near the floor, so this stays one
-          # shard: splitting would buy attribution and no wall clock,
-          # and `docker` is still here for `fullstack-go` alone.
+          # Six files where there were two, and the shape came from the
+          # runner rather than from a laptop — which mattered, because
+          # the laptop had it wrong. Measured on run 216 when the
+          # modulith cells first landed: 341.77s of test time in
+          # 137.07s wall, divisor 2.49, and `modulith-go-http` alone
+          # was 135.97s. The file *was* the job.
+          #
+          # It held two long cases running in sequence — the cell at
+          # 87.96s and `keel add persistence` at 47.63s — so the fix
+          # was the standing convention rather than a shard split:
+          # a long case gets its own file, and `modulith-go-persistence`
+          # is now one. The JVM splits `modulith-persistence` off its
+          # cell for exactly this reason. That should put the floor at
+          # `fullstack-go` (86.67s) with the wall near it.
+          #
+          # Still one shard. Once the persistence case is out, no file
+          # is close to being the job, so splitting would buy
+          # attribution and no wall clock. `docker` remains for
+          # `fullstack-go` alone.
           - id: go
             tools: go docker
             files: >-
               tests/e2e/walking-skeleton-go.test.ts
               tests/e2e/modulith-go-cli.test.ts
               tests/e2e/modulith-go-http.test.ts
+              tests/e2e/modulith-go-persistence.test.ts
               tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/fullstack-go.test.ts
           # Six files, one shard — and unlike every earlier revision of
@@ -253,14 +263,20 @@ jobs:
           # files now, and `modulith-web-components-pnpm` is a cell
           # that had never been built at all.
           #
-          # Measured locally on the shipped shape: every file here
-          # sits between 17s and 48s, longest
-          # `modulith-wc-peer-context` at 47.9s — it installs three
-          # workspaces and renders two of them in Chromium. The old
-          # `wc-walking-skeleton.test.ts` ran the basic case *and*
-          # both modulith cases in sequence, so peeling those out cut
-          # this shard's floor rather than raising it. One shard, and
-          # `browser` stays in `tools:` because two suites now render.
+          # Measured on the runner (run 216), not on a laptop — the
+          # laptop was optimistic by a third here: 266.80s of test
+          # time in 94.98s wall, divisor 2.81, longest single file
+          # `modulith-wc-peer-context` at 62.85s. It installs three
+          # workspaces and renders two of them in Chromium, so it is
+          # the floor and will stay the floor.
+          #
+          # One shard, because 62.85s against a 94.98s wall is
+          # headroom rather than a job pinned to one file — unlike the
+          # `go` shard above, which was, and which got a file split
+          # rather than a shard split for it. Peeling the modulith
+          # cases out of `wc-walking-skeleton` lowered this shard's
+          # floor rather than raising it. `browser` stays in `tools:`
+          # because three suites now render.
           - id: web
             tools: npm pnpm browser
             files: >-

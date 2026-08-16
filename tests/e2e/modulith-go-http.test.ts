@@ -13,17 +13,18 @@
  * returns. Without them the layout's central claim — that a consumer
  * must come through the facade — would be asserted by prose alone.
  *
- * `keel add persistence` rides along in a second case: five packages
- * move, and `go build` alone cannot confirm they landed usefully,
- * because a slice emitted at the wrong paths and wired to nothing
- * compiles perfectly well.
+ * `keel add persistence` used to ride along here as a second case and
+ * is now `modulith-go-persistence.test.ts`. That is the convention
+ * rather than taste: vitest runs the cases inside one file in
+ * sequence, so on the runner this file was 135.97s against a 137.07s
+ * shard wall — the file *was* the job. The JVM splits
+ * `modulith-persistence` off its cell for the same reason.
  */
 
 import path from 'node:path';
 import fs from 'fs-extra';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  addVertical,
   driveGreetContract,
   E2E_TIMEOUT_MS,
   EXE,
@@ -93,43 +94,6 @@ describe.skipIf(skipGoE2E)('go-http modulith e2e', () => {
       goRun(cwd, goHome, ['build', './...']);
 
       await withHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`), cwd, driveGreetContract);
-    },
-    E2E_TIMEOUT_MS,
-  );
-
-  /**
-   * `keel add persistence` on a modulith, which is the case the
-   * vertical used to refuse. This asserts the assembly, and then
-   * re-runs the facade probe: the new factory widens the aperture,
-   * and the wall has to survive it.
-   */
-  it(
-    'takes the persistence vertical, wires it, and keeps the aperture shut',
-    async () => {
-      await modulith();
-      await addVertical('persistence', cwd);
-
-      goRun(cwd, goHome, ['vet', './...']);
-      goRun(cwd, goHome, ['test', './...']);
-      goRun(cwd, goHome, ['build', './...']);
-
-      const main = await fs.readFile(path.join(cwd, 'cmd', 'http', 'main.go'), 'utf8');
-      expect(main).toContain('greetings := greeting.NewGreetingLogUseCases(');
-      expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
-
-      // The slice's ports are as unnameable from the assembly as the
-      // greet port was — adding a factory to the facade must not have
-      // leaked a type alias alongside it.
-      const probe = path.join(cwd, 'cmd', 'http', 'probe.go');
-      await fs.writeFile(
-        probe,
-        'package main\n\nimport "example.com/skel/internal/modules/greeting"\n\nvar _ greeting.GreetingLog\n',
-      );
-      expect(
-        goRunFails(cwd, goHome, ['build', './cmd/...']),
-        "naming the slice's port must not compile",
-      ).toContain('undefined: greeting.GreetingLog');
-      await fs.remove(probe);
     },
     E2E_TIMEOUT_MS,
   );
