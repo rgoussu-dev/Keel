@@ -1,0 +1,84 @@
+//! The gateway translating <%= module %>'s `<%= Consumes %>Client` port
+//! into a call on the <%= consumes %> context's seam.
+//!
+//! This is the only file in <%= module %> that knows <%= consumes %>
+//! exists, and it is a driven adapter — so the dependency points from
+//! infrastructure inwards, never between two domains.
+
+use std::sync::Arc;
+
+use <%= consumesIdent %>_user_side_service::<%= Consumes %>Service;
+use <%= moduleIdent %>_domain_contract::<%= Consumes %>Client;
+use platform_kernel::{BoxFuture, boxed};
+
+/// Reaches <%= consumes %> through its seam.
+pub struct <%= Consumes %>Gateway {
+    <%= consumesIdent %>: Arc<dyn <%= Consumes %>Service>,
+}
+
+impl <%= Consumes %>Gateway {
+    /// Returns a gateway delegating to `<%= consumesIdent %>`.
+    pub fn new(<%= consumesIdent %>: Arc<dyn <%= Consumes %>Service>) -> Self {
+        Self { <%= consumesIdent %> }
+    }
+}
+
+impl <%= Consumes %>Client for <%= Consumes %>Gateway {
+    fn ask_for(&self, subject: &str) -> BoxFuture<'_, Result<String, String>> {
+        let <%= consumesIdent %> = Arc::clone(&self.<%= consumesIdent %>);
+        let subject = subject.to_string();
+        boxed! {
+            // `<%= consumesIdent %>` is only reachable through its seam,
+            // and the seam hands back its own DTO — so what crosses this
+            // boundary is a `<%= Consumes %>`, never a <%= consumes %>
+            // domain type.
+            match <%= consumesIdent %>.<%= consumesIdent %>_for(&subject).await {
+                Ok(answer) => Ok(answer.message),
+                Err(err) => Err(err.reason),
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use <%= consumesIdent %>_user_side_service::{<%= Consumes %>, <%= Consumes %>Unavailable};
+
+    /// The canonical fake of the seam port: replies with a canned
+    /// outcome and records nothing else.
+    struct Fake<%= Consumes %>(Result<<%= Consumes %>, <%= Consumes %>Unavailable>);
+
+    impl <%= Consumes %>Service for Fake<%= Consumes %> {
+        fn <%= consumesIdent %>_for(
+            &self,
+            _subject: &str,
+        ) -> BoxFuture<'_, Result<<%= Consumes %>, <%= Consumes %>Unavailable>> {
+            let reply = self.0.clone();
+            boxed! { reply }
+        }
+    }
+
+    #[test]
+    fn hands_back_what_the_peer_answered() {
+        let gateway = <%= Consumes %>Gateway::new(Arc::new(Fake<%= Consumes %>(Ok(<%= Consumes %> {
+            message: "Hello, Ada!".to_string(),
+        }))));
+
+        let got = platform_kernel::block_on(gateway.ask_for("Ada"));
+
+        assert_eq!(got, Ok("Hello, Ada!".to_string()));
+    }
+
+    #[test]
+    fn maps_the_peer_rejection_into_this_context_vocabulary() {
+        let gateway =
+            <%= Consumes %>Gateway::new(Arc::new(Fake<%= Consumes %>(Err(<%= Consumes %>Unavailable {
+                reason: "name must not be empty".to_string(),
+            }))));
+
+        let got = platform_kernel::block_on(gateway.ask_for("  "));
+
+        assert_eq!(got, Err("name must not be empty".to_string()));
+    }
+}

@@ -1,0 +1,126 @@
+//! The core of the <%= module %> aggregate.
+
+<% if (hasConsumes) { %>use std::sync::Arc;
+
+<% } %>use <%= moduleIdent %>_domain_contract::{
+<% if (hasConsumes) { %>    <%= Consumes %>Client,
+<% } %>    <%= Module %>Command, <%= Module %>Port, <%= Module %>Rejected, <%= Module %>Result,
+};
+use platform_kernel::{BoxFuture, boxed};
+
+/// Assembles this context's use case behind its driving port.
+<% if (hasConsumes) { %>pub fn new_<%= moduleIdent %>(<%= consumesIdent %>: Arc<dyn <%= Consumes %>Client>) -> impl <%= Module %>Port {
+    <%= Module %>Handler { <%= consumesIdent %> }
+}
+
+struct <%= Module %>Handler {
+    <%= consumesIdent %>: Arc<dyn <%= Consumes %>Client>,
+}
+<% } else { %>pub fn new_<%= moduleIdent %>() -> impl <%= Module %>Port {
+    <%= Module %>Handler
+}
+
+struct <%= Module %>Handler;
+<% } %>
+impl <%= Module %>Port for <%= Module %>Handler {
+    fn handle(
+        &self,
+        cmd: <%= Module %>Command,
+    ) -> BoxFuture<'_, Result<<%= Module %>Result, <%= Module %>Rejected>> {
+<% if (hasConsumes) { %>        let <%= consumesIdent %> = Arc::clone(&self.<%= consumesIdent %>);
+<% } %>        boxed! {
+            let subject = cmd.subject.trim().to_string();
+            if subject.is_empty() {
+                return Err(<%= Module %>Rejected::EmptySubject);
+            }
+<% if (hasConsumes) { %>            match <%= consumesIdent %>.ask_for(&subject).await {
+                Ok(detail) => Ok(<%= Module %>Result { detail }),
+                Err(why) => Err(<%= Module %>Rejected::<%= Consumes %>Unreachable(why)),
+            }
+<% } else { %>            Ok(<%= Module %>Result { detail: format!("<%= module %>: {subject}") })
+<% } %>        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+<% if (hasConsumes) { %>
+    /// The canonical fake of the `<%= Consumes %>Client` driven port.
+    struct Fake<%= Consumes %>(Result<String, String>);
+
+    impl <%= Consumes %>Client for Fake<%= Consumes %> {
+        fn ask_for(&self, _subject: &str) -> BoxFuture<'_, Result<String, String>> {
+            let reply = self.0.clone();
+            boxed! { reply }
+        }
+    }
+
+    fn <%= moduleIdent %>_with(reply: Result<String, String>) -> impl <%= Module %>Port {
+        new_<%= moduleIdent %>(Arc::new(Fake<%= Consumes %>(reply)))
+    }
+
+    #[test]
+    fn produces_a_result_from_what_the_peer_returned() {
+        let <%= moduleIdent %> = <%= moduleIdent %>_with(Ok("Hello, Ada!".to_string()));
+
+        let got = platform_kernel::block_on(<%= moduleIdent %>.handle(<%= Module %>Command {
+            subject: "Ada".to_string(),
+        }));
+
+        assert_eq!(
+            got,
+            Ok(<%= Module %>Result {
+                detail: "Hello, Ada!".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_an_empty_subject_without_asking_the_peer() {
+        let <%= moduleIdent %> = <%= moduleIdent %>_with(Err("should not be asked".to_string()));
+
+        let got = platform_kernel::block_on(<%= moduleIdent %>.handle(<%= Module %>Command {
+            subject: "   ".to_string(),
+        }));
+
+        assert_eq!(got, Err(<%= Module %>Rejected::EmptySubject));
+    }
+
+    #[test]
+    fn reports_an_unreachable_peer_in_its_own_vocabulary() {
+        let <%= moduleIdent %> = <%= moduleIdent %>_with(Err("seam down".to_string()));
+
+        let got = platform_kernel::block_on(<%= moduleIdent %>.handle(<%= Module %>Command {
+            subject: "Ada".to_string(),
+        }));
+
+        assert_eq!(
+            got,
+            Err(<%= Module %>Rejected::<%= Consumes %>Unreachable("seam down".to_string()))
+        );
+    }
+<% } else { %>
+    #[test]
+    fn produces_a_result_for_a_named_subject() {
+        let got = platform_kernel::block_on(new_<%= moduleIdent %>().handle(<%= Module %>Command {
+            subject: "Ada".to_string(),
+        }));
+
+        assert_eq!(
+            got,
+            Ok(<%= Module %>Result {
+                detail: "<%= module %>: Ada".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_an_empty_subject() {
+        let got = platform_kernel::block_on(new_<%= moduleIdent %>().handle(<%= Module %>Command {
+            subject: "   ".to_string(),
+        }));
+
+        assert_eq!(got, Err(<%= Module %>Rejected::EmptySubject));
+    }
+<% } %>}

@@ -112,6 +112,34 @@ describe('keel add module front door', () => {
     const error = expectErr(await addModule('guestbook'));
     expect(error.message).toMatch(/--with-peer-context scaffolded/);
   });
+
+  describe('--consumes', () => {
+    it('rejects a context that does not exist, listing the ones that do', async () => {
+      await scaffold({ moduleLayout: 'modulith' });
+      const error = expectErr(await addModule('ordering', 'inventory'));
+      expect(error.message).toMatch(/no such bounded context/);
+      expect(error.message).toMatch(/greeting/);
+    });
+
+    it('rejects the context being added — a peer is not oneself', async () => {
+      await scaffold({ moduleLayout: 'modulith' });
+      const error = expectErr(await addModule('ordering', 'ordering'));
+      expect(error.message).toMatch(/names the context being added/);
+    });
+
+    /**
+     * The check the `seam` field on the manifest record exists for.
+     * `guestbook` is a real context and an impossible target: it is a
+     * pure consumer, publishing no user-side/service of its own, so a
+     * gateway would bind to a package that is not there.
+     */
+    it('rejects a context that publishes no seam, and names the ones that do', async () => {
+      await scaffold({ moduleLayout: 'modulith', withPeerContext: true });
+      const error = expectErr(await addModule('ordering', 'guestbook'));
+      expect(error.message).toMatch(/publishes no user-side\/service seam/);
+      expect(error.message).toMatch(/consumed here are greeting/);
+    });
+  });
 });
 
 /**

@@ -70,6 +70,7 @@
 
 import path from 'node:path';
 import type { Tag } from '../../contract/composition.js';
+import { eolOf, withEol } from '../util.js';
 import {
   type ModuleLayout,
   moduleLayoutOf,
@@ -464,6 +465,41 @@ export function addWorkspaceMembers(existing: string, dirs: readonly string[]): 
 }
 
 /**
+ * Adds `deps` to a crate manifest's `[dependencies]` table, skipping
+ * any key already declared, and returns the manifest unchanged when
+ * every key is already there.
+ *
+ * The skip is the whole point, and it is what
+ * `rust-peer-context`'s own version does not need. That adapter runs
+ * at most once per project, so an all-or-nothing marker guard is
+ * enough. `keel add module` runs as many times as the user has
+ * contexts, and every run wants `platform-kernel` in the assembly:
+ * appending it a second time is a duplicate key, which Cargo rejects
+ * outright. Merging per key means the second context adds only what
+ * the first did not.
+ *
+ * Deliberately textual rather than a TOML round-trip. The manifests
+ * this patches carry comments that explain the edges they declare —
+ * the gateway's `Cargo.toml` is three lines of code and six of
+ * reasoning — and every TOML serialiser available here would drop
+ * them.
+ */
+export function addCrateDependencies(
+  existing: string,
+  deps: readonly (readonly [string, string])[],
+): string {
+  const marker = '[dependencies]';
+  const open = existing.indexOf(marker);
+  if (open === -1) throw new Error('no [dependencies] table to extend');
+  const table = existing.slice(open + marker.length);
+  const declared = new Set([...table.matchAll(/^\s*([A-Za-z0-9_-]+)\s*=/gm)].map((m) => m[1]));
+  const missing = deps.filter(([name]) => !declared.has(name));
+  if (missing.length === 0) return existing;
+  const lines = missing.map(([name, path]) => `${name} = { path = "${path}" }`).join('\n');
+  return existing.replace(marker, `${marker}${withEol(`\n${lines}`, eolOf(existing))}`);
+}
+
+/**
  * Whether the manifest opted into the second bounded context. The
  * peer only exists under the modulith — `new-project` rejects the
  * flag otherwise — so this is a tag read, not a layout decision.
@@ -488,13 +524,56 @@ export function rustPeerCrates(layout: RustLayoutPaths): {
   readonly core: RustUnit;
   readonly gateway: RustUnit;
 } {
-  const peer = (...segments: readonly string[]): RustUnit =>
-    unitAsCrate(layout.peerCrate(PEER_MODULE, ...segments));
+  const crates = rustContextCrates(layout, PEER_MODULE, SKELETON_MODULE);
+  if (crates.gateway === null) {
+    throw new Error('rustPeerCrates: the peer context always consumes the skeleton');
+  }
+  return { contract: crates.contract, core: crates.core, gateway: crates.gateway };
+}
+
+/**
+ * The crates of any bounded context, named the same way the
+ * skeleton's are.
+ *
+ * The generalisation of {@link rustPeerCrates}, which is now its
+ * `guestbook`-consuming-`greeting` special case. `keel add module
+ * <name>` needs the same crate set for a name it learns at runtime,
+ * and a second copy taking a parameter is how the two would drift.
+ *
+ * `seam` is the one entry the peer set has no counterpart for. The
+ * `--with-peer-context` context is a pure consumer and publishes none;
+ * an added context always does, so that `keel add module <other>
+ * --consumes <name>` has something to bind to.
+ *
+ * `gateway` is meaningful only when `consumes` is given — a context
+ * that reaches nobody declares no edge — so it is null otherwise
+ * rather than pointing at a crate that will not exist.
+ */
+export function rustContextCrates(
+  layout: RustLayoutPaths,
+  context: string,
+  consumes: string | null,
+): {
+  readonly contract: RustUnit;
+  readonly core: RustUnit;
+  readonly seam: RustUnit;
+  readonly gateway: RustUnit | null;
+} {
+  const crate = (...segments: readonly string[]): RustUnit =>
+    unitAsCrate(layout.peerCrate(context, ...segments));
   return {
-    contract: peer('domain', 'contract'),
-    core: peer('domain', 'core'),
-    gateway: peer('infra', `${SKELETON_MODULE}-gateway`),
+    contract: crate('domain', 'contract'),
+    core: crate('domain', 'core'),
+    seam: crate('user-side', 'service'),
+    gateway: consumes === null ? null : crate('infra', `${consumes}-gateway`),
   };
+}
+
+/** The seam crate of an existing context, the thing a gateway binds to. */
+export function rustSeamCrate(layout: RustLayoutPaths, context: string): RustUnit {
+  return context === SKELETON_MODULE
+    ? layout.service
+    : unitAsCrate(layout.peerCrate(context, 'user-side', 'service'));
 }
 
 /**

@@ -1,0 +1,15 @@
+[package]
+name = "<%= module %>-infra-<%= consumes %>-gateway"
+version.workspace = true
+edition.workspace = true
+
+# The whole point of this crate is the edge it declares. It reaches
+# the <%= consumes %> context through that context's seam crate and
+# nothing else: there is deliberately no `<%= consumes %>-domain-contract`
+# entry here, and adding one would give this gateway the peer's entire
+# domain. `cargo tree -p <%= module %>-infra-<%= consumes %>-gateway` is
+# the one-command review.
+[dependencies]
+platform-kernel = { path = "../../../../platform/kernel" }
+<%= module %>-domain-contract = { path = "../../domain/contract" }
+<%= consumes %>-user-side-service = { path = "../../../<%= consumes %>/user-side/service" }
