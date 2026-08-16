@@ -85,7 +85,8 @@ rather than a rewrite. Add `--with-peer-context` and you get a second
 context to prove it: it reaches the first only through that seam, and
 the build graph is what stops it reaching further. Every stack that
 offers the modulith now offers the peer context — see each family's
-page for what its own wall is made of, because they differ.
+page for what its own wall is made of, because they differ — and
+`keel add module <name>` adds the third and the fourth.
 → [Module layout](docs/stacks/jvm.md#module-layout)
 
 **Prerequisites:** JDK 25, `gradle` _or_ `mvn` on PATH, `git`.
@@ -219,8 +220,21 @@ keel add observability        # health probes, correlation ids, OpenTelemetry
 keel add containerization     # a thin Dockerfile beside the deployment unit
 keel add dev-env              # dev/compose.yaml for local infra
 
+keel add module ordering                     # a second bounded context, by name
+keel add module shipping --consumes ordering # …and the gateway to its seam
+
 cd my-frontend && keel link ../my-backend   # then `keel add gateway` on both sides
 ```
+
+A **vertical** names a capability the project either has or lacks; a
+**bounded context** is a thing with a name, so it gets a command of
+its own. `keel add module` emits the context's shell — contract face,
+one placeholder use case, and a `user-side/service` seam of its own —
+in whatever layout your stack already uses. `--consumes <other>` adds
+the driven port and the gateway over that context's seam, and is
+opt-in because a context that consumes nothing is a perfectly good
+context. Needs `--module-layout=modulith`; the flat layout has no seam
+for a second context to meet the first at, and keel says so.
 
 `keel …` is shorthand for the installed binary — without an install,
 prefix with npx: `npx @rgoussu.dev/keel add observability`.

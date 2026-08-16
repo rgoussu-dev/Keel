@@ -70,6 +70,65 @@ Adding an already-installed vertical errors with
 `keel.vertical-already-installed`; a re-apply/update path is on the
 [roadmap](roadmap.md).
 
+## `keel add module`
+
+Add a **named bounded context** to an existing modulith project.
+
+```sh
+keel add module <name> [--consumes <other>] [options]
+```
+
+A bounded context is not a vertical, which is why it has a command of
+its own: `keel add persistence` names a capability the project either
+has or lacks, while a context is a thing with a _name_, and
+`keel add bounded-context` would have nowhere to put one.
+
+What lands is a structural shell in the layout your stack already
+uses — a contract face, a core with one handler, and a
+`user-side/service` seam of its own:
+
+```sh
+keel add module ordering                     # a context that consumes nothing
+keel add module ordering --consumes greeting # …and a gateway to greeting's seam
+keel add module shipping --consumes ordering # contexts compose: any context with a seam
+```
+
+**The use case inside is a placeholder and says so.** keel knows the
+context's name and nothing about its purpose, so it emits
+`<Name>Command` / `<Name>Result` with a doc comment telling you that
+renaming it is the first thing to do. What is not a placeholder is
+everything around it: the driving port, the rejection this context
+owns, the seam's own vocabulary, and the fact that no file in the new
+context names another context except through that context's seam.
+
+**`--consumes <other>` is opt-in, and its argument must publish a
+seam.** Every context added this way does, from the start — that is
+what makes `keel add module shipping --consumes ordering` work without
+you building the seam by hand first. The one context that does not is
+the one `keel new --with-peer-context` scaffolds: it is a pure
+consumer, so it is a legal name and an impossible target, and keel
+says so rather than emitting a gateway to nothing.
+
+| Option           | Meaning                                                  |
+| ---------------- | -------------------------------------------------------- |
+| `--consumes <c>` | Also emit a driven port and a gateway over `<c>`'s seam. |
+| `-y, --yes`      | Non-interactive — defaults for every question.           |
+| `--dry-run`      | Print the plan; write nothing.                           |
+
+The front door refuses, with a reason, when: the name is not a
+lowercase word `[a-z][a-z0-9]*` or is a keyword in one of the target
+languages; there is no keel project here; the project uses the flat
+`basic` layout, which has no seam for a second context to meet the
+first at; this is a composite product root rather than one service;
+the name is already taken; `--consumes` names something that does not
+exist, is the context being added, or publishes no seam; or the
+project's stack has no bounded-context adapter, in which case the
+command would otherwise scaffold nothing at all and report success.
+
+Supported on every stack that ships a modulith: the twelve JVM stacks,
+`go-cli`/`go-http`, `rust-cli`/`rust-http`, `ts-http` and
+`web-components`.
+
 ## `keel link`
 
 Record a sibling keel project as a **peer** (both ways), so

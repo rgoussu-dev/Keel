@@ -1145,15 +1145,35 @@ or harder by this one.
 
 ## Backlog (unordered)
 
-- **A second bounded context in the modulith skeleton** — the
-  walking skeleton emits one module plus its `user-side/service`
-  seam. A `keel add module <name>` command emitting the second
-  context, its peer port and the gateway wiring would make the seam
-  demonstrable rather than merely present. Best done after **I**, so
-  it can be written once against five layout resolvers rather than
-  once per stack. Note it is also the only way the walls get
-  _exercised_: a one-context skeleton cannot violate an
-  inter-context rule, so today nothing proves the rules fire.
+- ~~**A second bounded context in the modulith skeleton**~~ —
+  **shipped** as `keel add module <name>`, across all five stack
+  families and both JVM build systems.
+
+  The entry's stated justification no longer holds and is worth
+  correcting rather than ticking. It read "would make the seam
+  demonstrable rather than merely present" — but **I.6** did that,
+  with `--with-peer-context` on every family: a second context that
+  reaches the first only through its seam, and an e2e per family
+  proving the wall fires. By the time this item was built, the seam
+  was demonstrated.
+
+  What this item is _for_ is the other half: that a user can **add** a
+  context, not merely observe the one keel ships. `--with-peer-context`
+  is a flag on `keel new` and therefore fires once, at scaffold time,
+  on a name keel chose. Growing a modulith afterwards — the thing a
+  modulith exists to make cheap — needed a command that takes a name.
+
+  It also bought a class of proof the flag could not. `--with-peer-context`
+  produces exactly two contexts, where the consumed one is always the
+  skeleton: a context whose core takes no dependencies and whose seam
+  therefore self-assembles. Three contexts is where that stops being
+  true, and it is where the emitters' real branches live — an added
+  context's seam is built by that context's own wiring, Go's
+  `package service` alias collision fires, and TypeScript's
+  `peers-meet-at-the-service-seam` backreference is asked to tell two
+  _added_ contexts apart for the first time. Each family's
+  `add-module-*` e2e builds three.
+
 - **Persistence: more engines and migration tools** — the vertical
   covers every HTTP stack (Quarkus/Spring/Micronaut in Java and
   Kotlin, Go, Rust, TS); what remains is a second RDBMS via the

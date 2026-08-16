@@ -182,6 +182,27 @@ Requires `--module-layout=modulith`; the flat layout is a single
 hexagon with no seam to cross, and keel says so rather than silently
 scaffolding one context.
 
+**And a third, and a fourth.** `--with-peer-context` is a flag on
+`keel new`, so it grows the project exactly once. Growing it
+afterwards is [`keel add module <name>`](../cli.md#keel-add-module),
+which emits a context of the same shape **plus a
+`user-side/service` seam of its own** — the one thing the peer context
+deliberately lacks, because nothing in the emitted project consumes
+_it_. That seam is what lets contexts compose: `--consumes <other>`
+accepts any context that publishes one, so the second command is
+`keel add module shipping --consumes ordering`, reaching a context
+that did not exist when keel was written.
+
+The seam is spelled like `greeting`'s with the new context's name in
+it, and it is reached through that context's own wiring module in the
+assembly — `greeting`'s seam is built over a handler that takes no
+dependencies, while an added context's may hold a gateway to a third.
+
+Both walls above apply unchanged between two _added_ contexts, and the
+second one is worth restating: `from '@scope/ordering'` inside
+`shipping`'s gateway typechecks perfectly and lints red. The lint is
+the only thing holding it, here as everywhere on this stack.
+
 ## Verify it runs
 
 ```sh

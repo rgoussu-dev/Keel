@@ -198,6 +198,33 @@ and [`observability`](../verticals/observability.md) by default
 (hand-rolled `/health/live` + `/health/ready`, correlation-id
 middleware, OpenTelemetry over OTLP).
 
+**And a third, and a fourth.** `--with-peer-context` is a flag on
+`keel new`, so it grows the project exactly once. Growing it
+afterwards is [`keel add module <name>`](../cli.md#keel-add-module),
+which emits a context of the same shape **plus a
+`user-side/service` seam of its own** — the one thing the peer context
+deliberately lacks, because nothing in the emitted project consumes
+_it_. That seam is what lets contexts compose: `--consumes <other>`
+accepts any context that publishes one, so the second command is
+`keel add module shipping --consumes ordering`, reaching a context
+that did not exist when keel was written.
+
+The seam is spelled like `greeting`'s with the new context's name in
+it, and the consumer reaches it through that context's own
+`wire<Name>Service()` in the same `package main` — `greeting`'s facade
+constructor takes no arguments, so its seam can be built inline, while
+an added context's may hold a gateway to a third.
+
+**The alias hazard is real at two contexts, not three.** Every context
+spells its seam `package service`, so a file naming two of them has
+two `service` identifiers and does not compile — and an added context
+publishes a seam, so its own wiring file names two the moment
+`--consumes` is given. keel aliases **every** seam import as
+`<context>service` rather than only the one that collides: aliasing on
+collision is a rule someone has to apply correctly each time, and it
+reads better besides, since `greetingservice.Greeting` says whose
+value crossed.
+
 ## Verify it runs
 
 ```sh
