@@ -126,6 +126,19 @@ describe('goLayout', () => {
     expect(goLayout([MODULITH_LAYOUT_TAG], MODULE).main('http')).toBe('cmd/http/main.go');
     expect(goLayout([BASIC_LAYOUT_TAG], MODULE).main('http')).toBe('cmd/http/main.go');
   });
+
+  // The seam sits beside the wall, never behind it: a peer that
+  // cannot import it is a peer that cannot use this context at all.
+  it('puts the peer seam outside the context internal/, and only under the modulith', () => {
+    const modulith = goLayout([MODULITH_LAYOUT_TAG], MODULE);
+    expect(modulith.service).toBe('internal/modules/greeting/userside/service');
+    expect(modulith.servicePkg).toBe('service');
+    expect(modulith.service?.includes('/internal/')).toBe(false);
+
+    const flat = goLayout([BASIC_LAYOUT_TAG], MODULE);
+    expect(flat.service).toBeNull();
+    expect(flat.servicePkg).toBeNull();
+  });
 });
 
 describe('the Go modulith tree', () => {
@@ -137,6 +150,8 @@ describe('the Go modulith tree', () => {
       'internal/modules/greeting/internal/domain/greet_test.go',
       'internal/modules/greeting/internal/domain/internal/greet/greet.go',
       'internal/modules/greeting/userside/cli/app.go',
+      'internal/modules/greeting/userside/service/service.go',
+      'internal/modules/greeting/userside/service/service_test.go',
       'internal/platform/clock/clock.go',
       'internal/platform/clockfake/clock.go',
       'cmd/cli/main.go',
@@ -160,6 +175,28 @@ describe('the Go modulith tree', () => {
     expect(facade).toContain('func NewGreeter() domain.Greeter');
     expect(facade).not.toMatch(/^type \w+ = /m);
     expect(facade).not.toMatch(/^var \w+ = domain\./m);
+  });
+
+  /**
+   * The seam is the peer-facing aperture, so what it must not do is
+   * hand a peer a greeting type. Its exported signatures carry its
+   * own `Greeting` and `Unavailable`; `domain.` appears only on
+   * `New`'s parameter, which is why only the assembly can call it.
+   */
+  it('emits a seam whose exported surface is its own vocabulary', async () => {
+    const tree = await install(
+      [walkingSkeletonVertical],
+      tags('arch.server-http', MODULITH_LAYOUT_TAG),
+    );
+    const seam = read(tree, 'internal/modules/greeting/userside/service/service.go');
+
+    expect(seam).toContain('package service');
+    expect(seam).toContain('GreetingFor(name string) (Greeting, error)');
+    expect(seam).toContain('func New(greeter domain.Greeter) GreetingService');
+    // Every other exported declaration is this package's own type.
+    const exported = [...seam.matchAll(/^type ([A-Z]\w*) (?:struct|interface)/gm)].map((m) => m[1]);
+    expect(exported.sort()).toEqual(['Greeting', 'GreetingService', 'Unavailable']);
+    expect(seam).not.toMatch(/^type \w+ = /m);
   });
 
   it('derives every import from the module path and the layout', async () => {

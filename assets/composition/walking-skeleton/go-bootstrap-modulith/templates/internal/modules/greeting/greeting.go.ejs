@@ -1,5 +1,8 @@
-// Package greeting is the bounded context's facade — the one package
-// a deployment unit or a peer context imports to reach it.
+// Package greeting is the bounded context's facade — the package a
+// deployment unit imports to assemble it. A *peer* context imports
+// userside/service instead: this package names nothing a foreign
+// package could write down, which is deliberate and is exactly why
+// the seam exists.
 //
 // It exports factories and NOTHING else. There is deliberately no
 // `type Greeter = domain.Greeter` and no `var ErrEmptyName =

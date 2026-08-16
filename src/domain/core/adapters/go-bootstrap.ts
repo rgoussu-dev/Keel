@@ -70,6 +70,9 @@ export const goBootstrapAdapter: Adapter = {
       projectName,
       ...goTemplateVars(layout),
       domainCoreImport: layout.importPath(layout.domainCore),
+      // Empty under `basic`, whose tree never references it: there is
+      // one hexagon there and so no peer seam to import.
+      serviceImport: layout.service === null ? '' : layout.importPath(layout.service),
     });
     const action: DeferredAction = {
       id: GO_BOOTSTRAP_ID,

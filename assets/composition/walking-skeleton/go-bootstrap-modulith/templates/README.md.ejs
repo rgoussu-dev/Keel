@@ -26,6 +26,8 @@ internal/
           internal/     — the compiler-hidden core
       userside/         — primary adapters: transport → command →
                           port → transport; zero business logic
+        service/        — THE PEER SEAM: what another context may
+                          import, in types it may write down
       infra/            — secondary adapters, one per technology
 ```
 
@@ -44,11 +46,36 @@ Three placements are load-bearing, and Go's compiler enforces each:
   comment, and it costs the assembly nothing: `:=` infers the type
   it may not write.
 
-A second context is a sibling directory under `internal/modules/`.
-It reaches this one through `greeting.go` and through nothing else —
-and note that two contexts can declare the same package name
+A second context is a sibling directory under `internal/modules/`,
+and it reaches this one through `userside/service` — the peer seam.
+
+That seam is here for a different reason than the JVM's or Rust's.
+There it _narrows_ what a peer may reach. Go has no such lever:
+`internal/` is scoped to the project root, so every package under it
+may import every other and the seam narrows nothing.
+
+What Go enforces is where the domain sits. It is behind
+`modules/greeting/internal/`, so a peer importing it fails to build
+(`use of internal package … not allowed`) — greeting's commands,
+ports and error values are unreachable from any other context, as a
+compile error rather than a review comment. A peer can still reach
+the facade, and cannot name one thing it returns.
+
+That last part is worth stating precisely, because the stronger
+version is false: unnameability does not stop a peer calling through.
+Go's assignability is structural for unnamed types, so a foreign
+package can write `greeting.NewGreeter().Greet(struct{ Name string }
+{…})` and it compiles. What it gets is coupling nothing declares, to
+a shape that breaks the first time this context adds a field — which
+is the argument for using the seam, not a hole in it. `userside/
+service` declares the types a peer may write down, and they are this
+context's own: what crosses is a `service.Greeting` and a
+`service.Unavailable`, never a domain type or a domain error.
+
+Note that two contexts can declare the same package name
 (`modules/ordering` and `modules/billing/gateway/ordering` are both
-`package ordering`), so a file importing both must alias one.
+`package ordering`, and every context's seam is `package service`),
+so a file importing both must alias one.
 
 Cross-cutting concerns (logging, metrics, tx) wrap the driving ports
 as decorator functions applied at the assembly point.
