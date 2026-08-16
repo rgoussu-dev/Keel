@@ -1,0 +1,37 @@
+package <%= basePackage %>.<%= module %>.infra.<%= consumes %>gateway
+
+import <%= basePackage %>.<%= consumes %>.userside.service.<%= Consumes %>Service
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client
+
+/**
+ * The one class in <%= module %> that names another bounded context,
+ * and the only legal edge between them: it implements a port
+ * *<%= module %>* declared, over the in-process API *<%= consumes %>*
+ * publishes.
+ *
+ * What it cannot do is reach past that API. `<%= consumes %>`'s domain
+ * is an implementation detail of `<%= consumes %>-user-side-service` —
+ * declared `implementation` under Gradle, `optional` under Maven — so
+ * `<%= Consumes %>Command` is not on this module's compile classpath
+ * and an import of it does not compile. The seam is held by the build,
+ * not by review.
+ *
+ * Carving <%= consumes %> out into its own service replaces this class
+ * with an HTTP twin built on that context's published API, and rebinds
+ * one line in the assembly. Nothing above this class changes.
+ *
+ * The peer arrives as a function rather than an instance, and that is
+ * load-bearing rather than fussy. The mediator is built by
+ * materialising every handler, so a handler whose port reaches back
+ * through the dispatch seam — as this one does — closes a construction
+ * cycle: mediator needs the handler, the handler needs this gateway,
+ * this gateway needs the peer's service, and that service needs the
+ * mediator. Resolving the peer per call instead of per construction
+ * breaks it. It is also what a remote gateway would do anyway, which
+ * is the tell that it is the honest shape.
+ */
+class <%= Consumes %>Gateway(private val <%= consumes %>: () -> <%= Consumes %>Service) :
+    <%= Consumes %>Client {
+
+    override fun askFor(subject: String): String = <%= consumes %>().<%= consumes %>For(subject)
+}

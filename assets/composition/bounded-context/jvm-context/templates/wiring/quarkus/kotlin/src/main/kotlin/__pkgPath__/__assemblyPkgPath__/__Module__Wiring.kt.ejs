@@ -1,0 +1,61 @@
+package <%= basePackage %>.<%= assemblyPkg %>
+
+import jakarta.enterprise.context.ApplicationScoped
+<% if (hasConsumes) { %>import jakarta.enterprise.inject.Instance
+<% } %>import jakarta.enterprise.inject.Produces
+import jakarta.inject.Singleton
+
+<% if (hasConsumes) { %>import <%= basePackage %>.<%= consumes %>.userside.service.<%= Consumes %>Service
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client
+import <%= basePackage %>.<%= module %>.infra.<%= consumes %>gateway.<%= Consumes %>Gateway
+<% } %>import <%= basePackage %>.<%= module %>.userside.service.<%= Module %>Service
+import <%= basePackage %>.<%= module %>.userside.service.<%= Module %>ServiceAdapter
+import <%= basePackage %>.platform.kernel.Mediator
+
+/**
+ * Everything this assembly has to be told about the <%= module %>
+ * context, in one class of its own.
+ *
+ * Deliberately not more producer methods on the shared composition
+ * root. Two contexts reaching the same third one each declare a client
+ * port and a gateway named after it — different types, identical
+ * simple names — and one import block cannot name both. A class per
+ * context has its own imports, and arrives as a new file rather than
+ * as a patch to a file every other context is also patching.
+ */
+@ApplicationScoped
+class <%= Module %>Wiring {
+
+    /**
+     * The <%= module %> module's in-process API, offered to peer
+     * modules. Emitted rather than left for you to write, because this
+     * is what `keel add module <other> --consumes <%= module %>` binds
+     * to: without it the seam module compiles and nothing can reach
+     * it.
+     */
+    @Produces
+    @Singleton
+    fun <%= module %>Service(mediator: Mediator): <%= Module %>Service =
+        <%= Module %>ServiceAdapter(mediator)
+<% if (hasConsumes) { %>
+    /**
+     * Binds <%= module %>'s [<%= Consumes %>Client] port to the
+     * <%= consumes %> module. This is the carve-out seam: swapping
+     * [<%= Consumes %>Gateway] for an HTTP twin built on
+     * <%= consumes %>'s published API moves that module into its own
+     * service, and nothing in <%= module %> changes.
+     *
+     * The peer is injected as [Instance] and handed over as a
+     * supplier, not resolved here. The mediator is built by
+     * materialising every handler, so resolving the <%= consumes %>
+     * service at this point would close a construction cycle —
+     * mediator → <%= Module %>Handler → <%= Consumes %>Client →
+     * <%= Consumes %>Service → mediator — and the container would
+     * recurse until the stack ran out. Deferring the lookup to the
+     * first call breaks it.
+     */
+    @Produces
+    @Singleton
+    fun <%= module %><%= Consumes %>Client(<%= consumes %>: Instance<<%= Consumes %>Service>): <%= Consumes %>Client =
+        <%= Consumes %>Gateway { <%= consumes %>.get() }
+<% } %>}

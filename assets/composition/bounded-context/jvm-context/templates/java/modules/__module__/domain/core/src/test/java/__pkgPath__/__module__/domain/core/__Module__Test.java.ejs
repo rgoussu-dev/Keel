@@ -1,0 +1,74 @@
+package <%= basePackage %>.<%= module %>.domain.core;
+
+import org.junit.jupiter.api.Test;
+
+<% if (hasConsumes) { %>import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client;
+<% } %>import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Command;
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Rejected;
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Module %>Result;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class <%= Module %>Test {
+
+<% if (hasConsumes) { %>    @Test
+    void producesAResultFromWhatThePeerAnswered() {
+        <%= Module %>Handler handler = new <%= Module %>Handler(new Fixed<%= Consumes %>("Hello, Ada!"));
+
+        <%= Module %>Result result = handler.handle(new <%= Module %>Command("Ada"));
+
+        assertEquals(new <%= Module %>Result("Hello, Ada!"), result);
+    }
+
+    @Test
+    void rejectsABlankSubjectWithoutAskingThePeer() {
+        Recording<%= Consumes %> <%= consumes %> = new Recording<%= Consumes %>();
+
+        assertThrows(
+                <%= Module %>Rejected.class,
+                () -> new <%= Module %>Handler(<%= consumes %>).handle(new <%= Module %>Command("  ")));
+
+        assertEquals(null, <%= consumes %>.asked);
+    }
+
+    /**
+     * A fake, not a mock — the house rule. The domain test never sees
+     * the <%= consumes %> module: it stands the port up itself.
+     */
+    private record Fixed<%= Consumes %>(String answer) implements <%= Consumes %>Client {
+
+        @Override
+        public String askFor(String subject) {
+            return answer;
+        }
+    }
+
+    /** The same fake, recording what it was asked. */
+    private static final class Recording<%= Consumes %> implements <%= Consumes %>Client {
+
+        private String asked;
+
+        @Override
+        public String askFor(String subject) {
+            asked = subject;
+            return "unused";
+        }
+    }
+<% } else { %>    @Test
+    void producesAResultForANamedSubject() {
+        <%= Module %>Result result = new <%= Module %>Handler().handle(new <%= Module %>Command("Ada"));
+
+        assertEquals(new <%= Module %>Result("<%= module %>: Ada"), result);
+    }
+
+    @Test
+    void rejectsABlankSubject() {
+        <%= Module %>Rejected rejected =
+                assertThrows(
+                        <%= Module %>Rejected.class,
+                        () -> new <%= Module %>Handler().handle(new <%= Module %>Command("  ")));
+
+        assertEquals("subject must not be empty", rejected.getMessage());
+    }
+<% } %>}

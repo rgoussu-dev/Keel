@@ -1,0 +1,9 @@
+package <%= basePackage %>.<%= module %>.domain.contract;
+
+/** Why the <%= module %> context refused a {@link <%= Module %>Command}. */
+public final class <%= Module %>Rejected extends RuntimeException {
+
+    public <%= Module %>Rejected(String message) {
+        super(message);
+    }
+}

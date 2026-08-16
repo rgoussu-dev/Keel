@@ -1,0 +1,19 @@
+plugins {
+    `java-library`
+}
+
+dependencies {
+    // The port this adapter implements is <%= module %>'s own.
+    api(project(":modules:<%= module %>:domain:contract"))
+
+    // The peer's in-process API — the only inter-context edge this
+    // module adds to the build graph. `implementation` because it is
+    // this adapter's business, not its callers'. Note what is absent
+    // and cannot be added: <%= consumes %>'s domain. That module
+    // declares its own contract non-transitively, so
+    // <%= consumes %>.domain.contract is not on this compile classpath
+    // and an import of it fails to compile.
+    implementation(project(":modules:<%= consumes %>:user-side:service"))
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+}

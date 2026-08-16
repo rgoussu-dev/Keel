@@ -1,0 +1,24 @@
+package <%= basePackage %>.<%= module %>.domain.contract;
+
+/**
+ * The driven port through which <%= module %> reaches the
+ * <%= consumes %> context — declared <strong>here</strong>, in
+ * <%= module %>'s own words, because the consumer owns the port.
+ *
+ * <p>Note what this signature does not mention: the <%= consumes %>
+ * module, its commands, its DTOs, or the fact that a peer module
+ * answers it at all. <%= Module %>'s domain has no opinion about where
+ * the answer comes from, which is exactly what lets the implementation
+ * behind it change from an in-process call to an HTTP one without the
+ * domain noticing.
+ *
+ * <p>It is implemented out in {@code infra/<%= consumes %>-gateway/}.
+ * That direction is the whole rule: the dependency points from
+ * infrastructure inwards, so this package never names <%= consumes %>
+ * and never could.
+ */
+public interface <%= Consumes %>Client {
+
+    /** Asks <%= consumes %> about {@code subject}. */
+    String askFor(String subject);
+}

@@ -1,0 +1,41 @@
+package <%= basePackage %>.<%= module %>.infra.<%= consumes %>gateway
+
+import org.junit.jupiter.api.Test
+
+import <%= basePackage %>.<%= consumes %>.userside.service.<%= Consumes %>Service
+
+import org.junit.jupiter.api.Assertions.assertEquals
+
+class <%= Consumes %>GatewayTest {
+
+    @Test
+    fun `hands back what the peer answered`() {
+        val gateway = <%= Consumes %>Gateway { Fixed<%= Consumes %> }
+
+        assertEquals("Hello, Ada!", gateway.askFor("Ada"))
+    }
+
+    @Test
+    fun `asks the peer for the subject it was given`() {
+        val <%= consumes %> = Recording<%= Consumes %>()
+
+        <%= Consumes %>Gateway { <%= consumes %> }.askFor("Ada")
+
+        assertEquals("Ada", <%= consumes %>.asked)
+    }
+
+    /** A fake, not a mock — the house rule. */
+    private object Fixed<%= Consumes %> : <%= Consumes %>Service {
+        override fun <%= consumes %>For(subject: String): String = "Hello, $subject!"
+    }
+
+    /** The same fake, recording what it was asked. */
+    private class Recording<%= Consumes %> : <%= Consumes %>Service {
+        var asked: String? = null
+
+        override fun <%= consumes %>For(subject: String): String {
+            asked = subject
+            return "Hello, $subject!"
+        }
+    }
+}

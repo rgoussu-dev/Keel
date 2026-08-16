@@ -1,0 +1,48 @@
+package <%= basePackage %>.<%= module %>.infra.<%= consumes %>gateway;
+
+import java.util.function.Supplier;
+
+import <%= basePackage %>.<%= consumes %>.userside.service.<%= Consumes %>Service;
+import <%= basePackage %>.<%= module %>.domain.contract.<%= Consumes %>Client;
+
+/**
+ * The one class in <%= module %> that names another bounded context,
+ * and the only legal edge between them: it implements a port
+ * <em><%= module %></em> declared, over the in-process API
+ * <em><%= consumes %></em> publishes.
+ *
+ * <p>What it cannot do is reach past that API.
+ * {@code <%= consumes %>}'s domain is an implementation detail of
+ * {@code <%= consumes %>-user-side-service} — declared
+ * {@code implementation} under Gradle, {@code optional} under Maven —
+ * so {@code <%= Consumes %>Command} is not on this module's compile
+ * classpath and an import of it does not compile. The seam is held by
+ * the build, not by review.
+ *
+ * <p>Carving <%= consumes %> out into its own service replaces this
+ * class with an HTTP twin built on that context's published API, and
+ * rebinds one line in the assembly. Nothing above this class changes.
+ *
+ * <p>The peer arrives as a {@link Supplier} rather than an instance,
+ * and that is load-bearing rather than fussy. The mediator is built by
+ * materialising every handler, so a handler whose port reaches back
+ * through the dispatch seam — as this one does — closes a construction
+ * cycle: mediator needs the handler, the handler needs this gateway,
+ * this gateway needs the peer's service, and that service needs the
+ * mediator. Resolving the peer per call instead of per construction
+ * breaks it. It is also what a remote gateway would do anyway, which
+ * is the tell that it is the honest shape.
+ */
+public final class <%= Consumes %>Gateway implements <%= Consumes %>Client {
+
+    private final Supplier<<%= Consumes %>Service> <%= consumes %>;
+
+    public <%= Consumes %>Gateway(Supplier<<%= Consumes %>Service> <%= consumes %>) {
+        this.<%= consumes %> = <%= consumes %>;
+    }
+
+    @Override
+    public String askFor(String subject) {
+        return <%= consumes %>.get().<%= consumes %>For(subject);
+    }
+}
