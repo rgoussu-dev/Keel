@@ -764,16 +764,73 @@ Three things worth recording:
   max-of-halves reading suggests. The missing figure is the
   uncontended runner number, and the workflow comment says so.
 
-### I.6 — the peer context beyond the JVM and Rust (M)
+### I.6 — the peer context beyond the JVM and Rust (M) ✅
 
-`--with-peer-context` now exists on the twelve JVM stacks and on the
-two Rust ones. Go, `ts-http` and `web-components` shipped their
-modulith without it, which leaves their seam asserted rather than
-exercised — the same hole I.4 closed for Rust. Worth closing for the
-same reason, and it is the natural predecessor of `keel add module
-<name>` rather than a competitor to it: a second context emitted by
-flag is most of the machinery a second context emitted by command
-would need.
+`--with-peer-context` existed on the twelve JVM stacks and on the two
+Rust ones. Go, `ts-http` and `web-components` shipped their modulith
+without it, which left their seam asserted rather than exercised — the
+same hole I.4 closed for Rust. It is also the natural predecessor of
+`keel add module <name>` rather than a competitor to it: a second
+context emitted by flag is most of the machinery a second context
+emitted by command would need.
+
+**Landed, and four things are worth recording.**
+
+**A silent no-op went first.** `--with-peer-context` on a stack with
+no peer-context adapter was accepted, emitted nothing, and exited 0 —
+verified against `main`, not inferred. The resolver could not catch
+it: a peer-context adapter declares `covers: []`, so no dimension goes
+uncovered and the hard-fail that catches "no adapter for this stack"
+everywhere else structurally cannot fire. The gate is derived from the
+adapter set rather than from a list of stack ids, so a family gaining
+its adapter opens the front door by itself.
+
+**Go needed a seam before it could have a peer, and it got its own.**
+Go had no `user-side/service` at all: its facade returns
+`domain.Greeter`, a type no consumer can name, so a peer could not
+even _call_ it. `internal/modules/<ctx>/userside/service` now declares
+the types a peer may write down. The docs state Go's wall rather than
+copying Rust's prose — `internal/` is scoped to the project root, so
+the seam narrows nothing; what Go enforces is _placement_, and the
+peer's gateway cannot reach greeting's domain at all. On that one
+point Go is **stronger** than Rust, where a domain type still flows
+across the seam by inference.
+
+One claim was checked and found false, so keel declines to make it:
+unnameability does not stop a peer calling through. Verified on
+go1.24 — assignability is structural for unnamed types, so
+`greeting.NewGreeter().Greet(struct{ Name string }{…})` compiles from
+a foreign context with both names undefined there. It buys coupling
+nothing declares, to a shape that breaks on the first added field,
+which is an argument for the seam rather than a hole in it.
+
+**On both TypeScript stacks the peer wall is a lint, and the suites
+say so out loud.** The `exports` map holds depth (`TS2307`); it cannot
+hold the peer rule, because greeting's facade legitimately publishes
+its contract face. So the gateway importing `@scope/greeting` whole
+typechecks perfectly clean and only `peers-meet-at-the-service-seam`
+objects. Each e2e asserts the clean `tsc` **beside** the red
+`depcruise`, so the asymmetry is a fact the tests re-establish rather
+than a claim in a doc that could quietly stop being true.
+
+**The e2e premise this item was scoped on was wrong, and correcting it
+shrank the work.** It was stated that these three stacks had no
+modulith e2e at all. They did — Go's had been built, vetted, served
+and wall-probed since the dial landed, `ts-http`'s ran on both package
+managers, `web-components` had a bundle inspection plus a
+headless-Chromium render. What was missing was that none of it was a
+_file_: every case rode inside its stack's `walking-skeleton-*` suite,
+invisible to `ls tests/e2e/` and flooring that file with its slowest
+case. So the grid work was a restructure into one-file-per-cell plus
+exactly two genuinely absent cells — `modulith-go-cli` (the CLI shape
+had never been built under the modulith, and it does not share an
+assembly with `go-http`) and `modulith-web-components-pnpm`. Both
+passed on the first run; no defect was waiting in either.
+
+**Commits.** `fix(cli): --with-peer-context on an uncovered stack is
+not a no-op`, `feat(walking-skeleton): the Go modulith gains a peer
+seam`, then one `feat` per stack, then `test(e2e)` for the cell
+restructure and the peer-context suites.
 
 ### Not in scope for I
 

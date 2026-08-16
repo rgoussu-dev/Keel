@@ -280,6 +280,18 @@ would ship as separate packages implementing the same port.
   single `rust` shard: measured on the shipped shape that shard is
   already floor-bound by its slowest file, so a split would buy
   attribution and no wall clock.
+- **Go, `ts-http` and `web-components` follow the same shape, and
+  their grids are small.** Go is 2 stacks × 1 build system
+  (`modulith-go-{cli,http}`); each TypeScript stack is 1 stack × 2
+  package managers (`modulith-ts-http-{npm,pnpm}`,
+  `modulith-web-components-{npm,pnpm}`). The package manager is a real
+  axis rather than a duplicate: npm's hoisting hides a missing
+  dependency declaration that pnpm's isolated store refuses. Each
+  family also carries a `modulith-<family>-peer-context` suite, which
+  is not a cell — same role as `modulith-rust-peer-context`. Their
+  `walking-skeleton-*` files keep the `basic` layout **only**; a
+  modulith case living inside one is invisible to `ls tests/e2e/` and
+  floors that file, which is exactly the state I.6 found and fixed.
 - **The modulith grid is 24 cells and one file is one cell.**
   12 stacks × 2 build systems, named
   `tests/e2e/modulith-<stack>-<build>.test.ts` so "every cell has a
