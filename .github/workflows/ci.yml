@@ -150,6 +150,8 @@ jobs:
               tests/e2e/modulith-quarkus-cli-maven.test.ts
               tests/e2e/modulith-baseline.test.ts
               tests/e2e/modulith-persistence.test.ts
+              tests/e2e/add-module-jvm.test.ts
+              tests/e2e/add-module-jvm-maven.test.ts
           - id: jvm-modulith-quarkus-kotlin
             tools: java javac gradle mvn
             files: >-
@@ -232,6 +234,7 @@ jobs:
               tests/e2e/modulith-go-http.test.ts
               tests/e2e/modulith-go-persistence.test.ts
               tests/e2e/modulith-go-peer-context.test.ts
+              tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts
           # Six files, one shard — and unlike every earlier revision of
           # this comment, that is now a choice with a cost rather than
@@ -277,6 +280,7 @@ jobs:
               tests/e2e/modulith-rust-http.test.ts
               tests/e2e/modulith-rust-peer-context.test.ts
               tests/e2e/modulith-rust-persistence.test.ts
+              tests/e2e/add-module-rust.test.ts
           # Nine files where there were three. The modulith halves of
           # the two TypeScript stacks used to ride inside their
           # `walking-skeleton-*` files; they are cells, so they are
@@ -308,6 +312,8 @@ jobs:
               tests/e2e/modulith-web-components-npm.test.ts
               tests/e2e/modulith-web-components-pnpm.test.ts
               tests/e2e/modulith-wc-peer-context.test.ts
+              tests/e2e/add-module-ts.test.ts
+              tests/e2e/add-module-wc.test.ts
               tests/e2e/fullstack.test.ts
 
     steps:

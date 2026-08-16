@@ -30,7 +30,11 @@ import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
+import {
+  addModuleCommand,
+  addVerticalCommand,
+  newProjectCommand,
+} from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 import { expectOk, installMediator } from './factory.js';
 
@@ -362,10 +366,73 @@ function gradleBuild(cwd: string, env: NodeJS.ProcessEnv, extraArgs: readonly st
 }
 
 /**
+ * Runs one build task and returns its combined output, **expecting it
+ * to fail**.
+ *
+ * The seam wall is only provable by a compiler refusing something, so
+ * a suite that asserts it needs the failure text rather than a thrown
+ * harness error. Kept beside {@link buildProject} so the two spell the
+ * build the same way — a negative case that invoked Gradle differently
+ * from the positive one would prove less than it looks.
+ */
+export function compileFails(
+  spec: JvmProjectSpec,
+  cwd: string,
+  cache: string,
+  args: readonly string[],
+): string {
+  const maven = spec.buildSystem === 'maven';
+  const r = spawnSync(
+    path.join(cwd, maven ? 'mvnw' : 'gradlew'),
+    maven ? ['-B', '-ntp', `-Dmaven.repo.local=${cache}`, ...args] : ['--no-daemon', ...args],
+    {
+      cwd,
+      env: maven ? jvmTestEnv() : { ...jvmTestEnv(), GRADLE_USER_HOME: cache },
+      encoding: 'utf8',
+    },
+  );
+  const output = `${r.stdout ?? ''}\n${r.stderr ?? ''}`;
+  if (r.status === 0) {
+    throw new Error(`expected the build to fail, but it succeeded\n${output}`);
+  }
+  return output;
+}
+
+/**
  * Absolute path of the runnable jar the build just produced, taking
  * the Maven location when the spec asked for Maven.
  */
 export function runnableJar(spec: JvmProjectSpec, cwd: string): string {
   const jarPath = spec.buildSystem === 'maven' ? (spec.runJarMaven ?? spec.runJar) : spec.runJar;
   return path.join(cwd, ...jarPath);
+}
+
+/**
+ * Adds a bounded context to the already-scaffolded project, exactly as
+ * `keel add module <name>` does.
+ *
+ * Separate from the vertical helpers because a context is not a
+ * vertical the registry can name: it is a thing with a *name*, and the
+ * command carries one. Suites call it more than once on purpose — the
+ * shape that finds bugs is three contexts, where the consumed one is
+ * no longer always the skeleton.
+ */
+export async function addModule(
+  module: string,
+  consumes: string | null,
+  cwd: string,
+): Promise<void> {
+  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  expectOk(
+    await mediator.dispatch(
+      addModuleCommand({
+        cwd,
+        module,
+        ...(consumes === null ? {} : { consumes }),
+        answers: {},
+        interactive: false,
+        dryRun: false,
+      }),
+    ),
+  );
 }

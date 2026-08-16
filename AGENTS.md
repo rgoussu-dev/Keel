@@ -301,6 +301,20 @@ would ship as separate packages implementing the same port.
   `--with-peer-context` (what proves that adapter family is additive),
   the second is a vertical layered onto a cell. A new stack or build
   system means new cells, and they go in the matrix in the same change.
+- **`add-module-*` is not a grid either.** The six
+  `tests/e2e/add-module-{rust,go,ts,wc,jvm,jvm-maven}.test.ts` suites
+  have the same status as `modulith-baseline` and
+  `modulith-rust-peer-context`: one per stack family, each scaffolding
+  **three** bounded contexts and building them. Three rather than two
+  because that is the first shape where the consumed context is not
+  always the skeleton, which is where the emitters branch. They ride
+  in their family's existing shard — `rust`, `go`, `web`, and
+  `jvm-modulith-quarkus-java` for the two JVM ones, whose stack that
+  shard already carries. `add-module-jvm-maven` is its own file for
+  the standing reason a long case is, and its own _case_ because the
+  scope holding the seam wall is spelled differently there
+  (`optional`, not `implementation`) and the peer context's Maven half
+  once shipped without it.
 - **The shard matrix names its files explicitly, and that is a hazard
   with a guard.** A suite in no shard never runs, which looks exactly
   like a suite that passed. `tests/ci-workflow.test.ts` parses the
