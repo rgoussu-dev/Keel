@@ -1,5 +1,5 @@
 /**
- * End-to-end tests for the Go walking skeleton.
+ * End-to-end tests for the Go walking skeleton, `basic` layout.
  *
  * Dispatches `keel.new-project` against a real temp directory with
  * the `go-cli` and `go-http` stacks, then verifies each generated
@@ -7,69 +7,32 @@
  * toolchain — and that the produced binaries behave: the CLI prints
  * its greeting, the HTTP unit serves `/greet` for real.
  *
- * As in the Quarkus e2e, the git side effect is faked with a no-op;
- * the `go mod tidy` deferred action runs for real since verifying
- * the module against the toolchain is part of what we promise.
- *
- * Hermeticity: a fresh `GOCACHE`/`GOPATH` is shared across the tests
- * in this file (cold-compiling the stdlib once is slow enough). The
- * CLI skeleton is stdlib-only; `go-http` pulls the OpenTelemetry
- * modules through its observability vertical, so that test needs
- * network access for `go mod tidy`.
- *
- * Skip rules mirror the Quarkus e2e:
- *   - skipped automatically when `go` is missing from PATH;
- *   - skipped on CI by default; opt in with `KEEL_RUN_E2E=1`;
- *   - opt out locally with `KEEL_SKIP_E2E=1`.
+ * The modulith cells live in their own files, one per cell, so that
+ * "every cell has a suite" is checkable from `ls` and so that the
+ * slowest one does not floor this file. The scaffolding they share is
+ * in `tests/support/go-e2e.ts`.
  */
 
 import path from 'node:path';
-import os from 'node:os';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
-import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from '../support/factory.js';
-
-const E2E_TIMEOUT_MS = 5 * 60 * 1000;
-
-/**
- * Windows will only execute binaries carrying the .exe extension, so
- * both the -o target and the spawned path need the suffix there.
- */
-const EXE = process.platform === 'win32' ? '.exe' : '';
-
-const stubActions =
-  (stubbed: ReadonlySet<string>) =>
-  (inputs: RunActionsInputs): Promise<void> => {
-    const rewritten = inputs.actions.map((a): DeferredAction => {
-      if (!stubbed.has(a.id)) return a;
-      return {
-        id: a.id,
-        description: `${a.description} [faked: no-op]`,
-        run: () => Promise.resolve(),
-      };
-    });
-    return runActions({ ...inputs, actions: rewritten });
-  };
-
-const onPath = (cmd: string): boolean => {
-  const probe = process.platform === 'win32' ? 'where' : 'which';
-  return spawnSync(probe, [cmd], { stdio: 'ignore' }).status === 0;
-};
-
-const optedIn = process.env.KEEL_RUN_E2E === '1';
-const optedOut = process.env.KEEL_SKIP_E2E === '1';
-const onCI = process.env.CI === 'true';
-const skipE2E = optedOut || !onPath('go') || (onCI && !optedIn);
+import {
+  driveGreetContract,
+  E2E_TIMEOUT_MS,
+  EXE,
+  goRun,
+  mkTempDir,
+  scaffold,
+  skipGoE2E,
+  withHttpUnit,
+} from '../support/go-e2e.js';
 
 let goHome: string;
 let cwd: string;
 
 beforeAll(async () => {
-  goHome = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-go-home-'));
+  goHome = await mkTempDir('keel-e2e-go-home-');
 });
 
 afterAll(async () => {
@@ -77,158 +40,22 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-e2e-go-'));
+  cwd = await mkTempDir('keel-e2e-go-');
 });
 
 afterEach(async () => {
   await fs.remove(cwd);
 });
 
-/**
- * The Go environment every spawned toolchain call gets: a temp cache
- * and GOPATH for hermeticity, and `-modcacherw` so the module cache
- * they fill stays writable.
- *
- * That last flag is a teardown fix, not a build one. Go writes the
- * module cache read-only, so removing the temp GOPATH afterwards fails
- * with `EACCES: permission denied, rmdir …/pkg/mod/…` for any user who
- * is not root — invisible in a root container, fatal on a CI runner,
- * and it surfaces as a suite-level failure that says nothing about
- * cleanup.
- */
-const goEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  GOCACHE: path.join(goHome, 'cache'),
-  GOPATH: path.join(goHome, 'path'),
-  GOFLAGS: '-modcacherw',
-});
-
-const generate = async (
-  stack: string,
-  projectName: string,
-  moduleLayout?: string,
-): Promise<void> => {
-  const mediator = installMediator({
-    keelVersion: '0.0.0-e2e',
-    runDeferred: stubActions(new Set(['vcs/git-init'])),
-  });
-  expectOk(
-    await mediator.dispatch(
-      newProjectCommand({
-        cwd,
-        stack,
-        answers: {
-          'walking-skeleton/go-bootstrap': {
-            modulePath: `example.com/${projectName}`,
-            projectName,
-          },
-          'vcs/git-init': { remote: '', defaultBranch: 'main' },
-        },
-        interactive: false,
-        dryRun: false,
-        ...(moduleLayout !== undefined ? { moduleLayout } : {}),
-      }),
-    ),
-  );
-  expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
-};
-
-/**
- * Layers a vertical onto the generated project, exactly as
- * `keel add <vertical>` does. The Go verticals' deferred `go mod
- * tidy` runs for real — fetching the modules the slice imports is
- * part of what the install promises.
- */
-const add = async (vertical: string): Promise<void> => {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
-  expectOk(
-    await mediator.dispatch(
-      addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
-    ),
-  );
-};
-
-/**
- * Boots the built HTTP unit on an OS-assigned port, reads the bound
- * address from its startup log, and drives the wire contract plus the
- * observability seam. Both layouts serve exactly the same surface —
- * that they do is the point of the dial.
- */
-const driveHttpUnit = async (binary: string): Promise<void> => {
-  const server = spawn(binary, [], {
-    cwd,
-    env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
-  });
-  try {
-    const port = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('server never announced its port')), 15_000);
-      const settle = (outcome: () => void): void => {
-        clearTimeout(timer);
-        outcome();
-      };
-      let buffered = '';
-      const sniff = (chunk: Buffer): void => {
-        buffered += chunk.toString();
-        const match = /listening on .*:(\d+)/.exec(buffered);
-        if (match?.[1]) {
-          const found = match[1];
-          settle(() => resolve(found));
-        }
-      };
-      server.stdout.on('data', sniff);
-      server.stderr.on('data', sniff);
-      server.on('error', (err) => settle(() => reject(err)));
-      server.on('exit', (code) =>
-        settle(() => reject(new Error(`server exited early (${code}): ${buffered}`))),
-      );
-    });
-
-    const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
-    expect(ok.status).toBe(200);
-    expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
-
-    const defaulted = await fetch(`http://127.0.0.1:${port}/greet`);
-    expect(defaulted.status).toBe(200);
-    expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
-
-    const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=`);
-    expect(rejected.status).toBe(400);
-    expect(rejected.headers.get('content-type')).toBe('application/problem+json');
-
-    // Observability seam: both probes answer, and the correlation id
-    // round-trips (echoed when supplied, minted when absent).
-    expect((await fetch(`http://127.0.0.1:${port}/health/live`)).status).toBe(200);
-    expect((await fetch(`http://127.0.0.1:${port}/health/ready`)).status).toBe(200);
-    const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
-      headers: { 'X-Correlation-Id': 'corr-e2e' },
-    });
-    expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
-    const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
-    expect(minted.headers.get('x-correlation-id')).toBeTruthy();
-  } finally {
-    server.removeAllListeners('exit');
-    server.kill();
-  }
-};
-
-const goRun = (args: readonly string[]): void => {
-  const r = spawnSync('go', args, { cwd, env: goEnv(), encoding: 'utf8' });
-  if (r.status !== 0) {
-    throw new Error(
-      `go ${args.join(' ')} failed (exit ${r.status})\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}`,
-    );
-  }
-};
-
-describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
+describe.skipIf(skipGoE2E)('walking-skeleton Go e2e', () => {
   it(
     'go-cli: generates a project that vets, tests, builds, and runs',
     async () => {
-      await generate('go-cli', 'skel');
+      await scaffold({ stack: 'go-cli', projectName: 'skel' }, cwd);
 
-      goRun(['vet', './...']);
-      goRun(['test', './...']);
-      goRun(['build', '-o', `bin/skel${EXE}`, './cmd/cli']);
+      goRun(cwd, goHome, ['vet', './...']);
+      goRun(cwd, goHome, ['test', './...']);
+      goRun(cwd, goHome, ['build', '-o', `bin/skel${EXE}`, './cmd/cli']);
 
       const run = spawnSync(path.join(cwd, 'bin', `skel${EXE}`), ['--name', 'E2E'], {
         cwd,
@@ -250,117 +77,12 @@ describe.skipIf(skipE2E)('walking-skeleton Go e2e', () => {
   it(
     'go-http: generates a project that tests, builds, and serves /greet',
     async () => {
-      await generate('go-http', 'skel');
+      await scaffold({ stack: 'go-http', projectName: 'skel' }, cwd);
 
-      goRun(['test', './...']);
-      goRun(['build', '-o', `bin/skel-http${EXE}`, './cmd/http']);
+      goRun(cwd, goHome, ['test', './...']);
+      goRun(cwd, goHome, ['build', '-o', `bin/skel-http${EXE}`, './cmd/http']);
 
-      await driveHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`));
-    },
-    E2E_TIMEOUT_MS,
-  );
-});
-
-/**
- * The modulith layout, end to end.
- *
- * Two things need a real toolchain here and nothing else can supply
- * them. The first is that the carved tree still compiles, vets and
- * serves the same wire contract — the dial's whole promise is that
- * the layout is the only thing that changed.
- *
- * The second is that the walls are walls. A one-context skeleton
- * cannot violate an inter-context rule on its own, so this drops two
- * probe files into `cmd/` and requires the compiler to reject both:
- * reaching into the context's `internal/` and naming what the facade
- * returns. Without them the layout's central claim — that a peer must
- * come through the facade — would be asserted by prose alone.
- */
-describe.skipIf(skipE2E)('walking-skeleton Go modulith e2e', () => {
-  it(
-    'go-http --module-layout=modulith: builds, serves /greet, and holds its walls',
-    async () => {
-      await generate('go-http', 'skel', 'modulith');
-
-      goRun(['vet', './...']);
-      goRun(['test', './...']);
-      goRun(['build', '-o', `bin/skel-http${EXE}`, './cmd/http']);
-
-      // The context's core is unreachable from the assembly.
-      const probe = path.join(cwd, 'cmd', 'http', 'probe.go');
-      await fs.writeFile(
-        probe,
-        'package main\n\nimport "example.com/skel/internal/modules/greeting/internal/domain"\n\nvar _ = domain.GreetCommand{}\n',
-      );
-      const reachedIn = spawnSync('go', ['build', './cmd/...'], {
-        cwd,
-        env: goEnv(),
-        encoding: 'utf8',
-      });
-      expect(reachedIn.status, 'importing a context internal/ must not compile').not.toBe(0);
-      expect(`${reachedIn.stdout}${reachedIn.stderr}`).toContain('use of internal package');
-
-      // The facade re-exports nothing, so the assembly cannot name the
-      // port — and therefore cannot implement it either.
-      await fs.writeFile(
-        probe,
-        'package main\n\nimport "example.com/skel/internal/modules/greeting"\n\nvar _ greeting.Greeter\n',
-      );
-      const named = spawnSync('go', ['build', './cmd/...'], {
-        cwd,
-        env: goEnv(),
-        encoding: 'utf8',
-      });
-      expect(named.status, "naming the facade's port must not compile").not.toBe(0);
-      expect(`${named.stdout}${named.stderr}`).toContain('undefined: greeting.Greeter');
-
-      await fs.remove(probe);
-      goRun(['build', './...']);
-
-      await driveHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`));
-    },
-    E2E_TIMEOUT_MS,
-  );
-
-  /**
-   * `keel add persistence` on a modulith, which is the case the
-   * vertical used to refuse. Five packages move, so the toolchain is
-   * the only thing that can confirm they landed somewhere the compiler
-   * accepts — and `go build` alone cannot, because a slice emitted at
-   * the wrong paths and never wired compiles perfectly well. So this
-   * asserts the assembly, and then re-runs the facade probe: the new
-   * factory widens the aperture, and the wall has to survive it.
-   */
-  it(
-    'go-http --module-layout=modulith + persistence: compiles, wires, and keeps the aperture shut',
-    async () => {
-      await generate('go-http', 'skel', 'modulith');
-      await add('persistence');
-
-      goRun(['vet', './...']);
-      goRun(['test', './...']);
-      goRun(['build', './...']);
-
-      const main = await fs.readFile(path.join(cwd, 'cmd', 'http', 'main.go'), 'utf8');
-      expect(main).toContain('greetings := greeting.NewGreetingLogUseCases(');
-      expect(main).toContain('resthttp.WithGreetings(resthttp.NewHandler(greeter), greetings)');
-
-      // The slice's ports are as unnameable from the assembly as the
-      // greet port was — adding a factory to the facade must not have
-      // leaked a type alias alongside it.
-      const probe = path.join(cwd, 'cmd', 'http', 'probe.go');
-      await fs.writeFile(
-        probe,
-        'package main\n\nimport "example.com/skel/internal/modules/greeting"\n\nvar _ greeting.GreetingLog\n',
-      );
-      const named = spawnSync('go', ['build', './cmd/...'], {
-        cwd,
-        env: goEnv(),
-        encoding: 'utf8',
-      });
-      expect(named.status, "naming the slice's port must not compile").not.toBe(0);
-      expect(`${named.stdout}${named.stderr}`).toContain('undefined: greeting.GreetingLog');
-      await fs.remove(probe);
+      await withHttpUnit(path.join(cwd, 'bin', `skel-http${EXE}`), cwd, driveGreetContract);
     },
     E2E_TIMEOUT_MS,
   );
