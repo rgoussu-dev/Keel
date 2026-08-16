@@ -1,0 +1,85 @@
+//! The contract face of the <%= module %> hexagon.
+//!
+//! # This is a shell, and the use case in it is a placeholder
+//!
+//! `keel add module <%= module %>` knows the context's *name* and
+//! nothing about what it is for, so it cannot invent a use case.
+//! [`<%= Module %>Command`] below is a stand-in with the right shape —
+//! a command in, a result or a rejection out — and renaming it to your
+//! first real use case is meant to be the first thing you do here.
+//!
+//! What is *not* a placeholder is the structure around it: the driving
+//! port, the error type owned by this context, and the fact that
+//! nothing in this crate names another bounded context.
+
+use std::fmt;
+
+use platform_kernel::BoxFuture;
+
+/// Asks the <%= module %> context to handle `subject`.
+///
+/// Rename me. The field is deliberately anonymous — `subject` is what
+/// a placeholder can honestly call the thing it was handed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct <%= Module %>Command {
+    /// What this use case acts on.
+    pub subject: String,
+}
+
+/// What the <%= module %> context produced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct <%= Module %>Result {
+    /// Human-readable outcome.
+    pub detail: String,
+}
+
+/// Why the <%= module %> context refused.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum <%= Module %>Rejected {
+    /// The command named nothing to act on.
+    EmptySubject,
+<% if (hasConsumes) { %>    /// The <%= consumes %> context could not be reached.
+    <%= Consumes %>Unreachable(String),
+<% } %>}
+
+impl fmt::Display for <%= Module %>Rejected {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            <%= Module %>Rejected::EmptySubject => write!(f, "subject must not be empty"),
+<% if (hasConsumes) { %>            <%= Module %>Rejected::<%= Consumes %>Unreachable(why) => {
+                write!(f, "<%= consumes %> unreachable: {why}")
+            }
+<% } %>        }
+    }
+}
+
+impl std::error::Error for <%= Module %>Rejected {}
+<% if (hasConsumes) { %>
+/// The driven port through which <%= module %> reaches the
+/// <%= consumes %> context.
+///
+/// Declared here, in *<%= module %>'s* vocabulary, and implemented out
+/// in `infra/<%= consumes %>-gateway/`. That direction is the whole
+/// rule: the dependency points from infrastructure inwards, so this
+/// crate never names <%= consumes %> and never could.
+///
+/// It returns a [`BoxFuture`] rather than being an `async fn`, because
+/// an adapter is wired behind `Arc<dyn <%= Consumes %>Client>` at the
+/// assembly point and `async fn` in a trait is not dyn-compatible.
+pub trait <%= Consumes %>Client: Send + Sync {
+    /// Asks <%= consumes %> about `subject`.
+    fn ask_for(&self, subject: &str) -> BoxFuture<'_, Result<String, String>>;
+}
+<% } %>
+/// The driving port of this context.
+///
+/// Named `<%= Module %>Port` rather than `<%= Module %>` so the seam
+/// crate can own the DTO called `<%= Module %>` without the two
+/// colliding in a file that imports both.
+pub trait <%= Module %>Port {
+    /// Runs this context's use case.
+    fn handle(
+        &self,
+        cmd: <%= Module %>Command,
+    ) -> BoxFuture<'_, Result<<%= Module %>Result, <%= Module %>Rejected>>;
+}

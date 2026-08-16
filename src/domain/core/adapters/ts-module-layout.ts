@@ -351,6 +351,87 @@ export function tsLayout(tags: readonly Tag[], scope: string): TsLayoutPaths {
 }
 
 /**
+ * The package of any bounded context added by `keel add module`.
+ *
+ * The generalisation of {@link tsPeerPackage}, which is now the
+ * `guestbook` case with its name written in. One workspace package
+ * per context, as `tsLayout` rules — so an added context costs one
+ * manifest and one `exports` map, against Rust's four crates.
+ *
+ * `seam` is the entry the peer set has no counterpart for: the
+ * `--with-peer-context` context publishes no `./service`, an added one
+ * always does, so `keel add module <other> --consumes <name>` has an
+ * entry point to import. `gateway` is null without `consumes` — a
+ * context that reaches nobody declares no edge.
+ */
+export function tsContextPackage(
+  layout: TsLayoutPaths,
+  context: string,
+  consumes: string | null,
+): {
+  readonly root: string;
+  readonly pkg: string;
+  readonly seamPkg: string;
+  readonly index: string;
+  readonly contractSrc: string;
+  readonly coreInternal: string;
+  readonly gatewaySrc: string | null;
+  readonly tests: string;
+} | null {
+  if (layout.layout === 'basic') return null;
+  const root = `modules/${context}`;
+  return {
+    root,
+    pkg: `@${layout.scope}/${context}`,
+    seamPkg: `@${layout.scope}/${context}/service`,
+    index: `${root}/src/index.ts`,
+    contractSrc: `${root}/src/domain/contract`,
+    coreInternal: `${root}/src/domain/core/internal`,
+    gatewaySrc: consumes === null ? null : `${root}/src/infra/${consumes}-gateway`,
+    tests: `${root}/tests`,
+  };
+}
+
+/**
+ * The skeleton context's seam method, spelled out because it cannot
+ * be derived.
+ *
+ * Every added context publishes `<name>For(subject)`, so a gateway can
+ * compute the call from the context name alone. The skeleton
+ * publishes `greet(name)` — an agent verb, which reads far better than
+ * `greetingFor` would and is exactly what no rule produces from the
+ * string "greeting". So the one context whose seam predates the
+ * convention has its method written down here, once.
+ *
+ * Rust and Go need no equivalent: their skeleton seams are already
+ * `greeting_for` / `GreetingFor`, which is the shape an added context
+ * follows.
+ */
+export const TS_SKELETON_SEAM_METHOD = 'greet';
+
+/**
+ * The skeleton context's handler factory, spelled out for the same
+ * reason as {@link TS_SKELETON_SEAM_METHOD}.
+ *
+ * An added context exports `create<Name>Handler`, derivable from the
+ * name; the skeleton exports `createGreetHandler`, built on the same
+ * agent verb as its seam method. Two constants rather than one because
+ * they are two different names — `greet` and `createGreetHandler` —
+ * and deriving the second from the first would be a rule with exactly
+ * one instance to justify it.
+ */
+export const TS_SKELETON_HANDLER_FACTORY = 'createGreetHandler';
+
+/**
+ * The seam entry point of an existing context — what a gateway
+ * imports. Every context publishes it at `<pkg>/service`, the
+ * skeleton included, so this needs no special case.
+ */
+export function tsSeamPackage(layout: TsLayoutPaths, context: string): string {
+  return `@${layout.scope}/${context}/service`;
+}
+
+/**
  * Where the peer context's files live, and what the package that
  * holds them is called.
  *

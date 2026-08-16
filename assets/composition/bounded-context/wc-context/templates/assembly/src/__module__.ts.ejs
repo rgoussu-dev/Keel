@@ -1,0 +1,57 @@
+import type { Context } from '<%= contextProtocolPkg %>';
+<% if (hasConsumes && consumesIsSkeleton) { %>import type { <%= SkeletonPort %>, <%= Skeleton %>ReadModel } from '<%= consumesPkg %>';
+import { create<%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>import type { <%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+<% } %>import {
+  create<%= Module %>,
+  create<%= Module %>Store,
+<% if (hasConsumes) { %>  create<%= Consumes %>Gateway,
+<% } %>  <%= module %>Context,
+  <%= module %>RecordsContext,
+} from '<%= contextPkg %>';
+import { create<%= Module %>Service, type <%= Module %>Service } from '<%= seamPkg %>';
+
+/**
+ * Wiring for the <%= module %> context.
+<% if (hasConsumes) { %> *
+ * <%= Module %> reaches <%= consumes %> through one edge and one only:
+ * the gateway below is constructed over `<%= consumesSeamPkg %>`, that
+ * context's seam. Nothing here hands <%= module %> a *domain* type
+ * belonging to <%= consumes %> — this file is where such a violation
+ * would be written, so this is where the rule is stated.
+<% if (consumesIsSkeleton) { %> *
+ * The seam is built from <%= consumes %>'s assembled ports rather than
+ * from a slice this function constructs: a seam that builds its own
+ * breaks the moment a vertical rewires the factory behind it, and the
+ * assembly has the ports in hand anyway.
+<% } %><% } %> *
+ * It returns its ports **and** its seam from one call so that both are
+ * built over the same store instance. Two calls would give the page
+ * one context's state and a peer another's, which is the kind of bug
+ * that renders correctly right up until it does not.
+ */
+export interface <%= Module %>Wiring {
+  readonly ports: readonly (readonly [Context<unknown>, unknown])[];
+  readonly service: <%= Module %>Service;
+}
+
+export function create<%= Module %>Wiring(
+<% if (hasConsumes && consumesIsSkeleton) { %>  <%= consumes %>: <%= SkeletonPort %>,
+  <%= consumes %>Records: <%= Skeleton %>ReadModel,
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>  <%= consumes %>: <%= Consumes %>Service,
+<% } %>): <%= Module %>Wiring {
+  const records = create<%= Module %>Store();
+<% if (hasConsumes && consumesIsSkeleton) { %>  const <%= module %> = create<%= Module %>(
+    records,
+    create<%= Consumes %>Gateway(create<%= Consumes %>Service(<%= consumes %>, <%= consumes %>Records)),
+  );
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>  const <%= module %> = create<%= Module %>(records, create<%= Consumes %>Gateway(<%= consumes %>));
+<% } %><% if (!hasConsumes) { %>  const <%= module %> = create<%= Module %>(records);
+<% } %>  return {
+    ports: [
+      [<%= module %>Context, <%= module %>],
+      [<%= module %>RecordsContext, records],
+    ],
+    service: create<%= Module %>Service(<%= module %>, records),
+  };
+}

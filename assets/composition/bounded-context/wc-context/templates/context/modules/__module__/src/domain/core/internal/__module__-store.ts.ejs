@@ -1,0 +1,28 @@
+import type { <%= Module %>ReadModel, <%= Module %>Record, Unsubscribe } from '../../contract/index';
+
+/**
+ * The write side of this context's read model — held by the domain,
+ * handed to services; the driving side only ever sees the
+ * {@link <%= Module %>ReadModel} face.
+ */
+export interface <%= Module %>Store extends <%= Module %>ReadModel {
+  /** Records and notifies every subscriber. */
+  publish(record: <%= Module %>Record): void;
+}
+
+/** Creates the in-memory store backing this context's read model. */
+export function create<%= Module %>Store(): <%= Module %>Store {
+  let current: <%= Module %>Record | null = null;
+  const listeners = new Set<(record: <%= Module %>Record) => void>();
+  return {
+    latest: () => current,
+    subscribe(listener: (record: <%= Module %>Record) => void): Unsubscribe {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    publish(record: <%= Module %>Record): void {
+      current = record;
+      for (const listener of listeners) listener(record);
+    },
+  };
+}

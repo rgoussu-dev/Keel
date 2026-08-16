@@ -66,4 +66,32 @@ describe('EjsTemplateSource.render', () => {
     const files = await new EjsTemplateSource(tmplRoot).render('', '', {});
     expect(files[0]!.path).toBe('__missing__.txt');
   });
+
+  /**
+   * A token immediately followed by `_` is the case that made the old
+   * grammar ambiguous: with `_` legal inside a token name, the greedy
+   * read took `module_` and found its closing `__`, so nothing
+   * resolved and the literal landed on disk. A Go test file emitted
+   * per bounded context is exactly this shape.
+   */
+  it('resolves a token immediately followed by an underscore', async () => {
+    await fs.outputFile(path.join(tmplRoot, '__module___test.go'), 'package main');
+    const files = await new EjsTemplateSource(tmplRoot).render('', '', { module: 'ordering' });
+    expect(files[0]!.path).toBe('ordering_test.go');
+  });
+
+  it('resolves a token immediately followed by more letters', async () => {
+    await fs.outputFile(path.join(tmplRoot, '__consumes__gateway/x.txt'), 'x');
+    const files = await new EjsTemplateSource(tmplRoot).render('', '', { consumes: 'greeting' });
+    expect(files[0]!.path).toBe('greetinggateway/x.txt');
+  });
+
+  it('substitutes two different tokens in one path', async () => {
+    await fs.outputFile(path.join(tmplRoot, '__pkgPath__/__assemblyPkgPath__/x.txt'), 'x');
+    const files = await new EjsTemplateSource(tmplRoot).render('', '', {
+      pkgPath: 'com/example',
+      assemblyPkgPath: 'cli',
+    });
+    expect(files[0]!.path).toBe('com/example/cli/x.txt');
+  });
 });

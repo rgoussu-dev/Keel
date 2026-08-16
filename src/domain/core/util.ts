@@ -98,3 +98,23 @@ export function anyProjectName(manifest: {
   }
   return 'service';
 }
+
+/**
+ * Splices `lines` in immediately before a file's first `import`
+ * statement.
+ *
+ * Anchoring on the first *import* rather than on the first line is
+ * the whole point: a module that opens with a `/** … *\/` doc comment
+ * — which every assembly point keel emits does — would otherwise take
+ * the new imports into the middle of that comment, where they are
+ * silently inert. The symptom is `TS2304: cannot find name`, pointing
+ * at the use rather than at the swallowed import.
+ *
+ * Falls back to prepending when the file has no import at all, which
+ * is the only sensible place left.
+ */
+export function beforeFirstImport(existing: string, lines: string): string {
+  const match = /^import\s/m.exec(existing);
+  if (match === null) return `${lines}\n${existing}`;
+  return `${existing.slice(0, match.index)}${lines}\n${existing.slice(match.index)}`;
+}

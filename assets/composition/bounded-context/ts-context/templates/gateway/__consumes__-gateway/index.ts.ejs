@@ -1,0 +1,28 @@
+import type { <%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+import type { <%= Consumes %>Client } from '../../domain/contract/index.ts';
+
+/**
+ * The gateway translating <%= module %>'s `<%= Consumes %>Client` port
+ * into a call on the <%= consumes %> context's seam.
+ *
+ * This is the only file in <%= module %> that knows <%= consumes %>
+ * exists, and it is a driven adapter — so the dependency points from
+ * infrastructure inwards, never between two domains.
+ *
+ * The import above is the line a reviewer checks. It names
+ * `<%= consumesSeamPkg %>` and nothing else of <%= consumes %>'s.
+ * Nothing in the *compiler* stops it naming `<%= consumesPkg %>`
+ * whole — an undeclared workspace dependency resolves anyway under
+ * npm's hoisting — so what holds this rule is
+ * `peers-meet-at-the-service-seam` in the emitted
+ * `.dependency-cruiser.cjs`, which `npm run lint` already runs.
+ */
+export function create<%= Consumes %>Gateway(<%= consumes %>: <%= Consumes %>Service): <%= Consumes %>Client {
+  return {
+    // What crosses this boundary is the seam's own `string`, never a
+    // <%= consumes %> domain type.
+    askFor(subject: string): Promise<string> {
+      return <%= consumes %>.<%= consumesSeamMethod %>(subject);
+    },
+  };
+}

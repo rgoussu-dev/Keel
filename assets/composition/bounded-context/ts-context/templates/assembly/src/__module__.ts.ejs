@@ -1,0 +1,42 @@
+import { createRegistryMediator, type Handler } from '<%= kernelPkg %>';
+import { create<%= Module %>Handler, type <%= Module %>Command } from '<%= contextPkg %>';
+import { create<%= Module %>Service, type <%= Module %>Service } from '<%= seamPkg %>';
+<% if (hasConsumes) { %>import { create<%= Consumes %>Gateway } from '<%= contextPkg %>';
+<% if (consumesIsSkeleton) { %>import { <%= consumesHandlerFactory %> } from '<%= consumesPkg %>';
+import { create<%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+<% } else { %>// The seam of <%= consumes %> arrives already built from that
+// context's own wiring module beside this one: its handler may itself
+// hold a gateway to a third context, so only that module knows how.
+import { create<%= Consumes %>ContextService } from './<%= consumes %>.ts';
+<% } %><% } %>
+/**
+ * Wiring for the <%= module %> context.
+<% if (hasConsumes) { %> *
+ * <%= Module %> reaches <%= consumes %> through one edge and one only:
+ * the gateway below is constructed over `<%= consumesSeamPkg %>`, that
+ * context's seam. Nothing in this assembly hands <%= module %> a
+ * *domain* type belonging to <%= consumes %> — this file is where such
+ * a violation would be written, so this is where the rule is stated.
+ *
+ * The seam dispatches into <%= consumes %>'s own handlers rather than
+ * into the assembly-wide mediator, and that is the design rather than
+ * an accident of ordering: a peer reaches <%= consumes %> exactly as
+ * an out-of-process consumer would, so the day it moves out, this file
+ * changes and nothing else does.
+<% } %> */
+export function create<%= Module %>ContextHandler(): Handler<<%= Module %>Command> {
+<% if (hasConsumes) { %>  return create<%= Module %>Handler(create<%= Consumes %>Gateway(<%= consumesSeamExpr %>));
+<% } else { %>  return create<%= Module %>Handler();
+<% } %>}
+
+/**
+ * This context's **seam**, for peers to consume.
+ *
+ * Emitted beside the handler rather than left for you to write,
+ * because this is what `keel add module <other> --consumes <%= module %>`
+ * binds to: without it, the seam module compiles and nothing reaches
+ * it.
+ */
+export function create<%= Module %>ContextService(): <%= Module %>Service {
+  return create<%= Module %>Service(createRegistryMediator([create<%= Module %>ContextHandler()]));
+}

@@ -1,0 +1,44 @@
+// Package core holds the <%= module %> context's rules, behind the
+// contract face.
+//
+// It names no type the contract face declares — only strings in and
+// strings out — which is what keeps the two packages acyclic and the
+// rules testable without constructing a command.
+package core
+
+import (
+	"errors"
+<% if (!hasConsumes) { %>	"fmt"
+<% } %>	"strings"
+)
+
+// ErrEmptySubject reports a subject that is blank once trimmed.
+var ErrEmptySubject = errors.New("subject must not be empty")
+
+<% if (hasConsumes) { %>// Handle validates subject and delegates to ask, which the caller
+// binds to this context's driven port. Passing a function rather than
+// the port itself is what lets this package stay free of the contract
+// face's vocabulary.
+func Handle(subject string, ask func(string) (string, error)) (string, error) {
+	trimmed, err := trim(subject)
+	if err != nil {
+		return "", err
+	}
+	return ask(trimmed)
+}
+<% } else { %>// Handle validates subject and composes this context's answer.
+func Handle(subject string) (string, error) {
+	trimmed, err := trim(subject)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("<%= module %>: %s", trimmed), nil
+}
+<% } %>
+func trim(subject string) (string, error) {
+	trimmed := strings.TrimSpace(subject)
+	if trimmed == "" {
+		return "", ErrEmptySubject
+	}
+	return trimmed, nil
+}

@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+<% if (hasConsumes && consumesIsSkeleton) { %>import { create<%= SkeletonPort %>, create<%= Skeleton %>Store } from '<%= consumesPkg %>';
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>import type { <%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+<% } %>import {
+  <%= module %>Context,
+  <%= module %>RecordsContext,
+  type <%= Module %>,
+  type <%= Module %>ReadModel,
+} from '<%= contextPkg %>';
+import { create<%= Module %>Wiring } from '../src/<%= module %>';
+
+/**
+<% if (hasConsumes && consumesIsSkeleton) { %> * The cross-context call, driven for real: no fakes anywhere, so what
+ * this proves is that the two contexts are wired to each other and
+ * that what <%= module %> records is what <%= consumes %> produced.
+ *
+ * It lives in the assembly because the assembly is the only place
+ * allowed to name both contexts. The same test inside
+ * `modules/<%= module %>/` would import <%= consumes %>'s facade and
+ * fail `peers-meet-at-the-service-seam` — correctly, which is worth
+ * knowing before anyone moves it.
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %> * The cross-context call, driven through a **fake** of
+ * <%= consumes %>'s seam rather than the real thing — and that is a
+ * deliberate limit, not an oversight. <%= Consumes %> is itself a
+ * context somebody added, so what *its* wiring needs is a fact of
+ * that context and not of this one; `main.ts` knows, because the
+ * `const <%= consumes %> = …` line was written when <%= consumes %>
+ * was added, and this test does not.
+ *
+ * A fake of the seam is the honest substitute and still proves the
+ * half that is this context's: that its ports are published, that its
+ * gateway is on the other side of them, and that nothing but the seam
+ * type crosses.
+<% } %><% if (!hasConsumes) { %> * The context, driven through the ports the assembly publishes rather
+ * than through its factories, so what this proves is that the two are
+ * the same object graph.
+<% } %> *
+ * It is also DOM-less: `create<%= Module %>Wiring` wires ports and
+ * defines no element, which is exactly why element registration sits
+ * behind its own entry point.
+ */
+describe('the wired <%= module %> context', () => {
+  const wire = (): ReadonlyMap<unknown, unknown> => {
+<% if (hasConsumes && consumesIsSkeleton) { %>    const <%= SkeletonReadModelVar %> = create<%= Skeleton %>Store();
+    return new Map(
+      create<%= Module %>Wiring(create<%= SkeletonPort %>(<%= SkeletonReadModelVar %>), <%= SkeletonReadModelVar %>).ports,
+    );
+<% } %><% if (hasConsumes && !consumesIsSkeleton) { %>    const <%= consumes %>: <%= Consumes %>Service = {
+      <%= consumes %>For: () => undefined,
+      latest: () => '<%= consumes %>: Ada',
+    };
+    return new Map(create<%= Module %>Wiring(<%= consumes %>).ports);
+<% } %><% if (!hasConsumes) { %>    return new Map(create<%= Module %>Wiring().ports);
+<% } %>  };
+
+  it('records what it produced for a named subject', () => {
+    const ports = wire();
+
+    (ports.get(<%= module %>Context) as <%= Module %>).execute({ subject: 'Ada' });
+
+    const latest = (ports.get(<%= module %>RecordsContext) as <%= Module %>ReadModel).latest();
+    assert.equal(latest?.subject, 'Ada');
+    assert.ok(latest !== null && latest.detail.length > 0);
+  });
+
+  it('records nothing for a blank subject', () => {
+    const ports = wire();
+
+    (ports.get(<%= module %>Context) as <%= Module %>).execute({ subject: '   ' });
+
+    assert.equal((ports.get(<%= module %>RecordsContext) as <%= Module %>ReadModel).latest(), null);
+  });
+});

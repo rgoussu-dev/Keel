@@ -11,6 +11,7 @@ import type { Mediator } from '../../../domain/kernel/mediator.js';
 import type { Result } from '../../../domain/kernel/result.js';
 import type { Logger } from '../../../domain/contract/ports/logger.js';
 import {
+  addModuleCommand,
   addVerticalCommand,
   linkPeerCommand,
   newProjectCommand,
@@ -32,6 +33,20 @@ export interface CliDeps {
   /** Working directory commands run against; defaults to `process.cwd()`. */
   readonly cwd?: () => string;
 }
+
+/**
+ * The first argument of `keel add` that means "a bounded context"
+ * rather than a vertical id.
+ *
+ * `keel add <vertical>` and `keel add module <name>` share one
+ * commander command because commander matches subcommands by name:
+ * registering `add` with a nested `module` would stop `keel add
+ * persistence` resolving at all. So the branch is here, on a reserved
+ * first argument, and `module` is thereby a name no vertical may take
+ * — which costs nothing, since a vertical is a capability dimension
+ * and `module` names no dimension.
+ */
+const MODULE_TARGET = 'module';
 
 /** Builds the commander program over the wired mediator. */
 export function buildProgram(deps: CliDeps): Command {
@@ -104,12 +119,16 @@ export function buildProgram(deps: CliDeps): Command {
     );
 
   program
-    .command('add <vertical>')
+    .command('add <target> [name]')
     .description(
-      `Install a vertical onto an existing keel project (available: ${deps.availableVerticals.join(', ')}).`,
+      `Install a vertical onto an existing keel project (available: ${deps.availableVerticals.join(', ')}), or add a bounded context with 'keel add module <name>'.`,
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
+    .option(
+      '--consumes <context>',
+      "with 'add module': also emit a gateway reaching an existing bounded context through its user-side/service seam",
+    )
     .option(
       '--set <kv...>',
       'preset an answer as adapterId:questionId=value (repeatable)',
@@ -117,22 +136,33 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .action(
       async (
-        vertical: string,
-        opts: { yes: boolean; dryRun: boolean; set: string[] },
+        target: string,
+        name: string | undefined,
+        opts: { yes: boolean; dryRun: boolean; consumes?: string; set: string[] },
       ): Promise<void> => {
         const result = await deps.mediator.dispatch(
-          addVerticalCommand({
-            cwd: cwd(),
-            vertical,
-            answers: parseSetAnswers(opts.set),
-            interactive: !opts.yes,
-            dryRun: opts.dryRun,
-          }),
+          target === MODULE_TARGET
+            ? addModuleCommand({
+                cwd: cwd(),
+                module: name ?? '',
+                ...(opts.consumes === undefined ? {} : { consumes: opts.consumes }),
+                answers: parseSetAnswers(opts.set),
+                interactive: !opts.yes,
+                dryRun: opts.dryRun,
+              })
+            : addVerticalCommand({
+                cwd: cwd(),
+                vertical: target,
+                answers: parseSetAnswers(opts.set),
+                interactive: !opts.yes,
+                dryRun: opts.dryRun,
+              }),
         );
         const report = unwrap(result);
-        printReport(`keel add ${report.subject}: planned changes`, report, deps.logger);
+        const label = target === MODULE_TARGET ? `module ${report.subject}` : report.subject;
+        printReport(`keel add ${label}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
-        else deps.logger.success(`keel add ${report.subject}: ready`);
+        else deps.logger.success(`keel add ${label}: ready`);
       },
     );
 

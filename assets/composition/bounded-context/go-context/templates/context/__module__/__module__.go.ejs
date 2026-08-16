@@ -1,0 +1,32 @@
+// Package <%= module %> is the bounded context's facade — the package
+// a deployment unit imports to assemble it. A *peer* context imports
+// userside/service instead: this package names nothing a foreign
+// package could write down, which is deliberate and is exactly why
+// the seam exists.
+//
+// It exports factories and NOTHING else. There is deliberately no
+// `type <%= Module %> = domain.<%= Module %>` here, however convenient
+// it would be: the domain package sits behind this context's
+// internal/, so a consumer that cannot name its types cannot declare
+// its own implementation of this context's ports either. That turns
+// "only the owning context implements its ports" from a review comment
+// into a compile error.
+package <%= module %>
+
+import (
+<%- facadeImports %>
+)
+
+// New<%= Module %> assembles this context's use case and returns it
+// behind its driving port. Each cmd/ main wires it by hand —
+// constructor injection, no framework.
+<% if (hasConsumes) { %>//
+// The parameter is this context's own driven port, which the assembly
+// cannot name — it passes a gateway and `:=` supplies the type.
+func New<%= Module %>(<%= consumes %> domain.<%= Consumes %>Client) domain.<%= Module %> {
+	return domain.New<%= Module %>(<%= consumes %>)
+}
+<% } else { %>func New<%= Module %>() domain.<%= Module %> {
+	return domain.New<%= Module %>()
+}
+<% } %>

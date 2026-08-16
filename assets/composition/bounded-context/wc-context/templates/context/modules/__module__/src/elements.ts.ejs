@@ -1,0 +1,29 @@
+/**
+ * This context's custom-element registrations.
+ *
+ * Registration is a side effect, which is why it is a function and
+ * why it sits behind its own entry point
+ * (`<%= contextPkg %>/elements`) rather than the facade: defining an
+ * element upgrades already-parsed markup and fires
+ * `connectedCallback` synchronously, so the assembly has to be able to
+ * order it after the context provider is listening — and importing the
+ * facade from a DOM-less program must not define anything at all.
+ */
+
+import { <%= MODULE %>_VIEW_TAG } from './element-tags';
+import { <%= Module %>View } from './user-side/elements/<%= module %>-view';
+
+export { <%= MODULE %>_VIEW_TAG } from './element-tags';
+
+/** Registers this context's elements. Idempotent. */
+export function define<%= Module %>Elements(): void {
+  if (!customElements.get(<%= MODULE %>_VIEW_TAG)) {
+    customElements.define(<%= MODULE %>_VIEW_TAG, <%= Module %>View);
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    '<%= viewTag %>': <%= Module %>View;
+  }
+}

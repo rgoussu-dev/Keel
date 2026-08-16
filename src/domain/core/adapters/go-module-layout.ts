@@ -328,6 +328,84 @@ export function goPeerPackages(): {
 }
 
 /**
+ * The packages of any bounded context added by `keel add module`.
+ *
+ * The generalisation of {@link goPeerPackages}, which is now the
+ * `guestbook` special case with its name written in. Two differences
+ * beyond the name, and both follow from what an *added* context is
+ * for:
+ *
+ * - **It publishes a seam.** The `--with-peer-context` context is a
+ *   pure consumer and has none; an added one always does, so
+ *   `keel add module <other> --consumes <name>` has something to bind
+ *   to.
+ * - **It has no driving adapter.** `guestbook` needs `userside/signing`
+ *   because the emitted `cmd/` main drives it, and a main cannot name
+ *   `domain.SignCommand`. Nothing drives an added context until the
+ *   user decides how, so keel emits no adapter for a decision it has
+ *   not been told.
+ *
+ * `gateway` is null without `consumes`: a context that reaches nobody
+ * declares no edge.
+ */
+export function goContextPackages(
+  context: string,
+  consumes: string | null,
+): {
+  readonly facade: string;
+  readonly facadePkg: string;
+  readonly domain: string;
+  readonly domainCore: string;
+  readonly seam: string;
+  readonly seamPkg: string;
+  readonly gateway: string | null;
+  readonly gatewayPkg: string | null;
+} {
+  const root = `internal/modules/${context}`;
+  return {
+    facade: root,
+    facadePkg: context,
+    domain: `${root}/internal/domain`,
+    domainCore: `${root}/internal/domain/internal/core`,
+    seam: `${root}/userside/service`,
+    seamPkg: 'service',
+    gateway: consumes === null ? null : `${root}/infra/${consumes}gateway`,
+    gatewayPkg: consumes === null ? null : `${consumes}gateway`,
+  };
+}
+
+/**
+ * The skeleton context's facade factory, spelled out because it
+ * cannot be derived.
+ *
+ * Every added context exports `New<Name>` — `ordering.NewOrdering` —
+ * so a consumer can compute it from the name alone. The skeleton
+ * exports `NewGreeter`: an *agent* noun, which reads far better than
+ * `NewGreeting` would and is exactly the thing no rule can produce
+ * from the string "greeting". So the one context whose factory is not
+ * derivable has its name written down here, once, beside the constant
+ * that names the context itself.
+ */
+export const SKELETON_FACADE_FACTORY = 'NewGreeter';
+
+/**
+ * The seam package of an existing context — what a gateway imports.
+ *
+ * The skeleton's lives where its layout resolver puts it; every other
+ * context's is `modules/<name>/userside/service`, because that is
+ * where {@link goContextPackages} put it when the context was added.
+ */
+export function goSeamPackage(layout: GoLayoutPaths, context: string): string {
+  if (context === SKELETON_MODULE) {
+    if (layout.service === null) {
+      throw new Error(`goSeamPackage: the skeleton has no seam under layout '${layout.layout}'`);
+    }
+    return layout.service;
+  }
+  return goContextPackages(context, null).seam;
+}
+
+/**
  * The template variables every Go tree needs: the package name the
  * assembly calls the context through, and the import path of the
  * contract face its adapters are written against. Templates never

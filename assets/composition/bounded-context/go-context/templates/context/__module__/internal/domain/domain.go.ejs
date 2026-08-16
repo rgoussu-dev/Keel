@@ -1,0 +1,87 @@
+// Package domain is the contract face of the <%= module %> hexagon.
+//
+// # This is a shell, and the use case in it is a placeholder
+//
+// `keel add module <%= module %>` knows the context's name and nothing
+// about what it is for, so it cannot invent a use case. [Command]
+// below is a stand-in with the right shape — a command in, a result or
+// an error out — and renaming it to your first real use case is meant
+// to be the first thing you do here.
+//
+// The package sits behind this context's internal/, so nothing outside
+// <%= module %> can name any of it. That is the wall, and it is a
+// compile error rather than a convention.
+package domain
+
+import (
+<%- domainImports %>
+)
+
+// ErrEmptySubject reports a command that named nothing to act on.
+// Re-exported from the core so callers match on one value.
+var ErrEmptySubject = core.ErrEmptySubject
+
+// Command asks the <%= module %> context to handle Subject.
+//
+// Rename me. The field is deliberately anonymous — Subject is what a
+// placeholder can honestly call the thing it was handed.
+type Command struct {
+	Subject string
+}
+
+// Result is what the <%= module %> context produced.
+type Result struct {
+	Detail string
+}
+
+// <%= Module %> is the driving port of this context.
+type <%= Module %> interface {
+	// Handle runs this context's use case. Returns [ErrEmptySubject]
+	// when the command names nothing.
+	Handle(cmd Command) (Result, error)
+}
+<% if (hasConsumes) { %>
+// <%= Consumes %>Client is the driven port through which <%= module %>
+// reaches the <%= consumes %> context.
+//
+// Declared here, in *<%= module %>'s* vocabulary, and implemented out
+// in infra/<%= consumes %>gateway. That direction is the whole rule:
+// the dependency points from infrastructure inwards, so this package
+// never names <%= consumes %> and never could.
+type <%= Consumes %>Client interface {
+	// AskFor asks <%= consumes %> about subject.
+	AskFor(subject string) (string, error)
+}
+
+// New<%= Module %> assembles the use case over its driven port.
+func New<%= Module %>(<%= consumes %> <%= Consumes %>Client) <%= Module %> {
+	return handler{<%= consumes %>: <%= consumes %>}
+}
+
+type handler struct {
+	<%= consumes %> <%= Consumes %>Client
+}
+
+func (h handler) Handle(cmd Command) (Result, error) {
+	detail, err := core.Handle(cmd.Subject, h.<%= consumes %>.AskFor)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Detail: detail}, nil
+}
+<% } else { %>
+// New<%= Module %> assembles the use case.
+func New<%= Module %>() <%= Module %> {
+	return handler{}
+}
+
+type handler struct{}
+
+func (handler) Handle(cmd Command) (Result, error) {
+	detail, err := core.Handle(cmd.Subject)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Detail: detail}, nil
+}
+<% } %>

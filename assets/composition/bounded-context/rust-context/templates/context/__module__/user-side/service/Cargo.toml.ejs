@@ -1,0 +1,11 @@
+[package]
+name = "<%= module %>-user-side-service"
+version.workspace = true
+edition.workspace = true
+
+# The seam depends on its own context's contract face and nothing
+# else. A consumer depends on *this* crate, so anything reachable from
+# here is reachable by every peer — see the module doc in src/lib.rs.
+[dependencies]
+platform-kernel = { path = "../../../../platform/kernel" }
+<%= module %>-domain-contract = { path = "../../domain/contract" }

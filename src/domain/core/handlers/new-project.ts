@@ -48,10 +48,12 @@ import { runActions } from '../actions.js';
 import {
   MODULITH_LAYOUT_TAG,
   PEER_CONTEXT_TAG,
+  PEER_MODULE,
+  SKELETON_MODULE,
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
+import { emitsFor } from '../adapters/context-support.js';
 import { installVertical } from '../install.js';
-import { matches } from '../predicate.js';
 import {
   getStack,
   listStackIds,
@@ -337,6 +339,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       projects: [...(inputs.stack.projects ?? [])],
       peers: inputs.peers,
       services: inputs.services,
+      modules: scaffoldedModules(inputs.layoutTag, inputs.peerTag ?? null, inputs.now),
     };
 
     const tree = this.deps.trees(inputs.cwd);
@@ -597,6 +600,34 @@ function peerContextTag(
   return ok(PEER_CONTEXT_TAG);
 }
 
+/**
+ * The bounded contexts a fresh install starts life with.
+ *
+ * Empty under the flat layout — `basic` is one hexagon and has no
+ * contexts to name. Under the modulith it is the skeleton's own
+ * context, plus the `--with-peer-context` one when that was opted
+ * into.
+ *
+ * **Only the skeleton's context carries a seam.** The peer is a pure
+ * consumer: it declares a driven port in its own vocabulary and
+ * reaches the skeleton through a gateway, but publishes no
+ * `user-side/service` of its own, so nothing can consume *it*. That
+ * asymmetry is a fact about every family's emitted tree, and recording
+ * it here is what lets `keel add module x --consumes guestbook` fail at
+ * the front door instead of emitting a gateway over a package that is
+ * not there.
+ */
+function scaffoldedModules(
+  layoutTag: Tag | null,
+  peerTag: Tag | null,
+  now: string,
+): ManifestV2['modules'] {
+  if (layoutTag !== MODULITH_LAYOUT_TAG) return [];
+  const skeleton = { name: SKELETON_MODULE, installedAt: now, seam: true };
+  if (peerTag !== PEER_CONTEXT_TAG) return [skeleton];
+  return [skeleton, { name: PEER_MODULE, installedAt: now, seam: false }];
+}
+
 /** The tag set a single-service install of `stack` would carry. */
 function stackTags(stack: Stack, buildTag: Tag | null, layoutTag: Tag | null): readonly Tag[] {
   return [...stack.tags, ...(buildTag ? [buildTag] : []), ...(layoutTag ? [layoutTag] : [])];
@@ -606,21 +637,13 @@ function stackTags(stack: Stack, buildTag: Tag | null, layoutTag: Tag | null): r
  * Whether any adapter this stack would install actually emits the
  * second bounded context for `tags`.
  *
- * Derived from the adapter set rather than from a list of stack ids,
- * so the day a family gains its peer-context adapter the front door
- * opens by itself. A hard-coded list would be the same class of bug
- * as the one this guard fixes: it goes stale in silence, and the
- * symptom is again a flag that does nothing.
+ * The `Stack`-shaped face of {@link emitsFor}, which `keel add module`
+ * calls with the verticals of a project already on disk. Same probe,
+ * because a second copy is exactly how the check this guard replaced
+ * went stale.
  */
 function emitsPeerContext(stack: Stack, tags: readonly Tag[]): boolean {
-  const tagSet = new Set<Tag>([...tags, PEER_CONTEXT_TAG]);
-  return stack.verticals.some((vertical) =>
-    vertical.adapters.some(
-      (adapter) =>
-        (adapter.predicate.requires ?? []).includes(PEER_CONTEXT_TAG) &&
-        matches(adapter.predicate, tagSet),
-    ),
-  );
+  return emitsFor(stack.verticals, PEER_CONTEXT_TAG, tags);
 }
 
 /**

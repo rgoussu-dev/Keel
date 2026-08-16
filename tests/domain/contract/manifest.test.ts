@@ -96,3 +96,35 @@ describe('manifest v2', () => {
     expect(v2.entries).toEqual(v1.entries);
   });
 });
+
+describe('manifest v2 modules', () => {
+  it('round-trips the bounded contexts a project holds', async () => {
+    const withModules = {
+      ...emptyManifestV2('2026-08-16T00:00:00Z', '0.5.0-alpha'),
+      modules: [
+        { name: 'greeting', installedAt: '2026-08-16T00:00:00Z', seam: true },
+        { name: 'guestbook', installedAt: '2026-08-16T00:00:00Z', seam: false },
+      ],
+    };
+    await fsManifestStore.write(tmp, withModules);
+    expect(await fsManifestStore.read(tmp)).toEqual(withModules);
+  });
+
+  it('defaults modules to empty, so manifests written before the field parse', () => {
+    const before = {
+      ...emptyManifestV2('2026-08-16T00:00:00Z', '0.5.0-alpha'),
+      modules: undefined,
+    };
+    expect(parseManifest({ ...before, modules: undefined }).modules).toEqual([]);
+  });
+
+  it('migrates a v1 manifest to no modules rather than guessing', () => {
+    const migrated = migrateV1({
+      kitVersion: '0.3.0-alpha',
+      installedAt: '2026-04-01T00:00:00Z',
+      updatedAt: '2026-04-15T00:00:00Z',
+      entries: [],
+    });
+    expect(migrated.modules).toEqual([]);
+  });
+});

@@ -719,3 +719,58 @@ describe('keel.new-project peer-context selection', () => {
     expect(error.message).toMatch(/composite/);
   });
 });
+
+/**
+ * `keel new` records which bounded contexts it emitted.
+ *
+ * The tags say a project is a modulith and that a peer context was
+ * opted into; neither says *which* contexts exist, and that is the
+ * question `keel add module` has to answer before it can refuse a
+ * duplicate name or bind a gateway. So the manifest carries the list,
+ * and these tests hold the two facts that make it useful: the flat
+ * layout has no contexts to record, and the peer context is recorded
+ * as publishing no seam.
+ */
+describe('keel new records its bounded contexts', () => {
+  const scaffold = async (moduleLayout: string, withPeerContext: boolean) => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept([
+        'walking-skeleton/gradle-wrapper',
+        'walking-skeleton/cargo-check',
+      ]),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'rust-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          moduleLayout,
+          withPeerContext,
+        }),
+      ),
+    );
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    return manifest?.modules ?? [];
+  };
+
+  it('records nothing under the flat layout, which has no contexts to name', async () => {
+    expect(await scaffold('basic', false)).toEqual([]);
+  });
+
+  it('records the skeleton context, with its seam', async () => {
+    expect(await scaffold('modulith', false)).toEqual([
+      { name: 'greeting', installedAt: expect.any(String) as unknown as string, seam: true },
+    ]);
+  });
+
+  it('records the peer context as publishing no seam of its own', async () => {
+    const modules = await scaffold('modulith', true);
+    expect(modules.map((m) => [m.name, m.seam])).toEqual([
+      ['greeting', true],
+      ['guestbook', false],
+    ]);
+  });
+});

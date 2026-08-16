@@ -1,0 +1,67 @@
+//! Wiring for the <%= module %> context.
+<% if (hasConsumes) { %>//!
+//! <%= Module %> reaches <%= consumes %> through one edge and one only:
+//! the gateway below is constructed over
+//! `<%= consumes %>-user-side-service`, that context's seam crate.
+//! Nothing in this assembly hands <%= module %> a *domain* type
+//! belonging to <%= consumes %>, and nothing could — this file is
+//! where such a violation would be written, so this is where the rule
+//! is stated.
+<% } %>
+use std::sync::Arc;
+
+use <%= moduleIdent %>_domain_contract::<%= Module %>Port;
+use <%= moduleIdent %>_domain_core::new_<%= moduleIdent %>;
+use <%= moduleIdent %>_user_side_service::{<%= Module %>Service, new_<%= moduleIdent %>_service};
+<% if (hasConsumes) { %>use <%= moduleIdent %>_infra_<%= consumesIdent %>_gateway::<%= Consumes %>Gateway;
+<% if (consumesSeamUse) { %><%= consumesSeamUse %>
+<% } %><% } %>
+/// Assembles the <%= module %> context.
+///
+/// `allow(dead_code)` because nothing calls it yet: exposing a new
+/// context through this deployment unit's entry point is a decision
+/// about *your* CLI surface, and keel will not guess it. Delete the
+/// attribute the moment `main` calls this.
+#[allow(dead_code)]
+pub fn wire() -> impl <%= Module %>Port {
+<% if (hasConsumes) { %>    // The seam of <%= consumes %>, obtained the only way it can be:
+    // the skeleton's self-assembles, an added context's is built by
+    // that context's own wiring module beside this one.
+    let <%= consumesIdent %> = Arc::new(<%= consumesSeamExpr %>);
+    new_<%= moduleIdent %>(Arc::new(<%= Consumes %>Gateway::new(<%= consumesIdent %>)))
+<% } else { %>    new_<%= moduleIdent %>()
+<% } %>}
+
+/// Assembles this context's **seam**, for peers to consume.
+///
+/// Emitted beside [`wire`] rather than left for you to write, because
+/// this is what `keel add module <other> --consumes <%= module %>`
+/// binds to: without it, the seam crate compiles and nothing reaches
+/// it. Until some context does, it is unreached here too — hence the
+/// same attribute as [`wire`].
+#[allow(dead_code)]
+pub fn wire_service() -> impl <%= Module %>Service {
+    new_<%= moduleIdent %>_service(wire())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use <%= moduleIdent %>_domain_contract::<%= Module %>Command;
+
+    #[test]
+    fn the_wired_context_handles_its_use_case() {
+        let got = platform_kernel::block_on(wire().handle(<%= Module %>Command {
+            subject: "Ada".to_string(),
+        }));
+
+        assert!(got.is_ok());
+    }
+
+    #[test]
+    fn the_seam_answers_through_the_wired_core() {
+        let got = platform_kernel::block_on(wire_service().<%= moduleIdent %>_for("Ada"));
+
+        assert!(got.is_ok());
+    }
+}

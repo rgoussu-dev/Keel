@@ -1,0 +1,23 @@
+import { describe, expect, it } from 'vitest';
+import { createRegistryMediator } from '<%= kernelPkg %>';
+import { create<%= Module %>Handler } from '../src/index.ts';
+import { create<%= Module %>Service } from '../src/service.ts';
+<% if (hasConsumes) { %>import type { <%= Consumes %>Client } from '../src/index.ts';
+
+const fake<%= Consumes %>: <%= Consumes %>Client = {
+  askFor: (): Promise<string> => Promise.resolve('Hello, Ada!'),
+};
+<% } %>
+describe('the <%= module %> seam', () => {
+  const seam = create<%= Module %>Service(
+    createRegistryMediator([create<%= Module %>Handler(<% if (hasConsumes) { %>fake<%= Consumes %><% } %>)]),
+  );
+
+  it('carries the answer as its own type, not the domain result', async () => {
+    expect(await seam.<%= module %>For('Ada')).toBeTypeOf('string');
+  });
+
+  it('rejects with the domain error rather than swallowing it', async () => {
+    await expect(seam.<%= module %>For('   ')).rejects.toThrow();
+  });
+});

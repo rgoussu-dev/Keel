@@ -1,0 +1,8 @@
+[package]
+name = "<%= module %>-domain-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+platform-kernel = { path = "../../../../platform/kernel" }
+<%= module %>-domain-contract = { path = "../contract" }

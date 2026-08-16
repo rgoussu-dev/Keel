@@ -1,0 +1,38 @@
+// Package <%= consumes %>gateway translates <%= module %>'s
+// <%= Consumes %>Client port into a call on the <%= consumes %>
+// context's seam.
+//
+// This is the only package in <%= module %> that knows <%= consumes %>
+// exists, and it is a driven adapter — so the dependency points from
+// infrastructure inwards, never between two domains.
+//
+// The import block below is the file a reviewer checks. It names
+// <%= consumes %>'s seam and nothing else of <%= consumes %>'s;
+// naming its domain would not merely be poor style, it would not
+// build — that package sits behind modules/<%= consumes %>/internal/.
+package <%= consumes %>gateway
+
+import (
+<%- gatewayImports %>
+)
+
+// Gateway reaches <%= consumes %> through its seam.
+type Gateway struct {
+	<%= consumes %> <%= consumesSeamAlias %>.<%= Consumes %>Service
+}
+
+// New returns a gateway delegating to the <%= consumes %> seam.
+func New(<%= consumes %> <%= consumesSeamAlias %>.<%= Consumes %>Service) Gateway {
+	return Gateway{<%= consumes %>: <%= consumes %>}
+}
+
+// AskFor satisfies <%= module %>'s driven port.
+func (g Gateway) AskFor(subject string) (string, error) {
+	// What crosses this boundary is a <%= consumesSeamAlias %>.<%= Consumes %>,
+	// never a <%= consumes %> domain type — the seam hands back its own.
+	answer, err := g.<%= consumes %>.<%= Consumes %>For(subject)
+	if err != nil {
+		return "", err
+	}
+	return answer.Message, nil
+}

@@ -1,0 +1,41 @@
+import { describe, expect, it } from 'vitest';
+import { create<%= Module %>Handler, <%= module %>Command } from '../src/index.ts';
+<% if (hasConsumes) { %>import type { <%= Consumes %>Client } from '../src/index.ts';
+
+/** The canonical fake of the driven port: a canned reply, nothing else. */
+function fake<%= Consumes %>(reply: string | Error): <%= Consumes %>Client {
+  return {
+    askFor(): Promise<string> {
+      return reply instanceof Error ? Promise.reject(reply) : Promise.resolve(reply);
+    },
+  };
+}
+<% } %>
+describe('the <%= module %> context', () => {
+  it('produces a result for a named subject', async () => {
+    const handler = create<%= Module %>Handler(<% if (hasConsumes) { %>fake<%= Consumes %>('Hello, Ada!')<% } %>);
+
+    const result = await handler.handle(<%= module %>Command('Ada'));
+
+    expect(result.ok).toBe(true);
+<% if (hasConsumes) { %>    if (result.ok) expect(result.value.detail).toBe('Hello, Ada!');
+<% } else { %>    if (result.ok) expect(result.value.detail).toBe('<%= module %>: Ada');
+<% } %>  });
+
+  it('rejects a blank subject', async () => {
+    const handler = create<%= Module %>Handler(<% if (hasConsumes) { %>fake<%= Consumes %>('never asked')<% } %>);
+
+    const result = await handler.handle(<%= module %>Command('   '));
+
+    expect(result.ok).toBe(false);
+  });
+<% if (hasConsumes) { %>
+  it('reports an unreachable peer in its own vocabulary', async () => {
+    const handler = create<%= Module %>Handler(fake<%= Consumes %>(new Error('seam down')));
+
+    const result = await handler.handle(<%= module %>Command('Ada'));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('<%= module %>.<%= consumes %>-unreachable');
+  });
+<% } %>});

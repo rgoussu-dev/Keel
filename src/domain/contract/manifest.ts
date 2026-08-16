@@ -55,6 +55,41 @@ export interface ManifestV2 {
   readonly peers: readonly PeerLink[];
   /** Services of a composite (product-root) install, in install order. */
   readonly services: readonly ServiceRef[];
+  /**
+   * The bounded contexts this project holds, in install order.
+   *
+   * Distinct from {@link tags}: `layout.modulith` says the project is
+   * carved into contexts and `modules.peer-context` says a second one
+   * was opted into, but neither says *which* contexts exist, and
+   * `keel add module <name>` needs exactly that — to refuse a name
+   * already taken, and to check that `--consumes <other>` names a
+   * context that is really there.
+   *
+   * Records every context, not only the ones `keel add module`
+   * emitted. The skeleton's own context is in here, so
+   * `keel add module greeting` is refused rather than colliding on
+   * disk; so is the `--with-peer-context` one.
+   */
+  readonly modules: readonly InstalledModule[];
+}
+
+/**
+ * One bounded context of a modulith project.
+ *
+ * `seam` is the field that earns this its own type. A context is
+ * consumable only through its `user-side/service` seam, and not every
+ * context has one: the `--with-peer-context` context is a pure
+ * consumer, publishing no seam of its own, so `--consumes guestbook`
+ * has nothing to bind to. Recording the fact at install time is what
+ * lets that be a front-door rejection naming the context, instead of
+ * a gateway emitted against a package that does not exist.
+ */
+export interface InstalledModule {
+  /** The context's name — its directory, and its identifier in five languages. */
+  readonly name: string;
+  readonly installedAt: string;
+  /** Whether it publishes a `user-side/service` seam other contexts may consume. */
+  readonly seam: boolean;
 }
 
 /**
@@ -131,6 +166,13 @@ export const PeerLinkSchema = z.object({
   tags: z.array(z.string()),
 });
 
+/** Schema for a bounded-context record. */
+export const InstalledModuleSchema = z.object({
+  name: z.string(),
+  installedAt: z.string(),
+  seam: z.boolean(),
+});
+
 /** Schema for a composite-install service record. */
 export const ServiceRefSchema = z.object({
   path: z.string(),
@@ -153,6 +195,7 @@ export const ManifestV2Schema = z.object({
   projects: z.array(z.string()).default([]),
   peers: z.array(PeerLinkSchema).default([]),
   services: z.array(ServiceRefSchema).default([]),
+  modules: z.array(InstalledModuleSchema).default([]),
 });
 
 /**
@@ -186,6 +229,7 @@ export function migrateV1(v1: z.infer<typeof ManifestV1Schema>): ManifestV2 {
     projects: [],
     peers: [],
     services: [],
+    modules: [],
   };
 }
 
@@ -204,6 +248,7 @@ export function emptyManifestV2(now: string, keelVersion: string): ManifestV2 {
     projects: [],
     peers: [],
     services: [],
+    modules: [],
   };
 }
 

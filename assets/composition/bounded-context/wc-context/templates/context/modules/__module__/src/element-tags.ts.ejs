@@ -1,0 +1,21 @@
+/**
+ * This context's custom-element tags — the one part of the layout no
+ * compiler will ever check.
+ *
+ * A tag is not a type, not a module specifier and not a path. Spell
+ * the prefix wrong and the build is green, the typecheck is green,
+ * the tests are green, and the page renders an unknown element as an
+ * empty inline box. So the prefix is a rule —
+ * `<scope>-<context>-<element>` — with the *context* segment carrying
+ * the weight: two contexts would collide on `<%= scope %>-view`
+ * without it, and a collision here is a silent blank box rather than
+ * an error. `tests/element-tags.test.ts` re-derives the tag from this
+ * package's own name so a typo fails.
+ *
+ * They live apart from `elements.ts` because that module touches the
+ * DOM on import: keeping the names here lets a DOM-less test assert
+ * them, which is the whole point of having the test.
+ */
+
+/** This context's view tag. */
+export const <%= MODULE %>_VIEW_TAG = '<%= viewTag %>';

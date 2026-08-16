@@ -88,6 +88,47 @@ export interface AddVerticalCommand extends Command<InstallReport> {
   readonly dryRun: boolean;
 }
 
+/**
+ * Add a **bounded context** to an initialised modulith project.
+ *
+ * A sibling of {@link AddVerticalCommand} rather than a case of it,
+ * and the difference is not cosmetic. A vertical is a capability
+ * dimension installed at most once — `AddVerticalHandler` refuses a
+ * second install by id, which is the right rule for `persistence` and
+ * exactly the wrong one for a context, since adding the *second*
+ * context is the entire point. A module is also identified by user
+ * input rather than by a registry id, and that input is not a sticky
+ * answer: sticky answers persist into the next install, and a
+ * persisted module name would silently become the default for the
+ * context after it.
+ */
+export interface AddModuleCommand extends Command<InstallReport> {
+  readonly kind: 'keel.add-module';
+  readonly cwd: string;
+  /** The context's name, as typed. Validated by the handler, not here. */
+  readonly module: string;
+  /**
+   * An existing context this one reaches through a gateway, if any.
+   *
+   * Absent by default: a gateway the user did not ask for is the same
+   * class of presumption as a use case they did not ask for. Present,
+   * it names a context that must already exist *and* publish a seam —
+   * the `--with-peer-context` context publishes none, so it is a legal
+   * name and an illegal target.
+   */
+  readonly consumes?: string;
+  readonly answers: PresetAnswers;
+  readonly interactive: boolean;
+  readonly dryRun: boolean;
+}
+
+/** Constructs an {@link AddModuleCommand}. */
+export function addModuleCommand(
+  input: Omit<AddModuleCommand, 'kind' | 'intent'>,
+): AddModuleCommand {
+  return { kind: 'keel.add-module', intent: 'command', ...input };
+}
+
 /** Result DTO of `keel link`. */
 export interface LinkReport {
   /** The peer's directory as recorded in this project's manifest. */
