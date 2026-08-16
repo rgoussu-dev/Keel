@@ -1,0 +1,46 @@
+/**
+ * Command carrying what this context acts on. Commands are plain data.
+ *
+ * **Rename me.** `keel add module <%= module %>` knows the context's
+ * name and nothing about what it is for, so it cannot invent a use
+ * case: this is a stand-in with the right shape, and turning it into
+ * your first real one is meant to be the first thing you do here.
+ */
+export interface <%= Module %>Command {
+  readonly subject: string;
+}
+
+/** What this context recorded. */
+export interface <%= Module %>Record {
+  readonly subject: string;
+  readonly detail: string;
+}
+<% if (hasConsumes) { %>
+/**
+ * The driven port through which this context reaches <%= consumes %>.
+ *
+ * Declared in **<%= module %>'s** vocabulary, and that is the point:
+ * this context asks and does not know — must not know — which other
+ * bounded context answers. Which one does is a fact of the gateway
+ * under `src/infra/` and of the assembly, and of nowhere else.
+ */
+export interface <%= Consumes %>Client {
+  /** The detail to record for `subject`, or null if none could be had. */
+  detailFor(subject: string): string | null;
+}
+<% } %>
+/** Driving port for this context's use case. */
+export interface <%= Module %> {
+  execute(command: <%= Module %>Command): void;
+}
+
+/** Detaches a listener registered via {@link <%= Module %>ReadModel.subscribe}. */
+export type Unsubscribe = () => void;
+
+/** Read model over what this context recorded. */
+export interface <%= Module %>ReadModel {
+  /** The latest record, or null before the first one. */
+  latest(): <%= Module %>Record | null;
+  /** Registers a listener called on every new record. */
+  subscribe(listener: (record: <%= Module %>Record) => void): Unsubscribe;
+}

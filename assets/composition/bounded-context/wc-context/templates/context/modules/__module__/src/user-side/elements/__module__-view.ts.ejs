@@ -1,0 +1,67 @@
+/**
+ * Port-bound custom element for this context's use case — a driving
+ * adapter's part, built exactly like the greeting context's view:
+ * context-supplied ports on one side, design-system children on the
+ * other. It subscribes to this context's read model and pushes state
+ * down; it translates its form's submit up into a command on the
+ * driving port.
+<% if (hasConsumes) { %> *
+ * It names no <%= consumes %> type. What it renders came from the
+ * other context, and it arrived through this context's own
+ * `<%= Module %>Record`.
+<% } %> */
+
+import { ContextRequestEvent } from '<%= contextProtocolPkg %>';
+import type { <%= Module %>, <%= Module %>ReadModel, Unsubscribe } from '../../domain/contract/index';
+import { <%= module %>Context, <%= module %>RecordsContext } from '../../context-keys';
+import { <%= MODULE %>_VIEW_TAG } from '../../element-tags';
+
+const template = document.createElement('template');
+template.innerHTML = `
+  <stack-pk space="var(--s0)">
+    <form>
+      <cluster-pk space="var(--s-1)" align="center">
+        <label>Subject <input name="subject" autocomplete="off" /></label>
+        <<%= scope %>-button type="submit">Send</<%= scope %>-button>
+      </cluster-pk>
+    </form>
+    <output></output>
+  </stack-pk>
+`;
+
+export class <%= Module %>View extends HTMLElement {
+  #<%= module %>?: <%= Module %>;
+  #records?: <%= Module %>ReadModel;
+  #unsubscribe?: Unsubscribe;
+
+  connectedCallback(): void {
+    this.dispatchEvent(
+      new ContextRequestEvent(<%= module %>Context, (port) => (this.#<%= module %> = port)),
+    );
+    this.dispatchEvent(
+      new ContextRequestEvent(<%= module %>RecordsContext, (readModel) => (this.#records = readModel)),
+    );
+    const <%= module %> = this.#<%= module %>;
+    const records = this.#records;
+    if (!<%= module %> || !records) {
+      throw new Error(`<${<%= MODULE %>_VIEW_TAG}>: no context provider answered`);
+    }
+
+    this.replaceChildren(template.content.cloneNode(true));
+    const form = this.querySelector('form');
+    const output = this.querySelector('output');
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = form.elements.namedItem('subject');
+      if (input instanceof HTMLInputElement) <%= module %>.execute({ subject: input.value });
+    });
+    this.#unsubscribe = records.subscribe((record) => {
+      if (output) output.textContent = record.detail;
+    });
+  }
+
+  disconnectedCallback(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
+  }
+}

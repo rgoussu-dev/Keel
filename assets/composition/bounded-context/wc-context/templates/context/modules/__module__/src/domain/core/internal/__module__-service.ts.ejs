@@ -1,0 +1,23 @@
+import type {
+<% if (hasConsumes) { %>  <%= Consumes %>Client,
+<% } %>  <%= Module %>,
+  <%= Module %>Command,
+} from '../../contract/index';
+import type { <%= Module %>Store } from './<%= module %>-store';
+
+/** Assembles this context's use case behind its driving port. */
+export function create<%= Module %>(
+  store: <%= Module %>Store,
+<% if (hasConsumes) { %>  <%= consumes %>: <%= Consumes %>Client,
+<% } %>): <%= Module %> {
+  return {
+    execute(command: <%= Module %>Command): void {
+      const subject = command.subject.trim();
+      if (subject === '') return;
+<% if (hasConsumes) { %>      const detail = <%= consumes %>.detailFor(subject);
+      if (detail === null) return;
+      store.publish({ subject, detail });
+<% } else { %>      store.publish({ subject, detail: `<%= module %>: ${subject}` });
+<% } %>    },
+  };
+}

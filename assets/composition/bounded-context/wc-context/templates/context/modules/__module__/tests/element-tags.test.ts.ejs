@@ -1,0 +1,20 @@
+import { describe, expect, it } from 'vitest';
+import pkg from '../package.json' with { type: 'json' };
+import { <%= MODULE %>_VIEW_TAG } from '../src/element-tags';
+
+/**
+ * The tag prefix is the one part of the layout no compiler checks, so
+ * it is re-derived from this package's own name rather than restated:
+ * a typo in either place fails here instead of rendering an empty box.
+ */
+describe('this context element tags', () => {
+  const [scope, context] = pkg.name.replace('@', '').split('/');
+
+  it('carries the scope and the context, so two contexts cannot collide', () => {
+    expect(<%= MODULE %>_VIEW_TAG).toBe(`${scope}-${context}-view`);
+  });
+
+  it('is a valid custom-element name — lowercase, with a dash', () => {
+    expect(<%= MODULE %>_VIEW_TAG).toMatch(/^[a-z][a-z0-9]*(-[a-z0-9]+)+$/);
+  });
+});

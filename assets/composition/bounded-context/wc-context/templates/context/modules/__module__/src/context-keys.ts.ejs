@@ -1,0 +1,20 @@
+/**
+ * This context's context keys — typed by its own ports, and part of
+ * what it publishes: the assembly needs them to answer requests, and
+ * this context's elements need them to ask. The domain never learns a
+ * DOM-flavoured DI mechanism exists; these sit beside it, not in it.
+ *
+ * The key strings carry the context name for the same reason the
+ * element tags do. A duplicate key is worse than a duplicate tag: the
+ * context protocol raises a `NotSupportedError`, which aborts the rest
+ * of that bundle's registrations and leaves a half-rendered page.
+ */
+
+import { createContext } from '<%= contextProtocolPkg %>';
+import type { <%= Module %>, <%= Module %>ReadModel } from './domain/contract/index';
+
+/** Delivers this context's driving port. */
+export const <%= module %>Context = createContext<<%= Module %>>('<%= handleKey %>');
+
+/** Delivers this context's read model. */
+export const <%= module %>RecordsContext = createContext<<%= Module %>ReadModel>('<%= recordsKey %>');

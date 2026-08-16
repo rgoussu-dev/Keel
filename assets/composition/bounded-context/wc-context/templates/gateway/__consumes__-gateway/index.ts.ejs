@@ -1,0 +1,36 @@
+import type { <%= Consumes %>Service } from '<%= consumesSeamPkg %>';
+import type { <%= Consumes %>Client } from '../../domain/contract/index';
+
+/**
+ * The gateway translating <%= module %>'s `<%= Consumes %>Client` port
+ * into a call on the <%= consumes %> context's seam.
+ *
+ * This is the only file in <%= module %> that knows <%= consumes %>
+ * exists, and it is a driven adapter — so the dependency points from
+ * infrastructure inwards, never between two domains.
+ *
+ * The seam is fire-and-observe rather than request/response, because
+ * that is the shape a browser context publishes: the call records and
+ * notifies, `latest` reads. Asking therefore *does* publish in the
+ * other context, which its own view on the page will render — the
+ * cross-context call is visible, which is the point of having a peer
+ * at all.
+ *
+ * Its import list is the review, and it is worth knowing what does
+ * **not** enforce it. Nothing in the toolchain stops this file writing
+ * `from '<%= consumesPkg %>'` and helping itself to that context's
+ * whole contract face. The `exports` map holds the depth rule —
+ * `<%= consumesPkg %>/src/domain/…` is a TS2307 — and the peer rule is
+ * `peers-meet-at-the-service-seam` in the workspace's
+ * `.dependency-cruiser.cjs`, checked by `npm run lint`.
+ */
+export function create<%= Consumes %>Gateway(<%= consumes %>: <%= Consumes %>Service): <%= Consumes %>Client {
+  return {
+    // The seam hands back a string, never <%= consumes %>'s own
+    // record type, so none of the peer's vocabulary crosses into ours.
+    detailFor(subject: string): string | null {
+      <%= consumes %>.<%= consumesSeamMethod %>(subject);
+      return <%= consumes %>.latest();
+    },
+  };
+}

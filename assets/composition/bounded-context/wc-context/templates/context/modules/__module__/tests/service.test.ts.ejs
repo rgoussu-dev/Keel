@@ -1,0 +1,28 @@
+import { describe, expect, it } from 'vitest';
+import { create<%= Module %>, create<%= Module %>Store } from '../src/index';
+import { create<%= Module %>Service } from '../src/service';
+<% if (hasConsumes) { %>import type { <%= Consumes %>Client } from '../src/index';
+
+const fake<%= Consumes %>: <%= Consumes %>Client = { detailFor: () => 'Hello, Ada!' };
+<% } %>
+describe('the <%= module %> seam', () => {
+  const seam = (): ReturnType<typeof create<%= Module %>Service> => {
+    const store = create<%= Module %>Store();
+    return create<%= Module %>Service(
+      create<%= Module %>(store<% if (hasConsumes) { %>, fake<%= Consumes %><% } %>),
+      store,
+    );
+  };
+
+  it('answers null before anything has been asked', () => {
+    expect(seam().latest()).toBeNull();
+  });
+
+  it('carries the detail as a plain string, not this context record type', () => {
+    const service = seam();
+
+    service.<%= module %>For('Ada');
+
+    expect(typeof service.latest()).toBe('string');
+  });
+});

@@ -306,6 +306,75 @@ export function wcLayout(tags: readonly Tag[], scope: string): WcLayoutPaths {
  * `null` under `basic`, which is a single hexagon with no peer to
  * compose with.
  */
+/**
+ * The skeleton context's seam method, spelled out because it cannot
+ * be derived.
+ *
+ * Every added context publishes `<name>For(subject)`; the skeleton
+ * publishes `greet(name)`, an agent verb no rule produces from the
+ * string "greeting". Same shape of exception as the `ts-http` one,
+ * and stated separately because the two families' skeletons are two
+ * different pieces of emitted content that happen to agree today.
+ */
+export const WC_SKELETON_SEAM_METHOD = 'greet';
+
+/**
+ * The package of any bounded context added by `keel add module`.
+ *
+ * The generalisation of {@link wcPeerPackage}, and it publishes
+ * **three** entry points where the peer publishes two: the facade,
+ * `./elements`, and — the difference — `./service`. The peer is a
+ * pure consumer, so a seam would exist to be reached by nothing; an
+ * added context always publishes one, so
+ * `keel add module <other> --consumes <name>` has an entry point to
+ * import.
+ *
+ * `elementTag` and `contextKey` are the two spellings no compiler
+ * checks, and both take the context name as a segment for the same
+ * reason: two contexts would otherwise collide, and a collision is a
+ * silent blank box in one case and an aborted registration in the
+ * other.
+ */
+export function wcContextPackage(
+  layout: WcLayoutPaths,
+  context: string,
+  consumes: string | null,
+): {
+  readonly root: string;
+  readonly pkg: string;
+  readonly elementsPkg: string;
+  readonly seamPkg: string;
+  readonly contractSrc: string;
+  readonly coreInternal: string;
+  readonly gatewaySrc: string | null;
+  readonly elementsDir: string;
+  readonly tests: string;
+  elementTag(name: string): string;
+  contextKey(name: string): string;
+} | null {
+  if (layout.layout === 'basic') return null;
+  const root = `modules/${context}`;
+  const pkg = `@${layout.scope}/${context}`;
+  return {
+    root,
+    pkg,
+    elementsPkg: `${pkg}/elements`,
+    seamPkg: `${pkg}/service`,
+    contractSrc: `${root}/src/domain/contract`,
+    coreInternal: `${root}/src/domain/core/internal`,
+    gatewaySrc: consumes === null ? null : `${root}/src/infra/${consumes}-gateway`,
+    elementsDir: `${root}/src/user-side/elements`,
+    tests: `${root}/tests`,
+    elementTag: (name) => `${layout.scope}-${context}-${name}`,
+    contextKey: (name) => `${layout.scope}.${context}.${name}`,
+  };
+}
+
+/** The seam entry point of an existing context — what a gateway imports. */
+export function wcSeamPackage(layout: WcLayoutPaths, context: string): string {
+  return `@${layout.scope}/${context}/service`;
+}
+
 export function wcPeerPackage(layout: WcLayoutPaths): {
   readonly root: string;
   readonly pkg: string;

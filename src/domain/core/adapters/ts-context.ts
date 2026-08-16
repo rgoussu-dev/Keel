@@ -55,7 +55,7 @@ import {
   type TsLayoutPaths,
 } from './ts-module-layout.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
-import { eolAware } from '../util.js';
+import { beforeFirstImport, eolAware } from '../util.js';
 
 export const TS_CONTEXT_ID = 'bounded-context/ts-context';
 
@@ -232,10 +232,7 @@ function wiringPatch(layout: TsLayoutPaths, context: string): ContributionPatch 
         throw new Error(`${TS_CONTEXT_ID}: unterminated mediator assembly call in '${target}'`);
       }
       const withEntry = `${existing.slice(0, close)}, ${factory}()${existing.slice(close)}`;
-      // Anchored on the first import so repeated runs stack in a
-      // stable order rather than racing the previous context's line.
-      const firstImport = withEntry.indexOf('\n');
-      return `${withEntry.slice(0, firstImport)}\n${wiringImport}${withEntry.slice(firstImport)}`;
+      return beforeFirstImport(withEntry, wiringImport);
     }),
   };
 }

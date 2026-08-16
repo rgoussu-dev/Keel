@@ -1,0 +1,21 @@
+/**
+ * The bounded context's facade — the DOM-less half of what it
+ * publishes, and the entry point a deployment unit or a peer's tests
+ * import to reach its domain.
+ *
+ * Custom-element registration is deliberately *not* here: it lives
+ * behind `<%= contextPkg %>/elements`, so importing this module in a
+ * DOM-less program does not define anything. The `exports` map is what
+ * makes that separation real — `<%= contextPkg %>/src/domain/core/internal/…`
+ * is a resolution error in tsc and in the browser alike.
+ */
+
+export * from './domain/contract/index';
+export { create<%= Module %> } from './domain/core/internal/<%= module %>-service';
+export {
+  create<%= Module %>Store,
+  type <%= Module %>Store,
+} from './domain/core/internal/<%= module %>-store';
+export { <%= module %>Context, <%= module %>RecordsContext } from './context-keys';
+<% if (hasConsumes) { %>export { create<%= Consumes %>Gateway } from './infra/<%= consumes %>-gateway/index';
+<% } %>

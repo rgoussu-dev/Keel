@@ -1,0 +1,38 @@
+import { describe, expect, it } from 'vitest';
+import { create<%= Module %>, create<%= Module %>Store } from '../src/index';
+<% if (hasConsumes) { %>import type { <%= Consumes %>Client } from '../src/index';
+
+/** The canonical fake of the driven port: a canned reply, nothing else. */
+function fake<%= Consumes %>(reply: string | null): <%= Consumes %>Client {
+  return { detailFor: () => reply };
+}
+<% } %>
+describe('the <%= module %> context', () => {
+  it('records what it produced for a named subject', () => {
+    const store = create<%= Module %>Store();
+    const <%= module %> = create<%= Module %>(store<% if (hasConsumes) { %>, fake<%= Consumes %>('Hello, Ada!')<% } %>);
+
+    <%= module %>.execute({ subject: 'Ada' });
+
+<% if (hasConsumes) { %>    expect(store.latest()?.detail).toBe('Hello, Ada!');
+<% } else { %>    expect(store.latest()?.detail).toBe('<%= module %>: Ada');
+<% } %>  });
+
+  it('records nothing for a blank subject', () => {
+    const store = create<%= Module %>Store();
+    const <%= module %> = create<%= Module %>(store<% if (hasConsumes) { %>, fake<%= Consumes %>('never asked')<% } %>);
+
+    <%= module %>.execute({ subject: '   ' });
+
+    expect(store.latest()).toBeNull();
+  });
+<% if (hasConsumes) { %>
+  it('records nothing when the peer had no answer', () => {
+    const store = create<%= Module %>Store();
+    const <%= module %> = create<%= Module %>(store, fake<%= Consumes %>(null));
+
+    <%= module %>.execute({ subject: 'Ada' });
+
+    expect(store.latest()).toBeNull();
+  });
+<% } %>});
