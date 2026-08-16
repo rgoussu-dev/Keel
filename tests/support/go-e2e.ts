@@ -50,6 +50,37 @@ export function mkTempDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
+/**
+ * The Go build and module cache, shared by **every** suite in a run
+ * rather than one per file — which is a deliberate reversal, and the
+ * measurement that forced it is worth keeping.
+ *
+ * A fresh `GOCACHE`/`GOPATH` per file looks like hermeticity and is
+ * mostly a tax: both are content-addressed (`GOCACHE` by input hash,
+ * `pkg/mod` by module@version), so nothing one suite writes can
+ * change what another reads. What a per-file cache does buy is a cold
+ * stdlib-and-dependencies compile *per file*, which is most of what
+ * these suites spend.
+ *
+ * That was invisible while Go's modulith cases shared one file. When
+ * `modulith-go-persistence` moved into its own — the standing
+ * convention, a long case gets its own file — it went from 47.63s to
+ * 100.03s on the runner and took the whole shard from 137.07s to
+ * 159.37s. Splitting a file made the job *slower*, which is not how
+ * that convention is supposed to work. Sharing the cache is what
+ * makes it work: the cold compile happens once for the run instead of
+ * once per file.
+ *
+ * Not removed between files, and not removed at all — it lives under
+ * the OS temp directory at a fixed name, so the OS reclaims it and a
+ * second local run starts warm.
+ */
+export async function sharedGoHome(): Promise<string> {
+  const home = path.join(os.tmpdir(), 'keel-e2e-go-shared-home');
+  await fs.ensureDir(home);
+  return home;
+}
+
 const stubActions =
   (stubbed: ReadonlySet<string>) =>
   (inputs: RunActionsInputs): Promise<void> => {

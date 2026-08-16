@@ -17,7 +17,7 @@
 
 import path from 'node:path';
 import fs from 'fs-extra';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   addVertical,
   E2E_TIMEOUT_MS,
@@ -25,6 +25,7 @@ import {
   goRunFails,
   mkTempDir,
   scaffold,
+  sharedGoHome,
   skipGoE2E,
 } from '../support/go-e2e.js';
 
@@ -32,11 +33,7 @@ let goHome: string;
 let cwd: string;
 
 beforeAll(async () => {
-  goHome = await mkTempDir('keel-e2e-go-persistence-home-');
-});
-
-afterAll(async () => {
-  await fs.remove(goHome);
+  goHome = await sharedGoHome();
 });
 
 beforeEach(async () => {

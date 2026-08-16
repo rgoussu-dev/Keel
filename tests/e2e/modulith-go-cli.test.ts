@@ -12,7 +12,7 @@
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   E2E_TIMEOUT_MS,
   EXE,
@@ -20,6 +20,7 @@ import {
   goRunFails,
   mkTempDir,
   scaffold,
+  sharedGoHome,
   skipGoE2E,
 } from '../support/go-e2e.js';
 
@@ -27,11 +28,7 @@ let goHome: string;
 let cwd: string;
 
 beforeAll(async () => {
-  goHome = await mkTempDir('keel-e2e-go-cli-modulith-home-');
-});
-
-afterAll(async () => {
-  await fs.remove(goHome);
+  goHome = await sharedGoHome();
 });
 
 beforeEach(async () => {
