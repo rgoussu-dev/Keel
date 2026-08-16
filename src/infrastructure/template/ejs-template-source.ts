@@ -98,8 +98,25 @@ async function walk(root: string): Promise<string[]> {
   return out.sort();
 }
 
+/**
+ * Replaces `__name__` path tokens with the matching render var.
+ *
+ * **Token names are alphanumeric, and the underscore's absence is
+ * load bearing.** Allowing one inside the name makes `__module___test.go`
+ * ambiguous: the greedy read takes `module_` and then finds its
+ * closing `__`, so the token silently fails to resolve and the
+ * literal `__module___test.go` lands on disk. Excluding `_` from the
+ * name makes that string parse the only way it was ever meant to —
+ * `__module__` followed by `_test.go` — which is exactly what a Go
+ * test file emitted per bounded context needs. No shipped token has
+ * ever contained an underscore.
+ *
+ * An unknown key is left verbatim rather than blanked, so a typo
+ * surfaces as a path with `__` in it instead of a silently truncated
+ * filename.
+ */
 function substitutePathTokens(p: string, vars: Readonly<Record<string, unknown>>): string {
-  return p.replace(/__([a-zA-Z_][a-zA-Z0-9_]*)__/g, (whole, key: string) => {
+  return p.replace(/__([a-zA-Z][a-zA-Z0-9]*)__/g, (whole, key: string) => {
     const v = vars[key];
     return v == null ? whole : String(v);
   });
