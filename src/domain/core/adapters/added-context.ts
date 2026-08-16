@@ -1,6 +1,6 @@
 /**
- * The inputs `keel add module <name>` hands its adapters, and the two
- * tags that select them.
+ * The inputs `keel add module <name>` hands its adapters, and the tag
+ * that selects them.
  *
  * **Why the answers channel rather than a new one.** An adapter reads
  * resolved values off the manifest snapshot through
@@ -13,14 +13,15 @@
  * one record instead of one per family, and a family added later reads
  * the same key without the handler learning its name.
  *
- * **Both the answers and the tags are transient, and the handler
+ * **Both the answers and the tag are transient, and the handler
  * strips them.** They are install-time selectors, not facts about the
  * project: `modules.context` says "an add-module run is happening",
  * which stops being true the moment it finishes, and the name belongs
  * in {@link ManifestV2.modules} where it is a fact rather than in
  * `answers` where it would read as a default for the *next* context.
- * A persisted `modules.consumes` would be worse than untidy — the
- * gateway adapter would fire again on the next unrelated install.
+ * A persisted `modules.context` would be worse than untidy — every
+ * family's context adapter would fire again on the next unrelated
+ * install, and try to re-emit a context that is already there.
  */
 
 import type { ManifestV2 } from '../../contract/manifest.js';
@@ -45,18 +46,6 @@ export const ADD_MODULE_INPUT_ID = 'keel.add-module';
  * the same {@link emitsFor} the `--with-peer-context` gate uses.
  */
 export const CONTEXT_TAG: Tag = 'modules.context';
-
-/**
- * Selects the gateway adapters — the consumer edge, emitted only under
- * `--consumes <other>`.
- *
- * A separate tag rather than a branch inside the shell adapter,
- * because it is a separate decision: the shell is what the user asked
- * for and the gateway is what they opted into. Splitting them at the
- * predicate keeps "no gateway unless asked" a structural property
- * rather than an `if` some family could forget.
- */
-export const CONSUMES_TAG: Tag = 'modules.consumes';
 
 /** The context an add-module run is emitting, as its adapters see it. */
 export interface AddedContext {
@@ -103,6 +92,6 @@ export function withoutAddModuleInputs(manifest: ManifestV2): ManifestV2 {
   return {
     ...manifest,
     answers,
-    tags: manifest.tags.filter((tag) => tag !== CONTEXT_TAG && tag !== CONSUMES_TAG),
+    tags: manifest.tags.filter((tag) => tag !== CONTEXT_TAG),
   };
 }

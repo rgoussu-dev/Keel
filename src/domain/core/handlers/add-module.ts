@@ -52,12 +52,7 @@ import type { InstalledModule, ManifestV2 } from '../../contract/manifest.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
 import type { Tag } from '../../contract/composition.js';
 import { runActions } from '../actions.js';
-import {
-  addModuleInputs,
-  CONSUMES_TAG,
-  CONTEXT_TAG,
-  withoutAddModuleInputs,
-} from '../adapters/added-context.js';
+import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
@@ -98,7 +93,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     const tree = this.deps.trees(command.cwd);
     const seeded: ManifestV2 = {
       ...stored,
-      tags: [...stored.tags, CONTEXT_TAG, ...(gate.value ? [CONSUMES_TAG] : [])].sort(),
+      tags: [...stored.tags, CONTEXT_TAG].sort(),
       answers: {
         ...stored.answers,
         ...addModuleInputs({ name: name.value, consumes: gate.value?.name ?? null }),
