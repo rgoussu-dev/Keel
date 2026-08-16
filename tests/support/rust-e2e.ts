@@ -38,7 +38,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { addVerticalCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
+import {
+  addModuleCommand,
+  addVerticalCommand,
+  newProjectCommand,
+} from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
 import { expectOk, installMediator } from './factory.js';
 
@@ -278,4 +282,34 @@ export async function withServer<T>(
     server.removeAllListeners('exit');
     server.kill();
   }
+}
+
+/**
+ * Adds a bounded context to the already-scaffolded project, exactly as
+ * `keel add module <name>` does.
+ *
+ * Separate from {@link addVertical} because a context is not a
+ * vertical the registry can name: it is a thing with a *name*, and the
+ * command carries one. Suites call it more than once on purpose — the
+ * shape that finds bugs is three contexts, where the consumed one is
+ * no longer always the skeleton.
+ */
+export async function addModule(
+  module: string,
+  consumes: string | null,
+  cwd: string,
+): Promise<void> {
+  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  expectOk(
+    await mediator.dispatch(
+      addModuleCommand({
+        cwd,
+        module,
+        ...(consumes === null ? {} : { consumes }),
+        answers: {},
+        interactive: false,
+        dryRun: false,
+      }),
+    ),
+  );
 }
