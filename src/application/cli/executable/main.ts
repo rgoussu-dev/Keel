@@ -10,6 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { RegistryMediator } from '../../../domain/core/mediator.js';
 import { NewProjectHandler } from '../../../domain/core/handlers/new-project.js';
+import { AddModuleHandler } from '../../../domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.js';
 import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
 import { listStackIds } from '../../../domain/core/stacks.js';
@@ -40,6 +41,7 @@ export async function main(argv: string[]): Promise<void> {
   const mediator = new RegistryMediator([
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
+    new AddModuleHandler(deps),
     new LinkPeerHandler(deps),
   ]);
 

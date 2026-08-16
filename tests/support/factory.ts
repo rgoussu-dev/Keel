@@ -14,6 +14,7 @@ import type { Result } from '../../src/domain/kernel/result.js';
 import { DomainError } from '../../src/domain/kernel/result.js';
 import { RegistryMediator } from '../../src/domain/core/mediator.js';
 import { NewProjectHandler } from '../../src/domain/core/handlers/new-project.js';
+import { AddModuleHandler } from '../../src/domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../src/domain/core/handlers/add-vertical.js';
 import { LinkPeerHandler } from '../../src/domain/core/handlers/link-peer.js';
 import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
@@ -45,6 +46,7 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
   return new RegistryMediator([
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
+    new AddModuleHandler(deps),
     new LinkPeerHandler(deps),
   ]);
 }
