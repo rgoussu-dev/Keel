@@ -208,14 +208,22 @@ jobs:
           # The fix was the cache, not the file layout:
           # `sharedGoHome()` gives every suite in a run one
           # content-addressed cache, so the cold compile happens once
-          # per run instead of once per file. Measured locally on the
-          # six-file shape, both runs starting cold: 123.09s wall
-          # before, 85.81s after, with the persistence file at 68.05s
-          # against 103.73s. The runner number for this shape is not
-          # in yet — when it lands, put it here and delete this
-          # sentence rather than reasoning about it.
+          # per run instead of once per file.
           #
-          # Still one shard. `docker` remains for `fullstack-go` alone.
+          # Run 218, the shipped shape: 251.57s of test time in 90.28s
+          # wall — 34% under the 137.07s this started at, and 43%
+          # under the split-with-per-file-caches shape. Per file,
+          # `fullstack-go` 83.61s, `modulith-go-http` 75.16s,
+          # `modulith-go-persistence` 63.57s, `walking-skeleton-go`
+          # 7.61s, `modulith-go-cli` 4.68s. The last two are what a
+          # warm cache looks like: `walking-skeleton-go` was 63.50s a
+          # run earlier.
+          #
+          # Still one shard, and now for a reason it did not have
+          # before: the floor is `fullstack-go` at 83.61s against a
+          # 90.28s wall, so the job is bound by a file none of this
+          # work added. Splitting further would buy attribution and no
+          # wall clock. `docker` remains for `fullstack-go` alone.
           - id: go
             tools: go docker
             files: >-
