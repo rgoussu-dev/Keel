@@ -3,7 +3,12 @@ WORKDIR /workspace
 COPY . .
 RUN npm install && npm run build
 
-FROM nginx:alpine
-COPY --from=build /workspace/application/web-app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+# Assets image — carries the bundle, serves nothing. Its entrypoint
+# clears the shared volume, copies the bundle in, templates env.js
+# from the environment, and exits; an unmodified official nginx
+# serves the volume (see the root compose.yaml). A frontend release
+# replaces this image and re-runs it — nginx never rebuilds.
+FROM alpine:3
+COPY --from=build /workspace/application/web-app/dist /bundle/
+COPY deploy-assets.sh /usr/local/bin/deploy-assets.sh
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/deploy-assets.sh"]

@@ -98,7 +98,11 @@ describe('fullstack-go composite install (monorepo)', () => {
   it('containerises the pair with a Go backend image', () => {
     expect(read('compose.yaml')).toContain('build: ./backend');
     expect(read('backend/Dockerfile')).toContain('FROM golang:1-alpine AS build');
-    expect(read('frontend/Dockerfile')).toContain('FROM nginx:alpine');
-    expect(read('frontend/nginx.conf')).toContain('proxy_pass http://backend:8080/');
+    // The SPA ships as an assets image; a stock nginx (in the root
+    // compose) serves the volume and proxies /api to the
+    // env-configured backend URL.
+    expect(read('frontend/Dockerfile')).toContain('FROM alpine:3');
+    expect(read('frontend/Dockerfile')).not.toContain('FROM nginx');
+    expect(read('frontend/nginx.conf')).toContain('proxy_pass ${BACKEND_URL}/');
   });
 });

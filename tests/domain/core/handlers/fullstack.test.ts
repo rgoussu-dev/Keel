@@ -161,10 +161,31 @@ describe('fullstack composite install (monorepo)', () => {
     const mediator = installMediator({ runDeferred });
     expectOk(await mediator.dispatch(newFullstack({})));
 
-    expect(read('compose.yaml')).toContain('build: ./backend');
+    const compose = read('compose.yaml') ?? '';
+    expect(compose).toContain('build: ./backend');
     expect(read('backend/Dockerfile')).toContain('FROM gradle:jdk25 AS build');
-    expect(read('frontend/Dockerfile')).toContain('FROM node:22-alpine AS build');
-    expect(read('frontend/nginx.conf')).toContain('proxy_pass http://backend:8080/');
+    // The SPA ships as an assets image populating a named volume as
+    // an init container; a stock nginx serves the volume.
+    const frontendImage = read('frontend/Dockerfile') ?? '';
+    expect(frontendImage).toContain('FROM node:22-alpine AS build');
+    expect(frontendImage).toContain('FROM alpine:3');
+    expect(frontendImage).not.toContain('FROM nginx');
+    expect(compose).toContain('image: nginx:alpine');
+    expect(compose).toContain('condition: service_completed_successfully');
+    expect(compose).toContain('spa-assets:/assets');
+    expect(compose).toContain('spa-assets:/usr/share/nginx/html:ro');
+    // Clear-then-copy: a release must not leave the previous
+    // release's files behind in the volume.
+    const script = read('frontend/deploy-assets.sh') ?? '';
+    expect(script.indexOf('find /assets -mindepth 1 -delete')).toBeGreaterThan(-1);
+    expect(script.indexOf('find /assets -mindepth 1 -delete')).toBeLessThan(
+      script.indexOf('cp -R /bundle/. /assets/'),
+    );
+    // The backend is an attached resource: nginx resolves the /api
+    // proxy target from the environment at start, defaulted to the
+    // sibling service — never baked into an image.
+    expect(read('frontend/nginx.conf')).toContain('proxy_pass ${BACKEND_URL}/');
+    expect(compose).toContain('BACKEND_URL: ${BACKEND_URL:-http://backend:8080}');
     // Docker sends the whole context to the builder, so secrets stay
     // out of it for every deployment unit.
     expect(read('backend/.dockerignore')).toContain('.env');
