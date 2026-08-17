@@ -1,0 +1,43 @@
+name: release-image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: build & push container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build the artifact
+        run: CGO_ENABLED=0 GOOS=linux go build -o bin/<%= projectName %>-http ./cmd/http
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Builds the Dockerfile the containerization vertical emitted —
+      # one image definition, no second build system. The pushed image
+      # is environment-agnostic: config rides the environment of
+      # whatever runs it (see deploy/). GHCR requires a lowercase
+      # repository path.
+      - name: Build and push the image
+        run: |
+          image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          docker build -t "$image:$GITHUB_REF_NAME" -t "$image:latest" .
+          docker push "$image:$GITHUB_REF_NAME"
+          docker push "$image:latest"

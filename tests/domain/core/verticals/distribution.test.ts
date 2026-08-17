@@ -5,9 +5,9 @@
  *     matrix and the manifest gains `runtime.graalvm-native`;
  *   - sticky reuse: a stored answer is honoured silently on a second
  *     install;
- *   - hard fail: `arch.cli` removed → predicate filters the only
- *     adapter out, the vertical's dimensions go uncovered, install
- *     throws a `ResolutionError`.
+ *   - REST routing: `arch.cli` removed → the native-binaries
+ *     adapter filters out and the container family covers the
+ *     dimensions instead (its own suite covers the happy paths).
  */
 
 import path from 'node:path';
@@ -20,7 +20,6 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { distributionVertical } from '../../../../src/domain/core/verticals/distribution.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 
@@ -129,14 +128,17 @@ describe('distribution vertical (Quarkus CLI native)', () => {
     expect(release).not.toContain('darwin-arm64');
   });
 
-  it('hard-fails when arch.cli is absent (no adapter covers the dimensions)', async () => {
-    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dist-fail-'));
+  it('routes a REST project to the container family instead of hard-failing', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dist-rest-'));
     cwds.push(cwd);
     const tree = new FsTree(cwd);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-      // Quarkus + Gradle but no arch.cli — predicate filters the
-      // only adapter out, build + release-channel go uncovered.
+      // Quarkus + Gradle but no arch.cli — the native-binaries
+      // adapter filters out and `jvm-container` covers the
+      // dimensions instead. Without the containerization Dockerfile
+      // it refuses with the fix in the message (see
+      // distribution-container.test.ts for the covered paths).
       tags: baseTags('arch.server-http'),
       answers: bootstrapAnswers,
     };
@@ -153,7 +155,7 @@ describe('distribution vertical (Quarkus CLI native)', () => {
         processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
-    ).rejects.toBeInstanceOf(ResolutionError);
+    ).rejects.toThrow(/keel add containerization/);
   });
 
   it('errors if the bootstrap projectName is missing from the manifest', async () => {

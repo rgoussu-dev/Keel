@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-nginx
+  labels:
+    app: {{ .Chart.Name }}
+data:
+  # The SPA's history-API fallback, mounted read-only into the stock
+  # nginx image. Gateway concerns — proxying /api to a backend —
+  # belong to the ingress fronting this service.
+  default.conf: |
+    server {
+      listen 80;
+      root /usr/share/nginx/html;
+
+      location / {
+        try_files $uri /index.html;
+      }
+    }

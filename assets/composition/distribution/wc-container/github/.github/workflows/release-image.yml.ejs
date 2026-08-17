@@ -1,0 +1,54 @@
+name: release-image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: build & push assets image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+<% if (pm === 'pnpm') { -%>
+      # Provisions the pnpm version pinned by the workspace's own
+      # `packageManager` field — no version to drift here.
+      - name: Enable corepack
+        run: corepack enable
+
+<% } -%>
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: <%= pm %>
+
+      - name: Install
+        run: <%= pm === 'pnpm' ? 'pnpm install --frozen-lockfile' : 'npm ci' %>
+
+      - name: Build the bundle
+        run: <%= pm %> run build
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Builds the assets image the containerization vertical
+      # defined: it carries the bundle and populates the serving
+      # volume at deploy time (clear-then-copy + env.js from the
+      # environment), so one bundle serves every environment. GHCR
+      # requires a lowercase repository path.
+      - name: Build and push the image
+        run: |
+          image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          docker build -t "$image:$GITHUB_REF_NAME" -t "$image:latest" .
+          docker push "$image:$GITHUB_REF_NAME"
+          docker push "$image:latest"

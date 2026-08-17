@@ -1,0 +1,39 @@
+# Release (keel distribution): build the SPA's assets image and push
+# it to the GitLab Container Registry on every v* tag. The image job
+# builds the Dockerfile the containerization vertical emitted: an
+# assets image that populates the serving volume at deploy time
+# (clear-then-copy + env.js from the environment), so one bundle
+# serves every environment.
+release-bundle:
+  stage: deploy
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  image: node:22
+  script:
+<% if (pm === 'pnpm') { -%>
+    # corepack provisions the pnpm version pinned by the workspace's
+    # own `packageManager` field — no version to drift here.
+    - corepack enable
+    - pnpm install --frozen-lockfile
+    - pnpm run build
+<% } else { -%>
+    - npm ci
+    - npm run build
+<% } -%>
+  artifacts:
+    paths:
+      - <%= bundleDir %>/
+
+release-image:
+  stage: deploy
+  needs: ['release-bundle']
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$CI_REGISTRY_IMAGE:latest"

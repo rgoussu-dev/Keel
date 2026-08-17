@@ -1,0 +1,25 @@
+# 12-factor, binding: one image serves every environment — config
+# rides the environment (everything under `env` becomes container
+# environment), never a rebuild. Backing services are attached
+# resources: reference them by env-configured URL.
+replicas: 1
+
+image:
+  # The reference the release pipeline pushed, split so upgrades are
+  # a tag bump: e.g. repository: ghcr.io/acme/<%= projectName %>, tag: v1.2.3
+  repository: ''
+  tag: ''
+
+service:
+  port: 8080
+
+# name: value pairs injected as container environment.
+<% if (persistence) { -%>
+# The persistence slice attaches its database by URL:
+#   DB_URL: jdbc:postgresql://db.internal:5432/app
+<% } if (observability) { -%>
+# The scaffolded service reads the standard OpenTelemetry variables:
+#   OTEL_SERVICE_NAME: <%= projectName %>
+#   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+<% } -%>
+env: {}
