@@ -355,9 +355,24 @@ would ship as separate packages implementing the same port.
   grid landed, so the shard is back to its six modulith files and the
   483.25s figure describes a configuration nobody runs. What the
   numbers still settle is the cache lesson below, which was measured
-  inside them. The current shard wall and the 24 one-file
-  `jvm-add-module-*` shards are **unmeasured** — first green run on
-  `main` is the place to take them. On `web`, the
+  inside them.
+
+  **Measured on the shape that does ship** (run 229, all 38 checks
+  green): `jvm-modulith-quarkus-java` is **371s**, down from 483.25s,
+  and still the slowest shard in the matrix — so the "split it first
+  if it grows" note survives its own correction. The 24
+  `jvm-add-module-*` shards run **57s–213s**, median ~115s. Every one
+  of them finishes inside the slowest pre-existing shard, which is the
+  number that matters: **a job per cell here costs zero wall clock**,
+  and the whole e2e phase is still floored at 371s by a shard that has
+  nothing to do with this command.
+
+  One result worth keeping because it inverts the obvious guess: the
+  **Maven cells are consistently faster than the Gradle ones** —
+  57–122s against 100–213s, with no overlap at the extremes. Maven's
+  half of this grid is the cheap half, which is the opposite of the
+  assumption that made `-maven` a separate file "for the standing
+  reason a long case is". On `web`, the
   floor changed hands outright: **188.68s wall over eleven files,
   longest `add-module-wc` at 110.94s**, where the standing note says
   `modulith-wc-peer-context` "is the floor and will stay the floor" —
