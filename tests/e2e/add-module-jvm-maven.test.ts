@@ -41,8 +41,6 @@ const SPEC: JvmProjectSpec = {
   bootstrapId: 'walking-skeleton/quarkus-rest-bootstrap',
   moduleLayout: 'modulith',
   buildSystem: 'maven',
-  runJar: ['application', 'api', 'build', 'quarkus-app', 'quarkus-run.jar'],
-  runJarMaven: ['application', 'api', 'target', 'quarkus-app', 'quarkus-run.jar'],
 };
 
 const PKG = 'com.acme.e2e';

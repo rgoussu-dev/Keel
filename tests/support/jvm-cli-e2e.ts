@@ -20,7 +20,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
-import { buildProject, runnableJar, scaffold, skipJvmE2E, type JvmProjectSpec } from './jvm-e2e.js';
+import {
+  buildProject,
+  runnableJar,
+  scaffold,
+  skipJvmE2E,
+  type JvmRunnableSpec,
+} from './jvm-e2e.js';
 
 export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
 
@@ -28,7 +34,7 @@ export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
 export const skipJvmCliE2E = skipJvmE2E;
 
 /** Framework-specific parameters of one JVM CLI e2e run. */
-export interface JvmCliE2ESpec extends JvmProjectSpec {
+export interface JvmCliE2ESpec extends JvmRunnableSpec {
   /** Arguments handed to the packaged jar. */
   readonly argv: readonly string[];
   /** Text the run must print on stdout. */

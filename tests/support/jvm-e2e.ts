@@ -242,6 +242,19 @@ export interface JvmProjectSpec {
   readonly buildSystem?: 'gradle' | 'maven';
   /** Also scaffold the peer bounded context (modulith only). */
   readonly withPeerContext?: boolean;
+}
+
+/**
+ * A spec whose suite goes on to *run* what the build produced.
+ *
+ * Not every JVM e2e does. A suite that scaffolds, builds, and reads the
+ * emitted tree — `add-module-*` is the whole family — proves what it
+ * came to prove when the build exits 0, and naming a jar it never
+ * launches is a path nothing checks and nothing would notice going
+ * stale. The two entrypoint shapes that do boot ({@link
+ * ./jvm-cli-e2e.js} and {@link ./jvm-rest-e2e.js}) extend this instead.
+ */
+export interface JvmRunnableSpec extends JvmProjectSpec {
   /** Path of the runnable jar relative to the project root. */
   readonly runJar: readonly string[];
   /**
@@ -402,7 +415,7 @@ export function compileFails(
  * Absolute path of the runnable jar the build just produced, taking
  * the Maven location when the spec asked for Maven.
  */
-export function runnableJar(spec: JvmProjectSpec, cwd: string): string {
+export function runnableJar(spec: JvmRunnableSpec, cwd: string): string {
   const jarPath = spec.buildSystem === 'maven' ? (spec.runJarMaven ?? spec.runJar) : spec.runJar;
   return path.join(cwd, ...jarPath);
 }
