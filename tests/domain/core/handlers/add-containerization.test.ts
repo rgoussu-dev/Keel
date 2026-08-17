@@ -295,14 +295,37 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(content).not.toContain('npm ci');
   });
 
-  it('serves the SPA bundle from nginx with the history-API fallback', async () => {
+  it('ships the SPA as an assets image an init container runs, served by stock nginx', async () => {
     await seed('web-components');
     await addContainerization();
 
+    // The image carries the bundle and the volume-populating
+    // entrypoint — it serves nothing itself.
     const content = await dockerfile();
-    expect(content).toContain('FROM nginx:alpine');
-    expect(content).toContain('COPY application/web-app/dist/ /usr/share/nginx/html/');
+    expect(content).toContain('FROM alpine:3');
+    expect(content).not.toContain('FROM nginx');
+    expect(content).toContain('COPY application/web-app/dist/ /bundle/');
     expect(content).toContain('npm run build');
+    expect(content).toContain('ENTRYPOINT ["/bin/sh", "/usr/local/bin/deploy-assets.sh"]');
+
+    // Clear-then-copy, in that order — stale files from the previous
+    // release must not survive — then env.js from the environment.
+    const script = await fs.readFile(path.join(cwd, 'deploy-assets.sh'), 'utf8');
+    const clearAt = script.indexOf('find /assets -mindepth 1 -delete');
+    expect(clearAt).toBeGreaterThan(-1);
+    expect(clearAt).toBeLessThan(script.indexOf('cp -R /bundle/. /assets/'));
+    expect(script).toContain("window.__ENV__ = { API_BASE_URL: '${API_BASE_URL:-/api}' };");
+
+    // Serving is deploy-time wiring: an unmodified official nginx
+    // over the named volume, gated on the init container completing,
+    // with the history-API fallback mounted read-only.
+    const compose = await fs.readFile(path.join(cwd, 'compose.yaml'), 'utf8');
+    expect(compose).toContain('image: nginx:alpine');
+    expect(compose).toContain("restart: 'no'");
+    expect(compose).toContain('condition: service_completed_successfully');
+    expect(compose).toContain('spa-assets:/assets');
+    expect(compose).toContain('spa-assets:/usr/share/nginx/html:ro');
+    expect(compose).toContain('./nginx.conf:/etc/nginx/conf.d/default.conf:ro');
     const nginx = await fs.readFile(path.join(cwd, 'nginx.conf'), 'utf8');
     expect(nginx).toContain('try_files $uri /index.html');
   });

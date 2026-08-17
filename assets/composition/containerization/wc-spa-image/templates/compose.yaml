@@ -1,0 +1,30 @@
+# The serving shape: the assets image populates a named volume as an
+# init container, and a stock nginx serves the volume with the
+# history-API fallback mounted read-only. `docker compose up --build`
+# serves http://localhost:8080 (run the documented bundle build
+# first). A frontend release rebuilds and re-runs only `spa-assets`;
+# the web server never changes.
+volumes:
+  spa-assets:
+
+services:
+  spa-assets:
+    build: .
+    restart: 'no'
+    environment:
+      # The app reads window.__ENV__ from env.js at boot; the init
+      # container writes it from these variables at deploy time.
+      API_BASE_URL: ${API_BASE_URL:-/api}
+    volumes:
+      - spa-assets:/assets
+
+  web:
+    image: nginx:alpine
+    ports:
+      - '${PORT:-8080}:80'
+    volumes:
+      - spa-assets:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      spa-assets:
+        condition: service_completed_successfully
