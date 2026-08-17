@@ -8,9 +8,9 @@ Since then the surface widened far past the original plan — see
 "Landed since v0.5.0-alpha" below and the `[Unreleased]` section of
 `CHANGELOG.md` for the details.
 
-Items are lettered continuing the old sequence. E and F are the
-recommended next steps for breadth; **I** is the recommended next step
-for depth and is the only item here sized end-to-end. The rest are
+Items are lettered continuing the old sequence. With **F** landed,
+**E** is the recommended next step for breadth — its adapter can lean
+on the workflow-emitting pattern F just established. The rest are
 ordered by leverage, not by commitment.
 
 ## Landed since v0.5.0-alpha ✅
@@ -96,7 +96,7 @@ patterns `product-compose` established.
 
 ---
 
-## F — CI vertical (`ci/github-actions`)
+## F — CI vertical (`ci/github-actions`) ✅
 
 **Goal.** The binding spec's "done means green gates" has no scaffold
 backing — projects leave `keel new` with no pipeline. A `ci` vertical
@@ -108,7 +108,33 @@ is small, applies to every stack, and is the most broadly useful
 build-and-test workflow on push. Siblings for `pkg.npm`, Go, and
 Cargo cover the same dimension for the other stacks.
 
-**Commit.** `feat(ci): add ci vertical with gradle-github-actions adapter`
+**Landed — as four family adapters, not per-build-system ones.** The
+sketch above predates the build-system dial, and following it would
+have repeated the mistake the `containerization` vertical had already
+corrected: a `pkg.*` tag that only changes the commands inside one
+file is read from the manifest, never minted as another adapter. So
+the family is `ci/jvm-github-actions` (all twelve JVM stacks; Gradle
+or Maven picked per tag), `ci/go-github-actions` (toolchain pinned by
+the project's own `go.mod`), `ci/rust-github-actions` (latest stable,
+`--workspace`) and `ci/ts-github-actions` (both TypeScript stacks;
+`npm ci` or corepack-provisioned `pnpm install --frozen-lockfile`,
+with `lint`/`build` running `--if-present` because only some shapes
+declare them).
+
+Two decisions worth recording. The workflow triggers on `push` alone:
+the emitted binding spec (§6) mandates trunk-based development with
+no PRs, so a `pull_request` trigger would document a flow the spec
+forbids. And nothing in any workflow moves with the module layout —
+the wrappers, `--workspace`, `./...` and the root scripts each span
+whatever tree exists — so one template per family serves `basic` and
+`modulith` unchanged, with no resolver involvement.
+
+What this item does **not** prove: the emitted workflows have not run
+on a real GitHub repository — the suite asserts their content, not
+Actions' interpretation of them. The first consumer project wired to
+GitHub is where that evidence arrives.
+
+**Commit.** `feat(ci): add ci vertical with per-family github-actions adapters`
 
 ---
 

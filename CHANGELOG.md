@@ -8,6 +8,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The `ci` vertical — the pipeline every push has to pass.**
+  `keel add ci` puts a GitHub Actions workflow at
+  `.github/workflows/ci.yml` that builds and tests on push, on every
+  stack keel emits — the binding spec's "done means green gates"
+  finally has scaffold backing, where projects used to leave
+  `keel new` with no pipeline at all.
+
+  One adapter per stack family covers the single `pipeline`
+  dimension, and the build system is read from the manifest tags
+  rather than minted as more adapters — the pattern
+  `containerization` established. `jvm-github-actions` provisions
+  JDK 25 and runs `./gradlew build` or `./mvnw verify` per the
+  recorded `pkg.*` tag; `go-github-actions` pins the toolchain to the
+  project's own `go.mod`; `rust-github-actions` builds and tests
+  `--workspace` on latest stable; `ts-github-actions` serves both
+  TypeScript stacks — `npm ci` or corepack-provisioned
+  `pnpm install --frozen-lockfile`, then typecheck, lint and build
+  `--if-present`, test. Every adapter promotes `ci.github-actions`.
+
+  The workflow trusts the project's own build — it provisions a
+  toolchain and invokes the wrapper or package manager the scaffold
+  shipped, never duplicating build configuration — and it triggers on
+  `push` alone, because the emitted binding spec (§6) mandates
+  trunk-based development with no PRs. Nothing moves with the module
+  layout: one workflow serves `basic` and `modulith` unchanged.
+
 - **`keel add module <name>` — a second bounded context by command,
   not by flag.** `keel new --with-peer-context` grows a modulith
   exactly once, at scaffold time. This grows it whenever, by name, on

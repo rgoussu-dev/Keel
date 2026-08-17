@@ -241,6 +241,7 @@ npm run dev       # or pnpm dev
 | ----------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
 | Talk to a backend | `keel link ../backend && keel add gateway` | Adds `infrastructure/gateway-rest` (fetch adapter + fake, Vite dev proxy) — see [gateway](../verticals/gateway.md). |
 | Container image   | `keel add containerization`                | SPA bundle onto nginx with a history-API fallback.                                                                  |
+| CI pipeline       | `keel add ci`                              | Build-and-test on push from the committed lockfile — typecheck, lint, the Vite build, tests.                        |
 
 ## Related
 

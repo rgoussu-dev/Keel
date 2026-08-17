@@ -321,6 +321,7 @@ usable as beans without the all-open compiler plugin.
 | Goal                           | Command                                     | Notes                                                                                |
 | ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Container image                | `keel add containerization`                 | REST shapes; sticky JVM-vs-native flavor, Spring gets Native Build Tools patched in. |
+| CI pipeline                    | `keel add ci`                               | Build-and-test on push; `./gradlew build` or `./mvnw verify` per the recorded tag.   |
 | Native CLI binaries on release | `keel add distribution`                     | `quarkus-cli` on Gradle today — see [distribution](../verticals/distribution.md).    |
 | Local dev infra                | `keel add dev-env`                          | Already default on REST stacks.                                                      |
 | Pair with a frontend           | `keel link ../frontend && keel add gateway` | See [gateway](../verticals/gateway.md).                                              |
