@@ -219,6 +219,7 @@ story. → [Fullstack products](docs/stacks/fullstack.md)
 keel add observability        # health probes, correlation ids, OpenTelemetry
 keel add containerization     # a thin Dockerfile beside the deployment unit
 keel add ci                   # a build-and-test gate on every push (GitHub Actions or GitLab CI)
+keel add distribution         # registry-pushed images + a deploy descriptor on tag push
 keel add dev-env              # dev/compose.yaml for local infra
 
 keel add module ordering                     # a second bounded context, by name
@@ -279,18 +280,18 @@ on them, whatever the peer's language.
 A vertical is one concern of a project's lifecycle, installed at
 bootstrap or layered on later with `keel add`:
 
-| Vertical                                                 | What it adds                                                              | Applies to                        |
-| -------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------- |
-| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                        | every stack                       |
-| [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                   | every stack                       |
-| [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own       | every stack (default on HTTP)     |
-| [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack | HTTP services only                |
-| [`persistence`](docs/verticals/persistence.md)           | PostgreSQL + Unit-of-Work port + isolated Flyway migrations unit          | every HTTP stack                  |
-| [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract            | peered projects (`keel link`)     |
-| [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native       | HTTP services + SPA               |
-| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI | every stack                       |
-| [`distribution`](docs/verticals/distribution.md)         | native CLI binaries cross-compiled and released on tag push               | Quarkus CLI (Gradle) today        |
-| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                   | composite monorepos (not addable) |
+| Vertical                                                 | What it adds                                                                                         | Applies to                        |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                                                   | every stack                       |
+| [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                              | every stack                       |
+| [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                  | every stack (default on HTTP)     |
+| [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                            | HTTP services only                |
+| [`persistence`](docs/verticals/persistence.md)           | PostgreSQL + Unit-of-Work port + isolated Flyway migrations unit                                     | every HTTP stack                  |
+| [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract                                       | peered projects (`keel link`)     |
+| [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native                                  | HTTP services + SPA               |
+| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                            | every stack                       |
+| [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor | Quarkus CLI + every server shape  |
+| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                                              | composite monorepos (not addable) |
 
 Which verticals are installed by default on which stack, and which can
 be added later, is one table in the

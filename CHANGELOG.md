@@ -8,6 +8,52 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`distribution` for the server-shaped stacks — CI-built images on
+  tag push, plus a deployment descriptor.** `keel add distribution`
+  used to hard-fail on anything but a Gradle Quarkus CLI; now a
+  container family covers the same `build` / `release-channel`
+  dimensions for every server shape, one adapter per stack family:
+  `jvm-container` (all twelve JVM stacks — build system read from
+  the manifest, and the JVM-vs-native flavor read from the dial
+  `containerization` recorded rather than re-asked), `go-container`,
+  `rust-container`, `ts-container` (no host build at all — the image
+  installs the sources) and `wc-container` (the SPA's assets image).
+  `quarkus-cli-native` is untouched for CLIs.
+
+  The release pipeline **builds the Dockerfile the `containerization`
+  vertical emitted** — one image definition, no second build system —
+  and requires it, refusing with the fix in the message when the
+  Dockerfile is missing. The provider is the `ci` vertical's own
+  sticky dial, reused: GHCR under `github-actions` (a
+  `release-image.yml` workflow pushing with `GITHUB_TOKEN`), the
+  GitLab Container Registry under `gitlab-ci` (release jobs appended
+  to `.gitlab-ci.yml`, gated on `v*` tags) — and when `ci` already
+  recorded its choice as a tag, that answer wins silently.
+
+  The **deployment flavor is a second sticky dial** — `compose`
+  (default) emits a production `deploy/compose.yaml`, `helm` a
+  minimal `deploy/chart/` — each one template subtree, like the ci
+  provider. 12-factor is binding: one image serves every environment,
+  descriptors carry config exclusively via environment
+  (`${VAR:-default}` passthroughs, `values.yaml → env`), and only
+  variables the scaffolded service actually reads appear (`DB_URL` &
+  friends when persistence is installed, `OTEL_*` when observability
+  is). The SPA descriptor deploys the assets image as a real init
+  container — compose gates nginx on
+  `service_completed_successfully`, the chart uses `initContainers`
+  over an `emptyDir` — with the API base URL injected at deploy time.
+  Docker Swarm is deliberately not a flavor; the roadmap records why.
+  Every container adapter promotes `dist.container-image`.
+
+- **Deploy-time runtime config for the SPA.** The `gateway` vertical
+  now emits `public/env.js` (`window.__ENV__`, dev default
+  `API_BASE_URL: '/api'`), loads it from `index.html` before the
+  bundle, and the assembly reads it ahead of the Vite-baked
+  `VITE_API_BASE_URL`. At deploy time the assets image's entrypoint
+  rewrites `env.js` in the served volume from the environment, so
+  one bundle serves every environment — a rebuild per environment
+  would be a 12-factor violation, and now nothing asks for one.
+
 - **The `ci` vertical — the pipeline every push has to pass.**
   `keel add ci` puts a build-and-test pipeline on push on every stack
   keel emits, for the CI provider you pick — GitHub Actions at
@@ -500,6 +546,30 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   scaffolded Rust project to nightly to enforce one rule on one crate
   is the trade being declined. The enforcement stays open; the stance
   does not.
+
+### Changed
+
+- **The SPA's containerization target is now an assets image — a
+  breaking change to the (unreleased) emitted artifact shape.**
+  `containerization/wc-spa-image` used to bake the Vite bundle onto
+  `nginx:alpine`; it now emits an image containing **only the
+  bundle**, whose entrypoint clears a mounted volume, copies the
+  bundle in, templates `env.js` from the environment, and exits.
+  Serving is deploy-time wiring: the emitted `compose.yaml` runs the
+  assets image as an init container (`restart: 'no'`, nginx gated on
+  `service_completed_successfully`) and an **unmodified official
+  nginx** serves the named volume with the history-API-fallback
+  config mounted read-only. The clear-then-copy order is load-bearing
+  — stale files from the previous release must not survive — and
+  tested. Why: the bundle's lifecycle decouples from the server's — a
+  frontend release replaces the assets image and re-runs it; nginx
+  never rebuilds — and deploy-time `env.js` is what makes one bundle
+  serve every environment. `fullstack/product-compose` migrated to
+  the same shape in the same change: the root compose gains the named
+  volume and the stock nginx service, whose `/api` proxy target is
+  now an env-configured `BACKEND_URL` (defaulting to the sibling
+  service) substituted by the official image's envsubst entrypoint
+  instead of a hostname baked into a custom image.
 
 ### Fixed
 

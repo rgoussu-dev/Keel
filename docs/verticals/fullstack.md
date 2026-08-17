@@ -19,7 +19,15 @@ docker compose up --build
 ```
 
 brings the whole product up — backend and frontend — from one command
-at the root.
+at the root. The SPA follows the
+[assets-image shape](containerization.md#the-spa-ships-as-an-assets-image):
+its image populates a named volume as an init container, and an
+unmodified official nginx serves the volume, proxying `/api` to the
+backend through an env-configured URL
+(`BACKEND_URL`, defaulting to the sibling service) — a frontend
+release rebuilds and re-runs only the assets image, and per-environment
+config (`API_BASE_URL` → `env.js`) rides the environment, never a
+rebuild.
 
 ## Prerequisites
 
