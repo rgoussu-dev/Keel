@@ -218,7 +218,7 @@ story. → [Fullstack products](docs/stacks/fullstack.md)
 ```sh
 keel add observability        # health probes, correlation ids, OpenTelemetry
 keel add containerization     # a thin Dockerfile beside the deployment unit
-keel add ci                   # a GitHub Actions build-and-test gate on every push
+keel add ci                   # a build-and-test gate on every push (GitHub Actions or GitLab CI)
 keel add dev-env              # dev/compose.yaml for local infra
 
 keel add module ordering                     # a second bounded context, by name
@@ -288,7 +288,7 @@ bootstrap or layered on later with `keel add`:
 | [`persistence`](docs/verticals/persistence.md)           | PostgreSQL + Unit-of-Work port + isolated Flyway migrations unit          | every HTTP stack                  |
 | [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract            | peered projects (`keel link`)     |
 | [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native       | HTTP services + SPA               |
-| [`ci`](docs/verticals/ci.md)                             | a GitHub Actions workflow that builds and tests every push                | every stack                       |
+| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI | every stack                       |
 | [`distribution`](docs/verticals/distribution.md)         | native CLI binaries cross-compiled and released on tag push               | Quarkus CLI (Gradle) today        |
 | [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                   | composite monorepos (not addable) |
 

@@ -1,7 +1,7 @@
 /**
- * `ci/ts-github-actions` adapter — a GitHub Actions workflow that
- * builds and tests every push of a TypeScript workspace, serving both
- * `ts-http` and `web-components` from one template: the root scripts
+ * `ci/ts-pipeline` adapter — a CI pipeline that builds and tests
+ * every push of a TypeScript workspace, serving both `ts-http` and
+ * `web-components` from one template per provider: the root scripts
  * they share (`typecheck`, `test`) run unconditionally, while `lint`
  * and `build` run `--if-present` because only some shapes declare
  * them (the SPA has a `build`, the modulith layouts a `lint`).
@@ -15,20 +15,20 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { CI_PIPELINE_TAG } from './ci-pipeline.js';
+import { ciTemplateId, PROVIDER_QUESTION, ciProvider, providerTag } from './ci-pipeline.js';
 
-export const TS_GITHUB_ACTIONS_ID = 'ci/ts-github-actions';
+export const TS_PIPELINE_ID = 'ci/ts-pipeline';
 
-const TEMPLATE_ID = 'composition/ci/ts-github-actions/templates';
-
-export const tsGithubActionsAdapter: Adapter = {
-  id: TS_GITHUB_ACTIONS_ID,
+export const tsPipelineAdapter: Adapter = {
+  id: TS_PIPELINE_ID,
   vertical: 'ci',
   covers: ['pipeline'],
   predicate: { requires: ['lang.typescript'] },
+  questions: [PROVIDER_QUESTION],
   async contribute(ctx) {
+    const provider = ciProvider(ctx.answer('provider'), TS_PIPELINE_ID);
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
-    const files = await ctx.templates.render(TEMPLATE_ID, '', { pm });
-    return { files, tagsAdd: [CI_PIPELINE_TAG] };
+    const files = await ctx.templates.render(ciTemplateId('ts-pipeline', provider), '', { pm });
+    return { files, tagsAdd: [providerTag(provider)] };
   },
 };

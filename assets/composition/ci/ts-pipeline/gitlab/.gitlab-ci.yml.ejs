@@ -1,0 +1,36 @@
+<% if (pm === 'pnpm') { -%>
+image: node:22
+
+build:
+  script:
+    # corepack provisions the pnpm version pinned by the workspace's
+    # own `packageManager` field — no version to drift here.
+    - corepack enable
+    - pnpm config set store-dir $CI_PROJECT_DIR/.pnpm-store
+    - pnpm install --frozen-lockfile
+    - pnpm run typecheck
+    - pnpm run --if-present lint
+    - pnpm run --if-present build
+    - pnpm test
+  cache:
+    key: pnpm
+    paths:
+      - .pnpm-store
+<% } else { -%>
+image: node:22
+
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+build:
+  script:
+    - npm ci
+    - npm run typecheck
+    - npm run lint --if-present
+    - npm run build --if-present
+    - npm test
+  cache:
+    key: npm
+    paths:
+      - .npm
+<% } -%>

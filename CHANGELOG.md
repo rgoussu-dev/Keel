@@ -9,30 +9,40 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **The `ci` vertical — the pipeline every push has to pass.**
-  `keel add ci` puts a GitHub Actions workflow at
-  `.github/workflows/ci.yml` that builds and tests on push, on every
-  stack keel emits — the binding spec's "done means green gates"
-  finally has scaffold backing, where projects used to leave
-  `keel new` with no pipeline at all.
+  `keel add ci` puts a build-and-test pipeline on push on every stack
+  keel emits, for the CI provider you pick — GitHub Actions at
+  `.github/workflows/ci.yml`, or GitLab CI at `.gitlab-ci.yml` — so
+  the binding spec's "done means green gates" finally has scaffold
+  backing, where projects used to leave `keel new` with no pipeline
+  at all.
 
   One adapter per stack family covers the single `pipeline`
   dimension, and the build system is read from the manifest tags
   rather than minted as more adapters — the pattern
-  `containerization` established. `jvm-github-actions` provisions
-  JDK 25 and runs `./gradlew build` or `./mvnw verify` per the
-  recorded `pkg.*` tag; `go-github-actions` pins the toolchain to the
-  project's own `go.mod`; `rust-github-actions` builds and tests
-  `--workspace` on latest stable; `ts-github-actions` serves both
-  TypeScript stacks — `npm ci` or corepack-provisioned
-  `pnpm install --frozen-lockfile`, then typecheck, lint and build
-  `--if-present`, test. Every adapter promotes `ci.github-actions`.
+  `containerization` established. The **provider is one sticky
+  question** (`github-actions` default, `gitlab-ci` the alternative),
+  asked once, for the same reason the image flavor is a question:
+  nothing in the tag set knows where the repository is hosted. Each
+  flavor promotes its own tag, `ci.github-actions` or `ci.gitlab-ci`.
 
-  The workflow trusts the project's own build — it provisions a
+  `jvm-pipeline` provisions JDK 25 and runs `./gradlew build` or
+  `./mvnw verify` per the recorded `pkg.*` tag; `go-pipeline` pins
+  the toolchain to the project's own `go.mod` (`go-version-file` on
+  GitHub, the Go toolchain mechanism past the `golang` image on
+  GitLab); `rust-pipeline` builds and tests `--workspace` on latest
+  stable; `ts-pipeline` serves both TypeScript stacks — `npm ci` or
+  corepack-provisioned `pnpm install --frozen-lockfile`, then
+  typecheck, lint and build `--if-present`, test — with the
+  dependency cache expressed per provider (`setup-*` action caches
+  against explicit `cache:` paths).
+
+  The pipeline trusts the project's own build — it provisions a
   toolchain and invokes the wrapper or package manager the scaffold
   shipped, never duplicating build configuration — and it triggers on
   `push` alone, because the emitted binding spec (§6) mandates
-  trunk-based development with no PRs. Nothing moves with the module
-  layout: one workflow serves `basic` and `modulith` unchanged.
+  trunk-based development with no PRs (no `pull_request` trigger, no
+  merge-request pipeline). Nothing moves with the module layout: one
+  pipeline per provider serves `basic` and `modulith` unchanged.
 
 - **`keel add module <name>` — a second bounded context by command,
   not by flag.** `keel new --with-peer-context` grows a modulith

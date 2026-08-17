@@ -1,0 +1,9 @@
+# The Go toolchain mechanism (on by default) upgrades to whatever
+# go.mod asks for, so the image only has to be recent enough to read
+# it — the pipeline carries no version of its own to drift.
+image: golang:1.24
+
+build:
+  script:
+    - go build ./...
+    - go test ./...
