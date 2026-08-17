@@ -211,6 +211,7 @@ cargo run --bin my-service
 | Goal                 | Command                                     | Notes                                               |
 | -------------------- | ------------------------------------------- | --------------------------------------------------- |
 | Container image      | `keel add containerization`                 | `rust-http`: release binary onto a distroless base. |
+| CI pipeline          | `keel add ci`                               | Build-and-test on push, latest stable, workspace.   |
 | Pair with a frontend | `keel link ../frontend && keel add gateway` | CORS layer lands on the backend side of the seam.   |
 
 ## Related

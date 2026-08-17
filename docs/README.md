@@ -35,6 +35,7 @@ What `keel add <vertical>` layers onto an existing project:
   [`observability`](verticals/observability.md) ·
   [`gateway`](verticals/gateway.md) ·
   [`containerization`](verticals/containerization.md) ·
+  [`ci`](verticals/ci.md) ·
   [`distribution`](verticals/distribution.md) ·
   [`fullstack`](verticals/fullstack.md)
 

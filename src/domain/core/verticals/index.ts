@@ -8,6 +8,7 @@
  * registry are caught at registration time.
  */
 
+import { ciVertical } from './ci.js';
 import { containerizationVertical } from './containerization.js';
 import { devEnvVertical } from './dev-env.js';
 import { distributionVertical } from './distribution.js';
@@ -24,6 +25,7 @@ const ALL: readonly Vertical[] = [
   distributionVertical,
   gatewayVertical,
   containerizationVertical,
+  ciVertical,
   devEnvVertical,
   observabilityVertical,
   persistenceVertical,

@@ -31,6 +31,7 @@ instead, which has a name to give it.
 | [`persistence`](persistence.md)           | SQL persistence: PostgreSQL, Unit-of-Work port, isolated migrations | `datasource`, `unit-of-work`, `repository-example`, `migrations`, `database-compose` |
 | [`gateway`](gateway.md)                   | the cross-service seam: gateway package, CORS, OpenAPI contract     | _none_ — fires purely on peer tags                                                   |
 | [`containerization`](containerization.md) | a thin Dockerfile beside the deployment unit                        | `image`                                                                              |
+| [`ci`](ci.md)                             | the pipeline every push has to pass: build + test on GitHub Actions | `pipeline`                                                                           |
 | [`distribution`](distribution.md)         | how the project ships: release workflows on tag push                | `build`, `release-channel`                                                           |
 | [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                           | `product-docs`, `product-compose`                                                    |
 
@@ -48,6 +49,7 @@ instead, which has a name to give it.
 | `persistence`      | ⛔      | ➕       | ⛔          | ➕           | ➕        | ⛔               | ➕ backend                   |
 | `gateway`          | —       | ➕ ¹     | —           | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
 | `containerization` | ⛔      | ➕       | ⛔          | ➕           | ➕        | ➕               | (root compose is separate ²) |
+| `ci`               | ➕      | ➕       | ➕          | ➕           | ➕        | ➕               | ➕ per service               |
 | `distribution`     | ➕ ³    | ⛔       | ⛔          | ⛔           | ⛔        | ⛔               | ⛔                           |
 | `fullstack`        | —       | —        | —           | —            | —         | —                | ● monorepo root only         |
 
@@ -73,5 +75,6 @@ Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-gl
 | `persistence`      | Go: `go` on PATH (`go mod tidy`); Rust: `cargo` (`cargo check`); TS: `npm`/`pnpm` (install runs) | Docker + Compose for the dev database and the generated tests (Testcontainers); `DB_URL` (+ `DB_USERNAME`/`DB_PASSWORD` on the JVM) env in prod |
 | `gateway`          | both projects linked (`keel link`)                                                               | —                                                                                                                                               |
 | `containerization` | —                                                                                                | Docker to build; the host build must produce the artifact first                                                                                 |
+| `ci`               | —                                                                                                | a GitHub repository (Actions); TypeScript stacks: the lockfile committed                                                                        |
 | `distribution`     | —                                                                                                | a GitHub repository (Actions + Releases); GraalVM runs in CI, not locally                                                                       |
 | `fullstack`        | orchestrated by composite stacks — not user-addable                                              | Docker + Compose for `docker compose up --build`                                                                                                |

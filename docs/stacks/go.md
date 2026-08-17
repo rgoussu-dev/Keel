@@ -237,6 +237,7 @@ go run ./cmd/my-service
 | Goal                 | Command                                     | Notes                                                  |
 | -------------------- | ------------------------------------------- | ------------------------------------------------------ |
 | Container image      | `keel add containerization`                 | `go-http`: static binary onto a distroless base.       |
+| CI pipeline          | `keel add ci`                               | Build-and-test on push; toolchain pinned by `go.mod`.  |
 | Pair with a frontend | `keel link ../frontend && keel add gateway` | CORS middleware lands on the backend side of the seam. |
 
 ## Related

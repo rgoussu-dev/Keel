@@ -215,6 +215,7 @@ npm start         # GET http://localhost:3000/greet
 | Goal                 | Command                                     | Notes                                                  |
 | -------------------- | ------------------------------------------- | ------------------------------------------------------ |
 | Container image      | `keel add containerization`                 | Sources onto `node:22-alpine` — still no build step.   |
+| CI pipeline          | `keel add ci`                               | Build-and-test on push from the committed lockfile.    |
 | Pair with a frontend | `keel link ../frontend && keel add gateway` | CORS middleware lands on the backend side of the seam. |
 
 ## Related
