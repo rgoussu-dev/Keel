@@ -6,7 +6,7 @@
 #   <%= buildCommand %>
 FROM quay.io/quarkus/quarkus-micro-image:2.0
 WORKDIR /work/
-COPY --chown=1001:root <%= unitDir %>/<%= buildRoot %>/*-runner /work/application
+COPY --chown=1001:root <%= artifactPath %> /work/application
 EXPOSE 8080
 USER 1001
 ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0"]
@@ -17,7 +17,7 @@ ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0"]
 #   <%= buildCommand %>
 FROM eclipse-temurin:25-jre
 WORKDIR /app
-COPY <%= unitDir %>/<%= buildRoot %>/quarkus-app/ /app/
+COPY <%= artifactPath %> /app/
 EXPOSE 8080
 CMD ["java", "-jar", "quarkus-run.jar"]
 <% } -%>

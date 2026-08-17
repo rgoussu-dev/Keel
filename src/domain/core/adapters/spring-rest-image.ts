@@ -23,22 +23,19 @@
  */
 
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
-import { gradleProject, jvmLayout } from './jvm-module-layout.js';
+import { jvmLayout } from './jvm-module-layout.js';
 import { eolOf, withEol } from '../util.js';
-import { FLAVOR_QUESTION, imageFlavor, imageTags, jvmBuildSystem } from './container-image.js';
+import {
+  FLAVOR_QUESTION,
+  imageFlavor,
+  imageTags,
+  jvmBuildSystem,
+  jvmRestArtifact,
+} from './container-image.js';
 
 export const SPRING_REST_IMAGE_ID = 'containerization/spring-rest-image';
 
 const TEMPLATE_ID = 'composition/containerization/spring-rest-image/templates';
-
-/**
- * The runnable module, and the jar it produces. Both follow the
- * project's module layout: the flat layout's lone executable, or the
- * modulith's `application/api` assembly. The archive base name is the
- * module path with dashes under either build system — the jvm-build
- * templates pin it that way on Gradle, and it is the Maven artifactId.
- */
-const unitJar = (unit: string): string => `${unit.split('/').join('-')}-0.1.0-SNAPSHOT.jar`;
 
 /** Latest stable GraalVM Native Build Tools, Gradle and Maven alike. */
 const NATIVE_BUILD_TOOLS_VERSION = '1.1.8';
@@ -154,25 +151,7 @@ export const springRestImageAdapter: Adapter = {
     const flavor = imageFlavor(ctx.answer('flavor'), SPRING_REST_IMAGE_ID);
     const gradle = build === 'gradle';
     const unit = jvmLayout(ctx.manifest.tags).restRuntime;
-    const artifactPath =
-      flavor === 'native'
-        ? gradle
-          ? // The one file nativeCompile leaves in its output directory;
-            // globbed because the binary is named after the Gradle
-            // project (`executable`), not the module path.
-            `${unit}/build/native/nativeCompile/*`
-          : `${unit}/target/${unit.split('/').join('-')}`
-        : gradle
-          ? `${unit}/build/libs/${unitJar(unit)}`
-          : `${unit}/target/${unitJar(unit)}`;
-    const buildCommand =
-      flavor === 'native'
-        ? gradle
-          ? `./gradlew ${gradleProject(unit)}:nativeCompile`
-          : './mvnw package -Pnative'
-        : gradle
-          ? './gradlew build'
-          : './mvnw package';
+    const { artifactPath, buildCommand } = jvmRestArtifact('spring', build, flavor, unit);
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       flavor,
       artifactPath,

@@ -27,8 +27,8 @@ import {
   FLAVOR_QUESTION,
   imageFlavor,
   imageTags,
-  JVM_BUILD_ROOT,
   jvmBuildSystem,
+  jvmRestArtifact,
 } from './container-image.js';
 
 export const QUARKUS_REST_IMAGE_ID = 'containerization/quarkus-rest-image';
@@ -44,15 +44,11 @@ export const quarkusRestImageAdapter: Adapter = {
   async contribute(ctx) {
     const build = jvmBuildSystem(ctx.manifest, QUARKUS_REST_IMAGE_ID);
     const flavor = imageFlavor(ctx.answer('flavor'), QUARKUS_REST_IMAGE_ID);
-    const buildTool = build === 'gradle' ? './gradlew build' : './mvnw package';
-    const buildCommand =
-      flavor === 'native'
-        ? `${buildTool} -Dquarkus.native.enabled=true -Dquarkus.native.container-build=true`
-        : buildTool;
+    const unit = jvmLayout(ctx.manifest.tags).restRuntime;
+    const { artifactPath, buildCommand } = jvmRestArtifact('quarkus', build, flavor, unit);
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       flavor,
-      unitDir: jvmLayout(ctx.manifest.tags).restRuntime,
-      buildRoot: JVM_BUILD_ROOT[build],
+      artifactPath,
       buildCommand,
     });
     return { files, tagsAdd: imageTags(flavor) };
