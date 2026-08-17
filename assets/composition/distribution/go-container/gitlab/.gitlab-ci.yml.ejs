@@ -1,0 +1,30 @@
+# Release (keel distribution): build the container image and push it
+# to the GitLab Container Registry on every v* tag. The image job
+# builds the Dockerfile the containerization vertical emitted — one
+# image definition, no second build system — and the pushed image is
+# environment-agnostic: config rides the environment of whatever
+# runs it (see deploy/).
+release-artifact:
+  stage: deploy
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  image: golang:1.24
+  script:
+    - CGO_ENABLED=0 GOOS=linux go build -o bin/<%= projectName %>-http ./cmd/http
+  artifacts:
+    paths:
+      - bin/
+
+release-image:
+  stage: deploy
+  needs: ['release-artifact']
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$CI_REGISTRY_IMAGE:latest"

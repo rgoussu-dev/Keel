@@ -4,3 +4,5 @@ pnpm-lock.yaml
 .keel-manifest.json
 assets/schematics/**/templates/
 assets/global/agents/
+# Helm templates carry {{ }} actions that are not YAML until rendered.
+assets/composition/distribution/*/helm/deploy/chart/templates/

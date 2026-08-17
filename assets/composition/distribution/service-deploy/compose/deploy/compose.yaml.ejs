@@ -1,0 +1,30 @@
+# Production compose for <%= projectName %>: runs the image the
+# release pipeline pushes on tag push. 12-factor, binding: one image
+# serves every environment — config rides the environment, and every
+# ${VAR:-default} below is a deploy-time knob, never a rebuild.
+# Backing services are attached resources: reference them by
+# env-configured URL, never by a hostname baked into the image.
+#
+#   IMAGE=<registry>/<repo>:v1.2.3 docker compose -f deploy/compose.yaml up -d
+services:
+  app:
+    image: ${IMAGE:?set IMAGE to the reference the release pipeline pushed}
+    ports:
+      - '${PORT:-8080}:8080'
+<% if (observability || persistence) { -%>
+    environment:
+<% } if (persistence) { -%>
+      # The persistence slice attaches its database by URL.
+      DB_URL: ${DB_URL:?set DB_URL to the database this service attaches to}
+<% if (dbCredentials) { -%>
+      DB_USERNAME: ${DB_USERNAME:-}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+<% } } if (observability) { -%>
+      # The scaffolded service reads the standard OpenTelemetry
+      # variables: attach your collector by URL and flip the kill
+      # switch off — no localhost default makes sense in a container.
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-<%= projectName %>}
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}
+<% } -%>
+    restart: unless-stopped

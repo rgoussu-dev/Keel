@@ -1,0 +1,22 @@
+# 12-factor, binding: one bundle serves every environment. The init
+# container templates env.js from `apiBaseUrl` at pod start — config
+# is injected at deploy time, never baked into the bundle.
+replicas: 1
+
+image:
+  # The assets image the release pipeline pushed, split so upgrades
+  # are a tag bump: e.g. repository: ghcr.io/acme/<%= projectName %>, tag: v1.2.3
+  repository: ''
+  tag: ''
+
+nginx:
+  # Unmodified official image; releases replace the assets image,
+  # never this one.
+  image: nginx:alpine
+
+service:
+  port: 80
+
+# Written into env.js by the init container; the app reads it at
+# boot as window.__ENV__.API_BASE_URL.
+apiBaseUrl: /api
