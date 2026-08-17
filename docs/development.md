@@ -176,6 +176,19 @@ files and splits by framework **and language** —
 `…-spring-java`, and so on, four cells each. `e2e (go)`,
 `e2e (rust)` and `e2e (web)` are unchanged.
 
+`keel add module` populates that same 24-cell grid a second time, and
+there the split goes all the way down: **one cell, one file, one
+shard**, named `e2e (jvm-add-module-<stack>-<build>)`. Typology is a
+real axis on this half — it picks the assembly the wiring class
+renders into and the build file the new dependencies anchor in, and
+on Spring it moves `@ComponentScan` between `Main` and `Application`.
+The failure these name is the silent one: a container that never
+discovered a handler compiles clean and starts clean, so only a build
+of that exact framework, in that exact language, in that exact
+assembly catches it. The cost is runner minutes rather than wall
+clock — each shard pays its own provisioning and its own cold
+dependency resolve, and they run in parallel.
+
 Language is an axis on the modulith half only, and the grid is what
 made it one. A shard that runs nothing is worse than no shard, since
 the check name asserts coverage that does not exist — and before the

@@ -106,9 +106,28 @@ jobs:
   # The floor is why this split stops here rather than going finer.
   # `jvm-modulith-micronaut-kotlin` runs 252s against a 249s longest
   # file: it is already floor-bound, so halving it again would buy
-  # attribution and nothing else. `jvm-modulith-quarkus-java` is the
-  # one with headroom left (415s against a 260s floor) and is the place
-  # to split first if it grows.
+  # attribution and nothing else.
+  #
+  # `keel add module` then populates that same 24-cell grid a second
+  # time, and there the split goes all the way down: one cell, one
+  # file, one shard. Typology earns its place on this axis — it picks
+  # the assembly the wiring class renders into and the build file the
+  # new dependencies anchor in, and on Spring it moves `@ComponentScan`
+  # between `Main` and `Application` — so a cell is a real
+  # intersection rather than a duplicate of its row. The failure these
+  # shards exist to name is the silent one: a container that never
+  # discovered a handler compiles clean and starts clean, and the only
+  # thing that catches it is a build of that exact framework, in that
+  # exact language, in that exact assembly. A red X reading
+  # `e2e (jvm-add-module-spring-cli-kotlin-maven)` is the diagnosis;
+  # the same failure inside a 24-file shard is a log to go read.
+  #
+  # The cost is real and it is runner minutes, not wall clock: each of
+  # these shards pays its own JDK + Gradle provisioning and its own
+  # cold dependency resolve, where two files in one shard paid once.
+  # They run in parallel, so the job's wall clock is one build. To
+  # collapse it, merge the `files` lists by framework × language the
+  # way the modulith half is grouped — the suites need no change.
   e2e:
     name: e2e (${{ matrix.shard.id }})
     runs-on: ubuntu-latest
@@ -150,8 +169,102 @@ jobs:
               tests/e2e/modulith-quarkus-cli-maven.test.ts
               tests/e2e/modulith-baseline.test.ts
               tests/e2e/modulith-persistence.test.ts
-              tests/e2e/add-module-jvm.test.ts
-              tests/e2e/add-module-jvm-maven.test.ts
+          - id: jvm-add-module-quarkus-rest-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-quarkus-rest-gradle.test.ts
+          - id: jvm-add-module-quarkus-rest-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-quarkus-rest-maven.test.ts
+          - id: jvm-add-module-quarkus-rest-kotlin-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-quarkus-rest-kotlin-gradle.test.ts
+          - id: jvm-add-module-quarkus-rest-kotlin-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-quarkus-rest-kotlin-maven.test.ts
+          - id: jvm-add-module-quarkus-cli-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-quarkus-cli-gradle.test.ts
+          - id: jvm-add-module-quarkus-cli-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-quarkus-cli-maven.test.ts
+          - id: jvm-add-module-quarkus-cli-kotlin-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-quarkus-cli-kotlin-gradle.test.ts
+          - id: jvm-add-module-quarkus-cli-kotlin-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-quarkus-cli-kotlin-maven.test.ts
+          - id: jvm-add-module-spring-rest-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-spring-rest-gradle.test.ts
+          - id: jvm-add-module-spring-rest-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-spring-rest-maven.test.ts
+          - id: jvm-add-module-spring-rest-kotlin-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-spring-rest-kotlin-gradle.test.ts
+          - id: jvm-add-module-spring-rest-kotlin-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-spring-rest-kotlin-maven.test.ts
+          - id: jvm-add-module-spring-cli-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-spring-cli-gradle.test.ts
+          - id: jvm-add-module-spring-cli-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-spring-cli-maven.test.ts
+          - id: jvm-add-module-spring-cli-kotlin-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-spring-cli-kotlin-gradle.test.ts
+          - id: jvm-add-module-spring-cli-kotlin-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-spring-cli-kotlin-maven.test.ts
+          - id: jvm-add-module-micronaut-rest-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-micronaut-rest-gradle.test.ts
+          - id: jvm-add-module-micronaut-rest-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-micronaut-rest-maven.test.ts
+          - id: jvm-add-module-micronaut-rest-kotlin-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-micronaut-rest-kotlin-gradle.test.ts
+          - id: jvm-add-module-micronaut-rest-kotlin-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-micronaut-rest-kotlin-maven.test.ts
+          - id: jvm-add-module-micronaut-cli-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-micronaut-cli-gradle.test.ts
+          - id: jvm-add-module-micronaut-cli-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-micronaut-cli-maven.test.ts
+          - id: jvm-add-module-micronaut-cli-kotlin-gradle
+            tools: java javac gradle
+            files: >-
+              tests/e2e/add-module-micronaut-cli-kotlin-gradle.test.ts
+          - id: jvm-add-module-micronaut-cli-kotlin-maven
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/add-module-micronaut-cli-kotlin-maven.test.ts
           - id: jvm-modulith-quarkus-kotlin
             tools: java javac gradle mvn
             files: >-

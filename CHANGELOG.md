@@ -87,6 +87,27 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
   → [`keel add module`](docs/cli.md#keel-add-module)
 
+- **End-to-end coverage of `keel add module` across the whole JVM
+  grid — 24 cells, one CI job each.** The command shipped with a
+  single JVM combination built on CI (Quarkus REST, Java, both build
+  systems); the other fifteen combinations rested on assertions over
+  emitted text plus a manual pass. Every cell of the 12 stacks × 2
+  build systems grid now scaffolds three added contexts and builds
+  them on a runner, under `tests/e2e/add-module-<stack>-<build>.test.ts`.
+
+  **Typology is a real axis here, which is why the number is 24 and
+  not 12.** It picks the assembly the wiring class renders into
+  (`application/cli` against `application/api`) and the build file the
+  new dependencies anchor in, and on Spring it moves `@ComponentScan`
+  between `Main` and `Application` — so a CLI cell is an intersection
+  its REST row never reaches. Eight of these cells were not in the
+  manual pass either.
+
+  What only a real build settles is the silent failure: a container
+  that never discovered a handler compiles clean and starts clean.
+  Each cell's build runs the emitted `<Name>WiringTest`s, which
+  dispatch through the real Mediator out of the real container.
+
 - **`--with-peer-context` on `web-components`.** Scaffolds
   `guestbook` beside `greeting` as one more workspace package, with a
   gateway at `src/infra/greeting-gateway/` importing
