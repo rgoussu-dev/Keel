@@ -1,0 +1,28 @@
+<% if (buildSystem === 'gradle') { -%>
+image: eclipse-temurin:25-jdk
+
+variables:
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+build:
+  script:
+    - ./gradlew build --no-daemon --stacktrace
+  cache:
+    key: gradle
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+<% } else { -%>
+image: eclipse-temurin:25-jdk
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+build:
+  script:
+    - ./mvnw --batch-mode verify
+  cache:
+    key: maven
+    paths:
+      - .m2/repository
+<% } -%>

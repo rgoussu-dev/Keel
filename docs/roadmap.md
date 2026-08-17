@@ -113,28 +113,41 @@ sketch above predates the build-system dial, and following it would
 have repeated the mistake the `containerization` vertical had already
 corrected: a `pkg.*` tag that only changes the commands inside one
 file is read from the manifest, never minted as another adapter. So
-the family is `ci/jvm-github-actions` (all twelve JVM stacks; Gradle
-or Maven picked per tag), `ci/go-github-actions` (toolchain pinned by
-the project's own `go.mod`), `ci/rust-github-actions` (latest stable,
-`--workspace`) and `ci/ts-github-actions` (both TypeScript stacks;
-`npm ci` or corepack-provisioned `pnpm install --frozen-lockfile`,
-with `lint`/`build` running `--if-present` because only some shapes
+the family is `ci/jvm-pipeline` (all twelve JVM stacks; Gradle or
+Maven picked per tag), `ci/go-pipeline` (toolchain pinned by the
+project's own `go.mod`), `ci/rust-pipeline` (latest stable,
+`--workspace`) and `ci/ts-pipeline` (both TypeScript stacks; `npm ci`
+or corepack-provisioned `pnpm install --frozen-lockfile`, with
+`lint`/`build` running `--if-present` because only some shapes
 declare them).
 
-Two decisions worth recording. The workflow triggers on `push` alone:
+**The provider is a dial, not more adapters.** GitHub Actions
+(default) and GitLab CI are one sticky question shared by the family
+adapters — only one fires per project, so it is asked exactly once —
+for the same reason the image flavor is a question rather than a
+predicate: nothing in the manifest's tag set knows where the
+repository is hosted. Each adapter keeps one template subtree per
+provider (`github/`, `gitlab/`) and promotes `ci.github-actions` or
+`ci.gitlab-ci` accordingly. The adapters were renamed off their
+original `-github-actions` suffix when the second provider arrived,
+inside the same unreleased cycle.
+
+Two decisions worth recording. The pipeline triggers on `push` alone:
 the emitted binding spec (§6) mandates trunk-based development with
-no PRs, so a `pull_request` trigger would document a flow the spec
-forbids. And nothing in any workflow moves with the module layout —
-the wrappers, `--workspace`, `./...` and the root scripts each span
-whatever tree exists — so one template per family serves `basic` and
-`modulith` unchanged, with no resolver involvement.
+no PRs, so a `pull_request` trigger or merge-request pipeline would
+document a flow the spec forbids. And nothing in any pipeline moves
+with the module layout — the wrappers, `--workspace`, `./...` and the
+root scripts each span whatever tree exists — so one template per
+family and provider serves `basic` and `modulith` unchanged, with no
+resolver involvement.
 
-What this item does **not** prove: the emitted workflows have not run
-on a real GitHub repository — the suite asserts their content, not
-Actions' interpretation of them. The first consumer project wired to
-GitHub is where that evidence arrives.
+What this item does **not** prove: the emitted pipelines have not run
+on a real GitHub or GitLab repository — the suite asserts their
+content, not the host's interpretation of them. The first consumer
+project wired to either is where that evidence arrives.
 
-**Commit.** `feat(ci): add ci vertical with per-family github-actions adapters`
+**Commits.** `feat(ci): add ci vertical with per-family github-actions adapters`,
+`feat(ci): gitlab-ci as a selectable pipeline provider`
 
 ---
 

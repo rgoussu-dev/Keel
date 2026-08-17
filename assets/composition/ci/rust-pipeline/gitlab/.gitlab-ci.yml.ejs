@@ -1,0 +1,8 @@
+# The official image tracks the latest stable toolchain — the same
+# currency `rustup update stable` buys the GitHub flavor.
+image: rust:latest
+
+build:
+  script:
+    - cargo build --workspace
+    - cargo test --workspace
