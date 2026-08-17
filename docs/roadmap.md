@@ -9,9 +9,8 @@ Since then the surface widened far past the original plan — see
 `CHANGELOG.md` for the details.
 
 Items are lettered continuing the old sequence. With **F** landed,
-**E** is the recommended next step for breadth — its adapter can lean
-on the workflow-emitting pattern F just established. The rest are
-ordered by leverage, not by commitment.
+**E** followed it, leaning on the workflow-emitting pattern F
+established. The rest are ordered by leverage, not by commitment.
 
 ## Landed since v0.5.0-alpha ✅
 
@@ -54,8 +53,8 @@ ordered by leverage, not by commitment.
   the host build produced — with an opt-in GraalVM native flavor on
   every JVM backend (Spring's opt-in patches the Native Build Tools
   wiring into its build files). This is the local container story; E
-  below (CI-built images pushed to a registry) remains open and can
-  reuse these Dockerfiles.
+  below (CI-built images pushed to a registry) landed after it and
+  builds exactly these Dockerfiles.
 
 What that wave proved: the per-language dispatch stances of binding
 spec §2 are exercised outside the JVM (Go, Rust, frontend
@@ -64,35 +63,97 @@ predicate machinery as everything else.
 
 ---
 
-## E — Distribution for REST: container image
+## E — Distribution for the server-shaped stacks ✅
 
 **Goal.** `distribution`'s only adapter (`quarkus-cli-native`)
 requires `arch.cli`, so `keel add distribution` on any REST project
 hard-fails with uncovered dimensions. Add the server-shaped sibling
-so the brownfield story holds for both shapes.
+so the brownfield story holds for both shapes: CI-built images
+pushed to a registry on tag push, addable to a standalone service.
 
-The container know-how partially exists — `fullstack/product-compose`
-already emits Dockerfiles for every backend — but that vertical is
-orchestrator-only glue for composite monorepos. E is the
-_distribution_ story: CI-built images pushed to a registry on tag
-push, addable to a standalone service.
+**Landed — generalized across every family at once, not Quarkus
+first.** The sketch above named one
+`distribution/quarkus-rest-container` adapter predicated on
+`pkg.gradle`; following it would have repeated the mistake `ci` had
+already corrected (F). What shipped is one adapter per stack family —
+`jvm-container` (all twelve JVM stacks), `go-container`,
+`rust-container`, `ts-container`, `wc-container` — with the build
+system read from the manifest, never minted as adapters.
+`quarkus-cli-native` is untouched for CLIs. Deviations from the
+sketch, on record:
 
-**Adapter.** `distribution/quarkus-rest-container`
+- **The workflow builds the containerization Dockerfile, not the
+  Quarkus container-image extension.** One image definition, no
+  second build system: the pipeline runs the host build the
+  Dockerfile documents (`jvmRestArtifact` is now the one shared
+  derivation both verticals read, so they cannot disagree about
+  where the artifact lives), then `docker build` + push. That makes
+  `containerization` a hard prerequisite — the adapters refuse with
+  the fix in the message when `deploy.container-image` is absent,
+  rather than emitting a pipeline that fails on the host.
+- **The provider is `ci`'s dial, reused, not a second question.**
+  GHCR under `github-actions`, the GitLab Container Registry under
+  `gitlab-ci` (release jobs appended to `.gitlab-ci.yml` via the
+  seeded-upsert patch, gated on `v*` tags — one pipeline file per
+  host). When the `ci` vertical already recorded its provider as a
+  `ci.*` tag, that answer wins silently over the shared question; a
+  second answer that could disagree would emit a pipeline no host
+  runs.
+- **The JVM flavor is read, not re-asked.** `containerization`
+  already asked jvm-vs-native and rendered the Dockerfile in one
+  flavor; the pipeline reads the recorded dial (the
+  `runtime.graalvm-native` tag) and builds that artifact. Re-asking
+  could contradict the Dockerfile and break the build.
+- **The deployment flavor is a sticky dial: `compose` (default) or
+  `helm`**, each one template subtree exactly like the ci provider.
+  Compose emits a production `deploy/compose.yaml`; helm a minimal
+  `deploy/chart/` (values → env; the SPA as `initContainers` over a
+  shared `emptyDir`). 12-factor is binding: one environment-agnostic
+  image, config exclusively via environment, and only variables the
+  scaffolded service actually reads (`DB_URL` + the JVM's split
+  login under persistence, `OTEL_*` under observability) — nothing
+  invented.
+- **The SPA's runtime config is solved, not skipped.** A static
+  bundle cannot read env, so the assets image's entrypoint templates
+  `env.js` (`window.__ENV__`) into the served volume from the
+  environment at deploy time, and the gateway-wired app reads it at
+  boot ahead of the Vite-baked fallback. Verified against the
+  emitted app's actual gateway wiring, end to end under Docker:
+  init populates the volume, stock nginx serves, a second deploy
+  replaces the bundle (clear-then-copy — stale files do not
+  survive), and an env change alone rewrites `env.js`. A
+  rebuild-per-environment answer was ruled out as a 12-factor
+  violation.
+- **Docker Swarm is deliberately declined as a flavor.** Swarm
+  ignores `depends_on` conditions and has no init-container
+  primitive, so the SPA's assets-image ruling cannot be expressed
+  honestly in a stack file; named volumes are node-local on a
+  cluster; the project is in maintenance mode; and a user who wants
+  Swarm can `docker stack deploy` the emitted compose file
+  themselves. Re-open only if a real consumer asks.
+- `tagsAdd: ['dist.container-image']` — as sketched, the tag a
+  future IaC or deploy vertical keys on.
 
-- `covers: ['build', 'release-channel']`
-- `predicate: { requires: ['framework.quarkus', 'arch.server-http',
-'pkg.gradle'] }`
-- Emits GitHub Actions workflows that build a container image via the
-  Quarkus container-image extension and push to GHCR on tag push;
-  one sticky question for the base-image / jvm-vs-native flavour.
-- `tagsAdd: ['dist.container-image']` — the tag a future IaC or
-  deploy vertical keys on.
+The prerequisite restructuring shipped in the same change: the SPA's
+containerization target became the **assets image** (clear-then-copy
+entrypoint over a named volume, unmodified official nginx serving
+it), and `fullstack/product-compose` migrated to the same shape with
+its `/api` proxy target env-configured (`BACKEND_URL` via the stock
+image's envsubst) instead of baked. Recorded under `Changed` in the
+CHANGELOG as a breaking change to an unreleased artifact shape.
 
-Quarkus first; Spring/Micronaut/Go/Rust siblings then cover the same
-dimensions under their own predicates, reusing the Dockerfile
-patterns `product-compose` established.
+What this item does **not** prove, same caveat as F: the emitted
+pipelines have not run on a real GitHub or GitLab host — the suite
+asserts their content, and the compose shapes were exercised under a
+local Docker daemon. The first tag pushed by a consumer project is
+where that evidence arrives.
 
-**Commit.** `feat(distribution): add quarkus-rest-container adapter`
+**Commits.** `refactor(containerization): share the JVM REST artifact
+derivation`, `feat(containerization)!: the SPA image becomes an
+init-container assets image`, `feat(gateway): deploy-time runtime
+config for the SPA`, `feat(fullstack): serve the product SPA from an
+init-populated volume`, `feat(distribution): container distribution
+for the server-shaped families`
 
 ---
 

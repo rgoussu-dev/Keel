@@ -22,18 +22,18 @@ instead, which has a name to give it.
 
 ## The verticals
 
-| Vertical                                  | One-liner                                                           | Dimensions                                                                           |
-| ----------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [`vcs`](vcs.md)                           | git repo, default branch, optional `origin`                         | `vcs`                                                                                |
-| [`walking-skeleton`](walking-skeleton.md) | the thinnest runnable end-to-end project for the chosen stack       | `entrypoint`, `port-example`, `build-tool`, `agentic-baseline`                       |
-| [`dev-env`](dev-env.md)                   | `dev/compose.yaml` — local infra the dev loop needs but doesn't own | `compose-base`                                                                       |
-| [`observability`](observability.md)       | health probes, correlation ids, OpenTelemetry, monitoring stack     | `health`, `request-context`, `telemetry`, `monitoring-stack`                         |
-| [`persistence`](persistence.md)           | SQL persistence: PostgreSQL, Unit-of-Work port, isolated migrations | `datasource`, `unit-of-work`, `repository-example`, `migrations`, `database-compose` |
-| [`gateway`](gateway.md)                   | the cross-service seam: gateway package, CORS, OpenAPI contract     | _none_ — fires purely on peer tags                                                   |
-| [`containerization`](containerization.md) | a thin Dockerfile beside the deployment unit                        | `image`                                                                              |
-| [`ci`](ci.md)                             | the pipeline every push has to pass: GitHub Actions or GitLab CI    | `pipeline`                                                                           |
-| [`distribution`](distribution.md)         | how the project ships: release workflows on tag push                | `build`, `release-channel`                                                           |
-| [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                           | `product-docs`, `product-compose`                                                    |
+| Vertical                                  | One-liner                                                                                        | Dimensions                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [`vcs`](vcs.md)                           | git repo, default branch, optional `origin`                                                      | `vcs`                                                                                |
+| [`walking-skeleton`](walking-skeleton.md) | the thinnest runnable end-to-end project for the chosen stack                                    | `entrypoint`, `port-example`, `build-tool`, `agentic-baseline`                       |
+| [`dev-env`](dev-env.md)                   | `dev/compose.yaml` — local infra the dev loop needs but doesn't own                              | `compose-base`                                                                       |
+| [`observability`](observability.md)       | health probes, correlation ids, OpenTelemetry, monitoring stack                                  | `health`, `request-context`, `telemetry`, `monitoring-stack`                         |
+| [`persistence`](persistence.md)           | SQL persistence: PostgreSQL, Unit-of-Work port, isolated migrations                              | `datasource`, `unit-of-work`, `repository-example`, `migrations`, `database-compose` |
+| [`gateway`](gateway.md)                   | the cross-service seam: gateway package, CORS, OpenAPI contract                                  | _none_ — fires purely on peer tags                                                   |
+| [`containerization`](containerization.md) | a thin Dockerfile beside the deployment unit                                                     | `image`                                                                              |
+| [`ci`](ci.md)                             | the pipeline every push has to pass: GitHub Actions or GitLab CI                                 | `pipeline`                                                                           |
+| [`distribution`](distribution.md)         | how the project ships: CLI binaries or registry-pushed images + a deploy descriptor, on tag push | `build`, `release-channel`                                                           |
+| [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                                                        | `product-docs`, `product-compose`                                                    |
 
 ## Compatibility matrix
 
@@ -50,7 +50,7 @@ instead, which has a name to give it.
 | `gateway`          | —       | ➕ ¹     | —           | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
 | `containerization` | ⛔      | ➕       | ⛔          | ➕           | ➕        | ➕               | (root compose is separate ²) |
 | `ci`               | ➕      | ➕       | ➕          | ➕           | ➕        | ➕               | ➕ per service               |
-| `distribution`     | ➕ ³    | ⛔       | ⛔          | ⛔           | ⛔        | ⛔               | ⛔                           |
+| `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³        | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service             |
 | `fullstack`        | —       | —        | —           | —            | —         | —                | ● monorepo root only         |
 
 ¹ Needs a peer in scope first: `keel link <path>` on both projects,
@@ -59,8 +59,11 @@ installs nothing.
 ² Monorepo products get `compose.yaml` + Dockerfiles from the
 [`fullstack`](fullstack.md) root glue; `containerization` is the
 standalone-service story.
-³ `quarkus-cli` on Gradle today; the REST/container sibling is
-[roadmap item E](../roadmap.md#e--distribution-for-rest-container-image).
+³ CLI distribution covers `quarkus-cli` on Gradle today; Go/Rust/TS
+CLI siblings are the intended growth path.
+⁴ The container family: requires `containerization` installed first —
+the release pipeline builds that Dockerfile. See
+[`distribution`](distribution.md).
 
 ## Prerequisites per vertical
 
@@ -76,5 +79,5 @@ Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-gl
 | `gateway`          | both projects linked (`keel link`)                                                               | —                                                                                                                                               |
 | `containerization` | —                                                                                                | Docker to build; the host build must produce the artifact first                                                                                 |
 | `ci`               | —                                                                                                | a GitHub or GitLab repository per the chosen provider; TypeScript stacks: the lockfile committed                                                |
-| `distribution`     | —                                                                                                | a GitHub repository (Actions + Releases); GraalVM runs in CI, not locally                                                                       |
+| `distribution`     | server shapes: `containerization` installed first                                                | a GitHub or GitLab repository per the chosen provider; GraalVM/toolchains run in CI, not locally; Docker + Compose or Helm to run `deploy/`     |
 | `fullstack`        | orchestrated by composite stacks — not user-addable                                              | Docker + Compose for `docker compose up --build`                                                                                                |
