@@ -1174,6 +1174,18 @@ or harder by this one.
   _added_ contexts apart for the first time. Each family's
   `add-module-*` e2e builds three.
 
+  **Coverage since closed to the full JVM grid.** It shipped with one
+  JVM combination built on CI — Quarkus REST, Java, both build systems
+  — and the other fifteen resting on assertions over emitted text.
+  There are now 24 cells (12 stacks × 2 build systems), one file and
+  one CI job each, because typology turned out to be a real axis: it
+  picks the assembly the wiring class renders into and the build file
+  the dependencies anchor in, and on Spring it moves `@ComponentScan`
+  between `Main` and `Application`. That supersedes **J**'s "the split
+  stops at nine" — true of the modulith half, which is floor-bound,
+  and not of this one, where each cell is a single file and the axis
+  under test is which framework/language/typology broke.
+
 - **Persistence: more engines and migration tools** — the vertical
   covers every HTTP stack (Quarkus/Spring/Micronaut in Java and
   Kotlin, Go, Rust, TS); what remains is a second RDBMS via the

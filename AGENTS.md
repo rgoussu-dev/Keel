@@ -255,10 +255,11 @@ would ship as separate packages implementing the same port.
   is the fast gate — lint, typecheck, test, build across Node 22 and 24;
   `tests/e2e/` self-skips there, since it is opt-in on CI. `e2e` is the
   other half, running with `KEEL_RUN_E2E=1` and **sharded by toolchain**:
-  nine `jvm-*` shards (JDK 25 + Gradle 9.4.1, plus Maven on every
-  `jvm-modulith-*`), `go` (Go + Docker), `rust` (cargo), `web` (npm/pnpm +
-  Chrome). Each shard provisions only what its suites probe for. Between
-  the two jobs, nothing in the suite is skipped for want of a tool.
+  33 `jvm-*` shards (JDK 25 + Gradle 9.4.1, plus Maven on every
+  `jvm-modulith-*` and every `jvm-add-module-*-maven`), `go` (Go +
+  Docker), `rust` (cargo), `web` (npm/pnpm + Chrome). Each shard
+  provisions only what its suites probe for. Between the two jobs,
+  nothing in the suite is skipped for want of a tool.
 - **The JVM shards follow the grid, and the grid comes first.** The
   `basic` typology splits by framework — `jvm-basic-quarkus`,
   `-spring`, `-micronaut`, four stacks each (CLI and REST × Java and
@@ -301,30 +302,62 @@ would ship as separate packages implementing the same port.
   `--with-peer-context` (what proves that adapter family is additive),
   the second is a vertical layered onto a cell. A new stack or build
   system means new cells, and they go in the matrix in the same change.
-- **`add-module-*` is not a grid either.** The six
-  `tests/e2e/add-module-{rust,go,ts,wc,jvm,jvm-maven}.test.ts` suites
-  have the same status as `modulith-baseline` and
-  `modulith-rust-peer-context`: one per stack family, each scaffolding
-  **three** bounded contexts and building them. Three rather than two
-  because that is the first shape where the consumed context is not
-  always the skeleton, which is where the emitters branch. They ride
-  in their family's existing shard — `rust`, `go`, `web`, and
-  `jvm-modulith-quarkus-java` for the two JVM ones, whose stack that
-  shard already carries. `add-module-jvm-maven` is its own file for
-  the standing reason a long case is, and its own _case_ because the
-  scope holding the seam wall is spelled differently there
-  (`optional`, not `implementation`) and the peer context's Maven half
-  once shipped without it.
+- **On the JVM, `add-module-*` _is_ a grid — the same 24 cells, and
+  one job each.** `tests/e2e/add-module-<stack>-<build>.test.ts`, 12
+  stacks × 2 build systems, named so "every cell has a suite" is
+  checkable from `ls`, and each with a shard of its own
+  (`jvm-add-module-<stack>-<build>`). Typology is a real axis rather
+  than a duplicate of its row, which is what makes 24 the honest
+  number: framework and language pick the binding, and typology picks
+  the assembly the wiring class renders into and the build file the
+  new dependencies anchor in — and on Spring it also moves
+  `@ComponentScan` between `Main` and `Application`. The body is
+  shared (`tests/support/jvm-add-module-e2e.ts`) so 24 cells cannot
+  drift into 24 slightly different assertions.
+
+  Two cells carry a negative the other 22 do not, and deliberately so:
+  the scope holding the seam wall is a property of the **build
+  system**, not of the cell, so it is asserted once per build system —
+  `implementation` in `add-module-quarkus-rest-gradle`, `optional` in
+  `add-module-quarkus-rest-maven`, whose Maven half once shipped
+  without it. Twelve copies of one fact would cost twelve builds and
+  prove it once.
+
+  This is the one place a `keel add module` grid is worth its runner
+  time. The JVM is six bindings over three containers, each with its
+  own discovery mechanism and its own way to fail silently — a handler
+  the container never found compiles perfectly and starts perfectly.
+  The other four families stay one file per family
+  (`add-module-{rust,go,ts,wc}.test.ts`, same status as
+  `modulith-baseline`), riding their family's existing shard, because
+  a Rust or Go context has no container to lose a handler in.
+
+- **A job per cell buys attribution and costs cold caches, and that
+  trade is only worth taking at this granularity.** Each
+  `jvm-add-module-*` shard runs one file with one real build, so each
+  pays its own JDK + Gradle provisioning and its own cold dependency
+  resolve — 24 of them where two files in one shard paid two. What it
+  buys is a red X that names the cell —
+  `e2e (jvm-add-module-spring-cli-kotlin-maven)` is a diagnosis, where
+  a failure inside a 24-file shard is a log to read. Wall clock is
+  unaffected (the shards run in parallel); runner minutes roughly
+  triple for this command. Collapsing it back is one edit — merge the
+  `files` lists by framework × language, as the modulith grid does —
+  and the suites need no change for it.
 - **They moved the floors of the shards they landed in, and the
-  numbers are on the runner.** `jvm-modulith-quarkus-java` was
-  recorded at 415s against a 260s floor when J.1 shipped, and called
-  "the only shard with real headroom left". Measured with these two
-  files in it: **483.25s wall, 1234.37s of test time across eight
-  files, longest file `add-module-jvm` at 262.28s** — a floor at 54%
-  of the wall, so the headroom that made it the shard to split first
-  is still there. (It was 565.60s against a 391.27s floor until the
-  cache fix below; both numbers are from the runner, one commit
-  apart.) On `web`, the
+  numbers are on the runner — read the JVM ones as history.**
+  `jvm-modulith-quarkus-java` was recorded at 415s against a 260s
+  floor when J.1 shipped, then at **483.25s wall, 1234.37s of test
+  time across eight files, longest file `add-module-jvm` at 262.28s**
+  once the two JVM `add-module` suites rode in it. (565.60s against a
+  391.27s floor before the cache fix below.) **That shape no longer
+  ships**: both files left for cells of their own when the add-module
+  grid landed, so the shard is back to its six modulith files and the
+  483.25s figure describes a configuration nobody runs. What the
+  numbers still settle is the cache lesson below, which was measured
+  inside them. The current shard wall and the 24 one-file
+  `jvm-add-module-*` shards are **unmeasured** — first green run on
+  `main` is the place to take them. On `web`, the
   floor changed hands outright: **188.68s wall over eleven files,
   longest `add-module-wc` at 110.94s**, where the standing note says
   `modulith-wc-peer-context` "is the floor and will stay the floor" —
@@ -346,11 +379,19 @@ would ship as separate packages implementing the same port.
 
   That answers the split question, and inverts the obvious reading of
   it. Two long cases in one file look like a file wanting to be two;
-  splitting these would hand the second case its own cold Gradle
+  splitting those two cases would hand the second its own cold Gradle
   resolve back and cost ~107s to buy attribution. It is the run-217
   `go` lesson with a number attached: **fix the cache, not the file
-  layout**. So `add-module-jvm` stays one file, and any future suite
+  layout**. So the two cells that carry a negative keep both cases in
+  one file with one shared home (`beforeAll`), and any future suite
   running two real builds should share its home from the start.
+
+  Note what this does _not_ say. It is an argument about two cases of
+  the same cell, where the second reuses the first's artifacts almost
+  entirely. It is not an argument against the 24-cell split: those
+  cells scaffold different stacks, so they would share little even
+  co-located, and the attribution is worth more when the axis under
+  test is which framework/language/typology broke.
 
 - **The shard matrix names its files explicitly, and that is a hazard
   with a guard.** A suite in no shard never runs, which looks exactly
