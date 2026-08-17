@@ -297,11 +297,11 @@ describe('the web-components verticals follow the layout', () => {
     expect(config).toContain("'/api'");
   });
 
-  it('points the container image at the bundle the layout chose', async () => {
+  it('points the assets image at the bundle the layout chose', async () => {
     for (const tag of [BASIC_LAYOUT_TAG, MODULITH_LAYOUT_TAG]) {
       const tree = await install([walkingSkeletonVertical, containerizationVertical], tags(tag));
       const appRoot = wcLayout([tag], SCOPE).appRoot;
-      expect(read(tree, 'Dockerfile')).toContain(`COPY ${appRoot}/dist/ /usr/share/nginx/html/`);
+      expect(read(tree, 'Dockerfile')).toContain(`COPY ${appRoot}/dist/ /bundle/`);
     }
   });
 });
