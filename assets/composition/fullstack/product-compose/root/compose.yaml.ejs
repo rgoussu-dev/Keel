@@ -1,14 +1,43 @@
 # The product, containerised: one image per deployment unit, built
-# from the Dockerfile beside it. `docker compose up --build` serves
-# the SPA on http://localhost:8081 with `/api` proxied to the backend.
+# from the Dockerfile beside it. The SPA ships as an assets image
+# that populates a named volume as an init container; an unmodified
+# official nginx serves the volume and proxies /api to the backend.
+# `docker compose up --build` serves the SPA on http://localhost:8081.
+# A frontend release rebuilds and re-runs only the assets image —
+# nginx never rebuilds — and config rides the environment: every
+# ${VAR:-default} below is a deploy-time knob.
+volumes:
+  spa-assets:
+
 services:
   <%= backend.path %>:
     build: ./<%= backend.path %>
     ports:
       - '8080:8080'
-  <%= frontend.path %>:
+
+  <%= frontend.path %>-assets:
     build: ./<%= frontend.path %>
+    restart: 'no'
+    environment:
+      # The app reads window.__ENV__ from env.js at boot; the init
+      # container writes it from these variables at deploy time.
+      API_BASE_URL: ${API_BASE_URL:-/api}
+    volumes:
+      - spa-assets:/assets
+
+  <%= frontend.path %>:
+    image: nginx:alpine
     ports:
       - '8081:80'
+    volumes:
+      - spa-assets:/usr/share/nginx/html:ro
+      - ./<%= frontend.path %>/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      # The official nginx entrypoint substitutes this into the
+      # mounted config template at start.
+      BACKEND_URL: ${BACKEND_URL:-http://<%= backend.path %>:8080}
     depends_on:
-      - <%= backend.path %>
+      <%= backend.path %>:
+        condition: service_started
+      <%= frontend.path %>-assets:
+        condition: service_completed_successfully

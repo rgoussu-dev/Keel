@@ -1,12 +1,18 @@
-# Serves the built SPA and proxies /api to the backend service —
-# the same convention the Vite dev proxy uses, so the bundle's
-# default VITE_API_BASE_URL (/api) works unchanged.
+# Serves the built SPA from the shared assets volume and proxies
+# /api to the backend — the same convention the Vite dev proxy uses,
+# so the bundle's default API base URL (/api) works unchanged.
+#
+# Mounted read-only into the stock nginx image as an envsubst
+# template (/etc/nginx/templates/default.conf.template): the official
+# entrypoint substitutes ${BACKEND_URL} from the environment at
+# start, so the backend is an attached resource picked at deploy
+# time, never a hostname baked into an image.
 server {
   listen 80;
   root /usr/share/nginx/html;
 
   location /api/ {
-    proxy_pass http://<%= backendService %>:8080/;
+    proxy_pass ${BACKEND_URL}/;
   }
 
   location / {

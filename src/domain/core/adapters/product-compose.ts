@@ -9,10 +9,15 @@
  *     `micronaut-rest`, a Go multi-stage build onto distroless for
  *     `go-http`, a musl-static cargo build onto distroless for
  *     `rust-http`;
- *   - the frontend image builds the Vite bundle and serves it from
- *     nginx, whose config proxies `/api` to the backend service —
- *     the same `/api` convention the dev proxy uses, so the bundle's
- *     default `VITE_API_BASE_URL` works unchanged in both worlds.
+ *   - the frontend image builds the Vite bundle into an **assets
+ *     image** whose entrypoint populates a named volume
+ *     (clear-then-copy + `env.js` templated from the environment) as
+ *     an init container; an unmodified official nginx serves the
+ *     volume with the SPA config mounted read-only, proxying `/api`
+ *     to an env-configured backend URL — the same `/api` convention
+ *     the dev proxy uses, so the bundle's default API base works
+ *     unchanged in both worlds, and a frontend release re-runs the
+ *     assets image while nginx never rebuilds.
  *
  * Runs at the product root (the `fullstack` vertical), so it writes
  * into the service directories via path-prefixed contributions. A
