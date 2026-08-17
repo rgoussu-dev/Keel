@@ -26,7 +26,7 @@ import {
   runnableJar,
   scaffold,
   skipJvmE2E,
-  type JvmProjectSpec,
+  type JvmRunnableSpec,
 } from './jvm-e2e.js';
 
 export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
@@ -82,7 +82,7 @@ const stopApp = async (child: ChildProcess): Promise<void> => {
 };
 
 /** Framework-specific parameters of one JVM REST e2e run. */
-export interface JvmRestE2ESpec extends JvmProjectSpec {
+export interface JvmRestE2ESpec extends JvmRunnableSpec {
   /** JVM flag that requests an ephemeral port. */
   readonly randomPortFlag: string;
   /** Log line announcing the bound port; group 1 is the port. */
