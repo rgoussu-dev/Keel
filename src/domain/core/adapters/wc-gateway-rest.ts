@@ -15,6 +15,12 @@
  *   - a Vite dev-server proxy (`/api` → `http://localhost:8080`) and
  *     the `vite-env.d.ts` reference that types
  *     `import.meta.env.VITE_API_BASE_URL` (12-factor: config via env);
+ *   - deploy-time runtime config: `public/env.js` publishes
+ *     `window.__ENV__` (dev default `/api`), `index.html` loads it
+ *     before the bundle, and the assembly reads it first — at deploy
+ *     time the assets init container rewrites the file in the served
+ *     volume from the environment, so one bundle serves every
+ *     environment without a rebuild;
  *   - rewrites of the greet slice so the walking skeleton is
  *     end-to-end across services: `greet-service` now publishes what
  *     the gateway returns (with an offline fallback), the assembly
@@ -74,6 +80,10 @@ export const wcGatewayRestAdapter: Adapter = {
     const renders: (readonly [string, string, Readonly<Record<string, string>>])[] = [
       ['port', `${layout.contractSrc}/ports`, {}],
       ['app', layout.appSrc, {}],
+      // The deploy-time config file, at /env.js in dev and in the
+      // bundle alike; the assets init container rewrites it in the
+      // served volume from the environment at deploy time.
+      ['app-public', `${layout.appRoot}/public`, {}],
       [
         'adapter/src',
         adapterDir,
@@ -138,6 +148,7 @@ export const wcGatewayRestAdapter: Adapter = {
     return {
       files: rendered.flat(),
       patches: [
+        envScriptPatch(layout),
         {
           target: layout.contractIndex,
           apply: (existing) => {
@@ -157,6 +168,34 @@ export const wcGatewayRestAdapter: Adapter = {
     };
   },
 };
+
+/**
+ * Loads /env.js before the module bundle, so window.__ENV__ is set
+ * by the time the assembly reads it. An absolute src, because the
+ * history-API fallback serves index.html for deep routes and a
+ * relative one would resolve against them.
+ */
+function envScriptPatch(layout: WcLayoutPaths): ContributionPatch {
+  const tag = '<script src="/env.js"></script>';
+  const anchor = '<script type="module"';
+  return {
+    target: `${layout.appRoot}/index.html`,
+    apply: (existing) => {
+      if (existing.includes(tag)) return existing;
+      const eol = eolOf(existing);
+      const lines = existing.split(/\r?\n/);
+      const at = lines.findIndex((l) => l.includes(anchor));
+      if (at === -1) {
+        throw new Error(
+          `${WC_GATEWAY_REST_ID}: cannot find the module script in ${layout.appRoot}/index.html to anchor the env.js loader`,
+        );
+      }
+      const indent = /^\s*/.exec(lines[at]!)?.[0] ?? '    ';
+      lines.splice(at, 0, `${indent}${tag}`);
+      return lines.join(eol);
+    },
+  };
+}
 
 /**
  * The rewritten domain test's imports. Under `basic` it names three

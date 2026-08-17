@@ -17,7 +17,14 @@ import { type Context, ContextRequestEvent } from './context';
 import { greetContext, greetingsContext } from './context-keys';
 import { GreetingView } from './components/greeting-view';
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+// Deploy-time config first: /env.js publishes window.__ENV__ (the
+// dev default lives in public/, the deploy rewrites it in the served
+// volume from the environment), so one bundle serves every
+// environment. The Vite-baked variable stays as a build-time
+// fallback, the dev proxy's /api as the last.
+const runtimeEnv = (window as { __ENV__?: { API_BASE_URL?: string } }).__ENV__;
+const apiBaseUrl =
+  runtimeEnv?.API_BASE_URL ?? (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
 const gateway = createRestGreetGateway(apiBaseUrl);
 const greetings = createGreetingStore();
 const greet = createGreet(gateway, greetings);
