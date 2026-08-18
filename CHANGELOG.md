@@ -8,6 +8,25 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel add <vertical> --reapply` — the update path for scaffolded
+  projects.** Re-renders an already-installed vertical from the
+  answers the manifest recorded, so a template fix in keel becomes
+  deliverable to existing projects. Conservative by design:
+  template-owned files are rewritten to the pristine re-render, each
+  rewrite reported as a unified diff against the working tree
+  (byte-identical renders are skipped; `--dry-run` shows the diff
+  without writing), while a patch that would change an already-patched
+  shared file refuses the whole run with `keel.reapply-conflict`
+  before anything is committed — with no recorded base, a changed
+  patch result cannot be told apart from a double application.
+  Recorded answers are frozen (`--set` with `--reapply` errors with
+  `keel.reapply-frozen-answers`; a question added to the vertical
+  since the install resolves to its default), re-promoted tags never
+  double, and the vertical keeps its original `installedAt`.
+  Reapplying a vertical that is not installed errors with
+  `keel.vertical-not-installed`, and the `keel.vertical-already-installed`
+  message now points at `--reapply`.
+
 - **Build-from-sources loop — exercise keel locally the way a user
   consumes it.** `pnpm keel …` builds and runs the CLI from `dist/`
   inside a scratch playground directory (`KEEL_PLAYGROUND` pins it

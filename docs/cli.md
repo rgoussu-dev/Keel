@@ -60,15 +60,47 @@ for which vertical applies to which stack — a vertical whose declared
 dimensions cannot be covered on your project **hard-fails with a
 message naming the gap** (e.g. `observability` on a CLI project).
 
-| Option        | Meaning                                        |
-| ------------- | ---------------------------------------------- |
-| `-y, --yes`   | Non-interactive — defaults for every question. |
-| `--dry-run`   | Print the plan; write nothing.                 |
-| `--set <k=v>` | Preset an answer (same shape as `keel new`).   |
+| Option        | Meaning                                                            |
+| ------------- | ------------------------------------------------------------------ |
+| `-y, --yes`   | Non-interactive — defaults for every question.                     |
+| `--dry-run`   | Print the plan; write nothing.                                     |
+| `--reapply`   | Re-render an installed vertical from its recorded answers.         |
+| `--set <k=v>` | Preset an answer (same shape as `keel new`). Not with `--reapply`. |
 
 Adding an already-installed vertical errors with
-`keel.vertical-already-installed`; a re-apply/update path is on the
-[roadmap](roadmap.md).
+`keel.vertical-already-installed` — that is what `--reapply` is for.
+
+### `--reapply`: the update path
+
+`keel add <vertical> --reapply` re-renders an **installed** vertical
+from the answers the manifest recorded, which is how a template fix in
+keel reaches a project scaffolded before the fix. The posture is
+deliberately conservative:
+
+- **Template-owned files** (whole-file contributions) are rewritten to
+  the pristine re-render. A byte-identical render is skipped, so the
+  plan lists only real changes — and every rewrite is reported as a
+  unified diff against your working tree. `--dry-run` shows the same
+  diff without writing anything.
+- **Patched files** (shared files like build files, which you own) are
+  never rewritten. A patch whose re-application changes nothing — the
+  guarded style keel's adapters use — passes silently; one that
+  _would_ change the file refuses the whole run with
+  `keel.reapply-conflict` before anything is committed, because
+  without a recorded base a changed result cannot be told apart from a
+  double application. Resolve that file by hand, then re-run.
+- **Answers are frozen.** Resolution is non-interactive from the
+  manifest; combining `--set` with `--reapply` errors with
+  `keel.reapply-frozen-answers`. A question the vertical grew since
+  the original install resolves to its default and is recorded like
+  any first ask.
+
+Reapplying a vertical that is not installed errors with
+`keel.vertical-not-installed`. Tags the original install promoted are
+re-promoted idempotently (they never double), and the vertical keeps
+its original `installedAt`. A three-way merge that preserves your
+edits to template-owned files is on the [roadmap](roadmap.md) —
+today the diff tells you exactly what an overwrite would replace.
 
 ## `keel add module`
 
