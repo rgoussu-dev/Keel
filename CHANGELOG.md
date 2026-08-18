@@ -93,6 +93,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   cells (`modulith-ts-cli-{npm,pnpm}`) and a basic walking-skeleton
   suite ride the `web` shard.
 
+- **`persistence` — a second RDBMS engine behind the sticky `engine`
+  dial: MariaDB on the JVM stacks.** The dial in
+  `persistence-engine.ts` now carries everything an engine varies —
+  driver coordinates, Quarkus `db-kind`, the Flyway database module,
+  the Testcontainers module + container class, the dev-compose
+  container (env, healthcheck, data dir), the JDBC time mapping and
+  the schema dialect — so the six JVM HTTP stacks (Quarkus/Spring/
+  Micronaut × Java/Kotlin, Gradle or Maven, both module layouts)
+  scaffold against `--set 'persistence/database-compose:engine=mariadb'`
+  with no adapter forked. The emitted contract test and the
+  Testcontainers image follow the chosen engine on every stack. The
+  Go/Rust/TS drivers speak the PostgreSQL wire protocol, so a
+  non-postgres engine there fails loudly at install before anything
+  is written.
+
+- **`persistence` — Liquibase (YAML) as an alternative to the Flyway
+  migrations unit, behind the second sticky dial (`migrations`).**
+  The same plain SQL under `migrations/sql/` (now the shared
+  `migrations-sql` template tree) is wrapped by a YAML changelog via
+  `sqlFile` and baked into the official Liquibase image, configured
+  through `LIQUIBASE_COMMAND_*` env vars, with the dev-compose
+  one-shot following. Served on Go/Rust/TS, whose emitted replay
+  paths are tool-agnostic; the JVM stacks' `%dev`/`%test` replay is
+  Flyway-wired today, so `migrations=liquibase` there fails loudly —
+  wiring the frameworks' Liquibase integrations is a roadmap item.
+
 - **`dev-container` vertical — a Dev Container definition on every
   stack, attached to the dev environment when one is installed.**
   Every non-composite stack (and thus every composite service) now

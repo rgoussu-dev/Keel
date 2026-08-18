@@ -54,7 +54,7 @@
  * Every patch is guarded so re-installing is a no-op.
  */
 
-import { databaseName, sqlEngine } from './persistence-engine.js';
+import { databaseName, imageTagOf, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-engine.js';
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
 import {
   addWorkspaceMembers,
@@ -197,14 +197,19 @@ export const rustPersistenceAdapter: Adapter = {
   vertical: 'persistence',
   covers: ['datasource', 'unit-of-work', 'repository-example'],
   predicate: { requires: ['lang.rust', 'arch.server-http'] },
+  // The dials adapter must have asked its questions before this one
+  // reads them through sqlEngine().
+  after: [PERSISTENCE_DIALS_ID],
   async contribute(ctx) {
     const { projectName } = rustBootstrapAnswers(ctx.manifest, RUST_PERSISTENCE_ID);
+    const engine = sqlEngine(ctx.manifest);
     const layout = rustLayout(ctx.manifest.tags, projectName);
     const basic = layout.layout === 'basic';
     const infra = layout.infra('postgres');
     const assembly = layout.assembly(TYPOLOGY);
     const files = await renderSlice(ctx, layout, {
-      devUrl: sqlEngine().devUrl('localhost', databaseName(ctx.manifest)),
+      devUrl: engine.devUrl('localhost', databaseName(ctx.manifest)),
+      dbImageTag: imageTagOf(engine),
     });
     return {
       files,
@@ -238,7 +243,7 @@ export const rustPersistenceAdapter: Adapter = {
           },
         },
       ],
-      tagsAdd: [sqlEngine().tag],
+      tagsAdd: [engine.tag],
     };
   },
 };

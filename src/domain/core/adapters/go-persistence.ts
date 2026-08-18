@@ -40,7 +40,7 @@
 
 import { goBootstrapAnswers } from './go-bootstrap.js';
 import { addProjectImports, goLayout, type GoLayoutPaths } from './go-module-layout.js';
-import { databaseName, sqlEngine } from './persistence-engine.js';
+import { databaseName, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 
@@ -123,8 +123,12 @@ export const goPersistenceAdapter: Adapter = {
   vertical: 'persistence',
   covers: ['datasource', 'unit-of-work', 'repository-example'],
   predicate: { requires: ['lang.go', 'arch.server-http'] },
+  // The dials adapter must have asked its questions before this one
+  // reads them through sqlEngine().
+  after: [PERSISTENCE_DIALS_ID],
   async contribute(ctx) {
     const { modulePath } = goBootstrapAnswers(ctx.manifest, GO_PERSISTENCE_ID);
+    const engine = sqlEngine(ctx.manifest);
     const layout = goLayout(ctx.manifest.tags, modulePath);
     const core = layout.domainInternal('greetinglog');
     const clockfake = layout.platform('clockfake');
@@ -173,7 +177,8 @@ export const goPersistenceAdapter: Adapter = {
         {
           projectImports: layout.importBlock([layout.domain]),
           testImports: layout.importBlock([layout.domain, postgres]),
-          devUrl: sqlEngine().devUrl('localhost', databaseName(ctx.manifest)),
+          devUrl: engine.devUrl('localhost', databaseName(ctx.manifest)),
+          dbImage: engine.image,
           upToRoot: layout.upToRoot(postgres),
         },
       ],
@@ -241,7 +246,7 @@ export const goPersistenceAdapter: Adapter = {
           },
         },
       ],
-      tagsAdd: [sqlEngine().tag],
+      tagsAdd: [engine.tag],
     };
   },
 };

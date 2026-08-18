@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 
 /**
  * Drives the persistence slice end to end on the embedded server:
- * the POST really commits to the Testcontainers PostgreSQL and the
+ * the POST really commits to the Testcontainers <%= engineName %> and the
  * GET really reads rows back.
  */
 @MicronautTest
 class GreetingLogControllerTest(
     @Client("/") private val client: HttpClient,
-) : PostgresTestFixture() {
+) : <%= dbFixture %>() {
 
     @Test
     fun recordsAGreetingDurablyAndListsItBack() {

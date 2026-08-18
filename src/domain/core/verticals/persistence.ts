@@ -1,9 +1,12 @@
 /**
  * The `persistence` vertical — answers "where does this service's
- * state live, and how does it change safely?" SQL-first: PostgreSQL
- * is the sane default (the engine dial in `persistence-engine.ts` is
- * where further RDBMS land), migrations are plain Flyway SQL, and
- * the transactional boundary is a domain concept.
+ * state live, and how does it change safely?" SQL-first, with two
+ * project-wide sticky dials asked by `database-compose`: the SQL
+ * `engine` (PostgreSQL default everywhere; MariaDB on the JVM
+ * stacks, via the spec records in `persistence-engine.ts`) and the
+ * `migrations` tool (Flyway default; Liquibase on Go/Rust/TS, via
+ * `migrations-tool.ts`). Migrations are plain SQL under either tool,
+ * and the transactional boundary is a domain concept.
  *
  * Five dimensions:
  *
@@ -40,6 +43,7 @@
 
 import { databaseComposeAdapter } from '../adapters/database-compose.js';
 import { flywayMigrationsAdapter } from '../adapters/flyway-migrations.js';
+import { liquibaseMigrationsAdapter } from '../adapters/liquibase-migrations.js';
 import { goPersistenceAdapter } from '../adapters/go-persistence.js';
 import {
   micronautPersistenceAdapter,
@@ -60,7 +64,7 @@ import type { Vertical } from '../../contract/composition.js';
 export const persistenceVertical: Vertical = {
   id: 'persistence',
   description:
-    'SQL persistence: PostgreSQL datasource, Unit-of-Work port, repository example, isolated Flyway migrations, dev database.',
+    'SQL persistence: engine-dialed datasource (PostgreSQL default, MariaDB on the JVM), Unit-of-Work port, repository example, isolated migrations (Flyway or Liquibase), dev database.',
   dimensions: [
     'datasource',
     'unit-of-work',
@@ -79,6 +83,7 @@ export const persistenceVertical: Vertical = {
     goPersistenceAdapter,
     rustPersistenceAdapter,
     flywayMigrationsAdapter,
+    liquibaseMigrationsAdapter,
     databaseComposeAdapter,
   ],
 };

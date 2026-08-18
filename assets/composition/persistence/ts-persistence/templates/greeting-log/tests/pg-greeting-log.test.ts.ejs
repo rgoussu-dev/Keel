@@ -35,7 +35,7 @@ describe.skipIf(!dockerAvailable())('pg greeting log (Testcontainers)', () => {
   let pool: ReturnType<typeof createPgPool>;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer('postgres:18-alpine').start();
+    container = await new PostgreSqlContainer('<%= dbImage %>').start();
     process.env['DB_URL'] = container.getConnectionUri();
     pool = createPgPool();
     for (const file of (await readdir(MIGRATIONS)).sort()) {

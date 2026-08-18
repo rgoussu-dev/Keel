@@ -3,7 +3,7 @@
  * the SQL persistence vertical for the Micronaut REST skeleton
  * (Java):
  *
- *   - **datasource**: `micronaut-jdbc-hikari` + the PostgreSQL
+ *   - **datasource**: `micronaut-jdbc-hikari` + the dialed engine's
  *     driver, with Micronaut Data's JDBC transaction manager making
  *     the pool transaction-aware. The default environment targets
  *     the dev compose database and applies Flyway at startup (the
@@ -17,7 +17,7 @@
  *     canonical fake.
  *   - **repository-example**: the shared `GreetingLog` slice up to
  *     `POST|GET /greetings`, with an embedded-server test on a
- *     Testcontainers PostgreSQL (`PostgresTestFixture` implements
+ *     Testcontainers database (the per-engine fixture implements
  *     `TestPropertyProvider`). The walking skeleton's own controller
  *     test extends the same fixture via a patch — a context with a
  *     datasource needs a database to boot against.
@@ -51,7 +51,12 @@ import {
   persistenceReadmePatch,
   propertiesTarget,
 } from './jvm-persistence.js';
-import { databaseName, sqlEngine } from './persistence-engine.js';
+import {
+  databaseName,
+  PERSISTENCE_DIALS_ID,
+  sqlEngine,
+  type SqlEngineSpec,
+} from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
@@ -67,17 +72,20 @@ const UOW_MODULE = 'micronaut-tx';
 
 const DEPS_GUARD = 'micronaut-data-tx-jdbc';
 const GRADLE_FRAMEWORK_ANCHOR = 'implementation("io.micronaut:micronaut-jackson-databind")';
-const GRADLE_FRAMEWORK_DEPS = `    implementation("io.micronaut.data:micronaut-data-tx-jdbc")
+const gradleFrameworkDeps = (
+  engine: SqlEngineSpec,
+): string => `    implementation("io.micronaut.data:micronaut-data-tx-jdbc")
     implementation("io.micronaut.flyway:micronaut-flyway")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    runtimeOnly("org.flywaydb:flyway-database-postgresql")
-    runtimeOnly("org.postgresql:postgresql")`;
+    runtimeOnly("${engine.flywayModule.groupId}:${engine.flywayModule.artifactId}")
+    runtimeOnly("${engine.jdbcDriver.groupId}:${engine.jdbcDriver.artifactId}")`;
 const GRADLE_TEST_ANCHOR = 'testImplementation("io.micronaut:micronaut-http-client")';
-const GRADLE_TEST_DEPS = `    testImplementation("org.testcontainers:postgresql:1.21.4")`;
+const gradleTestDeps = (engine: SqlEngineSpec): string =>
+  `    testImplementation("org.testcontainers:${engine.testcontainers.artifactId}:1.21.4")`;
 
 const MAVEN_FRAMEWORK_ANCHOR =
   '<artifactId>micronaut-jackson-databind</artifactId>\n    </dependency>';
-const MAVEN_FRAMEWORK_DEPS = `    <dependency>
+const mavenFrameworkDeps = (engine: SqlEngineSpec): string => `    <dependency>
       <groupId>io.micronaut.data</groupId>
       <artifactId>micronaut-data-tx-jdbc</artifactId>
     </dependency>
@@ -90,13 +98,13 @@ const MAVEN_FRAMEWORK_DEPS = `    <dependency>
       <artifactId>micronaut-jdbc-hikari</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
+      <groupId>${engine.flywayModule.groupId}</groupId>
+      <artifactId>${engine.flywayModule.artifactId}</artifactId>
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
+      <groupId>${engine.jdbcDriver.groupId}</groupId>
+      <artifactId>${engine.jdbcDriver.artifactId}</artifactId>
       <scope>runtime</scope>
     </dependency>`;
 const MAVEN_TEST_ANCHOR = `    <dependency>
@@ -104,9 +112,9 @@ const MAVEN_TEST_ANCHOR = `    <dependency>
       <artifactId>micronaut-test-junit5</artifactId>
       <scope>test</scope>
     </dependency>`;
-const MAVEN_TEST_DEPS = `    <dependency>
+const mavenTestDeps = (engine: SqlEngineSpec): string => `    <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>${engine.testcontainers.artifactId}</artifactId>
       <version>1.21.4</version>
       <scope>test</scope>
     </dependency>`;
@@ -121,50 +129,56 @@ const PROPERTIES_GUARD = '--- persistence (installed by keel)';
 export function micronautPersistencePropertiesBlock(
   database: string,
   layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
 ): string {
-  const engine = sqlEngine();
   return `# ${PROPERTIES_GUARD} ---------------------------------
-# PostgreSQL over JDBC (Hikari pool). These defaults are the dev
+# ${engine.name} over JDBC (Hikari pool). These defaults are the dev
 # loop: the compose database (dev/compose.yaml) plus Flyway applying
 # the isolated runner's SQL (migrations/ — its own deployment unit)
 # at startup. Production activates the prod environment
 # (MICRONAUT_ENVIRONMENTS=prod, see application-prod.properties):
 # environment-only config, no in-process migrations. Tests get a
-# throwaway PostgreSQL via Testcontainers (PostgresTestFixture).
+# throwaway ${engine.name} via Testcontainers (${engine.testFixtureClass}).
 datasources.default.url=\${DB_URL:\`${engine.jdbcUrl('localhost', database)}\`}
 datasources.default.username=\${DB_USERNAME:app}
 datasources.default.password=\${DB_PASSWORD:app}
-datasources.default.driver-class-name=org.postgresql.Driver
+datasources.default.driver-class-name=${engine.jdbcDriver.driverClass}
 flyway.datasources.default.enabled=true
 flyway.datasources.default.locations=${migrationsLocations(layout)}
 `;
 }
 
-const TEST_EXTENDS_GUARD = 'PostgresTestFixture';
+// Both engines' fixtures end in the same suffix, so one guard holds
+// whichever the dial picked.
+const TEST_EXTENDS_GUARD = 'TestFixture';
 const TEST_CLASS_ANCHOR = '@MicronautTest\nclass GreetControllerTest {';
 
 /**
  * Points the walking skeleton's controller test at the
  * Testcontainers database — once the executable carries a
- * datasource, every embedded-server boot needs one. Exported for the
- * vertical tests.
+ * datasource, every embedded-server boot needs one. The fixture is
+ * named per engine (`PostgresTestFixture`, `MariaDbTestFixture`).
+ * Exported for the vertical tests.
  */
-export function patchGreetControllerTest(existing: string): string {
-  if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
-  if (!existing.includes(TEST_CLASS_ANCHOR)) {
-    throw new Error(
-      `${MICRONAUT_PERSISTENCE_ID}: GreetControllerTest.java has drifted from the walking-skeleton shape — extend PostgresTestFixture manually so the embedded server has a database`,
+export function patchGreetControllerTest(fixture: string): (existing: string) => string {
+  return (existing) => {
+    if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
+    if (!existing.includes(TEST_CLASS_ANCHOR)) {
+      throw new Error(
+        `${MICRONAUT_PERSISTENCE_ID}: GreetControllerTest.java has drifted from the walking-skeleton shape — extend ${fixture} manually so the embedded server has a database`,
+      );
+    }
+    return existing.replace(
+      TEST_CLASS_ANCHOR,
+      `@MicronautTest\nclass GreetControllerTest extends ${fixture} {`,
     );
-  }
-  return existing.replace(
-    TEST_CLASS_ANCHOR,
-    '@MicronautTest\nclass GreetControllerTest extends PostgresTestFixture {',
-  );
+  };
 }
 
 function frameworkDepsPatch(
   buildSystem: 'gradle' | 'maven',
   layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
 ): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
@@ -172,8 +186,11 @@ function frameworkDepsPatch(
       apply: eolAware((existing) => {
         if (existing.includes(DEPS_GUARD)) return existing;
         return existing
-          .replace(MAVEN_FRAMEWORK_ANCHOR, `${MAVEN_FRAMEWORK_ANCHOR}\n${MAVEN_FRAMEWORK_DEPS}`)
-          .replace(MAVEN_TEST_ANCHOR, `${MAVEN_TEST_ANCHOR}\n${MAVEN_TEST_DEPS}`);
+          .replace(
+            MAVEN_FRAMEWORK_ANCHOR,
+            `${MAVEN_FRAMEWORK_ANCHOR}\n${mavenFrameworkDeps(engine)}`,
+          )
+          .replace(MAVEN_TEST_ANCHOR, `${MAVEN_TEST_ANCHOR}\n${mavenTestDeps(engine)}`);
       }),
     };
   }
@@ -182,8 +199,11 @@ function frameworkDepsPatch(
     apply: eolAware((existing) => {
       if (existing.includes(DEPS_GUARD)) return existing;
       return existing
-        .replace(GRADLE_FRAMEWORK_ANCHOR, `${GRADLE_FRAMEWORK_ANCHOR}\n${GRADLE_FRAMEWORK_DEPS}`)
-        .replace(GRADLE_TEST_ANCHOR, `${GRADLE_TEST_ANCHOR}\n${GRADLE_TEST_DEPS}`);
+        .replace(
+          GRADLE_FRAMEWORK_ANCHOR,
+          `${GRADLE_FRAMEWORK_ANCHOR}\n${gradleFrameworkDeps(engine)}`,
+        )
+        .replace(GRADLE_TEST_ANCHOR, `${GRADLE_TEST_ANCHOR}\n${gradleTestDeps(engine)}`);
     }),
   };
 }
@@ -195,17 +215,19 @@ const KOTLIN_TEST_CLASS_ANCHOR =
  * The Kotlin twin of {@link patchGreetControllerTest}. Exported for
  * the vertical tests.
  */
-export function patchGreetControllerTestKotlin(existing: string): string {
-  if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
-  if (!existing.includes(KOTLIN_TEST_CLASS_ANCHOR)) {
-    throw new Error(
-      `${MICRONAUT_PERSISTENCE_KOTLIN_ID}: GreetControllerTest.kt has drifted from the walking-skeleton shape — extend PostgresTestFixture manually so the embedded server has a database`,
+export function patchGreetControllerTestKotlin(fixture: string): (existing: string) => string {
+  return (existing) => {
+    if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
+    if (!existing.includes(KOTLIN_TEST_CLASS_ANCHOR)) {
+      throw new Error(
+        `${MICRONAUT_PERSISTENCE_KOTLIN_ID}: GreetControllerTest.kt has drifted from the walking-skeleton shape — extend ${fixture} manually so the embedded server has a database`,
+      );
+    }
+    return existing.replace(
+      KOTLIN_TEST_CLASS_ANCHOR,
+      `class GreetControllerTest(@Client("/") private val client: HttpClient) : ${fixture}() {`,
     );
-  }
-  return existing.replace(
-    KOTLIN_TEST_CLASS_ANCHOR,
-    'class GreetControllerTest(@Client("/") private val client: HttpClient) : PostgresTestFixture() {',
-  );
+  };
 }
 
 function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
@@ -218,6 +240,9 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     vertical: 'persistence',
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.micronaut', 'arch.server-http', `lang.${language}`] },
+    // The dials adapter must have asked its questions before this one
+    // reads them through sqlEngine().
+    after: [PERSISTENCE_DIALS_ID],
     async contribute(ctx) {
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
@@ -225,8 +250,9 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         'micronaut',
         language,
       );
+      const engine = sqlEngine(ctx.manifest);
       const layout = jvmLayout(ctx.manifest.tags);
-      const vars = jvmPersistenceVars(basePackage, projectName, layout);
+      const vars = jvmPersistenceVars(basePackage, projectName, layout, engine);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
@@ -241,14 +267,14 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         files: [...shared, ...sources, ...build],
         patches: [
           moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
-          frameworkDepsPatch(buildSystem, layout),
+          frameworkDepsPatch(buildSystem, layout, engine),
           executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE, layout),
           coreTestDepsPatch(buildSystem, basePackage, layout),
           {
             target: propertiesTarget(layout),
             apply: eolAware((existing) => {
               if (existing.includes(PROPERTIES_GUARD)) return existing;
-              return `${existing.trimEnd()}\n\n${micronautPersistencePropertiesBlock(database, layout).trim()}\n`;
+              return `${existing.trimEnd()}\n\n${micronautPersistencePropertiesBlock(database, layout, engine).trim()}\n`;
             }),
           },
           {
@@ -259,11 +285,15 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
           },
           {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
-            apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
+            apply: eolAware(
+              kotlin
+                ? patchGreetControllerTestKotlin(engine.testFixtureClass)
+                : patchGreetControllerTest(engine.testFixtureClass),
+            ),
           },
-          persistenceReadmePatch(layout),
+          persistenceReadmePatch(layout, engine),
         ],
-        tagsAdd: [sqlEngine().tag],
+        tagsAdd: [engine.tag],
       };
     },
   };

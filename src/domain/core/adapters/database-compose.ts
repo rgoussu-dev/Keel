@@ -7,12 +7,19 @@
  * install`).
  *
  * Language- and framework-agnostic: it fires for every HTTP service
- * (`arch.server-http`) alongside the per-stack persistence adapter.
+ * (`arch.server-http`) alongside the per-stack persistence adapter —
+ * and it fires **first** (the per-stack and migrations adapters
+ * declare `after` edges on it), which makes it the home of the
+ * vertical's two project-wide sticky dials: the SQL `engine` and the
+ * `migrations` tool. It asks both, validates them against the stack
+ * before anything is written, and every later adapter reads them
+ * through `sqlEngine()` / `migrationsTool()`.
+ *
  * Dev-only by doctrine — the production database is provisioned by
  * IaC; these credentials never leave the laptop. The container gets
  * a healthcheck so the migration one-shot (see
- * `persistence/flyway-migrations`) can gate on the database being
- * ready.
+ * `persistence/flyway-migrations` / `persistence/liquibase-migrations`)
+ * can gate on the database being ready.
  *
  * No install-order coupling with `dev-env`: the patch carries the
  * shared base as its `seed`, so `keel add persistence` composes into
@@ -26,11 +33,18 @@ import {
   devComposeSeed,
   DEV_COMPOSE_TARGET,
 } from './dev-env-compose.js';
-import { databaseName, DEV_DB_PASSWORD, DEV_DB_USER, sqlEngine } from './persistence-engine.js';
+import { MIGRATIONS_TOOL_QUESTION, migrationsToolById } from './migrations-tool.js';
+import {
+  databaseName,
+  PERSISTENCE_DIALS_ID,
+  SQL_ENGINE_QUESTION,
+  sqlEngineById,
+  type SqlEngineSpec,
+} from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 
-export const DATABASE_COMPOSE_ID = 'persistence/database-compose';
+export const DATABASE_COMPOSE_ID = PERSISTENCE_DIALS_ID;
 
 const SERVICE_MARKER = '--- database (persistence vertical)';
 
@@ -39,8 +53,7 @@ const SERVICE_MARKER = '--- database (persistence vertical)';
  * the persistence vertical tests can assert against the same shape
  * the adapter patches in.
  */
-export function databaseServiceBlock(database: string): string {
-  const engine = sqlEngine();
+export function databaseServiceBlock(database: string, engine: SqlEngineSpec): string {
   return `  # ${SERVICE_MARKER} ---------------------------------
   # The dev database the service's %dev profile targets. Dev-only
   # credentials; production gets a managed database provisioned by
@@ -48,15 +61,13 @@ export function databaseServiceBlock(database: string): string {
   db:
     image: ${engine.image}
     environment:
-      POSTGRES_USER: ${DEV_DB_USER}
-      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD}
-      POSTGRES_DB: ${database}
+${engine.composeEnv(database)}
     ports:
       - "${engine.port}:${engine.port}"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-data:${engine.dataDir}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DEV_DB_USER} -d ${database}"]
+      test: ${engine.healthcheckTest(database)}
       interval: 5s
       timeout: 3s
       retries: 20`;
@@ -67,7 +78,23 @@ export const databaseComposeAdapter: Adapter = {
   vertical: 'persistence',
   covers: ['database-compose'],
   predicate: { requires: ['arch.server-http'] },
+  questions: [SQL_ENGINE_QUESTION, MIGRATIONS_TOOL_QUESTION],
   async contribute(ctx) {
+    const engine = sqlEngineById(ctx.answer('engine'), DATABASE_COMPOSE_ID);
+    const tool = migrationsToolById(ctx.answer('migrations'), DATABASE_COMPOSE_ID);
+    // The dial guards live here, on the first adapter to run, so an
+    // unsupported combination fails before a single file is written.
+    const jvm = ctx.manifest.tags.includes('runtime.jvm');
+    if (engine.id !== 'postgres' && !jvm) {
+      throw new Error(
+        `${DATABASE_COMPOSE_ID}: engine '${engine.id}' is served on the JVM stacks only — this stack's driver (pgx / the sync postgres crate / pg) speaks the PostgreSQL wire protocol. Pick 'postgres', or see docs/roadmap.md.`,
+      );
+    }
+    if (tool === 'liquibase' && jvm) {
+      throw new Error(
+        `${DATABASE_COMPOSE_ID}: migrations tool 'liquibase' is served on the Go/Rust/TS stacks today — the JVM %dev/%test replay is wired through the framework's Flyway integration. Pick 'flyway', or see docs/roadmap.md.`,
+      );
+    }
     const seed = await devComposeSeed(ctx);
     const database = databaseName(ctx.manifest);
     return {
@@ -77,9 +104,10 @@ export const databaseComposeAdapter: Adapter = {
           seed,
           apply: eolAware((existing) => {
             if (existing.includes(SERVICE_MARKER)) return existing;
-            return addComposeVolumes(addComposeService(existing, databaseServiceBlock(database)), [
-              'db-data',
-            ]);
+            return addComposeVolumes(
+              addComposeService(existing, databaseServiceBlock(database, engine)),
+              ['db-data'],
+            );
           }),
         },
       ],

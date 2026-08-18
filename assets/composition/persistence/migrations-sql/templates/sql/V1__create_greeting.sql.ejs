@@ -2,7 +2,7 @@
 -- reads. Grow the schema with V2__*.sql, V3__*.sql, … — never edit
 -- an applied migration.
 create table greeting (
-    id         bigint generated always as identity primary key,
+    id         <%= sqlIdentityColumn %>,
     name       text not null,
-    greeted_at timestamptz not null
+    greeted_at <%= sqlTimestampType %> not null
 );

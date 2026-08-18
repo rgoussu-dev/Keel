@@ -1,0 +1,14 @@
+# The master changelog: one changeset per plain-SQL script under
+# sql/. The SQL stays the single source of schema truth — Liquibase
+# wraps it, it never rewrites it. Grow the schema by adding the next
+# V<n>__<description>.sql (the numbered prefix keeps the directory
+# reading in apply order) and appending its changeset here; never
+# edit an applied changeset.
+databaseChangeLog:
+  - changeSet:
+      id: V1__create_greeting
+      author: keel
+      changes:
+        - sqlFile:
+            path: sql/V1__create_greeting.sql
+            relativeToChangeLogFile: true

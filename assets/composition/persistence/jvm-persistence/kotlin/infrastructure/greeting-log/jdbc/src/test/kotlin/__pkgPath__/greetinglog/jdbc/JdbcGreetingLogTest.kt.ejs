@@ -8,15 +8,15 @@ import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.postgresql.ds.PGSimpleDataSource
-import org.testcontainers.containers.PostgreSQLContainer
+import <%- dsFqcn %>
+import org.testcontainers.containers.<%= tcClass %>
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 
 import org.junit.jupiter.api.Assertions.assertEquals
 
 /**
- * Contract test of the JDBC adapter against a real PostgreSQL
+ * Contract test of the JDBC adapter against a real <%= engineName %>
  * (Testcontainers), with the schema applied from the same SQL the
  * isolated migration runner ships (`migrations/sql/`). Skipped when
  * no Docker daemon is available.
@@ -28,7 +28,7 @@ class JdbcGreetingLogTest {
     fun emptyLog() {
         dataSource.connection.use { connection ->
             connection.createStatement().use { statement ->
-                statement.execute("truncate table greeting restart identity")
+                statement.execute("<%= truncateGreetingSql %>")
             }
         }
     }
@@ -65,17 +65,19 @@ class JdbcGreetingLogTest {
 
         @Container
         @JvmStatic
-        private val POSTGRES = PostgreSQLContainer("postgres:18-alpine")
+        private val DATABASE = <%= tcClass %>("<%= dbImage %>")
 
         private lateinit var dataSource: DataSource
 
         @BeforeAll
         @JvmStatic
         fun migrate() {
-            val ds = PGSimpleDataSource()
-            ds.setUrl(POSTGRES.jdbcUrl)
-            ds.user = POSTGRES.username
-            ds.password = POSTGRES.password
+            val ds = <%= dsClass %>()
+            // Setter calls, not property syntax: MariaDbDataSource has
+            // write-only credentials, so no synthetic property forms.
+            ds.setUrl(DATABASE.jdbcUrl)
+            ds.setUser(DATABASE.username)
+            ds.setPassword(DATABASE.password)
             dataSource = ds
             Flyway.configure()
                 .dataSource(ds)

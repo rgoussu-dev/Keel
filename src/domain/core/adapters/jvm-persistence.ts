@@ -6,8 +6,8 @@
  * skeleton: the `UnitOfWork` and `GreetingLog` secondary ports in the
  * hexagon's contract face, the greeting-log handlers in its
  * implementation face (writes demarcated by the unit of work), the
- * plain-JDBC repository adapter (contract-tested against a
- * Testcontainers PostgreSQL) and the canonical fakes beside it, and
+ * plain-JDBC repository adapter (contract-tested against the dialed
+ * engine via Testcontainers) and the canonical fakes beside it, and
  * the `POST|GET /greetings` pair on the REST channel.
  *
  * What varies per framework is the transactional adapter behind the
@@ -30,6 +30,7 @@
 
 import { jvmBuildSystem, type JvmBuildSystem } from './jvm-build-system.js';
 import type { JvmLayoutPaths } from './jvm-module-layout.js';
+import type { SqlEngineSpec } from './persistence-engine.js';
 import { eolAware, eolOf, packageToPath, withEol } from '../util.js';
 import type {
   ContributionFile,
@@ -82,7 +83,7 @@ const MAVEN_DEPENDENCIES_END = '  </dependencies>';
 
 const README_MARKER = '\n### Persistence\n';
 
-const readmeSection = (layout: JvmLayoutPaths): string =>
+const readmeSection = (layout: JvmLayoutPaths, engine: SqlEngineSpec): string =>
   `${README_MARKER}
 The persistence slice: \`POST /greetings\` records a greeting durably
 and \`GET /greetings?limit=…\` reads the log back, most recent first.
@@ -95,7 +96,7 @@ beside their canonical fakes. Schema lives in \`migrations/\` — its own
 deployment unit, see the Database section. Prod datasource config is
 environment-only: \`DB_URL\`, \`DB_USERNAME\`, \`DB_PASSWORD\`. Tests
 need a Docker daemon: the JDBC adapter's contract test runs against
-a Testcontainers PostgreSQL, and the REST test boots one too.
+a Testcontainers ${engine.name}, and the REST test boots one too.
 `;
 
 /**
@@ -289,12 +290,15 @@ ${modules.map((m) => `    testImplementation(project("${layout.gradleProject(m)}
 }
 
 /** The guarded `### Persistence` README section, shared verbatim. */
-export function persistenceReadmePatch(layout: JvmLayoutPaths): ContributionPatch {
+export function persistenceReadmePatch(
+  layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
+): ContributionPatch {
   return {
     target: 'README.md',
     apply: eolAware((existing) => {
       if (existing.includes(README_MARKER)) return existing;
-      return `${existing.trimEnd()}\n${readmeSection(layout)}`;
+      return `${existing.trimEnd()}\n${readmeSection(layout, engine)}`;
     }),
   };
 }
@@ -401,6 +405,7 @@ export function jvmPersistenceVars(
   basePackage: string,
   projectName: string,
   layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
 ): Readonly<Record<string, string>> {
   return {
     basePackage,
@@ -411,5 +416,22 @@ export function jvmPersistenceVars(
     // way back to the root is layout-dependent: three levels under the
     // flat trisection, five under the modulith.
     migrationsFromJdbcModule: `${layout.upToRoot(layout.infra('greeting-log/jdbc'))}migrations/sql`,
+    // The engine dial, spelled the way the templates consume it: the
+    // Testcontainers image + container class, the driver's plain
+    // DataSource, the build coordinates, and the SQL spellings that
+    // differ between engines.
+    engineId: engine.id,
+    engineName: engine.name,
+    dbImage: engine.image,
+    tcClass: engine.testcontainers.containerClass,
+    tcArtifact: engine.testcontainers.artifactId,
+    dsClass: engine.testDataSource.className,
+    dsFqcn: engine.testDataSource.fqcn,
+    dbFixture: engine.testFixtureClass,
+    truncateGreetingSql: engine.sql.truncateGreeting,
+    jdbcDriverGroupId: engine.jdbcDriver.groupId,
+    jdbcDriverArtifactId: engine.jdbcDriver.artifactId,
+    jdbcDriverVersion: engine.jdbcDriver.version,
+    flywayModuleArtifactId: engine.flywayModule.artifactId,
   };
 }

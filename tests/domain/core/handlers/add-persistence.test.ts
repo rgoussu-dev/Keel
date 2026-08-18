@@ -156,6 +156,32 @@ describe('keel.add-vertical (keel add persistence)', () => {
     expect(stored.tags).toContain('db.postgres');
   });
 
+  it('threads preset dial answers (--set) through the install and persists them', async () => {
+    await seed('ts-http');
+    expectOk(
+      await installMediator({ runDeferred: runActionsExcept(SKIPPED_ACTIONS) }).dispatch(
+        addVerticalCommand({
+          cwd,
+          vertical: 'persistence',
+          answers: { 'persistence/database-compose': { migrations: 'liquibase' } },
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+
+    expect(await readFile('migrations/Dockerfile')).toContain(
+      'FROM liquibase/liquibase:5.0-alpine',
+    );
+    expect(await readFile('migrations/changelog.yaml')).toContain(
+      'path: sql/V1__create_greeting.sql',
+    );
+
+    const stored = await manifest();
+    expect(stored.tags).toContain('db.migrations.liquibase');
+    expect(stored.answers['persistence/database-compose']?.['migrations']).toBe('liquibase');
+  });
+
   it('hard-fails on a CLI-shaped project with the uncovered dimensions', async () => {
     await seed('quarkus-cli');
     await expect(

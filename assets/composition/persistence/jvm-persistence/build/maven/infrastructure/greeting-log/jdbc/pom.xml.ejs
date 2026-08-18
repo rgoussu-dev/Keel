@@ -34,7 +34,7 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId><%= tcArtifact %></artifactId>
       <version>1.21.4</version>
       <scope>test</scope>
     </dependency>
@@ -46,14 +46,14 @@
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
+      <artifactId><%= flywayModuleArtifactId %></artifactId>
       <version>13.2.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>42.7.13</version>
+      <groupId><%= jdbcDriverGroupId %></groupId>
+      <artifactId><%= jdbcDriverArtifactId %></artifactId>
+      <version><%= jdbcDriverVersion %></version>
       <scope>test</scope>
     </dependency>
   </dependencies>

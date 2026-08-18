@@ -1,31 +1,31 @@
-package <%= basePackage %>.rest
+package <%= basePackage %>.application.api
 
 import io.micronaut.test.support.TestPropertyProvider
 import org.junit.jupiter.api.TestInstance
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.containers.<%= tcClass %>
 
 /**
- * Embedded-server tests get a throwaway PostgreSQL from
+ * Embedded-server tests get a throwaway <%= engineName %> from
  * Testcontainers: the fixture points the datasource at the container
  * and Flyway applies `migrations/sql/` at startup. Requires a Docker
  * daemon. Test classes extend this fixture — `TestPropertyProvider`
  * needs `PER_CLASS` lifecycle, which is inherited from here.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-abstract class PostgresTestFixture : TestPropertyProvider {
+abstract class <%= dbFixture %> : TestPropertyProvider {
 
     override fun getProperties(): Map<String, String> {
-        if (!POSTGRES.isRunning) {
-            POSTGRES.start()
+        if (!DATABASE.isRunning) {
+            DATABASE.start()
         }
         return mapOf(
-            "datasources.default.url" to POSTGRES.jdbcUrl,
-            "datasources.default.username" to POSTGRES.username,
-            "datasources.default.password" to POSTGRES.password,
+            "datasources.default.url" to DATABASE.jdbcUrl,
+            "datasources.default.username" to DATABASE.username,
+            "datasources.default.password" to DATABASE.password,
         )
     }
 
     private companion object {
-        val POSTGRES = PostgreSQLContainer("postgres:18-alpine")
+        val DATABASE = <%= tcClass %>("<%= dbImage %>")
     }
 }

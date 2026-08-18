@@ -32,7 +32,7 @@ func startPool(t *testing.T) *pgxpool.Pool {
 		t.Skip("no Docker daemon available")
 	}
 	ctx := context.Background()
-	container, err := tcpostgres.Run(ctx, "postgres:18-alpine",
+	container, err := tcpostgres.Run(ctx, "<%= dbImage %>",
 		// PostgreSQL restarts itself once after first-time init, so a
 		// container that has merely started is not one that will hold a
 		// connection. This waits for the readiness log twice, which is

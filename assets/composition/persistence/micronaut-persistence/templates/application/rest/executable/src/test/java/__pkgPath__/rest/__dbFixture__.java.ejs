@@ -4,10 +4,10 @@ import java.util.Map;
 
 import io.micronaut.test.support.TestPropertyProvider;
 import org.junit.jupiter.api.TestInstance;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.<%= tcClass %>;
 
 /**
- * Embedded-server tests get a throwaway PostgreSQL from
+ * Embedded-server tests get a throwaway <%= engineName %> from
  * Testcontainers: the fixture points the datasource at the container
  * and Flyway applies {@code migrations/sql/} at startup. Requires a
  * Docker daemon. Test classes extend this fixture —
@@ -15,19 +15,19 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * which is inherited from here.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class PostgresTestFixture implements TestPropertyProvider {
+public abstract class <%= dbFixture %> implements TestPropertyProvider {
 
-    private static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:18-alpine");
+    private static final <%= tcClass %><?> DATABASE =
+            new <%= tcClass %><>("<%= dbImage %>");
 
     @Override
     public Map<String, String> getProperties() {
-        if (!POSTGRES.isRunning()) {
-            POSTGRES.start();
+        if (!DATABASE.isRunning()) {
+            DATABASE.start();
         }
         return Map.of(
-                "datasources.default.url", POSTGRES.getJdbcUrl(),
-                "datasources.default.username", POSTGRES.getUsername(),
-                "datasources.default.password", POSTGRES.getPassword());
+                "datasources.default.url", DATABASE.getJdbcUrl(),
+                "datasources.default.username", DATABASE.getUsername(),
+                "datasources.default.password", DATABASE.getPassword());
     }
 }

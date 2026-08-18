@@ -178,7 +178,7 @@ mod tests {
             return;
         }
         let container = Postgres::default()
-            .with_tag("18-alpine")
+            .with_tag("<%= dbImageTag %>")
             .start()
             .expect("start postgres container");
         let url = format!(
