@@ -1,0 +1,53 @@
+# The weekly version-currency report (roadmap #75).
+#
+# The emitted templates pin framework and tool versions that rot
+# silently: nothing else notices when a pinned version stops being the
+# latest stable. This workflow runs the opt-in suite in
+# `tests/currency/`, which compares every entry of the version-pin
+# registry (`assets/composition/version-pins.json`) against its
+# upstream feed. A red run *is* the report — each failing test names
+# the pin, the value the templates ship, and the current latest
+# stable.
+#
+# Deliberately a schedule (Dependabot's cadence), never a PR gate: an
+# upstream release must not turn unrelated PRs red. Bumping a pin
+# stays a human-reviewed change that updates the template(s) and the
+# registry together — `tests/version-pins.test.ts` holds those two in
+# sync in `verify`, and the e2e grid is what proves the bump.
+
+name: version-currency
+
+on:
+  schedule:
+    # Monday 06:00 UTC — weekly, like Dependabot.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compare pinned versions against upstream latest stable
+        env:
+          KEEL_RUN_CURRENCY: '1'
+          # Only for api.github.com rate limits (release lookups);
+          # the job needs no write permission of any kind.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm vitest run tests/currency

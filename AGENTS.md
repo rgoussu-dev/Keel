@@ -458,6 +458,22 @@ would ship as separate packages implementing the same port.
 - Third-party actions are pinned to full commit SHAs with a `# vX.Y.Z`
   comment for supply-chain integrity. Dependabot
   (`.github/dependabot.yml`) proposes grouped weekly updates.
+- **Dependabot covers this repo's own dependencies; the emitted
+  templates' pins have their own currency loop.**
+  `assets/composition/version-pins.json` registers every framework and
+  tool version the templates pin (BOMs, wrappers, toolchain majors,
+  image tags, action refs — in `assets/composition/` and in the
+  `src/domain/core/adapters/` sources that embed template content).
+  `tests/version-pins.test.ts` guards it in `verify` the way
+  `ci-workflow.test.ts` guards the shard matrix: registry ↔ templates
+  must agree, and a sweep fails on any pin-shaped string no entry
+  claims — extend the registry, never the sweep's blind spots.
+  `.github/workflows/version-currency.yml` runs the opt-in suite under
+  `tests/currency/` (`KEEL_RUN_CURRENCY=1`) weekly to compare each
+  entry against its upstream latest stable; a red run is the drift
+  report, deliberately never a PR gate. Bumping a pin is a
+  human-reviewed change that updates the template(s) and the registry
+  together, proved by the e2e grid.
 - Secrets required: `NPM_TOKEN`. Provenance is enabled via the workflow's
   `id-token: write` permission.
 

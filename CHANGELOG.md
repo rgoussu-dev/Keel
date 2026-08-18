@@ -136,6 +136,23 @@ ci`/`containerization`/`distribution` on a service follow the same
   Flyway-wired today, so `migrations=liquibase` there fails loudly —
   wiring the frameworks' Liquibase integrations is a roadmap item.
 
+- **Version-currency loop for the emitted templates' pins**
+  ([#75](https://github.com/rgoussu-dev/keel/issues/75)). The
+  templates pin framework and tool versions that rot silently against
+  the binding spec's "always latest stable"; now
+  `assets/composition/version-pins.json` registers every such pin —
+  BOMs, wrappers, toolchain majors, image tags, emitted-workflow
+  action refs, across `assets/composition/` and the adapter sources
+  that embed template content — with its locations and its upstream
+  latest-stable feed. An offline guard (`tests/version-pins.test.ts`,
+  in `verify`) keeps registry and templates in lockstep and fails on
+  any pin-shaped string no entry claims; the weekly
+  `version-currency` workflow runs the opt-in drift report
+  (`tests/currency/`, `KEEL_RUN_CURRENCY=1`), where a failing test
+  names the pin, the pinned value, and the current latest stable.
+  Deliberately a schedule, never a PR gate; bumping stays a
+  human-reviewed change proved by the e2e grid.
+
 - **`dev-container` vertical — a Dev Container definition on every
   stack, attached to the dev environment when one is installed.**
   Every non-composite stack (and thus every composite service) now
