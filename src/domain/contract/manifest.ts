@@ -112,6 +112,16 @@ export interface ServiceRef {
   readonly path: string;
   /** Stack preset the service was scaffolded from. */
   readonly stack: string;
+  /**
+   * Build-system id the service was scaffolded on (`gradle`, `maven`,
+   * `npm`, `pnpm`), recorded so root-level glue (the compose
+   * Dockerfiles, the product README) follows the same choice the
+   * service's own manifest carries as its `pkg.*` tag. Absent when
+   * the service stack pins a single build system (Go, Rust), and on
+   * manifests written before the choice existed — readers fall back
+   * to the service stack's default.
+   */
+  readonly buildSystem?: string | undefined;
 }
 
 /** Record of a vertical the user installed. */
@@ -177,6 +187,7 @@ export const InstalledModuleSchema = z.object({
 export const ServiceRefSchema = z.object({
   path: z.string(),
   stack: z.string(),
+  buildSystem: z.string().optional(),
 });
 
 /** Schema governing the v2 on-disk shape. */

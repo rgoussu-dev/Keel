@@ -21,7 +21,11 @@
  * Composite pipeline (stacks declaring `services`): each service is
  * a full single-service install into its own subdirectory — own
  * Tree, own manifest — with its siblings' `projects` tags recorded
- * as `peers` so peer-conditional adapters resolve. The repository
+ * as `peers` so peer-conditional adapters resolve. Each service's
+ * build system is its own choice (`--build-system path=id` pairs, or
+ * one question per service interactively), recorded both as the
+ * service manifest's `pkg.*` tag and on the product manifest's
+ * service refs so root glue follows it. The repository
  * layout is the user's choice: under **monorepo** the `vcs` vertical
  * is hoisted out of the services and runs once at the product root
  * together with the composite stack's own glue verticals; under
@@ -54,14 +58,7 @@ import {
 } from '../adapters/module-layout.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { installVertical } from '../install.js';
-import {
-  getStack,
-  listStackIds,
-  STACKS,
-  type BuildSystemOption,
-  type Stack,
-  type StackService,
-} from '../stacks.js';
+import { getStack, listStackIds, STACKS, type BuildSystemOption, type Stack } from '../stacks.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import type { InstallDeps } from './deps.js';
 import type { Tag } from '../../contract/composition.js';
@@ -200,15 +197,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       });
     }
 
-    if (command.buildSystem !== undefined) {
-      return err(
-        new DomainError(
-          `stack '${stack.id}' is composite — its services scaffold on each service stack's default build system, so --build-system does not apply`,
-          'keel.invalid-build-system',
-        ),
-      );
-    }
-
     if (command.moduleLayout !== undefined) {
       return err(
         new DomainError(
@@ -229,6 +217,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
     const layout = await this.resolveLayout(command);
     if (!layout.ok) return layout;
+
+    const builds = await this.resolveServiceBuildSystems(command, stack, resolved);
+    if (!builds.ok) return builds;
 
     const rootScope = projectScopeRoot(command.cwd);
     if ((await this.deps.manifests.read(rootScope)) !== null) {
@@ -254,10 +245,14 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           buildTag: null,
           layoutTag: null,
           peers: [],
-          services: (stack.services ?? []).map((s: StackService) => ({
-            path: s.path,
-            stack: s.stack,
-          })),
+          services: resolved.map((s) => {
+            const chosen = builds.value.get(s.path);
+            return {
+              path: s.path,
+              stack: s.stack.id,
+              ...(chosen ? { buildSystem: chosen.id } : {}),
+            };
+          }),
           skipVcs: false,
           command,
           now,
@@ -271,7 +266,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           prefix: service.path,
           cwd: path.join(command.cwd, service.path),
           stack: service.stack,
-          buildTag: defaultBuildTag(service.stack),
+          buildTag: builds.value.get(service.path)?.tag ?? null,
           layoutTag: defaultLayoutTag(service.stack),
           peers: peersFor(service, resolved),
           services: [],
@@ -430,6 +425,61 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }
 
   /**
+   * Resolves the build system of every service of a composite stack:
+   * `--build-system` names services as `path=id` pairs
+   * (`backend=maven,frontend=pnpm`); services left unnamed are asked
+   * interactively when their stack declares a real choice and take
+   * their stack's default otherwise. Maps service path → chosen
+   * option, with `null` for services whose stack pins its build
+   * system.
+   */
+  private async resolveServiceBuildSystems(
+    command: NewProjectCommand,
+    stack: Stack,
+    services: readonly ResolvedService[],
+  ): Promise<Result<ReadonlyMap<string, BuildSystemOption | null>>> {
+    const explicit = parseServiceBuildSystems(command.buildSystem, stack, services);
+    if (!explicit.ok) return explicit;
+
+    const chosen = new Map<string, BuildSystemOption | null>();
+    for (const service of services) {
+      const options = service.stack.buildSystems ?? [];
+      const fallback = options[0];
+      const requested = explicit.value.get(service.path);
+      if (requested !== undefined) {
+        const match = options.find((o) => o.id === requested);
+        if (!match) {
+          return err(
+            fallback
+              ? invalidBuildSystem(service.stack, requested, options)
+              : new DomainError(
+                  `stack '${stack.id}': service '${service.path}' (${service.stack.id}) has a fixed build system — remove it from --build-system`,
+                  'keel.invalid-build-system',
+                ),
+          );
+        }
+        chosen.set(service.path, match);
+        continue;
+      }
+      if (!fallback) {
+        chosen.set(service.path, null);
+        continue;
+      }
+      if (!command.interactive || options.length === 1) {
+        chosen.set(service.path, fallback);
+        continue;
+      }
+      const answer = (
+        await this.deps.prompt.ask(serviceBuildSystemQuestion(service, options, fallback))
+      ).trim();
+      const match = options.find((o) => o.id === answer);
+      if (!match) return err(invalidBuildSystem(service.stack, answer, options));
+      chosen.set(service.path, match);
+    }
+    return ok(chosen);
+  }
+
+  /**
    * Resolves the module layout for a single-service stack: the
    * `--module-layout` id when supplied, the interactive choice when
    * the stack declares more than one, the stack default otherwise.
@@ -503,6 +553,72 @@ function buildSystemQuestion(
     default: fallback.id,
     memory: 'repeat',
   };
+}
+
+/**
+ * The build-system question for one service of a composite install —
+ * the single-service question with the service named in the id and
+ * the prompt, so sibling services (asked back to back) stay
+ * distinguishable to the user and to scripted prompts alike.
+ */
+function serviceBuildSystemQuestion(
+  service: ResolvedService,
+  options: readonly BuildSystemOption[],
+  fallback: BuildSystemOption,
+): Question {
+  return {
+    ...buildSystemQuestion(options, fallback),
+    id: `buildSystem:${service.path}`,
+    prompt: `Build system for ${service.path} (${service.stack.id})`,
+  };
+}
+
+/**
+ * Parses a composite `--build-system` value into service-path →
+ * build-system-id pairs. The composite syntax is `path=id`
+ * comma-separated; a bare id is rejected with the syntax spelled
+ * out, because "which service?" has no defensible default once the
+ * choice is per service.
+ */
+function parseServiceBuildSystems(
+  raw: string | undefined,
+  stack: Stack,
+  services: readonly ResolvedService[],
+): Result<ReadonlyMap<string, string>> {
+  const parsed = new Map<string, string>();
+  if (raw === undefined) return ok(parsed);
+  const paths = services.map((s) => s.path);
+  for (const entry of raw.split(',').map((e) => e.trim())) {
+    const separator = entry.indexOf('=');
+    if (separator <= 0 || separator === entry.length - 1) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' is composite — name the service in --build-system, as 'path=id' pairs (e.g. --build-system ${paths[0] ?? 'backend'}=maven); got '${entry}'`,
+          'keel.invalid-build-system',
+        ),
+      );
+    }
+    const servicePath = entry.slice(0, separator).trim();
+    const id = entry.slice(separator + 1).trim();
+    if (!paths.includes(servicePath)) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' has no service '${servicePath}' — services: ${paths.join(', ')}`,
+          'keel.invalid-build-system',
+        ),
+      );
+    }
+    if (parsed.has(servicePath)) {
+      return err(
+        new DomainError(
+          `--build-system names service '${servicePath}' twice`,
+          'keel.invalid-build-system',
+        ),
+      );
+    }
+    parsed.set(servicePath, id);
+  }
+  return ok(parsed);
 }
 
 function moduleLayoutQuestion(

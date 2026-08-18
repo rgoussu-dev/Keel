@@ -1,7 +1,11 @@
 FROM node:22-alpine AS build
 WORKDIR /workspace
 COPY . .
+<% if (pm === 'pnpm') { -%>
+RUN corepack enable && pnpm install && pnpm run build
+<% } else { -%>
 RUN npm install && npm run build
+<% } -%>
 
 # Assets image — carries the bundle, serves nothing. Its entrypoint
 # clears the shared volume, copies the bundle in, templates env.js

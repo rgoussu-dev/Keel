@@ -69,8 +69,8 @@ export function buildProgram(deps: CliDeps): Command {
       "repository layout for composite stacks: 'monorepo' or 'polyrepo' (prompted when omitted)",
     )
     .option(
-      '--build-system <id>',
-      "build system for stacks that offer a choice, e.g. 'gradle', 'maven', 'npm', 'pnpm' (prompted when omitted)",
+      '--build-system <choice>',
+      "build system for stacks that offer a choice, e.g. 'gradle', 'maven', 'npm', 'pnpm'; on composite stacks name each service as 'path=id' pairs, comma-separated (e.g. 'backend=maven,frontend=pnpm') — prompted when omitted",
     )
     .option(
       '--module-layout <id>',

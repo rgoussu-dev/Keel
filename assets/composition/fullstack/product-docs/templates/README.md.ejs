@@ -15,25 +15,41 @@ CORS config) were selected from those facts.
 ## Run order (development)
 
 <%
+// One hint per stack × recorded build system; refs without one
+// (manifests predating the per-service choice) read the default.
 const runHints = {
-  'quarkus-rest': './gradlew quarkusDev',
-  'spring-rest': 'SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun',
-  'micronaut-rest': 'MICRONAUT_ENVIRONMENTS=dev ./gradlew run',
-  'go-http': 'GO_ENV=dev go run ./cmd/http',
-  'rust-http': 'cargo run',
-  'ts-http': 'npm run dev',
-  'web-components': 'npm run dev',
+  'quarkus-rest': {
+    gradle: './gradlew quarkusDev',
+    maven: './mvnw -am -pl application/rest/executable quarkus:dev',
+  },
+  'spring-rest': {
+    gradle: 'SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun',
+    maven: 'SPRING_PROFILES_ACTIVE=dev ./mvnw -am -pl application/rest/executable spring-boot:run',
+  },
+  'micronaut-rest': {
+    gradle: 'MICRONAUT_ENVIRONMENTS=dev ./gradlew run',
+    maven: 'MICRONAUT_ENVIRONMENTS=dev ./mvnw -am -pl application/rest/executable mn:run',
+  },
+  'go-http': { default: 'GO_ENV=dev go run ./cmd/http' },
+  'rust-http': { default: 'cargo run' },
+  'ts-http': { npm: 'npm run dev', pnpm: 'pnpm run dev' },
+  'web-components': { npm: 'npm run dev', pnpm: 'pnpm run dev' },
+};
+const runHint = (service) => {
+  const hints = runHints[service.stack];
+  if (!hints) return 'see its README';
+  return hints[service.buildSystem] ?? hints.default ?? Object.values(hints)[0];
 };
 const backendService = services[0];
 const frontendService = services[services.length - 1];
 -%>
 1. Start the backend first:
    ```sh
-   cd <%= backendService.path %> && <%= runHints[backendService.stack] ?? 'see its README' %>   # serves http://localhost:8080
+   cd <%= backendService.path %> && <%= runHint(backendService) %>   # serves http://localhost:8080
    ```
 2. Then the frontend dev server:
    ```sh
-   cd <%= frontendService.path %> && <%= runHints[frontendService.stack] ?? 'see its README' %>   # proxies /api → localhost:8080
+   cd <%= frontendService.path %> && <%= runHint(frontendService) %>   # proxies /api → localhost:8080
    ```
 
 The frontend reaches the backend through its `gateway-rest` driven

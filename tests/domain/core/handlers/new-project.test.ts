@@ -429,7 +429,7 @@ describe('keel.new-project build-system selection', () => {
     expect(error.message).toMatch(/fixed build system/);
   });
 
-  it('rejects --build-system on composite stacks', async () => {
+  it('rejects a bare build-system id on composite stacks — the choice is per service', async () => {
     const mediator = installMediator();
     const error = expectErr(
       await mediator.dispatch(
@@ -445,6 +445,7 @@ describe('keel.new-project build-system selection', () => {
     );
     expect(error.code).toBe('keel.invalid-build-system');
     expect(error.message).toMatch(/composite/);
+    expect(error.message).toMatch(/backend=maven/);
   });
 });
 
