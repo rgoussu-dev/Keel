@@ -14,8 +14,10 @@
  * Without it, a standalone image-based definition. See
  * `adapters/dev-container.ts` for the shared machinery.
  *
- * Brownfield-installable via `keel add dev-container`; install
- * `dev-env` first to get the attached shape.
+ * Brownfield-installable via `keel add dev-container`, in either
+ * order relative to `dev-env`: installed after it, the definition
+ * lands attached; installed before it, `dev-env` upgrades the
+ * standalone definition when it arrives.
  */
 
 import { goDevcontainerAdapter } from '../adapters/go-devcontainer.js';

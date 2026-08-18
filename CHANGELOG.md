@@ -29,8 +29,11 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   the host instead of restarting it — with
   `docker-outside-of-docker` provisioned so the dev env can be
   driven from inside. Without `dev-env`, the definition is
-  image-based on the devcontainers Ubuntu base. Install `dev-env`
-  first brownfield to get the attached shape.
+  image-based on the devcontainers Ubuntu base — and install order
+  does not matter brownfield: `keel add dev-env` after the fact
+  upgrades a standalone definition to the attached shape (refusing,
+  with the manual recipe, if the definition was customized away from
+  the scaffolded shape rather than silently rewriting it).
 
 - **`distribution` for the server-shaped stacks — CI-built images on
   tag push, plus a deployment descriptor.** `keel add distribution`

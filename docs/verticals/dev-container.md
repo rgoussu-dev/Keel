@@ -33,9 +33,14 @@ vertical is on the manifest:
   image-based on `mcr.microsoft.com/devcontainers/base:ubuntu`; the
   toolchain still comes from features.
 
-**Order matters brownfield**: install `dev-env` before
-`dev-container` to get the attached shape — the definition is not
-rewritten when a dev env arrives later.
+**Install order does not matter brownfield**: installed after
+`dev-env`, the definition lands attached; installed before it,
+[`dev-env`](dev-env.md) upgrades the standalone definition to the
+attached shape when it arrives (adding the compose overlay and the
+`docker-outside-of-docker` feature). The one exception is a
+definition you have customized away from the scaffolded shape (e.g.
+a different base image) — the upgrade then refuses to rewrite it and
+names the manual recipe instead of silently losing your changes.
 
 ## Dimensions & adapters
 
@@ -57,5 +62,5 @@ rewritten when a dev env arrives later.
 ## Related
 
 - [`dev-env`](dev-env.md) — the Compose project the attached shape
-  joins; install it first.
+  joins, in either install order.
 - [Verticals catalog](README.md)

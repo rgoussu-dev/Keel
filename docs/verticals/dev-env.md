@@ -44,4 +44,6 @@ Design points:
   dev database and the migrations one-shot.
 - [`dev-container`](dev-container.md) — joins this file's Compose
   project so the workspace shares the dev environment's network.
+  Installing `dev-env` after it upgrades an existing standalone
+  definition to that attached shape.
 - [Verticals catalog](README.md)
