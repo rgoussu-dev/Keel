@@ -1,0 +1,59 @@
+import type { Mediator } from '<%= kernelPkg %>';
+import { greetCommand, GREET_REJECTED } from '<%= contextPkg %>';
+
+/** The streams the CLI writes to — injectable so tests can capture them. */
+export interface CliIo {
+  out(line: string): void;
+  err(line: string): void;
+}
+
+const USAGE = 'usage: greet [--name <name>]';
+
+/**
+ * CLI entry point of the walking skeleton: maps the argument list to
+ * a `GreetCommand`, dispatches it via the mediator, and maps the
+ * `Result` to the transport — the greeting on stdout, or the domain's
+ * message on stderr. No business logic. Exit codes tell the caller
+ * who said no: 2 is the user's input (usage or a domain rejection),
+ * 1 is a defect.
+ *
+ * It reaches the greeting context through its facade and could not
+ * reach further if it tried: the package publishes two entry points,
+ * and everything deeper is a resolution error.
+ */
+export async function runGreetCli(
+  args: readonly string[],
+  mediator: Mediator,
+  io: CliIo,
+): Promise<number> {
+  const name = parseName(args);
+  if (name === null) {
+    io.err(USAGE);
+    return 2;
+  }
+  try {
+    const result = await mediator.dispatch(greetCommand(name));
+    if (!result.ok) {
+      io.err(result.error.message);
+      return result.error.code === GREET_REJECTED ? 2 : 1;
+    }
+    io.out(result.value.message);
+    return 0;
+  } catch (error: unknown) {
+    // A rejected dispatch promise is a defect (handlers return
+    // Result), but it must not escape as an unhandled rejection.
+    io.err(error instanceof Error ? error.message : 'unexpected failure');
+    return 1;
+  }
+}
+
+/** The `--name` flag's value, `'world'` when absent, null on misuse. */
+function parseName(args: readonly string[]): string | null {
+  if (args.length === 0) return 'world';
+  const [flag, ...rest] = args;
+  if (flag === '--name' && rest.length === 1) return rest[0];
+  if (flag !== undefined && flag.startsWith('--name=') && rest.length === 0) {
+    return flag.slice('--name='.length);
+  }
+  return null;
+}

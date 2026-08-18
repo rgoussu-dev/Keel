@@ -318,6 +318,15 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     projects: ['peer.api.rest'],
   },
+  'ts-cli': {
+    id: 'ts-cli',
+    description:
+      'TypeScript CLI on Node (22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.',
+    tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.cli'],
+    buildSystems: [NPM_BUILD, PNPM_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
+  },
   'ts-http': {
     id: 'ts-http',
     description:

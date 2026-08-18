@@ -35,13 +35,13 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-async function scaffold(): Promise<void> {
+async function scaffold(stack: 'ts-cli' | 'ts-http' = 'ts-http'): Promise<void> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
   expectOk(
     await mediator.dispatch(
       newProjectCommand({
         cwd,
-        stack: 'ts-http',
+        stack,
         answers: {},
         interactive: false,
         dryRun: false,
@@ -172,5 +172,29 @@ describe('the ts-http added context', () => {
 
     expect(gateway).toMatch(/from '@acme\/greeting\/service'/);
     expect(gateway).not.toMatch(/from '@acme\/greeting'/);
+  });
+});
+
+describe('the ts-cli added context', () => {
+  /**
+   * The adapter names no assembly path: `tsAssemblies` derives the
+   * wiring targets from the arch tags, so on the CLI twin the same
+   * context lands in `application/cli` — with no `application/rest`
+   * anywhere for the patches to have missed.
+   */
+  it('wires the context into the CLI assembly', async () => {
+    await scaffold('ts-cli');
+    await addModule('ordering', 'greeting');
+
+    const main = await read('application/cli/src/main.ts');
+    expect(main).toMatch(/import \{ createOrderingContextHandler \} from '\.\/ordering\.ts';/);
+    expect(main).toMatch(/createOrderingContextHandler\(\)/);
+
+    const manifest = await read('application/cli/package.json');
+    expect(manifest.match(/"@acme\/ordering":/g)).toHaveLength(1);
+    expect(manifest.match(/"@acme\/greeting":/g)).toHaveLength(1);
+
+    expect(await read('application/cli/src/ordering.ts')).toMatch(/createGreetHandler\(\)/);
+    expect(await fs.pathExists(path.join(cwd, 'application/rest'))).toBe(false);
   });
 });

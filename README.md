@@ -52,7 +52,7 @@ Java, Kotlin, Go, Rust, or TypeScript. Pick a cell, run
 | **Kotlin · Micronaut 4** ([docs](docs/stacks/jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | —                | —                     |
 | **Go · stdlib** ([docs](docs/stacks/go.md))                             | `go-cli`               | `go-http`               | —                | `fullstack-go`        |
 | **Rust · stdlib / axum** ([docs](docs/stacks/rust.md))                  | `rust-cli`             | `rust-http`             | —                | `fullstack-rust`      |
-| **TypeScript · node:http** ([docs](docs/stacks/ts-http.md))             | —                      | `ts-http`               | —                | `fullstack-ts`        |
+| **TypeScript · Node** ([docs](docs/stacks/ts-http.md))                  | `ts-cli`               | `ts-http`               | —                | `fullstack-ts`        |
 | **TypeScript · web components** ([docs](docs/stacks/web-components.md)) | —                      | —                       | `web-components` | (frontend of all)     |
 
 Every stack page lists its **prerequisites**, the **questions asked**,
@@ -149,7 +149,8 @@ seam, and the enforcement for that does not exist on stable.
 ### How to bootstrap a TypeScript service
 
 ```sh
-npx @rgoussu.dev/keel new --stack=ts-http
+npx @rgoussu.dev/keel new --stack=ts-http    # node:http service
+npx @rgoussu.dev/keel new --stack=ts-cli     # CLI twin
 ```
 
 You get a no-build-step TypeScript workspace (Node 22.18+ runs the
@@ -159,7 +160,12 @@ sources directly): the trisected domain packages behind their
 mediator behind a `node:http` server; and the `Clock` port + fake in
 `infrastructure/clock`.
 
-`ts-http` carries the **module layout** dial too, and here a context
+`ts-cli` is the CLI twin completing the family's CLI/HTTP pairing:
+the same domain packages behind the same walls, with the deployment
+unit swapped — `application/cli` maps flags to commands and `Result`s
+to streams + exit code (0 greeting, 2 domain rejection, 1 defect).
+
+Both carry the **module layout** dial, and here a context
 is _one workspace package_ rather than one per layer — because the
 package graph enforces nothing on its own (undeclared workspace deps
 resolve anyway) while the `exports` map enforces everything. So
@@ -172,7 +178,7 @@ is the linter's.
 → [ts-http module layout](docs/stacks/ts-http.md#module-layout)
 
 **Prerequisites:** Node 22.18+, `npm` or `pnpm`, `git`.
-→ [ts-http](docs/stacks/ts-http.md)
+→ [TypeScript stacks](docs/stacks/ts-http.md)
 
 ### How to bootstrap a frontend SPA
 

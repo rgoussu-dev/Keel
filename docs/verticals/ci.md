@@ -38,12 +38,12 @@ One adapter per stack family covers the single `pipeline` dimension —
 the build-system choice is read from the manifest tags, never a
 second adapter:
 
-| Stacks                      | Adapter         | Pipeline                                                                                       |
-| --------------------------- | --------------- | ---------------------------------------------------------------------------------------------- |
-| all twelve JVM stacks       | `jvm-pipeline`  | JDK 25 (temurin) + the wrapper: `./gradlew build` or `./mvnw verify` per `pkg.*`               |
-| `go-cli`, `go-http`         | `go-pipeline`   | toolchain per `go.mod`; `go build ./...` + `go test ./...`                                     |
-| `rust-cli`, `rust-http`     | `rust-pipeline` | latest stable; `cargo build --workspace` + `cargo test --workspace`                            |
-| `ts-http`, `web-components` | `ts-pipeline`   | Node 22; `npm ci`/`pnpm install --frozen-lockfile`, typecheck, lint/build `--if-present`, test |
+| Stacks                                | Adapter         | Pipeline                                                                                       |
+| ------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------- |
+| all twelve JVM stacks                 | `jvm-pipeline`  | JDK 25 (temurin) + the wrapper: `./gradlew build` or `./mvnw verify` per `pkg.*`               |
+| `go-cli`, `go-http`                   | `go-pipeline`   | toolchain per `go.mod`; `go build ./...` + `go test ./...`                                     |
+| `rust-cli`, `rust-http`               | `rust-pipeline` | latest stable; `cargo build --workspace` + `cargo test --workspace`                            |
+| `ts-cli`, `ts-http`, `web-components` | `ts-pipeline`   | Node 22; `npm ci`/`pnpm install --frozen-lockfile`, typecheck, lint/build `--if-present`, test |
 
 Both TypeScript installs run from the **committed lockfile**, so the
 pipeline fails loudly on dependency drift instead of resolving

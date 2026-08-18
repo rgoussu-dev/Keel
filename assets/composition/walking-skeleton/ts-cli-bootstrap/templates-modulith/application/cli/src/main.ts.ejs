@@ -1,0 +1,17 @@
+import { createRegistryMediator } from '<%= kernelPkg %>';
+import { createGreetHandler } from '<%= contextPkg %>';
+import { runGreetCli } from './cli.ts';
+
+/**
+ * The assembly point: collect each context's handlers behind the
+ * platform's mediator, hand the process's arguments and streams to
+ * the CLI unit, exit with its verdict. Adding a bounded context is
+ * one import and one array entry here — cross-cutting concerns
+ * decorate the handlers right here, nowhere else.
+ */
+const mediator = createRegistryMediator([createGreetHandler()]);
+
+process.exitCode = await runGreetCli(process.argv.slice(2), mediator, {
+  out: (line) => console.log(line),
+  err: (line) => console.error(line),
+});

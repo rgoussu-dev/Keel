@@ -288,10 +288,11 @@ would ship as separate packages implementing the same port.
   single `rust` shard: measured on the shipped shape that shard is
   already floor-bound by its slowest file, so a split would buy
   attribution and no wall clock.
-- **Go, `ts-http` and `web-components` follow the same shape, and
-  their grids are small.** Go is 2 stacks × 1 build system
+- **Go, the TypeScript stacks and `web-components` follow the same
+  shape, and their grids are small.** Go is 2 stacks × 1 build system
   (`modulith-go-{cli,http}`); each TypeScript stack is 1 stack × 2
-  package managers (`modulith-ts-http-{npm,pnpm}`,
+  package managers (`modulith-ts-cli-{npm,pnpm}`,
+  `modulith-ts-http-{npm,pnpm}`,
   `modulith-web-components-{npm,pnpm}`). The package manager is a real
   axis rather than a duplicate: npm's hoisting hides a missing
   dependency declaration that pnpm's isolated store refuses. Each

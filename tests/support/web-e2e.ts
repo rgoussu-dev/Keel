@@ -95,7 +95,7 @@ export function runFails(cwd: string, cmd: string, args: readonly string[]): str
 
 /** What to scaffold, and how. */
 export interface WebProjectSpec {
-  readonly stack: 'ts-http' | 'web-components';
+  readonly stack: 'ts-cli' | 'ts-http' | 'web-components';
   readonly projectName: string;
   readonly buildSystem: PackageManager;
   readonly moduleLayout?: string;
@@ -104,6 +104,7 @@ export interface WebProjectSpec {
 
 /** The bootstrap adapter each stack records its answers under. */
 const BOOTSTRAP: Readonly<Record<WebProjectSpec['stack'], string>> = {
+  'ts-cli': 'walking-skeleton/ts-cli-bootstrap',
   'ts-http': 'walking-skeleton/ts-http-bootstrap',
   'web-components': 'walking-skeleton/wc-spa-bootstrap',
 };

@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest';
+import { createRegistryMediator, type Mediator } from '<%= kernelPkg %>';
+import { createGreetHandler } from '<%= contextPkg %>';
+import { runGreetCli } from '../src/cli.ts';
+
+const run = async (
+  args: readonly string[],
+  mediator: Mediator = createRegistryMediator([createGreetHandler()]),
+): Promise<{ code: number; out: string[]; err: string[] }> => {
+  const out: string[] = [];
+  const err: string[] = [];
+  const code = await runGreetCli(args, mediator, {
+    out: (line) => out.push(line),
+    err: (line) => err.push(line),
+  });
+  return { code, out, err };
+};
+
+describe('greet CLI', () => {
+  it('greets the given name on stdout', async () => {
+    const { code, out, err } = await run(['--name', 'Ada']);
+    expect(code).toBe(0);
+    expect(out).toEqual(['Hello, Ada!']);
+    expect(err).toEqual([]);
+  });
+
+  it('accepts the --name=<value> spelling', async () => {
+    const { code, out } = await run(['--name=Ada']);
+    expect(code).toBe(0);
+    expect(out).toEqual(['Hello, Ada!']);
+  });
+
+  it('defaults to world when no name is given', async () => {
+    const { code, out } = await run([]);
+    expect(code).toBe(0);
+    expect(out).toEqual(['Hello, world!']);
+  });
+
+  it('maps a blank name to the domain message and exit code 2', async () => {
+    const { code, out, err } = await run(['--name', '  ']);
+    expect(code).toBe(2);
+    expect(out).toEqual([]);
+    expect(err).toEqual(['name must not be blank']);
+  });
+
+  it('maps unknown flags to usage and exit code 2', async () => {
+    const { code, err } = await run(['--shout']);
+    expect(code).toBe(2);
+    expect(err[0]).toContain('usage:');
+  });
+
+  it('maps a rejected dispatch to exit code 1 instead of an unhandled rejection', async () => {
+    const failing: Mediator = { dispatch: () => Promise.reject(new Error('boom')) };
+    const { code, err } = await run([], failing);
+    expect(code).toBe(1);
+    expect(err).toEqual(['boom']);
+  });
+});

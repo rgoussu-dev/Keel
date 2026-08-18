@@ -1,7 +1,7 @@
 /**
  * `walking-skeleton/ts-peer-context` adapter — scaffolds the **second
- * bounded context** under the `ts-http` modulith, opted into with
- * `keel new --with-peer-context`.
+ * bounded context** under the TypeScript modulith (`ts-http` and
+ * `ts-cli` alike), opted into with `keel new --with-peer-context`.
  *
  * With one context the modulith's central claim — that contexts meet
  * only at `./service` — is asserted rather than exercised: nothing in
@@ -30,8 +30,10 @@
  * therefore weaker than the JVM's and Go's in exactly the way Rust's
  * is, and for a different reason; stating that beats implying parity.
  *
- * **Two patches, and both are load-bearing.** The assembly's manifest
- * gains the peer as a dependency, and `main.ts` gains the wiring —
+ * **Two patches per assembly, and both are load-bearing.** Which
+ * assemblies exist follows the arch tags (`tsAssemblies`), exactly as
+ * the Rust and Go peer contexts decide it. Each assembly's manifest
+ * gains the peer as a dependency, and its `main.ts` gains the wiring —
  * an unimported TypeScript module is never loaded, so without the
  * second patch the context would typecheck, lint, and run in nothing.
  * That is the JVM failure this adapter family exists to prevent, and
@@ -39,11 +41,17 @@
  * registration.
  */
 
-import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
-import { tsLayout, tsPeerPackage, type TsLayoutPaths } from './ts-module-layout.js';
+import { tsBootstrapAnswers, TS_CLI_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';
+import {
+  tsAssemblies,
+  tsLayout,
+  tsPeerPackage,
+  type TsAssemblyPaths,
+  type TsLayoutPaths,
+} from './ts-module-layout.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from './module-layout.js';
-import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
+import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { eolAware } from '../util.js';
 
 export const TS_PEER_CONTEXT_ID = 'walking-skeleton/ts-peer-context';
@@ -64,17 +72,14 @@ export const tsPeerContextAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: [],
   predicate: {
-    requires: [
-      'lang.typescript',
-      'runtime.node',
-      'arch.server-http',
-      MODULITH_LAYOUT_TAG,
-      PEER_CONTEXT_TAG,
-    ],
+    requires: ['lang.typescript', 'runtime.node', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG],
   },
-  after: [TS_HTTP_BOOTSTRAP_ID],
+  // Both entrypoint bootstraps listed because either may be the one
+  // present, and a project carrying both must have its assemblies
+  // emitted before this wires into them.
+  after: [TS_HTTP_BOOTSTRAP_ID, TS_CLI_BOOTSTRAP_ID],
   async contribute(ctx) {
-    const npmScope = bootstrapScope(ctx.manifest);
+    const { npmScope } = tsBootstrapAnswers(ctx.manifest, TS_PEER_CONTEXT_ID);
     const layout = tsLayout(ctx.manifest.tags, npmScope);
     const peer = tsPeerPackage(layout);
     const servicePkg = layout.servicePkg;
@@ -93,31 +98,28 @@ export const tsPeerContextAdapter: Adapter = {
       contextPkg: layout.corePkg,
       servicePkg,
     };
-    const [context, assembly] = await Promise.all([
+    const assemblies = tsAssemblies(ctx.manifest.tags, layout);
+    if (assemblies.length === 0) {
+      throw new Error(
+        `${TS_PEER_CONTEXT_ID}: no assembly in this tag set to wire the peer context into`,
+      );
+    }
+    const rendered = await Promise.all([
       ctx.templates.render(`${TEMPLATE_ROOT}/context`, '', vars),
-      ctx.templates.render(`${TEMPLATE_ROOT}/assembly`, layout.restRoot, vars),
+      ...assemblies.map((assembly) =>
+        ctx.templates.render(`${TEMPLATE_ROOT}/assembly`, assembly.root, vars),
+      ),
     ]);
 
     return {
-      files: [...context, ...assembly],
-      patches: [
-        assemblyDependencyPatch(layout, peer.pkg, workspaceDep),
-        assemblyWiringPatch(layout),
-      ],
+      files: rendered.flat(),
+      patches: assemblies.flatMap((assembly) => [
+        assemblyDependencyPatch(layout, assembly, peer.pkg, workspaceDep),
+        assemblyWiringPatch(layout, assembly),
+      ]),
     };
   },
 };
-
-/** The npm scope the bootstrap recorded, or a hard failure. */
-function bootstrapScope(manifest: ManifestV2): string {
-  const scope = manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.npmScope;
-  if (!scope) {
-    throw new Error(
-      `${TS_PEER_CONTEXT_ID}: requires '${TS_HTTP_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
-    );
-  }
-  return scope;
-}
 
 /**
  * Declares the peer on the assembly's manifest.
@@ -129,10 +131,11 @@ function bootstrapScope(manifest: ManifestV2): string {
  */
 function assemblyDependencyPatch(
   layout: TsLayoutPaths,
+  assembly: TsAssemblyPaths,
   peerPkg: string,
   workspaceDep: string,
 ): ContributionPatch {
-  const target = `${layout.restRoot}/package.json`;
+  const target = `${assembly.root}/package.json`;
   return {
     target,
     apply: (existing) => {
@@ -165,8 +168,8 @@ function assemblyDependencyPatch(
  * nothing — which is the JVM failure this adapter family exists to
  * prevent.
  */
-function assemblyWiringPatch(layout: TsLayoutPaths): ContributionPatch {
-  const target = `${layout.restSrc}/main.ts`;
+function assemblyWiringPatch(layout: TsLayoutPaths, assembly: TsAssemblyPaths): ContributionPatch {
+  const target = `${assembly.src}/main.ts`;
   const importAnchor = `import { createGreetHandler } from '${layout.corePkg}';`;
   const wiringImport = "import { createGuestbookHandler } from './guestbook.ts';";
   return {

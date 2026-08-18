@@ -4,8 +4,8 @@
  *
  * Adapters in this vertical compose by predicate: the bootstraps
  * pick the entrypoint shape (Quarkus/Spring/Micronaut CLI and REST
- * in Java or Kotlin, Go CLI, Go HTTP, Rust CLI, Rust HTTP, a
- * web-components SPA; more later), and shared adapters like
+ * in Java or Kotlin, Go CLI, Go HTTP, Rust CLI, Rust HTTP, TS CLI,
+ * TS HTTP, a web-components SPA), and shared adapters like
  * `sample-port-fake` / `sample-port-fake-kotlin` / `go-port-fake` /
  * `rust-port-fake` / `wc-sample-port-fake` add the hexagonal
  * niceties wherever they apply. Each dimension is covered
@@ -57,6 +57,7 @@ import { rustCliBootstrapAdapter } from '../adapters/rust-cli-bootstrap.js';
 import { rustHttpBootstrapAdapter } from '../adapters/rust-http-bootstrap.js';
 import { rustPortFakeAdapter } from '../adapters/rust-port-fake.js';
 import { samplePortFakeAdapter } from '../adapters/sample-port-fake.js';
+import { tsCliBootstrapAdapter } from '../adapters/ts-cli-bootstrap.js';
 import { tsHttpBootstrapAdapter } from '../adapters/ts-http-bootstrap.js';
 import { tsPortFakeAdapter } from '../adapters/ts-port-fake.js';
 import {
@@ -112,6 +113,7 @@ export const walkingSkeletonVertical: Vertical = {
     rustCliBootstrapAdapter,
     rustHttpBootstrapAdapter,
     rustPortFakeAdapter,
+    tsCliBootstrapAdapter,
     tsHttpBootstrapAdapter,
     tsPortFakeAdapter,
     wcSpaBootstrapAdapter,

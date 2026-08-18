@@ -1,0 +1,15 @@
+import { createGreetHandler, createRegistryMediator } from '@<%= npmScope %>/domain-core';
+import { runGreetCli } from './cli.ts';
+
+/**
+ * The assembly point: construct the domain behind its mediator seam,
+ * hand the process's arguments and streams to the CLI unit, exit with
+ * its verdict. Cross-cutting concerns decorate the handlers right
+ * here — nowhere else.
+ */
+const mediator = createRegistryMediator([createGreetHandler()]);
+
+process.exitCode = await runGreetCli(process.argv.slice(2), mediator, {
+  out: (line) => console.log(line),
+  err: (line) => console.error(line),
+});

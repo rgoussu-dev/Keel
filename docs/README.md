@@ -20,7 +20,7 @@ next:
 - [JVM — Quarkus, Spring Boot, Micronaut (Java & Kotlin)](stacks/jvm.md)
 - [Go](stacks/go.md)
 - [Rust](stacks/rust.md)
-- [TypeScript HTTP (`ts-http`)](stacks/ts-http.md)
+- [TypeScript backends (`ts-http`, `ts-cli`)](stacks/ts-http.md)
 - [Web-components SPA](stacks/web-components.md)
 - [Fullstack products](stacks/fullstack.md)
 

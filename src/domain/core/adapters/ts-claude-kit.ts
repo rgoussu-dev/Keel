@@ -1,10 +1,13 @@
 /**
- * `walking-skeleton/ts-claude-kit` adapter — the Claude kit for
- * `ts-http`. The package manager is read from the manifest tag set
- * (`pkg.npm` / `pkg.pnpm`), and the verify gate mirrors the
- * `ci/ts-pipeline` steps: `lint` runs `--if-present` because only
- * the modulith layout declares it (dependency-cruiser is the peer
- * wall there), `typecheck` and `test` run unconditionally.
+ * `walking-skeleton/ts-claude-kit` adapter — the Claude kit for the
+ * TypeScript backend stacks (`ts-http` and `ts-cli`). The package
+ * manager is read from the manifest tag set (`pkg.npm` / `pkg.pnpm`),
+ * and the entrypoint shapes from the `arch.*` tags, exactly as the Go
+ * kit reads them — the runbook and the run skill cover every shape
+ * the manifest records. The verify gate mirrors the `ci/ts-pipeline`
+ * steps: `lint` runs `--if-present` because only the modulith layout
+ * declares it (dependency-cruiser is the peer wall there),
+ * `typecheck` and `test` run unconditionally.
  *
  * No format step: the scaffold ships no formatter.
  */
@@ -40,21 +43,29 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
   const tags = ctx.manifest.tags;
   const pm = tsPm(tags);
   const projectName = anyProjectName(ctx.manifest);
+  const cli = tags.includes('arch.cli');
+  const http = tags.includes('arch.server-http');
   const modulith = moduleLayoutOf(tags) === 'modulith';
   const verifyCommand = tsVerifyCommand(pm);
   const devRun = `${pm} run dev`;
+  const cliRun = 'node application/cli/src/main.ts --name World';
 
   const commands: RunbookCommand[] = [
     { label: 'Test', command: `${pm} test` },
     { label: 'Typecheck', command: `${pm} run typecheck` },
     ...(modulith ? [{ label: 'Lint', command: `${pm} run lint` }] : []),
     { label: 'Verify (commit gate)', command: verifyCommand },
-    { label: 'Run (dev)', command: devRun },
-    { label: 'Probe', command: PROBE },
+    ...(http
+      ? [
+          { label: 'Run (dev)', command: devRun },
+          { label: 'Probe', command: PROBE },
+        ]
+      : []),
+    ...(cli ? [{ label: 'Run (cli)', command: cliRun }] : []),
   ];
 
   const runbook = renderRunbook({
-    title: `TypeScript HTTP on node:http (${pm})`,
+    title: `TypeScript ${http && cli ? 'CLI + HTTP' : http ? 'HTTP on node:http' : 'CLI on Node'} (${pm})`,
     commands,
     notes: [
       'No build step: Node runs the sources directly. That also means no parameter ' +
@@ -65,17 +76,15 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
           'its `exports` map publishing only the facade and `./service` seam. The peer rule ' +
           '(`peers-meet-at-the-service-seam`) is held by dependency-cruiser — a violating ' +
           'import typechecks clean, so run the lint.'
-        : 'Flat layout: workspace packages `domain/{kernel,contract,core}` and ' +
-          '`application/rest` — the `exports` maps are the module walls.',
+        : `Flat layout: workspace packages \`domain/{kernel,contract,core}\` and ` +
+          `\`application/${http ? 'rest' : 'cli'}\` — the \`exports\` maps are the module walls.`,
     ],
   });
 
-  const runSkill = renderRunSkill({
-    description:
-      'Launch this service in dev mode and probe it end to end. Use when asked to run, start, or check the app.',
-    body: `# Run ${projectName}
-
-1. Start dev mode (long-running — run it in the background):
+  const steps: string[] = [];
+  if (http) {
+    steps.push(
+      `1. Start dev mode (long-running — run it in the background):
 
    \`\`\`sh
    ${devRun}
@@ -92,6 +101,26 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
 
    Expect a JSON greeting for \`World\`; a blank \`name\` yields an
    RFC 9457 Problem Details response. Stop the dev process when done.`,
+    );
+  }
+  if (cli) {
+    steps.push(
+      `${http ? '3' : '1'}. Run the CLI and read its output:
+
+   \`\`\`sh
+   ${cliRun}
+   \`\`\`
+
+   Expect \`Hello, World!\` on stdout and exit code 0; a blank
+   \`--name\` puts the domain's message on stderr with exit code 2.`,
+    );
+  }
+
+  const runSkill = renderRunSkill({
+    description: http
+      ? 'Launch this service in dev mode and probe it end to end. Use when asked to run, start, or check the app.'
+      : 'Run this CLI and check its output end to end. Use when asked to run, start, or check the app.',
+    body: `# Run ${projectName}\n\n${steps.join('\n\n')}`,
   });
 
   return { runbook, runSkill, verifyCommand };

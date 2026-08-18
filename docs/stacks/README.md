@@ -22,7 +22,7 @@ they spare you naming every tag and vertical by hand, nothing more.
 | Kotlin · Micronaut 4   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | —                | —                     | [JVM](jvm.md)                       |
 | Go · stdlib            | `go-cli`               | `go-http`               | —                | `fullstack-go`        | [Go](go.md)                         |
 | Rust · stdlib / axum   | `rust-cli`             | `rust-http`             | —                | `fullstack-rust`      | [Rust](rust.md)                     |
-| TypeScript · node:http | —                      | `ts-http`               | —                | `fullstack-ts`        | [ts-http](ts-http.md)               |
+| TypeScript · Node      | `ts-cli`               | `ts-http`               | —                | `fullstack-ts`        | [TypeScript](ts-http.md)            |
 | TypeScript · web comps | —                      | —                       | `web-components` | frontend of all       | [web-components](web-components.md) |
 
 The domain trisection is byte-for-byte identical across frameworks per
@@ -31,8 +31,8 @@ conventions, not the framework, are the product.**
 
 ## Module layout
 
-The twelve JVM stacks and the two Go stacks offer a second structural
-choice beside the build system, with `--module-layout` or its prompt:
+Every single-service stack offers a second structural choice beside
+the build system, with `--module-layout` or its prompt:
 
 | Layout            | Shape                                                                                                                                                                                                      |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -42,8 +42,9 @@ choice beside the build system, with `--module-layout` or its prompt:
 Each family spells the shape in its own idiom — packages and import
 paths in Go, Gradle/Maven modules on the JVM — but the dial, the tag
 and the flag are the same.
-→ [JVM](jvm.md#module-layout) · [Go](go.md#module-layout). `ts-http`,
-`web-components` and the Rust stacks ship `basic` only for now.
+→ [JVM](jvm.md#module-layout) · [Go](go.md#module-layout) ·
+[Rust](rust.md#module-layout) · [TypeScript](ts-http.md#module-layout) ·
+[web-components](web-components.md#module-layout).
 
 ## What each shape installs by default
 
@@ -68,7 +69,7 @@ list, per stack, is on each stack page:
 | [JVM](jvm.md#prerequisites)                       | `git`, JDK 25, and `gradle` _or_ `mvn` (the wrapper is generated, not vendored) |
 | [Go](go.md#prerequisites)                         | `git`, `go` (runs `go mod tidy`)                                                |
 | [Rust](rust.md#prerequisites)                     | `git`, `cargo` (runs `cargo check`)                                             |
-| [ts-http](ts-http.md#prerequisites)               | `git`, Node 22.18+, `npm` or `pnpm` (runs the install)                          |
+| [TypeScript](ts-http.md#prerequisites)            | `git`, Node 22.18+, `npm` or `pnpm` (runs the install)                          |
 | [web-components](web-components.md#prerequisites) | `git`, Node 22+, `npm` or `pnpm` (runs the install)                             |
 | [Fullstack](fullstack.md#prerequisites)           | union of both services; Docker (Compose) to run the container story             |
 
