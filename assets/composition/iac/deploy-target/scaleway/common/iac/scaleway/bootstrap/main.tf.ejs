@@ -1,0 +1,27 @@
+# One-shot bootstrap (binding spec §5): provisions the bucket the
+# main config keeps its remote state in. Local state by design — the
+# bucket is the one resource that cannot live inside the remote state
+# it hosts. Commit bootstrap/terraform.tfstate; it records only this
+# bucket and contains no secrets.
+terraform {
+  required_providers {
+    scaleway = {
+      source  = "scaleway/scaleway"
+      version = "~> 2.0"
+    }
+  }
+}
+
+# Auth via SCW_ACCESS_KEY / SCW_SECRET_KEY / SCW_DEFAULT_PROJECT_ID
+# in the environment.
+provider "scaleway" {
+  region = "fr-par"
+}
+
+resource "scaleway_object_bucket" "state" {
+  name = "<%= projectName %>-tofu-state"
+
+  versioning {
+    enabled = true
+  }
+}

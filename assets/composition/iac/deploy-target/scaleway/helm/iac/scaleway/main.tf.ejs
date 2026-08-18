@@ -1,0 +1,30 @@
+# The managed-Kubernetes shape the helm flavor deploys to. Kapsule
+# requires a Private Network, so the cluster gets one of its own.
+# Latest stable per binding spec §7: the version tracks Scaleway's
+# current release at plan time instead of a pin that goes stale.
+resource "scaleway_vpc_private_network" "cluster" {
+  name = "<%= projectName %>-${terraform.workspace}"
+}
+
+data "scaleway_k8s_version" "latest" {
+  name = "latest"
+}
+
+resource "scaleway_k8s_cluster" "cluster" {
+  name               = "<%= projectName %>-${terraform.workspace}"
+  type               = "kapsule"
+  version            = data.scaleway_k8s_version.latest.name
+  cni                = "cilium"
+  private_network_id = scaleway_vpc_private_network.cluster.id
+
+  # The pool and network are first-class resources in this state —
+  # there is nothing extra for a destroy to sweep.
+  delete_additional_resources = false
+}
+
+resource "scaleway_k8s_pool" "default" {
+  cluster_id = scaleway_k8s_cluster.cluster.id
+  name       = "default"
+  node_type  = var.node_type
+  size       = var.node_count
+}

@@ -1,0 +1,35 @@
+# Remote state per binding spec §5, in the Spaces bucket bootstrap.sh
+# provisions; one state per environment via workspaces. Backend blocks
+# cannot read variables — the bucket name is rendered literally here
+# and in bootstrap/main.tf, keep the two in sync. Credentials ride the
+# environment, never this file: the state backend reads the Spaces key
+# as AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "~> 2.0"
+    }
+  }
+
+  backend "s3" {
+    bucket = "<%= projectName %>-tofu-state"
+    key    = "iac/digitalocean/terraform.tfstate"
+    # Spaces speaks S3 but is not AWS: the region is a placeholder the
+    # endpoint overrides, and every AWS-side validation is skipped.
+    region = "us-east-1"
+    endpoints = {
+      s3 = "https://ams3.digitaloceanspaces.com"
+    }
+    skip_credentials_validation = true
+    skip_requesting_account_id  = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_s3_checksum            = true
+  }
+}
+
+# Auth via DIGITALOCEAN_TOKEN in the environment.
+provider "digitalocean" {}

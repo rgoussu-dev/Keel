@@ -220,6 +220,7 @@ keel add observability        # health probes, correlation ids, OpenTelemetry
 keel add containerization     # a thin Dockerfile beside the deployment unit
 keel add ci                   # a build-and-test gate on every push (GitHub Actions or GitLab CI)
 keel add distribution         # registry-pushed images + a deploy descriptor on tag push
+keel add iac                  # the OpenTofu deploy target those images run on
 keel add dev-env              # dev/compose.yaml for local infra
 keel add dev-container        # .devcontainer/ attached to the dev env's network
 
@@ -295,6 +296,7 @@ bootstrap or layered on later with `keel add`:
 | [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native                                  | HTTP services + SPA               |
 | [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                            | every stack                       |
 | [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor | Quarkus CLI + every server shape  |
+| [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster    | after `distribution` (containers) |
 | [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                                              | composite monorepos (not addable) |
 
 Which verticals are installed by default on which stack, and which can

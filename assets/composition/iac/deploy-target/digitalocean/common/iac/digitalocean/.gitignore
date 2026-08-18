@@ -1,0 +1,10 @@
+# Machine-local provider plugins and backend metadata. The main
+# config's state is remote (versions.tf); the only tfstate that
+# belongs in the repo is bootstrap/terraform.tfstate, which stays
+# unignored on purpose.
+.terraform/
+crash.log
+
+# Environment-specific inputs ride the environment or the command
+# line, never the repo (12-factor).
+*.tfvars

@@ -14,6 +14,7 @@ import { devContainerVertical } from './dev-container.js';
 import { devEnvVertical } from './dev-env.js';
 import { distributionVertical } from './distribution.js';
 import { gatewayVertical } from './gateway.js';
+import { iacVertical } from './iac.js';
 import { observabilityVertical } from './observability.js';
 import { persistenceVertical } from './persistence.js';
 import { vcsVertical } from './vcs.js';
@@ -24,6 +25,7 @@ const ALL: readonly Vertical[] = [
   vcsVertical,
   walkingSkeletonVertical,
   distributionVertical,
+  iacVertical,
   gatewayVertical,
   containerizationVertical,
   ciVertical,
