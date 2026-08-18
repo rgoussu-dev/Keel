@@ -357,6 +357,19 @@ only retests mutants whose code or covering tests changed — minutes,
 against hours for a cold run. The HTML report lands in
 `reports/mutation/mutation.html`.
 
+The first full run on this shape (2026-08-18, 4 vCPUs, 155 minutes
+for the 6852 non-static mutants) put the baseline at **67.47%** —
+75.37% on covered code; 4519 killed, 104 timeouts, 1511 survived,
+718 without coverage. The shape of the number matters more than the
+number: the engine the scope was chosen for sits at 78–100%
+(`mediator` 100, `answers` 98, `install` 96, `resolver` 93,
+`predicate` 88, `apply` 78; `actions`, the deferred-action runner,
+is its outlier at 60), and the tail is concentrated in the
+composition adapters and verticals — 31 files score 0, all of them
+declarative surface whose primary guard is the emitted-tree
+assertions and the e2e grid. That distribution is what the break
+threshold conversation starts from.
+
 CI runs this in `.github/workflows/mutation.yml`, on `main` rather
 than on PRs: every push to `main` is an incremental run, a weekly
 schedule retests everything (`--force`, correcting whatever the
