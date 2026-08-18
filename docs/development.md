@@ -74,16 +74,76 @@ hexagonal dependency rule fails the same gate as code style.
 Every commit must pass `pnpm lint && pnpm typecheck && pnpm test` on
 its own.
 
-## Trying the CLI locally
+## Trying keel locally
 
-The CLI entry is `bin/keel.js`, which loads
-`dist/application/cli/executable/main.js` — **build before trying it**:
+Two loops, and which one you want depends on the question. When the
+question is **your change** — an adapter, a template, the engine — use
+the fast inner loop. When the question is the **package** — bin
+wiring, the `files` list, whether the template assets actually ship —
+use the tarball loop: the e2e suites drive the engine from the working
+tree, so none of that is inside what they prove.
+
+### The fast inner loop: `pnpm keel …`
+
+```sh
+pnpm keel new --stack=go-cli --dry-run
+```
+
+Builds (`pnpm build`) and runs `bin/keel.js` against `dist/` — in a
+**playground directory**, not the repo. That indirection is
+load-bearing: every keel command operates on the current working
+directory, and pnpm runs scripts at the package root, so running the
+CLI in place would scaffold into the keel repo itself. Each invocation
+gets a fresh directory under the system temp dir and prints its path.
+To keep working in the same project across invocations — which any
+`keel add` flow needs — pin the playground:
+
+```sh
+export KEEL_PLAYGROUND=/tmp/keel-playground
+pnpm keel new --stack=quarkus-rest
+pnpm keel add persistence
+```
+
+The script refuses a `KEEL_PLAYGROUND` that resolves inside the repo.
+
+### The packaging loop: install the tarball
+
+The user-shaped run, and a release gate: install from local sources
+exactly the way npm delivers them, `keel new` a project, answer the
+real prompts, then run the emitted project's own gates. The tarball —
+not `pnpm link --global` — because the tarball is what `npm publish`
+ships: a template asset missing from the `files` list or a broken
+`bin` entry surfaces here instead of on the registry, where a link
+(which serves the whole working tree) would mask it.
 
 ```sh
 pnpm build
-mkdir /tmp/playground && cd /tmp/playground
-node /path/to/keel/bin/keel.js new --stack=go-cli --dry-run
+npm pack                            # → rgoussu.dev-keel-<version>.tgz
+prefix=$(mktemp -d)
+npm install --global --prefix "$prefix" ./rgoussu.dev-keel-*.tgz
 ```
+
+`--prefix` confines the install to a scratch prefix — your real global
+prefix is untouched — and puts the bin at `$prefix/bin/keel`. Run it
+from an empty directory, interactively (this loop is also the one
+place a human exercises the prompt flow):
+
+```sh
+mkdir -p /tmp/keel-scratch && cd /tmp/keel-scratch
+"$prefix/bin/keel" new --stack=ts-http
+```
+
+Then prove the result on its own terms — the emitted project's own
+gates, per stack (`npm test`, `./gradlew build`, `cargo test`,
+`go test ./...`):
+
+```sh
+npm test
+```
+
+Done looks like: the gates pass, and nothing in the scaffolded project
+references the keel checkout — `grep -r <path-to-your-clone> .` finds
+nothing.
 
 ## Repository layout
 

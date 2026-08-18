@@ -131,6 +131,7 @@ pnpm test:watch    # vitest watch
 pnpm build         # tsc -p tsconfig.build.json → dist/
 pnpm format        # prettier --write .
 pnpm format:check  # prettier --check .
+pnpm keel <args>   # build + run the CLI in a scratch playground
 ```
 
 `pnpm lint` covers eslint, prettier, and dependency-cruiser, so formatting
@@ -148,8 +149,12 @@ rather than asserting success.
 
 The CLI is intentionally thin: `keel new --stack=<id>` for greenfield
 bootstrap and `keel add <vertical>` for brownfield layering. The CLI
-entry is `bin/keel.js`, which loads `dist/application/cli/executable/main.js`. Build before
-trying the CLI locally.
+entry is `bin/keel.js`, which loads `dist/application/cli/executable/main.js`. To try it
+locally, `pnpm keel …` builds and runs it in a scratch playground
+(`KEEL_PLAYGROUND` pins the directory across invocations); when the
+question is packaging fidelity rather than the code, install the
+`npm pack` tarball instead — both loops are documented in
+`docs/development.md` → "Trying keel locally".
 
 ---
 

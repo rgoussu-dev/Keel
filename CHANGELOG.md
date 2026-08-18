@@ -8,6 +8,17 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Build-from-sources loop — exercise keel locally the way a user
+  consumes it.** `pnpm keel …` builds and runs the CLI from `dist/`
+  inside a scratch playground directory (`KEEL_PLAYGROUND` pins it
+  across invocations, so `keel add` flows work; a playground inside
+  the repo is refused), and `docs/development.md` → "Trying keel
+  locally" documents both that fast inner loop and the
+  packaging-fidelity loop — `pnpm build && npm pack`, install the
+  tarball into a scratch prefix, `keel new` from there — which is
+  what proves bin wiring, the `files` list, and that template assets
+  actually ship in what npm publishes.
+
 - **`dev-container` vertical — a Dev Container definition on every
   stack, attached to the dev environment when one is installed.**
   Every non-composite stack (and thus every composite service) now

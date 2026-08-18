@@ -1273,7 +1273,7 @@ or harder by this one.
 
 ---
 
-## K — Build from sources: exercise keel locally as a user would (S)
+## K — Build from sources: exercise keel locally as a user would (S) ✅
 
 Tracked in [#67](https://github.com/rgoussu-dev/keel/issues/67).
 First of the next wave, and a release gate: the `[Unreleased]`
@@ -1296,6 +1296,23 @@ packaging fidelity is not the question. Both documented in
 when. Done means: from a fresh clone, the documented commands produce
 a scaffolded project whose own gates pass, with no reference back to
 the keel repo left inside it.
+
+**Landed — as sketched, with one addition the sketch implied but did
+not spell out.** `docs/development.md` → "Trying keel locally"
+documents both loops and when each answers the question. `pnpm keel …`
+chains `pnpm build` with a small runner (`scripts/keel-local.mjs`)
+that spawns `bin/keel.js` inside a playground directory — the
+indirection is required, not convenience, because every keel command
+operates on the current working directory and pnpm runs scripts at
+the package root, so the naive script would scaffold into the keel
+repo itself. `KEEL_PLAYGROUND` pins the directory across invocations
+(what any `keel add` flow needs), a playground resolving inside the
+repo is refused, and the tarball recipe uses
+`npm install --global --prefix "$(mktemp -d)"` so the real global
+prefix is never touched. Acceptance was run as specified: the packed
+tarball, installed into a scratch prefix, scaffolded a `ts-http`
+project whose own `npm test` and typecheck pass, with no reference
+back to the checkout inside it.
 
 ---
 
