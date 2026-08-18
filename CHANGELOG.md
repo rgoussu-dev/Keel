@@ -27,6 +27,23 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   environment via workspaces, and no credential in any file —
   provider auth rides the environment, 12-factor.
 
+- **Per-service build systems in composite stacks**
+  ([#73](https://github.com/rgoussu-dev/keel/issues/73)). The
+  `fullstack*` composites now offer each service's build-system
+  choice instead of pinning every service to its stack's default:
+  interactive installs ask per service (`Build system for backend
+(quarkus-rest)`), and `--build-system` takes per-service `path=id`
+  pairs, comma-separated — `keel new --stack=fullstack --build-system
+backend=maven,frontend=pnpm`. The chosen id is recorded on the
+  product manifest's service refs, and the monorepo glue follows it:
+  the compose Dockerfiles build with the recorded tool (Maven builder
+  stage + `target/` artifact paths via the shared `jvmRestArtifact`
+  derivation; corepack-provisioned pnpm installs on the Node images)
+  and the product README's run hints match. Each service's own
+  manifest carries the corresponding `pkg.*` tag, so `keel add
+ci`/`containerization`/`distribution` on a service follow the same
+  choice, as they already did on standalone stacks.
+
 - **`keel add <vertical> --reapply` — the update path for scaffolded
   projects.** Re-renders an already-installed vertical from the
   answers the manifest recorded, so a template fix in keel becomes

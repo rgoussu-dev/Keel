@@ -1,0 +1,10 @@
+FROM <%= builderImage %> AS build
+WORKDIR /workspace
+COPY . .
+RUN <%= buildCommand %>
+
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+COPY --from=build /workspace/<%= artifactPath %> /app/
+EXPOSE 8080
+CMD ["java", "-jar", "quarkus-run.jar"]

@@ -108,8 +108,8 @@ describe('fullstack composite install (monorepo)', () => {
 
     const root = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(root?.services).toEqual([
-      { path: 'backend', stack: 'quarkus-rest' },
-      { path: 'frontend', stack: 'web-components' },
+      { path: 'backend', stack: 'quarkus-rest', buildSystem: 'gradle' },
+      { path: 'frontend', stack: 'web-components', buildSystem: 'npm' },
     ]);
     expect(root?.verticals.map((v) => v.id)).toEqual(['vcs', 'fullstack']);
 
@@ -275,9 +275,11 @@ describe('fullstack composite install (polyrepo)', () => {
     expect(backend?.peers).toEqual([{ ref: '../frontend', tags: ['peer.ui.spa'] }]);
   });
 
-  it('prompts for the layout when interactive and none is given', async () => {
+  it('prompts for the layout and each service build system when interactive', async () => {
     const prompt = new FakePrompt({
       layout: 'polyrepo',
+      'buildSystem:backend': 'gradle',
+      'buildSystem:frontend': 'npm',
       remote: '',
       defaultBranch: 'main',
       basePackage: 'com.acme',
@@ -289,6 +291,8 @@ describe('fullstack composite install (polyrepo)', () => {
     const mediator = installMediator({ runDeferred, prompt });
     expectOk(await mediator.dispatch(newFullstack({ interactive: true })));
     expect(prompt.asked).toContain('layout');
+    expect(prompt.asked).toContain('buildSystem:backend');
+    expect(prompt.asked).toContain('buildSystem:frontend');
     expect(read('README.md')).toBeNull();
     expect(read('frontend/package.json')).not.toBeNull();
   });

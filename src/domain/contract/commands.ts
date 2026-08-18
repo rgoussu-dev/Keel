@@ -60,11 +60,16 @@ export interface NewProjectCommand extends Command<InstallReport> {
    */
   readonly layout?: RepoLayout;
   /**
-   * Build-system id (`gradle`, `maven`, `npm`, `pnpm`) for stacks
-   * that declare a choice. When absent, interactive installs prompt
-   * for it and non-interactive installs use the stack's default.
-   * Rejected for stacks with a fixed build system and for composite
-   * stacks (their services scaffold on each service's default).
+   * Build-system choice for stacks that declare one. When absent,
+   * interactive installs prompt for it and non-interactive installs
+   * use the stack's default; rejected for stacks with a fixed build
+   * system.
+   *
+   * Single-service stacks take a bare id (`gradle`, `maven`, `npm`,
+   * `pnpm`). Composite stacks take per-service `path=id` pairs,
+   * comma-separated (`backend=maven,frontend=pnpm`); services left
+   * unnamed are prompted for interactively and take their stack's
+   * default otherwise.
    */
   readonly buildSystem?: string;
   /**
