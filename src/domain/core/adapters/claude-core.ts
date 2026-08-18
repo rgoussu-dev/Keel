@@ -16,8 +16,9 @@
  * The spec lives at `assets/project/AGENTS.md` (the only `'project'`
  * asset shipped today) so contributors edit one canonical file
  * that's both the kit's own dogfood reference and the artifact
- * landed in consumer projects. A future stack-tailored adapter can
- * patch the emitted file with an addendum (e.g. a Quarkus runbook).
+ * landed in consumer projects. The family claude-kit adapters
+ * (`claude-kit.ts`) patch the emitted file with the stack's runbook
+ * under sentinel markers, ordered `after` this adapter.
  */
 
 import type { Adapter } from '../../contract/composition.js';
