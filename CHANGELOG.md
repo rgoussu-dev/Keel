@@ -77,6 +77,22 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   the scaffolded shape. Closes the roadmap-G half of the "universal
   Claude Code workflow kit" identity.
 
+- **`ts-cli` stack — the CLI twin of `ts-http`, completing the
+  family's CLI/HTTP pairing** ([#71](https://github.com/rgoussu-dev/keel/issues/71)).
+  `keel new --stack=ts-cli` scaffolds the same no-build-step
+  TypeScript workspace (Node 22.18+ runs the sources directly, the
+  `exports` maps hold the walls) with the deployment unit swapped:
+  `application/cli` maps flags to commands and `Result`s to streams +
+  exit code — 0 for a greeting, 2 when the domain says no, 1 for a
+  defect. Both module layouts and both package managers from day one;
+  the entrypoint-neutral half of the bootstrap now lives in a shared
+  `walking-skeleton/ts-domain` template tree both stacks render.
+  `--with-peer-context` and `keel add module` became
+  entrypoint-agnostic on TypeScript (`tsAssemblies`, the Rust/Go
+  pattern), so the modulith story carries over whole. Two new e2e
+  cells (`modulith-ts-cli-{npm,pnpm}`) and a basic walking-skeleton
+  suite ride the `web` shard.
+
 - **`dev-container` vertical — a Dev Container definition on every
   stack, attached to the dev environment when one is installed.**
   Every non-composite stack (and thus every composite service) now

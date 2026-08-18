@@ -42,20 +42,20 @@ instead, which has a name to give it.
 ● installed by default · ➕ addable with `keel add` · ⛔ hard-fails
 (uncovered dimensions) · — not applicable
 
-| Vertical           | JVM CLI | JVM REST | Go/Rust CLI | Go/Rust HTTP | `ts-http` | `web-components` | Fullstack product            |
-| ------------------ | ------- | -------- | ----------- | ------------ | --------- | ---------------- | ---------------------------- |
-| `vcs`              | ●       | ●        | ●           | ●            | ●         | ●                | ● (root or per repo)         |
-| `walking-skeleton` | ●       | ●        | ●           | ●            | ●         | ●                | ● per service                |
-| `dev-env`          | ➕      | ●        | ➕          | ●            | ●         | ➕               | ● backend                    |
-| `dev-container`    | ●       | ●        | ●           | ●            | ●         | ●                | ● per service                |
-| `observability`    | ⛔      | ●        | ⛔          | ●            | ●         | ⛔               | ● backend                    |
-| `persistence`      | ⛔      | ➕       | ⛔          | ➕           | ➕        | ⛔               | ➕ backend                   |
-| `gateway`          | —       | ➕ ¹     | —           | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
-| `containerization` | ⛔      | ➕       | ⛔          | ➕           | ➕        | ➕               | (root compose is separate ²) |
-| `ci`               | ➕      | ➕       | ➕          | ➕           | ➕        | ➕               | ➕ per service               |
-| `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³        | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service             |
-| `iac`              | ⛔ ⁵    | ➕ ⁵     | ⛔ ⁵        | ➕ ⁵         | ➕ ⁵      | ➕ ⁵             | ➕ ⁵ per service             |
-| `fullstack`        | —       | —        | —           | —            | —         | —                | ● monorepo root only         |
+| Vertical           | JVM CLI | JVM REST | Go/Rust/TS CLI | Go/Rust HTTP | `ts-http` | `web-components` | Fullstack product            |
+| ------------------ | ------- | -------- | -------------- | ------------ | --------- | ---------------- | ---------------------------- |
+| `vcs`              | ●       | ●        | ●              | ●            | ●         | ●                | ● (root or per repo)         |
+| `walking-skeleton` | ●       | ●        | ●              | ●            | ●         | ●                | ● per service                |
+| `dev-env`          | ➕      | ●        | ➕             | ●            | ●         | ➕               | ● backend                    |
+| `dev-container`    | ●       | ●        | ●              | ●            | ●         | ●                | ● per service                |
+| `observability`    | ⛔      | ●        | ⛔             | ●            | ●         | ⛔               | ● backend                    |
+| `persistence`      | ⛔      | ➕       | ⛔             | ➕           | ➕        | ⛔               | ➕ backend                   |
+| `gateway`          | —       | ➕ ¹     | —              | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
+| `containerization` | ⛔      | ➕       | ⛔             | ➕           | ➕        | ➕               | (root compose is separate ²) |
+| `ci`               | ➕      | ➕       | ➕             | ➕           | ➕        | ➕               | ➕ per service               |
+| `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³           | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service             |
+| `iac`              | ⛔ ⁵    | ➕ ⁵     | ⛔ ⁵           | ➕ ⁵         | ➕ ⁵      | ➕ ⁵             | ➕ ⁵ per service             |
+| `fullstack`        | —       | —        | —              | —            | —         | —                | ● monorepo root only         |
 
 ¹ Needs a peer in scope first: `keel link <path>` on both projects,
 then `keel add gateway` on each side. Without peers the vertical

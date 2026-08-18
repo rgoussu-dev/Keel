@@ -1,14 +1,22 @@
-# `ts-http` — TypeScript HTTP service
+# `ts-http` / `ts-cli` — the TypeScript backend stacks
 
-A `node:http` service with **no build step**: Node 22.18+ runs the
-TypeScript sources directly. The trisected layout is keel-shaped by
-keel — the same `RegistryMediator` pattern the engine itself uses.
+A `node:http` service (`ts-http`) or a command-line tool (`ts-cli`)
+with **no build step**: Node 22.18+ runs the TypeScript sources
+directly. The trisected layout is keel-shaped by keel — the same
+`RegistryMediator` pattern the engine itself uses. The two stacks are
+the CLI/HTTP pairing every other language family has: the domain
+packages, the module layouts, and the walls below are identical, and
+only the deployment unit differs — `application/rest` maps the query
+string to commands, `application/cli` maps flags to commands and
+`Result`s to streams + exit code (0 for a greeting, 2 when the domain
+says no, 1 for a defect).
 
 ## How to
 
 ```sh
 mkdir my-service && cd my-service
-npx @rgoussu.dev/keel new --stack=ts-http
+npx @rgoussu.dev/keel new --stack=ts-http    # node:http service
+npx @rgoussu.dev/keel new --stack=ts-cli     # command-line tool
 ```
 
 ## Prerequisites
@@ -40,8 +48,10 @@ my-service/
     contract/            # concrete commands, ports, read models
     core/                # handlers + RegistryMediator — factories only, via its exports map
   application/
-    rest/                # deployment unit: main.ts assembles the mediator behind a
-                         # node:http server — GET /greet, RFC 9457 Problem Details
+    rest/                # ts-http deployment unit: main.ts assembles the mediator
+                         # behind a node:http server — GET /greet, RFC 9457
+                         # Problem Details. ts-cli emits application/cli instead:
+                         # flags → commands → Results → streams + exit code
   infrastructure/
     clock/               # Clock port: real adapter + canonical fake
   AGENTS.md              # the binding spec; CLAUDE.md is a pointer to it
@@ -60,12 +70,14 @@ clean. "The domain never imports the platform" is a rule `basic`
 holds by review; the [`modulith` layout](#module-layout) holds it with
 a `domain-knows-no-platform` lint.
 
-[`dev-env`](../verticals/dev-env.md),
+On `ts-http`, [`dev-env`](../verticals/dev-env.md),
 [`observability`](../verticals/observability.md) and
 [`dev-container`](../verticals/dev-container.md) are installed by
 default (hand-rolled health endpoints, correlation-id middleware,
 OpenTelemetry over OTLP; a `.devcontainer/` joined to the dev
-compose project).
+compose project). `ts-cli` installs the `dev-container` only, like
+every other CLI stack — the HTTP-shaped verticals have no server to
+attach to.
 
 ## Module layout
 
@@ -89,9 +101,15 @@ my-service/
         infra/           # driven adapters (clock; more as verticals land)
       tests/
   application/
-    rest/                # the deployment unit, unchanged
+    rest/                # the deployment unit, unchanged (cli/ on ts-cli)
   .dependency-cruiser.cjs
 ```
+
+Both stacks serve both layouts: on `ts-cli` the tree above ends in
+`application/cli/` and everything else is identical. The adapters that
+wire a context into "the assembly" — the peer context below,
+`keel add module` — derive the target from the stack's arch tags, so
+the same wiring lands in whichever deployment unit the project has.
 
 **One package per context, deliberately.** In a TypeScript workspace
 the package graph enforces nothing to begin with: an _undeclared_
@@ -113,8 +131,8 @@ keeps all of it at 1 manifest instead of 3.5:
 and an `ERR_PACKAGE_PATH_NOT_EXPORTED` from Node. Widening that map is
 the single edit that undoes the layout.
 
-**The map is coupled to the build mode.** `ts-http` has no build step,
-so the map points at `./src/index.ts` and every import specifier ends
+**The map is coupled to the build mode.** These stacks have no build
+step, so the map points at `./src/index.ts` and every import specifier ends
 in `.ts`. An emitting build would need `./dist/index.js` plus a
 `types` condition and `.js` specifiers — and mixing the two typechecks
 before failing at runtime, so the two are decided together.
@@ -170,11 +188,12 @@ implied away, and it is why the rule ships in a config the build runs
 rather than in a style guide.
 
 The assembly binds the context in `application/rest/src/guestbook.ts`
-— `createGuestbookHandler()`, which `main.ts` imports and puts in the
+(`application/cli/src/guestbook.ts` on `ts-cli`) —
+`createGuestbookHandler()`, which `main.ts` imports and puts in the
 mediator's handler list. That import is load-bearing: an unimported
 TypeScript module is never loaded, so the peer would typecheck, lint
 and run in nothing without it. The emitted
-`application/rest/tests/guestbook-wiring.test.ts` calls that same
+`guestbook-wiring.test.ts` beside it calls that same
 function and drives the cross-context call for real, with no fakes.
 
 When guestbook should become its own service, that seam is the only
@@ -209,7 +228,8 @@ the only thing holding it, here as everywhere on this stack.
 
 ```sh
 npm test          # or pnpm test
-npm start         # GET http://localhost:3000/greet
+npm start         # ts-http: GET http://localhost:8080/greet?name=World
+npm start -- --name World    # ts-cli: Hello, World! on stdout
 ```
 
 ## Add next
@@ -219,6 +239,10 @@ npm start         # GET http://localhost:3000/greet
 | Container image      | `keel add containerization`                 | Sources onto `node:22-alpine` — still no build step.   |
 | CI pipeline          | `keel add ci`                               | Build-and-test on push from the committed lockfile.    |
 | Pair with a frontend | `keel link ../frontend && keel add gateway` | CORS middleware lands on the backend side of the seam. |
+
+`keel add ci` applies to both stacks; containerization and the
+gateway are HTTP-shaped and apply to `ts-http` — on `ts-cli` keel
+says so instead of scaffolding something inert.
 
 ## Related
 

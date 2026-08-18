@@ -1533,9 +1533,17 @@ rather than remembered-in-a-file.
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — composites
   scaffold each service on its default today; offering the choice
   per service needs the compose Dockerfiles to follow it.
-- **`ts-cli` stack**
-  ([#71](https://github.com/rgoussu-dev/keel/issues/71)) — the CLI
-  twin of `ts-http`, mirroring the other languages' CLI/HTTP pairing.
+- ~~**`ts-cli` stack**~~
+  ([#71](https://github.com/rgoussu-dev/keel/issues/71)) —
+  **shipped**: the CLI twin of `ts-http`, completing the family's
+  CLI/HTTP pairing. The entrypoint-neutral half of the bootstrap
+  moved into a shared `ts-domain` tree (the `jvm-domain` move), the
+  CLI shape serves both module layouts and both package managers, and
+  `--with-peer-context` / `keel add module` went entrypoint-agnostic
+  (`tsAssemblies`, the Rust/Go pattern) so the pairing carries the
+  whole modulith story rather than the happy half. Two new e2e cells
+  (`modulith-ts-cli-{npm,pnpm}`) plus a basic walking-skeleton suite,
+  all in the `web` shard.
 - ~~**`keel add --reapply` / update path**~~ — promoted to item
   **L** above ([#68](https://github.com/rgoussu-dev/keel/issues/68)).
 - ~~**IaC vertical (OpenTofu)**~~ — promoted to item **M** above

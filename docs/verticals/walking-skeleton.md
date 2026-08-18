@@ -9,7 +9,7 @@ adapters are selected by predicate from the stack's tags.
 
 | Dimension          | Covered by                                                                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entrypoint`       | one bootstrap adapter per stack shape — JVM picocli CLI or REST service, Go/Rust CLI or HTTP, `ts-http`, the SPA                             |
+| `entrypoint`       | one bootstrap adapter per stack shape — JVM picocli CLI or REST service, Go/Rust/TS CLI or HTTP, the SPA                                     |
 | `port-example`     | the sample `Clock` secondary port + canonical fake, rendered per language                                                                    |
 | `build-tool`       | wrapper/workspace generation: `gradle wrapper` / `mvn -N wrapper:wrapper` / `npm install` / `pnpm install` per `pkg.*` tag                   |
 | `agentic-baseline` | the `claude-core` adapter — emits the [binding spec](../../assets/project/AGENTS.md) as `AGENTS.md` + a `CLAUDE.md` pointer, unconditionally |
@@ -45,7 +45,7 @@ stack family:
 
 - [JVM — Quarkus, Spring Boot, Micronaut, Java & Kotlin](../stacks/jvm.md)
 - [Go](../stacks/go.md) · [Rust](../stacks/rust.md)
-- [ts-http](../stacks/ts-http.md) ·
+- [TypeScript — `ts-http` & `ts-cli`](../stacks/ts-http.md) ·
   [web-components](../stacks/web-components.md)
 
 Highlights that hold everywhere:
