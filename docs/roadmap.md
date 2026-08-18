@@ -1558,11 +1558,17 @@ rather than remembered-in-a-file.
   **L** above ([#68](https://github.com/rgoussu-dev/keel/issues/68)).
 - ~~**IaC vertical (OpenTofu)**~~ — promoted to item **M** above
   ([#69](https://github.com/rgoussu-dev/keel/issues/69)).
-- **Mutation testing in this repo**
-  ([#74](https://github.com/rgoussu-dev/keel/issues/74)) —
-  `AGENTS.md §7` marks it "on the roadmap; not yet wired". Stryker
-  over `src/domain` first; report-only before any threshold, since a
-  hard gate on an unknown baseline blocks unrelated PRs.
+- ~~**Mutation testing in this repo**~~
+  ([#74](https://github.com/rgoussu-dev/keel/issues/74)) — **landed**
+  as sketched: Stryker over `src/domain` with the vitest runner,
+  report-only (`thresholds.break` null until the baseline settles),
+  running on `main` — incremental per push, full weekly — rather
+  than in `verify` or on PRs, since a full run is hours. One
+  deviation, recorded in `docs/development.md`: static mutants
+  (25% of the total, an estimated 71% of the run — the module-level
+  adapter tables, whose guard is the emitted-tree assertions and the
+  e2e grid) are ignored. Still open, deliberately: the break
+  threshold once the baseline settles, and the wider layers.
 - **Version currency**
   ([#75](https://github.com/rgoussu-dev/keel/issues/75)) — the spec
   says "always latest stable", but emitted templates pin framework

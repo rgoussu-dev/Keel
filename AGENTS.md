@@ -129,6 +129,7 @@ pnpm lint          # eslint (flat config, src + tests) + prettier --check . + de
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run
 pnpm test:e2e      # vitest run tests/e2e (opt in with KEEL_RUN_E2E=1)
+pnpm test:mutation # stryker over src/domain (report-only; hours cold, minutes warm)
 pnpm test:watch    # vitest watch
 pnpm build         # tsc -p tsconfig.build.json → dist/
 pnpm format        # prettier --write .
@@ -226,7 +227,11 @@ would ship as separate packages implementing the same port.
   `assets/project/AGENTS.md §3`. No mocking libraries — build fakes
   directly.
 - Every public API change is accompanied by a test change.
-- Mutation testing is on the roadmap; not yet wired in this repo.
+- Mutation testing is wired over `src/domain` — Stryker with the
+  vitest runner, `pnpm test:mutation`, report-only until the baseline
+  settles. It runs on `main`, not on PRs, so a surviving mutant never
+  blocks unrelated work. Scope, the static-mutant exception, and the
+  CI shape are in `docs/development.md` → Mutation testing.
 
 ---
 
@@ -436,6 +441,15 @@ would ship as separate packages implementing the same port.
   _start_ on JDK 25, and the host `gradle` is what generates the
   wrapper. Pinning the host to 9.4.1 (the wrapper's own version) lets
   one JDK serve both build systems. Change one, check the other.
+- `.github/workflows/mutation.yml` runs the `src/domain` mutation
+  suite (`pnpm test:mutation`) on every push to `main` — incremental,
+  so only mutants whose code or covering tests changed are retested —
+  plus a weekly full run and on dispatch. Report-only and deliberately
+  absent from PRs: a full run is hours on a runner, no fast gate
+  absorbs that, and with `thresholds.break` null there is nothing for
+  a PR to be gated on. The incremental state rides the actions cache
+  under an always-save key; the HTML report is a run artifact. Moving
+  onto PRs comes with the break threshold, once the baseline settles.
 - `.github/workflows/release.yml` runs on `v*` tag push — verifies the tag
   matches `package.json`, reruns verification, publishes to npm with
   provenance, creates a GitHub Release. Dist-tag is derived from the
