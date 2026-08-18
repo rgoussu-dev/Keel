@@ -7,10 +7,10 @@ no shared root to glue).
 
 ## Dimensions & adapters
 
-| Dimension         | Adapter           | What it emits                                                                                |
-| ----------------- | ----------------- | -------------------------------------------------------------------------------------------- |
-| `product-docs`    | `product-docs`    | The product README: service map, run order, root housekeeping.                               |
-| `product-compose` | `product-compose` | `compose.yaml` at the root + a Dockerfile (and `.dockerignore`) beside each deployment unit. |
+| Dimension         | Adapter           | What it emits                                                                                                                                                                                                                       |
+| ----------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product-docs`    | `product-docs`    | The product README: service map, run order, root housekeeping.                                                                                                                                                                      |
+| `product-compose` | `product-compose` | `compose.yaml` at the root + a Dockerfile (and `.dockerignore`) beside each deployment unit, built with the build system recorded per service (Gradle/Maven builder stage and artifact path on the JVM, npm/pnpm installs on Node). |
 
 The result:
 

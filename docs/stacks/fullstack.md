@@ -25,6 +25,7 @@ framework — see
 mkdir my-product && cd my-product
 npx @rgoussu.dev/keel new --stack=fullstack                 # or any twin above
 npx @rgoussu.dev/keel new --stack=fullstack-go --layout polyrepo
+npx @rgoussu.dev/keel new --stack=fullstack --build-system backend=maven,frontend=pnpm
 ```
 
 ## Prerequisites
@@ -43,9 +44,10 @@ plus the frontend's
 
 The usual per-service answers, plus one product-level choice:
 
-| Question          | Notes                                                                                                                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository layout | `monorepo` (default): one repository, `backend/` + `frontend/` side by side, git initialised once at the root, a product README tying them together. `polyrepo`: a repository per service, no shared root. Pin with `--layout`. |
+| Question                 | Notes                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository layout        | `monorepo` (default): one repository, `backend/` + `frontend/` side by side, git initialised once at the root, a product README tying them together. `polyrepo`: a repository per service, no shared root. Pin with `--layout`.                                                                                                                                                               |
+| Build system per service | Each service whose stack offers a choice is asked its own: `gradle` (default) or `maven` for a JVM backend, `npm` (default) or `pnpm` for `ts-http` and the frontend. Pin with `--build-system path=id` pairs, comma-separated (`--build-system backend=maven,frontend=pnpm`). The compose Dockerfiles, the product README's run hints, and the service's own manifest all follow the choice. |
 
 ## What gets generated
 

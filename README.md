@@ -212,6 +212,7 @@ rule: two contexts, two registrations, one registry.
 
 ```sh
 npx @rgoussu.dev/keel new --stack=fullstack     # or fullstack-spring, -micronaut, -go, -rust, -ts
+npx @rgoussu.dev/keel new --stack=fullstack --build-system backend=maven,frontend=pnpm
 ```
 
 You get two complete keel services — a REST backend and the SPA — as a

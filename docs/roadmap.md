@@ -1535,10 +1535,14 @@ rather than remembered-in-a-file.
   `%dev`/`%test` replay is wired through each framework's Flyway
   integration; Quarkus's Liquibase extension reads classpath-only
   changelogs, so this needs design, not just config).
-- **Per-service build systems in composite stacks**
-  ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — composites
-  scaffold each service on its default today; offering the choice
-  per service needs the compose Dockerfiles to follow it.
+- ~~**Per-service build systems in composite stacks**~~
+  ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — **shipped**:
+  composites ask the build-system question per service (pin with
+  `--build-system backend=maven,frontend=pnpm`), the choice is
+  recorded on the product manifest's service refs, and the compose
+  Dockerfiles + product README follow it; the `ci` and
+  `distribution` verticals follow via the service manifest's `pkg.*`
+  tag, as verified by the composite handler tests.
 - ~~**`ts-cli` stack**~~
   ([#71](https://github.com/rgoussu-dev/keel/issues/71)) —
   **shipped**: the CLI twin of `ts-http`, completing the family's
