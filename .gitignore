@@ -5,6 +5,8 @@ dist/
 .vscode/
 .idea/
 coverage/
+reports/
+.stryker-tmp/
 *.tsbuildinfo
 .env
 .env.local
