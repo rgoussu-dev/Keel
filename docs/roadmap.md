@@ -1476,6 +1476,129 @@ deployment flavor`
 
 ---
 
+## N — Project toolchain provisioning (`keel toolchain`)
+
+Sliced and issue-tracked (2026-08-18), one session per issue:
+**N.0** ([#87]) → **N.1** ([#88]) → **N.2** ([#89]) → **N.3**
+([#90]) → **N.4** ([#91]); **N.5** ([#92]) depends only on N.1 and
+can run in parallel with N.3/N.4.
+
+**Goal.** Every stack page ends in a "Required on PATH" table and a
+you-problem: keel scaffolds a project targeting JDK 25 and leaves
+installing JDK 25 to the user. The `dev-container` vertical answers
+this only inside Docker; bare metal — a new laptop, a teammate's
+clone, a web session whose image left `JAVA_HOME` on 21 (see
+`docs/development.md`) — gets a loud error and a manual remedy. This
+item makes a scaffolded project **declare** its toolchain and makes
+satisfying that declaration a one-command, idempotent, re-runnable
+operation: clone → `keel toolchain install` → working environment.
+
+**Decisions on record** (design discussion, 2026-08-18):
+
+- **Orchestrator, never installer.** keel delegates to real version
+  managers (mise, asdf, sdkman, nvm, corepack, rustup). Owning
+  downloads, checksums, and platform matrices is a second product
+  with its own churn; keel renders declarations and shells out to
+  managers whose `install` is idempotent by construction.
+- **The manifest is the contract.** A versioned `toolchain` block
+  records the _needs_ (tool + version), written by a vertical from
+  the manifest's tags and `assets/composition/version-pins.json`;
+  the provisioning engine consumes it at any later time. keel owns
+  _what_, the engine owns _how_ — which is also what makes the
+  engine extractable.
+- **Ecosystem files remain the interface with the ecosystem.** The
+  engine renders the chosen provider's _native_ files (`mise.toml`,
+  `.tool-versions`, `.sdkmanrc`, `.nvmrc`, `rust-toolchain.toml`),
+  so IDEs, CI images, and colleagues who have never heard of keel
+  still see plain files their tools already understand. Env wiring
+  (`JAVA_HOME`, `PATH`) belongs to the manager's own activation,
+  never to profile files keel writes.
+- **The coverage invariant.** The manager is a dial, and every
+  choice on it — single provider or curated combination — covers
+  the project's whole needs set. A provider that covers everything
+  is offered alone (sdkman on a JVM-only project); where none does,
+  a combination of providers is offered _for the same coverage_
+  (nvm + corepack on the pnpm-tagged TS profiles); a partial choice
+  is never offered. This is the persistence vertical's
+  "no half-installs" rule applied to choices. Combinations are
+  compositions of member provider records, never records of their
+  own.
+- **Modulith first, extraction later.** The engine is a bounded
+  context inside keel — its own hexagon, meeting the rest only at
+  the block schema, the seam held by dependency-cruiser. When
+  provider churn starts forcing keel releases that change nothing
+  else, the context extracts to its own package and the block
+  schema to a shared one; keel thereby demonstrates the
+  modulith-to-extraction story its own binding spec sells.
+- **Providers grow demand-driven.** Each record costs a
+  version-spelling column in the pins registry and a currency
+  surface. Launch set: mise (default), asdf, nvm + corepack,
+  sdkman (JVM-only by the invariant), rustup, and Go's native
+  `go.mod` `toolchain` directive as an explicit "no manager
+  needed" choice.
+
+### N.0 — the versioned `toolchain` manifest block (S) ([#87])
+
+The contract and nothing else: the block's zod schema + types in
+`domain/contract` (`schemaVersion`, needs as tool + version over a
+closed tool vocabulary), round-tripped through `ManifestStore`,
+documented in `docs/composition.md`. No writer, no consumer.
+
+### N.1 — `keel add toolchain`: the vertical records needs (M) ([#88])
+
+Opt-in vertical, one predicate-selected adapter per family, deriving
+needs from tags (`runtime.jvm` + `pkg.*` → jdk + build system; …)
+with versions from the pins registry. Reapply-safe; composites
+record per service.
+
+### N.2 — the engine + `keel toolchain install`, mise walking skeleton (L) ([#89])
+
+The new bounded context, the provider-record model, and one provider
+end to end: read block → render `mise.toml` → `mise install` when
+present, a loud graceful message when not. `keel toolchain check`
+alongside. Real-install suite opt-in and env-gated, never in the PR
+matrix.
+
+### N.3 — the manager dial: coverage resolution (M) ([#90])
+
+The choice list computed from the needs set per the coverage
+invariant; asdf, nvm, corepack records; nvm + corepack as the first
+combination; the choice sticky on the manifest; the invariant itself
+a unit test.
+
+### N.4 — sdkman, rustup, and the ecosystem-native no-ops (M) ([#91])
+
+sdkman (offered only where it covers everything — JVM-only),
+rustup via `rust-toolchain.toml`, and Go's `go.mod` `toolchain`
+directive as an explicit no-op choice whose "action" is a
+consistency check.
+
+### N.5 — single-source pins: dev-container and CI converge (M) ([#92])
+
+The devcontainer features and the `ci` setup versions derive from
+the same registry entries as the block, with an agreement guard in
+`verify` shaped like `tests/version-pins.test.ts`. Values converge;
+mechanisms stay native (CI keeps its setup actions).
+
+### Not in scope for N
+
+- Extracting the engine or the block schema to their own packages —
+  the seam is built now, the split waits for the churn signal above.
+- Real `mise`/`sdk` installs in the PR matrix (opt-in suite only,
+  the `tests/currency/` pattern).
+- Windows-native provisioning stories.
+- Auto-bumping pins — bumps stay human-reviewed, proved by the e2e
+  grid, per the version-currency decision.
+
+[#87]: https://github.com/rgoussu-dev/keel/issues/87
+[#88]: https://github.com/rgoussu-dev/keel/issues/88
+[#89]: https://github.com/rgoussu-dev/keel/issues/89
+[#90]: https://github.com/rgoussu-dev/keel/issues/90
+[#91]: https://github.com/rgoussu-dev/keel/issues/91
+[#92]: https://github.com/rgoussu-dev/keel/issues/92
+
+---
+
 ## Backlog (unordered)
 
 - ~~**A second bounded context in the modulith skeleton**~~ —
