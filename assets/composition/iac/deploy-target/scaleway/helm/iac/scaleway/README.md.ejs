@@ -1,0 +1,44 @@
+# Deploy target — Scaleway Kubernetes (Kapsule)
+
+Provisions the managed cluster `deploy/chart/` installs into, with
+the Private Network Kapsule requires. State is remote in an Object
+Storage bucket (binding spec §5); one state per environment via
+workspaces. Credentials ride the environment, never a file:
+
+```sh
+export SCW_ACCESS_KEY=…            # API key, read by both configs
+export SCW_SECRET_KEY=…
+export SCW_DEFAULT_PROJECT_ID=…
+export AWS_ACCESS_KEY_ID="$SCW_ACCESS_KEY"      # the same key, for
+export AWS_SECRET_ACCESS_KEY="$SCW_SECRET_KEY"  # the S3 state backend
+```
+
+## Once per project
+
+```sh
+./bootstrap.sh    # provisions the state bucket, then `tofu init`
+```
+
+The bootstrap config keeps local state on purpose — the bucket is the
+one resource that cannot live inside the remote state it hosts.
+Commit `bootstrap/terraform.tfstate`; it contains no secrets.
+
+## Per environment
+
+```sh
+tofu workspace new dev    # once per environment; `tofu workspace select` thereafter
+tofu apply
+```
+
+## Deploying
+
+The release pipeline pushes the image; the chart runs it here. Config
+rides `values.yaml` → container environment — one image serves every
+environment:
+
+```sh
+scw k8s kubeconfig install "$(tofu output -raw cluster_id | cut -d/ -f2)"
+helm upgrade --install <%= projectName %> ../../deploy/chart \
+  --set image.repository=<registry>/<%= projectName %> \
+  --set image.tag=v1.2.3
+```

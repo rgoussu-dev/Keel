@@ -1,0 +1,7 @@
+#cloud-config
+# Provisions the one thing the compose descriptor needs: a Docker
+# engine (the convenience script installs the compose plugin with it).
+package_update: true
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable --now docker

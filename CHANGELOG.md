@@ -8,6 +8,25 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`iac` vertical — the OpenTofu deploy target the release pipeline
+  publishes to.** `keel add iac` closes the loop the `distribution`
+  vertical opens: keyed on the `dist.container-image` tag, it
+  provisions the registry-consuming runtime matching the **recorded**
+  deployment flavor — read from the manifest, never re-asked —
+  `compose` → a Docker VM (engine cloud-init-installed, firewall for
+  SSH + the service port, deploys over `DOCKER_HOST=ssh://…`),
+  `helm` → a managed Kubernetes cluster (latest stable by data
+  source, default node pool). The cloud is a sticky dial with one
+  template subtree per choice: DigitalOcean (default — droplet /
+  DOKS, state in Spaces) or Scaleway (instance / Kapsule with its
+  required Private Network, state in Object Storage); the choice is
+  promoted as a `cloud.*` tag beside `iac.opentofu`. The emitted
+  tree follows binding spec §5: root `iac/<cloud>/`, remote state by
+  default with a one-shot `bootstrap.sh` provisioning the state
+  bucket from a local-state bootstrap config, one state per
+  environment via workspaces, and no credential in any file —
+  provider auth rides the environment, 12-factor.
+
 - **`keel add <vertical> --reapply` — the update path for scaffolded
   projects.** Re-renders an already-installed vertical from the
   answers the manifest recorded, so a template fix in keel becomes

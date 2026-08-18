@@ -37,6 +37,7 @@ What `keel add <vertical>` layers onto an existing project:
   [`containerization`](verticals/containerization.md) ·
   [`ci`](verticals/ci.md) ·
   [`distribution`](verticals/distribution.md) ·
+  [`iac`](verticals/iac.md) ·
   [`fullstack`](verticals/fullstack.md)
 
 ## Concepts

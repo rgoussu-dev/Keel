@@ -1,0 +1,16 @@
+# The managed-Kubernetes shape the helm flavor deploys to. Latest
+# stable per binding spec §7: the version tracks DigitalOcean's
+# current release at plan time instead of a pin that goes stale.
+data "digitalocean_kubernetes_versions" "current" {}
+
+resource "digitalocean_kubernetes_cluster" "cluster" {
+  name    = "<%= projectName %>-${terraform.workspace}"
+  region  = var.region
+  version = data.digitalocean_kubernetes_versions.current.latest_version
+
+  node_pool {
+    name       = "default"
+    size       = var.node_size
+    node_count = var.node_count
+  }
+}

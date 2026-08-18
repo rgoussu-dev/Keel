@@ -1,0 +1,44 @@
+# Deploy target — DigitalOcean Kubernetes (DOKS)
+
+Provisions the managed cluster `deploy/chart/` installs into. State
+is remote in a Spaces bucket (binding spec §5); one state per
+environment via workspaces. Credentials ride the environment, never
+a file:
+
+```sh
+export DIGITALOCEAN_TOKEN=…        # API token, read by both configs
+export SPACES_ACCESS_KEY_ID=…      # Spaces key, for the bootstrap config
+export SPACES_SECRET_ACCESS_KEY=…
+export AWS_ACCESS_KEY_ID="$SPACES_ACCESS_KEY_ID"          # the same key,
+export AWS_SECRET_ACCESS_KEY="$SPACES_SECRET_ACCESS_KEY"  # for the S3 state backend
+```
+
+## Once per project
+
+```sh
+./bootstrap.sh    # provisions the state bucket, then `tofu init`
+```
+
+The bootstrap config keeps local state on purpose — the bucket is the
+one resource that cannot live inside the remote state it hosts.
+Commit `bootstrap/terraform.tfstate`; it contains no secrets.
+
+## Per environment
+
+```sh
+tofu workspace new dev    # once per environment; `tofu workspace select` thereafter
+tofu apply
+```
+
+## Deploying
+
+The release pipeline pushes the image; the chart runs it here. Config
+rides `values.yaml` → container environment — one image serves every
+environment:
+
+```sh
+doctl kubernetes cluster kubeconfig save "$(tofu output -raw cluster_name)"
+helm upgrade --install <%= projectName %> ../../deploy/chart \
+  --set image.repository=<registry>/<%= projectName %> \
+  --set image.tag=v1.2.3
+```

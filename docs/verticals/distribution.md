@@ -101,8 +101,9 @@ rebuild.
 for the reasons on record. A compose user who wants Swarm can
 `docker stack deploy` the emitted file themselves.
 
-Every container adapter promotes `dist.container-image` — the tag a
-future IaC or deploy vertical keys on.
+Every container adapter promotes `dist.container-image` — the tag the
+[`iac`](iac.md) vertical keys on to provision the deploy target these
+images run on.
 
 ## The CLI shape
 
@@ -130,4 +131,5 @@ promoting `runtime.graalvm-native`.
 ## Related
 
 - [`containerization`](containerization.md) · [`ci`](ci.md) ·
-  [Verticals catalog](README.md) · [Roadmap](../roadmap.md)
+  [`iac`](iac.md) · [Verticals catalog](README.md) ·
+  [Roadmap](../roadmap.md)

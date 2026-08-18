@@ -34,6 +34,7 @@ instead, which has a name to give it.
 | [`containerization`](containerization.md) | a thin Dockerfile beside the deployment unit                                                     | `image`                                                                              |
 | [`ci`](ci.md)                             | the pipeline every push has to pass: GitHub Actions or GitLab CI                                 | `pipeline`                                                                           |
 | [`distribution`](distribution.md)         | how the project ships: CLI binaries or registry-pushed images + a deploy descriptor, on tag push | `build`, `release-channel`                                                           |
+| [`iac`](iac.md)                           | where the project runs: the OpenTofu deploy target matching the recorded deployment flavor       | `deploy-target`                                                                      |
 | [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                                                        | `product-docs`, `product-compose`                                                    |
 
 ## Compatibility matrix
@@ -53,6 +54,7 @@ instead, which has a name to give it.
 | `containerization` | ⛔      | ➕       | ⛔          | ➕           | ➕        | ➕               | (root compose is separate ²) |
 | `ci`               | ➕      | ➕       | ➕          | ➕           | ➕        | ➕               | ➕ per service               |
 | `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³        | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service             |
+| `iac`              | ⛔ ⁵    | ➕ ⁵     | ⛔ ⁵        | ➕ ⁵         | ➕ ⁵      | ➕ ⁵             | ➕ ⁵ per service             |
 | `fullstack`        | —       | —        | —           | —            | —         | —                | ● monorepo root only         |
 
 ¹ Needs a peer in scope first: `keel link <path>` on both projects,
@@ -66,6 +68,9 @@ CLI siblings are the intended growth path.
 ⁴ The container family: requires `containerization` installed first —
 the release pipeline builds that Dockerfile. See
 [`distribution`](distribution.md).
+⁵ Keyed on the `dist.container-image` tag the distribution container
+family promotes — `keel add distribution` first. CLI shapes never
+carry it, so they hard-fail. See [`iac`](iac.md).
 
 ## Prerequisites per vertical
 
@@ -83,4 +88,5 @@ Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-gl
 | `containerization` | —                                                                                                | Docker to build; the host build must produce the artifact first                                                                                 |
 | `ci`               | —                                                                                                | a GitHub or GitLab repository per the chosen provider; TypeScript stacks: the lockfile committed                                                |
 | `distribution`     | server shapes: `containerization` installed first                                                | a GitHub or GitLab repository per the chosen provider; GraalVM/toolchains run in CI, not locally; Docker + Compose or Helm to run `deploy/`     |
+| `iac`              | `distribution` installed first (the `dist.container-image` tag)                                  | OpenTofu ≥ 1.6 and an account + API key on the chosen cloud, credentials via environment only                                                   |
 | `fullstack`        | orchestrated by composite stacks — not user-addable                                              | Docker + Compose for `docker compose up --build`                                                                                                |

@@ -1,0 +1,28 @@
+# One-shot bootstrap (binding spec §5): provisions the bucket the
+# main config keeps its remote state in. Local state by design — the
+# bucket is the one resource that cannot live inside the remote state
+# it hosts. Commit bootstrap/terraform.tfstate; it records only this
+# bucket and contains no secrets.
+terraform {
+  required_providers {
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "~> 2.0"
+    }
+  }
+}
+
+# Auth via DIGITALOCEAN_TOKEN, plus SPACES_ACCESS_KEY_ID /
+# SPACES_SECRET_ACCESS_KEY for the bucket — environment only.
+provider "digitalocean" {}
+
+# Spaces bucket names are global per region: if this one is taken,
+# rename it here and in ../versions.tf together.
+resource "digitalocean_spaces_bucket" "state" {
+  name   = "<%= projectName %>-tofu-state"
+  region = "ams3"
+
+  versioning {
+    enabled = true
+  }
+}

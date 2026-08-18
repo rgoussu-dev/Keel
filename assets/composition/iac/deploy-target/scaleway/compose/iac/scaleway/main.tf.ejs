@@ -1,0 +1,35 @@
+# The VM shape the compose flavor deploys to: one Docker host running
+# the descriptor the distribution vertical emitted, behind a security
+# group for SSH and the service port. 12-factor holds — the host
+# carries no config; every knob rides the deploy command's
+# environment (see README.md). SSH access uses the project's uploaded
+# SSH keys, which Scaleway injects on first boot.
+resource "scaleway_instance_ip" "host" {}
+
+resource "scaleway_instance_security_group" "host" {
+  name                    = "<%= projectName %>-${terraform.workspace}"
+  inbound_default_policy  = "drop"
+  outbound_default_policy = "accept"
+
+  inbound_rule {
+    action = "accept"
+    port   = 22
+  }
+
+  inbound_rule {
+    action = "accept"
+    port   = var.service_port
+  }
+}
+
+resource "scaleway_instance_server" "host" {
+  name              = "<%= projectName %>-${terraform.workspace}"
+  type              = var.instance_type
+  image             = "ubuntu_noble"
+  ip_id             = scaleway_instance_ip.host.id
+  security_group_id = scaleway_instance_security_group.host.id
+
+  user_data = {
+    "cloud-init" = file("${path.module}/cloud-init.yaml")
+  }
+}
