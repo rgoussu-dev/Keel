@@ -36,7 +36,11 @@
           "pattern": "id\\(\"io\\.quarkus\"\\) version \"([\\w.-]+)\""
         }
       ],
-      "check": { "type": "maven", "group": "io.quarkus.platform", "artifact": "quarkus-bom" }
+      "check": {
+        "type": "maven",
+        "group": "io.quarkus.platform",
+        "artifact": "quarkus-bom"
+      }
     },
     {
       "id": "jvm-quarkus-platform-gradle-properties",
@@ -49,7 +53,11 @@
           "pattern": "^quarkus\\.platform\\.version=(\\S+)"
         }
       ],
-      "check": { "type": "maven", "group": "io.quarkus.platform", "artifact": "quarkus-bom" }
+      "check": {
+        "type": "maven",
+        "group": "io.quarkus.platform",
+        "artifact": "quarkus-bom"
+      }
     },
     {
       "id": "jvm-spring-boot",
@@ -91,7 +99,11 @@
           "pattern": "<artifactId>micronaut-parent</artifactId>\\s*<version>([^<]+)</version>"
         }
       ],
-      "check": { "type": "maven", "group": "io.micronaut.platform", "artifact": "micronaut-parent" }
+      "check": {
+        "type": "maven",
+        "group": "io.micronaut.platform",
+        "artifact": "micronaut-parent"
+      }
     },
     {
       "id": "jvm-micronaut-gradle-plugin",
@@ -104,7 +116,10 @@
           "pattern": "id\\(\"io\\.micronaut\\.(?:application|library)\"\\) version \"([\\w.-]+)\""
         }
       ],
-      "check": { "type": "gradle-plugin", "pluginId": "io.micronaut.application" }
+      "check": {
+        "type": "gradle-plugin",
+        "pluginId": "io.micronaut.application"
+      }
     },
     {
       "id": "jvm-kotlin",
@@ -121,7 +136,11 @@
           "pattern": "<kotlin\\.version>([^<]+)</kotlin\\.version>"
         }
       ],
-      "check": { "type": "maven", "group": "org.jetbrains.kotlin", "artifact": "kotlin-stdlib" }
+      "check": {
+        "type": "maven",
+        "group": "org.jetbrains.kotlin",
+        "artifact": "kotlin-stdlib"
+      }
     },
     {
       "id": "jvm-ksp",
@@ -134,7 +153,10 @@
           "pattern": "id\\(\"com\\.google\\.devtools\\.ksp\"\\) version \"([\\w.-]+)\""
         }
       ],
-      "check": { "type": "gradle-plugin", "pluginId": "com.google.devtools.ksp" }
+      "check": {
+        "type": "gradle-plugin",
+        "pluginId": "com.google.devtools.ksp"
+      }
     },
     {
       "id": "jvm-shadow-plugin",
@@ -147,7 +169,10 @@
           "pattern": "id\\(\"com\\.gradleup\\.shadow\"\\) version \"([\\w.-]+)\""
         }
       ],
-      "check": { "type": "gradle-plugin", "pluginId": "com.gradleup.shadow" }
+      "check": {
+        "type": "gradle-plugin",
+        "pluginId": "com.gradleup.shadow"
+      }
     },
     {
       "id": "jvm-foojay-resolver",
@@ -185,10 +210,6 @@
         },
         {
           "glob": "assets/composition/**",
-          "pattern": "\\bgradle:jdk(\\d+)"
-        },
-        {
-          "glob": "assets/composition/**",
           "pattern": "java-version: '(\\d+)'"
         },
         {
@@ -200,7 +221,9 @@
           "pattern": "version: '(\\d+)'"
         }
       ],
-      "check": { "type": "jdk-lts" }
+      "check": {
+        "type": "jdk-lts"
+      }
     },
     {
       "id": "jvm-junit-jupiter",
@@ -217,7 +240,11 @@
           "pattern": "\"org\\.junit\\.jupiter:junit-jupiter:([\\w.-]+)\""
         }
       ],
-      "check": { "type": "maven", "group": "org.junit.jupiter", "artifact": "junit-jupiter" }
+      "check": {
+        "type": "maven",
+        "group": "org.junit.jupiter",
+        "artifact": "junit-jupiter"
+      }
     },
     {
       "id": "jvm-maven-compiler-plugin",
@@ -268,7 +295,11 @@
           "pattern": "\"jakarta\\.inject:jakarta\\.inject-api:([\\w.-]+)\""
         }
       ],
-      "check": { "type": "maven", "group": "jakarta.inject", "artifact": "jakarta.inject-api" }
+      "check": {
+        "type": "maven",
+        "group": "jakarta.inject",
+        "artifact": "jakarta.inject-api"
+      }
     },
     {
       "id": "jvm-jakarta-cdi-api",
@@ -349,14 +380,22 @@
         },
         {
           "glob": "src/domain/core/adapters/*.ts",
-          "pattern": "<groupId>org\\.testcontainers</groupId>\\s*<artifactId>(?:junit-jupiter|postgresql)</artifactId>\\s*<version>([^<]+)</version>"
+          "pattern": "org\\.testcontainers:\\$\\{engine\\.testcontainers\\.artifactId\\}:([\\w.-]+)"
         },
         {
           "glob": "src/domain/core/adapters/*.ts",
-          "pattern": "\"org\\.testcontainers:(?:junit-jupiter|postgresql):([\\w.-]+)\""
+          "pattern": "<groupId>org\\.testcontainers</groupId>\\s*<artifactId>\\$\\{engine\\.testcontainers\\.artifactId\\}</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<artifactId><%= tcArtifact %></artifactId>\\s*<version>([^<]+)</version>"
         }
       ],
-      "check": { "type": "maven", "group": "org.testcontainers", "artifact": "testcontainers" }
+      "check": {
+        "type": "maven",
+        "group": "org.testcontainers",
+        "artifact": "testcontainers"
+      }
     },
     {
       "id": "jvm-flyway",
@@ -371,9 +410,17 @@
         {
           "glob": "assets/composition/**/*.kts*",
           "pattern": "\"org\\.flywaydb:flyway-(?:core|database-postgresql):([\\w.-]+)\""
+        },
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<artifactId><%= flywayModuleArtifactId %></artifactId>\\s*<version>([^<]+)</version>"
         }
       ],
-      "check": { "type": "maven", "group": "org.flywaydb", "artifact": "flyway-core" }
+      "check": {
+        "type": "maven",
+        "group": "org.flywaydb",
+        "artifact": "flyway-core"
+      }
     },
     {
       "id": "jvm-flyway-image",
@@ -394,21 +441,56 @@
       }
     },
     {
+      "id": "image-liquibase",
+      "family": "shared",
+      "description": "Liquibase image tag (major.minor, floats on patch) in the migrations-tool dial's Dockerfile",
+      "value": "5.0",
+      "locations": [
+        {
+          "glob": "assets/composition/persistence/liquibase-migrations/**",
+          "pattern": "liquibase/liquibase:([\\d.]+)-alpine"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "org.liquibase",
+        "artifact": "liquibase-core",
+        "track": "major"
+      }
+    },
+    {
       "id": "jvm-postgresql-driver",
       "family": "jvm",
       "description": "PostgreSQL JDBC driver",
       "value": "42.7.13",
       "locations": [
         {
-          "glob": "assets/composition/**/pom.xml*",
-          "pattern": "<groupId>org\\.postgresql</groupId>\\s*<artifactId>postgresql</artifactId>\\s*<version>([^<]+)</version>"
-        },
-        {
-          "glob": "assets/composition/**/*.kts*",
-          "pattern": "\"org\\.postgresql:postgresql:([\\w.-]+)\""
+          "glob": "src/domain/core/adapters/persistence-engine.ts",
+          "pattern": "groupId: 'org\\.postgresql',\\s*artifactId: 'postgresql',\\s*version: '([\\w.-]+)'"
         }
       ],
-      "check": { "type": "maven", "group": "org.postgresql", "artifact": "postgresql" }
+      "check": {
+        "type": "maven",
+        "group": "org.postgresql",
+        "artifact": "postgresql"
+      }
+    },
+    {
+      "id": "jvm-mariadb-driver",
+      "family": "jvm",
+      "description": "MariaDB JDBC driver version in the persistence engine dial",
+      "value": "3.5.10",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/persistence-engine.ts",
+          "pattern": "groupId: 'org\\.mariadb\\.jdbc',\\s*artifactId: 'mariadb-java-client',\\s*version: '([\\w.-]+)'"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "org.mariadb.jdbc",
+        "artifact": "mariadb-java-client"
+      }
     },
     {
       "id": "jvm-spring-tx",
@@ -425,7 +507,11 @@
           "pattern": "\"org\\.springframework:spring-tx:([\\w.-]+)\""
         }
       ],
-      "check": { "type": "maven", "group": "org.springframework", "artifact": "spring-tx" }
+      "check": {
+        "type": "maven",
+        "group": "org.springframework",
+        "artifact": "spring-tx"
+      }
     },
     {
       "id": "jvm-micronaut-data-tx",
@@ -442,7 +528,11 @@
           "pattern": "\"io\\.micronaut\\.data:micronaut-data-tx:([\\w.-]+)\""
         }
       ],
-      "check": { "type": "maven", "group": "io.micronaut.data", "artifact": "micronaut-data-tx" }
+      "check": {
+        "type": "maven",
+        "group": "io.micronaut.data",
+        "artifact": "micronaut-data-tx"
+      }
     },
     {
       "id": "jvm-protobuf-java",
@@ -471,7 +561,9 @@
           "pattern": "GRADLE_VERSION = '([^']+)'"
         }
       ],
-      "check": { "type": "gradle-current" }
+      "check": {
+        "type": "gradle-current"
+      }
     },
     {
       "id": "jvm-maven-wrapper",
@@ -484,7 +576,11 @@
           "pattern": "MAVEN_VERSION = '([^']+)'"
         }
       ],
-      "check": { "type": "maven", "group": "org.apache.maven", "artifact": "apache-maven" }
+      "check": {
+        "type": "maven",
+        "group": "org.apache.maven",
+        "artifact": "apache-maven"
+      }
     },
     {
       "id": "jvm-native-build-tools",
@@ -497,7 +593,10 @@
           "pattern": "NATIVE_BUILD_TOOLS_VERSION = '([^']+)'"
         }
       ],
-      "check": { "type": "gradle-plugin", "pluginId": "org.graalvm.buildtools.native" }
+      "check": {
+        "type": "gradle-plugin",
+        "pluginId": "org.graalvm.buildtools.native"
+      }
     },
     {
       "id": "jvm-quarkus-micro-image",
@@ -534,7 +633,9 @@
           "pattern": "version: '(\\d+)'"
         }
       ],
-      "check": { "type": "node-lts" }
+      "check": {
+        "type": "node-lts"
+      }
     },
     {
       "id": "ts-node-engines-floor",
@@ -544,6 +645,10 @@
       "locations": [
         {
           "glob": "assets/composition/walking-skeleton/ts-http-bootstrap/**/package.json.ejs",
+          "pattern": "\"node\": \"(>=[\\d.]+)\""
+        },
+        {
+          "glob": "assets/composition/walking-skeleton/ts-cli-bootstrap/**/package.json.ejs",
           "pattern": "\"node\": \"(>=[\\d.]+)\""
         },
         {
@@ -572,7 +677,10 @@
           "pattern": "\"typescript\": \"([^\"]+)\""
         }
       ],
-      "check": { "type": "npm", "package": "typescript" }
+      "check": {
+        "type": "npm",
+        "package": "typescript"
+      }
     },
     {
       "id": "ts-vitest",
@@ -589,7 +697,10 @@
           "pattern": "\"vitest\": \"([^\"]+)\""
         }
       ],
-      "check": { "type": "npm", "package": "vitest" }
+      "check": {
+        "type": "npm",
+        "package": "vitest"
+      }
     },
     {
       "id": "ts-types-node",
@@ -606,7 +717,10 @@
           "pattern": "'@types/node': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@types/node" }
+      "check": {
+        "type": "npm",
+        "package": "@types/node"
+      }
     },
     {
       "id": "ts-dependency-cruiser",
@@ -619,7 +733,10 @@
           "pattern": "\"dependency-cruiser\": \"([^\"]+)\""
         }
       ],
-      "check": { "type": "npm", "package": "dependency-cruiser" }
+      "check": {
+        "type": "npm",
+        "package": "dependency-cruiser"
+      }
     },
     {
       "id": "ts-pg",
@@ -636,7 +753,10 @@
           "pattern": "\\bpg: '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "pg" }
+      "check": {
+        "type": "npm",
+        "package": "pg"
+      }
     },
     {
       "id": "ts-types-pg",
@@ -653,7 +773,10 @@
           "pattern": "'@types/pg': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@types/pg" }
+      "check": {
+        "type": "npm",
+        "package": "@types/pg"
+      }
     },
     {
       "id": "ts-testcontainers-postgresql",
@@ -670,7 +793,10 @@
           "pattern": "'@testcontainers/postgresql': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@testcontainers/postgresql" }
+      "check": {
+        "type": "npm",
+        "package": "@testcontainers/postgresql"
+      }
     },
     {
       "id": "ts-otel-api",
@@ -683,7 +809,10 @@
           "pattern": "'@opentelemetry/api': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@opentelemetry/api" }
+      "check": {
+        "type": "npm",
+        "package": "@opentelemetry/api"
+      }
     },
     {
       "id": "ts-otel-sdk",
@@ -696,7 +825,10 @@
           "pattern": "'@opentelemetry/(?:exporter-metrics-otlp-http|exporter-trace-otlp-http|sdk-node)': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@opentelemetry/sdk-node" }
+      "check": {
+        "type": "npm",
+        "package": "@opentelemetry/sdk-node"
+      }
     },
     {
       "id": "ts-otel-core",
@@ -709,7 +841,10 @@
           "pattern": "'@opentelemetry/(?:resources|sdk-metrics)': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@opentelemetry/resources" }
+      "check": {
+        "type": "npm",
+        "package": "@opentelemetry/resources"
+      }
     },
     {
       "id": "ts-otel-semantic-conventions",
@@ -722,7 +857,10 @@
           "pattern": "'@opentelemetry/semantic-conventions': '([^']+)'"
         }
       ],
-      "check": { "type": "npm", "package": "@opentelemetry/semantic-conventions" }
+      "check": {
+        "type": "npm",
+        "package": "@opentelemetry/semantic-conventions"
+      }
     },
     {
       "id": "web-vite",
@@ -735,7 +873,10 @@
           "pattern": "\"vite\": \"([^\"]+)\""
         }
       ],
-      "check": { "type": "npm", "package": "vite" }
+      "check": {
+        "type": "npm",
+        "package": "vite"
+      }
     },
     {
       "id": "web-happy-dom",
@@ -748,7 +889,10 @@
           "pattern": "\"happy-dom\": \"([^\"]+)\""
         }
       ],
-      "check": { "type": "npm", "package": "happy-dom" }
+      "check": {
+        "type": "npm",
+        "package": "happy-dom"
+      }
     },
     {
       "id": "web-planks",
@@ -761,7 +905,10 @@
           "pattern": "\"@rgoussu\\.dev/planks\": \"([^\"]+)\""
         }
       ],
-      "check": { "type": "npm", "package": "@rgoussu.dev/planks" }
+      "check": {
+        "type": "npm",
+        "package": "@rgoussu.dev/planks"
+      }
     },
     {
       "id": "rust-edition",
@@ -810,7 +957,10 @@
           "pattern": "axum = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "axum" }
+      "check": {
+        "type": "crate",
+        "crate": "axum"
+      }
     },
     {
       "id": "rust-serde",
@@ -827,7 +977,10 @@
           "pattern": "serde = \\{ version = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "serde" }
+      "check": {
+        "type": "crate",
+        "crate": "serde"
+      }
     },
     {
       "id": "rust-serde-json",
@@ -844,7 +997,10 @@
           "pattern": "serde_json = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "serde_json" }
+      "check": {
+        "type": "crate",
+        "crate": "serde_json"
+      }
     },
     {
       "id": "rust-tokio",
@@ -861,7 +1017,10 @@
           "pattern": "tokio = \\{ version = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "tokio" }
+      "check": {
+        "type": "crate",
+        "crate": "tokio"
+      }
     },
     {
       "id": "rust-tower",
@@ -878,7 +1037,10 @@
           "pattern": "tower = \\{ version = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "tower" }
+      "check": {
+        "type": "crate",
+        "crate": "tower"
+      }
     },
     {
       "id": "rust-http-body-util",
@@ -895,7 +1057,10 @@
           "pattern": "http-body-util = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "http-body-util" }
+      "check": {
+        "type": "crate",
+        "crate": "http-body-util"
+      }
     },
     {
       "id": "rust-postgres",
@@ -912,7 +1077,10 @@
           "pattern": "(?<![\\w-])postgres = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "postgres" }
+      "check": {
+        "type": "crate",
+        "crate": "postgres"
+      }
     },
     {
       "id": "rust-testcontainers-modules",
@@ -929,7 +1097,10 @@
           "pattern": "testcontainers-modules = \\{ version = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "testcontainers-modules" }
+      "check": {
+        "type": "crate",
+        "crate": "testcontainers-modules"
+      }
     },
     {
       "id": "rust-humantime",
@@ -942,7 +1113,10 @@
           "pattern": "humantime = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "humantime" }
+      "check": {
+        "type": "crate",
+        "crate": "humantime"
+      }
     },
     {
       "id": "rust-opentelemetry",
@@ -955,7 +1129,10 @@
           "pattern": "(?<![\\w-])opentelemetry(?:-otlp|_sdk)? = (?:\\{ version = )?\"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "opentelemetry" }
+      "check": {
+        "type": "crate",
+        "crate": "opentelemetry"
+      }
     },
     {
       "id": "rust-tracing",
@@ -968,7 +1145,10 @@
           "pattern": "(?<![\\w-])tracing = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "tracing" }
+      "check": {
+        "type": "crate",
+        "crate": "tracing"
+      }
     },
     {
       "id": "rust-tracing-opentelemetry",
@@ -981,7 +1161,10 @@
           "pattern": "tracing-opentelemetry = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "tracing-opentelemetry" }
+      "check": {
+        "type": "crate",
+        "crate": "tracing-opentelemetry"
+      }
     },
     {
       "id": "rust-tracing-subscriber",
@@ -994,7 +1177,10 @@
           "pattern": "tracing-subscriber = \\{ version = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "tracing-subscriber" }
+      "check": {
+        "type": "crate",
+        "crate": "tracing-subscriber"
+      }
     },
     {
       "id": "rust-uuid",
@@ -1007,7 +1193,10 @@
           "pattern": "uuid = \\{ version = \"([^\"]+)\""
         }
       ],
-      "check": { "type": "crate", "crate": "uuid" }
+      "check": {
+        "type": "crate",
+        "crate": "uuid"
+      }
     },
     {
       "id": "go-toolchain",
@@ -1024,7 +1213,9 @@
           "pattern": "golang:(\\d+\\.\\d+)"
         }
       ],
-      "check": { "type": "go-toolchain" }
+      "check": {
+        "type": "go-toolchain"
+      }
     },
     {
       "id": "image-golang-major",
@@ -1070,15 +1261,30 @@
       "value": "18",
       "locations": [
         {
-          "glob": "assets/composition/**",
-          "pattern": "postgres:(\\d+)-alpine"
-        },
-        {
           "glob": "src/domain/core/adapters/persistence-engine.ts",
           "pattern": "postgres:(\\d+)-alpine"
         }
       ],
-      "check": { "type": "endoflife", "product": "postgresql" }
+      "check": {
+        "type": "endoflife",
+        "product": "postgresql"
+      }
+    },
+    {
+      "id": "image-mariadb",
+      "family": "shared",
+      "description": "MariaDB major in the persistence engine dial's dev image",
+      "value": "12",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/persistence-engine.ts",
+          "pattern": "image: 'mariadb:(\\d+)'"
+        }
+      ],
+      "check": {
+        "type": "endoflife",
+        "product": "mariadb"
+      }
     },
     {
       "id": "image-alpine",
@@ -1091,7 +1297,10 @@
           "pattern": "FROM alpine:(\\d+)\\b"
         }
       ],
-      "check": { "type": "endoflife", "product": "alpine" }
+      "check": {
+        "type": "endoflife",
+        "product": "alpine"
+      }
     },
     {
       "id": "image-nginx",
@@ -1221,7 +1430,11 @@
           "pattern": "grafana/tempo:([\\d.]+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "grafana/tempo", "track": "exact" }
+      "check": {
+        "type": "github-release",
+        "repo": "grafana/tempo",
+        "track": "exact"
+      }
     },
     {
       "id": "monitoring-prometheus",
@@ -1234,7 +1447,11 @@
           "pattern": "prom/prometheus:v([\\d.]+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "prometheus/prometheus", "track": "exact" }
+      "check": {
+        "type": "github-release",
+        "repo": "prometheus/prometheus",
+        "track": "exact"
+      }
     },
     {
       "id": "monitoring-loki",
@@ -1247,7 +1464,11 @@
           "pattern": "grafana/loki:([\\d.]+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "grafana/loki", "track": "exact" }
+      "check": {
+        "type": "github-release",
+        "repo": "grafana/loki",
+        "track": "exact"
+      }
     },
     {
       "id": "monitoring-grafana",
@@ -1260,7 +1481,11 @@
           "pattern": "grafana/grafana:([\\d.]+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "grafana/grafana", "track": "exact" }
+      "check": {
+        "type": "github-release",
+        "repo": "grafana/grafana",
+        "track": "exact"
+      }
     },
     {
       "id": "monitoring-otel-lgtm",
@@ -1273,7 +1498,11 @@
           "pattern": "grafana/otel-lgtm:([\\d.]+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "grafana/docker-otel-lgtm", "track": "exact" }
+      "check": {
+        "type": "github-release",
+        "repo": "grafana/docker-otel-lgtm",
+        "track": "exact"
+      }
     },
     {
       "id": "action-checkout",
@@ -1286,7 +1515,11 @@
           "pattern": "uses: actions/checkout@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "actions/checkout", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "actions/checkout",
+        "track": "major"
+      }
     },
     {
       "id": "action-setup-go",
@@ -1299,7 +1532,11 @@
           "pattern": "uses: actions/setup-go@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "actions/setup-go", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "actions/setup-go",
+        "track": "major"
+      }
     },
     {
       "id": "action-setup-java",
@@ -1312,7 +1549,11 @@
           "pattern": "uses: actions/setup-java@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "actions/setup-java", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "actions/setup-java",
+        "track": "major"
+      }
     },
     {
       "id": "action-setup-node",
@@ -1325,7 +1566,11 @@
           "pattern": "uses: actions/setup-node@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "actions/setup-node", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "actions/setup-node",
+        "track": "major"
+      }
     },
     {
       "id": "action-docker-login",
@@ -1338,7 +1583,11 @@
           "pattern": "uses: docker/login-action@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "docker/login-action", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "docker/login-action",
+        "track": "major"
+      }
     },
     {
       "id": "action-setup-graalvm",
@@ -1351,7 +1600,11 @@
           "pattern": "uses: graalvm/setup-graalvm@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "graalvm/setup-graalvm", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "graalvm/setup-graalvm",
+        "track": "major"
+      }
     },
     {
       "id": "action-upload-artifact",
@@ -1364,7 +1617,11 @@
           "pattern": "uses: actions/upload-artifact@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "actions/upload-artifact", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "actions/upload-artifact",
+        "track": "major"
+      }
     },
     {
       "id": "action-download-artifact",
@@ -1377,7 +1634,11 @@
           "pattern": "uses: actions/download-artifact@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "actions/download-artifact", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "actions/download-artifact",
+        "track": "major"
+      }
     },
     {
       "id": "action-gh-release",
@@ -1390,7 +1651,11 @@
           "pattern": "uses: softprops/action-gh-release@(v\\d+)"
         }
       ],
-      "check": { "type": "github-release", "repo": "softprops/action-gh-release", "track": "major" }
+      "check": {
+        "type": "github-release",
+        "repo": "softprops/action-gh-release",
+        "track": "major"
+      }
     }
   ]
 }
