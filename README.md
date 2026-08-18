@@ -223,6 +223,8 @@ keel add distribution         # registry-pushed images + a deploy descriptor on 
 keel add dev-env              # dev/compose.yaml for local infra
 keel add dev-container        # .devcontainer/ attached to the dev env's network
 
+keel add distribution --reapply  # re-render an installed vertical after a keel template fix
+
 keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam
 

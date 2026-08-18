@@ -67,6 +67,18 @@ const addDistribution = (dryRun = false) =>
     }),
   );
 
+const reapplyDistribution = (overrides: { dryRun?: boolean; answers?: object } = {}) =>
+  installMediator({ clock: new FakeClock('2026-04-28T09:00:00Z') }).dispatch(
+    addVerticalCommand({
+      cwd,
+      vertical: 'distribution',
+      answers: (overrides.answers ?? {}) as Record<string, Record<string, string>>,
+      interactive: false,
+      dryRun: overrides.dryRun ?? false,
+      reapply: true,
+    }),
+  );
+
 describe('keel.add-vertical (keel add)', () => {
   it('layers distribution onto an existing quarkus-cli project', async () => {
     await seedQuarkusCli();
@@ -134,5 +146,83 @@ describe('keel.add-vertical (keel add)', () => {
       'vcs',
       'walking-skeleton',
     ]);
+  });
+
+  describe('--reapply', () => {
+    const workflow = () => path.join(cwd, '.github/workflows/release.yml');
+
+    it('is a no-op when the working tree matches the re-render', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const report = expectOk(await reapplyDistribution());
+      expect(report.subject).toBe('distribution');
+      expect(report.committed).toBe(true);
+      expect(report.changes).toEqual([]);
+      expect(report.diffs).toEqual([]);
+
+      const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+      expect(manifest!.verticals.filter((v) => v.id === 'distribution')).toEqual([
+        { id: 'distribution', installedAt: '2026-04-27T08:00:00Z' },
+      ]);
+      expect(manifest!.tags.filter((t) => t === 'runtime.graalvm-native')).toHaveLength(1);
+      expect(manifest!.updatedAt).toBe('2026-04-28T09:00:00Z');
+    });
+
+    it('restores an edited template-owned file and reports the diff', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const pristine = await fs.readFile(workflow(), 'utf8');
+      await fs.writeFile(workflow(), `${pristine}# local tweak\n`);
+
+      const report = expectOk(await reapplyDistribution());
+      expect(report.changes).toEqual([{ kind: 'modify', path: '.github/workflows/release.yml' }]);
+      expect(report.diffs).toHaveLength(1);
+      expect(report.diffs![0]!.path).toBe('.github/workflows/release.yml');
+      expect(report.diffs![0]!.diff).toContain('-# local tweak');
+      expect(report.diffs![0]!.diff).toMatch(/^@@ /);
+      expect(await fs.readFile(workflow(), 'utf8')).toBe(pristine);
+    });
+
+    it('shows the diff but writes nothing under --dry-run', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const pristine = await fs.readFile(workflow(), 'utf8');
+      await fs.writeFile(workflow(), `${pristine}# local tweak\n`);
+
+      const report = expectOk(await reapplyDistribution({ dryRun: true }));
+      expect(report.committed).toBe(false);
+      expect(report.diffs).toHaveLength(1);
+      expect(await fs.readFile(workflow(), 'utf8')).toBe(`${pristine}# local tweak\n`);
+    });
+
+    it('refuses to reapply a vertical that is not installed', async () => {
+      await seedQuarkusCli();
+      const error = expectErr(
+        await installMediator().dispatch(
+          addVerticalCommand({
+            cwd,
+            vertical: 'ci',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            reapply: true,
+          }),
+        ),
+      );
+      expect(error.code).toBe('keel.vertical-not-installed');
+      expect(error.message).toMatch(/nothing to reapply/);
+    });
+
+    it('refuses --set overrides: recorded answers are frozen', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const error = expectErr(
+        await reapplyDistribution({
+          answers: { 'distribution/quarkus-cli-native': { targets: 'linux-amd64' } },
+        }),
+      );
+      expect(error.code).toBe('keel.reapply-frozen-answers');
+      expect(error.message).toMatch(/--set cannot be combined with --reapply/);
+    });
   });
 });

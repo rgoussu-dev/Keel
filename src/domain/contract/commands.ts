@@ -19,6 +19,20 @@ export interface InstallReport {
   readonly actions: readonly string[];
   /** False under dry-run: nothing was written and no action ran. */
   readonly committed: boolean;
+  /**
+   * Unified diffs against the working tree, one per `modify` change,
+   * in the same path order. Populated by reapply only — a plain
+   * install never modifies a pre-existing file, so there is nothing
+   * to diff.
+   */
+  readonly diffs?: readonly FileDiff[];
+}
+
+/** A unified diff of one working-tree file a command would rewrite. */
+export interface FileDiff {
+  readonly path: string;
+  /** Unified-diff hunks (no ---/+++ header); empty never occurs. */
+  readonly diff: string;
 }
 
 /** Sticky answers supplied up front: adapterId → questionId → value. */
@@ -86,6 +100,21 @@ export interface AddVerticalCommand extends Command<InstallReport> {
   readonly answers: PresetAnswers;
   readonly interactive: boolean;
   readonly dryRun: boolean;
+  /**
+   * Re-render an **already installed** vertical from the answers the
+   * manifest recorded — the conservative day-2 path (roadmap L).
+   *
+   * Semantics: template-owned files (whole-file contributions) are
+   * rewritten to the pristine re-render, each rewrite reported with a
+   * unified diff against the working tree; a patch that would change
+   * an already-patched file refuses the whole run
+   * (`keel.reapply-conflict`) — with no recorded base there is no way
+   * to tell a template fix from a double application, so nothing is
+   * written. Answers are frozen: resolution is non-interactive and
+   * {@link answers} must be empty — changing an answer on reapply is
+   * deliberately out of scope for v1.
+   */
+  readonly reapply?: boolean;
 }
 
 /**

@@ -41,6 +41,23 @@ import type { TemplateSource } from '../contract/ports/template-source.js';
 /** Per-adapter answer map: questionId → value. */
 export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
+/**
+ * How contributions meet files already in the Tree.
+ *
+ * `install` (the default) is the greenfield/brownfield contract: a
+ * whole-file write to an existing path is a hard conflict, and every
+ * patch writes its result.
+ *
+ * `reapply` is the day-2 contract for re-rendering an installed
+ * vertical: whole-file writes **overwrite** their target (skipped when
+ * the content is byte-identical, so the staged changes are an honest
+ * diff), while a patch against an existing file must be a no-op —
+ * a patch whose transform would change an already-patched file is
+ * indistinguishable from a double application and conflicts instead
+ * of writing.
+ */
+export type ApplyMode = 'install' | 'reapply';
+
 /** Result of applying a chain of contributions. */
 export interface ApplyResult {
   /** Every tag any adapter promoted via `tagsAdd`, deduplicated. */
@@ -65,7 +82,7 @@ export class ContributionConflictError extends Error {
     message: string,
     readonly adapterId: string,
     readonly path: string,
-    readonly kind: 'overwrite' | 'missing-patch-target',
+    readonly kind: 'overwrite' | 'missing-patch-target' | 'reapply-divergence',
   ) {
     super(message);
     this.name = 'ContributionConflictError';
@@ -85,6 +102,8 @@ export interface ApplyInputs {
   readonly cwd: string;
   readonly templates: TemplateSource;
   readonly processes: ProcessRunner;
+  /** Conflict posture towards existing files; defaults to `install`. */
+  readonly mode?: ApplyMode;
 }
 
 export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResult> {
@@ -101,7 +120,7 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    applyContribution(adapter, contribution, inputs.tree);
+    applyContribution(adapter, contribution, inputs.tree, inputs.mode);
     for (const t of contribution.tagsAdd ?? []) tagsAdded.add(t);
     if (contribution.agentic) agentic[adapter.id] = contribution.agentic;
     for (const a of contribution.actions ?? []) actions.push(a);
@@ -158,15 +177,25 @@ export function makeCtx(
  * orchestrator can interleave per-adapter manifest updates between
  * applies.
  */
-export function applyContribution(adapter: Adapter, contribution: Contribution, tree: Tree): void {
+export function applyContribution(
+  adapter: Adapter,
+  contribution: Contribution,
+  tree: Tree,
+  mode: ApplyMode = 'install',
+): void {
   for (const f of contribution.files ?? []) {
     if (tree.exists(f.path)) {
-      throw new ContributionConflictError(
-        `adapter '${adapter.id}' would overwrite existing path '${f.path}'; use a patch to modify existing files`,
-        adapter.id,
-        f.path,
-        'overwrite',
-      );
+      if (mode !== 'reapply') {
+        throw new ContributionConflictError(
+          `adapter '${adapter.id}' would overwrite existing path '${f.path}'; use a patch to modify existing files`,
+          adapter.id,
+          f.path,
+          'overwrite',
+        );
+      }
+      const current = tree.read(f.path);
+      const next = Buffer.isBuffer(f.content) ? f.content : Buffer.from(f.content, 'utf8');
+      if (current !== null && current.equals(next)) continue;
     }
     tree.write(f.path, f.content, f.mode !== undefined ? { mode: f.mode } : undefined);
   }
@@ -180,7 +209,17 @@ export function applyContribution(adapter: Adapter, contribution: Contribution, 
         'missing-patch-target',
       );
     }
-    const next = p.apply(current === null ? (p.seed as string) : current.toString('utf8'));
+    const base = current === null ? (p.seed as string) : current.toString('utf8');
+    const next = p.apply(base);
+    if (mode === 'reapply' && current !== null) {
+      if (next === base) continue;
+      throw new ContributionConflictError(
+        `adapter '${adapter.id}': reapplying its patch would change '${p.target}' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand`,
+        adapter.id,
+        p.target,
+        'reapply-divergence',
+      );
+    }
     tree.write(p.target, next);
   }
 }

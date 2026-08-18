@@ -25,7 +25,7 @@
 import { resolveAdapterAnswers } from './answers.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 import { effectiveTags } from '../contract/manifest.js';
-import { applyContribution, makeCtx, type ApplyResult } from './apply.js';
+import { applyContribution, makeCtx, type ApplyMode, type ApplyResult } from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {
   DeferredAction,
@@ -53,6 +53,12 @@ export interface InstallVerticalInputs {
   readonly processes: ProcessRunner;
   /** Time source — injected so tests can pin `installedAt`/`updatedAt`. */
   readonly now: () => string;
+  /**
+   * Conflict posture towards files already in the Tree; defaults to
+   * `install`. `reapply` re-renders over the previous rendering — see
+   * {@link ApplyMode}.
+   */
+  readonly apply?: ApplyMode;
 }
 
 /** Result of installing a vertical. */
@@ -87,7 +93,7 @@ export async function installVertical(
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    applyContribution(adapter, contribution, inputs.tree);
+    applyContribution(adapter, contribution, inputs.tree, inputs.apply);
 
     if (contribution.tagsAdd && contribution.tagsAdd.length > 0) {
       running = foldTags(running, contribution.tagsAdd);

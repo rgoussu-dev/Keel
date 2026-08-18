@@ -13,12 +13,13 @@ Items are lettered continuing the old sequence. With **F** landed,
 established. The rest are ordered by leverage, not by commitment.
 
 The next wave is ordered and issue-tracked (decided 2026-08-18):
-**K** (build from sources, [#67]) → **L** (`keel add --reapply`,
-[#68]) → **M** (IaC, [#69]) → **G** (the Claude kit, [#70]).
-Releasing the accumulated `[Unreleased]` surface is deliberately held
-until K has exercised it locally, product-shaped rather than
-harness-shaped. The backlog items below each carry an issue of their
-own.
+**K** (build from sources, [#67], ✅ landed) → **L** (`keel add
+--reapply`, [#68], ✅ landed) → **M** (IaC, [#69]) → **G** (the
+Claude kit, [#70]).
+Releasing the accumulated `[Unreleased]` surface was deliberately
+held until K had exercised it locally, product-shaped rather than
+harness-shaped — a gate K's landing has now opened. The backlog
+items below each carry an issue of their own.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -1316,7 +1317,7 @@ back to the checkout inside it.
 
 ---
 
-## L — `keel add --reapply`: the update path (M)
+## L — `keel add --reapply`: the update path (M) ✅
 
 Tracked in [#68](https://github.com/rgoussu-dev/keel/issues/68).
 
@@ -1328,16 +1329,46 @@ the first real consumer project exists. keel is unusually well placed
 — the manifest already records the stack, the `layout.*` tags and
 every sticky answer, which is everything a re-render needs.
 
-**Sketch.** Conservative v1: re-render from recorded answers, show
-the diff against the working tree, refuse on conflict. A real
-three-way merge against user edits comes later, and its base is the
-design question — a recorded rendering, or a re-render pinned to the
-keel version that originally installed the vertical (which the
-manifest would then need to record). Open questions, to be settled in
-the item rather than guessed here: which sticky answers may move on
-reapply and what re-resolves when they do; `tagsAdd` idempotence
-(promoted tags must neither double nor orphan); whether `--reapply`
-spans one vertical or the whole manifest.
+**What shipped — the conservative v1.** `keel add <vertical>
+--reapply` runs the ordinary install pipeline in a second apply mode
+rather than a second pipeline: same resolution, same running
+manifest, one changed posture towards files already in the Tree.
+Template-owned files (whole-file contributions) are rewritten to the
+pristine re-render — a byte-identical render is skipped, so the
+staged plan is an honest diff, and every real rewrite is reported as
+a unified diff against the working tree (`--dry-run` shows it without
+writing). Patched files — the shared, user-owned ones — are never
+rewritten: a patch whose re-application is a no-op (the guarded style
+every in-tree adapter uses, which the reapply apply-mode tests now
+pin) passes silently, and one that would change the file refuses the
+whole run with `keel.reapply-conflict` before anything commits,
+because without a recorded base a changed result cannot be told apart
+from a double application.
+
+**The open questions, settled for v1 rather than guessed.**
+
+- _Which sticky answers may move on reapply:_ none. Resolution is
+  non-interactive from the manifest, and `--set` with `--reapply` is
+  refused (`keel.reapply-frozen-answers`). A question a vertical grew
+  since the original install resolves to its default and is recorded
+  like any first ask — which is exactly the template-evolution case
+  reapply exists for.
+- _`tagsAdd` idempotence:_ re-promoted tags fold through the
+  manifest's existing set semantics, so they never double; the
+  vertical record keeps its original `installedAt`. A tag the new
+  render no longer promotes is left in place — orphan-removal needs
+  the recorded base below, and guessing it now would delete facts.
+- _Span:_ one vertical per invocation. Reapplying a whole manifest is
+  a loop the caller can write today; a first-class `--all` can come
+  once the per-vertical semantics have seen real consumer use.
+
+**What remains open — the real three-way merge.** Overwriting a
+template-owned file the user edited is still lossy (the diff shows
+exactly what would be lost, which is the v1 safety valve). Merging
+user edits needs a base, and the base is still the design question —
+a recorded rendering, or a re-render pinned to the keel version that
+originally installed the vertical, which the manifest would then need
+to record. That is the next step of this item, not part of v1.
 
 ---
 

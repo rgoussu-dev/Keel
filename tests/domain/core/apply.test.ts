@@ -246,6 +246,87 @@ describe('applyContributions', () => {
     expect(tree.read('targets.txt')?.toString()).toBe('darwin-arm64');
   });
 
+  describe('reapply mode', () => {
+    const reapply = (adapters: readonly Adapter[], tree: FsTree) =>
+      applyContributions({
+        adapters,
+        answers: {},
+        manifest: emptyManifestV2('now', '0.4.0'),
+        tree,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        mode: 'reapply',
+      });
+
+    it('overwrites a divergent on-disk file instead of conflicting', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'README.md'), 'edited by hand\n');
+      await reapply(
+        [adapter('a', { files: [{ path: 'README.md', content: 'pristine\n' }] })],
+        tree,
+      );
+      expect(tree.read('README.md')?.toString()).toBe('pristine\n');
+      expect(tree.changes()).toEqual([{ kind: 'modify', path: 'README.md' }]);
+    });
+
+    it('skips byte-identical file writes so staged changes stay an honest diff', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'README.md'), 'pristine\n');
+      await reapply(
+        [adapter('a', { files: [{ path: 'README.md', content: 'pristine\n' }] })],
+        tree,
+      );
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('treats an idempotent patch as a no-op', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, '.gitignore'), 'node_modules\nbuild\n');
+      const guarded = adapter('a', {
+        patches: [
+          {
+            target: '.gitignore',
+            apply: (s) => (s.includes('build') ? s : `${s}build\n`),
+          },
+        ],
+      });
+      await reapply([guarded], tree);
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('conflicts when a patch would change an already-patched file', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'build.gradle'), 'dependencies {\n}\n');
+      const blind = adapter('a', {
+        patches: [{ target: 'build.gradle', apply: (s) => `${s}// appended again\n` }],
+      });
+      const failure = await reapply([blind], tree).then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(failure).toBeInstanceOf(ContributionConflictError);
+      expect((failure as ContributionConflictError).kind).toBe('reapply-divergence');
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('still seeds a patch target the working tree lost', async () => {
+      const tree = new FsTree(tmp);
+      const a = adapter('a', {
+        patches: [
+          {
+            target: 'shared.yaml',
+            seed: 'services: {}\n',
+            apply: (s) => s.replace('services: {}', 'services:\n  redis: {}'),
+          },
+        ],
+      });
+      await reapply([a], tree);
+      expect(tree.read('shared.yaml')?.toString()).toBe('services:\n  redis: {}\n');
+    });
+  });
+
   it('rejects ctx.answer for an undeclared question id', async () => {
     const tree = new FsTree(tmp);
     const a: Adapter = {
