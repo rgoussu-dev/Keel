@@ -1,0 +1,79 @@
+# Mutation testing over src/domain (roadmap #74), report-only.
+#
+# Not part of `verify`, and not run on PRs at all — deliberately. The
+# full run instruments ~9000 mutants and takes hours cold on a 4-vCPU
+# runner, which no fast gate absorbs; and with `thresholds.break`
+# null there is nothing for a PR to be gated on anyway. A report
+# nobody is gated on is most useful as a current picture of `main`,
+# so that is where it runs: every push lands an incremental run
+# (minutes — only mutants whose code or covering tests changed are
+# retested), and a weekly full run retests everything, correcting
+# whatever the incremental diffs accumulated. Moving the job onto
+# PRs comes with the break threshold, once the baseline is known and
+# has settled.
+#
+# The incremental state rides the actions cache under an
+# always-save key (unique per run, restored by prefix — a cache key
+# is immutable, so re-saving under one fixed key would never
+# update). Losing the cache costs a full run, not correctness.
+name: Mutation
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly full run: 03:17 UTC Monday, off the on-the-hour spike.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Retest all mutants instead of trusting the incremental file
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: mutation (src/domain)
+    runs-on: ubuntu-latest
+    # An incremental run is minutes; a cold or forced run is hours.
+    timeout-minutes: 300
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore incremental state
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.run_id }}
+          restore-keys: |
+            stryker-incremental-
+
+      - name: Mutation testing
+        run: pnpm test:mutation ${{ (github.event_name == 'schedule' || inputs.force) && '--force' || '' }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-report
+          path: reports/mutation/
