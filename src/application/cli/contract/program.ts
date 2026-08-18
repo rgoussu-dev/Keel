@@ -126,6 +126,11 @@ export function buildProgram(deps: CliDeps): Command {
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
     .option(
+      '--reapply',
+      're-render an already-installed vertical from its recorded answers, showing a diff against the working tree; refuses on conflict',
+      false,
+    )
+    .option(
       '--consumes <context>',
       "with 'add module': also emit a gateway reaching an existing bounded context through its user-side/service seam",
     )
@@ -138,8 +143,11 @@ export function buildProgram(deps: CliDeps): Command {
       async (
         target: string,
         name: string | undefined,
-        opts: { yes: boolean; dryRun: boolean; consumes?: string; set: string[] },
+        opts: { yes: boolean; dryRun: boolean; reapply: boolean; consumes?: string; set: string[] },
       ): Promise<void> => {
+        if (target === MODULE_TARGET && opts.reapply) {
+          throw new Error("--reapply applies to verticals; 'keel add module' does not support it");
+        }
         const result = await deps.mediator.dispatch(
           target === MODULE_TARGET
             ? addModuleCommand({
@@ -156,6 +164,7 @@ export function buildProgram(deps: CliDeps): Command {
                 answers: parseSetAnswers(opts.set),
                 interactive: !opts.yes,
                 dryRun: opts.dryRun,
+                ...(opts.reapply ? { reapply: true } : {}),
               }),
         );
         const report = unwrap(result);
@@ -215,6 +224,19 @@ function printReport(header: string, report: InstallReport, log: Logger): void {
   }
   for (const description of report.actions) {
     log.info(`  ${chalk.cyan('!')} ${description}`);
+  }
+  for (const d of report.diffs ?? []) {
+    log.info(`  ${chalk.bold(d.path)}`);
+    for (const line of d.diff.split('\n')) {
+      const painted = line.startsWith('@@')
+        ? chalk.cyan(line)
+        : line.startsWith('+')
+          ? chalk.green(line)
+          : line.startsWith('-')
+            ? chalk.red(line)
+            : chalk.dim(line);
+      log.info(`  ${painted}`);
+    }
   }
 }
 
