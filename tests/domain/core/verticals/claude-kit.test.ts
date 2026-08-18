@@ -193,6 +193,24 @@ describe('claude-kit on the other families', () => {
     expect(agents).toContain('web-components SPA on Vite (npm)');
     expect(agents).toContain('import map');
   });
+
+  it('swaps the runbook to the CLI shape on ts-cli', async () => {
+    const ts = await install(
+      ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.cli', 'pkg.npm'],
+      { 'walking-skeleton/ts-cli-bootstrap': { projectName: 'tool' } },
+    );
+    const agents = read(ts, 'AGENTS.md');
+    expect(agents).toContain('TypeScript CLI on Node (npm)');
+    expect(agents).toContain('node application/cli/src/main.ts --name World');
+    // The HTTP twin's commands must not leak in: the CLI scaffold has
+    // no dev script and no server to probe.
+    expect(agents).not.toContain('npm run dev');
+    expect(agents).not.toContain('curl');
+    const skill = read(ts, '.claude/skills/run/SKILL.md');
+    expect(skill).toContain('node application/cli/src/main.ts --name World');
+    expect(skill).toContain('exit code 2');
+    expect(skill).not.toContain('curl');
+  });
 });
 
 describe('claude-kit coverage across the stack registry', () => {
