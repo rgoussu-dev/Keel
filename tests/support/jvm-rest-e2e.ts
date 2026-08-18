@@ -118,9 +118,10 @@ export async function runJvmPersistenceE2E(
   spec: JvmRestE2ESpec,
   cwd: string,
   depCache: string,
+  answers: Readonly<Record<string, Record<string, string>>> = {},
 ): Promise<void> {
   await scaffold(spec, cwd);
-  await addVertical('persistence', cwd);
+  await addVertical('persistence', cwd, answers);
 
   const dockerBound = [':modules:greeting:infra:greeting-log:jdbc', ':application:api'];
   const withoutDocker = [
