@@ -12,7 +12,10 @@ import {
   npmInstallAdapter,
   NPM_INSTALL_ID,
 } from '../../../../src/domain/core/adapters/npm-install.js';
-import { TS_HTTP_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/ts-http-bootstrap.js';
+import {
+  TS_CLI_BOOTSTRAP_ID,
+  TS_HTTP_BOOTSTRAP_ID,
+} from '../../../../src/domain/core/adapters/ts-bootstrap.js';
 import { WC_SPA_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/wc-spa-bootstrap.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../../src/domain/core/apply.js';
@@ -47,7 +50,11 @@ describe('npm-install adapter', () => {
     expect(npmInstallAdapter.vertical).toBe('walking-skeleton');
     expect(npmInstallAdapter.covers).toEqual(['build-tool']);
     expect(npmInstallAdapter.predicate).toEqual({ requires: ['pkg.npm'] });
-    expect(npmInstallAdapter.after).toEqual([WC_SPA_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID]);
+    expect(npmInstallAdapter.after).toEqual([
+      WC_SPA_BOOTSTRAP_ID,
+      TS_HTTP_BOOTSTRAP_ID,
+      TS_CLI_BOOTSTRAP_ID,
+    ]);
     expect(npmInstallAdapter.questions ?? []).toEqual([]);
   });
 

@@ -22,7 +22,7 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { eolOf, withEol } from '../util.js';
-import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
+import { tsBootstrapAnswers, TS_CLI_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';
 import { tsLayout } from './ts-module-layout.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 
@@ -37,14 +37,11 @@ export const tsPortFakeAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: ['port-example'],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.hexagonal'] },
-  after: [TS_HTTP_BOOTSTRAP_ID],
+  // Both entrypoint bootstraps listed because either may be the one
+  // present; the answers this adapter reads live under whichever ran.
+  after: [TS_HTTP_BOOTSTRAP_ID, TS_CLI_BOOTSTRAP_ID],
   async contribute(ctx) {
-    const npmScope = ctx.manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.npmScope;
-    if (!npmScope) {
-      throw new Error(
-        `${TS_PORT_FAKE_ID}: requires '${TS_HTTP_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
-      );
-    }
+    const { npmScope } = tsBootstrapAnswers(ctx.manifest, TS_PORT_FAKE_ID);
     const layout = tsLayout(ctx.manifest.tags, npmScope);
     const ws = tsWorkspaceVars(ctx.manifest.tags);
     const adapterDir = layout.infraSrc('clock');

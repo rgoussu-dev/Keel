@@ -414,12 +414,20 @@ jobs:
           # cases out of `wc-walking-skeleton` lowered this shard's
           # floor rather than raising it. `browser` stays in `tools:`
           # because three suites now render.
+          #
+          # The three `ts-cli` suites (basic + two modulith cells)
+          # ride here too: measured locally they run inside the
+          # existing floor, and they render nothing, so the shard's
+          # shape and tools are unchanged.
           - id: web
             tools: npm pnpm browser
             files: >-
               tests/e2e/ts-walking-skeleton.test.ts
+              tests/e2e/ts-cli-walking-skeleton.test.ts
               tests/e2e/modulith-ts-http-npm.test.ts
               tests/e2e/modulith-ts-http-pnpm.test.ts
+              tests/e2e/modulith-ts-cli-npm.test.ts
+              tests/e2e/modulith-ts-cli-pnpm.test.ts
               tests/e2e/modulith-ts-peer-context.test.ts
               tests/e2e/wc-walking-skeleton.test.ts
               tests/e2e/modulith-web-components-npm.test.ts

@@ -26,12 +26,15 @@
  * (`pnpm-workspace.yaml` + the `workspace:*` protocol).
  */
 
-import type { Ctx, ContributionFile, Question } from '../../contract/composition.js';
+import type { Ctx, ContributionFile, ManifestV2, Question } from '../../contract/composition.js';
 import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars, type TsWorkspaceVars } from './ts-workspace.js';
 
 /** Id of the HTTP entrypoint bootstrap (`arch.server-http`). */
 export const TS_HTTP_BOOTSTRAP_ID = 'walking-skeleton/ts-http-bootstrap';
+
+/** Id of the CLI entrypoint bootstrap (`arch.cli`). */
+export const TS_CLI_BOOTSTRAP_ID = 'walking-skeleton/ts-cli-bootstrap';
 
 const TEMPLATE_ROOT = 'composition/walking-skeleton/ts-domain';
 
@@ -39,8 +42,10 @@ const NPM_SCOPE_RE = /^[a-z][a-z0-9-]{0,38}$/;
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
 
 /**
- * The questions every TypeScript bootstrap declares. Answers are
- * recorded under the *asking* adapter's id.
+ * The questions both bootstraps declare. Answers are recorded under
+ * the *asking* adapter's id, which is why {@link tsBootstrapAnswers}
+ * exists for the downstream adapters that fire under either
+ * entrypoint.
  */
 export const TS_BOOTSTRAP_QUESTIONS: readonly Question[] = [
   {
@@ -58,6 +63,28 @@ export const TS_BOOTSTRAP_QUESTIONS: readonly Question[] = [
     memory: 'sticky',
   },
 ];
+
+/**
+ * Reads the answers recorded by whichever TypeScript bootstrap ran —
+ * a project has exactly one entrypoint adapter, so at most one of the
+ * two ids holds them. The downstream TS adapters (`ts-port-fake` and
+ * friends) order themselves `after` both bootstraps and call this
+ * instead of re-asking the user.
+ */
+export function tsBootstrapAnswers(
+  manifest: ManifestV2,
+  requesterId: string,
+): { npmScope: string; projectName: string } {
+  const answers =
+    manifest.answers[TS_HTTP_BOOTSTRAP_ID] ?? manifest.answers[TS_CLI_BOOTSTRAP_ID] ?? {};
+  const { npmScope, projectName } = answers;
+  if (!npmScope || !projectName) {
+    throw new Error(
+      `${requesterId}: requires '${TS_HTTP_BOOTSTRAP_ID}' or '${TS_CLI_BOOTSTRAP_ID}' to have run first; npmScope/projectName not in manifest`,
+    );
+  }
+  return { npmScope, projectName };
+}
 
 /** Everything a bootstrap needs beyond its own deployment-unit tree. */
 export interface TsWorkspaceShell {
@@ -106,6 +133,7 @@ function tsLayoutVars(layout: TsLayoutPaths): Readonly<Record<string, string>> {
     kernelPkg: layout.kernelPkg,
     contextPkg: layout.corePkg,
     restPkg: layout.restPkg,
+    cliPkg: layout.cliPkg,
     kernelExports: layout.exportsMap('kernel'),
     contextExports: layout.exportsMap('domain'),
     workspaceGlobs: layout.workspaceGlobs.map((g) => JSON.stringify(g)).join(', '),

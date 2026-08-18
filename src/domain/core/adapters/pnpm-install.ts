@@ -17,7 +17,7 @@ import path from 'node:path';
 import type { DeferredAction, DeferredActionEnv, Adapter } from '../../contract/composition.js';
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
-import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
+import { TS_CLI_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 
 export const PNPM_INSTALL_ID = 'walking-skeleton/pnpm-install';
@@ -27,7 +27,7 @@ export const pnpmInstallAdapter: Adapter = {
   vertical: 'walking-skeleton',
   covers: ['build-tool'],
   predicate: { requires: ['pkg.pnpm'] },
-  after: [WC_SPA_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID],
+  after: [WC_SPA_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID, TS_CLI_BOOTSTRAP_ID],
   contribute() {
     const action: DeferredAction = {
       id: PNPM_INSTALL_ID,

@@ -154,6 +154,18 @@ export interface TsLayoutPaths {
   readonly restPkg: string;
 
   /**
+   * The runnable CLI assembly — the `ts-cli` twin of the `rest*`
+   * paths. Which of the two a project actually has follows its
+   * `arch.*` tag; both are resolved unconditionally because the
+   * layout names places, not stacks, and a tag set carrying both
+   * entrypoints would ship both deployment units side by side.
+   */
+  readonly cliRoot: string;
+  readonly cliSrc: string;
+  readonly cliTests: string;
+  readonly cliPkg: string;
+
+  /**
    * The peer seam's source file, and the specifier a peer context
    * imports it through. Both absent under `basic`, which has no peers
    * to compose with.
@@ -215,6 +227,47 @@ export interface TsLayoutPaths {
 }
 
 const CONTEXT_ROOT = `modules/${SKELETON_MODULE}`;
+
+/** One runnable assembly of a TypeScript workspace. */
+export interface TsAssemblyPaths {
+  /** Package directory, e.g. `application/cli`. */
+  readonly root: string;
+  readonly src: string;
+  readonly tests: string;
+  /** The package's published name, e.g. `@scope/application-cli`. */
+  readonly pkg: string;
+}
+
+/**
+ * Which assemblies this project has, from the stack's arch tags — the
+ * TypeScript sibling of the Rust and Go `assembliesOf`. The adapters
+ * that wire a bounded context into "the assembly" (`ts-peer-context`,
+ * `ts-context`) iterate over this rather than naming `application/rest`,
+ * so the same wiring lands in a CLI, an HTTP service, or both.
+ */
+export function tsAssemblies(
+  tags: readonly Tag[],
+  layout: TsLayoutPaths,
+): readonly TsAssemblyPaths[] {
+  const assemblies: TsAssemblyPaths[] = [];
+  if (tags.includes('arch.cli')) {
+    assemblies.push({
+      root: layout.cliRoot,
+      src: layout.cliSrc,
+      tests: layout.cliTests,
+      pkg: layout.cliPkg,
+    });
+  }
+  if (tags.includes('arch.server-http')) {
+    assemblies.push({
+      root: layout.restRoot,
+      src: layout.restSrc,
+      tests: layout.restTests,
+      pkg: layout.restPkg,
+    });
+  }
+  return assemblies;
+}
 
 /**
  * The workspace package a project path belongs to. Every member glob
@@ -295,6 +348,10 @@ export function tsLayout(tags: readonly Tag[], scope: string): TsLayoutPaths {
       restSrc: 'application/rest/src',
       restTests: 'application/rest/tests',
       restPkg: pkg('application-rest'),
+      cliRoot: 'application/cli',
+      cliSrc: 'application/cli/src',
+      cliTests: 'application/cli/tests',
+      cliPkg: pkg('application-cli'),
       serviceFile: null,
       servicePkg: null,
       workspaceGlobs: ['domain/*', 'application/*', 'infrastructure/*'],
@@ -332,6 +389,10 @@ export function tsLayout(tags: readonly Tag[], scope: string): TsLayoutPaths {
     restSrc: 'application/rest/src',
     restTests: 'application/rest/tests',
     restPkg: pkg('application-rest'),
+    cliRoot: 'application/cli',
+    cliSrc: 'application/cli/src',
+    cliTests: 'application/cli/tests',
+    cliPkg: pkg('application-cli'),
     serviceFile: `${CONTEXT_ROOT}/src/service.ts`,
     servicePkg: `${context}/service`,
     workspaceGlobs: ['platform/*', 'modules/*', 'application/*'],

@@ -1,0 +1,20 @@
+{
+  "name": "@<%= npmScope %>/application-cli",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@<%= npmScope %>/domain-kernel": "<%= workspaceDep %>",
+    "@<%= npmScope %>/domain-contract": "<%= workspaceDep %>",
+    "@<%= npmScope %>/domain-core": "<%= workspaceDep %>"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,7 +1,10 @@
 /**
  * `bounded-context/ts-context` adapter — the context
- * `keel add module <name>` emits under the `ts-http` modulith, and the
- * gateway `--consumes <other>` adds to it.
+ * `keel add module <name>` emits under the TypeScript modulith
+ * (`ts-http` and `ts-cli` alike), and the gateway `--consumes <other>`
+ * adds to it. The wiring lands in every assembly the arch tags name
+ * (`tsAssemblies`), exactly as the Rust and Go context adapters
+ * decide it.
  *
  * **One workspace package, plus a `./service` export the peer context
  * has not got.** `tsLayout` rules that a bounded context is a single
@@ -51,16 +54,18 @@
  * does when it adds its packages.
  */
 
-import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
+import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { addedContext, CONTEXT_TAG } from './added-context.js';
 import { MODULITH_LAYOUT_TAG, SKELETON_MODULE } from './module-layout.js';
-import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
+import { tsBootstrapAnswers, TS_CLI_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';
 import {
+  tsAssemblies,
   tsContextPackage,
   tsLayout,
   tsSeamPackage,
   TS_SKELETON_HANDLER_FACTORY,
   TS_SKELETON_SEAM_METHOD,
+  type TsAssemblyPaths,
   type TsLayoutPaths,
 } from './ts-module-layout.js';
 import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
@@ -75,18 +80,16 @@ export const tsContextAdapter: Adapter = {
   vertical: 'bounded-context',
   covers: [],
   predicate: {
-    requires: [
-      'lang.typescript',
-      'runtime.node',
-      'arch.server-http',
-      MODULITH_LAYOUT_TAG,
-      CONTEXT_TAG,
-    ],
+    requires: ['lang.typescript', 'runtime.node', MODULITH_LAYOUT_TAG, CONTEXT_TAG],
   },
-  after: [TS_HTTP_BOOTSTRAP_ID],
+  // Ordering hints rather than requirements: under `keel add module`
+  // the bootstraps have long since run, and listing them keeps the
+  // adapter honest about what it patches into.
+  after: [TS_HTTP_BOOTSTRAP_ID, TS_CLI_BOOTSTRAP_ID],
   async contribute(ctx) {
     const added = addedContext(ctx.manifest, TS_CONTEXT_ID);
-    const layout = tsLayout(ctx.manifest.tags, bootstrapScope(ctx.manifest));
+    const { npmScope } = tsBootstrapAnswers(ctx.manifest, TS_CONTEXT_ID);
+    const layout = tsLayout(ctx.manifest.tags, npmScope);
     const pkg = tsContextPackage(layout, added.name, added.consumes);
     if (pkg === null) {
       throw new Error(
@@ -122,9 +125,17 @@ export const tsContextAdapter: Adapter = {
       consumesHandlerFactory: consumesIsSkeleton ? TS_SKELETON_HANDLER_FACTORY : '',
     };
 
+    const assemblies = tsAssemblies(ctx.manifest.tags, layout);
+    if (assemblies.length === 0) {
+      throw new Error(
+        `${TS_CONTEXT_ID}: no assembly in this tag set to wire the ${added.name} context into`,
+      );
+    }
     const rendered = await Promise.all([
       ctx.templates.render(`${TEMPLATE_ROOT}/context`, '', vars),
-      ctx.templates.render(`${TEMPLATE_ROOT}/assembly`, layout.restRoot, vars),
+      ...assemblies.map((assembly) =>
+        ctx.templates.render(`${TEMPLATE_ROOT}/assembly`, assembly.root, vars),
+      ),
       // A separate render root rather than a subtree of `context`,
       // because the tree is copied wholesale: left inside it, a
       // context with no `--consumes` would emit `src/infra/-gateway/`
@@ -136,13 +147,15 @@ export const tsContextAdapter: Adapter = {
 
     return {
       files: rendered.flat(),
-      patches: [
-        dependencyPatch(layout, pkg.pkg, workspaceDep),
+      patches: assemblies.flatMap((assembly) => [
+        dependencyPatch(layout, assembly, pkg.pkg, workspaceDep),
         ...(added.consumes === null || !consumesIsSkeleton
           ? []
-          : [dependencyPatch(layout, `@${layout.scope}/${added.consumes}`, workspaceDep)]),
-        wiringPatch(layout, added.name),
-      ],
+          : [
+              dependencyPatch(layout, assembly, `@${layout.scope}/${added.consumes}`, workspaceDep),
+            ]),
+        wiringPatch(assembly, added.name),
+      ]),
       actions: [
         workspaceInstall(TS_CONTEXT_ID, pm, `link the new ${added.name} workspace package`),
       ],
@@ -169,17 +182,6 @@ function consumesSeamExpr(consumes: string | null, isSkeleton: boolean): string 
   return `create${Consumes}ContextService()`;
 }
 
-/** The npm scope the bootstrap recorded, or a hard failure. */
-function bootstrapScope(manifest: ManifestV2): string {
-  const scope = manifest.answers[TS_HTTP_BOOTSTRAP_ID]?.npmScope;
-  if (!scope) {
-    throw new Error(
-      `${TS_CONTEXT_ID}: requires '${TS_HTTP_BOOTSTRAP_ID}' to have run first; npmScope not in manifest`,
-    );
-  }
-  return scope;
-}
-
 /**
  * Declares a package on the assembly's manifest, once.
  *
@@ -190,10 +192,11 @@ function bootstrapScope(manifest: ManifestV2): string {
  */
 function dependencyPatch(
   layout: TsLayoutPaths,
+  assembly: TsAssemblyPaths,
   pkg: string,
   workspaceDep: string,
 ): ContributionPatch {
-  const target = `${layout.restRoot}/package.json`;
+  const target = `${assembly.root}/package.json`;
   return {
     target,
     apply: (existing) => {
@@ -224,8 +227,8 @@ function dependencyPatch(
  * in nothing — which is the JVM failure this adapter family exists to
  * prevent.
  */
-function wiringPatch(layout: TsLayoutPaths, context: string): ContributionPatch {
-  const target = `${layout.restSrc}/main.ts`;
+function wiringPatch(assembly: TsAssemblyPaths, context: string): ContributionPatch {
+  const target = `${assembly.src}/main.ts`;
   const factory = `create${pascal(context)}ContextHandler`;
   const wiringImport = `import { ${factory} } from './${context}.ts';`;
   const open = 'createRegistryMediator([';
