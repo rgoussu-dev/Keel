@@ -60,10 +60,12 @@ clean. "The domain never imports the platform" is a rule `basic`
 holds by review; the [`modulith` layout](#module-layout) holds it with
 a `domain-knows-no-platform` lint.
 
-[`dev-env`](../verticals/dev-env.md) and
-[`observability`](../verticals/observability.md) are installed by
+[`dev-env`](../verticals/dev-env.md),
+[`observability`](../verticals/observability.md) and
+[`dev-container`](../verticals/dev-container.md) are installed by
 default (hand-rolled health endpoints, correlation-id middleware,
-OpenTelemetry over OTLP).
+OpenTelemetry over OTLP; a `.devcontainer/` joined to the dev
+compose project).
 
 ## Module layout
 

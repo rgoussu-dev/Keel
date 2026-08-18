@@ -124,7 +124,9 @@ The REST stacks additionally install
 [`dev-env`](../verticals/dev-env.md) (a `dev/compose.yaml` seed) and
 [`observability`](../verticals/observability.md) (health probes,
 correlation ids, OpenTelemetry, and a Grafana monitoring stack wired
-into the dev compose) by default.
+into the dev compose) by default. Every stack also installs
+[`dev-container`](../verticals/dev-container.md) — a `.devcontainer/`
+definition that joins the dev compose project when one exists.
 
 ## Module layout
 

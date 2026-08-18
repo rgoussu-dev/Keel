@@ -42,4 +42,6 @@ Design points:
   monitoring stack.
 - [`persistence`](persistence.md) — supplements this file with the
   dev database and the migrations one-shot.
+- [`dev-container`](dev-container.md) — joins this file's Compose
+  project so the workspace shares the dev environment's network.
 - [Verticals catalog](README.md)

@@ -1,0 +1,33 @@
+{
+  // Dev Container definition for <%= projectName %> — a reproducible
+  // containerized development environment. Open it with VS Code
+  // ("Dev Containers: Reopen in Container"), the `devcontainer` CLI,
+  // or GitHub Codespaces; the toolchain below is provisioned as
+  // features, so the host needs nothing but Docker.
+<% if (attachDevEnv) { -%>
+  //
+  // Compose-based on purpose: the workspace is one extra service
+  // (see compose.yaml here) layered onto ../dev/compose.yaml, so it
+  // joins the dev environment's own Compose project and network —
+  // the services there (a database, the monitoring stack) are
+  // reachable by their service names, and a dev env already running
+  // on the host is attached to, not restarted.
+  "name": "<%= projectName %>",
+  "dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"],
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/<%= projectName %>",
+  "overrideCommand": true,
+<% } else { -%>
+  "name": "<%= projectName %>",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+<% } -%>
+  "features": {
+<%- Object.entries(features)
+      .map(([id, opts]) => `    ${JSON.stringify(id)}: ${JSON.stringify(opts)}`)
+      .join(',\n') %>
+  },
+<% if (postCreateCommand) { -%>
+  "postCreateCommand": <%- JSON.stringify(postCreateCommand) %>,
+<% } -%>
+  "remoteUser": "vscode"
+}

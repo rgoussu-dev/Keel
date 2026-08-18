@@ -196,7 +196,8 @@ may not import the context's domain to reach one.
 `go-http` additionally installs [`dev-env`](../verticals/dev-env.md)
 and [`observability`](../verticals/observability.md) by default
 (hand-rolled `/health/live` + `/health/ready`, correlation-id
-middleware, OpenTelemetry over OTLP).
+middleware, OpenTelemetry over OTLP). Both Go stacks install
+[`dev-container`](../verticals/dev-container.md) by default.
 
 **And a third, and a fourth.** `--with-peer-context` is a flag on
 `keel new`, so it grows the project exactly once. Growing it

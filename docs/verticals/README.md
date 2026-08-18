@@ -27,6 +27,7 @@ instead, which has a name to give it.
 | [`vcs`](vcs.md)                           | git repo, default branch, optional `origin`                                                      | `vcs`                                                                                |
 | [`walking-skeleton`](walking-skeleton.md) | the thinnest runnable end-to-end project for the chosen stack                                    | `entrypoint`, `port-example`, `build-tool`, `agentic-baseline`                       |
 | [`dev-env`](dev-env.md)                   | `dev/compose.yaml` — local infra the dev loop needs but doesn't own                              | `compose-base`                                                                       |
+| [`dev-container`](dev-container.md)       | `.devcontainer/` — a containerized dev environment that attaches to the dev env when present     | `definition`                                                                         |
 | [`observability`](observability.md)       | health probes, correlation ids, OpenTelemetry, monitoring stack                                  | `health`, `request-context`, `telemetry`, `monitoring-stack`                         |
 | [`persistence`](persistence.md)           | SQL persistence: PostgreSQL, Unit-of-Work port, isolated migrations                              | `datasource`, `unit-of-work`, `repository-example`, `migrations`, `database-compose` |
 | [`gateway`](gateway.md)                   | the cross-service seam: gateway package, CORS, OpenAPI contract                                  | _none_ — fires purely on peer tags                                                   |
@@ -45,6 +46,7 @@ instead, which has a name to give it.
 | `vcs`              | ●       | ●        | ●           | ●            | ●         | ●                | ● (root or per repo)         |
 | `walking-skeleton` | ●       | ●        | ●           | ●            | ●         | ●                | ● per service                |
 | `dev-env`          | ➕      | ●        | ➕          | ●            | ●         | ➕               | ● backend                    |
+| `dev-container`    | ●       | ●        | ●           | ●            | ●         | ●                | ● per service                |
 | `observability`    | ⛔      | ●        | ⛔          | ●            | ●         | ⛔               | ● backend                    |
 | `persistence`      | ⛔      | ➕       | ⛔          | ➕           | ➕        | ⛔               | ➕ backend                   |
 | `gateway`          | —       | ➕ ¹     | —           | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
@@ -74,6 +76,7 @@ Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-gl
 | `vcs`              | `git` on PATH                                                                                    | —                                                                                                                                               |
 | `walking-skeleton` | the stack's toolchain (see the [stack pages](../stacks/README.md))                               | —                                                                                                                                               |
 | `dev-env`          | —                                                                                                | Docker + Compose to run `dev/compose.yaml`                                                                                                      |
+| `dev-container`    | —                                                                                                | Docker + a Dev Container client (VS Code, the `devcontainer` CLI, or Codespaces)                                                                |
 | `observability`    | Go stacks: `go` on PATH (`go mod tidy`); TS stacks: `npm`/`pnpm` (install runs)                  | Docker + Compose for the monitoring stack; an OTLP endpoint via `OTEL_*` env vars                                                               |
 | `persistence`      | Go: `go` on PATH (`go mod tidy`); Rust: `cargo` (`cargo check`); TS: `npm`/`pnpm` (install runs) | Docker + Compose for the dev database and the generated tests (Testcontainers); `DB_URL` (+ `DB_USERNAME`/`DB_PASSWORD` on the JVM) env in prod |
 | `gateway`          | both projects linked (`keel link`)                                                               | —                                                                                                                                               |

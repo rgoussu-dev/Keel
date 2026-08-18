@@ -1,0 +1,16 @@
+# The dev container's workspace service — an overlay on
+# ../dev/compose.yaml (devcontainer.json lists both files), so
+# opening the dev container joins the dev environment's Compose
+# project: same network, its services reachable by name, containers
+# already running on the host attached to rather than restarted.
+#
+# Keep project infra out of this file — it only describes the
+# workspace. Local infra belongs in dev/compose.yaml, where it also
+# serves developers who work outside the container.
+services:
+  workspace:
+    image: mcr.microsoft.com/devcontainers/base:ubuntu
+    init: true
+    volumes:
+      - ..:/workspaces/<%= projectName %>:cached
+    command: sleep infinity
