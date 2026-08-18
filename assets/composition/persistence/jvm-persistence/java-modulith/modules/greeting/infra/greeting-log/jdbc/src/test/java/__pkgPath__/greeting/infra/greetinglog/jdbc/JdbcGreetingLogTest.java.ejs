@@ -12,8 +12,8 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.ds.PGSimpleDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
+import <%- dsFqcn %>;
+import org.testcontainers.containers.<%= tcClass %>;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -23,7 +23,7 @@ import <%= basePackage %>.greeting.domain.contract.greetinglog.RecordedGreeting;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Contract test of the JDBC adapter against a real PostgreSQL
+ * Contract test of the JDBC adapter against a real <%= engineName %>
  * (Testcontainers), with the schema applied from the same SQL the
  * isolated migration runner ships ({@code migrations/sql/}).
  * Skipped when no Docker daemon is available.
@@ -32,17 +32,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class JdbcGreetingLogTest {
 
     @Container
-    private static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:18-alpine");
+    private static final <%= tcClass %><?> DATABASE =
+            new <%= tcClass %><>("<%= dbImage %>");
 
     private static DataSource dataSource;
 
     @BeforeAll
-    static void migrate() {
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setUrl(POSTGRES.getJdbcUrl());
-        ds.setUser(POSTGRES.getUsername());
-        ds.setPassword(POSTGRES.getPassword());
+    static void migrate() throws SQLException {
+        <%= dsClass %> ds = new <%= dsClass %>();
+        ds.setUrl(DATABASE.getJdbcUrl());
+        ds.setUser(DATABASE.getUsername());
+        ds.setPassword(DATABASE.getPassword());
         dataSource = ds;
         Flyway.configure()
                 .dataSource(ds)
@@ -55,7 +55,7 @@ class JdbcGreetingLogTest {
     void emptyLog() throws SQLException {
         try (Connection connection = dataSource.getConnection();
                 Statement statement = connection.createStatement()) {
-            statement.execute("truncate table greeting restart identity");
+            statement.execute("<%= truncateGreetingSql %>");
         }
     }
 

@@ -169,11 +169,15 @@ export async function scaffold(spec: GoProjectSpec, cwd: string): Promise<void> 
  * tidy` runs for real — fetching the modules the slice imports is
  * part of what the install promises.
  */
-export async function addVertical(vertical: string, cwd: string): Promise<void> {
+export async function addVertical(
+  vertical: string,
+  cwd: string,
+  answers: Readonly<Record<string, Record<string, string>>> = {},
+): Promise<void> {
   const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
-      addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+      addVerticalCommand({ cwd, vertical, answers, interactive: false, dryRun: false }),
     ),
   );
 }

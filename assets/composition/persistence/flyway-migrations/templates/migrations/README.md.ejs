@@ -23,7 +23,7 @@ Configuration is environment-only (12-factor):
 ```sh
 docker build -t <%= projectName %>-migrations migrations/
 docker run --rm \
-  -e FLYWAY_URL=jdbc:postgresql://<host>:5432/<database> \
+  -e FLYWAY_URL=<%= jdbcUrlExample %> \
   -e FLYWAY_USER=… -e FLYWAY_PASSWORD=… \
   <%= projectName %>-migrations
 ```

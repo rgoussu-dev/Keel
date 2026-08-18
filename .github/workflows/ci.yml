@@ -169,6 +169,16 @@ jobs:
               tests/e2e/modulith-quarkus-cli-maven.test.ts
               tests/e2e/modulith-baseline.test.ts
               tests/e2e/modulith-persistence.test.ts
+          # The engine dial's cell: `modulith-persistence` with the
+          # sticky engine answer preset to mariadb. A shard of its own
+          # rather than a seventh file above — that shard is the
+          # matrix floor (371s on run 229), so co-locating another
+          # persistence build would raise the whole e2e phase's wall,
+          # where one more parallel shard raises nothing.
+          - id: jvm-persistence-mariadb
+            tools: java javac gradle
+            files: >-
+              tests/e2e/modulith-persistence-mariadb.test.ts
           - id: jvm-add-module-quarkus-rest-gradle
             tools: java javac gradle
             files: >-
@@ -339,6 +349,12 @@ jobs:
           # 90.28s wall, so the job is bound by a file none of this
           # work added. Splitting further would buy attribution and no
           # wall clock. `docker` remains for `fullstack-go` alone.
+          # `modulith-go-persistence-liquibase` rides here rather than
+          # in a shard of its own: it is the persistence cell's ~64s
+          # shape again with a different migrations/ unit, and this
+          # job's wall is `fullstack-go` — a parallel file under the
+          # floor costs nothing, where a new shard would need the
+          # exact-match `Setup Go` condition widened to earn the same.
           - id: go
             tools: go docker
             files: >-
@@ -346,6 +362,7 @@ jobs:
               tests/e2e/modulith-go-cli.test.ts
               tests/e2e/modulith-go-http.test.ts
               tests/e2e/modulith-go-persistence.test.ts
+              tests/e2e/modulith-go-persistence-liquibase.test.ts
               tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts

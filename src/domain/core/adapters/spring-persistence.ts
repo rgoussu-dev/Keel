@@ -3,7 +3,7 @@
  * SQL persistence vertical for the Spring Boot REST skeleton (Java):
  *
  *   - **datasource**: `spring-boot-starter-jdbc` (Hikari pool) + the
- *     PostgreSQL driver. The default profile targets the dev compose
+ *     dialed engine's driver. The default profile targets the dev compose
  *     database and applies Flyway at startup (the local loop); the
  *     emitted `application-prod.properties` (activate with
  *     `SPRING_PROFILES_ACTIVE=prod`) makes config environment-only
@@ -48,7 +48,12 @@ import {
   persistenceReadmePatch,
   propertiesTarget,
 } from './jvm-persistence.js';
-import { databaseName, sqlEngine } from './persistence-engine.js';
+import {
+  databaseName,
+  PERSISTENCE_DIALS_ID,
+  sqlEngine,
+  type SqlEngineSpec,
+} from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
@@ -65,18 +70,22 @@ const UOW_MODULE = 'spring-tx';
 const DEPS_GUARD = 'spring-boot-starter-jdbc';
 const GRADLE_FRAMEWORK_ANCHOR =
   'implementation("org.springframework.boot:spring-boot-starter-webmvc")';
-const GRADLE_FRAMEWORK_DEPS = `    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+const gradleFrameworkDeps = (
+  engine: SqlEngineSpec,
+): string => `    implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-database-postgresql")
-    runtimeOnly("org.postgresql:postgresql")`;
+    implementation("${engine.flywayModule.groupId}:${engine.flywayModule.artifactId}")
+    runtimeOnly("${engine.jdbcDriver.groupId}:${engine.jdbcDriver.artifactId}")`;
 const GRADLE_TEST_ANCHOR =
   'testImplementation("org.springframework.boot:spring-boot-starter-test")';
-const GRADLE_TEST_DEPS = `    testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:postgresql:1.21.4")`;
+const gradleTestDeps = (
+  engine: SqlEngineSpec,
+): string => `    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:${engine.testcontainers.artifactId}:1.21.4")`;
 
 const MAVEN_FRAMEWORK_ANCHOR =
   '<artifactId>spring-boot-starter-webmvc</artifactId>\n    </dependency>';
-const MAVEN_FRAMEWORK_DEPS = `    <dependency>
+const mavenFrameworkDeps = (engine: SqlEngineSpec): string => `    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc</artifactId>
     </dependency>
@@ -85,12 +94,12 @@ const MAVEN_FRAMEWORK_DEPS = `    <dependency>
       <artifactId>flyway-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
+      <groupId>${engine.flywayModule.groupId}</groupId>
+      <artifactId>${engine.flywayModule.artifactId}</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
+      <groupId>${engine.jdbcDriver.groupId}</groupId>
+      <artifactId>${engine.jdbcDriver.artifactId}</artifactId>
       <scope>runtime</scope>
     </dependency>`;
 const MAVEN_TEST_ANCHOR = `    <dependency>
@@ -98,14 +107,14 @@ const MAVEN_TEST_ANCHOR = `    <dependency>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>`;
-const MAVEN_TEST_DEPS = `    <dependency>
+const mavenTestDeps = (engine: SqlEngineSpec): string => `    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-testcontainers</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>${engine.testcontainers.artifactId}</artifactId>
       <version>1.21.4</version>
       <scope>test</scope>
     </dependency>`;
@@ -117,16 +126,19 @@ const PROPERTIES_GUARD = '--- persistence (installed by keel)';
  * profile is the dev loop; the prod posture lives in the emitted
  * `application-prod.properties`. Exported for the vertical tests.
  */
-export function springPersistencePropertiesBlock(database: string, layout: JvmLayoutPaths): string {
-  const engine = sqlEngine();
+export function springPersistencePropertiesBlock(
+  database: string,
+  layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
+): string {
   return `# ${PROPERTIES_GUARD} ---------------------------------
-# PostgreSQL over JDBC (Hikari pool). These defaults are the dev
+# ${engine.name} over JDBC (Hikari pool). These defaults are the dev
 # loop: the compose database (dev/compose.yaml) plus Flyway applying
 # the isolated runner's SQL (migrations/ — its own deployment unit)
 # at startup. Production activates the prod profile
 # (SPRING_PROFILES_ACTIVE=prod, see application-prod.properties):
 # environment-only config, no in-process migrations. Tests get a
-# throwaway PostgreSQL via Testcontainers (@ServiceConnection).
+# throwaway ${engine.name} via Testcontainers (@ServiceConnection).
 # With the observability vertical, the datasource health indicator
 # joins readiness and Hikari pool metrics join telemetry.
 spring.datasource.url=\${DB_URL:${engine.jdbcUrl('localhost', database)}}
@@ -168,6 +180,7 @@ export function patchGreetControllerTest(existing: string): string {
 function frameworkDepsPatch(
   buildSystem: 'gradle' | 'maven',
   layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
 ): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
@@ -175,8 +188,11 @@ function frameworkDepsPatch(
       apply: eolAware((existing) => {
         if (existing.includes(DEPS_GUARD)) return existing;
         return existing
-          .replace(MAVEN_FRAMEWORK_ANCHOR, `${MAVEN_FRAMEWORK_ANCHOR}\n${MAVEN_FRAMEWORK_DEPS}`)
-          .replace(MAVEN_TEST_ANCHOR, `${MAVEN_TEST_ANCHOR}\n${MAVEN_TEST_DEPS}`);
+          .replace(
+            MAVEN_FRAMEWORK_ANCHOR,
+            `${MAVEN_FRAMEWORK_ANCHOR}\n${mavenFrameworkDeps(engine)}`,
+          )
+          .replace(MAVEN_TEST_ANCHOR, `${MAVEN_TEST_ANCHOR}\n${mavenTestDeps(engine)}`);
       }),
     };
   }
@@ -185,8 +201,11 @@ function frameworkDepsPatch(
     apply: eolAware((existing) => {
       if (existing.includes(DEPS_GUARD)) return existing;
       return existing
-        .replace(GRADLE_FRAMEWORK_ANCHOR, `${GRADLE_FRAMEWORK_ANCHOR}\n${GRADLE_FRAMEWORK_DEPS}`)
-        .replace(GRADLE_TEST_ANCHOR, `${GRADLE_TEST_ANCHOR}\n${GRADLE_TEST_DEPS}`);
+        .replace(
+          GRADLE_FRAMEWORK_ANCHOR,
+          `${GRADLE_FRAMEWORK_ANCHOR}\n${gradleFrameworkDeps(engine)}`,
+        )
+        .replace(GRADLE_TEST_ANCHOR, `${GRADLE_TEST_ANCHOR}\n${gradleTestDeps(engine)}`);
     }),
   };
 }
@@ -230,6 +249,9 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     vertical: 'persistence',
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.spring', 'arch.server-http', `lang.${language}`] },
+    // The dials adapter must have asked its questions before this one
+    // reads them through sqlEngine().
+    after: [PERSISTENCE_DIALS_ID],
     async contribute(ctx) {
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
@@ -237,8 +259,9 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         'spring',
         language,
       );
+      const engine = sqlEngine(ctx.manifest);
       const layout = jvmLayout(ctx.manifest.tags);
-      const vars = jvmPersistenceVars(basePackage, projectName, layout);
+      const vars = jvmPersistenceVars(basePackage, projectName, layout, engine);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
@@ -252,23 +275,23 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         files: [...shared, ...sources, ...build],
         patches: [
           moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
-          frameworkDepsPatch(buildSystem, layout),
+          frameworkDepsPatch(buildSystem, layout, engine),
           executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE, layout),
           coreTestDepsPatch(buildSystem, basePackage, layout),
           {
             target: propertiesTarget(layout),
             apply: eolAware((existing) => {
               if (existing.includes(PROPERTIES_GUARD)) return existing;
-              return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database, layout).trim()}\n`;
+              return `${existing.trimEnd()}\n\n${springPersistencePropertiesBlock(database, layout, engine).trim()}\n`;
             }),
           },
           {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
             apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
           },
-          persistenceReadmePatch(layout),
+          persistenceReadmePatch(layout, engine),
         ],
-        tagsAdd: [sqlEngine().tag],
+        tagsAdd: [engine.tag],
       };
     },
   };

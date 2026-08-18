@@ -2,11 +2,11 @@
  * `persistence/quarkus-persistence` adapter — the service side of the
  * SQL persistence vertical for the Quarkus REST skeleton (Java):
  *
- *   - **datasource**: the PostgreSQL JDBC driver + Agroal pool wired
- *     through `application.properties` — prod config is env-only
- *     (12-factor `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`), `%dev`
- *     targets the compose database, `%test` gets a throwaway
- *     PostgreSQL from Quarkus Dev Services (Testcontainers). Pool
+ *   - **datasource**: the dialed engine's JDBC driver + Agroal pool
+ *     wired through `application.properties` — prod config is
+ *     env-only (12-factor `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`),
+ *     `%dev` targets the compose database, `%test` gets a throwaway
+ *     database from Quarkus Dev Services (Testcontainers). Pool
  *     health feeds the readiness probe and pool metrics + JDBC spans
  *     feed telemetry when the observability vertical is installed.
  *   - **unit-of-work**: the `UnitOfWork` secondary port in the
@@ -52,7 +52,12 @@ import {
   persistenceReadmePatch,
   propertiesTarget,
 } from './jvm-persistence.js';
-import { databaseName, sqlEngine } from './persistence-engine.js';
+import {
+  databaseName,
+  PERSISTENCE_DIALS_ID,
+  sqlEngine,
+  type SqlEngineSpec,
+} from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
@@ -66,23 +71,26 @@ const BUILD_TEMPLATE_ROOT = 'composition/persistence/quarkus-persistence/build';
 
 const UOW_MODULE = 'jta';
 
-const DEPS_GUARD = 'quarkus-jdbc-postgresql';
+// Prefix-shaped so the guard holds whichever engine the dial picked.
+const DEPS_GUARD = 'quarkus-jdbc-';
 const GRADLE_QUARKUS_ANCHOR = 'implementation("io.quarkus:quarkus-rest-jackson")';
-const GRADLE_QUARKUS_DEPS = `    implementation("io.quarkus:quarkus-jdbc-postgresql")
+const gradleQuarkusDeps = (engine: SqlEngineSpec): string =>
+  `    implementation("io.quarkus:quarkus-jdbc-${engine.quarkusDbKind}")
     implementation("io.quarkus:quarkus-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql")`;
+    implementation("${engine.flywayModule.groupId}:${engine.flywayModule.artifactId}")`;
 const MAVEN_QUARKUS_ANCHOR = '<artifactId>quarkus-rest-jackson</artifactId>\n    </dependency>';
-const MAVEN_QUARKUS_DEPS = `    <dependency>
+const mavenQuarkusDeps = (engine: SqlEngineSpec): string =>
+  `    <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-jdbc-postgresql</artifactId>
+      <artifactId>quarkus-jdbc-${engine.quarkusDbKind}</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-flyway</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
+      <groupId>${engine.flywayModule.groupId}</groupId>
+      <artifactId>${engine.flywayModule.artifactId}</artifactId>
     </dependency>`;
 
 const PROPERTIES_GUARD = '--- persistence (installed by keel)';
@@ -96,8 +104,8 @@ export function persistencePropertiesBlock(
   database: string,
   telemetry: boolean,
   layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
 ): string {
-  const engine = sqlEngine();
   const locations = migrationsLocations(layout);
   const telemetryLines = telemetry
     ? `# JDBC spans join the traces the observability vertical exports.
@@ -105,11 +113,11 @@ quarkus.datasource.jdbc.telemetry=true
 `
     : '';
   return `# ${PROPERTIES_GUARD} ---------------------------------
-# PostgreSQL over JDBC (Agroal pool). Prod config is environment-only
+# ${engine.name} over JDBC (Agroal pool). Prod config is environment-only
 # (12-factor): set DB_URL, DB_USERNAME, DB_PASSWORD. %dev targets the
 # compose database (dev/compose.yaml); %test gets a throwaway
-# PostgreSQL from Dev Services (Testcontainers — needs Docker).
-quarkus.datasource.db-kind=postgresql
+# ${engine.name} from Dev Services (Testcontainers — needs Docker).
+quarkus.datasource.db-kind=${engine.quarkusDbKind}
 quarkus.datasource.devservices.image-name=${engine.image}
 %prod.quarkus.datasource.jdbc.url=\${DB_URL}
 %prod.quarkus.datasource.username=\${DB_USERNAME}
@@ -136,6 +144,7 @@ ${telemetryLines}`;
 function frameworkDepsPatch(
   buildSystem: 'gradle' | 'maven',
   layout: JvmLayoutPaths,
+  engine: SqlEngineSpec,
 ): ContributionPatch {
   if (buildSystem === 'maven') {
     return {
@@ -144,7 +153,7 @@ function frameworkDepsPatch(
         if (existing.includes(DEPS_GUARD)) return existing;
         return existing.replace(
           MAVEN_QUARKUS_ANCHOR,
-          `${MAVEN_QUARKUS_ANCHOR}\n${MAVEN_QUARKUS_DEPS}`,
+          `${MAVEN_QUARKUS_ANCHOR}\n${mavenQuarkusDeps(engine)}`,
         );
       }),
     };
@@ -155,7 +164,7 @@ function frameworkDepsPatch(
       if (existing.includes(DEPS_GUARD)) return existing;
       return existing.replace(
         GRADLE_QUARKUS_ANCHOR,
-        `${GRADLE_QUARKUS_ANCHOR}\n${GRADLE_QUARKUS_DEPS}`,
+        `${GRADLE_QUARKUS_ANCHOR}\n${gradleQuarkusDeps(engine)}`,
       );
     }),
   };
@@ -170,6 +179,9 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
     vertical: 'persistence',
     covers: ['datasource', 'unit-of-work', 'repository-example'],
     predicate: { requires: ['framework.quarkus', 'arch.server-http', `lang.${language}`] },
+    // The dials adapter must have asked its questions before this one
+    // reads them through sqlEngine().
+    after: [PERSISTENCE_DIALS_ID],
     async contribute(ctx) {
       const { basePackage, projectName } = jvmPersistenceBootstrapAnswers(
         ctx.manifest,
@@ -177,8 +189,9 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         'quarkus',
         language,
       );
+      const engine = sqlEngine(ctx.manifest);
       const layout = jvmLayout(ctx.manifest.tags);
-      const vars = jvmPersistenceVars(basePackage, projectName, layout);
+      const vars = jvmPersistenceVars(basePackage, projectName, layout, engine);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const suffix = layoutSuffix(layout);
       const [shared, sources, build] = await Promise.all([
@@ -191,7 +204,7 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         files: [...shared, ...sources, ...build],
         patches: [
           moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
-          frameworkDepsPatch(buildSystem, layout),
+          frameworkDepsPatch(buildSystem, layout, engine),
           executableProjectDepsPatch(buildSystem, basePackage, UOW_MODULE, layout),
           coreTestDepsPatch(buildSystem, basePackage, layout),
           {
@@ -202,12 +215,13 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
                 database,
                 observabilityInstalled(ctx.manifest),
                 layout,
+                engine,
               ).trim()}\n`;
             }),
           },
-          persistenceReadmePatch(layout),
+          persistenceReadmePatch(layout, engine),
         ],
-        tagsAdd: [sqlEngine().tag],
+        tagsAdd: [engine.tag],
       };
     },
   };

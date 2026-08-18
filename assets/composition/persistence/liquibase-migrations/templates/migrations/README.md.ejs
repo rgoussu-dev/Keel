@@ -1,0 +1,43 @@
+# migrations — the schema's own deployment unit
+
+Database migrations are deployed **separately from the service**: this
+directory builds a self-contained [Liquibase](https://www.liquibase.com/)
+container that runs against the database and exits. The service never
+migrates in production — it starts against a schema this runner
+already put in place, so a bad migration blocks the rollout instead
+of taking the fleet down, and the database credentials that can alter
+schema never ship inside the service image.
+
+## Layout
+
+- `sql/` — plain-SQL migrations, one concern per file, named
+  `V<version>__<description>.sql` (e.g. `V2__add_greeting_channel.sql`)
+  so the directory reads in apply order. Never edit an applied
+  migration — add the next one.
+- `changelog.yaml` — the YAML changelog: one changeset per script,
+  wrapping it via `sqlFile`. Applied changesets are tracked in
+  `DATABASECHANGELOG`. Append a changeset whenever you add a script.
+- `Dockerfile` — the runner image: official Liquibase + the
+  changelog and `sql/` tree.
+
+## Running
+
+Configuration is environment-only (12-factor):
+
+```sh
+docker build -t <%= projectName %>-migrations migrations/
+docker run --rm \
+  -e LIQUIBASE_COMMAND_URL=<%= jdbcUrlExample %> \
+  -e LIQUIBASE_COMMAND_USERNAME=… -e LIQUIBASE_COMMAND_PASSWORD=… \
+  <%= projectName %>-migrations
+```
+
+In the dev loop you rarely do this by hand:
+
+- `docker compose -f dev/compose.yaml up` runs the same container
+  once against the dev database (service `migrations`); re-run after
+  adding a script with
+  `docker compose -f dev/compose.yaml run --rm migrations`.
+- The generated contract tests apply the same `sql/` directly against
+  their throwaway Testcontainers database, so the schema the tests
+  see is the schema this runner ships.

@@ -5,9 +5,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+<% if (engineId === 'postgres') { -%>
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+<% } else { -%>
+import java.sql.Timestamp;
+import java.time.Instant;
+<% } -%>
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,13 +48,19 @@ public final class JdbcGreetingLog implements GreetingLog {
                 PreparedStatement statement =
                         connection.prepareStatement(INSERT, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, name);
+<% if (engineId === 'postgres') { -%>
             statement.setObject(2, OffsetDateTime.ofInstant(greetedAt, ZoneOffset.UTC));
+<% } else { -%>
+            statement.setTimestamp(2, Timestamp.from(greetedAt));
+<% } -%>
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (!keys.next()) {
                     throw new IllegalStateException("insert into greeting returned no key");
                 }
-                return new RecordedGreeting(keys.getLong("id"), name, greetedAt);
+                // By position: PostgreSQL returns the inserted row,
+                // MariaDB a lone insert-id column — the key leads both.
+                return new RecordedGreeting(keys.getLong(1), name, greetedAt);
             }
         } catch (SQLException e) {
             throw new IllegalStateException("could not append to the greeting log", e);
@@ -67,7 +78,11 @@ public final class JdbcGreetingLog implements GreetingLog {
                     recent.add(new RecordedGreeting(
                             rows.getLong("id"),
                             rows.getString("name"),
+<% if (engineId === 'postgres') { -%>
                             rows.getObject("greeted_at", OffsetDateTime.class).toInstant()));
+<% } else { -%>
+                            rows.getTimestamp("greeted_at").toInstant()));
+<% } -%>
                 }
                 return List.copyOf(recent);
             }

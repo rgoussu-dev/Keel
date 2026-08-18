@@ -37,7 +37,7 @@
  * Every patch is guarded so re-installing is a no-op.
  */
 
-import { databaseName, sqlEngine } from './persistence-engine.js';
+import { databaseName, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-engine.js';
 import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
 import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
@@ -225,7 +225,11 @@ export const tsPersistenceAdapter: Adapter = {
   vertical: 'persistence',
   covers: ['datasource', 'unit-of-work', 'repository-example'],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
+  // The dials adapter must have asked its questions before this one
+  // reads them through sqlEngine().
+  after: [PERSISTENCE_DIALS_ID],
   async contribute(ctx) {
+    const engine = sqlEngine(ctx.manifest);
     const answers = ctx.manifest.answers[TS_HTTP_BOOTSTRAP_ID];
     const npmScope = answers?.npmScope;
     if (!npmScope) {
@@ -239,7 +243,8 @@ export const tsPersistenceAdapter: Adapter = {
     const shared = {
       kernelSpec: layout.kernelPkg,
       workspaceDep: ws.workspaceDep,
-      devUrl: sqlEngine().devUrl('localhost', databaseName(ctx.manifest)),
+      devUrl: engine.devUrl('localhost', databaseName(ctx.manifest)),
+      dbImage: engine.image,
     };
     const renders: (readonly [string, string, Readonly<Record<string, string>>])[] = [
       [
@@ -344,7 +349,7 @@ export const tsPersistenceAdapter: Adapter = {
       actions: [
         workspaceInstall(TS_PERSISTENCE_ID, ws.pm, 'fetch pg and the new workspace packages'),
       ],
-      tagsAdd: [sqlEngine().tag],
+      tagsAdd: [engine.tag],
     };
   },
 };

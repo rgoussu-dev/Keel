@@ -32,6 +32,9 @@ import {
   MODULITH_LAYOUT_TAG,
 } from '../../../../src/domain/core/adapters/jvm-module-layout.js';
 import { FLYWAY_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/flyway-migrations.js';
+import { LIQUIBASE_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/liquibase-migrations.js';
+import { MARIADB, POSTGRES } from '../../../../src/domain/core/adapters/persistence-engine.js';
+import { databaseComposeAdapter } from '../../../../src/domain/core/adapters/database-compose.js';
 import {
   persistencePropertiesBlock,
   QUARKUS_PERSISTENCE_ID,
@@ -114,7 +117,16 @@ afterEach(async () => {
 
 const installChain = async (
   tags: string[],
-  { devEnv = true, observability = false }: { devEnv?: boolean; observability?: boolean } = {},
+  {
+    devEnv = true,
+    observability = false,
+    answers = {},
+  }: {
+    devEnv?: boolean;
+    observability?: boolean;
+    /** Sticky answers preset before any install, as `--set` would. */
+    answers?: Record<string, Record<string, string>>;
+  } = {},
 ): Promise<{ tree: FsTree; cwd: string; manifest: ManifestV2 }> => {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-persistence-'));
   cwds.push(cwd);
@@ -122,6 +134,7 @@ const installChain = async (
   let manifest: ManifestV2 = {
     ...emptyManifestV2('2026-08-11T00:00:00Z', '0.0.0-test'),
     tags,
+    answers,
   };
   const deps = {
     tree,
@@ -153,6 +166,7 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
     expect(adapters.map((a) => a.id).sort()).toEqual([
       DATABASE_COMPOSE_ID,
       FLYWAY_MIGRATIONS_ID,
+      LIQUIBASE_MIGRATIONS_ID,
       QUARKUS_PERSISTENCE_ID,
     ]);
     // The migrations one-shot patches after the database it gates on.
@@ -205,7 +219,7 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
   ])('selects the per-stack adapter on %s', (_label, tags, adapterId) => {
     const adapters = resolveVertical(persistenceVertical, tags);
     expect(adapters.map((a) => a.id).sort()).toEqual(
-      [DATABASE_COMPOSE_ID, FLYWAY_MIGRATIONS_ID, adapterId].sort(),
+      [DATABASE_COMPOSE_ID, FLYWAY_MIGRATIONS_ID, LIQUIBASE_MIGRATIONS_ID, adapterId].sort(),
     );
   });
 
@@ -812,22 +826,249 @@ class GreetControllerTest {
   });
 
   it('keeps the telemetry line out of the properties block until observability is installed', () => {
-    expect(persistencePropertiesBlock('app_db', false, BASIC_LAYOUT)).not.toContain(
+    expect(persistencePropertiesBlock('app_db', false, BASIC_LAYOUT, POSTGRES)).not.toContain(
       'quarkus.datasource.jdbc.telemetry',
     );
-    expect(persistencePropertiesBlock('app_db', true, BASIC_LAYOUT)).toContain(
+    expect(persistencePropertiesBlock('app_db', true, BASIC_LAYOUT, POSTGRES)).toContain(
       'quarkus.datasource.jdbc.telemetry=true',
     );
-    expect(persistencePropertiesBlock('app_db', true, BASIC_LAYOUT)).toContain(
+    expect(persistencePropertiesBlock('app_db', true, BASIC_LAYOUT, POSTGRES)).toContain(
       'jdbc:postgresql://localhost:5432/app_db',
     );
     // The assembly sits three directories deep under `basic` and two
     // under the modulith, so Flyway's filesystem location follows.
-    expect(persistencePropertiesBlock('app_db', false, BASIC_LAYOUT)).toContain(
+    expect(persistencePropertiesBlock('app_db', false, BASIC_LAYOUT, POSTGRES)).toContain(
       'filesystem:../../../migrations/sql',
     );
-    expect(persistencePropertiesBlock('app_db', false, MODULITH_LAYOUT)).toContain(
+    expect(persistencePropertiesBlock('app_db', false, MODULITH_LAYOUT, POSTGRES)).toContain(
       'filesystem:../../migrations/sql',
     );
+  });
+});
+
+describe('the persistence dials (engine + migrations tool)', () => {
+  it('declares both dials as sticky questions on database-compose', () => {
+    const questions = databaseComposeAdapter.questions ?? [];
+    expect(questions.map((q) => q.id)).toEqual(['engine', 'migrations']);
+    expect(questions.every((q) => q.memory === 'sticky')).toBe(true);
+    expect(questions.map((q) => q.default)).toEqual(['postgres', 'flyway']);
+  });
+
+  it('threads mariadb through the whole Quarkus slice', async () => {
+    const { tree, manifest } = await installChain([...QUARKUS_JAVA, 'pkg.gradle'], {
+      answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
+    });
+
+    // Runtime config: db-kind, Dev Services image and the %dev url
+    // all follow the dial.
+    const properties = read(
+      tree,
+      'application/rest/executable/src/main/resources/application.properties',
+    );
+    expect(properties).toContain('quarkus.datasource.db-kind=mariadb');
+    expect(properties).toContain('quarkus.datasource.devservices.image-name=mariadb:12');
+    expect(properties).toContain(
+      '%dev.quarkus.datasource.jdbc.url=jdbc:mariadb://localhost:3306/walking_skeleton',
+    );
+
+    // The build follows: driver + Flyway database module, in the
+    // assembly and in the JDBC module's own test dependencies.
+    const executableBuild = read(tree, 'application/rest/executable/build.gradle.kts');
+    expect(executableBuild).toContain('io.quarkus:quarkus-jdbc-mariadb');
+    expect(executableBuild).toContain('org.flywaydb:flyway-mysql');
+    expect(executableBuild).not.toContain('flyway-database-postgresql');
+    const jdbcBuild = read(tree, 'infrastructure/greeting-log/jdbc/build.gradle.kts');
+    expect(jdbcBuild).toContain('org.mariadb.jdbc:mariadb-java-client:3.5.10');
+    expect(jdbcBuild).toContain('org.testcontainers:mariadb:1.21.4');
+    expect(jdbcBuild).toContain('org.flywaydb:flyway-mysql:13.2.0');
+
+    // The contract test and the Testcontainers image follow the
+    // chosen engine, per the dial's contract.
+    const jdbcTest = read(
+      tree,
+      'infrastructure/greeting-log/jdbc/src/test/java/com/example/greetinglog/jdbc/JdbcGreetingLogTest.java',
+    );
+    expect(jdbcTest).toContain('new MariaDBContainer<>("mariadb:12")');
+    expect(jdbcTest).toContain('import org.mariadb.jdbc.MariaDbDataSource;');
+    expect(jdbcTest).toContain('statement.execute("truncate table greeting")');
+    expect(jdbcTest).not.toContain('restart identity');
+
+    // The adapter's time mapping and the schema speak the dialect.
+    const jdbcAdapter = read(
+      tree,
+      'infrastructure/greeting-log/jdbc/src/main/java/com/example/greetinglog/jdbc/JdbcGreetingLog.java',
+    );
+    expect(jdbcAdapter).toContain('Timestamp.from(greetedAt)');
+    expect(jdbcAdapter).not.toContain('OffsetDateTime');
+    const migration = read(tree, 'migrations/sql/V1__create_greeting.sql');
+    expect(migration).toContain('bigint auto_increment primary key');
+    expect(migration).toContain('datetime(6) not null');
+
+    // The dev environment follows: container, env dialect,
+    // healthcheck, data dir, and the one-shot's JDBC url.
+    const compose = read(tree, 'dev/compose.yaml');
+    expect(compose).toContain('image: mariadb:12');
+    expect(compose).toContain('MARIADB_DATABASE: walking_skeleton');
+    expect(compose).toContain('MARIADB_RANDOM_ROOT_PASSWORD');
+    expect(compose).toContain('healthcheck.sh');
+    expect(compose).toContain('db-data:/var/lib/mysql');
+    expect(compose).toContain('FLYWAY_URL: jdbc:mariadb://db:3306/walking_skeleton');
+
+    // The choice is recorded: capability tag + sticky memory.
+    expect(manifest.tags).toContain('db.mariadb');
+    expect(manifest.tags).not.toContain('db.postgres');
+    expect(manifest.answers[DATABASE_COMPOSE_ID]?.['engine']).toBe('mariadb');
+  });
+
+  it("threads mariadb through Spring's Testcontainers config and driver deps", async () => {
+    const tags = [
+      'lang.java',
+      'runtime.jvm',
+      'framework.spring',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.gradle',
+    ];
+    const { tree } = await installChain(tags, {
+      answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
+    });
+
+    const executableBuild = read(tree, 'application/rest/executable/build.gradle.kts');
+    expect(executableBuild).toContain('runtimeOnly("org.mariadb.jdbc:mariadb-java-client")');
+    expect(executableBuild).toContain('org.testcontainers:mariadb:1.21.4');
+    const tcConfig = read(
+      tree,
+      'application/rest/executable/src/test/java/com/example/rest/TestcontainersConfiguration.java',
+    );
+    expect(tcConfig).toContain('new MariaDBContainer<>("mariadb:12")');
+    expect(
+      read(tree, 'application/rest/executable/src/main/resources/application.properties'),
+    ).toContain('spring.datasource.url=${DB_URL:jdbc:mariadb://localhost:3306/walking_skeleton}');
+  });
+
+  it("threads mariadb through Micronaut's fixture and driver class", async () => {
+    const tags = [
+      'lang.java',
+      'runtime.jvm',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.gradle',
+    ];
+    const { tree } = await installChain(tags, {
+      answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
+    });
+
+    const properties = read(
+      tree,
+      'application/rest/executable/src/main/resources/application.properties',
+    );
+    expect(properties).toContain('datasources.default.driver-class-name=org.mariadb.jdbc.Driver');
+    // The fixture is named per engine, and the patched walking-
+    // skeleton test extends the one that was emitted.
+    const fixture = read(
+      tree,
+      'application/rest/executable/src/test/java/com/example/rest/MariaDbTestFixture.java',
+    );
+    expect(fixture).toContain('abstract class MariaDbTestFixture');
+    expect(fixture).toContain('new MariaDBContainer<>("mariadb:12")');
+    expect(
+      read(
+        tree,
+        'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java',
+      ),
+    ).toContain('extends MariaDbTestFixture');
+  });
+
+  it('renders the Kotlin trees under mariadb too (the templates branch per engine)', async () => {
+    const tags = [
+      'lang.kotlin',
+      'runtime.jvm',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.gradle',
+    ];
+    const { tree } = await installChain(tags, {
+      answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
+    });
+
+    const jdbcTest = read(
+      tree,
+      'infrastructure/greeting-log/jdbc/src/test/kotlin/com/example/greetinglog/jdbc/JdbcGreetingLogTest.kt',
+    );
+    expect(jdbcTest).toContain('MariaDBContainer("mariadb:12")');
+    expect(jdbcTest).toContain('import org.mariadb.jdbc.MariaDbDataSource');
+    const jdbcAdapter = read(
+      tree,
+      'infrastructure/greeting-log/jdbc/src/main/kotlin/com/example/greetinglog/jdbc/JdbcGreetingLog.kt',
+    );
+    expect(jdbcAdapter).toContain('Timestamp.from(greetedAt)');
+    expect(jdbcAdapter).not.toContain('OffsetDateTime');
+  });
+
+  it('refuses a non-postgres engine where the driver is postgres-only', async () => {
+    await expect(
+      installChain(['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'], {
+        answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
+      }),
+    ).rejects.toThrow(/served on the JVM stacks only/);
+  });
+
+  it('lays the Liquibase migrations unit on ts-http when the dial says so', async () => {
+    const tags = [
+      'lang.typescript',
+      'runtime.node',
+      'arch.hexagonal',
+      'arch.server-http',
+      'pkg.npm',
+    ];
+    const { tree, manifest } = await installChain(tags, {
+      answers: { [DATABASE_COMPOSE_ID]: { migrations: 'liquibase' } },
+    });
+
+    // The runner unit is Liquibase-shaped, wrapping the same SQL.
+    const dockerfile = read(tree, 'migrations/Dockerfile');
+    expect(dockerfile).toContain('FROM liquibase/liquibase:5.0-alpine');
+    expect(dockerfile).toContain('CMD ["update"]');
+    const changelog = read(tree, 'migrations/changelog.yaml');
+    expect(changelog).toContain('sqlFile');
+    expect(changelog).toContain('path: sql/V1__create_greeting.sql');
+    const migration = read(tree, 'migrations/sql/V1__create_greeting.sql');
+    expect(migration).toContain('timestamptz not null');
+
+    // The one-shot follows the tool; nothing Flyway-shaped remains.
+    const compose = read(tree, 'dev/compose.yaml');
+    expect(compose).toContain('LIQUIBASE_COMMAND_URL: jdbc:postgresql://db:5432/walking_skeleton');
+    expect(compose).not.toContain('FLYWAY_URL');
+    expect(read(tree, 'README.md')).toContain('Liquibase');
+
+    // The choice is recorded — and the Flyway adapter stood down.
+    expect(manifest.tags).toContain('db.migrations.liquibase');
+    expect(manifest.tags).not.toContain('db.migrations.flyway');
+    expect(manifest.answers[DATABASE_COMPOSE_ID]?.['migrations']).toBe('liquibase');
+  });
+
+  it('refuses liquibase on a JVM stack, naming the Flyway-wired replay', async () => {
+    await expect(
+      installChain([...QUARKUS_JAVA, 'pkg.gradle'], {
+        answers: { [DATABASE_COMPOSE_ID]: { migrations: 'liquibase' } },
+      }),
+    ).rejects.toThrow(/Flyway integration/);
+  });
+
+  it('keeps the two engine spec records disjoint where the adapters branch', () => {
+    // A second engine is one spec record; these are the fields the
+    // adapters and templates read, so a new engine that forgets one
+    // fails here rather than in an emitted project.
+    for (const engine of [POSTGRES, MARIADB]) {
+      expect(engine.jdbcUrl('h', 'd')).toContain(`:${engine.port}/d`);
+      expect(engine.composeEnv('d')).toContain('d');
+      expect(engine.healthcheckTest('d')).toMatch(/^\["CMD/);
+      expect(engine.sql.truncateGreeting).toContain('truncate table greeting');
+    }
+    expect(MARIADB.quarkusDbKind).toBe('mariadb');
+    expect(MARIADB.flywayModule.artifactId).toBe('flyway-mysql');
+    expect(MARIADB.testcontainers.containerClass).toBe('MariaDBContainer');
   });
 });
