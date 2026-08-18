@@ -14,8 +14,8 @@ established. The rest are ordered by leverage, not by commitment.
 
 The next wave is ordered and issue-tracked (decided 2026-08-18):
 **K** (build from sources, [#67], ✅ landed) → **L** (`keel add
---reapply`, [#68], ✅ landed) → **M** (IaC, [#69]) → **G** (the
-Claude kit, [#70]).
+--reapply`, [#68], ✅ landed) → **M** (IaC, [#69], ✅ landed) →
+**G** (the Claude kit, [#70]).
 Releasing the accumulated `[Unreleased]` surface was deliberately
 held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
@@ -1372,27 +1372,67 @@ to record. That is the next step of this item, not part of v1.
 
 ---
 
-## M — IaC vertical (OpenTofu) (L)
+## M — IaC vertical (OpenTofu) (L) ✅
 
 Tracked in [#69](https://github.com/rgoussu-dev/keel/issues/69).
+Built in parallel with K and L — the vertical is independent of both,
+so the wave's ordering was a sequencing preference, not a dependency.
 
 **Goal.** The binding spec mandates IaC; the skeleton emits none.
 **E** left the hook deliberately — `dist.container-image` is "the tag
 a future IaC or deploy vertical keys on". This closes the loop from
 `keel new` to running-in-an-environment.
 
-**Sketch.** Vertical `iac`, first adapter keyed on
-`dist.container-image`: provision the deploy target the
+**Landed — as sketched: one adapter (`iac/deploy-target`) keyed on
+`dist.container-image`,** provisioning the deploy target the
 `distribution` vertical publishes to, matching the recorded
-deployment flavor (`compose` → a VM/host shape, `helm` → a managed
-Kubernetes shape). The provider question — which cloud shapes to
-bless first — is the real design conversation, and it is better had
-against a concrete consumer project's deploy target than a
-hypothetical one. House patterns bind: provider as a sticky dial with
-one template subtree per choice (as `ci` and the deployment flavor
-did), never minted as adapters; 12-factor stays binding — one
-environment-agnostic image, config exclusively via environment,
-nothing invented.
+deployment flavor: `compose` → a Docker VM (engine via cloud-init,
+firewall for SSH + the service port, deploy loop over
+`DOCKER_HOST=ssh://…` so image and config ride one command's
+environment), `helm` → a managed Kubernetes cluster (version by
+latest-stable data source per spec §7, one default pool). The flavor
+is **read from the recorded distribution answer, never re-asked** —
+the same rule as the JVM image flavor in E: a second question could
+provision a target the emitted descriptor cannot use. Decisions on
+record:
+
+- **The cloud dial blessed DigitalOcean (default) and Scaleway, and
+  deliberately not a hyperscaler.** The issue said the provider
+  question is better answered by a real consumer project than a
+  guess; absent one, the blessed pair is the smallest honest answer —
+  each serves both flavors with a screenful of OpenTofu (droplet /
+  DOKS with state in Spaces; instance / Kapsule + its required
+  Private Network with state in Object Storage), which keeps the
+  dial's shape proven without shipping unexercised VPC + IAM
+  surface. AWS/GCP/Azure are new choices on this dial when a
+  consumer drives them — subtrees, never adapters. Hetzner was
+  declined for now: no GA managed Kubernetes, so it cannot honor the
+  flavor mapping; re-open (as a compose-only choice with a loud
+  helm refusal) if a real consumer asks.
+- **Binding spec §5 shaped the tree, including the bootstrap
+  chicken-and-egg.** Root `iac/<cloud>/`, remote state by default in
+  the provider's S3-compatible object storage, one state per
+  environment via workspaces. The state bucket itself is provisioned
+  by a one-shot `bootstrap.sh` running a local-state bootstrap
+  config — the bucket is the one resource that cannot live inside
+  the remote state it hosts, and its tiny secretless tfstate is
+  committed on purpose.
+- **No credential ever lands in a file.** Provider blocks are empty
+  (auth via `DIGITALOCEAN_TOKEN` / `SCW_*`, the backend via the
+  `AWS_*` pair), `*.tfvars` is gitignored, and the target carries no
+  service config — every knob stays in the descriptor's
+  environment, so the environment-agnostic image serves every
+  workspace. Asserted in the suite, not just documented.
+- `tagsAdd: ['iac.opentofu', 'cloud.<choice>']` — both namespaces
+  the tag vocabulary had reserved from the start.
+
+What this item does **not** prove, same caveat as E and F: the
+emitted configurations have not been applied against the real cloud
+APIs — the suite asserts their content. The first consumer project's
+`tofu apply` is where that evidence arrives.
+
+**Commits.** `feat(iac): OpenTofu deploy target for the recorded
+deployment flavor`
 
 ---
 
