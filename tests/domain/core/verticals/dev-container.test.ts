@@ -18,6 +18,8 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { devContainerVertical } from '../../../../src/domain/core/verticals/dev-container.js';
+import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
+import { attachDevContainerToDevEnv } from '../../../../src/domain/core/adapters/dev-container.js';
 import { getVertical } from '../../../../src/domain/core/verticals/index.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
@@ -161,6 +163,59 @@ describe('dev-container vertical', () => {
     });
     const features = parseDevcontainer(tree).features as Record<string, Record<string, unknown>>;
     expect(features['ghcr.io/devcontainers/features/rust:1']).toEqual({});
+  });
+});
+
+describe('dev-env installed after dev-container (order independence)', () => {
+  it('upgrades the standalone definition to the attached shape', async () => {
+    const first = await install({
+      ...emptyManifestV2('2026-08-18T00:00:00Z', '0.0.0-test'),
+      tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
+      answers: { 'walking-skeleton/go-bootstrap': { projectName: 'shipper', modulePath: 'x/y' } },
+    });
+    expect(parseDevcontainer(first.tree).image).toBeDefined();
+
+    await installVertical({
+      vertical: devEnvVertical,
+      manifest: first.manifest,
+      tree: first.tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd: '/unused',
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-18T13:00:00Z',
+    });
+
+    const parsed = parseDevcontainer(first.tree);
+    expect(parsed.image).toBeUndefined();
+    expect(parsed.dockerComposeFile).toEqual(['../dev/compose.yaml', 'compose.yaml']);
+    expect(parsed.service).toBe('workspace');
+    expect(parsed.workspaceFolder).toBe('/workspaces/shipper');
+    const features = parsed.features as Record<string, Record<string, unknown>>;
+    expect(features['ghcr.io/devcontainers/features/docker-outside-of-docker:1']).toEqual({});
+    expect(features['ghcr.io/devcontainers/features/go:1']).toEqual({ version: 'latest' });
+
+    const overlay = first.tree.read('.devcontainer/compose.yaml')?.toString() ?? '';
+    expect(overlay).toContain('- ..:/workspaces/shipper:cached');
+    expect(first.tree.read('dev/compose.yaml')?.toString()).toContain('name: shipper-dev');
+    const readme = first.tree.read('README.md')?.toString() ?? '';
+    expect(readme).toContain('reachable by name');
+    expect(readme).toContain('### Dev environment');
+  });
+
+  it('leaves an already-attached definition untouched', () => {
+    const attached = '{\n  "dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"]\n}\n';
+    expect(attachDevContainerToDevEnv(attached, 'shipper')).toBe(attached);
+  });
+
+  it('refuses to rewrite a definition with a customized image', () => {
+    const custom =
+      '{\n  "name": "shipper",\n  "image": "my-registry/my-base:1",\n  "features": {\n  }\n}\n';
+    expect(() => attachDevContainerToDevEnv(custom, 'shipper')).toThrow(
+      /attach it to the dev environment manually/,
+    );
   });
 });
 

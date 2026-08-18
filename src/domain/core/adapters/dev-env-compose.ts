@@ -21,10 +21,21 @@
  * every contribution composes the same way: {@link addComposeService}
  * and {@link addComposeVolumes} understand both the pristine `{}`
  * shapes and an already-populated file.
+ *
+ * One more order-independence duty: when the manifest records the
+ * `dev-container` vertical, this adapter upgrades its standalone
+ * definition to the shape attached to this Compose project — see
+ * `dev-container.ts`, which owns that knowledge.
  */
 
 import { anyProjectName, eolAware } from '../util.js';
-import type { Adapter, Ctx } from '../../contract/composition.js';
+import {
+  attachDevContainerToDevEnv,
+  attachReadmeSection,
+  devContainerInstalled,
+  renderDevContainerOverlay,
+} from './dev-container.js';
+import type { Adapter, Contribution, Ctx } from '../../contract/composition.js';
 
 export const DEV_ENV_COMPOSE_ID = 'dev-env/compose-base';
 
@@ -69,7 +80,7 @@ export const devEnvComposeAdapter: Adapter = {
   predicate: {},
   async contribute(ctx) {
     const seed = await devComposeSeed(ctx);
-    return {
+    const base: Contribution = {
       patches: [
         {
           target: DEV_COMPOSE_TARGET,
@@ -82,6 +93,32 @@ export const devEnvComposeAdapter: Adapter = {
             if (existing.includes(README_MARKER)) return existing;
             return `${existing.trimEnd()}\n${readmeSection()}`;
           }),
+        },
+      ],
+    };
+    // The dev container installed first, in the standalone shape —
+    // upgrade it to the attached one, so brownfield install order
+    // between the two verticals does not matter. The attachment
+    // knowledge lives in `dev-container.ts`; this adapter only
+    // decides *when* it applies.
+    if (!devContainerInstalled(ctx.manifest)) return base;
+    const projectName = anyProjectName(ctx.manifest);
+    const overlay = await renderDevContainerOverlay(ctx);
+    return {
+      patches: [
+        ...(base.patches ?? []),
+        {
+          target: '.devcontainer/devcontainer.json',
+          apply: eolAware((existing) => attachDevContainerToDevEnv(existing, projectName)),
+        },
+        {
+          target: overlay.path,
+          seed: overlay.content.toString(),
+          apply: (existing) => existing,
+        },
+        {
+          target: 'README.md',
+          apply: eolAware(attachReadmeSection),
         },
       ],
     };
