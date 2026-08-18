@@ -295,20 +295,20 @@ on them, whatever the peer's language.
 A vertical is one concern of a project's lifecycle, installed at
 bootstrap or layered on later with `keel add`:
 
-| Vertical                                                 | What it adds                                                                                         | Applies to                        |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------- |
-| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                                                   | every stack                       |
-| [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                              | every stack                       |
-| [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                  | every stack (default on HTTP)     |
-| [`dev-container`](docs/verticals/dev-container.md)       | `.devcontainer/` — a containerized dev environment, attached to the dev env's network when present   | every stack                       |
-| [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                            | HTTP services only                |
-| [`persistence`](docs/verticals/persistence.md)           | PostgreSQL + Unit-of-Work port + isolated Flyway migrations unit                                     | every HTTP stack                  |
-| [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract                                       | peered projects (`keel link`)     |
-| [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native                                  | HTTP services + SPA               |
-| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                            | every stack                       |
-| [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor | Quarkus CLI + every server shape  |
-| [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster    | after `distribution` (containers) |
-| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                                              | composite monorepos (not addable) |
+| Vertical                                                 | What it adds                                                                                           | Applies to                        |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                                                     | every stack                       |
+| [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                                | every stack                       |
+| [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                    | every stack (default on HTTP)     |
+| [`dev-container`](docs/verticals/dev-container.md)       | `.devcontainer/` — a containerized dev environment, attached to the dev env's network when present     | every stack                       |
+| [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                              | HTTP services only                |
+| [`persistence`](docs/verticals/persistence.md)           | SQL engine dial (PostgreSQL/MariaDB) + Unit-of-Work port + isolated migrations unit (Flyway/Liquibase) | every HTTP stack                  |
+| [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract                                         | peered projects (`keel link`)     |
+| [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native                                    | HTTP services + SPA               |
+| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                              | every stack                       |
+| [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor   | Quarkus CLI + every server shape  |
+| [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster      | after `distribution` (containers) |
+| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                                                | composite monorepos (not addable) |
 
 Which verticals are installed by default on which stack, and which can
 be added later, is one table in the

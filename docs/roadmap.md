@@ -1523,12 +1523,18 @@ Each entry carries an issue, so "backlog" means tracked-but-unordered
 rather than remembered-in-a-file.
 
 - **Persistence: more engines and migration tools**
-  ([#72](https://github.com/rgoussu-dev/keel/issues/72)) — the
-  vertical covers every HTTP stack (Quarkus/Spring/Micronaut in Java
-  and Kotlin, Go, Rust, TS); what remains is a second RDBMS via the
-  engine dial in `persistence-engine.ts` (one spec record + a sticky
-  question) and a Liquibase (YAML) alternative to the Flyway
-  migrations adapter.
+  ([#72](https://github.com/rgoussu-dev/keel/issues/72)) — both dials
+  now exist and are exercised: MariaDB as a second spec record on the
+  sticky `engine` question (served on the six JVM stacks, where JDBC
+  keeps it a spec record) and a Liquibase (YAML) alternative behind
+  the sticky `migrations` question (served on Go/Rust/TS, whose
+  emitted replay paths are tool-agnostic). What remains, each a
+  loud install-time error today: MariaDB on Go/Rust/TS (their
+  drivers speak the PostgreSQL wire protocol — a second driver per
+  stack, not a spec record) and Liquibase on the JVM (the
+  `%dev`/`%test` replay is wired through each framework's Flyway
+  integration; Quarkus's Liquibase extension reads classpath-only
+  changelogs, so this needs design, not just config).
 - **Per-service build systems in composite stacks**
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — composites
   scaffold each service on its default today; offering the choice

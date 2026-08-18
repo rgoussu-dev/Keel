@@ -13,9 +13,28 @@ keel add persistence
 Kotlin, Gradle or Maven), `go-http`, `rust-http` and `ts-http`, each
 through one predicate-selected adapter; on a stack with no server
 (CLIs, `web-components`) the install hard-fails with uncovered
-dimensions. PostgreSQL is the sane default; the engine dial
-(`src/domain/core/adapters/persistence-engine.ts`) is where further
-RDBMS land as one spec record + a sticky question.
+dimensions.
+
+## The two dials
+
+The vertical carries two project-wide **sticky questions**, asked
+once by `persistence/database-compose` (the first adapter every
+install runs) and read by everything downstream:
+
+| Dial         | Choices                           | Where each is served                                                                                                                                                                                                                                                                                |
+| ------------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `engine`     | `postgres` (default) \| `mariadb` | PostgreSQL on every HTTP stack. MariaDB on the six JVM stacks — JDBC makes it one spec record in `persistence-engine.ts`. The Go/Rust/TS drivers (pgx, the sync `postgres` crate, `pg`) speak the PostgreSQL wire protocol, so a non-postgres engine there fails loudly before anything is written. |
+| `migrations` | `flyway` (default) \| `liquibase` | Flyway on every HTTP stack. Liquibase (YAML changelog over the **same plain SQL**) on Go/Rust/TS, whose emitted replay paths are tool-agnostic; the JVM `%dev`/`%test` replay is Flyway-wired today, so `liquibase` there fails loudly — the framework integrations are a roadmap item.             |
+
+Non-interactively, preset them with
+`keel add persistence --set 'persistence/database-compose:engine=mariadb'`
+(and/or `…:migrations=liquibase`). The whole slice follows the engine:
+driver + pool config, the migration SQL's dialect, the dev-compose
+container (image, env, healthcheck), the Testcontainers image and
+container class in every emitted test, and the capability tag
+(`db.postgres` / `db.mariadb`, `db.migrations.flyway` /
+`db.migrations.liquibase`). A further RDBMS lands as one more spec
+record on the dial, not an adapter family.
 
 ## The five dimensions
 
@@ -24,8 +43,8 @@ RDBMS land as one spec record + a sticky question.
 | `datasource`         | The stack's idiomatic PostgreSQL access — Agroal (Quarkus), Hikari (Spring, Micronaut), pgx (Go), the sync `postgres` crate (Rust), `pg` (TS). Config is **environment-only** (`DB_URL`, and `DB_USERNAME`/`DB_PASSWORD` on the JVM); dev defaults target the compose database and tests get a throwaway Testcontainers PostgreSQL. On the JVM, pool health feeds readiness and pool metrics — plus JDBC spans on Quarkus — feed telemetry when [`observability`](observability.md) is installed. |
 | `unit-of-work`       | The `UnitOfWork` **secondary port** on the domain's contract face — transaction management as a domain concept, shaped as a Unit of Work: handlers demarcate what commits or rolls back together; the _how_ is a per-stack adapter — JTA (Quarkus), `TransactionTemplate` (Spring), `TransactionOperations` (Micronaut), the transaction riding the `context.Context` (Go) / `AsyncLocalStorage` (TS), a shared-connection transaction (Rust) — each beside its canonical counting fake.          |
 | `repository-example` | The earned persistence slice: the `GreetingLog` port, a SQL adapter contract-tested against a **Testcontainers PostgreSQL** (schema applied from the same `migrations/sql/` the runner ships; skips without Docker), its in-memory fake, the record/list operations demarcating writes with the unit of work, and `POST`/`GET /greetings` on the REST channel — mediator handlers on the JVM and TS, per-use-case driving ports on Go and Rust, per the binding spec's dispatch stances.          |
-| `migrations`         | `migrations/` — the schema's own deployment unit: plain-SQL Flyway scripts (`V<n>__<desc>.sql`, no XML) baked into the official Flyway image, configured via `FLYWAY_*` env vars, run against the database **before the service deploys**, never from inside it.                                                                                                                                                                                                                                  |
-| `database-compose`   | Supplements [`dev-env`](dev-env.md)'s `dev/compose.yaml` with the PostgreSQL container (healthcheck-gated, `db-data` volume) and the migrations one-shot running the very same runner image against it.                                                                                                                                                                                                                                                                                           |
+| `migrations`         | `migrations/` — the schema's own deployment unit: plain-SQL scripts (`V<n>__<desc>.sql`, no XML) baked into the official runner image of the dialed tool — Flyway configured via `FLYWAY_*` env vars, or Liquibase with a YAML changelog (`changelog.yaml`, wrapping the same SQL via `sqlFile`) configured via `LIQUIBASE_COMMAND_*` — run against the database **before the service deploys**, never from inside it.                                                                            |
+| `database-compose`   | Supplements [`dev-env`](dev-env.md)'s `dev/compose.yaml` with the dialed engine's container (healthcheck-gated, `db-data` volume) and the migrations one-shot running the very same runner image against it. Also the home of the two sticky dials above.                                                                                                                                                                                                                                         |
 
 ## The migration doctrine
 
@@ -42,8 +61,9 @@ against the dev database on every boot.
 
 Every stack ships three layers of tests:
 
-- a **contract test of the SQL adapter against a real PostgreSQL via
-  Testcontainers**, schema applied from `migrations/sql/`; skipped
+- a **contract test of the SQL adapter against the dialed engine via
+  Testcontainers** (the image and container class follow the sticky
+  `engine` answer), schema applied from `migrations/sql/`; skipped
   automatically when Docker is absent (Go probes the daemon, Rust
   returns early, TS `describe.skipIf`, JVM
   `disabledWithoutDocker`).

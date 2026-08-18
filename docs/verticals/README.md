@@ -22,20 +22,20 @@ instead, which has a name to give it.
 
 ## The verticals
 
-| Vertical                                  | One-liner                                                                                        | Dimensions                                                                           |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| [`vcs`](vcs.md)                           | git repo, default branch, optional `origin`                                                      | `vcs`                                                                                |
-| [`walking-skeleton`](walking-skeleton.md) | the thinnest runnable end-to-end project for the chosen stack                                    | `entrypoint`, `port-example`, `build-tool`, `agentic-baseline`, `agentic-kit`        |
-| [`dev-env`](dev-env.md)                   | `dev/compose.yaml` — local infra the dev loop needs but doesn't own                              | `compose-base`                                                                       |
-| [`dev-container`](dev-container.md)       | `.devcontainer/` — a containerized dev environment that attaches to the dev env when present     | `definition`                                                                         |
-| [`observability`](observability.md)       | health probes, correlation ids, OpenTelemetry, monitoring stack                                  | `health`, `request-context`, `telemetry`, `monitoring-stack`                         |
-| [`persistence`](persistence.md)           | SQL persistence: PostgreSQL, Unit-of-Work port, isolated migrations                              | `datasource`, `unit-of-work`, `repository-example`, `migrations`, `database-compose` |
-| [`gateway`](gateway.md)                   | the cross-service seam: gateway package, CORS, OpenAPI contract                                  | _none_ — fires purely on peer tags                                                   |
-| [`containerization`](containerization.md) | a thin Dockerfile beside the deployment unit                                                     | `image`                                                                              |
-| [`ci`](ci.md)                             | the pipeline every push has to pass: GitHub Actions or GitLab CI                                 | `pipeline`                                                                           |
-| [`distribution`](distribution.md)         | how the project ships: CLI binaries or registry-pushed images + a deploy descriptor, on tag push | `build`, `release-channel`                                                           |
-| [`iac`](iac.md)                           | where the project runs: the OpenTofu deploy target matching the recorded deployment flavor       | `deploy-target`                                                                      |
-| [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                                                        | `product-docs`, `product-compose`                                                    |
+| Vertical                                  | One-liner                                                                                                    | Dimensions                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [`vcs`](vcs.md)                           | git repo, default branch, optional `origin`                                                                  | `vcs`                                                                                |
+| [`walking-skeleton`](walking-skeleton.md) | the thinnest runnable end-to-end project for the chosen stack                                                | `entrypoint`, `port-example`, `build-tool`, `agentic-baseline`, `agentic-kit`        |
+| [`dev-env`](dev-env.md)                   | `dev/compose.yaml` — local infra the dev loop needs but doesn't own                                          | `compose-base`                                                                       |
+| [`dev-container`](dev-container.md)       | `.devcontainer/` — a containerized dev environment that attaches to the dev env when present                 | `definition`                                                                         |
+| [`observability`](observability.md)       | health probes, correlation ids, OpenTelemetry, monitoring stack                                              | `health`, `request-context`, `telemetry`, `monitoring-stack`                         |
+| [`persistence`](persistence.md)           | SQL persistence: engine dial (PostgreSQL/MariaDB), Unit-of-Work port, isolated migrations (Flyway/Liquibase) | `datasource`, `unit-of-work`, `repository-example`, `migrations`, `database-compose` |
+| [`gateway`](gateway.md)                   | the cross-service seam: gateway package, CORS, OpenAPI contract                                              | _none_ — fires purely on peer tags                                                   |
+| [`containerization`](containerization.md) | a thin Dockerfile beside the deployment unit                                                                 | `image`                                                                              |
+| [`ci`](ci.md)                             | the pipeline every push has to pass: GitHub Actions or GitLab CI                                             | `pipeline`                                                                           |
+| [`distribution`](distribution.md)         | how the project ships: CLI binaries or registry-pushed images + a deploy descriptor, on tag push             | `build`, `release-channel`                                                           |
+| [`iac`](iac.md)                           | where the project runs: the OpenTofu deploy target matching the recorded deployment flavor                   | `deploy-target`                                                                      |
+| [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                                                                    | `product-docs`, `product-compose`                                                    |
 
 ## Compatibility matrix
 
