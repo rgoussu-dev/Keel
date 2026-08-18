@@ -379,6 +379,37 @@ of `main`; the job moves onto PRs when the break threshold does. The
 incremental state rides the actions cache, the report is a run
 artifact, and losing the cache costs a full run, not correctness.
 
+### Version currency
+
+The emitted templates pin framework and tool versions (Quarkus /
+Spring / Micronaut BOMs, the Gradle wrapper, Node majors, Cargo
+requirements, image tags, …), and the binding spec says "always latest
+stable" — so those pins rot silently. Two pieces keep that honest
+(roadmap [#75](https://github.com/rgoussu-dev/keel/issues/75)):
+
+- **The registry.**
+  [`assets/composition/version-pins.json`](../assets/composition/version-pins.json)
+  records every pin: its value, where it lives (glob + regex over the
+  template trees and the adapter sources), and the upstream feed that
+  knows the latest stable. `tests/version-pins.test.ts` runs in
+  `verify`, offline, and fails when the registry and the templates
+  disagree — or when a sweep of the templates finds a pin-shaped
+  string no entry claims. Adding a pin means adding (or extending) an
+  entry; the failure message names the file and the match.
+- **The report.** The suite under `tests/currency/` fetches each
+  entry's upstream latest stable and fails per pin on drift. It is
+  **opt-in** (`KEEL_RUN_CURRENCY=1`) and runs on a weekly schedule in
+  the `version-currency` workflow — never on PRs, since an upstream
+  release must not turn unrelated PRs red. A red run there is the
+  report, not a build failure: bumping stays a human-reviewed change
+  that updates the template(s) and the registry together, proved by
+  the e2e grid. Range pins (npm carets, Cargo requirements) only count
+  as drifted when the latest stable escapes the range.
+
+```sh
+KEEL_RUN_CURRENCY=1 pnpm vitest run tests/currency
+```
+
 ## Adding surface
 
 - **A stack** is a couple of lines in

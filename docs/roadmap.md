@@ -1569,11 +1569,15 @@ rather than remembered-in-a-file.
   adapter tables, whose guard is the emitted-tree assertions and the
   e2e grid) are ignored. Still open, deliberately: the break
   threshold once the baseline settles, and the wider layers.
-- **Version currency**
-  ([#75](https://github.com/rgoussu-dev/keel/issues/75)) — the spec
-  says "always latest stable", but emitted templates pin framework
-  and tool versions that rot silently. A scheduled drift report (not
-  a PR gate — upstream releases must not turn unrelated PRs red)
-  over a per-family registry of where the pins live, guarded the way
-  `tests/ci-workflow.test.ts` guards the shard matrix. Bumps stay
-  human-reviewed; the e2e grid is what proves them.
+- ~~**Version currency**~~
+  ([#75](https://github.com/rgoussu-dev/keel/issues/75)) — shipped:
+  the per-family pin registry
+  (`assets/composition/version-pins.json`), its offline guard
+  (`tests/version-pins.test.ts`, in `verify`, shaped like
+  `tests/ci-workflow.test.ts`), and the weekly `version-currency`
+  workflow running the opt-in drift report under `tests/currency/`
+  (never a PR gate — upstream releases must not turn unrelated PRs
+  red). Bumps stay human-reviewed; the e2e grid is what proves them.
+  The first run already has real findings waiting: the Gradle
+  Quarkus stacks pin 3.16.0 against Maven's 3.34.6, and the Flyway
+  image major lags the library pin.
