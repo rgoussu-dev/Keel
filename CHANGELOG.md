@@ -57,6 +57,26 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   what proves bin wiring, the `files` list, and that template assets
   actually ship in what npm publishes.
 
+- **The Claude kit — stack runbook addenda + emitted `.claude/`
+  content on every scaffold.** The walking skeleton gains an
+  `agentic-kit` dimension covered by one adapter per stack family
+  (`jvm-claude-kit`, `go-claude-kit`, `rust-claude-kit`,
+  `ts-claude-kit`, `wc-claude-kit`), each resolving its commands from
+  the manifest tags (build system, framework, entrypoint shape,
+  module layout) rather than minting adapters per `pkg.*` tag. Every
+  scaffold now ships: a **stack runbook** appended to the emitted
+  `AGENTS.md` under sentinel markers
+  (`<!-- keel:stack-runbook:begin/end -->` — the section replaces
+  itself on re-apply and never touches the user's edits around it),
+  the **pre-commit format hook** keel itself uses
+  (`.claude/hooks/pre-commit-format.sh`, wired via
+  `.claude/settings.json`; auto-formats with `gofmt`/`cargo fmt`
+  where the toolchain ships a formatter, then runs the family's CI
+  gate so every commit lands green), and a **`run` skill**
+  (`.claude/skills/run/SKILL.md`) with the launch-and-probe loop for
+  the scaffolded shape. Closes the roadmap-G half of the "universal
+  Claude Code workflow kit" identity.
+
 - **`dev-container` vertical — a Dev Container definition on every
   stack, attached to the dev environment when one is installed.**
   Every non-composite stack (and thus every composite service) now

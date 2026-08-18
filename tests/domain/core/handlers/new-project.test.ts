@@ -100,6 +100,7 @@ describe('keel.new-project (keel new)', () => {
     expect(manifest).not.toBeNull();
     expect(manifest!.tags).toEqual(
       [
+        'agentic.claude-kit',
         'arch.cli',
         'arch.hexagonal',
         'dev.container',
@@ -169,6 +170,7 @@ describe('keel.new-project (keel new)', () => {
       // `layout.basic` is the dial's default, recorded so a later
       // `keel add` resolves the same shape the project was built on.
       [
+        'agentic.claude-kit',
         'arch.cli',
         'arch.hexagonal',
         'dev.container',
@@ -228,6 +230,7 @@ describe('keel.new-project (keel new)', () => {
       // `layout.basic` is the dial's default, recorded so a later
       // `keel add` resolves the same shape the project was built on.
       [
+        'agentic.claude-kit',
         'arch.cli',
         'arch.hexagonal',
         'dev.container',

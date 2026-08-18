@@ -19,6 +19,11 @@
  */
 
 import { claudeCoreAdapter } from '../adapters/claude-core.js';
+import { goClaudeKitAdapter } from '../adapters/go-claude-kit.js';
+import { jvmClaudeKitAdapter } from '../adapters/jvm-claude-kit.js';
+import { rustClaudeKitAdapter } from '../adapters/rust-claude-kit.js';
+import { tsClaudeKitAdapter } from '../adapters/ts-claude-kit.js';
+import { wcClaudeKitAdapter } from '../adapters/wc-claude-kit.js';
 import { goBootstrapAdapter } from '../adapters/go-bootstrap.js';
 import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
@@ -71,7 +76,7 @@ import type { Vertical } from '../../contract/composition.js';
 export const walkingSkeletonVertical: Vertical = {
   id: 'walking-skeleton',
   description: 'Greenfield project skeleton with a runnable end-to-end slice.',
-  dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline'],
+  dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline', 'agentic-kit'],
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,
@@ -115,5 +120,10 @@ export const walkingSkeletonVertical: Vertical = {
     npmInstallAdapter,
     pnpmInstallAdapter,
     claudeCoreAdapter,
+    jvmClaudeKitAdapter,
+    goClaudeKitAdapter,
+    rustClaudeKitAdapter,
+    tsClaudeKitAdapter,
+    wcClaudeKitAdapter,
   ],
 };
