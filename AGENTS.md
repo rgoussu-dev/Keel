@@ -22,8 +22,10 @@ the source of truth for the conventions every keel-scaffolded project
 should follow, and the `walking-skeleton/claude-core` adapter emits
 it verbatim as `<project>/AGENTS.md` (plus a one-line `CLAUDE.md`
 pointer importing it) whenever a project is scaffolded.
-Stack-specific addenda (e.g. a Quarkus runbook appended under a
-sentinel marker) are a roadmap item.
+Stack-specific addenda are appended by the family claude-kit
+adapters under sentinel markers (`<!-- keel:stack-runbook:… -->`),
+together with the emitted `.claude/` workflow kit — see
+`docs/verticals/walking-skeleton.md`.
 
 **keel dogfoods those conventions.** Any change to this repo must conform to
 that document:

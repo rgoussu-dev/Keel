@@ -23,7 +23,12 @@ Sixty seconds later you have:
   dependencies resolved),
 - the **binding spec emitted as `AGENTS.md`** (plus a `CLAUDE.md`
   pointer), so Claude Code — or any AGENTS.md-aware agent — keeps
-  working inside the shape the bootstrap laid down.
+  working inside the shape the bootstrap laid down,
+- the **Claude kit**: your stack's runbook (build/test/run commands,
+  layout notes) appended to `AGENTS.md`, a pre-commit hook that keeps
+  every Claude-issued commit green against the stack's own gate, and
+  a `run` skill so "launch the app and check it" works out of the box
+  ([docs](docs/verticals/walking-skeleton.md#the-claude-kit)).
 
 keel is **project-scoped only**: it writes into your project directory
 and never touches `~/.claude` or any global configuration. The

@@ -15,7 +15,7 @@ established. The rest are ordered by leverage, not by commitment.
 The next wave is ordered and issue-tracked (decided 2026-08-18):
 **K** (build from sources, [#67], ✅ landed) → **L** (`keel add
 --reapply`, [#68], ✅ landed) → **M** (IaC, [#69], ✅ landed) →
-**G** (the Claude kit, [#70]).
+**G** (the Claude kit, [#70], ✅ landed).
 Releasing the accumulated `[Unreleased]` surface was deliberately
 held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
@@ -226,12 +226,14 @@ project wired to either is where that evidence arrives.
 
 ---
 
-## G — The Claude kit: stack AGENTS.md addenda + emitted `.claude` content
+## G — The Claude kit: stack AGENTS.md addenda + emitted `.claude` content ✅
 
-Tracked in [#70](https://github.com/rgoussu-dev/keel/issues/70).
-Sequenced **last** of the next wave (after K, L, M), deliberately:
-addenda and hooks will iterate, and L is what delivers those
-iterations to already-scaffolded projects.
+Tracked in [#70](https://github.com/rgoussu-dev/keel/issues/70). It
+was sequenced **last** of the next wave (after K, L, M) — addenda and
+hooks will iterate, and L is what delivers those iterations to
+already-scaffolded projects — and landed in that order: the sentinel
+markers make the addendum self-replacing, and L, already on `main`,
+gains a consumer the day a template fix ships.
 
 **Goal.** Named as a roadmap item in `AGENTS.md §1`: the emitted
 binding spec is universal, and stack adapters should append their
@@ -252,6 +254,44 @@ over from the `ci` family: the addendum and hooks are per stack
 adapters per `pkg.*` tag; and sentinel markers keep re-scaffolds and a
 future `--reapply` (L) idempotent — the addendum replaces its own
 section, never the user's edits around it.
+
+**Landed** as a fifth walking-skeleton dimension (`agentic-kit`)
+covered by five family adapters — `jvm-claude-kit` (all twelve JVM
+stacks), `go-claude-kit`, `rust-claude-kit`, `ts-claude-kit`,
+`wc-claude-kit` — each ordered `after` `claude-core` and patching the
+`AGENTS.md` it emitted, which is the patch-path exercise the goal
+asked for. Composite roots never install the walking skeleton, so the
+dimension is safe to require; a coverage test walks the stack
+registry across every layout so no stack can silently lose its kit.
+Deviations from the sketch, on record:
+
+- **The hook and settings are built in code, not rendered from a
+  template tree.** The template renderer only round-trips the
+  executable bit on verbatim (non-`.ejs`) files, and the hook needs
+  both substitution and `+x` — so the adapter emits it with an
+  explicit `mode: 0o755` instead. (Teaching the renderer to preserve
+  modes on rendered files is a separate, general improvement.)
+- **The `git commit` detection is a substring probe, deliberately.**
+  keel's own hook parses the payload with Node; a scaffolded Go,
+  Rust or JVM project cannot assume Node (or jq) on the machine. A
+  false positive costs one extra verify run.
+- **The verify gate mirrors the family's `ci` pipeline** (`./gradlew
+build` / `./mvnw --batch-mode verify`, `go build ./... && go test
+./...`, `cargo test --workspace`, the TypeScript
+  `lint --if-present`/`typecheck`/`test` trio), so "commit green"
+  and "pipeline green" cannot drift apart. The format step exists
+  only where the toolchain ships a formatter (`gofmt`, `cargo fmt`).
+- **The release skill was not emitted.** The scaffolds have no
+  release flow to mirror yet (that arrives with a consumer of the
+  `distribution` vertical's tag-push pipeline); a skill inventing
+  one would document fiction. Revisit when a real flow exists.
+- **The Rust modulith addendum carries the peer-seam rule** I.4
+  decided ("the seam publishes only its own DTOs"), including the
+  two-line upgrade for the day `public-dependency` stabilises —
+  the addendum is the enforcement surface Rust itself lacks.
+
+**Commit.** `feat(walking-skeleton): the Claude kit — stack runbook
+addenda + emitted .claude content`
 
 ---
 
