@@ -316,6 +316,69 @@ KEEL_RUN_E2E=1 JAVA_HOME=/path/to/jdk-25 \
 — or install a host Gradle 9.x, which is what CI does, and run
 everything on one JDK 25.
 
+### Mutation testing
+
+```sh
+pnpm test:mutation               # stryker over src/domain
+pnpm test:mutation --force       # ignore the incremental file, retest everything
+```
+
+Stryker with the vitest runner, scoped to `src/domain`
+([#74](https://github.com/rgoussu-dev/keel/issues/74)): the engine
+(predicate, resolver, answers, apply, install) is where a surviving
+mutant means a real hole in the composition logic's coverage.
+Widening to `src/application` / `src/infrastructure` is follow-up
+work. Three decisions shape the config (`stryker.config.mjs`), each
+recorded there too:
+
+- **Report-only.** `thresholds.break` is `null`: the run never fails
+  on score, it reports. A hard gate on an unknown baseline blocks
+  unrelated PRs; the threshold arrives once the baseline is known and
+  has settled.
+- **Static mutants are ignored** (`ignoreStatic: true`), and this is
+  the one deliberate hole in the score. A static mutant lives in code
+  executed at module load — here, overwhelmingly the module-level
+  adapter and vertical definition tables — so coverage cannot be
+  attributed to individual tests and every such mutant re-runs the
+  whole suite. Measured on the first full run: 2274 of 9085 mutants
+  (25%), estimated by Stryker at 71% of the run. Their guard is the
+  unit assertions over emitted trees plus the e2e grid, which is a
+  stronger check of that declarative surface than a mutant re-running
+  the unit suite.
+- **Mutants run against `vitest.stryker.config.ts`**, which is the
+  ordinary config minus `tests/e2e/` — excluded by construction, not
+  by environment. The e2e suites decide for themselves whether to
+  run, and on a box with a JDK on PATH they would happily build a
+  real project once per mutant.
+
+Incremental mode is on: `reports/stryker-incremental.json`
+(gitignored) records what was tested against which code, so a re-run
+only retests mutants whose code or covering tests changed — minutes,
+against hours for a cold run. The HTML report lands in
+`reports/mutation/mutation.html`.
+
+The first full run on this shape (2026-08-18, 4 vCPUs, 155 minutes
+for the 6852 non-static mutants) put the baseline at **67.47%** —
+75.37% on covered code; 4519 killed, 104 timeouts, 1511 survived,
+718 without coverage. The shape of the number matters more than the
+number: the engine the scope was chosen for sits at 78–100%
+(`mediator` 100, `answers` 98, `install` 96, `resolver` 93,
+`predicate` 88, `apply` 78; `actions`, the deferred-action runner,
+is its outlier at 60), and the tail is concentrated in the
+composition adapters and verticals — 31 files score 0, all of them
+declarative surface whose primary guard is the emitted-tree
+assertions and the e2e grid. That distribution is what the break
+threshold conversation starts from.
+
+CI runs this in `.github/workflows/mutation.yml`, on `main` rather
+than on PRs: every push to `main` is an incremental run, a weekly
+schedule retests everything (`--force`, correcting whatever the
+incremental diffs accumulated), and `workflow_dispatch` covers the
+rest. A report nobody is gated on is most useful as a current picture
+of `main`; the job moves onto PRs when the break threshold does. The
+incremental state rides the actions cache, the report is a run
+artifact, and losing the cache costs a full run, not correctness.
+
 ## Adding surface
 
 - **A stack** is a couple of lines in
