@@ -12,6 +12,19 @@ Items are lettered continuing the old sequence. With **F** landed,
 **E** followed it, leaning on the workflow-emitting pattern F
 established. The rest are ordered by leverage, not by commitment.
 
+The next wave is ordered and issue-tracked (decided 2026-08-18):
+**K** (build from sources, [#67]) → **L** (`keel add --reapply`,
+[#68]) → **M** (IaC, [#69]) → **G** (the Claude kit, [#70]).
+Releasing the accumulated `[Unreleased]` surface is deliberately held
+until K has exercised it locally, product-shaped rather than
+harness-shaped. The backlog items below each carry an issue of their
+own.
+
+[#67]: https://github.com/rgoussu-dev/keel/issues/67
+[#68]: https://github.com/rgoussu-dev/keel/issues/68
+[#69]: https://github.com/rgoussu-dev/keel/issues/69
+[#70]: https://github.com/rgoussu-dev/keel/issues/70
+
 ## Landed since v0.5.0-alpha ✅
 
 - **D — REST entrypoint.** `quarkus-rest` proved the core promise:
@@ -212,7 +225,12 @@ project wired to either is where that evidence arrives.
 
 ---
 
-## G — Stack-specific AGENTS.md addenda
+## G — The Claude kit: stack AGENTS.md addenda + emitted `.claude` content
+
+Tracked in [#70](https://github.com/rgoussu-dev/keel/issues/70).
+Sequenced **last** of the next wave (after K, L, M), deliberately:
+addenda and hooks will iterate, and L is what delivers those
+iterations to already-scaffolded projects.
 
 **Goal.** Named as a roadmap item in `AGENTS.md §1`: the emitted
 binding spec is universal, and stack adapters should append their
@@ -221,6 +239,18 @@ sentinel-marked section of the scaffolded `AGENTS.md` — the same
 sentinel-append pattern the legacy `claude-quarkus` schematic used.
 Requires a patch-style contribution against the `claude-core` output,
 so it exercises the patch path of the composition contract.
+
+**Widened (2026-08-18) to the "Claude Code workflow kit" half of
+keel's identity.** Beyond the addendum, scaffolded projects should
+gain `.claude/` content: the pre-commit format hook keel itself uses
+(adapted to the stack's own format/lint commands), a per-stack `run`
+skill so "launch the app and check it" works out of the box, possibly
+a release skill mirroring the stack's release flow. Two rules carry
+over from the `ci` family: the addendum and hooks are per stack
+**family** with commands resolved from manifest tags, never minted as
+adapters per `pkg.*` tag; and sentinel markers keep re-scaffolds and a
+future `--reapply` (L) idempotent — the addendum replaces its own
+section, never the user's edits around it.
 
 ---
 
@@ -1243,6 +1273,81 @@ or harder by this one.
 
 ---
 
+## K — Build from sources: exercise keel locally as a user would (S)
+
+Tracked in [#67](https://github.com/rgoussu-dev/keel/issues/67).
+First of the next wave, and a release gate: the `[Unreleased]`
+surface gets exercised as a product before it gets tagged.
+
+**Goal.** The e2e harness proves the emitted projects; nothing proves
+the **package**. Bin wiring, the `files` list, template assets
+actually shipping in the tarball, and the interactive prompt flow are
+all outside what the suites exercise. The working tree needs a
+documented, low-friction path to being consumed the way a user
+consumes it.
+
+**Sketch.** A loop built on `pnpm build && npm pack`, installing the
+tarball into a scratch prefix and running `keel new` from there —
+tarball over `pnpm link --global`, because the tarball is what npm
+publishes, so packaging bugs surface here instead of on the registry.
+A `pnpm keel …` convenience script for the fast inner loop where
+packaging fidelity is not the question. Both documented in
+`docs/development.md` under "Trying keel locally", with which to use
+when. Done means: from a fresh clone, the documented commands produce
+a scaffolded project whose own gates pass, with no reference back to
+the keel repo left inside it.
+
+---
+
+## L — `keel add --reapply`: the update path (M)
+
+Tracked in [#68](https://github.com/rgoussu-dev/keel/issues/68).
+
+**Goal.** A scaffolded project is a snapshot: adding an installed
+vertical errors (`keel.vertical-already-installed`), so a template
+fix in keel is undeliverable to existing projects. Scaffolders
+without a day-2 story strand their consumers; this bites the moment
+the first real consumer project exists. keel is unusually well placed
+— the manifest already records the stack, the `layout.*` tags and
+every sticky answer, which is everything a re-render needs.
+
+**Sketch.** Conservative v1: re-render from recorded answers, show
+the diff against the working tree, refuse on conflict. A real
+three-way merge against user edits comes later, and its base is the
+design question — a recorded rendering, or a re-render pinned to the
+keel version that originally installed the vertical (which the
+manifest would then need to record). Open questions, to be settled in
+the item rather than guessed here: which sticky answers may move on
+reapply and what re-resolves when they do; `tagsAdd` idempotence
+(promoted tags must neither double nor orphan); whether `--reapply`
+spans one vertical or the whole manifest.
+
+---
+
+## M — IaC vertical (OpenTofu) (L)
+
+Tracked in [#69](https://github.com/rgoussu-dev/keel/issues/69).
+
+**Goal.** The binding spec mandates IaC; the skeleton emits none.
+**E** left the hook deliberately — `dist.container-image` is "the tag
+a future IaC or deploy vertical keys on". This closes the loop from
+`keel new` to running-in-an-environment.
+
+**Sketch.** Vertical `iac`, first adapter keyed on
+`dist.container-image`: provision the deploy target the
+`distribution` vertical publishes to, matching the recorded
+deployment flavor (`compose` → a VM/host shape, `helm` → a managed
+Kubernetes shape). The provider question — which cloud shapes to
+bless first — is the real design conversation, and it is better had
+against a concrete consumer project's deploy target than a
+hypothetical one. House patterns bind: provider as a sticky dial with
+one template subtree per choice (as `ci` and the deployment flavor
+did), never minted as adapters; 12-factor stays binding — one
+environment-agnostic image, config exclusively via environment,
+nothing invented.
+
+---
+
 ## Backlog (unordered)
 
 - ~~**A second bounded context in the modulith skeleton**~~ —
@@ -1286,21 +1391,37 @@ or harder by this one.
   and not of this one, where each cell is a single file and the axis
   under test is which framework/language/typology broke.
 
-- **Persistence: more engines and migration tools** — the vertical
-  covers every HTTP stack (Quarkus/Spring/Micronaut in Java and
-  Kotlin, Go, Rust, TS); what remains is a second RDBMS via the
+Each entry carries an issue, so "backlog" means tracked-but-unordered
+rather than remembered-in-a-file.
+
+- **Persistence: more engines and migration tools**
+  ([#72](https://github.com/rgoussu-dev/keel/issues/72)) — the
+  vertical covers every HTTP stack (Quarkus/Spring/Micronaut in Java
+  and Kotlin, Go, Rust, TS); what remains is a second RDBMS via the
   engine dial in `persistence-engine.ts` (one spec record + a sticky
   question) and a Liquibase (YAML) alternative to the Flyway
   migrations adapter.
-- **Per-service build systems in composite stacks** — composites
+- **Per-service build systems in composite stacks**
+  ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — composites
   scaffold each service on its default today; offering the choice
   per service needs the compose Dockerfiles to follow it.
-- **`ts-cli` stack** — the CLI twin of `ts-http`, mirroring the
-  other languages' CLI/HTTP pairing.
-- **`keel add --reapply` / update path** — today adding an installed
-  vertical errors (`keel.vertical-already-installed`); there is no
-  way to re-render after a template fix or answer change.
-- **IaC vertical (OpenTofu)** — the spec mandates IaC; the skeleton
-  emits none. Natural after E (deploy target implies infra).
-- **Mutation testing in this repo** — `AGENTS.md §7` marks it "on
-  the roadmap; not yet wired". Stryker over `src/domain` first.
+- **`ts-cli` stack**
+  ([#71](https://github.com/rgoussu-dev/keel/issues/71)) — the CLI
+  twin of `ts-http`, mirroring the other languages' CLI/HTTP pairing.
+- ~~**`keel add --reapply` / update path**~~ — promoted to item
+  **L** above ([#68](https://github.com/rgoussu-dev/keel/issues/68)).
+- ~~**IaC vertical (OpenTofu)**~~ — promoted to item **M** above
+  ([#69](https://github.com/rgoussu-dev/keel/issues/69)).
+- **Mutation testing in this repo**
+  ([#74](https://github.com/rgoussu-dev/keel/issues/74)) —
+  `AGENTS.md §7` marks it "on the roadmap; not yet wired". Stryker
+  over `src/domain` first; report-only before any threshold, since a
+  hard gate on an unknown baseline blocks unrelated PRs.
+- **Version currency**
+  ([#75](https://github.com/rgoussu-dev/keel/issues/75)) — the spec
+  says "always latest stable", but emitted templates pin framework
+  and tool versions that rot silently. A scheduled drift report (not
+  a PR gate — upstream releases must not turn unrelated PRs red)
+  over a per-family registry of where the pins live, guarded the way
+  `tests/ci-workflow.test.ts` guards the shard matrix. Bumps stay
+  human-reviewed; the e2e grid is what proves them.
