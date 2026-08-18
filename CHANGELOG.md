@@ -8,6 +8,30 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`dev-container` vertical — a Dev Container definition on every
+  stack, attached to the dev environment when one is installed.**
+  Every non-composite stack (and thus every composite service) now
+  scaffolds `.devcontainer/devcontainer.json` by default, with the
+  stack's toolchain provisioned as Dev Container features — JDK 25 +
+  the manifest's build system on the twelve JVM stacks
+  (`jvm-devcontainer`), latest stable Go (`go-devcontainer`) and
+  Rust (`rust-devcontainer`), Node 22 + a dependency-installing
+  `postCreateCommand` with the tagged package manager on the
+  TypeScript stacks (`node-devcontainer`). Also brownfield:
+  `keel add dev-container`.
+
+  When the `dev-env` vertical is on the manifest, the definition is
+  **Compose-based and joins the dev environment's own Compose
+  project**: `devcontainer.json` lists `../dev/compose.yaml` plus a
+  `.devcontainer/compose.yaml` overlay declaring the `workspace`
+  service, so the workspace shares the dev env's network, reaches
+  its services by name, and attaches to a dev env already running on
+  the host instead of restarting it — with
+  `docker-outside-of-docker` provisioned so the dev env can be
+  driven from inside. Without `dev-env`, the definition is
+  image-based on the devcontainers Ubuntu base. Install `dev-env`
+  first brownfield to get the attached shape.
+
 - **`distribution` for the server-shaped stacks — CI-built images on
   tag push, plus a deployment descriptor.** `keel add distribution`
   used to hard-fail on anything but a Gradle Quarkus CLI; now a

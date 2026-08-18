@@ -197,7 +197,8 @@ restructuring under either layout.
 `rust-http` additionally installs [`dev-env`](../verticals/dev-env.md)
 and [`observability`](../verticals/observability.md) by default
 (hand-rolled `/health/live` + `/health/ready`, correlation-id
-middleware, OpenTelemetry over OTLP).
+middleware, OpenTelemetry over OTLP). Both Rust stacks install
+[`dev-container`](../verticals/dev-container.md) by default.
 
 ## Verify it runs
 

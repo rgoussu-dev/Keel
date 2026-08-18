@@ -26,6 +26,7 @@
  */
 
 import { fullstackVertical } from './verticals/fullstack.js';
+import { devContainerVertical } from './verticals/dev-container.js';
 import { devEnvVertical } from './verticals/dev-env.js';
 import { observabilityVertical } from './verticals/observability.js';
 import { gatewayVertical } from './verticals/gateway.js';
@@ -137,7 +138,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'quarkus-rest': {
     id: 'quarkus-rest',
@@ -145,7 +146,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'quarkus-cli-kotlin': {
@@ -154,7 +161,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'quarkus-rest-kotlin': {
     id: 'quarkus-rest-kotlin',
@@ -162,7 +169,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'spring-cli': {
@@ -171,7 +184,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'spring-rest': {
     id: 'spring-rest',
@@ -179,7 +192,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'spring-cli-kotlin': {
@@ -188,7 +207,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'spring-rest-kotlin': {
     id: 'spring-rest-kotlin',
@@ -196,7 +215,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'micronaut-cli': {
@@ -205,7 +230,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'micronaut-rest': {
     id: 'micronaut-rest',
@@ -213,7 +238,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'micronaut-cli-kotlin': {
@@ -222,7 +253,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'micronaut-rest-kotlin': {
     id: 'micronaut-rest-kotlin',
@@ -236,7 +267,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'go-cli': {
@@ -244,14 +281,20 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Go CLI on the stdlib, hexagonal layout, no mediator object.',
     tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli'],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'go-http': {
     id: 'go-http',
     description: 'Go HTTP service on stdlib net/http, hexagonal layout, no mediator object.',
     tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'rust-cli': {
@@ -259,14 +302,20 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     description: 'Rust CLI on the stdlib, hexagonal layout, no mediator object.',
     tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.cli'],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
   },
   'rust-http': {
     id: 'rust-http',
     description: 'Rust HTTP service on axum + tokio, hexagonal layout, no mediator object.',
     tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'ts-http': {
@@ -276,7 +325,13 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, devEnvVertical, observabilityVertical],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
     projects: ['peer.api.rest'],
   },
   'web-components': {
@@ -292,7 +347,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical],
+    verticals: [vcsVertical, walkingSkeletonVertical, devContainerVertical],
     projects: ['peer.ui.spa'],
   },
   fullstack: {

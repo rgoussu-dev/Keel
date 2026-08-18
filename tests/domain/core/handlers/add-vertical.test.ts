@@ -80,6 +80,7 @@ describe('keel.add-vertical (keel add)', () => {
     const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest).not.toBeNull();
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'dev-container',
       'distribution',
       'vcs',
       'walking-skeleton',
@@ -128,6 +129,10 @@ describe('keel.add-vertical (keel add)', () => {
     expect(report.committed).toBe(false);
     expect(await fs.pathExists(path.join(cwd, '.github/workflows/release.yml'))).toBe(false);
     const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
-    expect(manifest!.verticals.map((v) => v.id).sort()).toEqual(['vcs', 'walking-skeleton']);
+    expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'dev-container',
+      'vcs',
+      'walking-skeleton',
+    ]);
   });
 });

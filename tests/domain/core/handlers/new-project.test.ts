@@ -102,6 +102,7 @@ describe('keel.new-project (keel new)', () => {
       [
         'arch.cli',
         'arch.hexagonal',
+        'dev.container',
         'framework.quarkus',
         'lang.java',
         'layout.basic',
@@ -109,7 +110,11 @@ describe('keel.new-project (keel new)', () => {
         'runtime.jvm',
       ].sort(),
     );
-    expect(manifest!.verticals.map((v) => v.id).sort()).toEqual(['vcs', 'walking-skeleton']);
+    expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'dev-container',
+      'vcs',
+      'walking-skeleton',
+    ]);
     expect(manifest!.answers['walking-skeleton/quarkus-cli-bootstrap']).toEqual({
       basePackage: 'com.acme.cli',
       projectName: 'demo',
@@ -163,7 +168,14 @@ describe('keel.new-project (keel new)', () => {
     expect(manifest!.tags).toEqual(
       // `layout.basic` is the dial's default, recorded so a later
       // `keel add` resolves the same shape the project was built on.
-      ['arch.cli', 'arch.hexagonal', 'lang.go', 'layout.basic', 'pkg.go-modules'].sort(),
+      [
+        'arch.cli',
+        'arch.hexagonal',
+        'dev.container',
+        'lang.go',
+        'layout.basic',
+        'pkg.go-modules',
+      ].sort(),
     );
     expect(manifest!.answers['walking-skeleton/go-bootstrap']).toEqual({
       modulePath: 'github.com/acme/shipper',
@@ -215,7 +227,14 @@ describe('keel.new-project (keel new)', () => {
     expect(manifest!.tags).toEqual(
       // `layout.basic` is the dial's default, recorded so a later
       // `keel add` resolves the same shape the project was built on.
-      ['arch.cli', 'arch.hexagonal', 'lang.rust', 'layout.basic', 'pkg.cargo'].sort(),
+      [
+        'arch.cli',
+        'arch.hexagonal',
+        'dev.container',
+        'lang.rust',
+        'layout.basic',
+        'pkg.cargo',
+      ].sort(),
     );
     expect(manifest!.answers['walking-skeleton/rust-bootstrap']).toEqual({
       projectName: 'shipper',

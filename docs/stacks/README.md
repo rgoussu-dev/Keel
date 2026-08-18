@@ -47,12 +47,12 @@ and the flag are the same.
 
 ## What each shape installs by default
 
-| Shape                             | Verticals installed at bootstrap                                                                                                                                                |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI (`*-cli`)                     | [`vcs`](../verticals/vcs.md) · [`walking-skeleton`](../verticals/walking-skeleton.md)                                                                                           |
-| HTTP service (`*-rest`, `*-http`) | [`vcs`](../verticals/vcs.md) · [`walking-skeleton`](../verticals/walking-skeleton.md) · [`dev-env`](../verticals/dev-env.md) · [`observability`](../verticals/observability.md) |
-| SPA (`web-components`)            | [`vcs`](../verticals/vcs.md) · [`walking-skeleton`](../verticals/walking-skeleton.md)                                                                                           |
-| Fullstack (`fullstack*`)          | each service's own defaults + [`gateway`](../verticals/gateway.md) per service; [`vcs`](../verticals/vcs.md) + [`fullstack`](../verticals/fullstack.md) at the monorepo root    |
+| Shape                             | Verticals installed at bootstrap                                                                                                                                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI (`*-cli`)                     | [`vcs`](../verticals/vcs.md) · [`walking-skeleton`](../verticals/walking-skeleton.md) · [`dev-container`](../verticals/dev-container.md)                                                                                           |
+| HTTP service (`*-rest`, `*-http`) | [`vcs`](../verticals/vcs.md) · [`walking-skeleton`](../verticals/walking-skeleton.md) · [`dev-env`](../verticals/dev-env.md) · [`observability`](../verticals/observability.md) · [`dev-container`](../verticals/dev-container.md) |
+| SPA (`web-components`)            | [`vcs`](../verticals/vcs.md) · [`walking-skeleton`](../verticals/walking-skeleton.md) · [`dev-container`](../verticals/dev-container.md)                                                                                           |
+| Fullstack (`fullstack*`)          | each service's own defaults + [`gateway`](../verticals/gateway.md) per service; [`vcs`](../verticals/vcs.md) + [`fullstack`](../verticals/fullstack.md) at the monorepo root                                                       |
 
 More can be layered on afterwards with `keel add` — see the
 [compatibility matrix](../verticals/README.md#compatibility-matrix).

@@ -221,6 +221,7 @@ keel add containerization     # a thin Dockerfile beside the deployment unit
 keel add ci                   # a build-and-test gate on every push (GitHub Actions or GitLab CI)
 keel add distribution         # registry-pushed images + a deploy descriptor on tag push
 keel add dev-env              # dev/compose.yaml for local infra
+keel add dev-container        # .devcontainer/ attached to the dev env's network
 
 keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam
@@ -257,7 +258,7 @@ uncovered.
 ```mermaid
 flowchart LR
   S["stack preset<br/>--stack=quarkus-rest"] --> T["capability tags<br/>lang.java · framework.quarkus<br/>arch.server-http · pkg.gradle"]
-  V["verticals<br/>vcs · walking-skeleton<br/>dev-env · observability"] --> R
+  V["verticals<br/>vcs · walking-skeleton<br/>dev-env · observability · dev-container"] --> R
   T --> R{"predicate<br/>resolver"}
   R --> A["selected adapters"]
   A --> F["files + patches"]
@@ -285,6 +286,7 @@ bootstrap or layered on later with `keel add`:
 | [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                                                   | every stack                       |
 | [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                              | every stack                       |
 | [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                  | every stack (default on HTTP)     |
+| [`dev-container`](docs/verticals/dev-container.md)       | `.devcontainer/` — a containerized dev environment, attached to the dev env's network when present   | every stack                       |
 | [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                            | HTTP services only                |
 | [`persistence`](docs/verticals/persistence.md)           | PostgreSQL + Unit-of-Work port + isolated Flyway migrations unit                                     | every HTTP stack                  |
 | [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract                                       | peered projects (`keel link`)     |

@@ -111,7 +111,7 @@ tree.
 flowchart TD
   U["keel new --stack=quarkus-rest"] --> S["stack preset"]
   S --> T["tags seeded<br/>lang.java · runtime.jvm · framework.quarkus<br/>arch.hexagonal · arch.server-http · pkg.gradle"]
-  S --> V["verticals, in order<br/>vcs → walking-skeleton → dev-env → observability"]
+  S --> V["verticals, in order<br/>vcs → walking-skeleton → dev-env → observability → dev-container"]
   T --> R{"resolver:<br/>predicate filter per vertical"}
   V --> R
   R -->|"dimension uncovered"| X["hard fail,<br/>names the gap"]

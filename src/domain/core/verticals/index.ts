@@ -10,6 +10,7 @@
 
 import { ciVertical } from './ci.js';
 import { containerizationVertical } from './containerization.js';
+import { devContainerVertical } from './dev-container.js';
 import { devEnvVertical } from './dev-env.js';
 import { distributionVertical } from './distribution.js';
 import { gatewayVertical } from './gateway.js';
@@ -27,6 +28,7 @@ const ALL: readonly Vertical[] = [
   containerizationVertical,
   ciVertical,
   devEnvVertical,
+  devContainerVertical,
   observabilityVertical,
   persistenceVertical,
 ];
