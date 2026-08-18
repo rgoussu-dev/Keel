@@ -1,0 +1,1396 @@
+{
+  "//": [
+    "The version-pin registry (roadmap #75): every framework and tool",
+    "version the emitted templates pin, where it lives, and how to ask",
+    "upstream for the current latest stable. Lives beside the template",
+    "trees it describes; `tests/version-pins.test.ts` fails in `verify`",
+    "when this file and the templates disagree, or when a template",
+    "grows a pin no entry here claims. The weekly `version-currency`",
+    "workflow reads the same entries and reports drift against latest",
+    "stable — bumping a value stays a human-reviewed change proved by",
+    "the e2e grid.",
+    "",
+    "Each location's `pattern` is a JS regex (gm flags) with exactly",
+    "one capture group: the version. A `check` of type `none` marks a",
+    "pin that floats by construction (major-only tags, `latest`) or is",
+    "deliberately manual; every other type names the upstream feed the",
+    "currency suite queries."
+  ],
+  "pins": [
+    {
+      "id": "jvm-quarkus-platform",
+      "family": "jvm",
+      "description": "Quarkus platform BOM + Gradle plugin (Maven properties, Gradle plugin block, Gradle BOM coordinate)",
+      "value": "3.34.6",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<quarkus\\.platform\\.version>([^<]+)</quarkus\\.platform\\.version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"io\\.quarkus\\.platform:quarkus-bom:([\\w.-]+)\""
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "id\\(\"io\\.quarkus\"\\) version \"([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "io.quarkus.platform", "artifact": "quarkus-bom" }
+    },
+    {
+      "id": "jvm-quarkus-platform-gradle-properties",
+      "family": "jvm",
+      "description": "Quarkus platform version in the Gradle stacks' gradle.properties — has already drifted from its sibling pin (3.34.6); kept as its own entry so the report shows both",
+      "value": "3.16.0",
+      "locations": [
+        {
+          "glob": "assets/composition/walking-skeleton/**/gradle.properties",
+          "pattern": "^quarkus\\.platform\\.version=(\\S+)"
+        }
+      ],
+      "check": { "type": "maven", "group": "io.quarkus.platform", "artifact": "quarkus-bom" }
+    },
+    {
+      "id": "jvm-spring-boot",
+      "family": "jvm",
+      "description": "Spring Boot (Maven property, Gradle plugin, Gradle BOM coordinate)",
+      "value": "4.1.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<spring-boot\\.version>([^<]+)</spring-boot\\.version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "id\\(\"org\\.springframework\\.boot\"\\) version \"([\\w.-]+)\""
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"org\\.springframework\\.boot:spring-boot-dependencies:([\\w.-]+)\""
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "org.springframework.boot",
+        "artifact": "spring-boot-dependencies"
+      }
+    },
+    {
+      "id": "jvm-micronaut-platform",
+      "family": "jvm",
+      "description": "Micronaut platform (Maven property + parent POM)",
+      "value": "4.10.17",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<micronaut\\.version>([^<]+)</micronaut\\.version>"
+        },
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<artifactId>micronaut-parent</artifactId>\\s*<version>([^<]+)</version>"
+        }
+      ],
+      "check": { "type": "maven", "group": "io.micronaut.platform", "artifact": "micronaut-parent" }
+    },
+    {
+      "id": "jvm-micronaut-gradle-plugin",
+      "family": "jvm",
+      "description": "Micronaut Gradle plugin (application + library)",
+      "value": "4.6.2",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "id\\(\"io\\.micronaut\\.(?:application|library)\"\\) version \"([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "gradle-plugin", "pluginId": "io.micronaut.application" }
+    },
+    {
+      "id": "jvm-kotlin",
+      "family": "jvm",
+      "description": "Kotlin (Gradle plugins + Maven property)",
+      "value": "2.3.21",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "kotlin\\(\"[\\w.]+\"\\) version \"([\\w.-]+)\""
+        },
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<kotlin\\.version>([^<]+)</kotlin\\.version>"
+        }
+      ],
+      "check": { "type": "maven", "group": "org.jetbrains.kotlin", "artifact": "kotlin-stdlib" }
+    },
+    {
+      "id": "jvm-ksp",
+      "family": "jvm",
+      "description": "Kotlin Symbol Processing Gradle plugin (Micronaut Kotlin stacks)",
+      "value": "2.3.11",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "id\\(\"com\\.google\\.devtools\\.ksp\"\\) version \"([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "gradle-plugin", "pluginId": "com.google.devtools.ksp" }
+    },
+    {
+      "id": "jvm-shadow-plugin",
+      "family": "jvm",
+      "description": "Shadow (fat-jar) Gradle plugin on the Micronaut CLI stacks",
+      "value": "8.3.9",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "id\\(\"com\\.gradleup\\.shadow\"\\) version \"([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "gradle-plugin", "pluginId": "com.gradleup.shadow" }
+    },
+    {
+      "id": "jvm-foojay-resolver",
+      "family": "jvm",
+      "description": "Foojay toolchain resolver convention plugin in settings.gradle.kts",
+      "value": "1.0.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "id\\(\"org\\.gradle\\.toolchains\\.foojay-resolver-convention\"\\) version \"([\\w.-]+)\""
+        }
+      ],
+      "check": {
+        "type": "gradle-plugin",
+        "pluginId": "org.gradle.toolchains.foojay-resolver-convention"
+      }
+    },
+    {
+      "id": "jvm-jdk",
+      "family": "jvm",
+      "description": "JDK major everywhere the scaffold names one: Maven release properties, Gradle toolchains, Temurin/Gradle images, emitted CI, the Dev Container java feature",
+      "value": "25",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<(?:maven\\.compiler\\.release|jdk\\.version|release\\.version)>(\\d+)</"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "JavaLanguageVersion\\.of\\((\\d+)\\)"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "eclipse-temurin:(\\d+)-j(?:dk|re)"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "\\bgradle:jdk(\\d+)"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "java-version: '(\\d+)'"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "ghcr\\.io/graalvm/native-image-community:(\\d+)"
+        },
+        {
+          "glob": "src/domain/core/adapters/jvm-devcontainer.ts",
+          "pattern": "version: '(\\d+)'"
+        }
+      ],
+      "check": { "type": "jdk-lts" }
+    },
+    {
+      "id": "jvm-junit-jupiter",
+      "family": "jvm",
+      "description": "JUnit Jupiter",
+      "value": "5.11.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>org\\.junit\\.jupiter</groupId>\\s*<artifactId>junit-jupiter</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"org\\.junit\\.jupiter:junit-jupiter:([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "org.junit.jupiter", "artifact": "junit-jupiter" }
+    },
+    {
+      "id": "jvm-maven-compiler-plugin",
+      "family": "jvm",
+      "description": "Maven compiler plugin",
+      "value": "3.15.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<artifactId>maven-compiler-plugin</artifactId>\\s*<version>([^<]+)</version>"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "org.apache.maven.plugins",
+        "artifact": "maven-compiler-plugin"
+      }
+    },
+    {
+      "id": "jvm-maven-surefire-plugin",
+      "family": "jvm",
+      "description": "Maven Surefire plugin",
+      "value": "3.5.6",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<artifactId>maven-surefire-plugin</artifactId>\\s*<version>([^<]+)</version>"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "org.apache.maven.plugins",
+        "artifact": "maven-surefire-plugin"
+      }
+    },
+    {
+      "id": "jvm-jakarta-inject-api",
+      "family": "jvm",
+      "description": "Jakarta Inject API",
+      "value": "2.0.1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>jakarta\\.inject</groupId>\\s*<artifactId>jakarta\\.inject-api</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"jakarta\\.inject:jakarta\\.inject-api:([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "jakarta.inject", "artifact": "jakarta.inject-api" }
+    },
+    {
+      "id": "jvm-jakarta-cdi-api",
+      "family": "jvm",
+      "description": "Jakarta CDI API",
+      "value": "4.1.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>jakarta\\.enterprise</groupId>\\s*<artifactId>jakarta\\.enterprise\\.cdi-api</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"jakarta\\.enterprise:jakarta\\.enterprise\\.cdi-api:([\\w.-]+)\""
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "jakarta.enterprise",
+        "artifact": "jakarta.enterprise.cdi-api"
+      }
+    },
+    {
+      "id": "jvm-jakarta-transaction-api",
+      "family": "jvm",
+      "description": "Jakarta Transactions API (Quarkus unit-of-work adapter)",
+      "value": "2.0.1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>jakarta\\.transaction</groupId>\\s*<artifactId>jakarta\\.transaction-api</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"jakarta\\.transaction:jakarta\\.transaction-api:([\\w.-]+)\""
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "jakarta.transaction",
+        "artifact": "jakarta.transaction-api"
+      }
+    },
+    {
+      "id": "jvm-picocli-spring-boot-starter",
+      "family": "jvm",
+      "description": "Picocli Spring Boot starter (Spring CLI stacks)",
+      "value": "4.7.7",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>info\\.picocli</groupId>\\s*<artifactId>picocli-spring-boot-starter</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"info\\.picocli:picocli-spring-boot-starter:([\\w.-]+)\""
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "info.picocli",
+        "artifact": "picocli-spring-boot-starter"
+      }
+    },
+    {
+      "id": "jvm-testcontainers",
+      "family": "jvm",
+      "description": "Testcontainers (junit-jupiter + postgresql modules, templates and persistence adapters)",
+      "value": "1.21.4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>org\\.testcontainers</groupId>\\s*<artifactId>(?:junit-jupiter|postgresql)</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"org\\.testcontainers:(?:junit-jupiter|postgresql):([\\w.-]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/*.ts",
+          "pattern": "<groupId>org\\.testcontainers</groupId>\\s*<artifactId>(?:junit-jupiter|postgresql)</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "src/domain/core/adapters/*.ts",
+          "pattern": "\"org\\.testcontainers:(?:junit-jupiter|postgresql):([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "org.testcontainers", "artifact": "testcontainers" }
+    },
+    {
+      "id": "jvm-flyway",
+      "family": "jvm",
+      "description": "Flyway (core + postgres database module)",
+      "value": "13.2.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>org\\.flywaydb</groupId>\\s*<artifactId>flyway-(?:core|database-postgresql)</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"org\\.flywaydb:flyway-(?:core|database-postgresql):([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "org.flywaydb", "artifact": "flyway-core" }
+    },
+    {
+      "id": "jvm-flyway-image",
+      "family": "jvm",
+      "description": "Flyway CLI image major in the migrations runner — tracked against flyway-core, so it also surfaces when it lags the library pin",
+      "value": "11",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "flyway/flyway:(\\d+)-alpine"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "org.flywaydb",
+        "artifact": "flyway-core",
+        "track": "major"
+      }
+    },
+    {
+      "id": "jvm-postgresql-driver",
+      "family": "jvm",
+      "description": "PostgreSQL JDBC driver",
+      "value": "42.7.13",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>org\\.postgresql</groupId>\\s*<artifactId>postgresql</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"org\\.postgresql:postgresql:([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "org.postgresql", "artifact": "postgresql" }
+    },
+    {
+      "id": "jvm-spring-tx",
+      "family": "jvm",
+      "description": "Spring TX (Spring unit-of-work adapter)",
+      "value": "7.0.8",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>org\\.springframework</groupId>\\s*<artifactId>spring-tx</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"org\\.springframework:spring-tx:([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "org.springframework", "artifact": "spring-tx" }
+    },
+    {
+      "id": "jvm-micronaut-data-tx",
+      "family": "jvm",
+      "description": "Micronaut Data TX (Micronaut unit-of-work adapter)",
+      "value": "4.14.4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<groupId>io\\.micronaut\\.data</groupId>\\s*<artifactId>micronaut-data-tx</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "assets/composition/**/*.kts*",
+          "pattern": "\"io\\.micronaut\\.data:micronaut-data-tx:([\\w.-]+)\""
+        }
+      ],
+      "check": { "type": "maven", "group": "io.micronaut.data", "artifact": "micronaut-data-tx" }
+    },
+    {
+      "id": "jvm-protobuf-java",
+      "family": "jvm",
+      "description": "protobuf-java in the Micronaut observability Maven patch",
+      "value": "4.28.3",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/jvm-observability.ts",
+          "pattern": "<groupId>com\\.google\\.protobuf</groupId>\\s*<artifactId>protobuf-java</artifactId>\\s*<version>([^<]+)</version>"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Deliberate compatibility pin: micronaut-micrometer-registry-otlp needs protobuf-java 4.x under Maven's metadata resolution (documented beside the pin); bumping follows the Micronaut platform, not protobuf's own latest."
+      }
+    },
+    {
+      "id": "jvm-gradle-wrapper",
+      "family": "jvm",
+      "description": "Gradle wrapper version the gradle-wrapper adapter provisions",
+      "value": "9.4.1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/gradle-wrapper.ts",
+          "pattern": "GRADLE_VERSION = '([^']+)'"
+        }
+      ],
+      "check": { "type": "gradle-current" }
+    },
+    {
+      "id": "jvm-maven-wrapper",
+      "family": "jvm",
+      "description": "Maven version the maven-wrapper adapter provisions",
+      "value": "3.9.16",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/maven-wrapper.ts",
+          "pattern": "MAVEN_VERSION = '([^']+)'"
+        }
+      ],
+      "check": { "type": "maven", "group": "org.apache.maven", "artifact": "apache-maven" }
+    },
+    {
+      "id": "jvm-native-build-tools",
+      "family": "jvm",
+      "description": "GraalVM Native Build Tools plugin (Spring native image)",
+      "value": "1.1.8",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/spring-rest-image.ts",
+          "pattern": "NATIVE_BUILD_TOOLS_VERSION = '([^']+)'"
+        }
+      ],
+      "check": { "type": "gradle-plugin", "pluginId": "org.graalvm.buildtools.native" }
+    },
+    {
+      "id": "jvm-quarkus-micro-image",
+      "family": "jvm",
+      "description": "Quarkus micro base image for the Quarkus native container",
+      "value": "2.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "quay\\.io/quarkus/quarkus-micro-image:([\\w.-]+)"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "No clean latest-stable feed for quay.io tags; the image follows Quarkus platform bumps, which are the tracked pin."
+      }
+    },
+    {
+      "id": "node-active-lts",
+      "family": "shared",
+      "description": "Node.js major everywhere the scaffold names one: node images, emitted CI, the Dev Container node feature",
+      "value": "22",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "\\bnode:(\\d+)(?:-alpine)?\\b"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "node-version: '(\\d+)'"
+        },
+        {
+          "glob": "src/domain/core/adapters/node-devcontainer.ts",
+          "pattern": "version: '(\\d+)'"
+        }
+      ],
+      "check": { "type": "node-lts" }
+    },
+    {
+      "id": "ts-node-engines-floor",
+      "family": "ts",
+      "description": "engines.node floor in emitted package.json roots (>= floors float by construction; recorded so the sweep knows them)",
+      "value": ">=22.18",
+      "locations": [
+        {
+          "glob": "assets/composition/walking-skeleton/ts-http-bootstrap/**/package.json.ejs",
+          "pattern": "\"node\": \"(>=[\\d.]+)\""
+        },
+        {
+          "glob": "assets/composition/walking-skeleton/wc-spa-bootstrap/**/package.json.ejs",
+          "pattern": "\"node\": \"(>=[\\d.]+)\"",
+          "value": ">=22"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "A floor, not a pin: every later Node satisfies it. The emitted-toolchain major is tracked by node-active-lts."
+      }
+    },
+    {
+      "id": "ts-typescript",
+      "family": "ts",
+      "description": "TypeScript across every emitted package.json (and the adapter patches that anchor on it)",
+      "value": "^5.9.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"typescript\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/*.ts",
+          "pattern": "\"typescript\": \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "npm", "package": "typescript" }
+    },
+    {
+      "id": "ts-vitest",
+      "family": "ts",
+      "description": "Vitest across every emitted package.json (and the adapter patches that anchor on it)",
+      "value": "^3.2.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"vitest\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/*.ts",
+          "pattern": "\"vitest\": \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "npm", "package": "vitest" }
+    },
+    {
+      "id": "ts-types-node",
+      "family": "ts",
+      "description": "@types/node in emitted packages and the ts-persistence adapter",
+      "value": "^22.0.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"@types/node\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/ts-persistence.ts",
+          "pattern": "'@types/node': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@types/node" }
+    },
+    {
+      "id": "ts-dependency-cruiser",
+      "family": "ts",
+      "description": "dependency-cruiser in the modulith ts-http root",
+      "value": "^18.1.1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"dependency-cruiser\": \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "npm", "package": "dependency-cruiser" }
+    },
+    {
+      "id": "ts-pg",
+      "family": "ts",
+      "description": "node-postgres in the ts persistence vertical",
+      "value": "^8.16.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"pg\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/ts-persistence.ts",
+          "pattern": "\\bpg: '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "pg" }
+    },
+    {
+      "id": "ts-types-pg",
+      "family": "ts",
+      "description": "@types/pg in the ts persistence vertical",
+      "value": "^8.15.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"@types/pg\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/ts-persistence.ts",
+          "pattern": "'@types/pg': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@types/pg" }
+    },
+    {
+      "id": "ts-testcontainers-postgresql",
+      "family": "ts",
+      "description": "@testcontainers/postgresql in the ts persistence vertical",
+      "value": "^10.18.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"@testcontainers/postgresql\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/ts-persistence.ts",
+          "pattern": "'@testcontainers/postgresql': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@testcontainers/postgresql" }
+    },
+    {
+      "id": "ts-otel-api",
+      "family": "ts",
+      "description": "@opentelemetry/api in the ts observability adapter",
+      "value": "^1.9.1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/ts-observability.ts",
+          "pattern": "'@opentelemetry/api': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@opentelemetry/api" }
+    },
+    {
+      "id": "ts-otel-sdk",
+      "family": "ts",
+      "description": "@opentelemetry SDK + OTLP exporters (the 0.x release line) in the ts observability adapter",
+      "value": "^0.221.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/ts-observability.ts",
+          "pattern": "'@opentelemetry/(?:exporter-metrics-otlp-http|exporter-trace-otlp-http|sdk-node)': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@opentelemetry/sdk-node" }
+    },
+    {
+      "id": "ts-otel-core",
+      "family": "ts",
+      "description": "@opentelemetry resources + sdk-metrics (the 2.x release line) in the ts observability adapter",
+      "value": "^2.10.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/ts-observability.ts",
+          "pattern": "'@opentelemetry/(?:resources|sdk-metrics)': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@opentelemetry/resources" }
+    },
+    {
+      "id": "ts-otel-semantic-conventions",
+      "family": "ts",
+      "description": "@opentelemetry/semantic-conventions in the ts observability adapter",
+      "value": "^1.43.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/ts-observability.ts",
+          "pattern": "'@opentelemetry/semantic-conventions': '([^']+)'"
+        }
+      ],
+      "check": { "type": "npm", "package": "@opentelemetry/semantic-conventions" }
+    },
+    {
+      "id": "web-vite",
+      "family": "web",
+      "description": "Vite in the web-components stacks",
+      "value": "^7.1.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"vite\": \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "npm", "package": "vite" }
+    },
+    {
+      "id": "web-happy-dom",
+      "family": "web",
+      "description": "happy-dom in the web-components stacks",
+      "value": "^20.9.0",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"happy-dom\": \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "npm", "package": "happy-dom" }
+    },
+    {
+      "id": "web-planks",
+      "family": "web",
+      "description": "@rgoussu.dev/planks design system in the web-components stacks",
+      "value": "^0.2.1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/package.json*",
+          "pattern": "\"@rgoussu\\.dev/planks\": \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "npm", "package": "@rgoussu.dev/planks" }
+    },
+    {
+      "id": "rust-edition",
+      "family": "rust",
+      "description": "Rust edition in emitted Cargo manifests",
+      "value": "2024",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^edition = \"(\\d+)\""
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Editions have no queryable latest-stable feed and land every ~3 years; moving edition is a deliberate migration, not a bump."
+      }
+    },
+    {
+      "id": "rust-resolver",
+      "family": "rust",
+      "description": "Cargo workspace resolver protocol",
+      "value": "3",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^resolver = \"(\\d+)\""
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Tied to the 2024 edition; moves with rust-edition."
+      }
+    },
+    {
+      "id": "rust-axum",
+      "family": "rust",
+      "description": "axum in the rust-http stack",
+      "value": "0.8",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^axum = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-http-bootstrap.ts",
+          "pattern": "axum = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "axum" }
+    },
+    {
+      "id": "rust-serde",
+      "family": "rust",
+      "description": "serde in the rust-http stack",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^serde = \\{ version = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-http-bootstrap.ts",
+          "pattern": "serde = \\{ version = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "serde" }
+    },
+    {
+      "id": "rust-serde-json",
+      "family": "rust",
+      "description": "serde_json in the rust-http stack",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^serde_json = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-http-bootstrap.ts",
+          "pattern": "serde_json = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "serde_json" }
+    },
+    {
+      "id": "rust-tokio",
+      "family": "rust",
+      "description": "tokio in the rust-http stack",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^tokio = \\{ version = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-http-bootstrap.ts",
+          "pattern": "tokio = \\{ version = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "tokio" }
+    },
+    {
+      "id": "rust-tower",
+      "family": "rust",
+      "description": "tower (dev) in the rust-http stack",
+      "value": "0.5",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^tower = \\{ version = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-http-bootstrap.ts",
+          "pattern": "tower = \\{ version = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "tower" }
+    },
+    {
+      "id": "rust-http-body-util",
+      "family": "rust",
+      "description": "http-body-util (dev) in the rust-http stack",
+      "value": "0.1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^http-body-util = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-http-bootstrap.ts",
+          "pattern": "http-body-util = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "http-body-util" }
+    },
+    {
+      "id": "rust-postgres",
+      "family": "rust",
+      "description": "postgres in the rust persistence vertical",
+      "value": "0.19",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "^postgres = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-persistence.ts",
+          "pattern": "(?<![\\w-])postgres = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "postgres" }
+    },
+    {
+      "id": "rust-testcontainers-modules",
+      "family": "rust",
+      "description": "testcontainers-modules in the rust persistence vertical",
+      "value": "0.15",
+      "locations": [
+        {
+          "glob": "assets/composition/**/Cargo.toml*",
+          "pattern": "testcontainers-modules = \\{ version = \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/rust-persistence.ts",
+          "pattern": "testcontainers-modules = \\{ version = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "testcontainers-modules" }
+    },
+    {
+      "id": "rust-humantime",
+      "family": "rust",
+      "description": "humantime in the rust persistence vertical",
+      "value": "2",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/rust-persistence.ts",
+          "pattern": "humantime = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "humantime" }
+    },
+    {
+      "id": "rust-opentelemetry",
+      "family": "rust",
+      "description": "opentelemetry + otlp exporter + sdk in the rust observability adapter",
+      "value": "0.32",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/rust-observability.ts",
+          "pattern": "(?<![\\w-])opentelemetry(?:-otlp|_sdk)? = (?:\\{ version = )?\"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "opentelemetry" }
+    },
+    {
+      "id": "rust-tracing",
+      "family": "rust",
+      "description": "tracing in the rust observability adapter",
+      "value": "0.1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/rust-observability.ts",
+          "pattern": "(?<![\\w-])tracing = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "tracing" }
+    },
+    {
+      "id": "rust-tracing-opentelemetry",
+      "family": "rust",
+      "description": "tracing-opentelemetry in the rust observability adapter",
+      "value": "0.33",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/rust-observability.ts",
+          "pattern": "tracing-opentelemetry = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "tracing-opentelemetry" }
+    },
+    {
+      "id": "rust-tracing-subscriber",
+      "family": "rust",
+      "description": "tracing-subscriber in the rust observability adapter",
+      "value": "0.3",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/rust-observability.ts",
+          "pattern": "tracing-subscriber = \\{ version = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "tracing-subscriber" }
+    },
+    {
+      "id": "rust-uuid",
+      "family": "rust",
+      "description": "uuid in the rust observability adapter",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/rust-observability.ts",
+          "pattern": "uuid = \\{ version = \"([^\"]+)\""
+        }
+      ],
+      "check": { "type": "crate", "crate": "uuid" }
+    },
+    {
+      "id": "go-toolchain",
+      "family": "go",
+      "description": "Go minor in go.mod and the Go build images",
+      "value": "1.24",
+      "locations": [
+        {
+          "glob": "assets/composition/**/go.mod*",
+          "pattern": "^go (\\d+\\.\\d+)"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "golang:(\\d+\\.\\d+)"
+        }
+      ],
+      "check": { "type": "go-toolchain" }
+    },
+    {
+      "id": "image-golang-major",
+      "family": "go",
+      "description": "golang major-only build image in the fullstack compose",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "FROM golang:(\\d+)-alpine"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Major-only tag: tracks the latest 1.x toolchain by construction."
+      }
+    },
+    {
+      "id": "image-rust",
+      "family": "rust",
+      "description": "rust build images (major-only and latest tags)",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "FROM rust:(\\d+)-alpine"
+        },
+        {
+          "glob": "assets/composition/**",
+          "pattern": "image: rust:(latest)",
+          "value": "latest"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Major-only / latest tags: track the latest stable toolchain by construction."
+      }
+    },
+    {
+      "id": "image-postgres",
+      "family": "shared",
+      "description": "PostgreSQL major across dev-env compose, persistence fixtures, and the engine dial",
+      "value": "18",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "postgres:(\\d+)-alpine"
+        },
+        {
+          "glob": "src/domain/core/adapters/persistence-engine.ts",
+          "pattern": "postgres:(\\d+)-alpine"
+        }
+      ],
+      "check": { "type": "endoflife", "product": "postgresql" }
+    },
+    {
+      "id": "image-alpine",
+      "family": "shared",
+      "description": "alpine base image major (SPA + frontend runtime images)",
+      "value": "3",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "FROM alpine:(\\d+)\\b"
+        }
+      ],
+      "check": { "type": "endoflife", "product": "alpine" }
+    },
+    {
+      "id": "image-nginx",
+      "family": "web",
+      "description": "nginx runtime image in the fullstack compose",
+      "value": "alpine",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "image: nginx:(alpine)"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Unversioned alpine tag: tracks the latest stable nginx by construction."
+      }
+    },
+    {
+      "id": "image-distroless",
+      "family": "shared",
+      "description": "distroless runtime images for Go and Rust services",
+      "value": "debian12",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "gcr\\.io/distroless/(?:static|cc)-(debian\\d+):nonroot"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Distroless publishes per-Debian-release images with floating nonroot tags; moving to the next Debian base is a manual, behavior-affecting change."
+      }
+    },
+    {
+      "id": "image-wolfi-base",
+      "family": "jvm",
+      "description": "Wolfi base for the JRE-trimming build stage",
+      "value": "latest",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "cgr\\.dev/chainguard/wolfi-base:(latest)"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Chainguard publishes only floating tags for the free wolfi-base image."
+      }
+    },
+    {
+      "id": "image-docker-dind",
+      "family": "shared",
+      "description": "docker image in emitted GitLab image-build jobs",
+      "value": "latest",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "image: docker:(latest)"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Floating tag: tracks the latest stable Docker CLI by construction."
+      }
+    },
+    {
+      "id": "image-devcontainer-base",
+      "family": "shared",
+      "description": "Dev Container fallback base image",
+      "value": "ubuntu",
+      "locations": [
+        {
+          "glob": "assets/composition/**",
+          "pattern": "mcr\\.microsoft\\.com/devcontainers/base:(\\w+)"
+        },
+        {
+          "glob": "src/domain/core/adapters/dev-container.ts",
+          "pattern": "mcr\\.microsoft\\.com/devcontainers/base:(\\w+)"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Unversioned ubuntu tag: tracks the current LTS-based image by construction."
+      }
+    },
+    {
+      "id": "devcontainer-features-major",
+      "family": "shared",
+      "description": "Dev Container feature majors referenced by the dev-container adapters",
+      "value": "1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/*.ts",
+          "pattern": "ghcr\\.io/devcontainers/features/[\\w-]+:(\\d+)"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "Major-only feature references: minors and patches float by construction, and the features have sat on major 1 since release."
+      }
+    },
+    {
+      "id": "monitoring-otel-collector",
+      "family": "shared",
+      "description": "OpenTelemetry Collector (contrib) in the monitoring compose",
+      "value": "0.158.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/monitoring-compose.ts",
+          "pattern": "otel/opentelemetry-collector-contrib:([\\d.]+)"
+        }
+      ],
+      "check": {
+        "type": "github-release",
+        "repo": "open-telemetry/opentelemetry-collector-releases",
+        "track": "exact"
+      }
+    },
+    {
+      "id": "monitoring-tempo",
+      "family": "shared",
+      "description": "Grafana Tempo in the monitoring compose",
+      "value": "2.9.4",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/monitoring-compose.ts",
+          "pattern": "grafana/tempo:([\\d.]+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "grafana/tempo", "track": "exact" }
+    },
+    {
+      "id": "monitoring-prometheus",
+      "family": "shared",
+      "description": "Prometheus in the monitoring compose",
+      "value": "3.13.2",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/monitoring-compose.ts",
+          "pattern": "prom/prometheus:v([\\d.]+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "prometheus/prometheus", "track": "exact" }
+    },
+    {
+      "id": "monitoring-loki",
+      "family": "shared",
+      "description": "Grafana Loki in the monitoring compose",
+      "value": "3.7.6",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/monitoring-compose.ts",
+          "pattern": "grafana/loki:([\\d.]+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "grafana/loki", "track": "exact" }
+    },
+    {
+      "id": "monitoring-grafana",
+      "family": "shared",
+      "description": "Grafana in the monitoring compose",
+      "value": "13.0.6",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/monitoring-compose.ts",
+          "pattern": "grafana/grafana:([\\d.]+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "grafana/grafana", "track": "exact" }
+    },
+    {
+      "id": "monitoring-otel-lgtm",
+      "family": "shared",
+      "description": "Grafana otel-lgtm all-in-one in the monitoring compose",
+      "value": "0.30.1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/monitoring-compose.ts",
+          "pattern": "grafana/otel-lgtm:([\\d.]+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "grafana/docker-otel-lgtm", "track": "exact" }
+    },
+    {
+      "id": "action-checkout",
+      "family": "shared",
+      "description": "actions/checkout major in emitted workflows",
+      "value": "v4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: actions/checkout@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "actions/checkout", "track": "major" }
+    },
+    {
+      "id": "action-setup-go",
+      "family": "go",
+      "description": "actions/setup-go major in emitted workflows",
+      "value": "v5",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: actions/setup-go@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "actions/setup-go", "track": "major" }
+    },
+    {
+      "id": "action-setup-java",
+      "family": "jvm",
+      "description": "actions/setup-java major in emitted workflows",
+      "value": "v4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: actions/setup-java@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "actions/setup-java", "track": "major" }
+    },
+    {
+      "id": "action-setup-node",
+      "family": "shared",
+      "description": "actions/setup-node major in emitted workflows",
+      "value": "v4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: actions/setup-node@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "actions/setup-node", "track": "major" }
+    },
+    {
+      "id": "action-docker-login",
+      "family": "shared",
+      "description": "docker/login-action major in emitted workflows",
+      "value": "v3",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: docker/login-action@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "docker/login-action", "track": "major" }
+    },
+    {
+      "id": "action-setup-graalvm",
+      "family": "jvm",
+      "description": "graalvm/setup-graalvm major in emitted workflows",
+      "value": "v1",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: graalvm/setup-graalvm@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "graalvm/setup-graalvm", "track": "major" }
+    },
+    {
+      "id": "action-upload-artifact",
+      "family": "shared",
+      "description": "actions/upload-artifact major in emitted workflows",
+      "value": "v4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: actions/upload-artifact@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "actions/upload-artifact", "track": "major" }
+    },
+    {
+      "id": "action-download-artifact",
+      "family": "shared",
+      "description": "actions/download-artifact major in emitted workflows",
+      "value": "v4",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: actions/download-artifact@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "actions/download-artifact", "track": "major" }
+    },
+    {
+      "id": "action-gh-release",
+      "family": "shared",
+      "description": "softprops/action-gh-release major in emitted workflows",
+      "value": "v2",
+      "locations": [
+        {
+          "glob": "assets/composition/**/*.yml.ejs",
+          "pattern": "uses: softprops/action-gh-release@(v\\d+)"
+        }
+      ],
+      "check": { "type": "github-release", "repo": "softprops/action-gh-release", "track": "major" }
+    }
+  ]
+}
