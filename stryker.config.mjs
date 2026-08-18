@@ -28,6 +28,14 @@ const config = {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.stryker.config.ts' },
   coverageAnalysis: 'perTest',
+  // Static mutants — code run at module load, so coverage cannot be
+  // attributed per test — are 2274 of the 9085 mutants here (the
+  // module-level adapter/vertical definition tables) and were
+  // estimated at 71% of the run, each one re-running the whole
+  // suite. Ignored: their guard is the unit assertions over emitted
+  // trees plus the e2e grid, and keeping them triples the bill to
+  // re-prove it. This is the one deliberate hole in the score.
+  ignoreStatic: true,
   reporters: ['html', 'clear-text', 'progress'],
   thresholds: { high: 80, low: 60, break: null },
   incremental: true,
