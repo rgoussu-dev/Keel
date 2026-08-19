@@ -208,7 +208,10 @@ written block with an empty needs list. The
 [`toolchain` vertical](verticals/toolchain.md) writes the block
 (`keel add toolchain`, opt-in; `--reapply` refreshes it after a pin
 bump — needs upsert by tool, so nothing duplicates), and
-`keel toolchain install` (N.2+) will consume it.
+[`keel toolchain install`](cli.md#keel-toolchain) consumes it: the
+provisioning engine, a bounded context of its own under
+`src/domain/toolchain/` that meets the rest of keel only at this
+block and the shared ports.
 
 ## Further reading
 

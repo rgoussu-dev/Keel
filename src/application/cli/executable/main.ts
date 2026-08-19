@@ -13,6 +13,8 @@ import { NewProjectHandler } from '../../../domain/core/handlers/new-project.js'
 import { AddModuleHandler } from '../../../domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.js';
 import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
+import { ToolchainCheckHandler } from '../../../domain/toolchain/core/check.js';
+import { ToolchainInstallHandler } from '../../../domain/toolchain/core/install.js';
 import { listStackIds } from '../../../domain/core/stacks.js';
 import { listVerticalIds } from '../../../domain/core/verticals/index.js';
 import { consoleLogger } from '../../../infrastructure/commons/console-logger.js';
@@ -43,6 +45,8 @@ export async function main(argv: string[]): Promise<void> {
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
     new LinkPeerHandler(deps),
+    new ToolchainInstallHandler(deps),
+    new ToolchainCheckHandler(deps),
   ]);
 
   const program = buildProgram({

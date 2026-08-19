@@ -178,6 +178,63 @@ Each project's manifest records the other's projected tags
 (`peer.api.rest`, `peer.ui.spa`); see
 [peers in the composition model](composition.md#peer-tags-and-products).
 
+## `keel toolchain`
+
+Provision the project's **declared toolchain** — the manifest's
+[`toolchain` block](composition.md#the-toolchain-block), written by
+[`keel add toolchain`](verticals/toolchain.md). keel is an
+orchestrator, never an installer: it renders the provider's _native_
+config file and delegates the installing to the provider's own
+idempotent command. One provider today: [mise](https://mise.jdx.dev)
+(the manager dial — asdf, sdkman, nvm + corepack, rustup — is later
+slices of roadmap item N).
+
+### `keel toolchain install`
+
+```sh
+keel toolchain install
+```
+
+Renders the block as `mise.toml` at the project root — a plain
+ecosystem file that IDEs, images, and colleagues without keel
+already understand (the JDK need `jdk@25` is spelled
+`java = "temurin-25"`; every other tool keeps its name and version
+verbatim) — then runs `mise trust` and `mise install`. Re-runnable
+at any point in the project's life: new laptop, teammate clone, CI
+runner, pin bump. An unchanged render writes nothing, and
+`mise install` is idempotent by construction.
+
+keel owns `mise.toml` once you use this command: hand edits are
+overwritten on the next run, because the block is the source of
+truth. After a keel upgrade, `keel add toolchain --reapply`
+refreshes the block to the new pins — then install again.
+
+When **mise is absent**, the config is still rendered and the
+command says so loudly — the bootstrap one-liner
+(`curl https://mise.run | sh`) plus the manual tool list — and exits
+0: the declaration is in place, and the message tells you how to
+finish satisfying it. Use `check` when you need an exit code.
+
+Refused with a reason when there is no keel project here
+(`keel.not-initialised`) or the manifest declares no toolchain block
+(`keel.toolchain-not-declared` — run `keel add toolchain` first). A
+failing provider invocation surfaces as
+`keel.toolchain-install-failed`, carrying mise's own stderr.
+
+### `keel toolchain check`
+
+```sh
+keel toolchain check
+```
+
+Reports, without touching anything, whether the declaration is
+satisfied: one line per need — `✓` installed, `✗` missing, `?`
+unverifiable because mise is absent — plus whether the on-disk
+`mise.toml` still matches a fresh render of the block. A stale
+render satisfies yesterday's declaration, so drift counts as
+unsatisfied even when every tool it names is installed. Exits 0 when
+satisfied, 1 otherwise — the CI-friendly half of the pair.
+
 ## Answers, stickiness, and `--set`
 
 Adapters ask only the questions they need (base package, project name,

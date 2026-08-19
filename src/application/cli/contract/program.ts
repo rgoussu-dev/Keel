@@ -16,9 +16,14 @@ import {
   linkPeerCommand,
   newProjectCommand,
   type InstallReport,
-  type LinkReport,
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
+import {
+  toolchainCheckQuery,
+  toolchainInstallCommand,
+  type ToolchainCheckReport,
+  type ToolchainInstallReport,
+} from '../../../domain/toolchain/contract/commands.js';
 
 /** What the composition root wires into the CLI adapter. */
 export interface CliDeps {
@@ -182,31 +187,103 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .action(async (ref: string): Promise<void> => {
       const result = await deps.mediator.dispatch(linkPeerCommand({ cwd: cwd(), ref }));
-      const report = unwrapLink(result);
+      const report = unwrap(result);
       deps.logger.info(`peer: ${report.ref}`);
       deps.logger.info(`  → projects here: ${formatTags(report.projectedHere)}`);
       deps.logger.info(`  ← projects there: ${formatTags(report.projectedThere)}`);
       deps.logger.success('keel link: peers recorded in both manifests');
     });
 
+  const toolchain = program
+    .command('toolchain')
+    .description(
+      "Provision the project's declared toolchain — the manifest's toolchain block, written by 'keel add toolchain'.",
+    );
+
+  toolchain
+    .command('install')
+    .description(
+      "Render the provider's native config (mise.toml) from the toolchain block and run its idempotent install; re-runnable at any time.",
+    )
+    .action(async (): Promise<void> => {
+      const result = await deps.mediator.dispatch(toolchainInstallCommand({ cwd: cwd() }));
+      printToolchainInstall(unwrap(result), deps.logger);
+    });
+
+  toolchain
+    .command('check')
+    .description(
+      'Report which declared tools are satisfied or missing; writes nothing. Exits 1 when the toolchain is not satisfied.',
+    )
+    .action(async (): Promise<void> => {
+      const result = await deps.mediator.dispatch(toolchainCheckQuery({ cwd: cwd() }));
+      const report = unwrap(result);
+      printToolchainCheck(report, deps.logger);
+      if (!report.satisfied) {
+        throw new Error("toolchain not satisfied — run 'keel toolchain install'");
+      }
+    });
+
   return program;
+}
+
+function printToolchainInstall(report: ToolchainInstallReport, log: Logger): void {
+  log.info(`keel toolchain install (${report.provider}):`);
+  log.info(
+    `  ${report.configChanged ? chalk.yellow('~') : ' '} ${report.configPath}${report.configChanged ? '' : ' (unchanged)'}`,
+  );
+  for (const tool of report.tools) {
+    log.info(
+      `      ${tool.spelledName} = "${tool.spelledVersion}"  (${tool.tool} ${tool.version})`,
+    );
+  }
+  if (!report.managerPresent) {
+    log.warn('Nothing was provisioned:');
+    for (const line of (report.bootstrap ?? '').split('\n')) log.warn(line);
+    if (report.tools.length > 0) {
+      log.warn('Until then, install the tools yourself:');
+      for (const tool of report.tools) {
+        log.warn(
+          `  - ${tool.tool} ${tool.version} (${report.provider}: ${tool.spelledName} ${tool.spelledVersion})`,
+        );
+      }
+    }
+    log.warn(`Then re-run 'keel toolchain install'.`);
+    return;
+  }
+  log.success(
+    `keel toolchain install: ${report.provider} install completed — re-run any time, it is idempotent`,
+  );
+}
+
+function printToolchainCheck(report: ToolchainCheckReport, log: Logger): void {
+  log.info(`keel toolchain check (${report.provider}):`);
+  for (const tool of report.tools) {
+    const line = `${tool.tool} ${tool.version}  (${tool.spelledName} ${tool.spelledVersion})`;
+    if (tool.status === 'satisfied') log.info(`  ${chalk.green('✓')} ${line}`);
+    else if (tool.status === 'missing') log.info(`  ${chalk.red('✗')} ${line} — not installed`);
+    else log.info(`  ${chalk.yellow('?')} ${line} — cannot verify, ${report.provider} is absent`);
+  }
+  log.info(
+    report.configUpToDate
+      ? `  ${chalk.green('✓')} ${report.configPath} matches the declared needs`
+      : `  ${chalk.red('✗')} ${report.configPath} out of date — run 'keel toolchain install'`,
+  );
+  if (!report.managerPresent) {
+    for (const line of (report.bootstrap ?? '').split('\n')) log.warn(line);
+  }
+  if (report.satisfied) log.success('keel toolchain check: toolchain satisfied');
 }
 
 function formatTags(tags: readonly string[]): string {
   return tags.length > 0 ? tags.join(', ') : '(none)';
 }
 
-/** Maps a link result's `Err` to the CLI's thrown-error transport. */
-function unwrapLink(result: Result<LinkReport>): LinkReport {
-  if (!result.ok) throw new Error(result.error.message);
-  return result.value;
-}
-
 /**
  * Maps a domain `Err` to the CLI's failure transport: a thrown error
  * the executable turns into stderr + exit code 1.
  */
-function unwrap(result: Result<InstallReport>): InstallReport {
+function unwrap<T>(result: Result<T>): T {
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
 }

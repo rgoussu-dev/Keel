@@ -410,6 +410,28 @@ stable" — so those pins rot silently. Two pieces keep that honest
 KEEL_RUN_CURRENCY=1 pnpm vitest run tests/currency
 ```
 
+### The toolchain real-install suite
+
+The provisioning engine (`keel toolchain install`, the bounded
+context under [`src/domain/toolchain/`](../src/domain/toolchain/))
+is proved in `verify` with fakes: the rendered `mise.toml`, the
+delegation sequence, the check verdicts. What fakes cannot prove is
+mise itself — that `mise trust` + `mise install` really provision
+the rendered file and that `mise ls --current --json` parses. The
+suite under `tests/toolchain/` does exactly that, against a real
+mise on PATH, provisioning the cheapest need in the vocabulary
+(pnpm, version from the pin registry).
+
+It is **opt-in** (`KEEL_RUN_TOOLCHAIN=1`), the `tests/currency/`
+pattern, and deliberately never in the PR matrix: it reaches the
+network and mutates the runner's mise state, neither of which
+belongs in a fast gate. Opting in asserts mise is installed — the
+first test says so loudly instead of skipping silently.
+
+```sh
+KEEL_RUN_TOOLCHAIN=1 pnpm vitest run tests/toolchain
+```
+
 ## Adding surface
 
 - **A stack** is a couple of lines in

@@ -19,7 +19,7 @@
  *
  * The vertical answers *what* the project needs; *how* those needs
  * are satisfied is the provisioning engine's job (`keel toolchain
- * install`, later slices of roadmap item N).
+ * install`, the bounded context under `domain/toolchain`).
  */
 
 import { eolAware } from '../util.js';
@@ -68,10 +68,12 @@ const README_MARKER = '\n### Toolchain\n';
 const README_NOTE = `${README_MARKER}
 This project declares its toolchain — the tools and versions it is
 built with — in the \`toolchain\` block of keel's manifest
-(\`.claude/.keel-manifest.json\`). The block is the record today;
-once \`keel toolchain install\` exists it will read the block and
-provision the tools it names. After a keel upgrade,
-\`keel add toolchain --reapply\` refreshes the block to the new pins.
+(\`.claude/.keel-manifest.json\`). \`keel toolchain install\` reads
+the block, renders it as \`mise.toml\`, and provisions the tools it
+names through mise; \`keel toolchain check\` reports what is missing
+without touching anything. After a keel upgrade,
+\`keel add toolchain --reapply\` refreshes the block to the new
+pins — then \`keel toolchain install\` again.
 `;
 
 /**
