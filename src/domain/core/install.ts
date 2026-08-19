@@ -14,8 +14,8 @@
  *           `basePackage` from the bootstrap) without re-asking;
  *        c. invoke `adapter.contribute(ctx)` to get a Contribution;
  *        d. apply files/patches against the Tree; collect actions
- *           and agentic bundles for the caller; fold `tagsAdd` into
- *           the running manifest.
+ *           and agentic bundles for the caller; fold `tagsAdd` and
+ *           declared `toolchain` needs into the running manifest.
  *   3. Record the vertical as installed and bump `updatedAt`.
  *
  * Pure with respect to disk: mutates the supplied Tree in memory and
@@ -25,6 +25,7 @@
 import { resolveAdapterAnswers } from './answers.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 import { effectiveTags } from '../contract/manifest.js';
+import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolchain.js';
 import { applyContribution, makeCtx, type ApplyMode, type ApplyResult } from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {
@@ -99,6 +100,9 @@ export async function installVertical(
       running = foldTags(running, contribution.tagsAdd);
       for (const t of contribution.tagsAdd) allTagsAdded.add(t);
     }
+    if (contribution.toolchain && contribution.toolchain.length > 0) {
+      running = foldToolchain(running, contribution.toolchain);
+    }
     for (const a of contribution.actions ?? []) collectedActions.push(a);
     if (contribution.agentic) collectedAgentic[adapter.id] = contribution.agentic;
   }
@@ -137,6 +141,24 @@ function foldAnswers(
     answers: {
       ...manifest.answers,
       [adapterId]: { ...(manifest.answers[adapterId] ?? {}), ...resolved },
+    },
+  };
+}
+
+// Upsert by tool: reapply refreshes a need's version in place (the
+// pin-bump path) rather than duplicating the entry; needs another
+// adapter declared earlier stay. Sorted so the block is deterministic
+// regardless of adapter resolution order.
+function foldToolchain(manifest: ManifestV2, needs: readonly ToolchainNeed[]): ManifestV2 {
+  const merged = new Map<string, ToolchainNeed>(
+    (manifest.toolchain?.needs ?? []).map((n) => [n.tool, n]),
+  );
+  for (const need of needs) merged.set(need.tool, need);
+  return {
+    ...manifest,
+    toolchain: {
+      schemaVersion: TOOLCHAIN_SCHEMA_VERSION,
+      needs: [...merged.values()].sort((a, b) => a.tool.localeCompare(b.tool)),
     },
   };
 }

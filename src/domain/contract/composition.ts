@@ -18,6 +18,7 @@ import type { ProcessRunner } from './ports/process-runner.js';
 import type { TemplateSource } from './ports/template-source.js';
 import type { Tree } from './ports/tree.js';
 import type { ManifestV2 } from './manifest.js';
+import type { ToolchainNeed } from './toolchain.js';
 
 /**
  * Predicate over the tag set. An adapter is selected for a given
@@ -90,6 +91,13 @@ export interface Contribution {
   readonly agentic?: AgenticBundle;
   /** Capability tags this adapter promotes into the manifest. */
   readonly tagsAdd?: readonly Tag[];
+  /**
+   * Toolchain needs this adapter declares. The installer folds them
+   * into the manifest's `toolchain` block (see `./toolchain.ts`),
+   * upserting by tool — so a reapply after a registry bump refreshes
+   * a need's version in place instead of duplicating the entry.
+   */
+  readonly toolchain?: readonly ToolchainNeed[];
   /**
    * Deferred side effects: shell-outs, network calls, anything that
    * mutates state outside the Tree. Deferred actions are *collected*
@@ -226,3 +234,4 @@ export type { Tree };
 export type { Tag } from './tags.js';
 export type { ContributionFile } from './files.js';
 export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';
+export type { ToolchainNeed, ToolchainTool, ToolchainBlock } from './toolchain.js';

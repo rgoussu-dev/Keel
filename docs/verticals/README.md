@@ -35,6 +35,7 @@ instead, which has a name to give it.
 | [`ci`](ci.md)                             | the pipeline every push has to pass: GitHub Actions or GitLab CI                                             | `pipeline`                                                                           |
 | [`distribution`](distribution.md)         | how the project ships: CLI binaries or registry-pushed images + a deploy descriptor, on tag push             | `build`, `release-channel`                                                           |
 | [`iac`](iac.md)                           | where the project runs: the OpenTofu deploy target matching the recorded deployment flavor                   | `deploy-target`                                                                      |
+| [`toolchain`](toolchain.md)               | records the project's declared toolchain needs in the manifest's `toolchain` block (opt-in)                  | `needs`                                                                              |
 | [`fullstack`](fullstack.md)               | product-root glue for composite monorepos                                                                    | `product-docs`, `product-compose`                                                    |
 
 ## Compatibility matrix
@@ -55,6 +56,7 @@ instead, which has a name to give it.
 | `ci`               | ➕      | ➕       | ➕             | ➕           | ➕        | ➕               | ➕ per service               |
 | `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³           | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service             |
 | `iac`              | ⛔ ⁵    | ➕ ⁵     | ⛔ ⁵           | ➕ ⁵         | ➕ ⁵      | ➕ ⁵             | ➕ ⁵ per service             |
+| `toolchain`        | ➕      | ➕       | ➕             | ➕           | ➕        | ➕               | ➕ per service               |
 | `fullstack`        | —       | —        | —              | —            | —         | —                | ● monorepo root only         |
 
 ¹ Needs a peer in scope first: `keel link <path>` on both projects,

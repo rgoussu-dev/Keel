@@ -663,6 +663,22 @@
       }
     },
     {
+      "id": "ts-pnpm",
+      "family": "ts",
+      "description": "pnpm the pnpm-flavored package.json roots pin via packageManager (provisioned by corepack)",
+      "value": "10.33.0",
+      "locations": [
+        {
+          "glob": "assets/composition/walking-skeleton/**/package.json.ejs",
+          "pattern": "\"packageManager\": \"pnpm@([\\w.-]+)\""
+        }
+      ],
+      "check": {
+        "type": "npm",
+        "package": "pnpm"
+      }
+    },
+    {
       "id": "ts-typescript",
       "family": "ts",
       "description": "TypeScript across every emitted package.json (and the adapter patches that anchor on it)",
