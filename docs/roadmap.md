@@ -1481,7 +1481,8 @@ deployment flavor`
 Sliced and issue-tracked (2026-08-18), one session per issue:
 **N.0** ([#87]) → **N.1** ([#88]) → **N.2** ([#89]) → **N.3**
 ([#90]) → **N.4** ([#91]); **N.5** ([#92]) depends only on N.1 and
-can run in parallel with N.3/N.4.
+can run in parallel with N.3/N.4. N.0–N.4 have shipped; the launch
+provider set is complete.
 
 **Goal.** Every stack page ends in a "Required on PATH" table and a
 you-problem: keel scaffolds a project targeting JDK 25 and leaves
@@ -1589,24 +1590,68 @@ Two things the slice settled that the sketch did not anticipate:
   `pnpm` shim, which without a TTY refuses to download rather than
   fetching — the read-only answer `check` needs.
 
-**One fidelity gap carried into N.4, deliberately on record.** asdf
-documents `.tool-versions` as a lockfile: concrete versions only,
-`latest` explicitly forbidden there. The block pins majors for the
-JDK and Node, so the rendered line is a prefix that only a plugin
-accepting one will resolve. Resolving through the manager
+**One fidelity gap, deliberately on record.** asdf documents
+`.tool-versions` as a lockfile: concrete versions only, `latest`
+explicitly forbidden there. The block pins majors for the JDK and
+Node, so the rendered line is a prefix that only a plugin accepting
+one will resolve. Resolving through the manager
 (`asdf latest <plugin> <prefix>`) needs a resolution step that runs
 _before_ rendering — and one that degrades honestly when the manager
 is absent, since N.2's guarantee is that the config renders anyway.
-That is N.4's business; until then mise, whose resolver takes
-prefixes natively, is the default, and the caveat is in
-`docs/cli.md`.
+It was sketched as N.4's business and is **still open** after it: no
+record N.4 added needs one (see N.4's shipped note). Until it lands,
+mise, whose resolver takes prefixes natively, is the default, and
+the caveat is in `docs/cli.md`.
 
-### N.4 — sdkman, rustup, and the ecosystem-native no-ops (M) ([#91])
+### N.4 — sdkman, rustup, and the ecosystem-native no-ops (M) ([#91]) ✅
 
 sdkman (offered only where it covers everything — JVM-only),
 rustup via `rust-toolchain.toml`, and Go's `go.mod` `toolchain`
 directive as an explicit no-op choice whose "action" is a
 consistency check.
+
+**Shipped.** Three records, and the dial needed no new machinery for
+any of them: `covers` is `{jdk, gradle, maven}` for sdkman, `{rust}`
+for rustup and `{go}` for go-native, and the coverage invariant does
+the rest — sdkman is offered on JVM-only projects and vanishes the
+moment one also declares Node, with nothing in `dial.ts` mentioning
+either. The dial's own test now asserts that disappearance directly,
+alongside the per-profile choice lists.
+
+Three things the slice settled:
+
+- **`sdk` is a shell function too**, so sdkman's record reaches it
+  the way nvm's reaches nvm — a login shell sourcing
+  `sdkman-init.sh`. Its read-only status is `sdk env` (which
+  activates but never installs) followed by `sdk current`, so a
+  candidate that is missing simply never shows up.
+- **rustup is thin because the ecosystem made it thin.**
+  `rust-toolchain.toml` is honored natively by every cargo
+  invocation, so there is no activation story to write. The one
+  decision is the spelling: the block pins a bare Rust major, since
+  the scaffolds track latest stable by construction, and rustup has
+  no "series" channel — `stable` is exactly what that major means,
+  and it joins the pin registry as a keel-chosen spelling.
+- **The no-op still renders, and that is what makes it a check.**
+  go-native's native file is `go.mod`, which belongs to the project,
+  so it merges the `toolchain` directive in place the way corepack
+  merges `packageManager` — and the engine's existing "does the
+  render match disk" comparison turns that into the consistency
+  check the sketch asked for: `check` reports drift, `install`
+  writes it back, and no command runs either way. The directive is a
+  floor rather than a pin, so a newer local Go is used as is.
+
+**The asdf prefix gap N.3 carried here is still open.**
+`.tool-versions` wants concrete versions where the block pins
+majors, and resolving prefixes through the manager
+(`asdf latest <plugin> <prefix>`) needs a resolution step running
+before the render — one that degrades honestly when the manager is
+absent, since N.2's guarantee is that the config renders anyway.
+None of the three records this slice added needs such a step, so it
+was not built: sdkman spells the JDK major as a candidate version,
+rustup's whole point is that `stable` needs no resolving, and
+go-native's directive is a floor. mise stays the default for exactly
+this reason, and the caveat stays in `docs/cli.md`.
 
 ### N.5 — single-source pins: dev-container and CI converge (M) ([#92]) ✅
 

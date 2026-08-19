@@ -15,6 +15,8 @@ import { expectErr, expectOk } from '../../support/factory.js';
 import { nvmProvider } from '../../../src/domain/toolchain/core/nvm.js';
 import {
   CWD,
+  GO_BLOCK,
+  GO_MOD,
   JVM_BLOCK,
   MISE_ABSENT,
   PACKAGE_JSON,
@@ -220,5 +222,59 @@ describe('keel toolchain check', () => {
     expect(expectErr(await new ToolchainCheckHandler(undeclared.deps).handle(query)).code).toBe(
       'keel.toolchain-not-declared',
     );
+  });
+});
+
+describe('keel toolchain check — the Go no-manager choice', () => {
+  const scripts = [
+    {
+      command: 'go',
+      argsPrefix: ['version'],
+      result: { stdout: 'go version go1.24.3 linux/amd64\n' },
+    },
+    { command: 'go', argsPrefix: ['env'], result: { stdout: 'auto\ngo1.24.3\n' } },
+  ];
+
+  it('reports go.mod out of date when its directive and the block disagree', async () => {
+    const s = await scenario({ block: { ...GO_BLOCK, provider: 'go-native' }, scripts });
+    s.tree.seed('go.mod', 'module example.com/demo\n\ngo 1.24\ntoolchain go1.22.0\n');
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.tools.map((t) => t.status)).toEqual(['satisfied']);
+    expect(report.configs).toEqual([{ path: 'go.mod', upToDate: false }]);
+    expect(report.satisfied).toBe(false);
+    expectUntouched(s);
+  });
+
+  it('is satisfied once the directive matches — and still writes nothing', async () => {
+    const s = await scenario({ block: { ...GO_BLOCK, provider: 'go-native' }, scripts });
+    s.tree.seed('go.mod', 'module example.com/demo\n\ngo 1.24\ntoolchain go1.24.0\n');
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.satisfied).toBe(true);
+    expectUntouched(s);
+  });
+
+  it('leaves the need unknown when Go itself is absent, with the bootstrap guidance', async () => {
+    const s = await scenario({
+      block: { ...GO_BLOCK, provider: 'go-native' },
+      scripts: [
+        {
+          command: 'go',
+          argsPrefix: ['version'],
+          result: { status: null, startFailure: { message: 'spawn go ENOENT' } },
+        },
+      ],
+    });
+    s.tree.seed('go.mod', GO_MOD);
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.managerPresent).toBe(false);
+    expect(report.tools.map((t) => t.status)).toEqual(['unknown']);
+    expect(report.bootstrap).toContain('Go is not installed');
+    expectUntouched(s);
   });
 });

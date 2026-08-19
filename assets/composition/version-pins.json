@@ -254,6 +254,38 @@
       }
     },
     {
+      "id": "sdkman-java-distribution",
+      "family": "jvm",
+      "description": "JDK distribution suffix the sdkman provider record qualifies the block's major with (jdk@25 → java=25-tem) — the keel-chosen half of the spelling, as mise-java-distribution is for mise; the version half rides jvm-jdk, which the currency loop already covers",
+      "value": "tem",
+      "locations": [
+        {
+          "glob": "src/domain/toolchain/core/sdkman.ts",
+          "pattern": "JDK_DISTRIBUTION = '(tem)'"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "a distribution name, not a version — changing it is a provider-record decision, human-reviewed like any pin bump"
+      }
+    },
+    {
+      "id": "rustup-stable-channel",
+      "family": "rust",
+      "description": "rustup channel the rust provider record spells a bare-major Rust need as (rust@1 → channel = \"stable\") — rustup has no series channel, and the scaffolds track latest stable by construction; the keel-chosen half of the spelling",
+      "value": "stable",
+      "locations": [
+        {
+          "glob": "src/domain/toolchain/core/rustup.ts",
+          "pattern": "STABLE_CHANNEL = '(stable)'"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "a channel name, not a version — changing it is a provider-record decision, human-reviewed like any pin bump"
+      }
+    },
+    {
       "id": "nvm-installer",
       "family": "shared",
       "description": "nvm release the nvm provider record's bootstrap one-liner installs from",

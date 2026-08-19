@@ -44,6 +44,21 @@ export const TS_PNPM_BLOCK: ToolchainBlock = {
   ],
 };
 
+/** The Go profile — where the dial offers the ecosystem's own no-op. */
+export const GO_BLOCK: ToolchainBlock = {
+  schemaVersion: 1,
+  needs: [{ tool: 'go', version: '1.24', source: 'go-toolchain' }],
+};
+
+/** The Rust profile, whose need the scaffolds pin as a bare major. */
+export const RUST_BLOCK: ToolchainBlock = {
+  schemaVersion: 1,
+  needs: [{ tool: 'rust', version: '1', source: 'image-rust' }],
+};
+
+/** A `go.mod` as the Go scaffolds emit it — go-native's file. */
+export const GO_MOD = 'module example.com/demo\n\ngo 1.24\n';
+
 /** A `package.json` as the TS scaffolds emit it — corepack's file. */
 export const PACKAGE_JSON = '{\n  "name": "demo",\n  "private": true\n}\n';
 
