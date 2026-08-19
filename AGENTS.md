@@ -184,7 +184,8 @@ src/
                           # RegistryMediator
     toolchain/            # the provisioning bounded context (own
       contract/ core/     # hexagon): provider records (mise, asdf,
-                          # nvm, corepack) + the manager dial that
+                          # nvm, corepack, sdkman, rustup,
+                          # go-native) + the manager dial that
                           # computes which cover a needs set whole +
                           # the keel toolchain install|check engine;
                           # meets the rest of keel only at

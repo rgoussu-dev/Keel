@@ -32,10 +32,21 @@
   answers: half a combination is the half-install the invariant
   exists to prevent.
 - Version spellings that embed a keel-chosen value (the JDK
-  distribution for mise and for asdf) and versions a record names
-  (the nvm release its bootstrap installs) register in
+  distribution for mise, asdf and sdkman; the `stable` channel rustup
+  spells a bare-major Rust need as) and versions a record names (the
+  nvm release its bootstrap installs) register in
   `assets/composition/version-pins.json`; the sweep in
   `tests/version-pins.test.ts` scans this directory.
+- A record whose native file belongs to the **project** rather than
+  the manager merges its one field in place and touches nothing else
+  — corepack's `packageManager` in `package.json`, go-native's
+  `toolchain` directive in `go.mod`. The block stays the source of
+  truth, and the engine's own "does the render match disk" check is
+  what turns that merge into a consistency check on the read path.
+- An empty `install()` is legal and is not a stub: go-native runs no
+  command because the rendered directive _is_ the provisioning. Where
+  the ecosystem solved provisioning, the dial says so instead of
+  routing around it.
 - Tests live in `tests/domain/toolchain/`, Scenario + Factory + port
   with the shipped fakes. The real-install suite
   (`tests/toolchain/`) is opt-in and env-gated — never in the PR

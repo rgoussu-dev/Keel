@@ -10,11 +10,16 @@
  * understand — and names the manager's own idempotent invocations.
  * keel never owns downloads, checksums, or platform matrices.
  *
- * Four records today: mise (`mise.ts`, the default), asdf
- * (`asdf.ts`), nvm (`nvm.ts`) and corepack (`corepack.ts`). Which of
- * them — alone or in a curated combination — is offered for a given
+ * Seven records today. Two are universal — mise (`mise.ts`, the
+ * default) and asdf (`asdf.ts`) — and five are ecosystem-shaped: nvm
+ * (`nvm.ts`) and corepack (`corepack.ts`) for Node, sdkman
+ * (`sdkman.ts`) for the JVM, rustup (`rustup.ts`) for Rust, and
+ * go-native (`go-native.ts`), the "no manager needed" answer whose
+ * declaration is `go.mod`'s own `toolchain` directive. Which of them
+ * — alone or in a curated combination — is offered for a given
  * project is the manager dial's job (`dial.ts`), computed from
- * coverage.
+ * coverage: an ecosystem record never appears on a project whose
+ * declaration reaches past its ecosystem.
  */
 
 import type { ProcessResult } from '../../contract/ports/process-runner.js';
@@ -85,7 +90,9 @@ export interface ToolchainProvider {
    * run in order against the rendered config; every step must be
    * idempotent. Derived from the needs because some managers install
    * per tool (asdf adds a plugin per tool) where others read the
-   * rendered file (mise, nvm).
+   * rendered file (mise, nvm). Empty is legal and means it: go-native
+   * has nothing to run, because the rendered directive *is* the
+   * provisioning.
    */
   install(needs: readonly ToolchainNeed[]): readonly ProviderInvocation[];
   /** Reports per-tool status without installing anything. */
