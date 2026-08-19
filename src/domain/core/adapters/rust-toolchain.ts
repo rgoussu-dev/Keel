@@ -14,5 +14,5 @@ export const RUST_TOOLCHAIN_ID = 'toolchain/rust-toolchain';
 export const rustToolchainAdapter = toolchainAdapter(
   RUST_TOOLCHAIN_ID,
   ['lang.rust'],
-  (_ctx, pin) => [pin('rust', 'image-rust')],
+  (_ctx, pins) => [pins.need('rust')],
 );

@@ -26,9 +26,15 @@ declaration (`keel toolchain install`) or audit it
 Versions come from keel's own pin registry
 (`assets/composition/version-pins.json`): the block is one more
 consumer of the registry, never a second place versions are stated.
-Each need's `source` cites the registry entry that supplied its
-version, so a pin bump can find every block it should touch — and
-after upgrading keel,
+The block is not the only consumer, either — the
+[`dev-container`](dev-container.md) features and the [`ci`](ci.md)
+setup steps resolve their versions through the same shared pin source
+([`src/domain/core/adapters/version-pins.ts`](../../src/domain/core/adapters/version-pins.ts)),
+so a project's declared needs, its editor toolchain and its pipeline
+toolchain cannot disagree; `tests/toolchain-pins.test.ts` fails in
+`verify` if they ever do. Each need's `source` cites the registry
+entry that supplied its version, so a pin bump can find every block
+it should touch — and after upgrading keel,
 
 ```sh
 keel add toolchain --reapply

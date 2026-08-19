@@ -12,6 +12,10 @@
  *   - `tests/currency/version-currency.test.ts` (the drift report,
  *     network, opt-in with `KEEL_RUN_CURRENCY=1`): every entry with an
  *     upstream check is compared against the current latest stable.
+ *   - the vertical suites and `tests/toolchain-pins.test.ts`, through
+ *     {@link pinValue} and {@link withRegistry}: an emitted version is
+ *     asserted against the registry rather than a literal, and a
+ *     doctored registry proves a pin bump reaches every surface.
  *
  * Globs here are deliberately minimal — `**` crosses directories, `*`
  * stays inside a segment — because the registry needs no more, and a
@@ -22,6 +26,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
+import { VERSION_PINS_ASSET } from '../../src/domain/core/adapters/version-pins.js';
+import type { TemplateSource } from '../../src/domain/contract/ports/template-source.js';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -162,3 +169,34 @@ export const locationMatches = (pin: Pin, location: PinLocation): PinMatch[] => 
       }));
     });
 };
+
+/**
+ * A pin's recorded value, for tests asserting an emitted version. The
+ * point is never to restate the number: a test that hardcodes `25`
+ * passes just as happily when the adapter hardcodes it too, which is
+ * the drift the single-source rule exists to prevent.
+ */
+export const pinValue = (id: string): string => {
+  const pin = loadRegistry().find((p) => p.id === id);
+  if (!pin) throw new Error(`test setup: no '${id}' entry in the pin registry`);
+  return pin.value;
+};
+
+/**
+ * A TemplateSource serving a doctored pin registry over the real
+ * assets — the pin-bump path, without editing a file on disk. The
+ * transform receives the registry's entries and mutates them in
+ * place; every other asset is served unchanged.
+ */
+export const withRegistry = (
+  transform: (pins: { id: string; value: string }[]) => void,
+): TemplateSource => ({
+  render: (templateId, targetRoot, vars) => ejsTemplateSource.render(templateId, targetRoot, vars),
+  readText: async (assetId) => {
+    const raw = await ejsTemplateSource.readText(assetId);
+    if (assetId !== VERSION_PINS_ASSET) return raw;
+    const doctored = JSON.parse(raw) as { pins: { id: string; value: string }[] };
+    transform(doctored.pins);
+    return JSON.stringify(doctored);
+  },
+});

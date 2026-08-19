@@ -396,6 +396,29 @@ stable" — so those pins rot silently. Two pieces keep that honest
   disagree — or when a sweep of the templates finds a pin-shaped
   string no entry claims. Adding a pin means adding (or extending) an
   entry; the failure message names the file and the match.
+- **The covered surfaces.** The registry describes more than the
+  template trees. It also covers the manifest's `toolchain` block —
+  every need's version and the entry it cites (`ToolchainNeed.source`)
+  — and the provisioning providers' **spellings**: the JDK
+  distribution the mise and asdf records qualify the block's major
+  with (`mise-java-distribution`, `asdf-java-distribution`) and the
+  nvm release its bootstrap installs from (`nvm-installer`). Those
+  three are `check: none` on purpose: a distribution name is a
+  provider-record decision, not a version, so it is human-reviewed
+  like any pin bump rather than chased upstream.
+- **One entry per toolchain fact.** The `toolchain` block, the
+  `dev-container` features and the `ci` setup steps used to state
+  their versions independently. They now resolve through
+  [`src/domain/core/adapters/version-pins.ts`](../src/domain/core/adapters/version-pins.ts),
+  whose `TOOLCHAIN_PIN_SOURCE` names the registry entry each tool's
+  version comes from — so a pin bump is one edit and the three cannot
+  disagree. `tests/toolchain-pins.test.ts` is the wall around that: it
+  scaffolds each family, reads the versions back out of the emitted
+  `devcontainer.json`, `ci.yml` and `.gitlab-ci.yml`, and fails in
+  `verify` when any of them departs from the recorded needs. It also
+  lists the surfaces that deliberately state **no** version (GitHub's
+  `go-version-file`, `rustup update stable`, corepack's
+  `packageManager`), so one quietly growing a literal is equally red.
 - **The report.** The suite under `tests/currency/` fetches each
   entry's upstream latest stable and fails per pin on drift. It is
   **opt-in** (`KEEL_RUN_CURRENCY=1`) and runs on a weekly schedule in

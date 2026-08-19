@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '<%= jdkVersion %>'
           distribution: temurin
 <% if (buildSystem === 'gradle') { -%>
           cache: gradle

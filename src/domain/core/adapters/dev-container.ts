@@ -8,6 +8,12 @@
  * attachment, the README section — is decided here so the four
  * cannot drift.
  *
+ * The **versions** those features request are not stated here
+ * either: they come from the shared pin source (`version-pins.ts`),
+ * the same one the `toolchain` block and the `ci` setup steps
+ * resolve through, so a devcontainer cannot provision a JDK the
+ * project does not declare a need for.
+ *
  * The definition has two shapes, picked by whether the `dev-env`
  * vertical is recorded on the manifest:
  *
@@ -32,6 +38,7 @@
  */
 
 import { anyProjectName, eolAware } from '../util.js';
+import { loadToolchainPins, type ToolchainPins } from './version-pins.js';
 import type {
   Adapter,
   Contribution,
@@ -199,17 +206,24 @@ export function attachReadmeSection(existing: string): string {
   return existing.replace(README_BASE, `${README_BASE}${README_ATTACHED}`);
 }
 
-/** Declares one family adapter over the shared machinery. */
+/**
+ * Declares one family adapter over the shared machinery. The family
+ * callback is handed the resolved pins alongside the context: the
+ * versions its features request are read from the registry through
+ * the TemplateSource port before it runs, so a family adapter stays
+ * a plain function of what it was given — see `version-pins.ts`.
+ */
 export function devContainerAdapter(
   id: string,
   requires: readonly Tag[],
-  family: (ctx: Ctx) => DevContainerFamily,
+  family: (ctx: Ctx, pins: ToolchainPins) => DevContainerFamily,
 ): Adapter {
   return {
     id,
     vertical: 'dev-container',
     covers: ['definition'],
     predicate: { requires },
-    contribute: (ctx) => devContainerDefinition(ctx, family(ctx)),
+    contribute: async (ctx) =>
+      devContainerDefinition(ctx, family(ctx, await loadToolchainPins(ctx, id))),
   };
 }

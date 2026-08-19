@@ -19,21 +19,13 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { toolchainVertical } from '../../../../src/domain/core/verticals/toolchain.js';
-import { VERSION_PINS_ASSET } from '../../../../src/domain/core/adapters/toolchain.js';
 import { getVertical } from '../../../../src/domain/core/verticals/index.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import type { TemplateSource } from '../../../../src/domain/contract/ports/template-source.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
-import { loadRegistry } from '../../../support/version-pins.js';
-
-/** The registry the adapters read — the single source of versions. */
-const pinValue = (id: string): string => {
-  const pin = loadRegistry().find((p) => p.id === id);
-  if (!pin) throw new Error(`test setup: no '${id}' entry in the pin registry`);
-  return pin.value;
-};
+import { pinValue, withRegistry } from '../../../support/version-pins.js';
 
 let cwds: string[] = [];
 
@@ -76,21 +68,6 @@ async function install(
     apply: options.apply ?? 'install',
   });
   return { tree, manifest: result.manifest };
-}
-
-/** A TemplateSource serving a doctored pin registry over the real assets. */
-function withRegistry(transform: (pins: { id: string; value: string }[]) => void): TemplateSource {
-  return {
-    render: (templateId, targetRoot, vars) =>
-      ejsTemplateSource.render(templateId, targetRoot, vars),
-    readText: async (assetId) => {
-      const raw = await ejsTemplateSource.readText(assetId);
-      if (assetId !== VERSION_PINS_ASSET) return raw;
-      const registry = JSON.parse(raw) as { pins: { id: string; value: string }[] };
-      transform(registry.pins);
-      return JSON.stringify(registry);
-    },
-  };
 }
 
 const baseManifest = (tags: readonly string[]): ManifestV2 => ({

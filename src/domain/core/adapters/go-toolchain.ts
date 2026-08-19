@@ -9,6 +9,6 @@ import { toolchainAdapter } from './toolchain.js';
 
 export const GO_TOOLCHAIN_ID = 'toolchain/go-toolchain';
 
-export const goToolchainAdapter = toolchainAdapter(GO_TOOLCHAIN_ID, ['lang.go'], (_ctx, pin) => [
-  pin('go', 'go-toolchain'),
+export const goToolchainAdapter = toolchainAdapter(GO_TOOLCHAIN_ID, ['lang.go'], (_ctx, pins) => [
+  pins.need('go'),
 ]);

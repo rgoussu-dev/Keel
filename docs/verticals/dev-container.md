@@ -44,12 +44,32 @@ names the manual recipe instead of silently losing your changes.
 
 ## Dimensions & adapters
 
-| Dimension    | Adapter                           | Predicate         | Toolchain provisioned                                                                  |
-| ------------ | --------------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
-| `definition` | `dev-container/jvm-devcontainer`  | `runtime.jvm`     | JDK 25 (Temurin) + the build system the manifest's `pkg.*` tag names (Gradle or Maven) |
-| `definition` | `dev-container/go-devcontainer`   | `lang.go`         | latest stable Go                                                                       |
-| `definition` | `dev-container/rust-devcontainer` | `lang.rust`       | latest stable Rust (clippy, rustfmt)                                                   |
-| `definition` | `dev-container/node-devcontainer` | `lang.typescript` | Node 22; `postCreateCommand` installs dependencies with the tagged package manager     |
+| Dimension    | Adapter                           | Predicate         | Toolchain provisioned                                                                            |
+| ------------ | --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------ |
+| `definition` | `dev-container/jvm-devcontainer`  | `runtime.jvm`     | the pinned JDK (Temurin) + the build system the manifest's `pkg.*` tag names (Gradle or Maven)   |
+| `definition` | `dev-container/go-devcontainer`   | `lang.go`         | the pinned Go minor — the same one `go.mod` directs                                              |
+| `definition` | `dev-container/rust-devcontainer` | `lang.rust`       | latest stable Rust (clippy, rustfmt)                                                             |
+| `definition` | `dev-container/node-devcontainer` | `lang.typescript` | the pinned Node major; `postCreateCommand` installs dependencies with the tagged package manager |
+
+### Single-source versions
+
+The feature versions above are **not stated by these adapters**.
+They resolve through the shared pin source
+([`src/domain/core/adapters/version-pins.ts`](../../src/domain/core/adapters/version-pins.ts)),
+which names the
+[`version-pins.json`](../../assets/composition/version-pins.json)
+entry each tool's version comes from — the same entry the
+[`toolchain`](toolchain.md) block records the need from and the
+[`ci`](ci.md) pipeline provisions. One registry edit moves all three;
+`tests/toolchain-pins.test.ts` runs in `verify` and fails if a
+scaffolded project's dev container and its recorded needs disagree,
+so a dev container cannot provision a JDK the project does not
+declare.
+
+Rust is the one family whose feature is deliberately versionless: its
+pin is a major-only tag that tracks latest stable by construction, so
+every Rust surface takes the current stable rather than naming a
+version.
 
 ## Prerequisites
 

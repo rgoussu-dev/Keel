@@ -1,5 +1,5 @@
 <% if (pm === 'pnpm') { -%>
-image: node:22
+image: node:<%= nodeVersion %>
 
 build:
   script:
@@ -17,7 +17,7 @@ build:
     paths:
       - .pnpm-store
 <% } else { -%>
-image: node:22
+image: node:<%= nodeVersion %>
 
 variables:
   npm_config_cache: "$CI_PROJECT_DIR/.npm"

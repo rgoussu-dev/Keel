@@ -1,5 +1,5 @@
 <% if (buildSystem === 'gradle') { -%>
-image: eclipse-temurin:25-jdk
+image: eclipse-temurin:<%= jdkVersion %>-jdk
 
 variables:
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
@@ -13,7 +13,7 @@ build:
       - .gradle/wrapper
       - .gradle/caches
 <% } else { -%>
-image: eclipse-temurin:25-jdk
+image: eclipse-temurin:<%= jdkVersion %>-jdk
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"

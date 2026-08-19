@@ -12,10 +12,16 @@
  * (pinned by the workspace's `packageManager` field) under
  * `pkg.pnpm`. Both install from the committed lockfile, so the
  * pipeline fails loudly on drift instead of resolving silently.
+ *
+ * The Node major comes from the shared pin source
+ * (`version-pins.ts`), the same entry the `toolchain` block records
+ * the need from and the Dev Container feature provisions, so the
+ * pipeline cannot state a Node of its own.
  */
 
 import type { Adapter } from '../../contract/composition.js';
 import { ciTemplateId, PROVIDER_QUESTION, ciProvider, providerTag } from './ci-pipeline.js';
+import { loadToolchainPins } from './version-pins.js';
 
 export const TS_PIPELINE_ID = 'ci/ts-pipeline';
 
@@ -28,7 +34,11 @@ export const tsPipelineAdapter: Adapter = {
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), TS_PIPELINE_ID);
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
-    const files = await ctx.templates.render(ciTemplateId('ts-pipeline', provider), '', { pm });
+    const pins = await loadToolchainPins(ctx, TS_PIPELINE_ID);
+    const files = await ctx.templates.render(ciTemplateId('ts-pipeline', provider), '', {
+      pm,
+      nodeVersion: pins.version('node'),
+    });
     return { files, tagsAdd: [providerTag(provider)] };
   },
 };

@@ -15,8 +15,8 @@ export const JVM_TOOLCHAIN_ID = 'toolchain/jvm-toolchain';
 export const jvmToolchainAdapter = toolchainAdapter(
   JVM_TOOLCHAIN_ID,
   ['runtime.jvm'],
-  (ctx, pin) =>
+  (ctx, pins) =>
     jvmBuildSystem(ctx.manifest, JVM_TOOLCHAIN_ID) === 'gradle'
-      ? [pin('jdk', 'jvm-jdk'), pin('gradle', 'jvm-gradle-wrapper')]
-      : [pin('jdk', 'jvm-jdk'), pin('maven', 'jvm-maven-wrapper')],
+      ? [pins.need('jdk'), pins.need('gradle')]
+      : [pins.need('jdk'), pins.need('maven')],
 );

@@ -3,9 +3,13 @@
  * both shapes of the definition — standalone image-based without the
  * `dev-env` vertical, Compose-attached (joining `dev/compose.yaml`'s
  * project) when the manifest records it — and that the per-family
- * adapters request their toolchain features. The resolution block
- * proves every non-composite stack's tag set covers the vertical, so
- * no stack can silently lose its dev container.
+ * adapters request their toolchain features, with every version
+ * asserted **against the pin registry itself**, so a feature can
+ * never become a second place a toolchain version is stated
+ * (`tests/toolchain-pins.test.ts` guards the same rule across all
+ * three surfaces at once). The resolution block proves every
+ * non-composite stack's tag set covers the vertical, so no stack can
+ * silently lose its dev container.
  */
 
 import path from 'node:path';
@@ -25,6 +29,7 @@ import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
+import { pinValue } from '../../../support/version-pins.js';
 
 let cwds: string[] = [];
 
@@ -86,7 +91,7 @@ describe('dev-container vertical', () => {
     expect(parsed.dockerComposeFile).toBeUndefined();
     const features = parsed.features as Record<string, Record<string, unknown>>;
     expect(features['ghcr.io/devcontainers/features/java:1']).toEqual({
-      version: '25',
+      version: pinValue('jvm-jdk'),
       jdkDistro: 'tem',
       installGradle: true,
       installMaven: false,
@@ -127,7 +132,9 @@ describe('dev-container vertical', () => {
     expect(parsed.workspaceFolder).toBe('/workspaces/shipper');
     expect(parsed.image).toBeUndefined();
     const features = parsed.features as Record<string, Record<string, unknown>>;
-    expect(features['ghcr.io/devcontainers/features/go:1']).toEqual({ version: 'latest' });
+    expect(features['ghcr.io/devcontainers/features/go:1']).toEqual({
+      version: pinValue('go-toolchain'),
+    });
     expect(features['ghcr.io/devcontainers/features/docker-outside-of-docker:1']).toEqual({});
 
     const overlay = tree.read('.devcontainer/compose.yaml')?.toString() ?? '';
@@ -152,7 +159,9 @@ describe('dev-container vertical', () => {
     const parsed = parseDevcontainer(npm.tree);
     expect(parsed.postCreateCommand).toBe('npm install');
     const features = parsed.features as Record<string, Record<string, unknown>>;
-    expect(features['ghcr.io/devcontainers/features/node:1']).toEqual({ version: '22' });
+    expect(features['ghcr.io/devcontainers/features/node:1']).toEqual({
+      version: pinValue('node-active-lts'),
+    });
   });
 
   it('provisions the Rust toolchain for the Rust stacks', async () => {
@@ -195,7 +204,9 @@ describe('dev-env installed after dev-container (order independence)', () => {
     expect(parsed.workspaceFolder).toBe('/workspaces/shipper');
     const features = parsed.features as Record<string, Record<string, unknown>>;
     expect(features['ghcr.io/devcontainers/features/docker-outside-of-docker:1']).toEqual({});
-    expect(features['ghcr.io/devcontainers/features/go:1']).toEqual({ version: 'latest' });
+    expect(features['ghcr.io/devcontainers/features/go:1']).toEqual({
+      version: pinValue('go-toolchain'),
+    });
 
     const overlay = first.tree.read('.devcontainer/compose.yaml')?.toString() ?? '';
     expect(overlay).toContain('- ..:/workspaces/shipper:cached');

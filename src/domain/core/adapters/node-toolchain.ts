@@ -15,8 +15,8 @@ export const NODE_TOOLCHAIN_ID = 'toolchain/node-toolchain';
 export const nodeToolchainAdapter = toolchainAdapter(
   NODE_TOOLCHAIN_ID,
   ['lang.typescript'],
-  (ctx, pin) =>
+  (ctx, pins) =>
     ctx.manifest.tags.includes('pkg.pnpm')
-      ? [pin('node', 'node-active-lts'), pin('pnpm', 'ts-pnpm')]
-      : [pin('node', 'node-active-lts')],
+      ? [pins.need('node'), pins.need('pnpm')]
+      : [pins.need('node')],
 );

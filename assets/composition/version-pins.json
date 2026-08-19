@@ -193,7 +193,7 @@
     {
       "id": "jvm-jdk",
       "family": "jvm",
-      "description": "JDK major everywhere the scaffold names one: Maven release properties, Gradle toolchains, Temurin/Gradle images, emitted CI, the Dev Container java feature",
+      "description": "JDK major everywhere the scaffold names one: Maven release properties, Gradle toolchains, Temurin/Gradle images, the distribution workflows. The `ci` pipeline and the Dev Container java feature no longer state it — they render it from this entry through the shared pin source (`src/domain/core/adapters/version-pins.ts`), guarded by `tests/toolchain-pins.test.ts`",
       "value": "25",
       "locations": [
         {
@@ -215,10 +215,6 @@
         {
           "glob": "assets/composition/**",
           "pattern": "ghcr\\.io/graalvm/native-image-community:(\\d+)"
-        },
-        {
-          "glob": "src/domain/core/adapters/jvm-devcontainer.ts",
-          "pattern": "version: '(\\d+)'"
         }
       ],
       "check": {
@@ -666,7 +662,7 @@
     {
       "id": "node-active-lts",
       "family": "shared",
-      "description": "Node.js major everywhere the scaffold names one: node images, emitted CI, the Dev Container node feature",
+      "description": "Node.js major everywhere the scaffold names one: node images and the distribution workflows. The `ci` pipeline and the Dev Container node feature no longer state it — they render it from this entry through the shared pin source (`src/domain/core/adapters/version-pins.ts`), guarded by `tests/toolchain-pins.test.ts`",
       "value": "22",
       "locations": [
         {
@@ -676,10 +672,6 @@
         {
           "glob": "assets/composition/**",
           "pattern": "node-version: '(\\d+)'"
-        },
-        {
-          "glob": "src/domain/core/adapters/node-devcontainer.ts",
-          "pattern": "version: '(\\d+)'"
         }
       ],
       "check": {
@@ -1266,7 +1258,7 @@
     {
       "id": "go-toolchain",
       "family": "go",
-      "description": "Go minor in go.mod and the Go build images",
+      "description": "Go minor in go.mod and the Go build images. The `ci` pipeline and the Dev Container go feature no longer state it — they render it from this entry through the shared pin source (`src/domain/core/adapters/version-pins.ts`), guarded by `tests/toolchain-pins.test.ts`",
       "value": "1.24",
       "locations": [
         {
