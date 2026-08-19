@@ -184,7 +184,8 @@ the engine decides **how** to satisfy it.
     "needs": [
       { "tool": "jdk", "version": "25", "source": "jvm-jdk" },
       { "tool": "gradle", "version": "9.4.1", "source": "jvm-gradle-wrapper" }
-    ]
+    ],
+    "provider": "mise"
   }
 }
 ```
@@ -202,6 +203,15 @@ the engine decides **how** to satisfy it.
   `source` cites the `assets/composition/version-pins.json` entry the
   pin came from, so a registry bump can find every block it should
   touch.
+- **`provider`** records the manager choice the provisioning engine
+  resolved — one field, even when it names a _combination_
+  (`nvm+corepack`): the dial asks one question, so it records one
+  answer. Absent until `keel toolchain install` has run once, and
+  written by the engine rather than by the vertical, which is why a
+  `keel add toolchain --reapply` after a pin bump refreshes versions
+  and leaves the choice alone. It is re-validated against the needs
+  on every run: a choice the project has outgrown is a loud refusal,
+  never a half-install.
 
 An **absent** block means nothing was declared — distinct from a
 written block with an empty needs list. The

@@ -242,6 +242,39 @@
       }
     },
     {
+      "id": "asdf-java-distribution",
+      "family": "jvm",
+      "description": "JDK distribution the asdf provider record qualifies the block's major with (jdk@25 → java temurin-25) — the keel-chosen half of the spelling, as mise-java-distribution is for mise; the version half rides jvm-jdk, which the currency loop already covers",
+      "value": "temurin",
+      "locations": [
+        {
+          "glob": "src/domain/toolchain/core/asdf.ts",
+          "pattern": "JDK_DISTRIBUTION = '(temurin)'"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "a distribution name, not a version — changing it is a provider-record decision, human-reviewed like any pin bump"
+      }
+    },
+    {
+      "id": "nvm-installer",
+      "family": "shared",
+      "description": "nvm release the nvm provider record's bootstrap one-liner installs from",
+      "value": "v0.40.6",
+      "locations": [
+        {
+          "glob": "src/domain/toolchain/core/nvm.ts",
+          "pattern": "NVM_INSTALLER = '(v[\\d.]+)'"
+        }
+      ],
+      "check": {
+        "type": "github-release",
+        "repo": "nvm-sh/nvm",
+        "track": "exact"
+      }
+    },
+    {
       "id": "jvm-junit-jupiter",
       "family": "jvm",
       "description": "JUnit Jupiter",

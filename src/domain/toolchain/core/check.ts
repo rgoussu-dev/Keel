@@ -2,13 +2,17 @@
  * Handler for `keel.toolchain-check` — the provisioning engine's
  * read path: report which declared needs are satisfied and which are
  * missing, without touching anything. No file is written, no install
- * runs; the provider is only *asked* (its status invocation), never
- * told.
+ * runs, and no question is asked; the providers are only *asked*
+ * (their status invocations), never told.
  *
- * Two facts feed the verdict besides per-tool status: whether the
- * provider's binary is present at all (absent → every tool is
+ * The choice is read, never resolved: the recorded answer when there
+ * is one, the dial's default otherwise — a query that prompted or
+ * recorded would not be one.
+ *
+ * Three facts feed the verdict besides per-tool status: whether each
+ * member's binary is present at all (absent → its tools are
  * `unknown`, with the bootstrap guidance in the report), and whether
- * the on-disk config still matches a fresh render of the block — a
+ * every on-disk config still matches a fresh render of the block — a
  * stale `mise.toml` satisfies yesterday's declaration, so drift
  * counts against `satisfied` even when every tool it names is
  * installed.
@@ -18,17 +22,31 @@ import path from 'node:path';
 import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
-import type { ToolchainCheckQuery, ToolchainCheckReport } from '../contract/commands.js';
-import { loadNeeds, managerPresent, provisionedTools, type ToolchainDeps } from './engine.js';
-import { miseProvider } from './mise.js';
+import type {
+  CheckedConfig,
+  CheckedTool,
+  ToolchainCheckQuery,
+  ToolchainCheckReport,
+} from '../contract/commands.js';
+import type { ToolchainDial } from './dial.js';
+import {
+  bootstrapFor,
+  checkedChoice,
+  configState,
+  loadBlock,
+  memberPresent,
+  provisionedTools,
+  renderChoice,
+  type ToolchainDeps,
+} from './engine.js';
 import type { ToolchainProvider } from './provider.js';
 
 /** Executes {@link ToolchainCheckQuery}s. */
 export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
-  /** Injectable for the same reasons as the install handler's. */
+  /** The dial is injectable for the same reasons as the install handler's. */
   constructor(
     private readonly deps: ToolchainDeps,
-    private readonly provider: ToolchainProvider = miseProvider,
+    private readonly dial?: ToolchainDial,
   ) {}
 
   supports(action: Action): action is ToolchainCheckQuery {
@@ -37,60 +55,76 @@ export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
 
   async handle(query: ToolchainCheckQuery): Promise<Result<ToolchainCheckReport>> {
     const cwd = path.resolve(query.cwd);
-    const needs = await loadNeeds(this.deps, cwd, this.provider);
-    if (!needs.ok) return needs;
+    const loaded = await loadBlock(this.deps, cwd);
+    if (!loaded.ok) return loaded;
+    const { block } = loaded.value;
 
-    const config = this.provider.render(needs.value);
+    const picked = checkedChoice(block, this.dial);
+    if (!picked.ok) return picked;
+    const choice = picked.value;
+
     const tree = this.deps.trees(cwd);
-    const configUpToDate = tree.read(config.path)?.toString('utf8') === config.content;
-    const tools = provisionedTools(this.provider, needs.value);
-    const base = { provider: this.provider.id, configPath: config.path, configUpToDate };
-
-    if (!managerPresent(this.deps, this.provider, cwd)) {
-      return ok({
-        ...base,
-        managerPresent: false,
-        tools: tools.map((tool) => ({ ...tool, status: 'unknown' as const })),
-        satisfied: false,
-        bootstrap: this.provider.bootstrap,
-      });
-    }
-
-    const run = this.deps.processes.run(this.provider.status.command, this.provider.status.args, {
-      cwd,
-    });
-    if (run.status !== 0) {
-      const detail = (run.stderr || run.stdout).trim();
-      return err(
-        new DomainError(
-          `${this.provider.id} could not report tool status (exit ${String(run.status)})${detail ? `: ${detail}` : ''}`,
-          'keel.toolchain-check-failed',
-        ),
-      );
-    }
-    let statuses: ReadonlyMap<string, boolean>;
+    let rendered;
     try {
-      statuses = this.provider.parseStatus(run.stdout);
+      rendered = renderChoice(choice, block.needs, tree);
     } catch (cause) {
       return err(
         new DomainError(
-          `unreadable ${this.provider.id} status output: ${cause instanceof Error ? cause.message : String(cause)}`,
-          'keel.toolchain-check-failed',
+          `${choice.id} cannot render its config: ${cause instanceof Error ? cause.message : String(cause)}`,
+          'keel.toolchain-render-failed',
           { cause },
         ),
       );
     }
+    const configs: CheckedConfig[] = rendered.flatMap(({ configs: files }) =>
+      files.map((config) => ({ path: config.path, upToDate: !configState(tree, config).changed })),
+    );
 
-    const checked = tools.map((tool) => ({
+    const absent: ToolchainProvider[] = [];
+    const statuses = new Map<string, boolean>();
+    for (const { member, needs } of rendered) {
+      if (!memberPresent(this.deps, member, cwd)) {
+        absent.push(member);
+        continue;
+      }
+      const spelled = needs.map((need) => member.spell(need));
+      const run = this.deps.processes.run(member.status.command, member.status.args, { cwd });
+      try {
+        for (const [name, installed] of member.parseStatus(run, spelled)) {
+          statuses.set(`${member.id}:${name}`, installed);
+        }
+      } catch (cause) {
+        return err(
+          new DomainError(
+            `unreadable ${member.id} status output: ${cause instanceof Error ? cause.message : String(cause)}`,
+            'keel.toolchain-check-failed',
+            { cause },
+          ),
+        );
+      }
+    }
+
+    const absentIds = new Set(absent.map((member) => member.id));
+    const tools: CheckedTool[] = provisionedTools(choice, block.needs).map((tool) => ({
       ...tool,
-      status:
-        statuses.get(tool.spelledName) === true ? ('satisfied' as const) : ('missing' as const),
+      status: absentIds.has(tool.provider)
+        ? ('unknown' as const)
+        : statuses.get(`${tool.provider}:${tool.spelledName}`) === true
+          ? ('satisfied' as const)
+          : ('missing' as const),
     }));
+
     return ok({
-      ...base,
-      managerPresent: true,
-      tools: checked,
-      satisfied: configUpToDate && checked.every((tool) => tool.status === 'satisfied'),
+      provider: choice.id,
+      members: choice.members.map((member) => member.id),
+      configs,
+      managerPresent: absent.length === 0,
+      tools,
+      satisfied:
+        absent.length === 0 &&
+        configs.every((config) => config.upToDate) &&
+        tools.every((tool) => tool.status === 'satisfied'),
+      ...(absent.length > 0 ? { bootstrap: bootstrapFor(absent) } : {}),
     });
   }
 }

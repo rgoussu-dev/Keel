@@ -1,35 +1,54 @@
 /**
  * Handler for `keel.toolchain-install` — the provisioning engine's
- * write path: render the provider's native config from the block,
- * then run the provider's own idempotent install.
+ * write path: resolve the manager dial, render every member's native
+ * config from the block, then run each member's own idempotent
+ * install.
  *
- * Idempotent end to end: an unchanged render writes nothing, and the
- * install invocation is a no-op when everything is satisfied — run
- * it on a new laptop, a teammate's clone, a CI runner, or after a
- * pin bump, and the result is the same working environment. When the
- * provider's binary is absent the config is still rendered and the
- * report carries the bootstrap guidance — a loud, graceful message,
- * never a silent skip and never an installer of keel's own.
+ * Idempotent end to end: an unchanged render writes nothing, the
+ * install invocations are no-ops when everything is satisfied, and
+ * the manager choice is recorded on first resolution and followed
+ * afterwards — run it on a new laptop, a teammate's clone, a CI
+ * runner, or after a pin bump, and the result is the same working
+ * environment. When a member's binary is absent the configs are
+ * still rendered and the report carries the bootstrap guidance — a
+ * loud, graceful message, never a silent skip and never an installer
+ * of keel's own. A combination is all-or-nothing for the same
+ * reason a partial choice is never offered: running one member of
+ * `nvm+corepack` is the half-install the coverage invariant exists
+ * to prevent.
  */
 
 import path from 'node:path';
 import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
-import type { ToolchainInstallCommand, ToolchainInstallReport } from '../contract/commands.js';
-import { loadNeeds, managerPresent, provisionedTools, type ToolchainDeps } from './engine.js';
-import { miseProvider } from './mise.js';
-import type { ToolchainProvider } from './provider.js';
+import { projectScopeRoot } from '../../contract/manifest.js';
+import type {
+  RenderedConfig,
+  ToolchainInstallCommand,
+  ToolchainInstallReport,
+} from '../contract/commands.js';
+import type { ToolchainDial } from './dial.js';
+import {
+  absentMembers,
+  bootstrapFor,
+  configState,
+  loadBlock,
+  provisionedTools,
+  renderChoice,
+  resolveChoice,
+  type ToolchainDeps,
+} from './engine.js';
 
 /** Executes {@link ToolchainInstallCommand}s. */
 export class ToolchainInstallHandler implements Handler<ToolchainInstallCommand> {
   /**
-   * The provider is injectable for tests and for N.3's manager dial;
-   * until that dial exists, mise is the one record and the default.
+   * The dial is injectable for tests; the shipped one is the default
+   * and is what every real run resolves against.
    */
   constructor(
     private readonly deps: ToolchainDeps,
-    private readonly provider: ToolchainProvider = miseProvider,
+    private readonly dial?: ToolchainDial,
   ) {}
 
   supports(action: Action): action is ToolchainInstallCommand {
@@ -38,42 +57,79 @@ export class ToolchainInstallHandler implements Handler<ToolchainInstallCommand>
 
   async handle(command: ToolchainInstallCommand): Promise<Result<ToolchainInstallReport>> {
     const cwd = path.resolve(command.cwd);
-    const needs = await loadNeeds(this.deps, cwd, this.provider);
-    if (!needs.ok) return needs;
+    const loaded = await loadBlock(this.deps, cwd);
+    if (!loaded.ok) return loaded;
+    const { manifest, block } = loaded.value;
 
-    const config = this.provider.render(needs.value);
+    const resolved = await resolveChoice(
+      this.deps,
+      block,
+      { requested: command.provider, interactive: command.interactive },
+      this.dial,
+    );
+    if (!resolved.ok) return resolved;
+    const { choice, isNew } = resolved.value;
+
     const tree = this.deps.trees(cwd);
-    const configChanged = tree.read(config.path)?.toString('utf8') !== config.content;
-    if (configChanged) {
-      tree.write(config.path, config.content);
-      await tree.commit();
+    let rendered;
+    try {
+      rendered = renderChoice(choice, block.needs, tree);
+    } catch (cause) {
+      return err(
+        new DomainError(
+          `${choice.id} cannot render its config: ${cause instanceof Error ? cause.message : String(cause)}`,
+          'keel.toolchain-render-failed',
+          { cause },
+        ),
+      );
+    }
+
+    const configs: RenderedConfig[] = [];
+    for (const { configs: files } of rendered) {
+      for (const config of files) {
+        const state = configState(tree, config);
+        if (state.changed) tree.write(config.path, config.content);
+        configs.push(state);
+      }
+    }
+    if (configs.some((config) => config.changed)) await tree.commit();
+
+    if (isNew) {
+      await this.deps.manifests.write(projectScopeRoot(cwd), {
+        ...manifest,
+        toolchain: { ...block, provider: choice.id },
+      });
     }
 
     const base = {
-      provider: this.provider.id,
-      configPath: config.path,
-      configChanged,
-      tools: provisionedTools(this.provider, needs.value),
+      provider: choice.id,
+      members: choice.members.map((member) => member.id),
+      choiceRecorded: isNew,
+      configs,
+      tools: provisionedTools(choice, block.needs),
     };
-    if (!managerPresent(this.deps, this.provider, cwd)) {
+    const absent = absentMembers(this.deps, choice, cwd);
+    if (absent.length > 0) {
       return ok({
         ...base,
         managerPresent: false,
         installed: false,
-        bootstrap: this.provider.bootstrap,
+        bootstrap: bootstrapFor(absent),
       });
     }
 
-    for (const step of this.provider.install) {
-      const run = this.deps.processes.run(step.command, step.args, { cwd });
-      if (run.status !== 0) {
-        const detail = (run.stderr || run.stdout).trim();
-        return err(
-          new DomainError(
-            `${step.command} ${step.args.join(' ')} failed (exit ${String(run.status)})${detail ? `: ${detail}` : ''}`,
-            'keel.toolchain-install-failed',
-          ),
-        );
+    for (const { member, needs } of rendered) {
+      for (const step of member.install(needs)) {
+        const run = this.deps.processes.run(step.command, step.args, { cwd });
+        if (run.status !== 0 && step.tolerateFailure !== true) {
+          const detail = (run.stderr || run.stdout).trim();
+          return err(
+            new DomainError(
+              `${step.command} ${step.args.join(' ')} failed (exit ${String(run.status)})${detail ? `: ${detail}` : ''}`,
+              'keel.toolchain-install-failed',
+            ),
+          );
+        }
       }
     }
     return ok({ ...base, managerPresent: true, installed: true });

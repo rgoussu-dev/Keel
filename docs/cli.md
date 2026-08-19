@@ -183,43 +183,96 @@ Each project's manifest records the other's projected tags
 Provision the project's **declared toolchain** — the manifest's
 [`toolchain` block](composition.md#the-toolchain-block), written by
 [`keel add toolchain`](verticals/toolchain.md). keel is an
-orchestrator, never an installer: it renders the provider's _native_
-config file and delegates the installing to the provider's own
-idempotent command. One provider today: [mise](https://mise.jdx.dev)
-(the manager dial — asdf, sdkman, nvm + corepack, rustup — is later
-slices of roadmap item N).
+orchestrator, never an installer: it renders the chosen provider's
+_native_ config file and delegates the installing to that provider's
+own idempotent command.
+
+#### The manager dial
+
+Which manager provisions the project is a **choice**, and the choice
+list is computed from what the project declared. Every option covers
+the whole needs set — a single provider that covers everything, or a
+curated **combination** of providers that together do. A partial
+choice is never offered (the _coverage invariant_): the persistence
+vertical's "no half-installs" rule, applied to choices.
+
+| Provider       | Native file                        | Covers                                  |
+| -------------- | ---------------------------------- | --------------------------------------- |
+| `mise`         | `mise.toml`                        | every tool in the vocabulary            |
+| `asdf`         | `.tool-versions`                   | every tool in the vocabulary            |
+| `nvm`          | `.nvmrc`                           | `node` (and `npm`, which ships with it) |
+| `corepack`     | `packageManager` in `package.json` | `pnpm`                                  |
+| `nvm+corepack` | both of the two above              | the union of theirs                     |
+
+So a JVM project is offered **mise · asdf**; an npm-tagged
+TypeScript project **mise · asdf · nvm**; a pnpm-tagged one
+**mise · asdf · nvm+corepack** — nvm alone cannot reach pnpm, so it
+is offered there only inside the combination. The same provider
+appearing as a single on one profile and inside a combination on
+another is the invariant working as intended.
+
+The answer is **sticky**: it is recorded in the toolchain block as
+one field (a combination is one answer, not two) and followed on
+later runs without re-asking. `keel add toolchain --reapply`
+refreshes versions and leaves the choice alone. mise is the default
+— it heads every list.
+
+One caveat worth knowing before choosing **asdf**: its
+`.tool-versions` is documented as a lockfile and wants concrete
+versions, while the block pins majors for the JDK and Node
+(`jdk 25`, `node 22`). Where a plugin does not resolve a prefix, the
+install fails loudly with asdf's own error; mise, whose resolver
+takes prefixes natively, is the default for exactly this reason.
+Resolving prefixes through the manager is roadmap N.4.
 
 ### `keel toolchain install`
 
 ```sh
-keel toolchain install
+keel toolchain install                     # asks the dial the first time
+keel toolchain install --yes               # takes the default (mise) instead of asking
+keel toolchain install --provider=asdf     # pins the answer, replacing any recorded one
 ```
 
-Renders the block as `mise.toml` at the project root — a plain
-ecosystem file that IDEs, images, and colleagues without keel
+Renders every member's native file at the project root — plain
+ecosystem files that IDEs, images, and colleagues without keel
 already understand (the JDK need `jdk@25` is spelled
-`java = "temurin-25"`; every other tool keeps its name and version
-verbatim) — then runs `mise trust` and `mise install`. Re-runnable
-at any point in the project's life: new laptop, teammate clone, CI
-runner, pin bump. An unchanged render writes nothing, and
-`mise install` is idempotent by construction.
+`java = "temurin-25"` for mise, `java temurin-25` for asdf; most
+tools keep their name and version verbatim) — then runs each
+member's own install (`mise trust` + `mise install`;
+`asdf plugin add …` + `asdf install`; `nvm install`;
+`corepack enable` + `corepack install`). Re-runnable at any point in
+the project's life: new laptop, teammate clone, CI runner, pin bump.
+An unchanged render writes nothing, and every install invocation is
+idempotent by construction.
 
-keel owns `mise.toml` once you use this command: hand edits are
+keel owns those files once you use this command: hand edits are
 overwritten on the next run, because the block is the source of
-truth. After a keel upgrade, `keel add toolchain --reapply`
-refreshes the block to the new pins — then install again.
+truth. Switching managers later renders the new choice's files and
+leaves the old one's where they are — a `.nvmrc` is still a valid
+`.nvmrc` — so delete them yourself if you want them gone. (corepack's is the exception in kind, not in rule — it merges
+the `packageManager` field into the `package.json` the project
+already owns, and touches nothing else in it.) After a keel upgrade,
+`keel add toolchain --reapply` refreshes the block to the new pins —
+then install again.
 
-When **mise is absent**, the config is still rendered and the
-command says so loudly — the bootstrap one-liner
-(`curl https://mise.run | sh`) plus the manual tool list — and exits
-0: the declaration is in place, and the message tells you how to
-finish satisfying it. Use `check` when you need an exit code.
+When a **manager is absent**, the configs are still rendered and the
+command says so loudly — the bootstrap one-liner plus the manual
+tool list — and exits 0: the declaration is in place, and the
+message tells you how to finish satisfying it. On a combination this
+is all-or-nothing: one absent member means no member installs, for
+the same reason a partial choice is never offered. Use `check` when
+you need an exit code.
 
 Refused with a reason when there is no keel project here
-(`keel.not-initialised`) or the manifest declares no toolchain block
-(`keel.toolchain-not-declared` — run `keel add toolchain` first). A
-failing provider invocation surfaces as
-`keel.toolchain-install-failed`, carrying mise's own stderr.
+(`keel.not-initialised`), the manifest declares no toolchain block
+(`keel.toolchain-not-declared` — run `keel add toolchain` first),
+nothing on the dial covers the declaration whole
+(`keel.toolchain-uncovered-need`), or the requested (or recorded)
+choice does not — `keel.toolchain-choice-unavailable`, naming what
+does. That last one is what a project that grew a pnpm need after
+choosing nvm gets: a re-choice, never a half-install. A failing
+provider invocation surfaces as `keel.toolchain-install-failed`,
+carrying the manager's own stderr.
 
 ### `keel toolchain check`
 
@@ -229,11 +282,15 @@ keel toolchain check
 
 Reports, without touching anything, whether the declaration is
 satisfied: one line per need — `✓` installed, `✗` missing, `?`
-unverifiable because mise is absent — plus whether the on-disk
-`mise.toml` still matches a fresh render of the block. A stale
+unverifiable because its manager is absent — plus whether each
+on-disk config still matches a fresh render of the block. A stale
 render satisfies yesterday's declaration, so drift counts as
 unsatisfied even when every tool it names is installed. Exits 0 when
 satisfied, 1 otherwise — the CI-friendly half of the pair.
+
+`check` reads the recorded choice (the default when none is
+recorded) and never asks or records one of its own: a query that
+prompted would not be one.
 
 ## Answers, stickiness, and `--set`
 

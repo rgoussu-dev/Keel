@@ -8,6 +8,43 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The manager dial — coverage resolution, singles vs combinations
+  (roadmap N.3).** The version manager `keel toolchain install`
+  provisions with is now a **choice**, and the choice list is
+  computed from the project's declared needs rather than declared
+  anywhere: a provider whose coverage contains the whole needs set is
+  offered as a single, and where none does, a curated **combination**
+  is offered for the same coverage. A partial choice is never offered
+  — the "no half-installs" rule applied to choices (the _coverage
+  invariant_), which a unit test now asserts directly against the
+  real family profiles. Three new provider records join mise: **asdf**
+  (`.tool-versions`, plugin-named tools, `asdf plugin add` +
+  `asdf install`), **nvm** (`.nvmrc`, reached through a login shell
+  because nvm is a shell function; covers `node` and the `npm` that
+  ships with it) and **corepack** (the `packageManager` field in the
+  project's own `package.json`, merged in place; covers `pnpm`). So a
+  JVM project is offered `mise · asdf`, an npm-tagged TypeScript one
+  `mise · asdf · nvm`, and a pnpm-tagged one
+  `mise · asdf · nvm+corepack` — the same provider as a single on one
+  profile and inside a combination on another is the invariant
+  working as intended. **Combinations are compositions, not new
+  records**: a combination lists member ids, renders each member's
+  native file, runs each member's install in curated order, and costs
+  nothing beyond the records it reuses; it is all-or-nothing, since
+  running half of one is the half-install the invariant prevents. The
+  answer is **sticky** — recorded in the toolchain block's new
+  `provider` field, one field even for a combination, written by the
+  engine so `keel add toolchain --reapply` refreshes versions and
+  leaves the choice alone — and re-validated against the needs on
+  every run, so a project that grew a pnpm need after choosing nvm
+  gets a loud re-choice rather than a half-install. `keel toolchain
+install` gains `--yes` (take the default, mise) and
+  `--provider <id>`; `keel toolchain check` reads the recorded choice
+  and never asks or records one of its own. Reports now carry one
+  entry per rendered config and name the member satisfying each need.
+  The registry gains `asdf-java-distribution` and `nvm-installer`,
+  both currency-covered. Documented in `docs/cli.md` → the manager
+  dial, `docs/composition.md`, and `docs/verticals/toolchain.md`.
 - **`keel toolchain install` / `keel toolchain check` — the
   provisioning engine, mise walking skeleton (roadmap N.2).** A new
   bounded context inside keel (`src/domain/toolchain/`, its own

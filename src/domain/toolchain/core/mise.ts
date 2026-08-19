@@ -1,7 +1,8 @@
 /**
  * The mise provider record — the walking-skeleton provider (roadmap
- * N.2). mise covers the whole tool vocabulary, so it is always a
- * legal choice under the coverage invariant; its native file is
+ * N.2), and the default answer on the manager dial. mise covers the
+ * whole tool vocabulary, so it heads the choice list on every
+ * profile — always a legal choice under the coverage invariant; its native file is
  * `mise.toml`, understood by mise itself and a growing set of IDEs
  * and images; and `mise install` is idempotent by construction,
  * which is what makes `keel toolchain install` re-runnable at any
@@ -17,6 +18,7 @@
  * verbatim — `gradle = "9.4.1"` is already mise's spelling.
  */
 
+import type { ProcessResult } from '../../contract/ports/process-runner.js';
 import { TOOLCHAIN_TOOLS, type ToolchainNeed } from '../../contract/toolchain.js';
 import type { SpelledNeed, ToolchainProvider } from './provider.js';
 
@@ -46,6 +48,7 @@ function isInstalled(entry: unknown): boolean {
 /** The mise record. */
 export const miseProvider: ToolchainProvider = {
   id: 'mise',
+  label: 'mise — one manager for every tool in the vocabulary',
   covers: TOOLCHAIN_TOOLS,
   spell,
   render(needs) {
@@ -53,18 +56,23 @@ export const miseProvider: ToolchainProvider = {
       .map(spell)
       .map((spelled) => `${spelled.name} = "${spelled.version}"\n`)
       .join('');
-    return { path: 'mise.toml', content: `${CONFIG_HEADER}\n[tools]\n${entries}` };
+    return [{ path: 'mise.toml', content: `${CONFIG_HEADER}\n[tools]\n${entries}` }];
   },
   probe: { command: 'mise', args: ['--version'] },
   // Trust first: mise refuses an untrusted config in non-interactive
-  // runs, and the rendered file is keel's own output.
-  install: [
+  // runs, and the rendered file is keel's own output. Both steps read
+  // the rendered `mise.toml`, so neither depends on the needs.
+  install: () => [
     { command: 'mise', args: ['trust'] },
     { command: 'mise', args: ['install'] },
   ],
   status: { command: 'mise', args: ['ls', '--current', '--json'] },
-  parseStatus(stdout) {
-    const parsed: unknown = JSON.parse(stdout);
+  parseStatus(result: ProcessResult) {
+    if (result.status !== 0) {
+      const detail = (result.stderr || result.stdout).trim();
+      throw new Error(`mise ls exited ${String(result.status)}${detail ? `: ${detail}` : ''}`);
+    }
+    const parsed: unknown = JSON.parse(result.stdout);
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       throw new Error('expected a JSON object keyed by tool name');
     }

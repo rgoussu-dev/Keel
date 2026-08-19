@@ -203,10 +203,21 @@ export function buildProgram(deps: CliDeps): Command {
   toolchain
     .command('install')
     .description(
-      "Render the provider's native config (mise.toml) from the toolchain block and run its idempotent install; re-runnable at any time.",
+      "Render the chosen provider's native config from the toolchain block and run its idempotent install; re-runnable at any time.",
     )
-    .action(async (): Promise<void> => {
-      const result = await deps.mediator.dispatch(toolchainInstallCommand({ cwd: cwd() }));
+    .option('-y, --yes', 'non-interactive — take the default manager instead of asking', false)
+    .option(
+      '--provider <id>',
+      "version manager to provision with, replacing any recorded choice: a provider id ('mise', 'asdf', 'nvm') or a combination id ('nvm+corepack'); only choices covering the declared needs whole are accepted",
+    )
+    .action(async (opts: { yes: boolean; provider?: string }): Promise<void> => {
+      const result = await deps.mediator.dispatch(
+        toolchainInstallCommand({
+          cwd: cwd(),
+          interactive: !opts.yes,
+          ...(opts.provider === undefined ? {} : { provider: opts.provider }),
+        }),
+      );
       printToolchainInstall(unwrap(result), deps.logger);
     });
 
@@ -229,13 +240,18 @@ export function buildProgram(deps: CliDeps): Command {
 
 function printToolchainInstall(report: ToolchainInstallReport, log: Logger): void {
   log.info(`keel toolchain install (${report.provider}):`);
-  log.info(
-    `  ${report.configChanged ? chalk.yellow('~') : ' '} ${report.configPath}${report.configChanged ? '' : ' (unchanged)'}`,
-  );
+  for (const config of report.configs) {
+    log.info(
+      `  ${config.changed ? chalk.yellow('~') : ' '} ${config.path}${config.changed ? '' : ' (unchanged)'}`,
+    );
+  }
   for (const tool of report.tools) {
     log.info(
-      `      ${tool.spelledName} = "${tool.spelledVersion}"  (${tool.tool} ${tool.version})`,
+      `      ${tool.spelledName} ${tool.spelledVersion}  (${tool.tool} ${tool.version}${report.members.length > 1 ? `, via ${tool.provider}` : ''})`,
     );
+  }
+  if (report.choiceRecorded) {
+    log.info(`  manager recorded in the toolchain block: ${report.provider}`);
   }
   if (!report.managerPresent) {
     log.warn('Nothing was provisioned:');
@@ -259,16 +275,19 @@ function printToolchainInstall(report: ToolchainInstallReport, log: Logger): voi
 function printToolchainCheck(report: ToolchainCheckReport, log: Logger): void {
   log.info(`keel toolchain check (${report.provider}):`);
   for (const tool of report.tools) {
-    const line = `${tool.tool} ${tool.version}  (${tool.spelledName} ${tool.spelledVersion})`;
+    const via = report.members.length > 1 ? `, via ${tool.provider}` : '';
+    const line = `${tool.tool} ${tool.version}  (${tool.spelledName} ${tool.spelledVersion}${via})`;
     if (tool.status === 'satisfied') log.info(`  ${chalk.green('✓')} ${line}`);
     else if (tool.status === 'missing') log.info(`  ${chalk.red('✗')} ${line} — not installed`);
-    else log.info(`  ${chalk.yellow('?')} ${line} — cannot verify, ${report.provider} is absent`);
+    else log.info(`  ${chalk.yellow('?')} ${line} — cannot verify, ${tool.provider} is absent`);
   }
-  log.info(
-    report.configUpToDate
-      ? `  ${chalk.green('✓')} ${report.configPath} matches the declared needs`
-      : `  ${chalk.red('✗')} ${report.configPath} out of date — run 'keel toolchain install'`,
-  );
+  for (const config of report.configs) {
+    log.info(
+      config.upToDate
+        ? `  ${chalk.green('✓')} ${config.path} matches the declared needs`
+        : `  ${chalk.red('✗')} ${config.path} out of date — run 'keel toolchain install'`,
+    );
+  }
   if (!report.managerPresent) {
     for (const line of (report.bootstrap ?? '').split('\n')) log.warn(line);
   }
