@@ -17,6 +17,8 @@ import { NewProjectHandler } from '../../src/domain/core/handlers/new-project.js
 import { AddModuleHandler } from '../../src/domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../src/domain/core/handlers/add-vertical.js';
 import { LinkPeerHandler } from '../../src/domain/core/handlers/link-peer.js';
+import { ToolchainCheckHandler } from '../../src/domain/toolchain/core/check.js';
+import { ToolchainInstallHandler } from '../../src/domain/toolchain/core/install.js';
 import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { FakeClock } from '../../src/infrastructure/commons/fake-clock.js';
@@ -48,6 +50,8 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
     new LinkPeerHandler(deps),
+    new ToolchainInstallHandler(deps),
+    new ToolchainCheckHandler(deps),
   ]);
 }
 

@@ -4,8 +4,8 @@
  * manifest's `toolchain` block (`domain/contract/toolchain.ts`),
  * plus a short runbook note in the README. It answers *what* the
  * project needs; *how* those needs are satisfied is the provisioning
- * engine's job (`keel toolchain install`, later slices of roadmap
- * item N).
+ * engine's job (`keel toolchain install`, the bounded context under
+ * `domain/toolchain`).
  *
  * One dimension, `needs`, covered per toolchain family (the
  * `dev-container` pattern): the JVM stacks (JDK + the build system
