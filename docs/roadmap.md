@@ -1559,12 +1559,47 @@ present, a loud graceful message when not. `keel toolchain check`
 alongside. Real-install suite opt-in and env-gated, never in the PR
 matrix.
 
-### N.3 — the manager dial: coverage resolution (M) ([#90])
+### N.3 — the manager dial: coverage resolution (M) ([#90]) ✅
 
 The choice list computed from the needs set per the coverage
 invariant; asdf, nvm, corepack records; nvm + corepack as the first
 combination; the choice sticky on the manifest; the invariant itself
 a unit test.
+
+**Shipped.** `dial.ts` computes the offered list — singles that
+cover whole, then curated combinations that cover whole and whose
+every member earns its place, which is what keeps `nvm+corepack` off
+the npm-tagged profiles where corepack contributes nothing. The
+choice is recorded as one field on the block (`provider`), written
+by the engine rather than the vertical, and re-validated on every
+run. The invariant is asserted against needs sets derived from the
+real family adapters, not hand-written ones.
+
+Two things the slice settled that the sketch did not anticipate:
+
+- **nvm is a shell function, not a binary**, so its record reaches
+  it through a login shell that sources `nvm.sh` — and `.nvmrc`
+  carries a bare version, no header, because the format has no room
+  for one.
+- **corepack's "native file" is the project's own `package.json`.**
+  Its record merges the `packageManager` field in place instead of
+  rendering a file; keeping the block the source of truth (a pin
+  bump reaches `package.json` on the next install) without keel
+  reformatting a file it did not write. Its status probe is the
+  `pnpm` shim, which without a TTY refuses to download rather than
+  fetching — the read-only answer `check` needs.
+
+**One fidelity gap carried into N.4, deliberately on record.** asdf
+documents `.tool-versions` as a lockfile: concrete versions only,
+`latest` explicitly forbidden there. The block pins majors for the
+JDK and Node, so the rendered line is a prefix that only a plugin
+accepting one will resolve. Resolving through the manager
+(`asdf latest <plugin> <prefix>`) needs a resolution step that runs
+_before_ rendering — and one that degrades honestly when the manager
+is absent, since N.2's guarantee is that the config renders anyway.
+That is N.4's business; until then mise, whose resolver takes
+prefixes natively, is the default, and the caveat is in
+`docs/cli.md`.
 
 ### N.4 — sdkman, rustup, and the ecosystem-native no-ops (M) ([#91])
 

@@ -159,6 +159,12 @@ function foldToolchain(manifest: ManifestV2, needs: readonly ToolchainNeed[]): M
     toolchain: {
       schemaVersion: TOOLCHAIN_SCHEMA_VERSION,
       needs: [...merged.values()].sort((a, b) => a.tool.localeCompare(b.tool)),
+      // The manager choice belongs to the provisioning engine, not to
+      // this vertical: a reapply refreshes versions and leaves the
+      // recorded choice exactly where the engine put it.
+      ...(manifest.toolchain?.provider === undefined
+        ? {}
+        : { provider: manifest.toolchain.provider }),
     },
   };
 }

@@ -231,6 +231,25 @@ describe('reapply — the pin-bump path', () => {
     const readme = second.tree.read('README.md')?.toString() ?? '';
     expect(readme.match(/### Toolchain/g)).toHaveLength(1);
   });
+
+  it("leaves the provisioning engine's recorded manager choice alone", async () => {
+    const first = await install(
+      baseManifest(['lang.typescript', 'runtime.node', 'arch.server-http', 'pkg.pnpm']),
+    );
+    // As `keel toolchain install` would have recorded it.
+    const chosen: ManifestV2 = {
+      ...first.manifest,
+      toolchain: {
+        schemaVersion: 1,
+        needs: first.manifest.toolchain?.needs ?? [],
+        provider: 'nvm+corepack',
+      },
+    };
+
+    const second = await install(chosen, { tree: first.tree, apply: 'reapply' });
+
+    expect(second.manifest.toolchain?.provider).toBe('nvm+corepack');
+  });
 });
 
 describe('toolchain coverage across the stack registry', () => {

@@ -12,14 +12,25 @@ import { toolchainCheckQuery } from '../../../src/domain/toolchain/contract/comm
 import { ToolchainCheckHandler } from '../../../src/domain/toolchain/core/check.js';
 import { miseProvider } from '../../../src/domain/toolchain/core/mise.js';
 import { expectErr, expectOk } from '../../support/factory.js';
-import { CWD, JVM_BLOCK, MISE_ABSENT, miseLs, scenario, type Scenario } from './scenario.js';
+import { nvmProvider } from '../../../src/domain/toolchain/core/nvm.js';
+import {
+  CWD,
+  JVM_BLOCK,
+  MISE_ABSENT,
+  PACKAGE_JSON,
+  TS_PNPM_BLOCK,
+  miseLs,
+  scenario,
+  type Scenario,
+} from './scenario.js';
 
 const query = toolchainCheckQuery({ cwd: CWD });
 
 /** Seeds the on-disk config as a fresh render would write it. */
 function seedConfig(s: Scenario): void {
-  const config = miseProvider.render(JVM_BLOCK.needs);
-  s.tree.seed(config.path, config.content);
+  for (const config of miseProvider.render(JVM_BLOCK.needs, () => undefined)) {
+    s.tree.seed(config.path, config.content);
+  }
 }
 
 /** Check never stages, commits, or installs anything. */
@@ -45,11 +56,11 @@ describe('keel toolchain check', () => {
 
     expect(report).toMatchObject({
       provider: 'mise',
-      configPath: 'mise.toml',
-      configUpToDate: true,
+      members: ['mise'],
       managerPresent: true,
       satisfied: true,
     });
+    expect(report.configs).toEqual([{ path: 'mise.toml', upToDate: true }]);
     expect(report.tools.map((t) => [t.tool, t.status])).toEqual([
       ['gradle', 'satisfied'],
       ['jdk', 'satisfied'],
@@ -77,7 +88,7 @@ describe('keel toolchain check', () => {
 
     const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
 
-    expect(report.configUpToDate).toBe(false);
+    expect(report.configs).toEqual([{ path: 'mise.toml', upToDate: false }]);
     expect(report.satisfied).toBe(false);
     expect(report.tools.every((t) => t.status === 'satisfied')).toBe(true);
     expectUntouched(s);
@@ -86,7 +97,7 @@ describe('keel toolchain check', () => {
   it('treats a missing config file as drift', async () => {
     const s = await scenario({ scripts: [miseLs({ java: true, gradle: true })] });
     const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
-    expect(report.configUpToDate).toBe(false);
+    expect(report.configs.every((config) => config.upToDate)).toBe(false);
     expectUntouched(s);
   });
 
@@ -110,6 +121,85 @@ describe('keel toolchain check', () => {
     const error = expectErr(await new ToolchainCheckHandler(s.deps).handle(query));
     expect(error.code).toBe('keel.toolchain-check-failed');
     expect(error.message).toContain('boom');
+  });
+
+  it('reads the recorded choice, and never asks or records one of its own', async () => {
+    const s = await scenario({ block: { ...JVM_BLOCK, provider: 'asdf' } });
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.provider).toBe('asdf');
+    expect(report.configs.map((config) => config.path)).toEqual(['.tool-versions']);
+    expect(s.prompt.asked).toEqual([]);
+    expect((await s.manifests.read('/project/.claude'))?.toolchain?.provider).toBe('asdf');
+    expectUntouched(s);
+  });
+
+  it('falls back to the dial default when no choice is recorded yet', async () => {
+    const s = await scenario({ scripts: [miseLs({ java: true, gradle: true })] });
+    expect(expectOk(await new ToolchainCheckHandler(s.deps).handle(query)).provider).toBe('mise');
+  });
+
+  it('refuses a recorded choice the needs have outgrown', async () => {
+    const s = await scenario({ block: { ...TS_PNPM_BLOCK, provider: 'nvm' } });
+    const error = expectErr(await new ToolchainCheckHandler(s.deps).handle(query));
+    expect(error.code).toBe('keel.toolchain-choice-unavailable');
+  });
+
+  it('refuses when nothing on the dial covers the needs whole', async () => {
+    const s = await scenario();
+    const narrowed = { providers: [nvmProvider], combinations: [] };
+    const error = expectErr(await new ToolchainCheckHandler(s.deps, narrowed).handle(query));
+    expect(error.code).toBe('keel.toolchain-uncovered-need');
+  });
+
+  it('reports per member on a combination: each tool by the one that satisfies it', async () => {
+    const s = await scenario({
+      block: { ...TS_PNPM_BLOCK, provider: 'nvm+corepack' },
+      scripts: [
+        { command: 'bash', argsPrefix: ['-lc'], result: { stdout: '->      v22.11.0\n' } },
+        { command: 'pnpm', argsPrefix: ['--version'], result: { stdout: '10.33.0\n' } },
+      ],
+    });
+    s.tree.seed('package.json', PACKAGE_JSON);
+    s.tree.seed('.nvmrc', '22\n');
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.members).toEqual(['nvm', 'corepack']);
+    expect(report.tools.map((t) => [t.tool, t.provider, t.status])).toEqual([
+      ['node', 'nvm', 'satisfied'],
+      ['pnpm', 'corepack', 'satisfied'],
+    ]);
+    // package.json still lacks the field, so that config reads stale.
+    expect(report.configs).toEqual([
+      { path: '.nvmrc', upToDate: true },
+      { path: 'package.json', upToDate: false },
+    ]);
+    expect(report.satisfied).toBe(false);
+    expectUntouched(s);
+  });
+
+  it("leaves an absent member's tools unknown while still reporting the present one's", async () => {
+    const s = await scenario({
+      block: { ...TS_PNPM_BLOCK, provider: 'nvm+corepack' },
+      scripts: [
+        { command: 'bash', argsPrefix: ['-lc'], result: { stdout: '->      v22.11.0\n' } },
+        {
+          command: 'corepack',
+          argsPrefix: ['--version'],
+          result: { status: null, startFailure: { message: 'spawn corepack ENOENT' } },
+        },
+      ],
+    });
+    s.tree.seed('package.json', PACKAGE_JSON);
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.managerPresent).toBe(false);
+    expect(report.tools.map((t) => t.status)).toEqual(['satisfied', 'unknown']);
+    expect(report.bootstrap).toContain('corepack is not available');
+    expectUntouched(s);
   });
 
   it('surfaces unreadable status output as a domain error, not a guess', async () => {

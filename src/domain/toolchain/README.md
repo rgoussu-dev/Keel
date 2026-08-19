@@ -9,7 +9,9 @@ keel modulith:
   `keel.toolchain-install` command, the `keel.toolchain-check` query,
   and their report DTOs;
 - `core/` — the engine: the provider record model (`provider.ts`),
-  the mise record (`mise.ts`), and the two handlers.
+  one record per manager (`mise.ts`, `asdf.ts`, `nvm.ts`,
+  `corepack.ts`), the manager dial (`dial.ts`) that computes which of
+  them are offered for a given needs set, and the two handlers.
 
 It meets the rest of keel only at `domain/contract` — the block
 schema it consumes and the shared ports it runs on — and never at
@@ -24,6 +26,17 @@ else, this directory extracts to its own package, and the seam must
 already hold.
 
 The engine is an **orchestrator, never an installer**: it renders
-the provider's _native_ file (`mise.toml`) so IDEs and colleagues
-without keel see a plain ecosystem file, then shells out to the
-provider's own idempotent install through the `ProcessRunner` port.
+the chosen provider's _native_ file (`mise.toml`, `.tool-versions`,
+`.nvmrc`, `package.json`'s `packageManager` field) so IDEs and
+colleagues without keel see a plain ecosystem file, then shells out
+to that provider's own idempotent install through the
+`ProcessRunner` port.
+
+Which provider is a **choice**, and the choice list is computed from
+coverage rather than declared: a provider covering the whole needs
+set is offered alone; where none does, a curated **combination** of
+providers is offered for the same coverage (`nvm+corepack` on the
+pnpm-tagged TypeScript profiles). A partial choice is never offered
+— the coverage invariant, which `tests/domain/toolchain/dial.test.ts`
+asserts against the real family profiles. The answer is sticky on
+the block (`provider`), so re-runs follow it without re-asking.

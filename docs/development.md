@@ -432,6 +432,16 @@ first test says so loudly instead of skipping silently.
 KEEL_RUN_TOOLCHAIN=1 pnpm vitest run tests/toolchain
 ```
 
+It covers mise, the default answer on the manager dial, and only
+mise. The other records (asdf, nvm, corepack) are proved in `verify`
+with fakes — their rendered files, their invocation sequences, their
+status parsers — plus one direct test of the coverage invariant
+itself: for every family profile the `toolchain` vertical really
+produces, every choice the dial offers covers that profile whole.
+Extending the real-install suite to a second manager means a second
+tool on the runner and a second mutated state, so it waits for a
+reason beyond symmetry.
+
 ## Adding surface
 
 - **A stack** is a couple of lines in

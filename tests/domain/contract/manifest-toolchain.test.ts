@@ -45,6 +45,18 @@ describe('manifest toolchain block', () => {
     expect(await store.read('/p/.claude')).toEqual(manifest);
   });
 
+  it('round-trips the recorded manager choice, single or combination', async () => {
+    const store = new FakeManifestStore();
+    const manifest = { ...base(), toolchain: { ...block(), provider: 'nvm+corepack' } };
+    await store.write('/p/.claude', manifest);
+    expect((await store.read('/p/.claude'))?.toolchain?.provider).toBe('nvm+corepack');
+  });
+
+  it('a block written before the manager dial existed parses, with no choice recorded', () => {
+    const parsed = parseManifest({ ...base(), toolchain: block() });
+    expect(parsed.toolchain?.provider).toBeUndefined();
+  });
+
   it('manifests written before the block parse, and its absence is preserved', () => {
     const parsed = parseManifest(base());
     expect(parsed.toolchain).toBeUndefined();

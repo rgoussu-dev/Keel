@@ -73,24 +73,33 @@ describe.skipIf(!optedIn)('real mise provisioning', () => {
   it('installs the declared toolchain, is a re-runnable no-op, and check agrees', async () => {
     const mediator = installMediator();
 
-    const install = expectOk(await mediator.dispatch(toolchainInstallCommand({ cwd })));
+    const install = expectOk(
+      await mediator.dispatch(toolchainInstallCommand({ cwd, interactive: false })),
+    );
+    expect(install.provider).toBe('mise');
     expect(install.managerPresent).toBe(true);
     expect(install.installed).toBe(true);
-    expect(install.configChanged).toBe(true);
+    expect(install.configs).toEqual([{ path: 'mise.toml', changed: true }]);
     const rendered = await fs.readFile(path.join(cwd, 'mise.toml'), 'utf8');
     expect(rendered).toContain(`pnpm = "${pnpmPin()}"`);
+    // The dial's default answer is sticky from the first run on.
+    const recorded = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(recorded?.toolchain?.provider).toBe('mise');
 
-    const again = expectOk(await mediator.dispatch(toolchainInstallCommand({ cwd })));
-    expect(again.configChanged).toBe(false);
+    const again = expectOk(
+      await mediator.dispatch(toolchainInstallCommand({ cwd, interactive: false })),
+    );
+    expect(again.configs).toEqual([{ path: 'mise.toml', changed: false }]);
     expect(again.installed).toBe(true);
 
     const check = expectOk(await mediator.dispatch(toolchainCheckQuery({ cwd })));
     expect(check.managerPresent).toBe(true);
-    expect(check.configUpToDate).toBe(true);
+    expect(check.configs).toEqual([{ path: 'mise.toml', upToDate: true }]);
     expect(check.tools).toEqual([
       {
         tool: 'pnpm',
         version: pnpmPin(),
+        provider: 'mise',
         spelledName: 'pnpm',
         spelledVersion: pnpmPin(),
         status: 'satisfied',

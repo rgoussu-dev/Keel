@@ -20,27 +20,47 @@ export interface ProvisionedTool {
   readonly tool: ToolchainTool;
   /** The version the block records (`25`, `9.4.1`). */
   readonly version: string;
+  /**
+   * The provider record satisfying this need — a member id, which
+   * equals the choice id unless the choice is a combination
+   * (`nvm+corepack` satisfies `node` through nvm, `pnpm` through
+   * corepack).
+   */
+  readonly provider: string;
   /** The provider's name for the tool — mise spells `jdk` as `java`. */
   readonly spelledName: string;
   /** The version in the provider's vocabulary (`temurin-25`). */
   readonly spelledVersion: string;
 }
 
+/** One native config file the choice rendered. */
+export interface RenderedConfig {
+  /** Path relative to the project root (`mise.toml`, `.nvmrc`). */
+  readonly path: string;
+  /** False when the render matched what was already on disk. */
+  readonly changed: boolean;
+}
+
 /** Result DTO of `keel toolchain install`. */
 export interface ToolchainInstallReport {
-  /** Id of the provider that satisfied (or would satisfy) the needs. */
+  /**
+   * The chosen answer on the manager dial, as the manifest records
+   * it: a provider id, or a combination id (`nvm+corepack`).
+   */
   readonly provider: string;
-  /** The provider's native config file, relative to the project root. */
-  readonly configPath: string;
-  /** False when the rendered config matched what was already on disk. */
-  readonly configChanged: boolean;
-  /** Whether the provider's binary answered the presence probe. */
+  /** The provider records the choice delegates to, in run order. */
+  readonly members: readonly string[];
+  /** True when this run recorded the choice for the first time. */
+  readonly choiceRecorded: boolean;
+  /** The native config files rendered, one or more per choice. */
+  readonly configs: readonly RenderedConfig[];
+  /** Whether every member's binary answered its presence probe. */
   readonly managerPresent: boolean;
-  /** True when the provider's idempotent install ran to success. */
+  /** True when every member's idempotent install ran to success. */
   readonly installed: boolean;
-  /** The needs the config declares, in block order. */
+  /** The needs the configs declare, in block order. */
   readonly tools: readonly ProvisionedTool[];
-  /** How to bootstrap the provider; present only when it is absent. */
+  /** How to bootstrap the absent members; present only when any is. */
   readonly bootstrap?: string;
 }
 
@@ -53,22 +73,32 @@ export interface CheckedTool extends ProvisionedTool {
   readonly status: ToolStatus;
 }
 
+/** One native config file as `check` found it on disk. */
+export interface CheckedConfig {
+  readonly path: string;
+  /** True when it matches a fresh render of the block. */
+  readonly upToDate: boolean;
+}
+
 /** Result DTO of `keel toolchain check`. */
 export interface ToolchainCheckReport {
+  /** The recorded choice, or the default when none is recorded yet. */
   readonly provider: string;
-  readonly configPath: string;
-  /** True when the on-disk config matches a fresh render of the block. */
-  readonly configUpToDate: boolean;
+  /** The provider records the choice delegates to, in run order. */
+  readonly members: readonly string[];
+  /** The native config files the choice declares, as found on disk. */
+  readonly configs: readonly CheckedConfig[];
   readonly managerPresent: boolean;
   readonly tools: readonly CheckedTool[];
-  /** Provider present, config current, and every need satisfied. */
+  /** Every member present, every config current, every need satisfied. */
   readonly satisfied: boolean;
-  /** How to bootstrap the provider; present only when it is absent. */
+  /** How to bootstrap the absent members; present only when any is. */
   readonly bootstrap?: string;
 }
 
 /**
- * Provision the project's declared toolchain: render the provider's
+ * Provision the project's declared toolchain: render the chosen
+ * provider's
  * native config from the manifest's `toolchain` block, then run the
  * provider's own idempotent install. Re-runnable at any point in the
  * project's life — new laptop, teammate clone, CI runner, pin bump —
@@ -77,6 +107,17 @@ export interface ToolchainCheckReport {
 export interface ToolchainInstallCommand extends Command<ToolchainInstallReport> {
   readonly kind: 'keel.toolchain-install';
   readonly cwd: string;
+  /**
+   * Whether the manager dial may ask. False takes the default (mise)
+   * on a project with no recorded choice; a recorded choice is
+   * followed either way.
+   */
+  readonly interactive: boolean;
+  /**
+   * An explicit answer to the dial, replacing whatever was recorded.
+   * Refused when it does not cover the declared needs whole.
+   */
+  readonly provider?: string | undefined;
 }
 
 /** Constructs a {@link ToolchainInstallCommand}. */

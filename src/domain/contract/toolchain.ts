@@ -73,6 +73,20 @@ export interface ToolchainBlock {
   readonly schemaVersion: typeof TOOLCHAIN_SCHEMA_VERSION;
   /** The declared needs, one entry per tool. */
   readonly needs: readonly ToolchainNeed[];
+  /**
+   * The manager choice `keel toolchain install` resolved and stuck to
+   * — one id, even when it names a *combination* of providers
+   * (`nvm+corepack`): the dial asks one question, so it records one
+   * answer. Absent until the engine has run once; a recorded choice
+   * is followed without re-asking, and is re-validated against the
+   * needs set on every run (the coverage invariant).
+   *
+   * Written by the provisioning engine, never by the vertical that
+   * writes {@link needs} — which is why a `keel add toolchain
+   * --reapply` after a pin bump refreshes versions and leaves the
+   * choice alone.
+   */
+  readonly provider?: string | undefined;
 }
 
 /** Schema for one toolchain need. */
@@ -90,4 +104,9 @@ export const ToolchainNeedSchema = z.object({
 export const ToolchainBlockSchema = z.object({
   schemaVersion: z.literal(TOOLCHAIN_SCHEMA_VERSION),
   needs: z.array(ToolchainNeedSchema),
+  // Optional rather than defaulted, and additive within schema
+  // version 1: a block written before the manager dial existed
+  // simply has no recorded choice, which is exactly what "not chosen
+  // yet" means.
+  provider: z.string().min(1).optional(),
 });

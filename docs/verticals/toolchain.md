@@ -35,7 +35,10 @@ keel add toolchain --reapply
 ```
 
 refreshes the block to the new pins (needs update **in place**, by
-tool — nothing duplicates).
+tool — nothing duplicates). The block's `provider` field is the
+provisioning engine's, not this vertical's: a reapply refreshes
+versions and leaves the recorded manager choice exactly where
+[`keel toolchain install`](../cli.md#the-manager-dial) put it.
 
 On a fullstack composite, each service records its own block via its
 own manifest — run `keel add toolchain` in each service directory,
