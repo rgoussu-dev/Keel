@@ -8,6 +8,35 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel toolchain install` / `keel toolchain check` — the
+  provisioning engine, mise walking skeleton (roadmap N.2).** A new
+  bounded context inside keel (`src/domain/toolchain/`, its own
+  hexagon) reads the `toolchain` block and satisfies it through
+  exactly one provider — [mise](https://mise.jdx.dev) — end to end.
+  `install` renders the block as `mise.toml`, the provider's
+  _native_ file (`jdk@25` is spelled `java = "temurin-25"`, every
+  other tool verbatim), then runs `mise trust` + `mise install` —
+  idempotent at any point in the project's life: new laptop,
+  teammate clone, CI runner, pin bump. mise absent → the config is
+  still rendered and the command reports loudly with the bootstrap
+  one-liner and the manual tool list, never a silent skip. `check`
+  reports satisfied/missing per need — counting `mise.toml` drift
+  against the block as unsatisfied — without touching anything, and
+  exits 1 when unsatisfied. The engine is an **orchestrator, never
+  an installer**, and meets the rest of keel only at
+  `domain/contract` (the block schema and the shared ports) — the
+  seam is enforced both ways by new dependency-cruiser rules, per
+  the "modulith first, extraction later" decision. The provider
+  record model (id, covers, config renderer, install sequence,
+  per-tool version spelling) is the surface N.3's manager dial and
+  N.4's further providers build on; the mise JDK-distribution
+  spelling registers in `assets/composition/version-pins.json`
+  (`mise-java-distribution`), whose sweep now also scans the new
+  context. Fake-driven engine tests run in `verify`; a **real**
+  `mise install` suite (`tests/toolchain/`) is opt-in via
+  `KEEL_RUN_TOOLCHAIN=1` — the `tests/currency/` pattern, never in
+  the PR matrix. Documented in `docs/cli.md` → `keel toolchain`,
+  `docs/verticals/toolchain.md`, and `docs/development.md`.
 - **`toolchain` vertical — the writer of the `toolchain` manifest
   block (roadmap N.1).** `keel add toolchain` derives the project's
   toolchain **needs** from the manifest's tags — one

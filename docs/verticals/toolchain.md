@@ -4,10 +4,11 @@ Derives the project's toolchain **needs** from the manifest's tags
 and records them in the manifest's
 [`toolchain` block](../composition.md#the-toolchain-block) — the
 contract between keel, which records _what_ the project requires,
-and the provisioning engine (`keel toolchain install`, a later slice
-of roadmap item N), which will decide _how_ to satisfy it.
-Deliberately **opt-in** — in no stack's default vertical set until
-the end-to-end provisioning story has settled:
+and the provisioning engine
+([`keel toolchain install`](../cli.md#keel-toolchain)), which
+decides _how_ to satisfy it. Deliberately **opt-in** — in no stack's
+default vertical set until the end-to-end provisioning story has
+settled:
 
 ```sh
 keel add toolchain
@@ -18,8 +19,9 @@ keel add toolchain
 Writes the `toolchain` block into `.claude/.keel-manifest.json` —
 `schemaVersion` plus one need per tool, each `{ tool, version,
 source }` — and appends a short "Toolchain" note to the README
-saying the project declares its toolchain and how the declaration
-will be satisfied once the engine exists.
+saying the project declares its toolchain and how to satisfy the
+declaration (`keel toolchain install`) or audit it
+(`keel toolchain check`).
 
 Versions come from keel's own pin registry
 (`assets/composition/version-pins.json`): the block is one more
@@ -56,6 +58,8 @@ per the per-service precedent.
 
 ## Related
 
+- [`keel toolchain install` / `check`](../cli.md#keel-toolchain) —
+  the provisioning engine that consumes the block.
 - [The toolchain block](../composition.md#the-toolchain-block) — the
   block's schema and versioning contract.
 - [Verticals catalog](README.md)
