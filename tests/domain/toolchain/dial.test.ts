@@ -38,19 +38,23 @@ const PROFILES = [
   {
     id: 'jvm + gradle',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.cli', 'pkg.gradle'],
-    offers: ['mise', 'asdf'],
+    offers: ['mise', 'asdf', 'sdkman'],
   },
   {
     id: 'jvm + maven',
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.server-http', 'pkg.maven'],
-    offers: ['mise', 'asdf'],
+    offers: ['mise', 'asdf', 'sdkman'],
   },
   {
     id: 'go',
     tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
-    offers: ['mise', 'asdf'],
+    offers: ['mise', 'asdf', 'go-native'],
   },
-  { id: 'rust', tags: ['lang.rust', 'pkg.cargo', 'arch.cli'], offers: ['mise', 'asdf'] },
+  {
+    id: 'rust',
+    tags: ['lang.rust', 'pkg.cargo', 'arch.cli'],
+    offers: ['mise', 'asdf', 'rustup'],
+  },
   {
     id: 'typescript + npm',
     tags: ['lang.typescript', 'runtime.node', 'arch.server-http', 'pkg.npm'],
@@ -127,6 +131,8 @@ describe('the manager dial', () => {
   const node: ToolchainNeed = { tool: 'node', version: '22' };
   const pnpm: ToolchainNeed = { tool: 'pnpm', version: '10.33.0' };
   const jdk: ToolchainNeed = { tool: 'jdk', version: '25' };
+  const rust: ToolchainNeed = { tool: 'rust', version: '1' };
+  const go: ToolchainNeed = { tool: 'go', version: '1.24' };
 
   it('offers a single only when it covers the needs whole', () => {
     expect(offeredChoices([node, pnpm]).map((c) => c.id)).not.toContain('nvm');
@@ -156,6 +162,18 @@ describe('the manager dial', () => {
     expect(needsOf(combination, nvm, [node, pnpm])).toEqual([node]);
     expect(needsOf(combination, corepack, [node, pnpm])).toEqual([pnpm]);
     expect(memberFor(combination, 'pnpm')?.id).toBe('corepack');
+  });
+
+  it('keeps an ecosystem record off any project that reaches past its ecosystem', () => {
+    // sdkman covers the JVM whole and nothing else, so the moment a
+    // declaration carries a Node or Go need it stops being a legal
+    // answer — the coverage invariant, not a rule of sdkman's own.
+    expect(offeredChoices([jdk]).map((c) => c.id)).toContain('sdkman');
+    expect(offeredChoices([jdk, node]).map((c) => c.id)).not.toContain('sdkman');
+    expect(offeredChoices([rust]).map((c) => c.id)).toContain('rustup');
+    expect(offeredChoices([rust, node]).map((c) => c.id)).not.toContain('rustup');
+    expect(offeredChoices([go]).map((c) => c.id)).toContain('go-native');
+    expect(offeredChoices([go, jdk]).map((c) => c.id)).not.toContain('go-native');
   });
 
   it('offers nothing when no choice covers the needs whole', () => {

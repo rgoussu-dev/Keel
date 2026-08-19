@@ -15,9 +15,12 @@ import { nvmProvider } from '../../../src/domain/toolchain/core/nvm.js';
 import { expectErr, expectOk } from '../../support/factory.js';
 import {
   CWD,
+  GO_BLOCK,
+  GO_MOD,
   JVM_BLOCK,
   MISE_ABSENT,
   PACKAGE_JSON,
+  RUST_BLOCK,
   TS_NPM_BLOCK,
   TS_PNPM_BLOCK,
   recordedBlock,
@@ -292,6 +295,73 @@ describe('keel toolchain install — a combination', () => {
 
     expect(error.code).toBe('keel.toolchain-render-failed');
     expect(error.message).toContain('package.json');
+    expect(s.tree.changes()).toEqual([]);
+  });
+});
+
+describe('keel toolchain install — the ecosystem records', () => {
+  const pinned = (provider: string) =>
+    toolchainInstallCommand({ cwd: CWD, interactive: false, provider });
+
+  it('renders .sdkmanrc and delegates to sdk env install on a JVM-only project', async () => {
+    const s = await scenario();
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(pinned('sdkman')));
+
+    expect(report).toMatchObject({ provider: 'sdkman', managerPresent: true, installed: true });
+    expect(report.configs).toEqual([{ path: '.sdkmanrc', changed: true }]);
+    expect(s.tree.read('.sdkmanrc')?.toString()).toContain('java=25-tem');
+    expect(s.processes.ran('bash').at(-1)?.args[1]).toContain('sdk env install');
+  });
+
+  it('renders rust-toolchain.toml and installs the active toolchain', async () => {
+    const s = await scenario({ block: RUST_BLOCK });
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(pinned('rustup')));
+
+    expect(report.configs).toEqual([{ path: 'rust-toolchain.toml', changed: true }]);
+    expect(s.tree.read('rust-toolchain.toml')?.toString()).toContain('channel = "stable"');
+    expect(report.tools).toEqual([
+      {
+        tool: 'rust',
+        version: '1',
+        provider: 'rustup',
+        spelledName: 'rust',
+        spelledVersion: 'stable',
+      },
+    ]);
+    expect(s.processes.ran('rustup').map((p) => p.args.join(' '))).toEqual([
+      '--version',
+      'toolchain install',
+    ]);
+  });
+
+  it("merges go.mod's toolchain directive and runs nothing — the no-manager answer", async () => {
+    const s = await scenario({ block: GO_BLOCK });
+    s.tree.seed('go.mod', GO_MOD);
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(pinned('go-native')));
+
+    expect(report).toMatchObject({ provider: 'go-native', managerPresent: true, installed: true });
+    expect(report.configs).toEqual([{ path: 'go.mod', changed: true }]);
+    expect(s.tree.read('go.mod')?.toString()).toBe(
+      'module example.com/demo\n\ngo 1.24\ntoolchain go1.24.0\n',
+    );
+    // The probe is the only thing that ran: there is no manager to call.
+    expect(s.processes.ran('go').map((p) => p.args.join(' '))).toEqual(['version']);
+  });
+
+  it('re-runs as a no-op once the directive already agrees', async () => {
+    const s = await scenario({ block: { ...GO_BLOCK, provider: 'go-native' } });
+    s.tree.seed('go.mod', 'module example.com/demo\n\ngo 1.24\ntoolchain go1.24.0\n');
+
+    const report = expectOk(
+      await new ToolchainInstallHandler(s.deps).handle(
+        toolchainInstallCommand({ cwd: CWD, interactive: false }),
+      ),
+    );
+
+    expect(report.configs).toEqual([{ path: 'go.mod', changed: false }]);
     expect(s.tree.changes()).toEqual([]);
   });
 });

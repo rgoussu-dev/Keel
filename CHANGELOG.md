@@ -8,6 +8,38 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **sdkman, rustup, and Go's native no-op — the launch provider set
+  is complete (roadmap N.4).** Three records join the manager dial,
+  and none of them widens it: each is offered only where its
+  ecosystem is the _whole_ declaration, which is the coverage
+  invariant doing the work rather than a rule of their own. **sdkman**
+  renders `.sdkmanrc` (`java=25-tem`, `gradle=9.4.1`) and installs
+  with `sdk env install`, reached through a login shell that sources
+  `sdkman-init.sh` because `sdk` is a shell function rather than a
+  binary — so it appears on JVM-only projects and is silently absent
+  the moment one also declares Node or Go. **rustup** renders
+  `rust-toolchain.toml`, the file cargo honors natively with no
+  activation story at all, and installs with
+  `rustup toolchain install`; because the scaffolds track latest
+  stable by construction the block pins a bare Rust major, which
+  rustup — having no "series" channel — spells `channel = "stable"`.
+  **go-native** is the explicit "no manager needed" answer: since Go
+  1.21 the `toolchain` directive in `go.mod` makes any installed Go
+  auto-provision the pinned one, so keel merges that directive in
+  place (the corepack situation — the file belongs to the project)
+  and runs no command at all. That merge is the choice's consistency
+  check: `keel toolchain check` reports `go.mod` out of date the
+  moment its directive and the recorded need disagree, and
+  `keel toolchain install` writes it back. The directive is a
+  **floor**, not a pin, so a newer local Go is used as is. Choice
+  lists per profile are now `mise · asdf · sdkman` on the JVM,
+  `mise · asdf · rustup` on Rust, `mise · asdf · go-native` on Go,
+  and the Node ones unchanged; on a fullstack composite each service
+  answers its own dial, so "sdkman for the backend, nvm for the
+  frontend" falls out as two per-service answers with nothing new
+  behind it. The two new keel-chosen spellings
+  (`sdkman-java-distribution`, `rustup-stable-channel`) join
+  `assets/composition/version-pins.json`.
 - **The manager dial — coverage resolution, singles vs combinations
   (roadmap N.3).** The version manager `keel toolchain install`
   provisions with is now a **choice**, and the choice list is

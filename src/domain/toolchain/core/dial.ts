@@ -27,9 +27,12 @@ import type { Question, QuestionChoice } from '../../contract/composition.js';
 import type { ToolchainNeed, ToolchainTool } from '../../contract/toolchain.js';
 import { asdfProvider } from './asdf.js';
 import { corepackProvider } from './corepack.js';
+import { goNativeProvider } from './go-native.js';
 import { miseProvider } from './mise.js';
 import { nvmProvider } from './nvm.js';
 import type { ToolchainProvider } from './provider.js';
+import { rustupProvider } from './rustup.js';
+import { sdkmanProvider } from './sdkman.js';
 
 /** A curated composition of provider records, offered as one answer. */
 export interface ProviderCombination {
@@ -54,10 +57,23 @@ export interface ToolchainDial {
 /**
  * The shipped dial. Provider order is the order the choice list is
  * offered in, and therefore what the default answer is: mise covers
- * the whole vocabulary, so it heads every list.
+ * the whole vocabulary, so it heads every list, and asdf — the other
+ * universal record — follows it. The ecosystem-specific records come
+ * after, and never crowd a list they do not belong on: sdkman is
+ * offered only where the JVM is the whole declaration, rustup only on
+ * Rust, and go-native only on Go, all of it fallout from the coverage
+ * invariant rather than a rule of its own.
  */
 export const DIAL: ToolchainDial = {
-  providers: [miseProvider, asdfProvider, nvmProvider, corepackProvider],
+  providers: [
+    miseProvider,
+    asdfProvider,
+    nvmProvider,
+    corepackProvider,
+    sdkmanProvider,
+    rustupProvider,
+    goNativeProvider,
+  ],
   combinations: [
     {
       id: 'nvm+corepack',

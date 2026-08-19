@@ -202,14 +202,48 @@ vertical's "no half-installs" rule, applied to choices.
 | `asdf`         | `.tool-versions`                   | every tool in the vocabulary            |
 | `nvm`          | `.nvmrc`                           | `node` (and `npm`, which ships with it) |
 | `corepack`     | `packageManager` in `package.json` | `pnpm`                                  |
-| `nvm+corepack` | both of the two above              | the union of theirs                     |
+| `sdkman`       | `.sdkmanrc`                        | `jdk`, `gradle`, `maven`                |
+| `rustup`       | `rust-toolchain.toml`              | `rust`                                  |
+| `go-native`    | `toolchain` directive in `go.mod`  | `go`                                    |
+| `nvm+corepack` | both of their two files            | the union of theirs                     |
 
-So a JVM project is offered **mise · asdf**; an npm-tagged
-TypeScript project **mise · asdf · nvm**; a pnpm-tagged one
-**mise · asdf · nvm+corepack** — nvm alone cannot reach pnpm, so it
-is offered there only inside the combination. The same provider
+So a JVM project is offered **mise · asdf · sdkman**; a Go project
+**mise · asdf · go-native**; a Rust project **mise · asdf · rustup**;
+an npm-tagged TypeScript project **mise · asdf · nvm**; a pnpm-tagged
+one **mise · asdf · nvm+corepack** — nvm alone cannot reach pnpm, so
+it is offered there only inside the combination. The same provider
 appearing as a single on one profile and inside a combination on
-another is the invariant working as intended.
+another is the invariant working as intended, and so is an ecosystem
+manager vanishing from a list: sdkman covers the JVM whole and
+nothing else, so a project that also declares Node or Go is simply
+never offered it.
+
+Three of those records are worth a word each:
+
+- **`sdkman`** is the JVM classic, and `sdk` is a shell function
+  rather than a binary — keel reaches it through a login shell that
+  sources `sdkman-init.sh`, which is SDKMAN!'s own documented usage.
+  `.sdkmanrc` names candidates (`java=25-tem`), and `sdk env install`
+  installs exactly what it names.
+- **`rustup`** needs no activation story at all: `rust-toolchain.toml`
+  is honored natively by every `cargo` and `rustc` invocation in the
+  directory. The Rust need is pinned as a bare major, because the
+  scaffolds track latest stable by construction — and rustup has no
+  "series" channel, so keel spells it `channel = "stable"`.
+- **`go-native`** is the honest "no manager needed" answer. Since Go
+  1.21 the `toolchain` directive in `go.mod` makes any installed Go
+  auto-provision the toolchain the module asks for, so keel merges
+  that directive in place (the corepack situation — the file belongs
+  to the project) and runs nothing at all. That merge is the choice's
+  consistency check: `check` reports `go.mod` out of date the moment
+  its directive and the block disagree, and `install` writes it back.
+  The directive is a _floor_, not a pin — a newer local Go is used as
+  is, and only an older one triggers a download.
+
+On a fullstack composite nothing special is needed: each service
+answers its own profile's dial through its own manifest, so "sdkman
+for the backend, nvm for the frontend" is just two per-service
+answers.
 
 The answer is **sticky**: it is recorded in the toolchain block as
 one field (a combination is one answer, not two) and followed on
@@ -223,7 +257,9 @@ versions, while the block pins majors for the JDK and Node
 (`jdk 25`, `node 22`). Where a plugin does not resolve a prefix, the
 install fails loudly with asdf's own error; mise, whose resolver
 takes prefixes natively, is the default for exactly this reason.
-Resolving prefixes through the manager is roadmap N.4.
+Resolving prefixes through the manager (`asdf latest <plugin>
+<prefix>`) needs a resolution step running before the render, and is
+still open.
 
 ### `keel toolchain install`
 
@@ -240,8 +276,10 @@ already understand (the JDK need `jdk@25` is spelled
 tools keep their name and version verbatim) — then runs each
 member's own install (`mise trust` + `mise install`;
 `asdf plugin add …` + `asdf install`; `nvm install`;
-`corepack enable` + `corepack install`). Re-runnable at any point in
-the project's life: new laptop, teammate clone, CI runner, pin bump.
+`corepack enable` + `corepack install`; `sdk env install`;
+`rustup toolchain install`; and nothing at all for `go-native`,
+whose rendered directive _is_ the provisioning). Re-runnable at any
+point in the project's life: new laptop, teammate clone, CI runner, pin bump.
 An unchanged render writes nothing, and every install invocation is
 idempotent by construction.
 
@@ -249,9 +287,11 @@ keel owns those files once you use this command: hand edits are
 overwritten on the next run, because the block is the source of
 truth. Switching managers later renders the new choice's files and
 leaves the old one's where they are — a `.nvmrc` is still a valid
-`.nvmrc` — so delete them yourself if you want them gone. (corepack's is the exception in kind, not in rule — it merges
-the `packageManager` field into the `package.json` the project
-already owns, and touches nothing else in it.) After a keel upgrade,
+`.nvmrc` — so delete them yourself if you want them gone. (corepack
+and `go-native` are the exception in kind, not in rule — they merge
+one field into a file the project already owns, `packageManager` in
+`package.json` and the `toolchain` directive in `go.mod`, and touch
+nothing else in it.) After a keel upgrade,
 `keel add toolchain --reapply` refreshes the block to the new pins —
 then install again.
 

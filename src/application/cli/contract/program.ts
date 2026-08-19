@@ -208,7 +208,7 @@ export function buildProgram(deps: CliDeps): Command {
     .option('-y, --yes', 'non-interactive — take the default manager instead of asking', false)
     .option(
       '--provider <id>',
-      "version manager to provision with, replacing any recorded choice: a provider id ('mise', 'asdf', 'nvm') or a combination id ('nvm+corepack'); only choices covering the declared needs whole are accepted",
+      "version manager to provision with, replacing any recorded choice: a provider id ('mise', 'asdf', 'nvm', 'corepack', 'sdkman', 'rustup', 'go-native') or a combination id ('nvm+corepack'); only choices covering the declared needs whole are accepted",
     )
     .action(async (opts: { yes: boolean; provider?: string }): Promise<void> => {
       const result = await deps.mediator.dispatch(

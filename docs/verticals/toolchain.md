@@ -53,6 +53,27 @@ per the per-service precedent.
 | `needs`   | `toolchain/rust-toolchain` | `lang.rust`       | `rust` — the major the scaffold's build images pin (tracks latest stable by construction)         |
 | `needs`   | `toolchain/node-toolchain` | `lang.typescript` | `node`; plus `pnpm` under `pkg.pnpm` (npm rides with Node, so `pkg.npm` adds no need of its own)  |
 
+## Which manager satisfies it
+
+Nothing here — that is the provisioning engine's choice, computed
+from the needs this vertical records. The dial offers the two
+universal managers (`mise`, `asdf`) on every profile, plus whichever
+ecosystem-native ones cover the declaration whole:
+
+| Profile | Also offered                                       |
+| ------- | -------------------------------------------------- |
+| JVM     | `sdkman` (`.sdkmanrc`)                             |
+| Go      | `go-native` — no manager, `go.mod`'s own directive |
+| Rust    | `rustup` (`rust-toolchain.toml`)                   |
+| Node    | `nvm`, or `nvm+corepack` under `pkg.pnpm`          |
+
+An ecosystem manager is offered only where its ecosystem is the
+whole declaration: sdkman covers `jdk`/`gradle`/`maven` and nothing
+else, so it never appears on a project that also declares Node or
+Go. See
+[the manager dial](../cli.md#the-manager-dial) for the full table
+and the per-provider notes.
+
 ## Prerequisites
 
 | Requirement          | When                        |
