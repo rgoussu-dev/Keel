@@ -27,10 +27,7 @@ import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/w
 import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
 import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
-import {
-  jvmLayout,
-  MODULITH_LAYOUT_TAG,
-} from '../../../../src/domain/core/adapters/jvm-module-layout.js';
+import { jvmLayout } from '../../../../src/domain/core/adapters/jvm-module-layout.js';
 import { FLYWAY_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/flyway-migrations.js';
 import { LIQUIBASE_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/liquibase-migrations.js';
 import { MARIADB, POSTGRES } from '../../../../src/domain/core/adapters/persistence-engine.js';

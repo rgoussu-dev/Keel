@@ -13,6 +13,7 @@
 import path from 'node:path';
 import { z } from 'zod';
 import type { Tag } from './tags.js';
+import { ToolchainBlockSchema, type ToolchainBlock } from './toolchain.js';
 
 /** The on-disk manifest filename, under `<project>/.claude/`. */
 export const MANIFEST_FILENAME = '.keel-manifest.json';
@@ -71,6 +72,13 @@ export interface ManifestV2 {
    * disk; so is the `--with-peer-context` one.
    */
   readonly modules: readonly InstalledModule[];
+  /**
+   * The project's declared toolchain needs — the contract the
+   * provisioning engine consumes (see `toolchain.ts`). Absent until
+   * the `toolchain` vertical writes it: absence means "nothing
+   * declared", which is distinct from a written block with no needs.
+   */
+  readonly toolchain?: ToolchainBlock | undefined;
 }
 
 /**
@@ -207,6 +215,9 @@ export const ManifestV2Schema = z.object({
   peers: z.array(PeerLinkSchema).default([]),
   services: z.array(ServiceRefSchema).default([]),
   modules: z.array(InstalledModuleSchema).default([]),
+  // Optional rather than defaulted: an absent block is a fact (no
+  // needs declared), not an empty list to normalise.
+  toolchain: ToolchainBlockSchema.optional(),
 });
 
 /**

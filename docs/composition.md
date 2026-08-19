@@ -170,6 +170,44 @@ deliberately **not a tag**: no adapter behaves differently by topology
 [product-root glue](verticals/fullstack.md) exists) belongs to the
 orchestrator.
 
+## The toolchain block
+
+The manifest may carry a `toolchain` block — the project's declared
+toolchain _needs_, and the contract between keel and the provisioning
+engine (roadmap item N): keel records **what** the project requires,
+the engine decides **how** to satisfy it.
+
+```json
+{
+  "toolchain": {
+    "schemaVersion": 1,
+    "needs": [
+      { "tool": "jdk", "version": "25", "source": "jdk" },
+      { "tool": "gradle", "version": "9.4.1", "source": "gradle-wrapper" }
+    ]
+  }
+}
+```
+
+- **`schemaVersion`** versions the block independently of the
+  manifest that carries it. The block is destined to be consumed by
+  an external tool once the provisioning engine extracts to its own
+  package, so its schema evolves on its own clock; a block written by
+  an unknown schema version is rejected loudly, never half-read.
+- **`needs`** lists the tools the project requires, one entry per
+  tool. `tool` is a **closed vocabulary** covering what the stacks
+  require today — `jdk`, `gradle`, `maven`, `go`, `node`, `npm`,
+  `pnpm`, `rust` — and growing it is a contract change. `version` is
+  spelled the way the project's own files pin it; the optional
+  `source` cites the `assets/composition/version-pins.json` entry the
+  pin came from, so a registry bump can find every block it should
+  touch.
+
+An **absent** block means nothing was declared — distinct from a
+written block with an empty needs list. Nothing writes the block yet:
+the `toolchain` vertical (N.1) records the needs, and
+`keel toolchain install` (N.2+) consumes them.
+
 ## Further reading
 
 - [Stack catalog](stacks/README.md) — every preset and the tags it
