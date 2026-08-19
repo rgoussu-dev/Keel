@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { toolchainCheckQuery } from '../../../src/domain/toolchain/contract/commands.js';
 import { ToolchainCheckHandler } from '../../../src/domain/toolchain/core/check.js';
+import { asdfProvider } from '../../../src/domain/toolchain/core/asdf.js';
 import { miseProvider } from '../../../src/domain/toolchain/core/mise.js';
 import { expectErr, expectOk } from '../../support/factory.js';
 import { nvmProvider } from '../../../src/domain/toolchain/core/nvm.js';
@@ -275,6 +276,66 @@ describe('keel toolchain check — the Go no-manager choice', () => {
     expect(report.managerPresent).toBe(false);
     expect(report.tools.map((t) => t.status)).toEqual(['unknown']);
     expect(report.bootstrap).toContain('Go is not installed');
+    expectUntouched(s);
+  });
+});
+
+describe('keel toolchain check — a prefix the manager must resolve', () => {
+  const RESOLVED = 'gradle 9.4.1\njava temurin-25.0.4+7\n';
+
+  /** `asdf list` reporting both tools installed at the resolved versions. */
+  const listing = {
+    command: 'asdf',
+    argsPrefix: ['list'],
+    result: { stdout: 'gradle\n  9.4.1\njava\n  temurin-25.0.4+7\n' },
+  };
+
+  it('asks nothing in the steady state — the resolved file already answers', async () => {
+    const s = await scenario({ block: { ...JVM_BLOCK, provider: 'asdf' }, scripts: [listing] });
+    s.tree.seed(
+      '.tool-versions',
+      asdfProvider.render(
+        JVM_BLOCK.needs,
+        () => undefined,
+        new Map([['jdk', 'temurin-25.0.4+7']]),
+      )[0]?.content ?? '',
+    );
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.satisfied).toBe(true);
+    expect(report.configs).toEqual([{ path: '.tool-versions', upToDate: true }]);
+    // No `asdf latest`: a query here would make the report flap the
+    // day a patch ships upstream.
+    expect(s.processes.ran('asdf').map((p) => p.args[0])).not.toContain('latest');
+    expectUntouched(s);
+  });
+
+  it('asks about the resolved version, not the prefix it came from', async () => {
+    const s = await scenario({ block: { ...JVM_BLOCK, provider: 'asdf' }, scripts: [listing] });
+    s.tree.seed('.tool-versions', RESOLVED);
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.tools.find((tool) => tool.tool === 'jdk')).toMatchObject({
+      spelledVersion: 'temurin-25.0.4+7',
+      status: 'satisfied',
+    });
+  });
+
+  it('is not satisfied while a prefix stays a prefix, and names it', async () => {
+    const s = await scenario({
+      block: { ...JVM_BLOCK, provider: 'asdf' },
+      scripts: [
+        listing,
+        { command: 'asdf', argsPrefix: ['latest'], result: { status: 1, stdout: '' } },
+      ],
+    });
+
+    const report = expectOk(await new ToolchainCheckHandler(s.deps).handle(query));
+
+    expect(report.unresolved).toEqual([{ tool: 'jdk', provider: 'asdf', spelled: 'temurin-25' }]);
+    expect(report.satisfied).toBe(false);
     expectUntouched(s);
   });
 });

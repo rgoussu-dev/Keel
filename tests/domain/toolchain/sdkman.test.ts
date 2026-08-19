@@ -95,3 +95,76 @@ describe('the sdkman record', () => {
     expect(statuses.get('java')).toBe(false);
   });
 });
+
+describe('the sdkman record — resolving a prefix', () => {
+  const resolve = sdkmanProvider.resolve;
+  if (!resolve) throw new Error('test setup: the sdkman record declares a resolution');
+
+  const reads =
+    (files: Readonly<Record<string, string>>) =>
+    (path: string): string | undefined =>
+      files[path];
+
+  /** `sdk list java` as SDKMAN! prints it, vendor by vendor. */
+  const LISTING = [
+    '================================================================================',
+    'Available Java Versions for Linux 64bit',
+    '================================================================================',
+    ' Vendor        | Use | Version      | Dist    | Status     | Identifier',
+    '--------------------------------------------------------------------------------',
+    ' Temurin       |     | 25.0.4       | tem     |            | 25.0.4-tem',
+    '               |     | 21.0.5       | tem     | installed  | 21.0.5-tem',
+    ' Zulu          |     | 25.0.2       | zulu    |            | 25.0.2-zulu',
+    '',
+  ].join('\n');
+
+  it('calls only a bare major a prefix — every other identifier is already exact', () => {
+    expect(resolve.isPrefix({ name: 'java', version: '25-tem' })).toBe(true);
+    expect(resolve.isPrefix({ name: 'java', version: '25.0.4-tem' })).toBe(false);
+    expect(resolve.isPrefix({ name: 'gradle', version: '9.4.1' })).toBe(false);
+    expect(resolve.isPrefix({ name: 'maven', version: '3.9.16' })).toBe(false);
+  });
+
+  it('asks through the same login shell every other sdk call goes through', () => {
+    const query = resolve.query({ name: 'java', version: '25-tem' });
+    expect(query.command).toBe('bash');
+    expect(query.args[1]).toContain('sdkman-init.sh');
+    expect(query.args[1]).toContain('sdk list java');
+  });
+
+  it('takes the newest identifier carrying the major and the distribution', () => {
+    expect(resolve.parse(ran(LISTING), { name: 'java', version: '25-tem' })).toBe('25.0.4-tem');
+  });
+
+  it("does not mistake another vendor's build of the same major for it", () => {
+    expect(resolve.parse(ran(LISTING), { name: 'java', version: '25-zulu' })).toBe('25.0.2-zulu');
+    expect(resolve.parse(ran(LISTING), { name: 'java', version: '17-tem' })).toBe(undefined);
+  });
+
+  it('names nothing when the listing could not be read', () => {
+    expect(resolve.parse(ran('', 1), { name: 'java', version: '25-tem' })).toBe(undefined);
+  });
+
+  it('keeps what .sdkmanrc already carries when it answers the major', () => {
+    const existing = 'gradle=9.4.1\njava=25.0.4-tem\n';
+
+    expect(
+      resolve.fromConfig({ name: 'java', version: '25-tem' }, reads({ '.sdkmanrc': existing })),
+    ).toBe('25.0.4-tem');
+    expect(
+      resolve.fromConfig({ name: 'java', version: '26-tem' }, reads({ '.sdkmanrc': existing })),
+    ).toBe(undefined);
+    expect(resolve.fromConfig({ name: 'java', version: '25-tem' }, reads({}))).toBe(undefined);
+  });
+
+  it('renders the resolved identifier, which is the only kind sdk env install takes', () => {
+    const [config] = sdkmanProvider.render(
+      [...JVM_NEEDS],
+      absent,
+      new Map([['jdk', '25.0.4-tem']]),
+    );
+
+    expect(config?.content).toContain('java=25.0.4-tem\n');
+    expect(config?.content).toContain('gradle=9.4.1\n');
+  });
+});

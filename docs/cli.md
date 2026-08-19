@@ -223,8 +223,8 @@ Three of those records are worth a word each:
 - **`sdkman`** is the JVM classic, and `sdk` is a shell function
   rather than a binary — keel reaches it through a login shell that
   sources `sdkman-init.sh`, which is SDKMAN!'s own documented usage.
-  `.sdkmanrc` names candidates (`java=25-tem`), and `sdk env install`
-  installs exactly what it names.
+  `.sdkmanrc` names candidate identifiers (`java=25.0.4-tem`), and
+  `sdk env install` installs exactly what it names.
 - **`rustup`** needs no activation story at all: `rust-toolchain.toml`
   is honored natively by every `cargo` and `rustc` invocation in the
   directory. The Rust need is pinned as a bare major, because the
@@ -251,15 +251,40 @@ later runs without re-asking. `keel add toolchain --reapply`
 refreshes versions and leaves the choice alone. mise is the default
 — it heads every list.
 
-One caveat worth knowing before choosing **asdf**: its
-`.tool-versions` is documented as a lockfile and wants concrete
-versions, while the block pins majors for the JDK and Node
-(`jdk 25`, `node 22`). Where a plugin does not resolve a prefix, the
-install fails loudly with asdf's own error; mise, whose resolver
-takes prefixes natively, is the default for exactly this reason.
-Resolving prefixes through the manager (`asdf latest <plugin>
-<prefix>`) needs a resolution step running before the render, and is
-still open.
+#### Prefixes, and the two files that will not take one
+
+The block pins a **major** for the JDK and for Node (`jdk 25`,
+`node 22`) — a series, not a release. Most managers take that as it
+stands: mise's resolver reads a prefix natively, rustup's `stable` is
+a channel, and nvm and corepack are handed something concrete
+already. Two do not. asdf documents `.tool-versions` as a **lockfile**
+that wants exact versions and forbids `latest`; SDKMAN!'s candidate
+identifiers always carry a patch, so `java=25-tem` names nothing
+installable.
+
+For those two, keel resolves the prefix **before** it renders, and in
+lockfile order:
+
+1. whatever the config already names wins, while it still answers the
+   prefix. A lockfile resolves once and then stays put — so `check` is
+   not made to flap the day a patch ships upstream, a re-run writes
+   nothing, and the steady state costs no process at all;
+2. otherwise the **manager** is asked its own way — `asdf latest java
+temurin-25`, `sdk list java` — on a first install, or after a pin
+   bump moved the series out from under the recorded value;
+3. failing both, the prefix renders as it stands and the command says
+   so: `Could not resolve a concrete version for: …`. The declaration
+   still lands (that is the guarantee), but the manager's own
+   installer may refuse the line, and `check` counts it unsatisfied.
+
+keel never invents the patch half — it either reuses what is on disk
+or asks the tool that knows. So `.tool-versions` ends up with
+`java temurin-25.0.4+7` where the block says `jdk 25`, and `.sdkmanrc`
+with `java=25.0.4-tem`.
+
+Bumping the pin from `25` to `26` invalidates the recorded value —
+`temurin-25.0.4+7` does not answer `temurin-26` — so the next install
+asks the manager again and the lockfile moves once, deliberately.
 
 ### `keel toolchain install`
 
@@ -272,7 +297,9 @@ keel toolchain install --provider=asdf     # pins the answer, replacing any reco
 Renders every member's native file at the project root — plain
 ecosystem files that IDEs, images, and colleagues without keel
 already understand (the JDK need `jdk@25` is spelled
-`java = "temurin-25"` for mise, `java temurin-25` for asdf; most
+`java = "temurin-25"` for mise, and `java temurin-25.0.4+7` for asdf,
+whose lockfile format is resolved to an exact version first — see
+[prefixes](#prefixes-and-the-two-files-that-will-not-take-one); most
 tools keep their name and version verbatim) — then runs each
 member's own install (`mise trust` + `mise install`;
 `asdf plugin add …` + `asdf install`; `nvm install`;

@@ -12,10 +12,10 @@ import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { ProcessRunner } from '../../contract/ports/process-runner.js';
 import type { Prompt } from '../../contract/ports/prompt.js';
 import type { Tree, TreeFactory } from '../../contract/ports/tree.js';
-import type { ToolchainBlock, ToolchainNeed } from '../../contract/toolchain.js';
+import type { ToolchainBlock, ToolchainNeed, ToolchainTool } from '../../contract/toolchain.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
-import type { ProvisionedTool, RenderedConfig } from '../contract/commands.js';
+import type { ProvisionedTool, RenderedConfig, UnresolvedPrefix } from '../contract/commands.js';
 import {
   dialQuestion,
   memberFor,
@@ -24,7 +24,12 @@ import {
   type ProviderChoice,
   type ToolchainDial,
 } from './dial.js';
-import type { ProviderConfig, ToolchainProvider } from './provider.js';
+import type {
+  ProviderConfig,
+  ResolvedSpellings,
+  SpelledNeed,
+  ToolchainProvider,
+} from './provider.js';
 
 /**
  * The ports the provisioning handlers are wired with — all from
@@ -178,10 +183,94 @@ function uncovered<T>(block: ToolchainBlock): Result<T> {
   );
 }
 
+/**
+ * The prefixes the managers could not make concrete, and everything
+ * they could — the outcome of the resolution pass that runs before
+ * any render.
+ */
+export interface Resolution {
+  readonly spellings: ResolvedSpellings;
+  readonly unresolved: readonly UnresolvedPrefix[];
+}
+
+/**
+ * Makes every prefix spelling concrete before the render, so a
+ * manager whose native file is a lockfile gets the exact version it
+ * documents rather than the major the block pins (roadmap N.6).
+ *
+ * Only the records that declare a {@link ToolchainProvider.resolve}
+ * take part, and only for the needs they judge prefix-shaped, so a
+ * project on mise runs no extra process at all. Where a record does
+ * take part, the order is deliberate and is **lockfile order**:
+ *
+ * 1. **the config already on disk**, when its concrete version
+ *    answers the prefix. A lockfile resolves once and then stays put:
+ *    were the manager asked first, every `check` would re-query
+ *    upstream and call the file stale the day a patch ships, which is
+ *    the opposite of what pinning a series means. It also means the
+ *    steady state costs no process at all, and that an absent manager
+ *    can never overwrite a good file with the prefix it came from.
+ * 2. **the manager**, when the file has nothing that answers and its
+ *    binary cleared the presence probe — a first install, or a pin
+ *    bump that moved the series out from under the old value. keel
+ *    never invents the patch half; it asks the tool that knows.
+ * 3. **nothing** — the prefix renders as it stands, exactly as it did
+ *    before this step existed, and rides the report as an
+ *    {@link UnresolvedPrefix} so the caller can say so out loud.
+ *
+ * Read-only throughout: the queries are the managers' own lookups
+ * (`asdf latest`, `sdk list`), never an install.
+ */
+export function resolveSpellings(
+  deps: ToolchainDeps,
+  choice: ProviderChoice,
+  needs: readonly ToolchainNeed[],
+  cwd: string,
+  tree: Tree,
+  absent: ReadonlySet<string>,
+): Resolution {
+  const read = treeReader(tree);
+  const spellings = new Map<ToolchainTool, string>();
+  const unresolved: UnresolvedPrefix[] = [];
+
+  for (const member of choice.members) {
+    const resolution = member.resolve;
+    if (!resolution) continue;
+    for (const need of needsOf(choice, member, needs)) {
+      const spelled = member.spell(need);
+      if (!resolution.isPrefix(spelled)) continue;
+
+      const concrete =
+        resolution.fromConfig(spelled, read) ?? askManager(deps, member, spelled, cwd, absent);
+      if (concrete === undefined) {
+        unresolved.push({ tool: need.tool, provider: member.id, spelled: spelled.version });
+        continue;
+      }
+      spellings.set(need.tool, concrete);
+    }
+  }
+  return { spellings, unresolved };
+}
+
+/** The manager's own answer for a prefix, when it can be asked at all. */
+function askManager(
+  deps: ToolchainDeps,
+  member: ToolchainProvider,
+  spelled: SpelledNeed,
+  cwd: string,
+  absent: ReadonlySet<string>,
+): string | undefined {
+  const resolution = member.resolve;
+  if (!resolution || absent.has(member.id)) return undefined;
+  const query = resolution.query(spelled);
+  return resolution.parse(deps.processes.run(query.command, query.args, { cwd }), spelled);
+}
+
 /** The needs as the report DTOs carry them: spelled, in block order. */
 export function provisionedTools(
   choice: ProviderChoice,
   needs: readonly ToolchainNeed[],
+  resolved: ResolvedSpellings = new Map(),
 ): readonly ProvisionedTool[] {
   return needs.map((need) => {
     const member = memberFor(choice, need.tool);
@@ -194,7 +283,9 @@ export function provisionedTools(
       version: need.version,
       provider: member.id,
       spelledName: spelled.name,
-      spelledVersion: spelled.version,
+      // The resolved spelling when there is one: the report should
+      // name the version the config actually carries.
+      spelledVersion: resolved.get(need.tool) ?? spelled.version,
     };
   });
 }
@@ -206,21 +297,27 @@ export interface MemberRender {
   readonly configs: readonly ProviderConfig[];
 }
 
+/** Reads a project file out of the tree, `undefined` when absent. */
+function treeReader(tree: Tree): (filePath: string) => string | undefined {
+  return (filePath) => tree.read(filePath)?.toString('utf8') ?? undefined;
+}
+
 /**
- * Renders every member's native file over the needs assigned to it.
- * A renderer that cannot produce its file (corepack without a
- * `package.json`) throws; the caller reports that as a refusal.
+ * Renders every member's native file over the needs assigned to it,
+ * spelling each need with whatever {@link resolveSpellings} made
+ * concrete. A renderer that cannot produce its file (corepack without
+ * a `package.json`) throws; the caller reports that as a refusal.
  */
 export function renderChoice(
   choice: ProviderChoice,
   needs: readonly ToolchainNeed[],
   tree: Tree,
+  resolved: ResolvedSpellings = new Map(),
 ): readonly MemberRender[] {
-  const read = (filePath: string): string | undefined =>
-    tree.read(filePath)?.toString('utf8') ?? undefined;
+  const read = treeReader(tree);
   return choice.members.map((member) => {
     const assigned = needsOf(choice, member, needs);
-    return { member, needs: assigned, configs: member.render(assigned, read) };
+    return { member, needs: assigned, configs: member.render(assigned, read, resolved) };
   });
 }
 

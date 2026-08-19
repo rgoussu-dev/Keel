@@ -38,6 +38,18 @@ out to that provider's own idempotent install through the
 _is_ the provisioning — the ecosystem solved this one, and keel says
 so instead of routing around it.
 
+Two of those files are **lockfiles** — asdf's `.tool-versions`, which
+its own docs say wants exact versions, and `.sdkmanrc`, whose
+candidate identifiers always carry a patch — while the block pins a
+_major_ for the JDK and for Node. Those records declare a `resolve`,
+and the engine makes the prefix concrete before rendering: the value
+already in the config first, while it still answers, and the
+manager's own lookup only when nothing does. That order is the point.
+Asking upstream first would call a perfectly good lockfile stale the
+day a patch ships; asking it last means a re-run writes nothing, the
+steady state spawns no process, and an absent manager cannot regress
+a resolved file to the prefix it came from.
+
 Which provider is a **choice**, and the choice list is computed from
 coverage rather than declared: a provider covering the whole needs
 set is offered alone; where none does, a curated **combination** of

@@ -15,14 +15,17 @@
  * step was a no-op), then `asdf install`, which reads the rendered
  * file.
  *
- * **One fidelity caveat, deliberately on record.** asdf documents
- * `.tool-versions` as a lockfile: it wants concrete versions, and
- * forbids `latest` there. Where the block pins a *major* — `jdk 25`,
- * `node 22` — the rendered line is a prefix, which asdf resolves
- * only for plugins that accept one. Resolving prefixes through the
- * manager (`asdf latest <plugin> <prefix>`) needs an engine step
- * that runs before rendering, which is N.4's business; until then
- * mise, whose resolver takes prefixes natively, stays the default.
+ * **`.tool-versions` is a lockfile, and this record treats it as
+ * one.** asdf documents the format as wanting concrete versions and
+ * forbids `latest` there, while the block pins a *major* for the JDK
+ * and for Node. So the record declares a
+ * {@link ToolchainProvider.resolve}: before anything is rendered the
+ * engine asks asdf itself — `asdf latest <plugin> <prefix>` — and the
+ * file gets `java temurin-25.0.4+7` where the block says `jdk 25`
+ * (roadmap N.6). keel never invents the patch half; when asdf cannot
+ * be asked, the version already in `.tool-versions` stands if it
+ * answers the prefix, and only when there is nothing to stand on does
+ * the prefix render, loudly, as it did before.
  */
 
 import type { ProcessResult } from '../../contract/ports/process-runner.js';
@@ -31,10 +34,19 @@ import {
   type ToolchainNeed,
   type ToolchainTool,
 } from '../../contract/toolchain.js';
-import type { ProviderInvocation, SpelledNeed, ToolchainProvider } from './provider.js';
+import type {
+  ProviderInvocation,
+  ResolvedSpellings,
+  SpelledNeed,
+  ToolchainProvider,
+  VersionResolution,
+} from './provider.js';
 
 /** The JDK distribution asdf spellings qualify the block's major with. */
 const JDK_DISTRIBUTION = 'temurin';
+
+/** asdf's own file, which it reads from the project root. */
+const CONFIG_PATH = '.tool-versions';
 
 /** Tools whose asdf plugin is not named after the tool. */
 const PLUGIN_NAMES: Partial<Record<ToolchainTool, string>> = {
@@ -60,18 +72,61 @@ function answers(installed: string, requested: string): boolean {
   return installed === requested || installed.startsWith(`${requested}.`);
 }
 
+/** The version a `.tool-versions` already carries for a plugin. */
+function configured(name: string, existing: string): string | undefined {
+  for (const line of existing.split('\n')) {
+    const [plugin, version] = line.trim().split(/\s+/);
+    if (plugin === name && version !== undefined) return version;
+  }
+  return undefined;
+}
+
+/**
+ * How asdf makes a prefix concrete — see the module doc. A spelling
+ * is a prefix until its numeric part names three components: asdf
+ * plugins publish `temurin-25.0.4+7`, `22.21.0`, `1.24.3`, so `25`,
+ * `22` and `1.24` are all prefixes, while the wrapper pins the block
+ * already carries in full (`9.4.1`, `3.9.16`) are not.
+ */
+const resolution: VersionResolution = {
+  isPrefix(spelled) {
+    const numeric = spelled.version.slice(spelled.version.search(/\d/));
+    return !/^\d+\.\d+\.\d+/.test(numeric);
+  },
+  query: (spelled) => ({ command: 'asdf', args: ['latest', spelled.name, spelled.version] }),
+  parse(result, spelled) {
+    // A non-zero exit is asdf saying "no compatible versions" — an
+    // outcome, not a defect, so the caller falls back rather than
+    // stopping.
+    if (result.status !== 0) return undefined;
+    const named = result.stdout.trim().split('\n')[0]?.trim() ?? '';
+    // Guard against a plugin that echoes something else entirely: a
+    // resolved version must still answer the prefix that asked for it.
+    return answers(named, spelled.version) ? named : undefined;
+  },
+  fromConfig(spelled, read) {
+    const existing = read(CONFIG_PATH);
+    const current = existing === undefined ? undefined : configured(spelled.name, existing);
+    return current !== undefined && answers(current, spelled.version) ? current : undefined;
+  },
+};
+
 /** The asdf record. */
 export const asdfProvider: ToolchainProvider = {
   id: 'asdf',
   label: 'asdf — .tool-versions, the format mise reads too',
   covers: TOOLCHAIN_TOOLS,
   spell,
-  render(needs) {
+  render(needs, _read, resolved: ResolvedSpellings = new Map()) {
     const entries = needs
-      .map(spell)
-      .map((spelled) => `${spelled.name} ${spelled.version}\n`)
+      .map((need) => {
+        const spelled = spell(need);
+        // The concrete version when the engine got one; the prefix
+        // otherwise, which is what N.2 guarantees renders regardless.
+        return `${spelled.name} ${resolved.get(need.tool) ?? spelled.version}\n`;
+      })
       .join('');
-    return [{ path: '.tool-versions', content: `${CONFIG_HEADER}\n${entries}` }];
+    return [{ path: CONFIG_PATH, content: `${CONFIG_HEADER}\n${entries}` }];
   },
   probe: { command: 'asdf', args: ['--version'] },
   install(needs) {
@@ -115,4 +170,5 @@ export const asdfProvider: ToolchainProvider = {
     'asdf is not installed.\n' +
     'Bootstrap it with:  brew install asdf   (or your package manager)\n' +
     '(other install methods: https://asdf-vm.com/guide/getting-started.html)',
+  resolve: resolution,
 };
