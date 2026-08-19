@@ -226,6 +226,22 @@
       }
     },
     {
+      "id": "mise-java-distribution",
+      "family": "jvm",
+      "description": "JDK distribution the mise provider record qualifies the block's major with (jdk@25 → java = \"temurin-25\") — the keel-chosen half of the spelling; the version half rides jvm-jdk, which the currency loop already covers",
+      "value": "temurin",
+      "locations": [
+        {
+          "glob": "src/domain/toolchain/core/mise.ts",
+          "pattern": "JDK_DISTRIBUTION = '(temurin)'"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "a distribution name, not a version — changing it is a provider-record decision, human-reviewed like any pin bump"
+      }
+    },
+    {
       "id": "jvm-junit-jupiter",
       "family": "jvm",
       "description": "JUnit Jupiter",

@@ -26,7 +26,7 @@ import { z } from 'zod';
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Where pins can live; the guard sweeps exactly these roots. */
-export const scanRoots = ['assets/composition', 'src/domain/core/adapters'];
+export const scanRoots = ['assets/composition', 'src/domain/core/adapters', 'src/domain/toolchain'];
 
 export const registryPath = path.join(repoRoot, 'assets', 'composition', 'version-pins.json');
 
