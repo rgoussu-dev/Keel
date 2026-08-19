@@ -8,6 +8,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The versioned `toolchain` manifest block (roadmap N.0).** The
+  manifest may now carry a `toolchain` block — the project's declared
+  toolchain needs (`{ tool, version, source? }` over a closed tool
+  vocabulary: `jdk`, `gradle`, `maven`, `go`, `node`, `npm`, `pnpm`,
+  `rust`), versioned independently of the manifest via its own
+  `schemaVersion` since it is destined for an external consumer once
+  the provisioning engine extracts. Schema + types in
+  `domain/contract/toolchain.ts`; the block is optional and absence
+  ("nothing declared") is distinct from an empty needs list. This
+  slice is the contract only — no writer, no consumer; the
+  `toolchain` vertical (N.1) and `keel toolchain install` (N.2)
+  build on it. Documented in `docs/composition.md` → "The toolchain
+  block".
 - **`iac` vertical — the OpenTofu deploy target the release pipeline
   publishes to.** `keel add iac` closes the loop the `distribution`
   vertical opens: keyed on the `dist.container-image` tag, it
