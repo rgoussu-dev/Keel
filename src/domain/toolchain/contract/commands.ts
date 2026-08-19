@@ -33,6 +33,23 @@ export interface ProvisionedTool {
   readonly spelledVersion: string;
 }
 
+/**
+ * One declared need whose version stayed a **prefix** because the
+ * manager could not be asked for a concrete one, or named none.
+ *
+ * Only ever reported by a provider whose native file demands an exact
+ * version — asdf and sdkman. The config still renders (that is N.2's
+ * guarantee), so this is the honest note that goes with it: the line
+ * carries a prefix, and the manager's own installer may refuse it.
+ */
+export interface UnresolvedPrefix {
+  readonly tool: ToolchainTool;
+  /** The member record that could not resolve it. */
+  readonly provider: string;
+  /** The prefix as that provider spells it (`temurin-25`). */
+  readonly spelled: string;
+}
+
 /** One native config file the choice rendered. */
 export interface RenderedConfig {
   /** Path relative to the project root (`mise.toml`, `.nvmrc`). */
@@ -62,6 +79,8 @@ export interface ToolchainInstallReport {
   readonly tools: readonly ProvisionedTool[];
   /** How to bootstrap the absent members; present only when any is. */
   readonly bootstrap?: string;
+  /** Prefixes no manager could make concrete; empty on most choices. */
+  readonly unresolved: readonly UnresolvedPrefix[];
 }
 
 /** Satisfaction of one declared need as `keel toolchain check` saw it. */
@@ -94,6 +113,8 @@ export interface ToolchainCheckReport {
   readonly satisfied: boolean;
   /** How to bootstrap the absent members; present only when any is. */
   readonly bootstrap?: string;
+  /** Prefixes no manager could make concrete; empty on most choices. */
+  readonly unresolved: readonly UnresolvedPrefix[];
 }
 
 /**

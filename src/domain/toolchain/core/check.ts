@@ -37,9 +37,9 @@ import {
   memberPresent,
   provisionedTools,
   renderChoice,
+  resolveSpellings,
   type ToolchainDeps,
 } from './engine.js';
-import type { ToolchainProvider } from './provider.js';
 
 /** Executes {@link ToolchainCheckQuery}s. */
 export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
@@ -64,9 +64,17 @@ export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
     const choice = picked.value;
 
     const tree = this.deps.trees(cwd);
+    // Presence first, for the same reason as install's: a prefix is
+    // resolved by asking the manager, and only a present one can be
+    // asked. In the steady state nothing is asked at all — the
+    // resolved config on disk answers, so `check` stays cheap.
+    const absent = choice.members.filter((member) => !memberPresent(this.deps, member, cwd));
+    const absentIds = new Set(absent.map((member) => member.id));
+    const resolution = resolveSpellings(this.deps, choice, block.needs, cwd, tree, absentIds);
+
     let rendered;
     try {
-      rendered = renderChoice(choice, block.needs, tree);
+      rendered = renderChoice(choice, block.needs, tree, resolution.spellings);
     } catch (cause) {
       return err(
         new DomainError(
@@ -80,14 +88,16 @@ export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
       files.map((config) => ({ path: config.path, upToDate: !configState(tree, config).changed })),
     );
 
-    const absent: ToolchainProvider[] = [];
     const statuses = new Map<string, boolean>();
     for (const { member, needs } of rendered) {
-      if (!memberPresent(this.deps, member, cwd)) {
-        absent.push(member);
-        continue;
-      }
-      const spelled = needs.map((need) => member.spell(need));
+      if (absentIds.has(member.id)) continue;
+      // Ask about what the config actually names: a resolved
+      // `temurin-25.0.4+7` is a sharper question than `temurin-25`.
+      const spelled = needs.map((need) => {
+        const base = member.spell(need);
+        const concrete = resolution.spellings.get(need.tool);
+        return concrete === undefined ? base : { ...base, version: concrete };
+      });
       const run = this.deps.processes.run(member.status.command, member.status.args, { cwd });
       try {
         for (const [name, installed] of member.parseStatus(run, spelled)) {
@@ -104,15 +114,16 @@ export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
       }
     }
 
-    const absentIds = new Set(absent.map((member) => member.id));
-    const tools: CheckedTool[] = provisionedTools(choice, block.needs).map((tool) => ({
-      ...tool,
-      status: absentIds.has(tool.provider)
-        ? ('unknown' as const)
-        : statuses.get(`${tool.provider}:${tool.spelledName}`) === true
-          ? ('satisfied' as const)
-          : ('missing' as const),
-    }));
+    const tools: CheckedTool[] = provisionedTools(choice, block.needs, resolution.spellings).map(
+      (tool) => ({
+        ...tool,
+        status: absentIds.has(tool.provider)
+          ? ('unknown' as const)
+          : statuses.get(`${tool.provider}:${tool.spelledName}`) === true
+            ? ('satisfied' as const)
+            : ('missing' as const),
+      }),
+    );
 
     return ok({
       provider: choice.id,
@@ -122,8 +133,10 @@ export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
       tools,
       satisfied:
         absent.length === 0 &&
+        resolution.unresolved.length === 0 &&
         configs.every((config) => config.upToDate) &&
         tools.every((tool) => tool.status === 'satisfied'),
+      unresolved: resolution.unresolved,
       ...(absent.length > 0 ? { bootstrap: bootstrapFor(absent) } : {}),
     });
   }

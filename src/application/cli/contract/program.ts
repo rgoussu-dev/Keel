@@ -23,6 +23,7 @@ import {
   toolchainInstallCommand,
   type ToolchainCheckReport,
   type ToolchainInstallReport,
+  type UnresolvedPrefix,
 } from '../../../domain/toolchain/contract/commands.js';
 
 /** What the composition root wires into the CLI adapter. */
@@ -253,6 +254,7 @@ function printToolchainInstall(report: ToolchainInstallReport, log: Logger): voi
   if (report.choiceRecorded) {
     log.info(`  manager recorded in the toolchain block: ${report.provider}`);
   }
+  printUnresolved(report.unresolved, log);
   if (!report.managerPresent) {
     log.warn('Nothing was provisioned:');
     for (const line of (report.bootstrap ?? '').split('\n')) log.warn(line);
@@ -291,7 +293,26 @@ function printToolchainCheck(report: ToolchainCheckReport, log: Logger): void {
   if (!report.managerPresent) {
     for (const line of (report.bootstrap ?? '').split('\n')) log.warn(line);
   }
+  printUnresolved(report.unresolved, log);
   if (report.satisfied) log.success('keel toolchain check: toolchain satisfied');
+}
+
+/**
+ * Says out loud when a version stayed a prefix. The config rendered
+ * either way, so the run looks otherwise ordinary — and on a manager
+ * whose file is a lockfile, a prefix is a line its own installer will
+ * refuse.
+ */
+function printUnresolved(unresolved: readonly UnresolvedPrefix[], log: Logger): void {
+  if (unresolved.length === 0) return;
+  log.warn('Could not resolve a concrete version for:');
+  for (const prefix of unresolved) {
+    log.warn(`  - ${prefix.tool} (${prefix.provider}: ${prefix.spelled})`);
+  }
+  log.warn(
+    `The config carries the prefix as it stands; ${unresolved[0]?.provider ?? 'the manager'} ` +
+      'may refuse it. Install the manager and re-run, or pin an exact version in the block.',
+  );
 }
 
 function formatTags(tags: readonly string[]): string {

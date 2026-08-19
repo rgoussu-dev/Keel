@@ -37,6 +37,7 @@ import {
   provisionedTools,
   renderChoice,
   resolveChoice,
+  resolveSpellings,
   type ToolchainDeps,
 } from './engine.js';
 
@@ -71,9 +72,23 @@ export class ToolchainInstallHandler implements Handler<ToolchainInstallCommand>
     const { choice, isNew } = resolved.value;
 
     const tree = this.deps.trees(cwd);
+    // The presence probe moves ahead of the render: resolving a
+    // prefix means asking the manager, and only a present one can be
+    // asked. An absent member still gets its config rendered — that
+    // is N.2's guarantee — just from what the file already carries.
+    const absent = absentMembers(this.deps, choice, cwd);
+    const resolution = resolveSpellings(
+      this.deps,
+      choice,
+      block.needs,
+      cwd,
+      tree,
+      new Set(absent.map((member) => member.id)),
+    );
+
     let rendered;
     try {
-      rendered = renderChoice(choice, block.needs, tree);
+      rendered = renderChoice(choice, block.needs, tree, resolution.spellings);
     } catch (cause) {
       return err(
         new DomainError(
@@ -106,9 +121,9 @@ export class ToolchainInstallHandler implements Handler<ToolchainInstallCommand>
       members: choice.members.map((member) => member.id),
       choiceRecorded: isNew,
       configs,
-      tools: provisionedTools(choice, block.needs),
+      tools: provisionedTools(choice, block.needs, resolution.spellings),
+      unresolved: resolution.unresolved,
     };
-    const absent = absentMembers(this.deps, choice, cwd);
     if (absent.length > 0) {
       return ok({
         ...base,

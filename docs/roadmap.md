@@ -1481,8 +1481,9 @@ deployment flavor`
 Sliced and issue-tracked (2026-08-18), one session per issue:
 **N.0** ([#87]) → **N.1** ([#88]) → **N.2** ([#89]) → **N.3**
 ([#90]) → **N.4** ([#91]); **N.5** ([#92]) depends only on N.1 and
-can run in parallel with N.3/N.4. N.0–N.4 have shipped; the launch
-provider set is complete.
+can run in parallel with N.3/N.4. **N.6** followed N.4, closing the
+prefix-resolution gap N.3 opened. N.0–N.4 and N.6 have shipped; the
+launch provider set is complete.
 
 **Goal.** Every stack page ends in a "Required on PATH" table and a
 you-problem: keel scaffolds a project targeting JDK 25 and leaves
@@ -1598,10 +1599,10 @@ one will resolve. Resolving through the manager
 (`asdf latest <plugin> <prefix>`) needs a resolution step that runs
 _before_ rendering — and one that degrades honestly when the manager
 is absent, since N.2's guarantee is that the config renders anyway.
-It was sketched as N.4's business and is **still open** after it: no
-record N.4 added needs one (see N.4's shipped note). Until it lands,
-mise, whose resolver takes prefixes natively, is the default, and
-the caveat is in `docs/cli.md`.
+It was sketched as N.4's business, survived it untouched (no record
+N.4 added needs one — see that slice's note), and **closed in N.6**,
+which built the resolution step and found sdkman needed it too. mise
+stays the default regardless, its resolver taking prefixes natively.
 
 ### N.4 — sdkman, rustup, and the ecosystem-native no-ops (M) ([#91]) ✅
 
@@ -1641,17 +1642,15 @@ Three things the slice settled:
   writes it back, and no command runs either way. The directive is a
   floor rather than a pin, so a newer local Go is used as is.
 
-**The asdf prefix gap N.3 carried here is still open.**
-`.tool-versions` wants concrete versions where the block pins
-majors, and resolving prefixes through the manager
-(`asdf latest <plugin> <prefix>`) needs a resolution step running
-before the render — one that degrades honestly when the manager is
-absent, since N.2's guarantee is that the config renders anyway.
-None of the three records this slice added needs such a step, so it
-was not built: sdkman spells the JDK major as a candidate version,
-rustup's whole point is that `stable` needs no resolving, and
-go-native's directive is a floor. mise stays the default for exactly
-this reason, and the caveat stays in `docs/cli.md`.
+**The asdf prefix gap N.3 carried here was left open, and one of the
+reasons given for that was wrong.** The slice declined to build the
+resolution step because none of its three records needed one —
+rustup's `stable` needs no resolving and go-native's directive is a
+floor, both of which hold. But the third reason, that "sdkman spells
+the JDK major as a candidate version", does not: SDKMAN! candidate
+identifiers always carry a patch, so the `java=25-tem` this slice
+shipped names nothing installable and `sdk env install` refuses it.
+The gap was not one record's, it was two. **N.6** closes both.
 
 ### N.5 — single-source pins: dev-container and CI converge (M) ([#92])
 
@@ -1659,6 +1658,47 @@ The devcontainer features and the `ci` setup versions derive from
 the same registry entries as the block, with an agreement guard in
 `verify` shaped like `tests/version-pins.test.ts`. Values converge;
 mechanisms stay native (CI keeps its setup actions).
+
+### N.6 — resolving prefixes through the manager (S) ✅
+
+The step N.3 first asked for and N.4 left standing: a provider whose
+native file is a **lockfile** gets an exact version, not the series
+the block pins.
+
+**Shipped.** An optional `resolve` on the provider record — is this
+spelling a prefix, what does the manager's own lookup for it look
+like, how is its answer read, and what does the config already carry
+— plus one engine pass that runs before any render, in both handlers.
+Records that take a prefix natively declare none and run no extra
+process, so this is invisible on mise.
+
+Three things the slice settled:
+
+- **The obvious order is the wrong one.** Asking the manager first
+  and falling back to the file reads naturally and is a bug: every
+  `check` would re-query upstream and call a perfectly good lockfile
+  stale the day a patch shipped, which is the opposite of what
+  pinning a series means. **Lockfile order** — the file first, the
+  manager only when nothing on disk still answers — makes a re-run
+  write nothing, keeps the steady state free of any process at all,
+  and means an absent manager can never overwrite a resolved file
+  with the prefix it came from. A pin bump still moves it, exactly
+  once, because the recorded value stops answering.
+- **The gap was two records wide, not one.** asdf was the one on
+  record; sdkman has the identical defect and N.4 shipped it —
+  `java=25-tem` is not an SDKMAN! identifier. The seam was built
+  generic and both wired.
+- **Failing to resolve stays a report, never a refusal.** N.2's
+  guarantee is that the config renders whatever happens, so an
+  unresolvable prefix renders as it always did and rides both reports
+  as `unresolved` — counted against `check`'s verdict, printed as a
+  warning, never a guess at the patch half.
+
+The two lookups are the managers' own (`asdf latest <plugin>
+<prefix>`, `sdk list <candidate>`) and both are read-only. SDKMAN!'s
+table layout is not a documented contract, so that parse is a
+format-agnostic scan whose failure mode is `undefined` — which lands
+on the pre-existing behaviour rather than on a wrong version.
 
 ### Not in scope for N
 

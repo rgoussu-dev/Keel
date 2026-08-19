@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { toolchainInstallCommand } from '../../../src/domain/toolchain/contract/commands.js';
 import { ToolchainInstallHandler } from '../../../src/domain/toolchain/core/install.js';
+import { asdfProvider } from '../../../src/domain/toolchain/core/asdf.js';
 import { miseProvider } from '../../../src/domain/toolchain/core/mise.js';
 import { nvmProvider } from '../../../src/domain/toolchain/core/nvm.js';
 import { expectErr, expectOk } from '../../support/factory.js';
@@ -304,13 +305,24 @@ describe('keel toolchain install — the ecosystem records', () => {
     toolchainInstallCommand({ cwd: CWD, interactive: false, provider });
 
   it('renders .sdkmanrc and delegates to sdk env install on a JVM-only project', async () => {
-    const s = await scenario();
+    // `sdk list java`, whose identifiers are the only thing
+    // `sdk env install` will take — a bare `25-tem` names nothing.
+    const s = await scenario({
+      scripts: [
+        {
+          command: 'bash',
+          argsPrefix: ['-lc'],
+          result: { stdout: ' Temurin | | 25.0.4 | tem | | 25.0.4-tem\n' },
+        },
+      ],
+    });
 
     const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(pinned('sdkman')));
 
     expect(report).toMatchObject({ provider: 'sdkman', managerPresent: true, installed: true });
     expect(report.configs).toEqual([{ path: '.sdkmanrc', changed: true }]);
-    expect(s.tree.read('.sdkmanrc')?.toString()).toContain('java=25-tem');
+    expect(s.tree.read('.sdkmanrc')?.toString()).toContain('java=25.0.4-tem');
+    expect(report.unresolved).toEqual([]);
     expect(s.processes.ran('bash').at(-1)?.args[1]).toContain('sdk env install');
   });
 
@@ -363,5 +375,97 @@ describe('keel toolchain install — the ecosystem records', () => {
 
     expect(report.configs).toEqual([{ path: 'go.mod', changed: false }]);
     expect(s.tree.changes()).toEqual([]);
+  });
+});
+
+describe('keel toolchain install — resolving a prefix into a lockfile', () => {
+  const chosen = toolchainInstallCommand({ cwd: CWD, interactive: false, provider: 'asdf' });
+
+  /** `asdf latest java temurin-25`, answered. */
+  const latest = {
+    command: 'asdf',
+    argsPrefix: ['latest'],
+    result: { stdout: 'temurin-25.0.4+7\n' },
+  };
+
+  const toolVersions = (s: Awaited<ReturnType<typeof scenario>>): string =>
+    s.tree.read('.tool-versions')?.toString() ?? '';
+
+  it('asks asdf for the concrete version and writes that, not the block prefix', async () => {
+    const s = await scenario({ scripts: [latest] });
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(chosen));
+
+    expect(toolVersions(s)).toContain('java temurin-25.0.4+7\n');
+    expect(toolVersions(s)).not.toContain('java temurin-25\n');
+    // The already-exact wrapper pin is never asked about.
+    expect(toolVersions(s)).toContain('gradle 9.4.1\n');
+    expect(s.processes.ran('asdf').map((p) => p.args.join(' '))).toContain(
+      'latest java temurin-25',
+    );
+    expect(report.unresolved).toEqual([]);
+    // The report names the version the file actually carries.
+    expect(report.tools.find((tool) => tool.tool === 'jdk')?.spelledVersion).toBe(
+      'temurin-25.0.4+7',
+    );
+  });
+
+  it('stays put on a re-run: a resolved lockfile is never re-queried', async () => {
+    const s = await scenario({ block: { ...JVM_BLOCK, provider: 'asdf' }, scripts: [latest] });
+    s.tree.seed(
+      '.tool-versions',
+      asdfProvider.render(
+        JVM_BLOCK.needs,
+        () => undefined,
+        new Map([['jdk', 'temurin-25.0.4+7']]),
+      )[0]?.content ?? '',
+    );
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(chosen));
+
+    expect(report.configs).toEqual([{ path: '.tool-versions', changed: false }]);
+    expect(s.tree.changes()).toEqual([]);
+    // Nothing was asked: were it, a newer patch upstream would call a
+    // perfectly good lockfile stale on every run.
+    expect(s.processes.ran('asdf').map((p) => p.args[0])).not.toContain('latest');
+  });
+
+  it('never regresses a resolved file to the prefix when asdf is absent', async () => {
+    const s = await scenario({
+      block: { ...JVM_BLOCK, provider: 'asdf' },
+      scripts: [absentProbe('asdf')],
+    });
+    s.tree.seed('.tool-versions', 'gradle 9.4.1\njava temurin-25.0.4+7\n');
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(chosen));
+
+    expect(report.managerPresent).toBe(false);
+    expect(toolVersions(s)).toContain('java temurin-25.0.4+7\n');
+    expect(report.unresolved).toEqual([]);
+  });
+
+  it('renders the prefix and says so when there is nothing to resolve it from', async () => {
+    const s = await scenario({
+      block: { ...JVM_BLOCK, provider: 'asdf' },
+      scripts: [absentProbe('asdf')],
+    });
+
+    const report = expectOk(await new ToolchainInstallHandler(s.deps).handle(chosen));
+
+    // N.2's guarantee holds: the config lands regardless.
+    expect(toolVersions(s)).toContain('java temurin-25\n');
+    expect(report.unresolved).toEqual([{ tool: 'jdk', provider: 'asdf', spelled: 'temurin-25' }]);
+  });
+
+  it('leaves a provider that takes prefixes natively alone — mise runs no query', async () => {
+    const s = await scenario();
+
+    expectOk(await new ToolchainInstallHandler(s.deps).handle(command));
+
+    expect(s.processes.ran('mise').map((p) => p.args[0])).toEqual([
+      '--version',
+      'trust',
+      'install',
+    ]);
   });
 });

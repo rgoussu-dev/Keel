@@ -103,3 +103,87 @@ describe('the asdf record', () => {
     expect(statuses.get('java')).toBe(false);
   });
 });
+
+describe('the asdf record — resolving a prefix', () => {
+  const resolve = asdfProvider.resolve;
+  if (!resolve) throw new Error('test setup: the asdf record declares a resolution');
+
+  const reads =
+    (files: Readonly<Record<string, string>>) =>
+    (path: string): string | undefined =>
+      files[path];
+
+  it('treats a version short of three components as a prefix, and nothing else', () => {
+    // The block pins majors for the JDK and Node; the wrapper pins it
+    // carries in full are already exactly what asdf wants.
+    expect(resolve.isPrefix({ name: 'java', version: 'temurin-25' })).toBe(true);
+    expect(resolve.isPrefix({ name: 'nodejs', version: '22' })).toBe(true);
+    expect(resolve.isPrefix({ name: 'golang', version: '1.24' })).toBe(true);
+    expect(resolve.isPrefix({ name: 'java', version: 'temurin-25.0.4+7' })).toBe(false);
+    expect(resolve.isPrefix({ name: 'gradle', version: '9.4.1' })).toBe(false);
+    expect(resolve.isPrefix({ name: 'maven', version: '3.9.16' })).toBe(false);
+  });
+
+  it("asks asdf itself — 'asdf latest <plugin> <prefix>'", () => {
+    expect(resolve.query({ name: 'java', version: 'temurin-25' })).toEqual({
+      command: 'asdf',
+      args: ['latest', 'java', 'temurin-25'],
+    });
+  });
+
+  it('takes the version asdf names', () => {
+    expect(resolve.parse(ran('temurin-25.0.4+7\n'), { name: 'java', version: 'temurin-25' })).toBe(
+      'temurin-25.0.4+7',
+    );
+  });
+
+  it('refuses an answer that does not answer the prefix that asked', () => {
+    expect(resolve.parse(ran('temurin-21.0.5+11\n'), { name: 'java', version: 'temurin-25' })).toBe(
+      undefined,
+    );
+  });
+
+  it("reads a non-zero exit as 'no compatible version', not as a defect", () => {
+    expect(
+      resolve.parse(ran('No compatible versions available\n', 1), {
+        name: 'java',
+        version: 'temurin-25',
+      }),
+    ).toBe(undefined);
+  });
+
+  it('keeps what .tool-versions already carries when it answers the prefix', () => {
+    const existing = 'gradle 9.4.1\njava temurin-25.0.4+7\n';
+
+    expect(
+      resolve.fromConfig(
+        { name: 'java', version: 'temurin-25' },
+        reads({ '.tool-versions': existing }),
+      ),
+    ).toBe('temurin-25.0.4+7');
+    // A pin bump moved the series: the old value no longer answers.
+    expect(
+      resolve.fromConfig(
+        { name: 'java', version: 'temurin-26' },
+        reads({ '.tool-versions': existing }),
+      ),
+    ).toBe(undefined);
+    expect(resolve.fromConfig({ name: 'java', version: 'temurin-25' }, reads({}))).toBe(undefined);
+  });
+
+  it('renders the resolved version where the engine got one, the prefix where it did not', () => {
+    const needs = [
+      { tool: 'jdk', version: '25' },
+      { tool: 'node', version: '22' },
+    ] as const;
+
+    const [config] = asdfProvider.render(
+      [...needs],
+      absent,
+      new Map([['jdk', 'temurin-25.0.4+7']]),
+    );
+
+    expect(config?.content).toContain('java temurin-25.0.4+7\n');
+    expect(config?.content).toContain('nodejs 22\n');
+  });
+});
