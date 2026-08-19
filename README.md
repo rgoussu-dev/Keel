@@ -309,6 +309,7 @@ bootstrap or layered on later with `keel add`:
 | [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                              | every stack                       |
 | [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor   | Quarkus CLI + every server shape  |
 | [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster      | after `distribution` (containers) |
+| [`toolchain`](docs/verticals/toolchain.md)               | records the toolchain the project needs (JDK, build system, Node, …) in the manifest, from keel's pins | every stack (opt-in)              |
 | [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                                                | composite monorepos (not addable) |
 
 Which verticals are installed by default on which stack, and which can

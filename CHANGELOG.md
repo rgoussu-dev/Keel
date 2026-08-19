@@ -8,6 +8,26 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`toolchain` vertical — the writer of the `toolchain` manifest
+  block (roadmap N.1).** `keel add toolchain` derives the project's
+  toolchain **needs** from the manifest's tags — one
+  predicate-selected adapter per family, the `dev-container`
+  pattern: `runtime.jvm` → `jdk` + the build system the `pkg.*` tag
+  names, `lang.go` → `go`, `lang.rust` → `rust`, `lang.typescript` →
+  `node` + `pnpm` when tagged (npm rides with Node) — and records
+  them in the N.0 block, plus a short "Toolchain" runbook note in
+  the README. Versions are read from
+  `assets/composition/version-pins.json` at install time (each need
+  cites its entry id as `source`), so the block is one more consumer
+  of the registry, never a second place versions are stated; the
+  registry gains a `ts-pnpm` entry claiming the `packageManager`
+  pins the TS/web templates already carried.
+  `keel add toolchain --reapply` refreshes the block after a pin
+  bump — needs upsert by tool, so nothing duplicates. Deliberately
+  opt-in (no stack installs it by default) until the provisioning
+  engine (N.2+) settles the end-to-end story; on a fullstack
+  composite each service records its own block via its own manifest.
+  Documented in `docs/verticals/toolchain.md`.
 - **The versioned `toolchain` manifest block (roadmap N.0).** The
   manifest may now carry a `toolchain` block — the project's declared
   toolchain needs (`{ tool, version, source? }` over a closed tool

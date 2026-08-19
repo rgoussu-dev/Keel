@@ -17,6 +17,7 @@ import { gatewayVertical } from './gateway.js';
 import { iacVertical } from './iac.js';
 import { observabilityVertical } from './observability.js';
 import { persistenceVertical } from './persistence.js';
+import { toolchainVertical } from './toolchain.js';
 import { vcsVertical } from './vcs.js';
 import { walkingSkeletonVertical } from './walking-skeleton.js';
 import type { Vertical } from '../../contract/composition.js';
@@ -33,6 +34,7 @@ const ALL: readonly Vertical[] = [
   devContainerVertical,
   observabilityVertical,
   persistenceVertical,
+  toolchainVertical,
 ];
 
 /** All verticals known to the brownfield registry, keyed by id. */

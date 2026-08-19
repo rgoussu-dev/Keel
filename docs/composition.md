@@ -182,8 +182,8 @@ the engine decides **how** to satisfy it.
   "toolchain": {
     "schemaVersion": 1,
     "needs": [
-      { "tool": "jdk", "version": "25", "source": "jdk" },
-      { "tool": "gradle", "version": "9.4.1", "source": "gradle-wrapper" }
+      { "tool": "jdk", "version": "25", "source": "jvm-jdk" },
+      { "tool": "gradle", "version": "9.4.1", "source": "jvm-gradle-wrapper" }
     ]
   }
 }
@@ -204,9 +204,11 @@ the engine decides **how** to satisfy it.
   touch.
 
 An **absent** block means nothing was declared — distinct from a
-written block with an empty needs list. Nothing writes the block yet:
-the `toolchain` vertical (N.1) records the needs, and
-`keel toolchain install` (N.2+) consumes them.
+written block with an empty needs list. The
+[`toolchain` vertical](verticals/toolchain.md) writes the block
+(`keel add toolchain`, opt-in; `--reapply` refreshes it after a pin
+bump — needs upsert by tool, so nothing duplicates), and
+`keel toolchain install` (N.2+) will consume it.
 
 ## Further reading
 
