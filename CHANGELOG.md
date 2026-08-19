@@ -35,12 +35,36 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   cached, and the convergence is about the values, not the mechanism.
   Documented in `docs/verticals/dev-container.md`,
   `docs/verticals/ci.md` and `docs/development.md` → Version currency.
+- **Prefixes resolve through the manager before the render (roadmap
+  N.6).** The block pins a _major_ for the JDK and for Node — a
+  series, not a release — and two provider records cannot take one:
+  asdf documents `.tool-versions` as a lockfile that wants exact
+  versions and forbids `latest`, and SDKMAN!'s candidate identifiers
+  always carry a patch, so `java=25-tem` names nothing installable.
+  Both now declare a resolution, and `keel toolchain install|check`
+  runs it before anything is rendered. The order is **lockfile
+  order**: whatever the config already names wins while it still
+  answers the prefix, and only when nothing answers is the manager
+  asked its own way (`asdf latest java temurin-25`, `sdk list java`).
+  Asking first would have been the obvious design and the wrong one —
+  every `check` would re-query upstream and call a perfectly good
+  lockfile stale the day a patch shipped. So a resolved file stays
+  put, a re-run writes nothing, the steady state costs no process at
+  all, and an absent manager can no longer overwrite a good file with
+  the prefix it came from. `.tool-versions` now carries
+  `java temurin-25.0.4+7` where the block says `jdk 25`, and
+  `.sdkmanrc` `java=25.0.4-tem`. keel never invents the patch half:
+  where neither the file nor the manager can name a version, the
+  prefix renders as it always did — the declaration still lands — and
+  both reports carry it as `unresolved`, which `check` counts against
+  `satisfied` and the CLI prints as a warning naming the tool.
+
 - **sdkman, rustup, and Go's native no-op — the launch provider set
   is complete (roadmap N.4).** Three records join the manager dial,
   and none of them widens it: each is offered only where its
   ecosystem is the _whole_ declaration, which is the coverage
   invariant doing the work rather than a rule of their own. **sdkman**
-  renders `.sdkmanrc` (`java=25-tem`, `gradle=9.4.1`) and installs
+  renders `.sdkmanrc` (`java=25.0.4-tem`, `gradle=9.4.1`) and installs
   with `sdk env install`, reached through a login shell that sources
   `sdkman-init.sh` because `sdk` is a shell function rather than a
   binary — so it appears on JVM-only projects and is silently absent

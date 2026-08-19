@@ -20,18 +20,32 @@
  *   is what makes the read-only status probe honest.
  *
  * The one keel-chosen half of a spelling is the JDK distribution
- * suffix: the block pins a major (`25`), SDKMAN! wants a
- * distribution-qualified candidate version (`25-tem`). It is
- * registered in `assets/composition/version-pins.json`
- * (`sdkman-java-distribution`) the way mise's and asdf's are; the
- * version halves ride the block, whose pins the currency loop
- * already covers. Gradle and Maven keep their block versions
- * verbatim — `gradle=9.4.1` is already SDKMAN!'s spelling.
+ * suffix, registered in `assets/composition/version-pins.json`
+ * (`sdkman-java-distribution`) the way mise's and asdf's are. Gradle
+ * and Maven keep their block versions verbatim — `gradle=9.4.1` is
+ * already SDKMAN!'s spelling.
+ *
+ * **The JDK half needs one more step, and it is the same one asdf
+ * needs.** SDKMAN! candidate identifiers always carry a patch
+ * (`25.0.4-tem`); the block pins a major, so the naive spelling
+ * `25-tem` names nothing installable and `sdk env install` refuses
+ * it. So this record declares a {@link ToolchainProvider.resolve}:
+ * whatever `.sdkmanrc` already names wins while it still answers the
+ * major, and otherwise the engine asks `sdk list java` (roadmap N.6).
  */
 
 import type { ProcessResult } from '../../contract/ports/process-runner.js';
 import type { ToolchainNeed, ToolchainTool } from '../../contract/toolchain.js';
-import type { ProviderInvocation, SpelledNeed, ToolchainProvider } from './provider.js';
+import type {
+  ProviderInvocation,
+  ResolvedSpellings,
+  SpelledNeed,
+  ToolchainProvider,
+  VersionResolution,
+} from './provider.js';
+
+/** SDKMAN!'s own file, which `sdk env` reads from the project root. */
+const CONFIG_PATH = '.sdkmanrc';
 
 /** The JDK distribution SDKMAN! spellings qualify the block's major with. */
 const JDK_DISTRIBUTION = 'tem';
@@ -69,18 +83,74 @@ function spell(need: ToolchainNeed): SpelledNeed {
 /** One `candidate: version` line of `sdk current`. */
 const IN_USE = /^[ \t]*([a-z][\w-]*):[ \t]*(\S+)[^\S\n]*$/gm;
 
+/** The version a `.sdkmanrc` already carries for a candidate. */
+function configured(name: string, existing: string): string | undefined {
+  for (const line of existing.split('\n')) {
+    const [key, value] = line.trim().split('=');
+    if (key === name && value !== undefined && value.length > 0) return value;
+  }
+  return undefined;
+}
+
+/** The major a candidate identifier opens with (`25.0.4-tem` → `25`). */
+const majorOf = (version: string): string => /^\d+/.exec(version)?.[0] ?? '';
+
+/** Everything a spelling carries after its numeric head (`-tem`). */
+const suffixOf = (version: string): string => version.slice(majorOf(version).length);
+
+/**
+ * Whether a candidate identifier answers a bare-major spelling —
+ * `25.0.4-tem` answers `25-tem`, `21.0.5-tem` does not.
+ */
+function answersMajor(identifier: string, spelled: string): boolean {
+  return identifier.startsWith(`${majorOf(spelled)}.`) && identifier.endsWith(suffixOf(spelled));
+}
+
+/**
+ * How SDKMAN! makes a prefix concrete — see the module doc. Only a
+ * **bare major** is a prefix here: every candidate identifier the
+ * block hands sdkman otherwise (`9.4.1`, `3.9.16`) is already exactly
+ * what `sdk install` takes.
+ *
+ * `sdk list <candidate>` is the only enumeration SDKMAN! offers, and
+ * its table layout is not a contract, so the parse is a deliberately
+ * format-agnostic scan for the first identifier answering the major.
+ * Anything it cannot read returns `undefined`, which lands the caller
+ * back on the pre-existing behaviour rather than on a wrong version.
+ */
+const resolution: VersionResolution = {
+  isPrefix: (spelled) => /^\d/.test(spelled.version) && !spelled.version.includes('.'),
+  query: (spelled) => shell(`sdk list ${spelled.name}`),
+  parse(result, spelled) {
+    const wanted = new RegExp(
+      `\\b${majorOf(spelled.version)}(?:\\.\\d+)+[^\\s|]*${suffixOf(spelled.version)}\\b`,
+    );
+    // Rows are grouped by vendor and newest-first within a vendor, so
+    // the first identifier carrying this major and this distribution
+    // is the newest of the series.
+    return wanted.exec(result.stdout)?.[0];
+  },
+  fromConfig(spelled, read) {
+    const existing = read(CONFIG_PATH);
+    const current = existing === undefined ? undefined : configured(spelled.name, existing);
+    return current !== undefined && answersMajor(current, spelled.version) ? current : undefined;
+  },
+};
+
 /** The SDKMAN! record. */
 export const sdkmanProvider: ToolchainProvider = {
   id: 'sdkman',
   label: 'sdkman — .sdkmanrc, the JVM classic: JDK, Gradle, Maven (JVM-only projects)',
   covers: COVERS,
   spell,
-  render(needs) {
+  render(needs, _read, resolved: ResolvedSpellings = new Map()) {
     const entries = needs
-      .map(spell)
-      .map((spelled) => `${spelled.name}=${spelled.version}\n`)
+      .map((need) => {
+        const spelled = spell(need);
+        return `${spelled.name}=${resolved.get(need.tool) ?? spelled.version}\n`;
+      })
       .join('');
-    return [{ path: '.sdkmanrc', content: `${CONFIG_HEADER}\n${entries}` }];
+    return [{ path: CONFIG_PATH, content: `${CONFIG_HEADER}\n${entries}` }];
   },
   probe: shell('sdk version'),
   // `sdk env install` installs every candidate `.sdkmanrc` names and
@@ -105,4 +175,5 @@ export const sdkmanProvider: ToolchainProvider = {
     'sdkman is not installed (or its shell function is not loaded).\n' +
     'Bootstrap it with:  curl -s "https://get.sdkman.io" | bash\n' +
     'then open a new shell (sdk is a shell function, not a binary).',
+  resolve: resolution,
 };

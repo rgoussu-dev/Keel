@@ -47,6 +47,14 @@
   command because the rendered directive _is_ the provisioning. Where
   the ecosystem solved provisioning, the dial says so instead of
   routing around it.
+- A record whose native file is a **lockfile** declares a `resolve`,
+  and the engine runs it before any render. Order is lockfile order —
+  the config on disk first, while it still answers the prefix, and the
+  manager's own lookup only when nothing does. Never the other way
+  round: asking upstream every run would call a good lockfile stale
+  the day a patch ships. keel never invents the missing half of a
+  version; an unresolvable prefix renders as it stands and rides the
+  report, because N.2's guarantee is that the config lands anyway.
 - Tests live in `tests/domain/toolchain/`, Scenario + Factory + port
   with the shipped fakes. The real-install suite
   (`tests/toolchain/`) is opt-in and env-gated — never in the PR
