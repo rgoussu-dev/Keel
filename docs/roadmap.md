@@ -1652,12 +1652,45 @@ identifiers always carry a patch, so the `java=25-tem` this slice
 shipped names nothing installable and `sdk env install` refuses it.
 The gap was not one record's, it was two. **N.6** closes both.
 
-### N.5 — single-source pins: dev-container and CI converge (M) ([#92])
+### N.5 — single-source pins: dev-container and CI converge (M) ([#92]) ✅
 
 The devcontainer features and the `ci` setup versions derive from
 the same registry entries as the block, with an agreement guard in
 `verify` shaped like `tests/version-pins.test.ts`. Values converge;
 mechanisms stay native (CI keeps its setup actions).
+
+**Shipped.** `src/domain/core/adapters/version-pins.ts` holds the
+map — `TOOLCHAIN_PIN_SOURCE`, one registry entry id per tool — and
+the block, the dev container features and both CI flavors resolve
+through it. The emitted CI templates render their versions rather
+than literalizing them, and `tests/toolchain-pins.test.ts` scaffolds
+every family and reads the versions back out of the emitted files.
+
+Two things the slice settled that the sketch did not anticipate:
+
+- **The guard has to assert over emitted projects, not constants.**
+  Comparing the adapters' sources to the registry is a tautology once
+  they read it; the disagreement that matters is between the files a
+  user ends up with. So the guard scaffolds, parses
+  `devcontainer.json` / `ci.yml` / `.gitlab-ci.yml`, and compares
+  what they say to the block. Hardcoding any one of them turns it
+  red — which is the "demonstrably fails when one is edited alone"
+  the issue asked for, and was verified by doing exactly that to each
+  surface in turn.
+- **Absence is a state worth pinning down.** Three surfaces
+  deliberately name no version — GitHub's `go-version-file: go.mod`,
+  `rustup update stable`, corepack reading `packageManager` — and a
+  guard that only checks stated versions would let one grow a literal
+  silently, or let another lose its version and still pass over less
+  coverage. The guard therefore lists, per family, exactly which
+  `surface:tool` pairs state a version, so both directions are red.
+  Rust is the one family with a floating pin (`image-rust`, a
+  major-only tag): `latest` counts as agreement there and nowhere
+  else, which is why its devcontainer feature stays versionless.
+
+One behavior change fell out of the convergence: the Go dev container
+now asks for the pinned minor instead of `latest`, so the editor's
+toolchain and `go.mod` agree by construction.
 
 ### N.6 — resolving prefixes through the manager (S) ✅
 

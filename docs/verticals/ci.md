@@ -38,17 +38,43 @@ One adapter per stack family covers the single `pipeline` dimension —
 the build-system choice is read from the manifest tags, never a
 second adapter:
 
-| Stacks                                | Adapter         | Pipeline                                                                                       |
-| ------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------- |
-| all twelve JVM stacks                 | `jvm-pipeline`  | JDK 25 (temurin) + the wrapper: `./gradlew build` or `./mvnw verify` per `pkg.*`               |
-| `go-cli`, `go-http`                   | `go-pipeline`   | toolchain per `go.mod`; `go build ./...` + `go test ./...`                                     |
-| `rust-cli`, `rust-http`               | `rust-pipeline` | latest stable; `cargo build --workspace` + `cargo test --workspace`                            |
-| `ts-cli`, `ts-http`, `web-components` | `ts-pipeline`   | Node 22; `npm ci`/`pnpm install --frozen-lockfile`, typecheck, lint/build `--if-present`, test |
+| Stacks                                | Adapter         | Pipeline                                                                                                     |
+| ------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| all twelve JVM stacks                 | `jvm-pipeline`  | the pinned JDK (temurin) + the wrapper: `./gradlew build` or `./mvnw verify` per `pkg.*`                     |
+| `go-cli`, `go-http`                   | `go-pipeline`   | toolchain per `go.mod` on GitHub, the pinned Go image on GitLab; `go build ./...` + `go test ./...`          |
+| `rust-cli`, `rust-http`               | `rust-pipeline` | latest stable; `cargo build --workspace` + `cargo test --workspace`                                          |
+| `ts-cli`, `ts-http`, `web-components` | `ts-pipeline`   | the pinned Node major; `npm ci`/`pnpm install --frozen-lockfile`, typecheck, lint/build `--if-present`, test |
 
 Both TypeScript installs run from the **committed lockfile**, so the
 pipeline fails loudly on dependency drift instead of resolving
 silently; under `pkg.pnpm` the pnpm version is corepack-provisioned
 from the workspace's own `packageManager` field — on both providers.
+
+### Single-source versions
+
+The JDK, Node and Go versions the pipelines above provision are **not
+stated by these templates**. They resolve through the shared pin
+source
+([`src/domain/core/adapters/version-pins.ts`](../../src/domain/core/adapters/version-pins.ts)),
+which names the
+[`version-pins.json`](../../assets/composition/version-pins.json)
+entry each tool's version comes from — the same entry the
+[`toolchain`](toolchain.md) block records the need from and the
+[`dev-container`](dev-container.md) feature provisions. One registry
+edit moves all three, and `tests/toolchain-pins.test.ts` runs in
+`verify` and fails if a scaffolded project's pipeline and its
+recorded needs disagree.
+
+Three of the surfaces deliberately carry no version at all, and stay
+that way: GitHub's Go setup reads `go-version-file: go.mod`, the Rust
+workflow runs `rustup update stable`, and pnpm is corepack-provisioned
+from the workspace's own `packageManager` field. The guard lists them
+as absences, so a template quietly growing a version of its own is as
+red as one stating the wrong one.
+
+`keel toolchain install` is deliberately **not** emitted into these
+pipelines: the provider setup actions are faster and cached, and the
+convergence is about the values, not the provisioning mechanism.
 
 ## Module layout
 

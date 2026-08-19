@@ -8,6 +8,33 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Single-source pins: the dev container and CI converge on the
+  toolchain needs (roadmap N.5).** The `toolchain` block, the
+  `dev-container` features and the `ci` setup steps each used to
+  state their own JDK / Node / Go version, kept honest only by the
+  pin registry's sweep happening to claim all three occurrences. They
+  now resolve through one shared pin source
+  (`src/domain/core/adapters/version-pins.ts`), whose
+  `TOOLCHAIN_PIN_SOURCE` names the `version-pins.json` entry each
+  tool's version comes from: **one registry edit moves all three**,
+  and a devcontainer can no longer provision a JDK the project does
+  not declare a need for. The emitted CI templates render their
+  versions instead of literalizing them (`java-version`,
+  `eclipse-temurin:<jdk>-jdk`, `node-version`, `node:<node>`,
+  `golang:<go>`), and the Go dev container asks for the pinned minor
+  rather than `latest`, so the editor and `go.mod` agree. A new guard,
+  `tests/toolchain-pins.test.ts`, runs in `verify` — it scaffolds
+  every family, reads the versions back out of the emitted
+  `devcontainer.json`, `ci.yml` and `.gitlab-ci.yml`, and fails when
+  any of them departs from the recorded needs; it also pins down the
+  surfaces that deliberately state no version (GitHub's
+  `go-version-file`, `rustup update stable`, corepack's
+  `packageManager`), so one quietly growing a literal is equally red.
+  Emitting `keel toolchain install` into pipelines is deliberately
+  **not** part of this: the provider setup actions are faster and
+  cached, and the convergence is about the values, not the mechanism.
+  Documented in `docs/verticals/dev-container.md`,
+  `docs/verticals/ci.md` and `docs/development.md` → Version currency.
 - **Prefixes resolve through the manager before the render (roadmap
   N.6).** The block pins a _major_ for the JDK and for Node — a
   series, not a release — and two provider records cannot take one:

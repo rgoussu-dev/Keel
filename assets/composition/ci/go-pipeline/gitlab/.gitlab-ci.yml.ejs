@@ -1,7 +1,9 @@
-# The Go toolchain mechanism (on by default) upgrades to whatever
-# go.mod asks for, so the image only has to be recent enough to read
-# it — the pipeline carries no version of its own to drift.
-image: golang:1.24
+# The image tag is keel's pinned Go minor — the same one go.mod
+# directs, rendered from one registry entry rather than restated
+# here. The Go toolchain mechanism (on by default) upgrades past it
+# to whatever go.mod asks for, so the tag only has to be recent
+# enough to read the directive.
+image: golang:<%= goVersion %>
 
 build:
   script:

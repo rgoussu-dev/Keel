@@ -7,6 +7,11 @@
  * Actions by default, GitLab CI by stored answer, never both files),
  * and the hard fail when no family tag matches (the `pipeline`
  * dimension goes uncovered).
+ *
+ * Every toolchain version the pipelines state is asserted **against
+ * the pin registry itself**, so a workflow can never become a second
+ * place a version lives; `tests/toolchain-pins.test.ts` guards the
+ * same rule across the block, the dev container and CI at once.
  */
 
 import path from 'node:path';
@@ -24,6 +29,7 @@ import { ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { AnswerMap, ManifestV2 } from '../../../../src/domain/contract/composition.js';
+import { pinValue } from '../../../support/version-pins.js';
 
 let cwds: string[] = [];
 
@@ -85,7 +91,7 @@ describe('ci vertical', () => {
     ]);
     expect(workflow).toContain('name: ci');
     expect(workflow).toContain('on:\n  push:');
-    expect(workflow).toContain("java-version: '25'");
+    expect(workflow).toContain(`java-version: '${pinValue('jvm-jdk')}'`);
     expect(workflow).toContain('cache: gradle');
     expect(workflow).toContain('./gradlew build --no-daemon --stacktrace');
     expect(workflow).not.toContain('mvnw');
@@ -207,7 +213,7 @@ describe('ci vertical — the provider dial', () => {
       { 'ci/jvm-pipeline': { provider: 'gitlab-ci' } },
     );
     expect(workflow).toBe('');
-    expect(gitlab).toContain('image: eclipse-temurin:25-jdk');
+    expect(gitlab).toContain(`image: eclipse-temurin:${pinValue('jvm-jdk')}-jdk`);
     expect(gitlab).toContain('GRADLE_USER_HOME');
     expect(gitlab).toContain('./gradlew build --no-daemon --stacktrace');
     expect(gitlab).not.toContain('mvnw');
@@ -230,7 +236,7 @@ describe('ci vertical — the provider dial', () => {
       ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
       { 'ci/go-pipeline': { provider: 'gitlab-ci' } },
     );
-    expect(gitlab).toContain('image: golang:');
+    expect(gitlab).toContain(`image: golang:${pinValue('go-toolchain')}`);
     expect(gitlab).toContain('go build ./...');
     expect(gitlab).toContain('go test ./...');
   });
@@ -249,7 +255,7 @@ describe('ci vertical — the provider dial', () => {
       ['lang.typescript', 'runtime.node', 'pkg.npm', 'arch.hexagonal', 'arch.server-http'],
       { 'ci/ts-pipeline': { provider: 'gitlab-ci' } },
     );
-    expect(npm.gitlab).toContain('image: node:22');
+    expect(npm.gitlab).toContain(`image: node:${pinValue('node-active-lts')}`);
     expect(npm.gitlab).toContain('npm ci');
     expect(npm.gitlab).toContain('npm run lint --if-present');
     expect(npm.gitlab).not.toContain('pnpm');
