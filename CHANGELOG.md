@@ -1713,6 +1713,16 @@ ci`/`containerization`/`distribution` on a service follow the same
   `verify`, against the real tree, on every push and PR. The workflow
   is report-only, so nothing was gated on the red — but the mutation
   signal was dark for the duration.
+- **Web sessions verify the Gradle they install again.** The pin bump
+  moved the wrapper to 9.7.0 while `.claude/hooks/session-start.sh`
+  still knew only 9.4.1's SHA-256, so every web session took the
+  hook's warn-and-continue path and unpacked unverified bytes — loud,
+  by design, and still a gap. The 9.7.0 digest joins `GRADLE_SHA256`,
+  obtained from Gradle's published checksums on an unrestricted
+  network and confirmed against a download taken here; both paths
+  agree. `docs/development.md` records that cross-check as the
+  procedure, distinct from the thing it warns against — hashing our
+  own download and calling the result published.
 
 ## [0.5.0-alpha] — 2026-08-09
 
