@@ -19,6 +19,11 @@ jobs:
 
       - name: Use latest stable Rust
         run: rustup update stable && rustup default stable
+<% if (formatCheck) { -%>
+
+      - name: Check formatting
+        run: <%- formatCheck %>
+<% } -%>
 
       - name: Build
         run: cargo build --workspace

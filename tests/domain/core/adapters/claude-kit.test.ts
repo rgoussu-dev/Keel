@@ -6,13 +6,20 @@
  * the runbook/skill renderers the five families share.
  */
 
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'fs-extra';
 import { describe, expect, it } from 'vitest';
 import {
   claudeKitContribution,
   renderPreCommitHook,
   renderRunbook,
   renderRunSkill,
+  upsertFormatStep,
   upsertRunbook,
+  FORMAT_STEP_BEGIN,
+  FORMAT_STEP_END,
   RUNBOOK_BEGIN,
   RUNBOOK_END,
   type ClaudeKitFamily,
@@ -78,6 +85,75 @@ describe('renderPreCommitHook', () => {
     const hook = renderPreCommitHook(family);
     expect(hook).toContain('*"git commit"*) ;;');
     expect(hook).toContain('*) exit 0 ;;');
+  });
+
+  it('always carries the format-step sentinels, even with no formatter', () => {
+    // The pair must be present in both shapes, or `code-style` has
+    // nowhere to upsert a format command into later.
+    for (const f of [family, { ...family, formatCommand: undefined }]) {
+      const hook = renderPreCommitHook(f);
+      expect(hook).toContain(FORMAT_STEP_BEGIN);
+      expect(hook).toContain(FORMAT_STEP_END);
+      expect(hook.indexOf(FORMAT_STEP_BEGIN)).toBeLessThan(hook.indexOf(FORMAT_STEP_END));
+    }
+  });
+
+  it('parses as bash in every shape it renders', () => {
+    // A generated hook that does not parse fails at commit time, on
+    // the user's machine, with a shell error — worth catching here.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keel-hook-'));
+    try {
+      const shapes = {
+        formatting: renderPreCommitHook(family),
+        verifyOnly: renderPreCommitHook({ ...family, formatCommand: undefined }),
+        upserted: upsertFormatStep(
+          renderPreCommitHook({ ...family, formatCommand: undefined }),
+          './gradlew spotlessApply',
+        ),
+      };
+      for (const [name, src] of Object.entries(shapes)) {
+        const file = path.join(dir, `${name}.sh`);
+        fs.writeFileSync(file, src);
+        expect(() => execFileSync('bash', ['-n', file]), `${name} is not valid bash`).not.toThrow();
+      }
+    } finally {
+      fs.removeSync(dir);
+    }
+  });
+});
+
+describe('upsertFormatStep', () => {
+  const verifyOnly = renderPreCommitHook({ ...family, formatCommand: undefined });
+
+  it('adds a format command to a hook emitted without one', () => {
+    const next = upsertFormatStep(verifyOnly, './gradlew spotlessApply');
+    expect(next).toContain('./gradlew spotlessApply >/dev/null');
+    expect(next).toContain('xargs git add --');
+    expect(next).not.toContain('No formatter configured');
+  });
+
+  it('touches nothing outside the sentinels', () => {
+    const next = upsertFormatStep(verifyOnly, './gradlew spotlessApply');
+    expect(next.split(FORMAT_STEP_BEGIN)[0]).toBe(verifyOnly.split(FORMAT_STEP_BEGIN)[0]);
+    expect(next.split(FORMAT_STEP_END)[1]).toBe(verifyOnly.split(FORMAT_STEP_END)[1]);
+  });
+
+  it('is idempotent', () => {
+    const once = upsertFormatStep(verifyOnly, 'toolfmt -w .');
+    expect(upsertFormatStep(once, 'toolfmt -w .')).toBe(once);
+  });
+
+  it('leaves a pre-sentinel hook alone rather than appending too late', () => {
+    // A format step appended after the verify gate would run after
+    // the thing it is meant to fix, so an old hook is left untouched.
+    const legacy = '#!/usr/bin/env bash\nset -euo pipefail\nexit 0\n';
+    expect(upsertFormatStep(legacy, 'toolfmt -w .')).toBe(legacy);
+  });
+
+  it('throws with the fix when the sentinels were hand-edited apart', () => {
+    expect(() => upsertFormatStep(`x\n${FORMAT_STEP_BEGIN}\ny\n`, 'toolfmt')).toThrow(
+      /sentinels are broken/,
+    );
   });
 });
 

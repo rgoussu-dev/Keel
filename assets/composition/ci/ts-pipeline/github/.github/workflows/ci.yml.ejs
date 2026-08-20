@@ -30,6 +30,11 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+<% if (formatCheck) { -%>
+
+      - name: Check formatting
+        run: <%- formatCheck %>
+<% } -%>
 
       - name: Typecheck
         run: pnpm run typecheck
@@ -51,6 +56,11 @@ jobs:
 
       - name: Install
         run: npm ci
+<% if (formatCheck) { -%>
+
+      - name: Check formatting
+        run: <%- formatCheck %>
+<% } -%>
 
       - name: Typecheck
         run: npm run typecheck

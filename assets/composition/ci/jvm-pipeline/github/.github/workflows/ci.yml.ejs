@@ -23,11 +23,21 @@ jobs:
           distribution: temurin
 <% if (buildSystem === 'gradle') { -%>
           cache: gradle
+<% if (formatCheck) { -%>
+
+      - name: Check formatting
+        run: <%- formatCheck %>
+<% } -%>
 
       - name: Build and test
         run: ./gradlew build --no-daemon --stacktrace
 <% } else { -%>
           cache: maven
+<% if (formatCheck) { -%>
+
+      - name: Check formatting
+        run: <%- formatCheck %>
+<% } -%>
 
       - name: Build and test
         run: ./mvnw --batch-mode verify

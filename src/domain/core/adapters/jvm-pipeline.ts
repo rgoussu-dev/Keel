@@ -16,7 +16,13 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { jvmBuildSystem } from './container-image.js';
-import { ciTemplateId, PROVIDER_QUESTION, ciProvider, providerTag } from './ci-pipeline.js';
+import {
+  ciTemplateId,
+  PROVIDER_QUESTION,
+  ciProvider,
+  providerTag,
+  ciFormatCheck,
+} from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
 export const JVM_PIPELINE_ID = 'ci/jvm-pipeline';
@@ -34,6 +40,7 @@ export const jvmPipelineAdapter: Adapter = {
     const files = await ctx.templates.render(ciTemplateId('jvm-pipeline', provider), '', {
       buildSystem,
       jdkVersion: pins.version('jdk'),
+      formatCheck: ciFormatCheck(ctx.manifest.tags),
     });
     return { files, tagsAdd: [providerTag(provider)] };
   },

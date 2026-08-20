@@ -109,9 +109,11 @@ describe('keel.new-project (keel new)', () => {
         'layout.basic',
         'pkg.gradle',
         'runtime.jvm',
+        'style.managed',
       ].sort(),
     );
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'code-style',
       'dev-container',
       'vcs',
       'walking-skeleton',
@@ -177,6 +179,7 @@ describe('keel.new-project (keel new)', () => {
         'lang.go',
         'layout.basic',
         'pkg.go-modules',
+        'style.managed',
       ].sort(),
     );
     expect(manifest!.answers['walking-skeleton/go-bootstrap']).toEqual({
@@ -237,6 +240,7 @@ describe('keel.new-project (keel new)', () => {
         'lang.rust',
         'layout.basic',
         'pkg.cargo',
+        'style.managed',
       ].sort(),
     );
     expect(manifest!.answers['walking-skeleton/rust-bootstrap']).toEqual({

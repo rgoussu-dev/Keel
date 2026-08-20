@@ -184,22 +184,10 @@ const SETTINGS_CONTENT = `{
  * worst a false positive costs is one extra verify run.
  */
 export function renderPreCommitHook(family: ClaudeKitFamily): string {
-  const formatBlock =
-    family.formatCommand === undefined
-      ? ''
-      : `staged=$(git diff --name-only --cached || true)
-
-${family.formatCommand} >/dev/null
-
-if [ -n "$staged" ]; then
-  printf '%s\\n' "$staged" | xargs git add --
-fi
-
-`;
-  const verb = family.formatCommand === undefined ? 'verify' : 'auto-format the tree and verify';
   return `#!/usr/bin/env bash
-# PreToolUse hook: before Claude runs \`git commit\`, ${verb}
-# the project's own fast gate, so every commit lands green (AGENTS.md §6).
+# PreToolUse hook: before Claude runs \`git commit\`, auto-format the tree
+# (where the stack has a formatter) and run the project's own fast gate,
+# so every commit lands green (AGENTS.md §6).
 # Anything unrelated to \`git commit\` passes straight through.
 set -euo pipefail
 
@@ -215,11 +203,76 @@ esac
 
 cd "\${CLAUDE_PROJECT_DIR:-.}"
 
-${formatBlock}if ! (${family.verifyCommand}) >/dev/null 2>&1; then
+${renderFormatStep(family.formatCommand)}
+
+if ! (${family.verifyCommand}) >/dev/null 2>&1; then
   echo "pre-commit-format: '${family.verifyCommand}' failed. Fix it before committing." >&2
   exit 2
 fi
 `;
+}
+
+/** Opens the hook's keel-managed format step. */
+export const FORMAT_STEP_BEGIN = '# keel:format-step:begin';
+
+/** Closes the hook's keel-managed format step. */
+export const FORMAT_STEP_END = '# keel:format-step:end';
+
+/**
+ * Renders the hook's auto-format step, sentinel-delimited.
+ *
+ * The sentinels exist so the `code-style` vertical can add a format
+ * command to a hook that was emitted without one — a JVM or
+ * TypeScript project scaffolded before its formatter was configured,
+ * or a brownfield `keel add code-style`. The section is always
+ * present, even when empty, so the upsert never has to guess where
+ * it would have gone.
+ *
+ * Formatting runs before the gate and re-stages exactly the paths
+ * that were already staged, so a reformat cannot silently widen the
+ * commit to unrelated dirty files.
+ */
+export function renderFormatStep(formatCommand: string | undefined): string {
+  if (formatCommand === undefined) {
+    return [
+      FORMAT_STEP_BEGIN,
+      '# No formatter configured for this stack — `keel add code-style` wires one.',
+      FORMAT_STEP_END,
+    ].join('\n');
+  }
+  return [
+    FORMAT_STEP_BEGIN,
+    'staged=$(git diff --name-only --cached || true)',
+    '',
+    `${formatCommand} >/dev/null`,
+    '',
+    'if [ -n "$staged" ]; then',
+    '  printf \'%s\\n\' "$staged" | xargs git add --',
+    'fi',
+    FORMAT_STEP_END,
+  ].join('\n');
+}
+
+/**
+ * Upserts the format step into an already-emitted hook script.
+ *
+ * Mirrors {@link upsertRunbook}: replaces the sentinel-delimited
+ * section when the pair is present, and refuses to guess when only
+ * one marker survives. Unlike the runbook it never appends — a hook
+ * without the pair predates the sentinels, and blindly appending a
+ * format step after the verify gate would run it too late to matter.
+ */
+export function upsertFormatStep(existing: string, formatCommand: string | undefined): string {
+  const begin = existing.indexOf(FORMAT_STEP_BEGIN);
+  const end = existing.indexOf(FORMAT_STEP_END);
+  if (begin === -1 && end === -1) return existing;
+  if (begin === -1 || end === -1 || end < begin) {
+    throw new Error(
+      `.claude/hooks/pre-commit-format.sh: the format-step sentinels are broken — expected '${FORMAT_STEP_BEGIN}' followed by '${FORMAT_STEP_END}'. Restore the pair (or delete both) and re-run.`,
+    );
+  }
+  const tail = existing.slice(end + FORMAT_STEP_END.length);
+  return `${existing.slice(0, begin)}${renderFormatStep(formatCommand)}${tail}`;
 }
 
 /**

@@ -17,6 +17,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
+import YAML from 'yaml';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
@@ -290,5 +291,87 @@ describe('ci vertical — the provider dial', () => {
         'ci/go-pipeline': { provider: 'circleci' },
       }),
     ).rejects.toThrow(/unsupported provider 'circleci'/);
+  });
+});
+
+/** Every string value in a parsed document, depth-first. */
+function stringLeaves(node: unknown): string[] {
+  if (typeof node === 'string') return [node];
+  if (Array.isArray(node)) return node.flatMap(stringLeaves);
+  if (node !== null && typeof node === 'object') {
+    return Object.values(node as Record<string, unknown>).flatMap(stringLeaves);
+  }
+  return [];
+}
+
+describe('ci vertical — the code-style format gate', () => {
+  // The enforcement model: the pre-commit hook auto-fixes, CI is the
+  // gate. These assert the CI half, and that it stays absent on a
+  // project that never installed `code-style`.
+  const cases: ReadonlyArray<readonly [string, string[], string]> = [
+    ['jvm/gradle', ['lang.java', 'runtime.jvm', 'pkg.gradle'], './gradlew spotlessCheck'],
+    ['jvm/maven', ['lang.java', 'runtime.jvm', 'pkg.maven'], './mvnw --batch-mode spotless:check'],
+    ['go', ['lang.go', 'pkg.go-modules'], 'test -z "$(gofmt -l .)"'],
+    ['rust', ['lang.rust', 'pkg.cargo'], 'cargo fmt --all --check'],
+    ['ts/npm', ['lang.typescript', 'runtime.node', 'pkg.npm'], 'npm run format:check'],
+    ['ts/pnpm', ['lang.typescript', 'runtime.node', 'pkg.pnpm'], 'pnpm run format:check'],
+  ];
+
+  it('gates each family on its own check command when style.managed is set', async () => {
+    for (const [label, tags, command] of cases) {
+      const { workflow } = await installCi([...tags, 'style.managed']);
+      expect(workflow, `${label} github`).toContain(command);
+      expect(workflow, `${label} github`).toContain('Check formatting');
+    }
+  });
+
+  it('emits the same gate on the GitLab flavor', async () => {
+    for (const [label, tags, command] of cases) {
+      const { gitlab } = await installCi([...tags, 'style.managed'], {
+        'ci/jvm-pipeline': { provider: 'gitlab-ci' },
+        'ci/go-pipeline': { provider: 'gitlab-ci' },
+        'ci/rust-pipeline': { provider: 'gitlab-ci' },
+        'ci/ts-pipeline': { provider: 'gitlab-ci' },
+      });
+      expect(gitlab, `${label} gitlab`).toContain(command);
+    }
+  });
+
+  it('emits no format step at all without the vertical', async () => {
+    for (const [label, tags] of cases) {
+      const { workflow } = await installCi([...tags]);
+      expect(workflow, `${label} must not gate`).not.toContain('Check formatting');
+      expect(workflow, `${label} must not gate`).not.toContain('spotlessCheck');
+      expect(workflow, `${label} must not gate`).not.toContain('format:check');
+      expect(workflow, `${label} must not gate`).not.toContain('gofmt -l');
+    }
+  });
+
+  it('runs the check before the build, so a format nit fails fast', async () => {
+    const { workflow } = await installCi(['lang.rust', 'pkg.cargo', 'style.managed']);
+    expect(workflow.indexOf('cargo fmt --all --check')).toBeLessThan(
+      workflow.indexOf('cargo build --workspace'),
+    );
+  });
+
+  it('emits YAML that still parses, with the command unescaped', async () => {
+    // `<%= %>` would HTML-escape the quotes in Go's check command into
+    // `&#34;`, producing a file that parses but cannot run. Parsing the
+    // result and inspecting the value is what catches that.
+    for (const [label, tags, command] of cases) {
+      const { workflow, gitlab } = await installCi([...tags, 'style.managed']);
+      for (const [flavor, text] of [
+        ['github', workflow],
+        ['gitlab', gitlab],
+      ] as const) {
+        if (text === '') continue;
+        const doc: unknown = YAML.parse(text);
+        const leaves = stringLeaves(doc);
+        expect(leaves.join('\n'), `${label} ${flavor} escaped`).not.toContain('&#34;');
+        // Some step's command must be the check *verbatim* — comparing
+        // against the serialised document would pass on an escaped copy.
+        expect(leaves, `${label} ${flavor} missing`).toContain(command);
+      }
+    }
   });
 });
