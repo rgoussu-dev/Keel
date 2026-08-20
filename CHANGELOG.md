@@ -6,6 +6,59 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`code-style` — the layout contract, wired so nobody configures
+  it.** A new vertical installed by every stack (and addable with
+  `keel add code-style`), closing a gap where scaffolded projects
+  shipped no style configuration, no format or lint CI step and no
+  editor settings — while the binding spec keel emits into them
+  claimed every commit passes "format, typecheck, lint".
+
+  The design turns on one fact: there is no runtime "one config to
+  rule them all". `.editorconfig` reaches the actual formatter in only
+  two of the five families keel emits — Kotlin, where ktlint treats it
+  as its _primary_ configuration, and the web family, where Prettier
+  reads a subset natively. Java's mainstream formatters, `gofmt` and
+  `rustfmt` all ignore it. So keel holds **one style model** and fans
+  it out at generation time into every dialect, giving the scaffolded
+  project a real single source of truth with no extra runtime
+  dependency and no added CI time — no `treefmt`, no `dprint`, no
+  meta-formatter.
+  - `editor-baseline` (universal): `.editorconfig` + `.gitattributes`,
+    per-language and **honest** — Go gets hard tabs and no
+    `max_line_length`, because that is exactly what `gofmt` enforces.
+  - `formatter` (per family): Spotless on the JVM with
+    **prince-of-space** for Java and **ktlint** for Kotlin,
+    `rustfmt.toml` for Rust, Prettier for both TypeScript stacks and
+    the SPA, and nothing at all for Go.
+
+  prince-of-space is what makes it cohere: the only Java formatter
+  with configurable indent and width, so Java's config is a co-render
+  of the same numbers rather than an unconfigurable verdict. Kotlin
+  follows `.editorconfig` **live**; Java, Go and Rust are co-renders —
+  an asymmetry the emitted file states in its own header.
+
+  Go and Rust cost the project nothing: both formatters ship with the
+  toolchain it already requires.
+
+- **A format check in every emitted pipeline**, on both the GitHub and
+  GitLab flavors of all four pipeline adapters, keyed on the
+  `style.managed` tag so a project without the vertical gets no format
+  step rather than one calling a command its build cannot answer.
+
+### Changed
+
+- **The pre-commit hook's format step is now sentinel-delimited**, so
+  `code-style` can wire a formatter into an already-emitted hook —
+  greenfield and brownfield through one mechanism. The hook's
+  behaviour is unchanged where a formatter already existed (Go, Rust).
+- **Enforcement is hook-fixes / CI-checks.** `isEnforceCheck = false`
+  on Gradle and no lifecycle binding on Maven, so a formatting drift
+  never fails `./gradlew build` or `mvnw verify`; the pipeline gates
+  on it instead. Without this a formatter disagreement would break a
+  freshly scaffolded project's very first build.
+
 ### Changed
 
 - **Every emitted-template pin bumped to the latest stable its feed

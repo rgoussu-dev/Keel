@@ -273,7 +273,7 @@ uncovered.
 ```mermaid
 flowchart LR
   S["stack preset<br/>--stack=quarkus-rest"] --> T["capability tags<br/>lang.java · framework.quarkus<br/>arch.server-http · pkg.gradle"]
-  V["verticals<br/>vcs · walking-skeleton<br/>dev-env · observability · dev-container"] --> R
+  V["verticals<br/>vcs · walking-skeleton · code-style<br/>dev-env · observability · dev-container"] --> R
   T --> R{"predicate<br/>resolver"}
   R --> A["selected adapters"]
   A --> F["files + patches"]
@@ -300,6 +300,7 @@ bootstrap or layered on later with `keel add`:
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                                                                                                                                                                                                         | every stack                       |
 | [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                                                                                                                                                                                    | every stack                       |
+| [`code-style`](docs/verticals/code-style.md)             | the layout contract — `.editorconfig` + `.gitattributes` + the stack's own formatter (Spotless/prince-of-space, rustfmt, gofmt, Prettier), all rendered from one style model                                                                               | every stack                       |
 | [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                                                                                                                                                                        | every stack (default on HTTP)     |
 | [`dev-container`](docs/verticals/dev-container.md)       | `.devcontainer/` — a containerized dev environment, attached to the dev env's network when present                                                                                                                                                         | every stack                       |
 | [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                                                                                                                                                                                  | HTTP services only                |

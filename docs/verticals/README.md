@@ -26,6 +26,7 @@ instead, which has a name to give it.
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | [`vcs`](vcs.md)                           | git repo, default branch, optional `origin`                                                                  | `vcs`                                                                                |
 | [`walking-skeleton`](walking-skeleton.md) | the thinnest runnable end-to-end project for the chosen stack                                                | `entrypoint`, `port-example`, `build-tool`, `agentic-baseline`, `agentic-kit`        |
+| [`code-style`](code-style.md)             | the layout contract: `.editorconfig` + the stack's own formatter, from one style model                       | `editor-baseline`, `formatter`                                                       |
 | [`dev-env`](dev-env.md)                   | `dev/compose.yaml` — local infra the dev loop needs but doesn't own                                          | `compose-base`                                                                       |
 | [`dev-container`](dev-container.md)       | `.devcontainer/` — a containerized dev environment that attaches to the dev env when present                 | `definition`                                                                         |
 | [`observability`](observability.md)       | health probes, correlation ids, OpenTelemetry, monitoring stack                                              | `health`, `request-context`, `telemetry`, `monitoring-stack`                         |
@@ -47,6 +48,7 @@ instead, which has a name to give it.
 | ------------------ | ------- | -------- | -------------- | ------------ | --------- | ---------------- | ---------------------------- |
 | `vcs`              | ●       | ●        | ●              | ●            | ●         | ●                | ● (root or per repo)         |
 | `walking-skeleton` | ●       | ●        | ●              | ●            | ●         | ●                | ● per service                |
+| `code-style`       | ●       | ●        | ●              | ●            | ●         | ●                | ● per service                |
 | `dev-env`          | ➕      | ●        | ➕             | ●            | ●         | ➕               | ● backend                    |
 | `dev-container`    | ●       | ●        | ●              | ●            | ●         | ●                | ● per service                |
 | `observability`    | ⛔      | ●        | ⛔             | ●            | ●         | ⛔               | ● backend                    |
@@ -82,6 +84,7 @@ Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-gl
 | ------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `vcs`              | `git` on PATH                                                                                    | —                                                                                                                                               |
 | `walking-skeleton` | the stack's toolchain (see the [stack pages](../stacks/README.md))                               | —                                                                                                                                               |
+| `code-style`       | —                                                                                                | JVM/web: the formatter dependency resolves on first use (Spotless, Prettier). Go and Rust add nothing — both formatters ship with the toolchain |
 | `dev-env`          | —                                                                                                | Docker + Compose to run `dev/compose.yaml`                                                                                                      |
 | `dev-container`    | —                                                                                                | Docker + a Dev Container client (VS Code, the `devcontainer` CLI, or Codespaces)                                                                |
 | `observability`    | Go stacks: `go` on PATH (`go mod tidy`); TS stacks: `npm`/`pnpm` (install runs)                  | Docker + Compose for the monitoring stack; an OTLP endpoint via `OTEL_*` env vars                                                               |
