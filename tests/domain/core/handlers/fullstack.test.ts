@@ -168,7 +168,7 @@ describe('fullstack composite install (monorepo)', () => {
     // The SPA ships as an assets image populating a named volume as
     // an init container; a stock nginx serves the volume.
     const frontendImage = read('frontend/Dockerfile') ?? '';
-    expect(frontendImage).toContain('FROM node:22-alpine AS build');
+    expect(frontendImage).toContain('FROM node:24-alpine AS build');
     expect(frontendImage).toContain('FROM alpine:3');
     expect(frontendImage).not.toContain('FROM nginx');
     expect(compose).toContain('image: nginx:alpine');

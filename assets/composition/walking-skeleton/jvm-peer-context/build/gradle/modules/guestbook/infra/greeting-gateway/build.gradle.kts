@@ -14,5 +14,5 @@ dependencies {
     // on this compile classpath and an import of it fails to compile.
     implementation(project(":modules:greeting:user-side:service"))
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
 }

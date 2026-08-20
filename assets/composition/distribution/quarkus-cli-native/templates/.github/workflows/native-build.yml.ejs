@@ -16,7 +16,7 @@ jobs:
     name: native smoke (<%= smokeTarget.target %>)
     runs-on: <%= smokeTarget.runner %>
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: graalvm/setup-graalvm@v1
         with:

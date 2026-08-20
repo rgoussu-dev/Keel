@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
  * real HTTP with the Micronaut client.
  */
 @MicronautTest
-class GreetControllerTest(@Client("/") private val client: HttpClient) {
+class GreetControllerTest(@param:Client("/") private val client: HttpClient) {
 
     @Test
     fun greetsByNameThroughMediator() {

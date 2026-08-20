@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
  */
 @MicronautTest
 class GreetingLogControllerTest(
-    @Client("/") private val client: HttpClient,
+    @param:Client("/") private val client: HttpClient,
 ) : <%= dbFixture %>() {
 
     @Test

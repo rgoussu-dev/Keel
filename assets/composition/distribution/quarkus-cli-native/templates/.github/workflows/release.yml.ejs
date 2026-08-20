@@ -21,7 +21,7 @@ jobs:
 <% }); -%>
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: graalvm/setup-graalvm@v1
         with:
@@ -43,7 +43,7 @@ jobs:
           fi
           cp "$src" "staging/<%= projectName %>-${{ matrix.target }}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: <%= projectName %>-${{ matrix.target }}
           path: staging/<%= projectName %>-${{ matrix.target }}
@@ -54,13 +54,13 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           generate_release_notes: true

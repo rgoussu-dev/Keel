@@ -14,7 +14,7 @@ jobs:
     name: build & push assets image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
 <% if (pm === 'pnpm') { -%>
       # Provisions the pnpm version pinned by the workspace's own
@@ -23,9 +23,9 @@ jobs:
         run: corepack enable
 
 <% } -%>
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: <%= pm %>
 
       - name: Install
@@ -35,7 +35,7 @@ jobs:
         run: <%= pm %> run build
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

@@ -344,13 +344,14 @@ describe('observability on the Micronaut REST skeleton (Kotlin, Gradle)', () => 
 
 describe('observability on the Micronaut REST skeleton (Java, Maven)', () => {
   it('pins protobuf-java, which Maven would otherwise resolve too old to start', async () => {
-    // The OTLP registry ships protobuf-generated classes calling
-    // com.google.protobuf.RuntimeVersion (protobuf-java 4.x only). Its
-    // Gradle module metadata asks for 4.28.3, its POM for 3.25.8 — so
-    // the same coordinates give Gradle a working classpath and Maven a
-    // broken one, and the emitted project has to say which it wants.
-    // Unpinned, every @MicronautTest in the assembly dies with
-    // NoClassDefFoundError before a single route is exercised.
+    // The OTLP registry ships protobuf-generated classes whose gencode
+    // version must not exceed the protobuf-java runtime, and the
+    // Micronaut platform BOM manages a runtime older than that gencode
+    // — so the same coordinates give Gradle (highest version wins) a
+    // working classpath and Maven (BOM wins) a broken one, and the
+    // emitted project has to say which it wants. Unpinned, every
+    // @MicronautTest in the assembly dies before a single route is
+    // exercised.
     const { tree, cwd } = await installBoth([
       'lang.java',
       'runtime.jvm',
@@ -366,7 +367,7 @@ describe('observability on the Micronaut REST skeleton (Java, Maven)', () => {
     const protobuf =
       /<dependency>(?:(?!<\/dependency>)[\s\S])*protobuf-java[\s\S]*?<\/dependency>/.exec(pom);
     expect(protobuf, 'the assembly must pin protobuf-java').not.toBeNull();
-    expect(protobuf?.[0]).toContain('<version>4.28.3</version>');
+    expect(protobuf?.[0]).toContain('<version>4.35.1</version>');
   });
 });
 

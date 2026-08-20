@@ -231,9 +231,9 @@ function appDependencyPatch(
         }
       }
       if (!next.includes('"vitest":')) {
-        const devDeps = '"typescript": "^5.9.0"';
+        const devDeps = '"typescript": "^6.0.0"';
         if (next.includes(devDeps)) {
-          next = next.replace(devDeps, `${devDeps},\n    "vitest": "^3.2.0"`);
+          next = next.replace(devDeps, `${devDeps},\n    "vitest": "^4.1.0"`);
         }
       }
       return next;

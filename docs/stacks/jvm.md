@@ -78,7 +78,7 @@ npx @rgoussu.dev/keel new --stack=quarkus-rest --module-layout modulith
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `git` on PATH        | The [`vcs`](../verticals/vcs.md) vertical initialises the repository.                                                                             |
 | JDK 25 (`JAVA_HOME`) | The generated project targets Java 25; the wrapper generation below runs on your JDK.                                                             |
-| `gradle` on PATH     | **If you choose Gradle** (the default): keel runs `gradle wrapper --gradle-version=9.4.1` — the wrapper is generated, never vendored as a binary. |
+| `gradle` on PATH     | **If you choose Gradle** (the default): keel runs `gradle wrapper --gradle-version=9.7.0` — the wrapper is generated, never vendored as a binary. |
 | `mvn` on PATH        | **If you choose Maven**: keel runs `mvn -N wrapper:wrapper -Dmaven=3.9.16`.                                                                       |
 
 No environment variables beyond a working JDK setup are needed at

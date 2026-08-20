@@ -440,7 +440,7 @@ describe('the web-components peer context', () => {
     );
     const manifest = json(tree, 'application/web-app/package.json');
     expect(manifest['scripts']).toMatchObject({ test: 'vitest run' });
-    expect(manifest['devDependencies']).toMatchObject({ vitest: '^3.2.0' });
+    expect(manifest['devDependencies']).toMatchObject({ vitest: '^4.1.0' });
     expect(manifest['dependencies']).toMatchObject({ '@acme/guestbook': '*' });
   });
 });

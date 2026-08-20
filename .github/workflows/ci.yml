@@ -485,15 +485,15 @@ jobs:
 
       # …and that JDK is exactly why the host Gradle has to be pinned.
       # `gradle wrapper` is the only thing it runs (the wrapper it writes
-      # is 9.4.1 and provisions its own toolchain), but Gradle 8.x cannot
+      # is 9.7.0 and provisions its own toolchain), but Gradle 8.x cannot
       # start on JDK 25 — it fails with the version string as the whole
-      # error message. Pinning the host to the same 9.4.1 keeps one JDK
+      # error message. Pinning the host to the same 9.7.0 keeps one JDK
       # serving both build systems.
-      - name: Setup Gradle 9.4.1
+      - name: Setup Gradle 9.7.0
         if: startsWith(matrix.shard.id, 'jvm')
         uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669 # v6.3.0
         with:
-          gradle-version: '9.4.1'
+          gradle-version: '9.7.0'
 
       # `stable`, not the `go 1.24` the emitted go.mod declares — that
       # directive does not survive first contact. The OpenTelemetry

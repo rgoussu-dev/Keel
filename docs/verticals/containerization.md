@@ -23,7 +23,7 @@ CLI ships through [`distribution`](distribution.md).
 | `micronaut-rest` (+ Kotlin) | `micronaut-rest-image` | Micronaut shadow/shaded jar onto `eclipse-temurin:25-jre`                         |
 | `go-http`                   | `go-http-image`        | Static binary onto a distroless base                                              |
 | `rust-http`                 | `rust-http-image`      | Release binary onto a distroless base                                             |
-| `ts-http`                   | `ts-http-image`        | The sources onto `node:22-alpine` — still no build step                           |
+| `ts-http`                   | `ts-http-image`        | The sources onto `node:24-alpine` — still no build step                           |
 | `web-components`            | `wc-spa-image`         | An **assets image**: the Vite bundle + a volume-populating entrypoint (see below) |
 
 All cover the single `image` dimension; artifact paths follow the

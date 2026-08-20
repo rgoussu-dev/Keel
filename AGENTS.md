@@ -276,7 +276,7 @@ would ship as separate packages implementing the same port.
   is the fast gate — lint, typecheck, test, build across Node 22 and 24;
   `tests/e2e/` self-skips there, since it is opt-in on CI. `e2e` is the
   other half, running with `KEEL_RUN_E2E=1` and **sharded by toolchain**:
-  33 `jvm-*` shards (JDK 25 + Gradle 9.4.1, plus Maven on every
+  33 `jvm-*` shards (JDK 25 + Gradle 9.7.0, plus Maven on every
   `jvm-modulith-*` and every `jvm-add-module-*-maven`), `go` (Go +
   Docker), `rust` (cargo), `web` (npm/pnpm + Chrome). Each shard
   provisions only what its suites probe for. Between the two jobs,
@@ -448,7 +448,7 @@ would ship as separate packages implementing the same port.
   Maven suites skip themselves. Gradle would not care — its foojay
   resolver provisions a toolchain — except that Gradle 8.x cannot
   _start_ on JDK 25, and the host `gradle` is what generates the
-  wrapper. Pinning the host to 9.4.1 (the wrapper's own version) lets
+  wrapper. Pinning the host to 9.7.0 (the wrapper's own version) lets
   one JDK serve both build systems. Change one, check the other.
 - `.github/workflows/mutation.yml` runs the `src/domain` mutation
   suite (`pnpm test:mutation`) on every push to `main` — incremental,

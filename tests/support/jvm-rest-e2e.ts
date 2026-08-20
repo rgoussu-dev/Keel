@@ -27,6 +27,7 @@ import {
   scaffold,
   skipJvmE2E,
   type JvmRunnableSpec,
+  javaLauncher,
 } from './jvm-e2e.js';
 
 export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
@@ -44,7 +45,7 @@ const startApp = (
   env: NodeJS.ProcessEnv,
 ): Promise<{ child: ChildProcess; port: number }> =>
   new Promise((resolve, reject) => {
-    const child = spawn('java', [...jvmFlags, '-jar', runJar], { cwd, env });
+    const child = spawn(javaLauncher(), [...jvmFlags, '-jar', runJar], { cwd, env });
     let output = '';
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
