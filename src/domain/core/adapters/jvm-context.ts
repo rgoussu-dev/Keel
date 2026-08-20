@@ -458,6 +458,65 @@ function assemblyDepsPatch(
  * matched is the list, and reading only group 1 silently treats the
  * other form as empty, which drops every entry already there.
  */
+/**
+ * The Spotless toggle markers keel fences machine-maintained regions
+ * with, and the warning that goes inside the fence.
+ *
+ * Two problems, one fence. A Java formatter reflows what it is given:
+ * prince-of-space collapses
+ * `@ComponentScan(\n  basePackages = {…},\n  …)` onto a single line,
+ * which moves the anchor these adapters match on and breaks
+ * `keel add module` outright. And a human reading the file has no way
+ * to know the list is rewritten by a tool, so an edit to it is
+ * silently lost on the next run.
+ *
+ * `spotless:off` / `spotless:on` answers the first — Spotless lifts
+ * the fenced text out, formats around it, and puts it back verbatim
+ * (`toggleOffOn()`, emitted by `code-style/jvm-format`). The warning
+ * inside answers the second. They belong together: the region is
+ * exempt from formatting *because* it is machine-maintained, and
+ * saying so where the exemption is visible is the whole point.
+ */
+export const FENCE_OFF = 'spotless:off';
+
+/** Closes a {@link FENCE_OFF} region. */
+export const FENCE_ON = 'spotless:on';
+
+/** The do-not-edit warning carried inside every fence. */
+export const FENCE_WARNING: readonly string[] = [
+  'keel:managed — do not edit by hand.',
+  '`keel add module <name>` rewrites this list, and anything you change',
+  'here is lost on the next run. The fence also stops the formatter',
+  'reflowing it, which is what keel anchors on.',
+];
+
+/**
+ * Renders the commented head of a fenced machine-maintained list:
+ * the open marker, the warning, then the caller's own note.
+ */
+export function fenceOpen(indent: string, note: readonly string[]): readonly string[] {
+  return [
+    `${indent}// ${FENCE_OFF}`,
+    ...FENCE_WARNING.map((line) => `${indent}// ${line}`),
+    `${indent}//`,
+    ...note.map((line) => `${indent}// ${line}`),
+  ];
+}
+
+/** Renders the closing marker of a fenced region. */
+export function fenceClose(indent: string): string {
+  return `${indent}// ${FENCE_ON}`;
+}
+
+/**
+ * Regex tail matching the fence's closing marker when one is present.
+ *
+ * Folded into each region pattern so the marker is part of the match
+ * and therefore part of what `render` replaces — without it, every
+ * re-emit would append a second `spotless:on` under the first.
+ */
+export const FENCE_ON_TAIL = `(?:[ \\t]*\\r?\\n[ \\t]*\\/\\/[ \\t]*${FENCE_ON})?`;
+
 export function rewriteList(
   source: string,
   region: RegExp,

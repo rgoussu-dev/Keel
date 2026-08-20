@@ -35,7 +35,14 @@
  */
 
 import type { JvmLanguage } from './jvm-bootstrap.js';
-import { jvmContextAdapter, rewriteList, type JvmContextBinding } from './jvm-context.js';
+import {
+  fenceClose,
+  fenceOpen,
+  jvmContextAdapter,
+  rewriteList,
+  FENCE_ON_TAIL,
+  type JvmContextBinding,
+} from './jvm-context.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
 import { MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID } from './micronaut-cli-kotlin-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
@@ -49,7 +56,8 @@ export const MICRONAUT_CONTEXT_KOTLIN_ID = 'bounded-context/micronaut-context-ko
 /** Micronaut's composition root, under both languages. */
 const ROOT_CLASS = 'MediatorFactory';
 
-const IMPORT_NOTE = [
+/** Why the list is explicit; carried inside the fence. */
+export const IMPORT_NOTE: readonly string[] = [
   'One entry per aggregate package, per context: @Import does',
   'not recurse into subpackages, so a package missing here',
   'yields no bean definition and its handler is never',
@@ -63,7 +71,10 @@ const IMPORT_NOTE = [
  * leading `//` note is swallowed so re-emitting it cannot stack up
  * copies.
  */
-const IMPORT_REGION = /^(?:[ \t]*\/\/[^\n]*\n)*[ \t]*packages = (?:\{([\s\S]*?)\}|("[^"]*")),/m;
+const IMPORT_REGION = new RegExp(
+  `^(?:[ \\t]*\\/\\/[^\\n]*\\n)*[ \\t]*packages = (?:\\{([\\s\\S]*?)\\}|("[^"]*")),${FENCE_ON_TAIL}`,
+  'm',
+);
 
 /** Widens `@Import(packages = …)` to the new context's core package. */
 function importPackagesPatch(binding: JvmContextBinding): ContributionPatch {
@@ -71,10 +82,11 @@ function importPackagesPatch(binding: JvmContextBinding): ContributionPatch {
   const entry = `"${binding.names.corePkg}"`;
   const render = (entries: readonly string[]): string =>
     [
-      ...IMPORT_NOTE.map((line) => `${indent}// ${line}`),
+      ...fenceOpen(indent, IMPORT_NOTE),
       `${indent}packages = {`,
       ...entries.map((e, i) => `${indent}    ${e}${i === entries.length - 1 ? '' : ','}`),
       `${indent}},`,
+      fenceClose(indent),
     ].join('\n');
   return {
     target: binding.sourceFile(ROOT_CLASS),

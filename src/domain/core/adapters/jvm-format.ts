@@ -114,6 +114,7 @@ export function renderGradleSpotlessBlock(tags: readonly string[]): string {
       ? [
           '        kotlin {',
           '            target("src/**/*.kt")',
+          '            toggleOffOn()',
           `            ktlint("${KTLINT_VERSION}")`,
           '            endWithNewline()',
           '            trimTrailingWhitespace()',
@@ -122,6 +123,7 @@ export function renderGradleSpotlessBlock(tags: readonly string[]): string {
       : [
           '        java {',
           '            target("src/**/*.java")',
+          '            toggleOffOn()',
           `            princeOfSpace("${PRINCE_OF_SPACE_VERSION}")`,
           '                .indentStyle("SPACES")',
           `                .indentSize(${style.indentSize})`,
@@ -180,6 +182,7 @@ function renderMavenSpotlessPlugin(tags: readonly string[]): string {
     language === 'kotlin'
       ? [
           '            <kotlin>',
+          '              <toggleOffOn/>',
           '              <ktlint>',
           `                <version>${KTLINT_VERSION}</version>`,
           '              </ktlint>',
@@ -189,6 +192,7 @@ function renderMavenSpotlessPlugin(tags: readonly string[]): string {
         ]
       : [
           '            <java>',
+          '              <toggleOffOn/>',
           '              <princeOfSpace>',
           `                <version>${PRINCE_OF_SPACE_VERSION}</version>`,
           '                <indentStyle>SPACES</indentStyle>',
