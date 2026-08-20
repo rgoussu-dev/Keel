@@ -1662,6 +1662,24 @@ ci`/`containerization`/`distribution` on a service follow the same
   `CLAUDE.md` pointer) instead of the pre-v0.5 `infrastructure/cli`
   shape, and the `quarkus-cli` seed-tag list includes `runtime.jvm`.
 
+### Fixed
+
+- **The mutation run aborts on its own dry run.** Every push to `main`
+  since the single-source pins landed has failed
+  `.github/workflows/mutation.yml` before testing a single mutant:
+  Stryker runs the suite against an _instrumented_ copy of the tree,
+  where every mutable literal is wrapped in a mutation switch, and
+  `tests/version-pins.test.ts` — a text sweep over the sources rather
+  than a behavioral test — reported 19 dead registry locations against
+  files it was never meant to read in that form. The guard now sits
+  beside `tests/e2e/` in `vitest.stryker.config.ts`'s exclusions,
+  which it earns twice over: a text sweep sees the mutant in the
+  source rather than in the behavior, so leaving it in would score a
+  blanked version literal as a killed mutant. It keeps running in
+  `verify`, against the real tree, on every push and PR. The workflow
+  is report-only, so nothing was gated on the red — but the mutation
+  signal was dark for the duration.
+
 ## [0.5.0-alpha] — 2026-08-09
 
 ### Changed

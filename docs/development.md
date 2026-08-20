@@ -346,10 +346,24 @@ recorded there too:
   stronger check of that declarative surface than a mutant re-running
   the unit suite.
 - **Mutants run against `vitest.stryker.config.ts`**, which is the
-  ordinary config minus `tests/e2e/` — excluded by construction, not
-  by environment. The e2e suites decide for themselves whether to
-  run, and on a box with a JDK on PATH they would happily build a
-  real project once per mutant.
+  ordinary config minus two suites — both excluded by construction,
+  not by environment. `tests/e2e/` decides for itself whether to run,
+  and on a box with a JDK on PATH it would happily build a real
+  project once per mutant. `tests/version-pins.test.ts` is a text
+  sweep over the sources rather than a behavioral test, and Stryker
+  runs the suite against an **instrumented** copy of the tree: every
+  mutable literal is wrapped in a mutation switch, so
+  `version: '42.7.13'` reaches the sandbox as
+  `version: stryMutAct_9fa48("4286") ? "" : (stryCov_9fa48("4286"), '42.7.13')`
+  and the registry patterns, anchored on the surrounding syntax, stop
+  matching. Left in, the guard fails the initial dry run and aborts
+  the whole run before a single mutant is tested. It would be the
+  right exclusion regardless: a text sweep sees the mutant in the
+  _source_ rather than in the behavior, so a mutant blanking a
+  version literal in `src/domain/core/adapters/` would fail the guard
+  and be scored killed — coverage credited to an assertion nobody
+  wrote. The guard's home is `verify`, on every push and PR, against
+  the real tree.
 
 Incremental mode is on: `reports/stryker-incremental.json`
 (gitignored) records what was tested against which code, so a re-run
