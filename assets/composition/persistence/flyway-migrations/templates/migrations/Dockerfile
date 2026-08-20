@@ -4,6 +4,6 @@
 # never from inside the service. Configuration comes from the
 # environment (FLYWAY_URL, FLYWAY_USER, FLYWAY_PASSWORD), 12-factor
 # style; Flyway logs its plan and outcome to stdout.
-FROM flyway/flyway:11-alpine
+FROM flyway/flyway:13-alpine
 COPY sql /flyway/sql
 CMD ["migrate"]

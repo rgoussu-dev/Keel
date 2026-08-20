@@ -211,12 +211,12 @@ const appendExports = (target: string, guard: string, block: string): Contributi
 
 const PG_RUNTIME_DEPENDENCIES: Readonly<Record<string, string>> = { pg: '^8.16.0' };
 const PG_DEV_DEPENDENCIES: Readonly<Record<string, string>> = {
-  '@testcontainers/postgresql': '^10.18.0',
+  '@testcontainers/postgresql': '^12.1.0',
   // The pg unit of work rides `node:async_hooks`, so the package that
   // now contains it needs the Node types declared rather than
   // borrowed from a hoisted sibling — pnpm's isolated `node_modules`
   // does not lend them.
-  '@types/node': '^22.0.0',
+  '@types/node': '^24.0.0',
   '@types/pg': '^8.15.0',
 };
 

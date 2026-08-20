@@ -96,7 +96,7 @@ describe('fullstack-ts composite install (monorepo)', () => {
 
   it('containerises the pair with a Node backend image', () => {
     expect(read('compose.yaml')).toContain('build: ./backend');
-    expect(read('backend/Dockerfile')).toContain('FROM node:22-alpine');
+    expect(read('backend/Dockerfile')).toContain('FROM node:24-alpine');
     expect(read('backend/Dockerfile')).toContain('application/rest/src/main.ts');
     // The SPA ships as an assets image; a stock nginx (in the root
     // compose) serves the volume and proxies /api to the

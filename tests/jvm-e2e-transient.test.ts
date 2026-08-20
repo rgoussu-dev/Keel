@@ -26,7 +26,7 @@ import { RETRY_BACKOFF_MS, isTransient } from './support/jvm-e2e.js';
  */
 const CONNECTION_RESET = `./gradlew build  failed (exit 1)
 stdout:
-Downloading https://services.gradle.org/distributions/gradle-9.4.1-bin.zip
+Downloading https://services.gradle.org/distributions/gradle-9.7.0-bin.zip
 
 stderr:
 Exception in thread "main" java.net.SocketException: Connection reset

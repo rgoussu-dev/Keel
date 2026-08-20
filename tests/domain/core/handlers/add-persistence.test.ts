@@ -86,7 +86,7 @@ describe('keel.add-vertical (keel add persistence)', () => {
     expect(await readFile('migrations/sql/V1__create_greeting.sql')).toContain(
       'create table greeting',
     );
-    expect(await readFile('migrations/Dockerfile')).toContain('FROM flyway/flyway:11-alpine');
+    expect(await readFile('migrations/Dockerfile')).toContain('FROM flyway/flyway:13-alpine');
     const compose = await readFile('dev/compose.yaml');
     expect(compose).toContain('image: postgres:18-alpine');
     expect(compose).toContain('build: ../migrations');
@@ -149,7 +149,7 @@ describe('keel.add-vertical (keel add persistence)', () => {
     expect(await readFile('application/rest/package.json')).toContain(
       '"@acme/infrastructure-unit-of-work": "*"',
     );
-    expect(await readFile('migrations/Dockerfile')).toContain('FROM flyway/flyway:11-alpine');
+    expect(await readFile('migrations/Dockerfile')).toContain('FROM flyway/flyway:13-alpine');
 
     const stored = await manifest();
     expect(stored.verticals.map((v) => v.id)).toContain('persistence');

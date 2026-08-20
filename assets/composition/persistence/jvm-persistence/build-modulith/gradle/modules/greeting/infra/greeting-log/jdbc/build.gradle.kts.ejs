@@ -5,10 +5,10 @@ plugins {
 dependencies {
     api(project(":modules:greeting:domain:contract"))
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.testcontainers:<%= tcArtifact %>:1.21.4")
-    testImplementation("org.flywaydb:flyway-core:13.2.0")
+    testImplementation("org.flywaydb:flyway-core:13.3.0")
     testImplementation("<%= jdbcDriverGroupId %>:<%= jdbcDriverArtifactId %>:<%= jdbcDriverVersion %>")
-    testRuntimeOnly("org.flywaydb:<%= flywayModuleArtifactId %>:13.2.0")
+    testRuntimeOnly("org.flywaydb:<%= flywayModuleArtifactId %>:13.3.0")
 }

@@ -38,7 +38,7 @@ export const SPRING_REST_IMAGE_ID = 'containerization/spring-rest-image';
 const TEMPLATE_ID = 'composition/containerization/spring-rest-image/templates';
 
 /** Latest stable GraalVM Native Build Tools, Gradle and Maven alike. */
-const NATIVE_BUILD_TOOLS_VERSION = '1.1.8';
+const NATIVE_BUILD_TOOLS_VERSION = '1.1.9';
 
 const gradleBuildFile = (unit: string): string => `${unit}/build.gradle.kts`;
 

@@ -38,7 +38,7 @@ import { SPRING_REST_KOTLIN_BOOTSTRAP_ID } from './spring-rest-kotlin-bootstrap.
 
 export const GRADLE_WRAPPER_ID = 'walking-skeleton/gradle-wrapper';
 
-const GRADLE_VERSION = '9.4.1';
+const GRADLE_VERSION = '9.7.0';
 
 export const gradleWrapperAdapter: Adapter = {
   id: GRADLE_WRAPPER_ID,

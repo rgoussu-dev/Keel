@@ -209,7 +209,7 @@ function frameworkDepsPatch(
 }
 
 const KOTLIN_TEST_CLASS_ANCHOR =
-  'class GreetControllerTest(@Client("/") private val client: HttpClient) {';
+  'class GreetControllerTest(@param:Client("/") private val client: HttpClient) {';
 
 /**
  * The Kotlin twin of {@link patchGreetControllerTest}. Exported for
@@ -225,7 +225,7 @@ export function patchGreetControllerTestKotlin(fixture: string): (existing: stri
     }
     return existing.replace(
       KOTLIN_TEST_CLASS_ANCHOR,
-      `class GreetControllerTest(@Client("/") private val client: HttpClient) : ${fixture}() {`,
+      `class GreetControllerTest(@param:Client("/") private val client: HttpClient) : ${fixture}() {`,
     );
   };
 }

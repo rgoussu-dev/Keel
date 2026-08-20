@@ -147,7 +147,7 @@ function appDependencyPatch(
         );
       }
       const scripts = '"typecheck": "tsc --noEmit"';
-      const devDeps = '"typescript": "^5.9.0"';
+      const devDeps = '"typescript": "^6.0.0"';
       for (const [anchor, what] of [
         [scripts, 'the typecheck script'],
         [devDeps, 'the typescript devDependency'],
@@ -161,7 +161,7 @@ function appDependencyPatch(
       return existing
         .replace(dependency, `${dependency},\n    "${peerPkg}": "${workspaceDep}"`)
         .replace(scripts, `${scripts},\n    "test": "vitest run"`)
-        .replace(devDeps, `${devDeps},\n    "vitest": "^3.2.0"`);
+        .replace(devDeps, `${devDeps},\n    "vitest": "^4.1.0"`);
     }),
   };
 }

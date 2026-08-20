@@ -8,7 +8,7 @@ side.
 
 - Node 22+
 - pnpm 10+
-- For the JVM e2e suites: **JDK 25** on `JAVA_HOME`, **Gradle 9.4.1**
+- For the JVM e2e suites: **JDK 25** on `JAVA_HOME`, **Gradle 9.7.0**
   on PATH, and Maven. Those three are coupled and none of them is
   arbitrary — see [End-to-end tests](#end-to-end-tests).
 

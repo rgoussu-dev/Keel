@@ -1,10 +1,10 @@
 plugins {
     java
-    id("io.quarkus") version "3.34.6"
+    id("io.quarkus") version "3.38.2"
 }
 
 dependencies {
-    implementation(enforcedPlatform("io.quarkus.platform:quarkus-bom:3.34.6"))
+    implementation(enforcedPlatform("io.quarkus.platform:quarkus-bom:3.38.2"))
     implementation("io.quarkus:quarkus-picocli")
 
     implementation(project(":domain:kernel"))

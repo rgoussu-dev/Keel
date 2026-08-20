@@ -2,7 +2,7 @@
 # sources directly, so the "artifact" is the sources themselves. The
 # workspace has no runtime dependencies; install only links the
 # workspace packages.
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 COPY . .
 <% if (pm === 'pnpm') { -%>

@@ -20,6 +20,7 @@ import os from 'node:os';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { javaLauncher } from '../support/jvm-e2e.js';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
@@ -114,7 +115,7 @@ const startApp = (
 ): Promise<{ child: ChildProcess; port: number }> =>
   new Promise((resolve, reject) => {
     const child = spawn(
-      'java',
+      javaLauncher(),
       ['-Dquarkus.http.port=0', '-Dquarkus.otel.sdk.disabled=true', '-jar', runJar],
       { cwd, env },
     );

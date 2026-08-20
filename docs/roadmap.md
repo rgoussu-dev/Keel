@@ -1854,6 +1854,11 @@ rather than remembered-in-a-file.
   workflow running the opt-in drift report under `tests/currency/`
   (never a PR gate — upstream releases must not turn unrelated PRs
   red). Bumps stay human-reviewed; the e2e grid is what proves them.
-  The first run already has real findings waiting: the Gradle
-  Quarkus stacks pin 3.16.0 against Maven's 3.34.6, and the Flyway
-  image major lags the library pin.
+  The first run already had real findings waiting — the Gradle
+  Quarkus stacks pinning 3.16.0 against Maven's 3.34.6, the Flyway
+  image major lagging the library pin — and the first full sweep
+  cleared the board: every reachable feed's drift bumped in one
+  reviewed change, with two deliberate holds recorded in the sweep's
+  PR (`jakarta.inject-api` staying 2.0.1 over the `.MR` re-tag, and
+  `@types/node` tracking the pinned Node major rather than npm's
+  latest).

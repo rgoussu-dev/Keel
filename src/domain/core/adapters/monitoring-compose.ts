@@ -72,7 +72,7 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
   # production: real Grafana auth, retention on the stores, container
   # healthchecks mirroring the service's own probe doctrine.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.158.0
+    image: otel/opentelemetry-collector-contrib:0.159.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
@@ -85,14 +85,14 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
       - loki
 
   tempo:
-    image: grafana/tempo:2.9.4
+    image: grafana/tempo:3.0.3
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./observability/tempo.yaml:/etc/tempo.yaml:ro
       - tempo-data:/var/tempo
 
   prometheus:
-    image: prom/prometheus:v3.13.2
+    image: prom/prometheus:v3.14.0
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       # Accept the collector's remote-write pushes (OTLP metrics
@@ -109,7 +109,7 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
       - loki-data:/loki
 
   grafana:
-    image: grafana/grafana:13.0.6
+    image: grafana/grafana:13.2.0
     environment:
       # Dev-only: anonymous admin. Wire real auth before production.
       GF_AUTH_ANONYMOUS_ENABLED: "true"
@@ -134,7 +134,7 @@ const LGTM_SERVICE = `  # --- monitoring (observability vertical) --------------
   # granular shape (re-run \`keel add observability\` and pick
   # \`granular\`).
   lgtm:
-    image: grafana/otel-lgtm:0.30.1
+    image: grafana/otel-lgtm:0.30.2
     ports:
       - "3000:3000" # Grafana
       - "4317:4317" # OTLP gRPC — the service pushes here

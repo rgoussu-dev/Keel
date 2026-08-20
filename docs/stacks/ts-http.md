@@ -236,7 +236,7 @@ npm start -- --name World    # ts-cli: Hello, World! on stdout
 
 | Goal                 | Command                                     | Notes                                                  |
 | -------------------- | ------------------------------------------- | ------------------------------------------------------ |
-| Container image      | `keel add containerization`                 | Sources onto `node:22-alpine` — still no build step.   |
+| Container image      | `keel add containerization`                 | Sources onto `node:24-alpine` — still no build step.   |
 | CI pipeline          | `keel add ci`                               | Build-and-test on push from the committed lockfile.    |
 | Pair with a frontend | `keel link ../frontend && keel add gateway` | CORS middleware lands on the backend side of the seam. |
 

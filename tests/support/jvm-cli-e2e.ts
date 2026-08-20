@@ -26,6 +26,7 @@ import {
   scaffold,
   skipJvmE2E,
   type JvmRunnableSpec,
+  javaLauncher,
 } from './jvm-e2e.js';
 
 export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
@@ -65,7 +66,7 @@ export async function runJvmCliE2E(
   const runJar = runnableJar(spec, cwd);
   expect(await fs.pathExists(runJar), `missing ${runJar}`).toBe(true);
 
-  const run = spawnSync('java', ['-jar', runJar, ...spec.argv], {
+  const run = spawnSync(javaLauncher(), ['-jar', runJar, ...spec.argv], {
     cwd,
     env,
     encoding: 'utf8',

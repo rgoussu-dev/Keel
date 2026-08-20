@@ -8,7 +8,7 @@ release-bundle:
   stage: deploy
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v/'
-  image: node:22
+  image: node:24
   script:
 <% if (pm === 'pnpm') { -%>
     # corepack provisions the pnpm version pinned by the workspace's

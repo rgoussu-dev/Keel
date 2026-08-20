@@ -6,6 +6,40 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Every emitted-template pin bumped to the latest stable its feed
+  reports** — the version-currency registry's first full sweep.
+  Quarkus platform 3.38.2 (and the Gradle stacks' `gradle.properties`
+  finally agreeing with Maven's pin), Micronaut platform 5.1.1 with
+  its Gradle plugin 5.0.2 and Data TX 5.1.1, Kotlin 2.4.10, JUnit
+  Jupiter 6.1.3, Flyway 13.3.0 with the CLI
+  image lifted to the same major, Shadow 9.6.1, Gradle wrapper 9.7.0
+  (keel's own e2e host Gradle moves with it), GraalVM Native Build
+  Tools 1.1.9, protobuf-java 4.35.1 (the Micronaut Maven compatibility
+  pin follows Micronaut 5's OTel gencode), Node images and CI
+  node-version to the 24 LTS, TypeScript ^6.0.0, Vitest ^4.1.0,
+  @testcontainers/postgresql ^12.1.0, Vite ^8.2.0, @rgoussu.dev/planks
+  ^0.3.1, Go 1.26, the
+  emitted workflows' action majors (checkout v7, setup-go v7,
+  setup-java v5, setup-node v7, docker login v4, upload-artifact v7,
+  download-artifact v8, gh-release v3) and the monitoring images
+  (otel-collector 0.159.0, Tempo 3.0.3, Prometheus 3.14.0, Grafana
+  13.2.0, otel-lgtm 0.30.2). Four deliberate holds, each recorded
+  beside its registry entry: `jakarta.inject-api` stays 2.0.1 (the
+  `.MR` upload is a maintenance re-tag, not a newer library),
+  `@types/node` moves to ^24 to match the Node major the scaffolds run
+  rather than npm's latest, TypeScript stays below 7 because
+  dependency-cruiser — the tool holding the emitted seam wall —
+  supports `>=2 <7` and cruises nothing under 7, and Testcontainers
+  stays on the latest 1.x because 2.x renames the per-database module
+  artifacts the templates use. The Micronaut 5 platform BOM stopped
+  managing `jackson-module-kotlin` under Maven, so the Micronaut
+  Kotlin templates now carry its version explicitly (2.22.2).
+  PostgreSQL 18, MariaDB 12 (the long-term series; 13.0 is rolling),
+  Alpine 3, JDK 25 LTS, KSP 2.3.11, setup-graalvm v1 and Loki 3.7.6
+  were already current.
+
 ### Added
 
 - **Single-source pins: the dev container and CI converge on the

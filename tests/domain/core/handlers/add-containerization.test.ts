@@ -157,7 +157,7 @@ describe('keel.add-vertical (keel add containerization)', () => {
       path.join(cwd, 'application/rest/executable/build.gradle.kts'),
       'utf8',
     );
-    expect(buildFile).toContain('id("org.graalvm.buildtools.native") version "1.1.8"');
+    expect(buildFile).toContain('id("org.graalvm.buildtools.native") version "1.1.9"');
     expect(buildFile.indexOf('org.graalvm.buildtools.native')).toBeGreaterThan(
       buildFile.indexOf('org.springframework.boot'),
     );
@@ -276,12 +276,12 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(content).toContain('cargo build --release');
   });
 
-  it('ships the ts-http sources onto node:22-alpine with npm', async () => {
+  it('ships the ts-http sources onto node:24-alpine with npm', async () => {
     await seed('ts-http');
     await addContainerization();
 
     const content = await dockerfile();
-    expect(content).toContain('FROM node:22-alpine');
+    expect(content).toContain('FROM node:24-alpine');
     expect(content).toContain('RUN npm ci --omit=dev');
     expect(content).toContain('CMD ["node", "application/rest/src/main.ts"]');
   });

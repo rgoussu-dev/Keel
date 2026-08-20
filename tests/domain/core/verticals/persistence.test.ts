@@ -670,7 +670,7 @@ describe('persistence install on quarkus-rest (Gradle)', () => {
     // The isolated migrations unit.
     expect(read(tree, 'migrations/sql/V1__create_greeting.sql')).toContain('create table greeting');
     const dockerfile = read(tree, 'migrations/Dockerfile');
-    expect(dockerfile).toContain('FROM flyway/flyway:11-alpine');
+    expect(dockerfile).toContain('FROM flyway/flyway:13-alpine');
     expect(dockerfile).toContain('CMD ["migrate"]');
     expect(read(tree, 'migrations/README.md')).toContain('walking-skeleton-migrations');
 
@@ -877,7 +877,7 @@ describe('the persistence dials (engine + migrations tool)', () => {
     const jdbcBuild = read(tree, 'infrastructure/greeting-log/jdbc/build.gradle.kts');
     expect(jdbcBuild).toContain('org.mariadb.jdbc:mariadb-java-client:3.5.10');
     expect(jdbcBuild).toContain('org.testcontainers:mariadb:1.21.4');
-    expect(jdbcBuild).toContain('org.flywaydb:flyway-mysql:13.2.0');
+    expect(jdbcBuild).toContain('org.flywaydb:flyway-mysql:13.3.0');
 
     // The contract test and the Testcontainers image follow the
     // chosen engine, per the dial's contract.
