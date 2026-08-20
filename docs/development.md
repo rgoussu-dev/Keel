@@ -52,6 +52,15 @@ a later download matches the earlier one; it says nothing about
 whether either is the release Gradle shipped, and the two claims
 should not be confused.
 
+What the sandbox _can_ do is the other half of that comparison, and it
+is worth doing: once the published value arrives from an unrestricted
+network, download the distribution here and check that the two agree.
+Two independent paths reaching the same digest is a real cross-check —
+what it rules out is one of them having been tampered with in transit.
+It is not a substitute for the published value; it is a confirmation
+of it, and it fails loudly when the paths disagree. The 9.7.0 entry
+was added exactly this way.
+
 Bumping `GRADLE_VERSION` without adding a matching entry warns loudly
 and continues, rather than bricking every session over a routine
 version bump.

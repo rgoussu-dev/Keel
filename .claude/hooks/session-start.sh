@@ -74,6 +74,7 @@ fi
 # how, since the sandbox cannot fetch them itself.
 declare -A GRADLE_SHA256=(
   [9.4.1]='2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb'
+  [9.7.0]='84fbba45c7f4c64abc77460e1c00f541e9f960e3c7ed2538f1ede19eacd873ae'
 )
 
 target="/opt/gradle-${version}"
