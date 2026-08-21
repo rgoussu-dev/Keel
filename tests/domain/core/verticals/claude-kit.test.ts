@@ -173,7 +173,7 @@ describe('claude-kit on the other families', () => {
     expect(read(ts, '.claude/hooks/pre-commit-format.sh')).toContain(
       'pnpm run --if-present lint && pnpm run typecheck && pnpm test',
     );
-    expect(read(ts, '.claude/skills/run/SKILL.md')).toContain('pnpm run dev');
+    expect(read(ts, '.claude/skills/run/SKILL.md')).toContain('pnpm run dev:rest');
 
     const wc = await install(
       [

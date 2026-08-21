@@ -32,7 +32,7 @@ const runHints = {
   },
   'go-http': { default: 'GO_ENV=dev go run ./cmd/http' },
   'rust-http': { default: 'cargo run' },
-  'ts-http': { npm: 'npm run dev', pnpm: 'pnpm run dev' },
+  'ts-http': { npm: 'npm run dev:rest', pnpm: 'pnpm run dev:rest' },
   'web-components': { npm: 'npm run dev', pnpm: 'pnpm run dev' },
 };
 const runHint = (service) => {

@@ -47,7 +47,10 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
   const http = tags.includes('arch.server-http');
   const modulith = moduleLayoutOf(tags) === 'modulith';
   const verifyCommand = tsVerifyCommand(pm);
-  const devRun = `${pm} run dev`;
+  // `dev:rest`, not `dev`: the TypeScript root manifest names its
+  // scripts per entrypoint so a workspace carrying both `arch.cli`
+  // and `arch.server-http` has one script each rather than a collision.
+  const devRun = `${pm} run dev:rest`;
   const cliRun = 'node application/cli/src/main.ts --name World';
 
   const commands: RunbookCommand[] = [
