@@ -2090,6 +2090,31 @@ rather than remembered-in-a-file.
   whole modulith story rather than the happy half. Two new e2e cells
   (`modulith-ts-cli-{npm,pnpm}`) plus a basic walking-skeleton suite,
   all in the `web` shard.
+- ~~**Composable entrypoints under the modulith**~~
+  ([#108](https://github.com/rgoussu-dev/keel/issues/108)) —
+  **shipped**. The CLI/HTTP pairing landed under `basic` first: the
+  root build files became a shared seed plus an idempotent per-arch
+  `apply` (`jvm-shared-root.ts`, `ts-shared-root.ts`), which is what
+  lets two entrypoints resolve onto one path. The modulith needed its
+  own pass rather than a port, because an entrypoint there
+  contributes a driving adapter _inside_ the bounded context
+  (`user-side/cli`, `user-side/api/{contract,adapters}`) as well as an
+  assembly under `application/`, so the seeded module list is
+  per-context and grows sideways rather than downwards.
+  `jvm-shared-root-modulith.ts` holds that shape; the seed builders
+  are shared with `basic`, which is where the two layouts genuinely
+  agree (the reactor pom, the toolchain pins, plugin management).
+  Three things came out of it that were not obvious going in: the
+  modulith's `archiveBaseName` rename is unconditional rather than
+  Spring/Micronaut's concern alone (leaf names repeat by
+  construction), Micronaut's reactor root needs its platform BOM
+  imported where `basic` needs none, and the four per-arch
+  `jvm-domain-modulith` trees collapsed to two per-language ones on
+  the richer REST shape — the same unification `basic` did. The
+  peer-context and `keel add module` adapters went entrypoint-agnostic
+  in the same change (`jvmAssemblies`, the `tsAssemblies` pattern), so
+  a composed modulith gets both assemblies wired rather than whichever
+  one an `if` picked.
 - ~~**`keel add --reapply` / update path**~~ — promoted to item
   **L** above ([#68](https://github.com/rgoussu-dev/keel/issues/68)).
 - ~~**IaC vertical (OpenTofu)**~~ — promoted to item **M** above

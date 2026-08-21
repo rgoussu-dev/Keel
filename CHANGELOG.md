@@ -21,18 +21,40 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   instead of each entrypoint writing its own whole-file copy
   (`jvm-shared-root.ts`, `ts-shared-root.ts` — the same "shared-file
   upsert" pattern `go-cli-bootstrap` already used for its README
-  section). Ships under the `basic` module layout only for now;
-  composing under `modulith` is on the roadmap.
-  - The JVM domain templates (`jvm-domain/java`, `jvm-domain/kotlin`)
-    unify on the richer REST shape (the `GreetRejected` validation
-    path), so the CLI entrypoint of every combo — and of every
-    existing `*-cli` stack — now demonstrates the same domain-error
-    mapping the REST entrypoint always did.
+  section). Works under **both** module layouts: under
+  `--module-layout=modulith` an entrypoint contributes a driving
+  adapter _inside_ the bounded context (`user-side/cli`,
+  `user-side/api/…`) as well as its own assembly, and the seeded root
+  files carry both (`jvm-shared-root-modulith.ts`).
+  - The JVM domain templates (`jvm-domain/java`, `jvm-domain/kotlin`,
+    and their `jvm-domain-modulith` twins) unify on the richer REST
+    shape (the `GreetRejected` validation path), so the CLI
+    entrypoint of every combo — and of every existing `*-cli` stack —
+    now demonstrates the same domain-error mapping the REST
+    entrypoint always did. The modulith's four per-arch domain trees
+    (`java-cli`, `java-rest`, `kotlin-cli`, `kotlin-rest`) collapse
+    into two per-language ones.
+  - `--with-peer-context` and `keel add module <name>` wire the new
+    bounded context into **every** assembly the project has rather
+    than the first one an `arch.*` check matched, so a composed
+    CLI + HTTP modulith gets both wired (`jvmAssemblies`, the JVM
+    sibling of `tsAssemblies`).
   - The TypeScript root `package.json` now names each entrypoint's
     scripts explicitly rather than a bare `start`/`dev` —
     `start:cli`, `start:rest`, `dev:rest` — on every `ts-cli`,
-    `ts-http`, and `ts-cli-http` scaffold, so the same names work
-    whichever stack (or both) you picked.
+    `ts-http`, and `ts-cli-http` scaffold, under either module
+    layout, so the same names work whichever stack (or both) you
+    picked. The emitted claude-kit runbook and the fullstack product
+    README follow the rename (`dev:rest`, not `dev`).
+  - The two bootstraps of a composed stack now share one project
+    identity: `Adapter.sharesAnswersWith` names the sibling whose
+    recorded answers count as an adapter's sticky memory, so
+    `basePackage`/`projectName` (JVM) and `npmScope`/`projectName`
+    (TypeScript) are asked once and recorded under both ids. Sticky
+    memory is keyed per adapter, and two answers that disagree leave
+    a Maven reactor whose modules parent an artifactId the root does
+    not have, or a workspace whose assembly depends on a scope the
+    context does not publish.
 - **`keel new --list` / `keel add --list`.** Prints every stack (or
   vertical) id with its one-line description, then exits — nothing is
   scaffolded. `keel add --list` needs no existing project.

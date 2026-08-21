@@ -22,11 +22,11 @@ npx @rgoussu.dev/keel new --stack=ts-cli-http  # both entrypoints, one workspace
 
 The two entrypoints **compose**: `ts-cli-http` is `ts-cli` and
 `ts-http` at once — one shared domain and workspace, both deployment
-units — under the `basic` module layout (composing under `modulith` is
-on the [roadmap](../roadmap.md)). The root `package.json` names each
+units — under either module layout. The root `package.json` names each
 entrypoint's scripts explicitly rather than a bare `start`/`dev`, so
-the same names work whichever of the three stacks you picked:
-`start:cli`, `start:rest`, `dev:rest`.
+the same names work whichever of the three stacks you picked and
+whichever layout you scaffolded on: `start:cli`, `start:rest`,
+`dev:rest`.
 
 ## Prerequisites
 

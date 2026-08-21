@@ -13,14 +13,16 @@ layer and the build wiring change.
 
 The `CLI+REST` columns are the six stacks that compose `arch.cli` and
 `arch.server-http` onto one hexagon — one shared domain, both
-deployment units (see `jvm-shared-root.ts`) — and, for now, ship under
-`basic` only; composing under `modulith` is on the
-[roadmap](../roadmap.md).
+deployment units. Whichever entrypoint bootstrap resolves first seeds
+the root build files and the other composes onto them, so the module
+list, the reactor and the README carry both
+(`jvm-shared-root.ts` under `basic`, `jvm-shared-root-modulith.ts`
+under the modulith, where an entrypoint contributes a driving adapter
+_inside_ the context as well as its assembly).
 
 All target **Java 25** (Kotlin twins on JVM 25), build with **Gradle
 or Maven**, and scaffold on either **module layout** — `basic` (the
-flat trisection) or `modulith` — except the six `*-cli-rest*` stacks,
-which are `basic` only for now.
+flat trisection) or `modulith`.
 
 ### A second bounded context
 

@@ -30,9 +30,10 @@ language — only the application layer and build wiring change. **The
 conventions, not the framework, are the product.**
 
 The **CLI + HTTP** column composes both entrypoints onto one hexagon
-instead of picking between them — the same domain, two ways in. It
-ships under the `basic` module layout only for now; composing under
-`modulith` is on the [roadmap](../roadmap.md).
+instead of picking between them — the same domain, two ways in — and
+does so under **either module layout**. Under the modulith each
+entrypoint brings a driving adapter into the bounded context
+(`user-side/cli`, `user-side/api/…`) as well as its own assembly.
 
 ## Module layout
 
