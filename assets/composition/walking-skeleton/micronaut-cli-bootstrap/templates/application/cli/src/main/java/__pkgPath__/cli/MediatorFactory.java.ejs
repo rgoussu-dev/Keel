@@ -36,7 +36,18 @@ import <%= basePackage %>.kernel.Mediator;
  */
 @Factory
 @Import(
+    // spotless:off
+    // keel:managed — do not edit by hand.
+    // `keel add module <name>` rewrites this list, and anything you change
+    // here is lost on the next run. The fence also stops the formatter
+    // reflowing it, which is what keel anchors on.
+    //
+    // One entry per aggregate package, per context: @Import does
+    // not recurse into subpackages, so a package missing here
+    // yields no bean definition and its handler is never
+    // dispatched to.
     packages = "<%= basePackage %>.core.greet",
+    // spotless:on
     annotated = "<%= basePackage %>.contract.DomainHandler")
 public class MediatorFactory {
 

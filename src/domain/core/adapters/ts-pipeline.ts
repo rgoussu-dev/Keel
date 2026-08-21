@@ -20,7 +20,13 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { ciTemplateId, PROVIDER_QUESTION, ciProvider, providerTag } from './ci-pipeline.js';
+import {
+  ciTemplateId,
+  PROVIDER_QUESTION,
+  ciProvider,
+  providerTag,
+  ciFormatCheck,
+} from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
 export const TS_PIPELINE_ID = 'ci/ts-pipeline';
@@ -38,6 +44,7 @@ export const tsPipelineAdapter: Adapter = {
     const files = await ctx.templates.render(ciTemplateId('ts-pipeline', provider), '', {
       pm,
       nodeVersion: pins.version('node'),
+      formatCheck: ciFormatCheck(ctx.manifest.tags),
     });
     return { files, tagsAdd: [providerTag(provider)] };
   },

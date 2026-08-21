@@ -7,7 +7,13 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { ciTemplateId, PROVIDER_QUESTION, ciProvider, providerTag } from './ci-pipeline.js';
+import {
+  ciTemplateId,
+  PROVIDER_QUESTION,
+  ciProvider,
+  providerTag,
+  ciFormatCheck,
+} from './ci-pipeline.js';
 
 export const RUST_PIPELINE_ID = 'ci/rust-pipeline';
 
@@ -19,7 +25,9 @@ export const rustPipelineAdapter: Adapter = {
   questions: [PROVIDER_QUESTION],
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), RUST_PIPELINE_ID);
-    const files = await ctx.templates.render(ciTemplateId('rust-pipeline', provider), '', {});
+    const files = await ctx.templates.render(ciTemplateId('rust-pipeline', provider), '', {
+      formatCheck: ciFormatCheck(ctx.manifest.tags),
+    });
     return { files, tagsAdd: [providerTag(provider)] };
   },
 };

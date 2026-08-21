@@ -26,7 +26,14 @@
  */
 
 import type { JvmLanguage } from './jvm-bootstrap.js';
-import { jvmContextAdapter, rewriteList, type JvmContextBinding } from './jvm-context.js';
+import {
+  fenceClose,
+  fenceOpen,
+  jvmContextAdapter,
+  rewriteList,
+  FENCE_ON_TAIL,
+  type JvmContextBinding,
+} from './jvm-context.js';
 import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
 import { SPRING_CLI_KOTLIN_BOOTSTRAP_ID } from './spring-cli-kotlin-bootstrap.js';
 import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
@@ -47,7 +54,8 @@ const ROOT_CLASS = 'MediatorConfig';
 const bootClass = (binding: JvmContextBinding): string =>
   binding.assemblyPkg.endsWith('cli') ? 'Main' : 'Application';
 
-const SCAN_NOTE = [
+/** Why the list is explicit; carried inside the fence. */
+export const SCAN_NOTE: readonly string[] = [
   'Every bounded context is named here, one by one. Nothing',
   'scans the base package wholesale, so a context missing',
   'from this list is never scanned: its handlers are never',
@@ -77,7 +85,7 @@ const INDENT: Readonly<Record<JvmLanguage, string>> = {
 function scanRegion(language: JvmLanguage): RegExp {
   const [open, close] = BRACKETS[language];
   return new RegExp(
-    `^(?:[ \\t]*//[^\\n]*\\n)*[ \\t]*basePackages = \\${open}([\\s\\S]*?)\\${close},`,
+    `^(?:[ \\t]*//[^\\n]*\\n)*[ \\t]*basePackages = \\${open}([\\s\\S]*?)\\${close},${FENCE_ON_TAIL}`,
     'm',
   );
 }
@@ -97,10 +105,11 @@ function componentScanPatch(
   const comma = (last: boolean): string => (last && language === 'java' ? '' : ',');
   const render = (entries: readonly string[]): string =>
     [
-      ...SCAN_NOTE.map((line) => `${indent}// ${line}`),
+      ...fenceOpen(indent, SCAN_NOTE),
       `${indent}basePackages = ${open}`,
       ...entries.map((e, i) => `${indent}    ${e}${comma(i === entries.length - 1)}`),
       `${indent}${close},`,
+      fenceClose(indent),
     ].join('\n');
   return {
     target: binding.sourceFile(bootClass(binding)),

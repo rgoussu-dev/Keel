@@ -1752,6 +1752,158 @@ on the pre-existing behaviour rather than on a wrong version.
 
 ---
 
+## O — `code-style`: the layout contract (M) ✅
+
+The convention teams most agree they should have and least often get
+around to, because the setup is fiddly in every ecosystem and the
+fiddliness is different in each one. keel does it once, from one
+model, for every stack.
+
+**The gap was total.** Scaffolded projects shipped zero style
+configuration, zero format or style-lint CI steps and zero editor
+settings, across all five families — while the binding spec keel emits
+into every project (`assets/project/AGENTS.md §6`) claims every commit
+passes "format, typecheck, lint". The only thing called `lint` was
+`depcruise` on the three modulith roots, an _architecture_ rule. Go
+and Rust auto-fixed in the pre-commit hook but nothing anywhere ever
+_checked_, so style was enforced only on commits Claude itself made.
+
+### The finding that shaped it
+
+**There is no runtime "one config to rule them all", and shipping
+`.editorconfig` alone would have been a placebo.** Measured against
+the toolchains rather than assumed — `.editorconfig` reaches the
+actual formatter in **two of five** families:
+
+| Family | Reads `.editorconfig`?                                      |
+| ------ | ----------------------------------------------------------- |
+| Kotlin | **yes, natively** — ktlint treats it as _primary_ config    |
+| Web    | **yes** — Prettier reads a five-property subset             |
+| Java   | no — gjf and palantir are unconfigurable _by design_        |
+| Go     | no — `gofmt` has no options; the `-tabs` flags were removed |
+| Rust   | no — rustfmt#2938, closed unimplemented                     |
+
+Spotless has no global `editorConfig()` either
+([#734](https://github.com/diffplug/spotless/issues/734), open since
+2020); it reaches only its ktlint and shfmt steps.
+
+**A scaffolder does not need the runtime layer.** keel holds one
+style model in `adapters/code-style.ts` and fans it out at generation
+time into each dialect. That is a real single source of truth with
+**no extra runtime dependency in the emitted project and no added CI
+time** — no `treefmt`, no `dprint`, no MegaLinter. Those tools solve
+this for a repo that cannot regenerate its configs; keel can.
+
+**The asymmetry is real and is documented where it bites.** For
+Kotlin the emitted `.editorconfig` is _live input_; for Java, Go and
+Rust it is a _co-render_. Proved on the toolchain: with an
+`.editorconfig` saying `indent_size = 2`, ktlint reformatted Kotlin to
+2-space while prince-of-space held Java at 4-space from the Gradle
+config. The emitted file's header says so, and `--reapply` re-syncs.
+
+### Why prince-of-space on Java
+
+Java is the one ecosystem where the formatter choice is genuinely
+open, and both mainstream options are deliberately unconfigurable
+(google-java-format 2-space/100, palantir 4-space/120). Either would
+have made a shared style model impossible to honour on Java — and
+google-java-format's 2-space would have reformatted every emitted
+template away from keel's existing 4-space house style.
+
+prince-of-space exposes exactly the knobs EditorConfig speaks, so
+Java's config is rendered from the same model. The cost is a formatter
+with far less deployment history than gjf; the benefit is the only
+configuration under which "one style model" is not a lie. Registered
+in the pin registry, so the currency loop tracks it.
+
+### Enforcement: the hook fixes, CI gates
+
+Chosen deliberately over wiring the check into the build:
+
+- **`isEnforceCheck = false`** on Gradle and **no lifecycle binding**
+  on Maven, so `./gradlew build` and `mvnw verify` never fail for
+  formatting alone. Verified on the runner: with drift present,
+  `gradle build` exits 0 and `gradle spotlessCheck` exits 1.
+- **CI is the gate**, keyed on the `style.managed` tag so a project
+  without the vertical gets no format step rather than one calling a
+  command its build cannot answer.
+- **The hook auto-fixes** on staged files only. Every abandoned
+  pre-commit setup traces back to latency; a formatter stays inside
+  the budget where a full lint does not.
+
+Without the first of those, a formatter disagreement would break a
+freshly scaffolded project's **first** build — the worst possible
+first impression, and unfixable by the user without understanding
+Spotless.
+
+### The `.ejs` problem, and the escape hatch
+
+keel's templates are `.ejs` files full of placeholders, so **no Java
+formatter can be run over them** and keel cannot mechanically keep the
+_rendered_ output format-clean. Template line lengths say nothing
+either: most >100-column lines are `<%= basePackage %>`-style
+expressions that shrink on render.
+
+The answer is the pattern `gradle-wrapper` already established — a
+deferred action running a real build tool at scaffold time. The JVM
+adapter emits `spotlessApply`, making the tree clean **by
+construction** rather than by keeping templates in sync. It costs one
+extra build-tool invocation (~20–30s warm) and is what keeps the
+project's first CI run green. If it cannot run, the install warns
+rather than fails: an unformatted tree is still valid and still
+builds, precisely because the check is out of `check`.
+
+### Verified rather than assumed
+
+Every load-bearing claim was run against the real toolchain before the
+adapters were written, and one survey figure was wrong: the
+prince-of-space coordinates **moved** at 2.x
+(`io.github.agustafson` → `io.github.agustafson.princeofspace`), which
+a version-only reading would have missed.
+
+- Spotless 8.10.0 + prince-of-space 2.2.0 + ktlint 1.8.0 on **real
+  Gradle**, and Spotless 3.10.0 on **real Maven** against keel's own
+  root POM template — both reformatted Java to 4-space.
+- `style_edition = "2024"` accepted by **stable** rustfmt, no
+  unstable-option warning.
+- The generated `.editorconfig` resolves Kotlin to 4-space: the `[*]`
+  baseline's `indent_size = 2` is correctly overridden by the
+  per-language section, so Java and Kotlin agree.
+
+**And the deferred apply is load-bearing rather than belt-and-braces,
+which was measured rather than assumed.** With the action disabled,
+`spotlessCheck` on a fresh `quarkus-cli` scaffold **fails**: keel
+writes the kernel marker as `public interface Command<R> {}` and
+prince-of-space wants it split across two lines. With the action
+enabled it exits 0. `tests/e2e/code-style-jvm.test.ts` is the thing
+that fails if the action is ever dropped, or if a template lands in a
+shape the formatter would rewrite — the `.ejs` blind spot made
+visible.
+
+It rides the existing `jvm-basic-quarkus` shard rather than taking one
+of its own: **131.42s for both cases** on a warm home (76.9s + 52.4s),
+against a matrix whose slowest shard is 371s. A shard of its own would
+have bought attribution and no wall clock, and the second case reuses
+almost everything the first resolved — so the two share one
+`GRADLE_USER_HOME` per the run-217 cache lesson, not one per case.
+
+### Not in scope for O
+
+**Static analysis.** `golangci-lint`, `clippy`, Error Prone, NullAway
+and Checkstyle are a different axis — bug-finding, not layout — and
+each is an extra binary or an extra gate. This vertical is about the
+layout contract, which is why Go and Rust cost the emitted project
+nothing at all. Static analysis deserves its own item and its own
+argument about what a scaffolded project should be forced to pass.
+
+**Ratcheting** (`ratchetFrom`, `--new-from-merge-base`) is for
+brownfield adoption on a codebase that is already dirty. keel's
+scaffolds start clean, so it would be machinery for a problem that
+does not exist here; it belongs with a future `keel add code-style`
+onto a large existing project.
+
+---
+
 ## Backlog (unordered)
 
 - ~~**A second bounded context in the modulith skeleton**~~ —

@@ -6,6 +6,9 @@ variables:
 
 build:
   script:
+<% if (formatCheck) { -%>
+    - <%- formatCheck %>
+<% } -%>
     - ./gradlew build --no-daemon --stacktrace
   cache:
     key: gradle
@@ -20,6 +23,9 @@ variables:
 
 build:
   script:
+<% if (formatCheck) { -%>
+    - <%- formatCheck %>
+<% } -%>
     - ./mvnw --batch-mode verify
   cache:
     key: maven

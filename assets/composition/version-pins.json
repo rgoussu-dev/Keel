@@ -1772,6 +1772,89 @@
         "repo": "softprops/action-gh-release",
         "track": "major"
       }
+    },
+    {
+      "id": "jvm-spotless-gradle-plugin",
+      "family": "jvm",
+      "description": "Spotless Gradle plugin, applied by the code-style vertical",
+      "value": "8.10.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/jvm-format.ts",
+          "pattern": "SPOTLESS_GRADLE_VERSION = '([\\w.-]+)'"
+        }
+      ],
+      "check": {
+        "type": "gradle-plugin",
+        "pluginId": "com.diffplug.spotless"
+      }
+    },
+    {
+      "id": "jvm-spotless-maven-plugin",
+      "family": "jvm",
+      "description": "Spotless Maven plugin, applied by the code-style vertical",
+      "value": "3.10.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/jvm-format.ts",
+          "pattern": "SPOTLESS_MAVEN_VERSION = '([\\w.-]+)'"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "com.diffplug.spotless",
+        "artifact": "spotless-maven-plugin"
+      }
+    },
+    {
+      "id": "jvm-prince-of-space",
+      "family": "jvm",
+      "description": "prince-of-space Java formatter, driven by keel's style model via Spotless — the one Java formatter with configurable indent/width, which is what lets .editorconfig and the build agree",
+      "value": "2.2.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/jvm-format.ts",
+          "pattern": "PRINCE_OF_SPACE_VERSION = '([\\w.-]+)'"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "io.github.agustafson.princeofspace",
+        "artifact": "prince-of-space-core"
+      }
+    },
+    {
+      "id": "jvm-ktlint",
+      "family": "jvm",
+      "description": "ktlint Kotlin formatter via Spotless; reads the emitted .editorconfig live. Held at 1.x: 2.0 moves the coordinates to io.github.ktlint and reorders rule execution, so it is a migration rather than a pin bump",
+      "value": "1.8.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/jvm-format.ts",
+          "pattern": "KTLINT_VERSION = '([\\w.-]+)'"
+        }
+      ],
+      "check": {
+        "type": "maven",
+        "group": "com.pinterest.ktlint",
+        "artifact": "ktlint-cli"
+      }
+    },
+    {
+      "id": "ts-prettier",
+      "family": "ts",
+      "description": "Prettier in the workspace root, added by the code-style vertical for both TypeScript stacks and the SPA",
+      "value": "^3.9.6",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/web-format.ts",
+          "pattern": "PRETTIER_VERSION = '([^']+)'"
+        }
+      ],
+      "check": {
+        "type": "npm",
+        "package": "prettier"
+      }
     }
   ]
 }

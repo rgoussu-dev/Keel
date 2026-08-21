@@ -9,6 +9,7 @@
  */
 
 import { ciVertical } from './ci.js';
+import { codeStyleVertical } from './code-style.js';
 import { containerizationVertical } from './containerization.js';
 import { devContainerVertical } from './dev-container.js';
 import { devEnvVertical } from './dev-env.js';
@@ -25,6 +26,7 @@ import type { Vertical } from '../../contract/composition.js';
 const ALL: readonly Vertical[] = [
   vcsVertical,
   walkingSkeletonVertical,
+  codeStyleVertical,
   distributionVertical,
   iacVertical,
   gatewayVertical,

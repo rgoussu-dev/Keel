@@ -146,6 +146,7 @@ jobs:
               tests/e2e/walking-skeleton-quarkus-cli-kotlin.test.ts
               tests/e2e/walking-skeleton-rest.test.ts
               tests/e2e/walking-skeleton-kotlin.test.ts
+              tests/e2e/code-style-jvm.test.ts
           - id: jvm-basic-spring
             tools: java javac gradle
             files: >-

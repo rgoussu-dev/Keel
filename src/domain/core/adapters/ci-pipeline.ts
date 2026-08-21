@@ -12,6 +12,7 @@
  * choice belongs to the user, sticky so it is asked exactly once.
  */
 
+import { STYLE_MANAGED_TAG, formatterCommandsFor } from './code-style.js';
 import type { Question, Tag } from '../../contract/composition.js';
 
 /** A CI provider keel can emit a pipeline for. */
@@ -68,4 +69,23 @@ export function providerTag(provider: CiProvider): Tag {
  */
 export function ciTemplateId(adapter: string, provider: CiProvider): string {
   return `composition/ci/${adapter}/${provider === 'gitlab-ci' ? 'gitlab' : 'github'}`;
+}
+
+/**
+ * The format-check command a pipeline should gate on, or `undefined`
+ * when the project does not have the `code-style` vertical installed.
+ *
+ * Gated on the `style.managed` tag rather than on the language, so a
+ * project scaffolded before `code-style` existed — or one that
+ * deliberately never installed it — gets a pipeline with no format
+ * step at all, instead of one calling a command its build cannot
+ * answer. Because the tag travels on the manifest, a `keel add ci`
+ * run months later still picks the step up.
+ *
+ * This is the *check* half of the pair; the *format* half is wired
+ * into the pre-commit hook. CI verifies, the hook fixes.
+ */
+export function ciFormatCheck(tags: readonly string[]): string | undefined {
+  if (!tags.includes(STYLE_MANAGED_TAG)) return undefined;
+  return formatterCommandsFor(tags)?.check;
 }

@@ -8,6 +8,9 @@ build:
     - corepack enable
     - pnpm config set store-dir $CI_PROJECT_DIR/.pnpm-store
     - pnpm install --frozen-lockfile
+<% if (formatCheck) { -%>
+    - <%- formatCheck %>
+<% } -%>
     - pnpm run typecheck
     - pnpm run --if-present lint
     - pnpm run --if-present build
@@ -25,6 +28,9 @@ variables:
 build:
   script:
     - npm ci
+<% if (formatCheck) { -%>
+    - <%- formatCheck %>
+<% } -%>
     - npm run typecheck
     - npm run lint --if-present
     - npm run build --if-present

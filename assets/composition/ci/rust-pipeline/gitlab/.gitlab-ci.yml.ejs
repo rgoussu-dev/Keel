@@ -4,5 +4,8 @@ image: rust:latest
 
 build:
   script:
+<% if (formatCheck) { -%>
+    - <%- formatCheck %>
+<% } -%>
     - cargo build --workspace
     - cargo test --workspace

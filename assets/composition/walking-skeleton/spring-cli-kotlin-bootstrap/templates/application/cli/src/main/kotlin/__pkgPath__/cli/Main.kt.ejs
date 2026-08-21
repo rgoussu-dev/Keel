@@ -26,7 +26,19 @@ import <%= basePackage %>.contract.DomainHandler
  */
 @SpringBootApplication
 @ComponentScan(
+    // spotless:off
+    // keel:managed — do not edit by hand.
+    // `keel add module <name>` rewrites this list, and anything you change
+    // here is lost on the next run. The fence also stops the formatter
+    // reflowing it, which is what keel anchors on.
+    //
+    // Every bounded context is named here, one by one. Nothing
+    // scans the base package wholesale, so a context missing
+    // from this list is never scanned: its handlers are never
+    // discovered, and the application starts perfectly without
+    // them.
     basePackages = ["<%= basePackage %>.cli", "<%= basePackage %>.core"],
+    // spotless:on
     includeFilters = [ComponentScan.Filter(type = FilterType.ANNOTATION, classes = [DomainHandler::class])],
 )
 class Main(

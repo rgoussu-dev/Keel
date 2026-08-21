@@ -10,7 +10,13 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { ciTemplateId, PROVIDER_QUESTION, ciProvider, providerTag } from './ci-pipeline.js';
+import {
+  ciTemplateId,
+  PROVIDER_QUESTION,
+  ciProvider,
+  providerTag,
+  ciFormatCheck,
+} from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
 export const GO_PIPELINE_ID = 'ci/go-pipeline';
@@ -26,6 +32,7 @@ export const goPipelineAdapter: Adapter = {
     const pins = await loadToolchainPins(ctx, GO_PIPELINE_ID);
     const files = await ctx.templates.render(ciTemplateId('go-pipeline', provider), '', {
       goVersion: pins.version('go'),
+      formatCheck: ciFormatCheck(ctx.manifest.tags),
     });
     return { files, tagsAdd: [providerTag(provider)] };
   },
