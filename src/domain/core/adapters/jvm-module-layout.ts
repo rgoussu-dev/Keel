@@ -140,6 +140,41 @@ const MODULITH: LayoutBase = {
   servicePkg: `${SKELETON_MODULE}.userside.service`,
 };
 
+/** One runnable assembly of a JVM project. */
+export interface JvmAssemblyPaths {
+  /** Module directory, e.g. `application/api`. */
+  readonly dir: string;
+  /** Package segment appended to the base package, e.g. `application.api`. */
+  readonly pkg: string;
+}
+
+/**
+ * Which assemblies this project has, from the stack's arch tags — the
+ * JVM sibling of `tsAssemblies` and of Go's and Rust's
+ * `assembliesOf`.
+ *
+ * The adapters that wire a bounded context into "the assembly"
+ * (`jvm-peer-context`, `jvm-context`) iterate over this rather than
+ * asking whether `arch.cli` is present and taking the CLI runtime if
+ * it is. That question has a wrong answer on a tag set carrying both
+ * entrypoints: it wires the CLI assembly and leaves the HTTP one
+ * knowing nothing of the context, which compiles, packages, starts,
+ * and serves a project missing half of what was asked for.
+ */
+export function jvmAssemblies(
+  tags: readonly Tag[],
+  layout: JvmLayoutPaths,
+): readonly JvmAssemblyPaths[] {
+  const assemblies: JvmAssemblyPaths[] = [];
+  if (tags.includes('arch.cli')) {
+    assemblies.push({ dir: layout.cliRuntime, pkg: layout.cliRuntimePkg });
+  }
+  if (tags.includes('arch.server-http')) {
+    assemblies.push({ dir: layout.restRuntime, pkg: layout.restRuntimePkg });
+  }
+  return assemblies;
+}
+
 /**
  * The module directories of **one bounded context** under the
  * modulith, in build order.

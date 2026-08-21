@@ -66,6 +66,7 @@ import {
   MODULITH_LAYOUT_TAG,
   SKELETON_MODULE,
   gradleProject,
+  jvmAssemblies,
   jvmContextModules,
   jvmLayout,
   jvmSeamModule,
@@ -173,9 +174,11 @@ export interface JvmContextSpec {
 
 /**
  * Builds the added-context adapter for one JVM (framework, language)
- * combination. Both entrypoint shapes are served by the one adapter:
- * the assembly it patches is resolved from the `arch.*` tag, exactly
- * as the layout resolver does everywhere else.
+ * combination. Every entrypoint shape is served by the one adapter:
+ * the assemblies it patches are resolved from the `arch.*` tags,
+ * exactly as the layout resolver does everywhere else — so a project
+ * composing `arch.cli` and `arch.server-http` gets the new context
+ * wired into *both*, not into whichever one an if/else picked.
  */
 export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
   return {
@@ -211,9 +214,10 @@ export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
       const names = jvmContextNames(basePackage, added);
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const layout = jvmLayout(ctx.manifest.tags);
-      const cli = ctx.manifest.tags.includes('arch.cli');
-      const assembly = cli ? layout.cliRuntime : layout.restRuntime;
-      const assemblyPkg = cli ? layout.cliRuntimePkg : layout.restRuntimePkg;
+      const assemblies = jvmAssemblies(ctx.manifest.tags, layout);
+      if (assemblies.length === 0) {
+        throw new Error(`${spec.id}: no assembly in this tag set to wire the added context into`);
+      }
       const modules = jvmContextModules(added.name, added.consumes);
       const language = SOURCE_ROOT[spec.language];
 
@@ -230,8 +234,6 @@ export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
         // the path token substitutes cleanly. A separate flag keeps
         // the templates reading `if (hasConsumes)`.
         hasConsumes: added.consumes === null ? '' : '1',
-        assemblyPkg,
-        assemblyPkgPath: assemblyPkg.replace(/\./g, '/'),
       };
 
       const trees = [
@@ -247,23 +249,28 @@ export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
       ];
       // The wiring class and its test land in the assembly, whose
       // directory and package are both layout decisions — so they
-      // render under the resolved assembly rather than at a path of
+      // render under each resolved assembly rather than at a path of
       // their own.
       const wiring = `${TEMPLATE_ROOT}/wiring/${spec.framework}/${language}`;
+      const assemblyVars = (a: { dir: string; pkg: string }): Record<string, string> => ({
+        ...vars,
+        assemblyPkg: a.pkg,
+        assemblyPkgPath: a.pkg.replace(/\./g, '/'),
+      });
       const rendered = await Promise.all([
         ...trees.map((t) => ctx.templates.render(t, '', vars)),
-        ctx.templates.render(wiring, assembly, vars),
+        ...assemblies.map((a) => ctx.templates.render(wiring, a.dir, assemblyVars(a))),
       ]);
 
-      const binding: JvmContextBinding = {
+      const bindings: readonly JvmContextBinding[] = assemblies.map((a) => ({
         basePackage,
         added,
         names,
-        assembly,
-        assemblyPkg,
+        assembly: a.dir,
+        assemblyPkg: a.pkg,
         sourceFile: (className) =>
-          `${assembly}/src/main/${language}/${packageToPath(basePackage)}/${assemblyPkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
-      };
+          `${a.dir}/src/main/${language}/${packageToPath(basePackage)}/${a.pkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
+      }));
 
       return {
         files: rendered.flat(),
@@ -271,9 +278,11 @@ export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
           buildSystem === 'maven'
             ? mavenModulesPatch(spec.id, modules)
             : gradleIncludesPatch(modules),
-          assemblyDepsPatch(spec.id, buildSystem, basePackage, assembly, added, modules),
-          ...(added.consumes === SKELETON_MODULE ? [seamDocPatch(spec, binding)] : []),
-          ...spec.bind(binding),
+          ...bindings.flatMap((binding) => [
+            assemblyDepsPatch(spec.id, buildSystem, basePackage, binding.assembly, added, modules),
+            ...(added.consumes === SKELETON_MODULE ? [seamDocPatch(spec, binding)] : []),
+            ...spec.bind(binding),
+          ]),
         ],
       };
     },

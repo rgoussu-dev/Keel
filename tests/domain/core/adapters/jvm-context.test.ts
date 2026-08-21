@@ -320,3 +320,33 @@ function dependencyArtifacts(pom: string): readonly string[] {
     .map((m) => m[1] as string)
     .slice(1);
 }
+
+/**
+ * A project scaffolded from a combo stack has two assemblies, and
+ * `keel add module` has to reach both. The adapter used to pick one
+ * with `tags.includes('arch.cli') ? cli : rest`, which on these
+ * stacks wired the CLI and left the HTTP assembly with no binding for
+ * the new context's handler — a project that builds and runs and is
+ * half-wired. Asserted on Quarkus alone: the loop is in
+ * `jvm-context.ts`, shared by all six bindings, and what each binding
+ * writes into an assembly is already covered above.
+ */
+describe('the JVM added context on a composed cli + server-http project', () => {
+  it('wires the new context into both assemblies', async () => {
+    await scaffold({ stack: 'quarkus-cli-rest' });
+    await addModule('billing');
+
+    for (const assembly of ['application/cli', 'application/api']) {
+      expect(await read(`${assembly}/build.gradle.kts`), assembly).toContain(
+        'modules:billing:domain:core',
+      );
+    }
+    for (const [assembly, pkg] of [
+      ['application/cli', 'cli'],
+      ['application/api', 'api'],
+    ]) {
+      const wiring = `${assembly}/src/main/java/com/example/application/${pkg}/BillingWiring.java`;
+      expect(await exists(wiring), wiring).toBe(true);
+    }
+  });
+});

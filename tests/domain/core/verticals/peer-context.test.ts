@@ -242,3 +242,75 @@ describe('without the flag, nothing changes', () => {
     },
   );
 });
+
+/**
+ * On a stack composing `arch.cli` and `arch.server-http`, the peer
+ * context has *two* assemblies to reach — and the adapter used to
+ * take whichever one an `if (arch.cli)` picked, wiring the CLI and
+ * leaving the HTTP assembly knowing nothing of guestbook. That
+ * project compiles, packages and starts; it simply does not do half
+ * of what was asked for, which is the failure mode `jvmAssemblies`
+ * exists to remove.
+ */
+describe('a composed cli + server-http project wires the peer into both assemblies', () => {
+  const composed = async (framework: Combo['framework'], language: Combo['language']) => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-peer-combo-'));
+    cwds.push(dir);
+    const tree = new FsTree(dir);
+    await installVertical({
+      vertical: walkingSkeletonVertical,
+      manifest: {
+        ...emptyManifestV2('2026-08-14T00:00:00Z', '0.5.0-alpha'),
+        tags: [
+          `lang.${language}`,
+          'runtime.jvm',
+          'pkg.gradle',
+          `framework.${framework}`,
+          'arch.hexagonal',
+          'arch.cli',
+          'arch.server-http',
+          MODULITH_LAYOUT_TAG,
+          PEER_CONTEXT_TAG,
+        ],
+        answers: BOOTSTRAP_ANSWERS,
+      },
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd: dir,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-14T12:00:00Z',
+    });
+    return tree;
+  };
+
+  for (const framework of ['quarkus', 'spring', 'micronaut'] as const) {
+    for (const language of ['java', 'kotlin'] as const) {
+      it(`declares guestbook on both assemblies for ${framework} ${language}`, async () => {
+        const tree = await composed(framework, language);
+
+        for (const assembly of ['application/cli', 'application/api']) {
+          const build = read(tree, `${assembly}/build.gradle.kts`);
+          expect(build, `${assembly} must depend on guestbook's core`).toContain(
+            'modules:guestbook:domain:core',
+          );
+        }
+      });
+
+      it(`renders a wiring test into both assemblies for ${framework} ${language}`, async () => {
+        const tree = await composed(framework, language);
+        const ext = language === 'java' ? 'java' : 'kt';
+
+        for (const [assembly, pkg] of [
+          ['application/cli', 'cli'],
+          ['application/api', 'api'],
+        ]) {
+          const test = `${assembly}/src/test/${language}/com/example/application/${pkg}/GuestbookWiringTest.${ext}`;
+          expect(tree.read(test), `missing ${test}`).not.toBeNull();
+        }
+      });
+    }
+  }
+});

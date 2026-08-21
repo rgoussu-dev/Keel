@@ -76,6 +76,7 @@ import {
   PEER_MODULE,
   SKELETON_MODULE,
   gradleProject,
+  jvmAssemblies,
   jvmLayout,
 } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
@@ -145,9 +146,11 @@ const EXTENSION: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotlin:
 
 /**
  * Builds the peer-context adapter for one JVM (framework, language)
- * combination. Both entrypoint shapes are served by the one adapter:
- * the assembly it patches is resolved from the `arch.*` tag, exactly
- * as the layout resolver does everywhere else.
+ * combination. Every entrypoint shape is served by the one adapter:
+ * the assemblies it patches are resolved from the `arch.*` tags,
+ * exactly as the layout resolver does everywhere else — so a stack
+ * composing `arch.cli` and `arch.server-http` gets the peer wired
+ * into *both*, not into whichever one an if/else happened to pick.
  */
 export function jvmPeerContextAdapter(spec: JvmPeerContextSpec): Adapter {
   return {
@@ -178,9 +181,10 @@ export function jvmPeerContextAdapter(spec: JvmPeerContextSpec): Adapter {
       const vars = { basePackage, projectName, pkgPath: packageToPath(basePackage) };
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const layout = jvmLayout(ctx.manifest.tags);
-      const cli = ctx.manifest.tags.includes('arch.cli');
-      const assembly = cli ? layout.cliRuntime : layout.restRuntime;
-      const assemblyPkg = cli ? layout.cliRuntimePkg : layout.restRuntimePkg;
+      const assemblies = jvmAssemblies(ctx.manifest.tags, layout);
+      if (assemblies.length === 0) {
+        throw new Error(`${spec.id}: no assembly in this tag set to wire the peer context into`);
+      }
 
       const trees = [
         `${SOURCE_TEMPLATE_ROOT}/${SOURCE_ROOT[spec.language]}`,
@@ -188,32 +192,42 @@ export function jvmPeerContextAdapter(spec: JvmPeerContextSpec): Adapter {
         `${SOURCE_TEMPLATE_ROOT}/build/${buildSystem}`,
       ];
       // The wiring test lands in the assembly, whose directory and
-      // package are both layout decisions — so it renders under the
+      // package are both layout decisions — so it renders under each
       // resolved assembly rather than at a path of its own.
       const wiring = `${SOURCE_TEMPLATE_ROOT}/wiring/${spec.framework}/${spec.language}`;
       const rendered = await Promise.all([
         ...trees.map((t) => ctx.templates.render(t, '', vars)),
-        ctx.templates.render(wiring, assembly, {
-          ...vars,
-          assemblyPkg,
-          assemblyPkgPath: assemblyPkg.replace(/\./g, '/'),
-        }),
+        ...assemblies.map((a) =>
+          ctx.templates.render(wiring, a.dir, {
+            ...vars,
+            assemblyPkg: a.pkg,
+            assemblyPkgPath: a.pkg.replace(/\./g, '/'),
+          }),
+        ),
       ]);
 
-      const binding: PeerBinding = {
+      const bindings: readonly PeerBinding[] = assemblies.map((a) => ({
         basePackage,
-        assembly,
-        assemblyPkg,
+        assembly: a.dir,
+        assemblyPkg: a.pkg,
         sourceFile: (className) =>
-          `${assembly}/src/main/${SOURCE_ROOT[spec.language]}/${packageToPath(basePackage)}/${assemblyPkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
-      };
+          `${a.dir}/src/main/${SOURCE_ROOT[spec.language]}/${packageToPath(basePackage)}/${a.pkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
+      }));
 
       return {
         files: rendered.flat(),
         patches: [
           buildSystem === 'maven' ? mavenModulesPatch(spec.id) : gradleIncludesPatch(),
-          assemblyDepsPatch(spec.id, buildSystem, basePackage, assembly, layout.mavenArtifact),
-          ...spec.bind(binding),
+          ...bindings.flatMap((binding) => [
+            assemblyDepsPatch(
+              spec.id,
+              buildSystem,
+              basePackage,
+              binding.assembly,
+              layout.mavenArtifact,
+            ),
+            ...spec.bind(binding),
+          ]),
         ],
       };
     },
