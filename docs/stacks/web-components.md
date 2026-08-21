@@ -241,6 +241,10 @@ the same path the import map in `index.html` resolves in a `build`. Re-run
 `<pm> -C design-system run build` after editing the design system to pick the
 change up without restarting the app's dev server.
 
+The `dev` script runs `vite --host`, binding every interface rather than just
+loopback — inside a container or a remote dev environment, `localhost` alone
+is usually invisible to whatever is forwarding the port in from outside.
+
 ## Add next
 
 | Goal              | Command                                    | Notes                                                                                                               |

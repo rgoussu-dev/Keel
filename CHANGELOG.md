@@ -1826,6 +1826,13 @@ ci`/`containerization`/`distribution` on a service follow the same
   straight from the design system's `dist/` while the dev server is
   running, and the root `dev` script now builds the design system
   first so it exists before the app's dev server starts.
+- **The `web-components` `dev` script now binds every interface**
+  (`vite --host`, both layouts), not just loopback. Vite's own default
+  is `localhost`-only, which is invisible to whatever forwards a port
+  in from outside a container or a remote dev environment — from
+  inside, the server looked and behaved correctly; from anywhere that
+  matters for previewing it, it looked like nothing was listening at
+  all.
 
 ## [0.5.0-alpha] — 2026-08-09
 

@@ -140,6 +140,10 @@ output at `/vendor/design-system.{js,css}`. Edit the design system while the
 dev server is running? Re-run `<%= pm %> -C design-system run build` to pick
 the change up; the app doesn't need a restart.
 
+The dev server binds every interface (`vite --host`), not just loopback —
+inside a container or a remote dev environment, `localhost` alone is
+usually invisible to whatever is forwarding the port in from outside.
+
 ## Test
 
 ```sh

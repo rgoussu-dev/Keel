@@ -65,6 +65,10 @@ shadow root), and the design system follows the same convention.
 <%= pm %> run dev        # Vite dev server for application/web-app
 ```
 
+The dev server binds every interface (`vite --host`), not just loopback —
+inside a container or a remote dev environment, `localhost` alone is
+usually invisible to whatever is forwarding the port in from outside.
+
 ## Test
 
 ```sh
