@@ -26,11 +26,11 @@
  * The manifest's `layout.*` tag selects the module layout: under
  * `layout.modulith` every tree above has a `*-modulith` sibling
  * emitting the same walking skeleton carved into `platform/` +
- * `modules/<context>/` + `application/<typology>`, unchanged from
- * before this file composed `arch.cli` + `arch.server-http` under
- * `basic` — the modulith layout still renders one whole-file,
- * per-(framework, arch, language) tree and does not yet compose two
- * entrypoints (roadmap).
+ * `modules/<context>/` + `application/<typology>`, and its root files
+ * are generated the same way by `jvm-shared-root-modulith.ts`. Both
+ * layouts therefore compose two entrypoints onto one hexagon; the
+ * branch below picks *which* trees and *which* root-file generator,
+ * never whether composition is available.
  *
  * One adapter per (framework, arch, language) combination — the
  * resolver picks by predicate (`framework.*` + `arch.*` + `lang.*`),
@@ -42,6 +42,7 @@
 
 import { jvmBuildSystem } from './jvm-build-system.js';
 import { jvmModuleLayout } from './jvm-module-layout.js';
+import { jvmModulithRootPatches } from './jvm-shared-root-modulith.js';
 import { jvmSharedRootPatches, type JvmFramework } from './jvm-shared-root.js';
 import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
 import type {
@@ -131,54 +132,50 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
       };
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const modulith = jvmModuleLayout(ctx.manifest.tags) === 'modulith';
-      const buildRoot = `composition/walking-skeleton/jvm-build${modulith ? '-modulith' : ''}/${buildSystem}`;
+      const suffix = modulith ? '-modulith' : '';
+      const buildRoot = `composition/walking-skeleton/jvm-build${suffix}/${buildSystem}`;
 
-      if (modulith) {
-        // Unmodified pre-existing behavior: the modulith layout keeps
-        // its own per-(framework, arch, language) domain tree and
-        // whole-file root files — composing `arch.cli` +
-        // `arch.server-http` there is roadmap, not shipped.
-        const domainTemplateId = `composition/walking-skeleton/jvm-domain-modulith/${spec.language}-${spec.arch}`;
-        const [domain, app, domainBuild, appBuild] = await Promise.all([
-          ctx.templates.render(domainTemplateId, '', vars),
-          ctx.templates.render(appTemplateId('-modulith'), '', vars),
-          ctx.templates.render(`${buildRoot}/shared`, '', vars),
-          ctx.templates.render(`${buildRoot}/${combo}`, '', vars),
-        ]);
-        return { files: [...domain, ...app, ...domainBuild, ...appBuild] };
-      }
-
-      // Basic layout: the domain tree, the domain modules' build
-      // files, and every shared (non `application/`) path any
-      // rendered tree touches (e.g. Quarkus's CDI `beans.xml`,
-      // `.gitignore`) are identical across every entrypoint of this
-      // (framework, language) pair, so they upsert via a
-      // seed+identity patch instead of a whole-file write — the same
-      // "shared-file upsert" `apply.ts` documents, letting `arch.cli`
-      // and `arch.server-http` both resolve without conflict. Root
-      // files that genuinely differ per entrypoint (module lists,
-      // README sections) upsert too, with an idempotent per-arch
-      // `apply` — see `jvm-shared-root.ts`.
-      const domainTemplateId = `composition/walking-skeleton/jvm-domain/${spec.language}`;
-      const [domain, app, domainBuild, appOwn] = await Promise.all([
-        ctx.templates.render(domainTemplateId, '', vars),
-        ctx.templates.render(appTemplateId(''), '', vars),
-        ctx.templates.render(`${buildRoot}/domain`, '', vars),
+      // The domain tree, the entrypoint-neutral modules' build files,
+      // and every shared (non `application/`) path any rendered tree
+      // touches (e.g. Quarkus's CDI `beans.xml`, `.gitignore`) are
+      // identical across every entrypoint of this (framework,
+      // language) pair, so they upsert via a seed+identity patch
+      // instead of a whole-file write — the same "shared-file upsert"
+      // `apply.ts` documents, letting `arch.cli` and
+      // `arch.server-http` both resolve without conflict. Root files
+      // that genuinely differ per entrypoint (module lists, README
+      // sections) upsert too, with an idempotent per-arch `apply`.
+      //
+      // Under the modulith an entrypoint also owns modules *inside*
+      // the context (`modules/<ctx>/user-side/cli`, `…/api/…`). Those
+      // are single-writer like the assemblies, but upserting them
+      // costs nothing and keeps one rule here: `application/` is
+      // written, everything else upserts.
+      const [domain, app, sharedBuild, appOwn] = await Promise.all([
+        ctx.templates.render(
+          `composition/walking-skeleton/jvm-domain${suffix}/${spec.language}`,
+          '',
+          vars,
+        ),
+        ctx.templates.render(appTemplateId(suffix), '', vars),
+        ctx.templates.render(`${buildRoot}/${modulith ? 'shared' : 'domain'}`, '', vars),
         ctx.templates.render(`${buildRoot}/${combo}`, '', vars),
       ]);
       const [appShared, appFiles] = partitionByApplicationPrefix(app);
+      const [ownShared, ownFiles] = partitionByApplicationPrefix(appOwn);
+      const rootInputs = {
+        framework: spec.framework,
+        arch: spec.arch,
+        language: spec.language,
+        buildSystem,
+        basePackage,
+        projectName,
+      };
       return {
-        files: [...appFiles, ...appOwn],
+        files: [...appFiles, ...ownFiles],
         patches: [
-          ...toUpsertPatches([...domain, ...domainBuild, ...appShared]),
-          ...jvmSharedRootPatches({
-            framework: spec.framework,
-            arch: spec.arch,
-            language: spec.language,
-            buildSystem,
-            basePackage,
-            projectName,
-          }),
+          ...toUpsertPatches([...domain, ...sharedBuild, ...appShared, ...ownShared]),
+          ...(modulith ? jvmModulithRootPatches(rootInputs) : jvmSharedRootPatches(rootInputs)),
         ],
       };
     },

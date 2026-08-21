@@ -570,3 +570,151 @@ describe('the Micronaut modulith reactor on Maven', () => {
     });
   }
 });
+
+/**
+ * A tag set carrying both `arch.cli` and `arch.server-http` resolves
+ * both JVM bootstrap adapters under the modulith too — the same
+ * composable-entrypoint mechanism `jvm-shared-root.ts` gave the basic
+ * layout, ported to this tree shape in
+ * `jvm-shared-root-modulith.ts`. The regression this guards: before
+ * that port, each bootstrap rendered its own whole-file copy of
+ * `settings.gradle.kts` / `pom.xml` / `build.gradle.kts` /
+ * `gradle.properties` / `README.md` with its own module list baked
+ * in, so the second adapter to resolve threw
+ * `ContributionConflictError` on a path the first had created.
+ *
+ * The matrix is every (framework, language, build system) the JVM
+ * bootstraps cover, because the seeds differ along all three axes —
+ * Kotlin moves the Gradle plugins and the Maven reactor block,
+ * Micronaut adds a reactor-root BOM import, and the two build systems
+ * carry the module list in different files.
+ */
+describe('walking-skeleton under layout.modulith (composed cli + server-http)', () => {
+  const read = (tree: FsTree, file: string): string => tree.read(file)?.toString() ?? '';
+
+  const comboTags = (framework: string, lang: string, build: string): string[] => [
+    lang,
+    'runtime.jvm',
+    `pkg.${build}`,
+    `framework.${framework}`,
+    'arch.hexagonal',
+    'arch.cli',
+    'arch.server-http',
+    MODULITH_LAYOUT_TAG,
+  ];
+
+  /** Every module the composed project must register, in build order. */
+  const MODULES = [
+    'platform/kernel',
+    'modules/greeting/domain/contract',
+    'modules/greeting/domain/core',
+    'modules/greeting/user-side/service',
+    'modules/greeting/user-side/cli',
+    'application/cli',
+    'modules/greeting/user-side/api/contract',
+    'modules/greeting/user-side/api/adapters',
+    'application/api',
+  ];
+
+  for (const framework of ['quarkus', 'spring', 'micronaut']) {
+    for (const lang of ['lang.java', 'lang.kotlin']) {
+      const ext = lang === 'lang.java' ? 'java' : 'kt';
+      const src = lang === 'lang.java' ? 'java' : 'kotlin';
+
+      it(`registers both entrypoints once in settings.gradle.kts for ${framework} ${lang}`, async () => {
+        const { tree, cwd } = await install(
+          walkingSkeletonVertical,
+          comboTags(framework, lang, 'gradle'),
+        );
+        cwds.push(cwd);
+
+        const settings = read(tree, 'settings.gradle.kts');
+        for (const module of MODULES) {
+          const include = `include(":${module.split('/').join(':')}")`;
+          expect(settings, `missing ${include}`).toContain(include);
+          // Exactly once: the shared seed is upserted, never re-emitted
+          // whole by the second adapter to resolve.
+          expect(settings.split(include)).toHaveLength(2);
+        }
+      });
+
+      it(`registers both entrypoints once in the reactor pom for ${framework} ${lang}`, async () => {
+        const { tree, cwd } = await install(
+          walkingSkeletonVertical,
+          comboTags(framework, lang, 'maven'),
+        );
+        cwds.push(cwd);
+
+        const root = read(tree, 'pom.xml');
+        for (const module of MODULES) {
+          const entry = `<module>${module}</module>`;
+          expect(root, `missing ${entry}`).toContain(entry);
+          expect(root.split(entry)).toHaveLength(2);
+        }
+      });
+
+      it(`emits both deployment units onto one hexagon for ${framework} ${lang}`, async () => {
+        const { tree, cwd } = await install(
+          walkingSkeletonVertical,
+          comboTags(framework, lang, 'gradle'),
+        );
+        cwds.push(cwd);
+
+        // One context, two driving adapters, two assemblies.
+        for (const file of [
+          `modules/greeting/domain/core/src/main/${src}/com/example/greeting/domain/core/greet/GreetHandler.${ext}`,
+          `modules/greeting/user-side/service/src/main/${src}/com/example/greeting/userside/service/GreetingService.${ext}`,
+          `modules/greeting/user-side/cli/build.gradle.kts`,
+          `modules/greeting/user-side/api/contract/build.gradle.kts`,
+          `modules/greeting/user-side/api/adapters/build.gradle.kts`,
+          `application/cli/build.gradle.kts`,
+          `application/api/build.gradle.kts`,
+        ]) {
+          expect(tree.read(file), `missing ${file}`).not.toBeNull();
+        }
+
+        const readme = read(tree, 'README.md');
+        expect(readme).toContain('### cli');
+        expect(readme).toContain('### rest');
+      });
+
+      it(`unifies the domain on the richer (REST) shape for ${framework} ${lang}`, async () => {
+        // The CLI-only modulith used to ship a handler that never
+        // refused; composing the two would otherwise mean two
+        // different GreetHandlers writing one path.
+        const { tree, cwd } = await install(
+          walkingSkeletonVertical,
+          comboTags(framework, lang, 'gradle'),
+        );
+        cwds.push(cwd);
+
+        const contract = `modules/greeting/domain/contract/src/main/${src}/com/example/greeting/domain/contract/greet`;
+        expect(tree.read(`${contract}/GreetRejected.${ext}`)).not.toBeNull();
+        expect(
+          read(
+            tree,
+            `modules/greeting/domain/core/src/main/${src}/com/example/greeting/domain/core/greet/GreetHandler.${ext}`,
+          ),
+        ).toContain('GreetRejected');
+      });
+    }
+  }
+
+  it('keeps every module archive uniquely named, whichever framework composed it', async () => {
+    // `contract` names two modules once both entrypoints are present
+    // (`domain/contract` and `user-side/api/contract`), and a flat
+    // lib/ layout packs by file name — so under the modulith the
+    // archive rename is unconditional rather than Spring/Micronaut's
+    // concern alone.
+    for (const framework of ['quarkus', 'spring', 'micronaut']) {
+      const { tree, cwd } = await install(
+        walkingSkeletonVertical,
+        comboTags(framework, 'lang.java', 'gradle'),
+      );
+      cwds.push(cwd);
+      expect(read(tree, 'build.gradle.kts'), framework).toContain(
+        `archiveBaseName.set(project.path.removePrefix(":").replace(':', '-'))`,
+      );
+    }
+  });
+});

@@ -24,10 +24,6 @@
       "value": "3.38.2",
       "locations": [
         {
-          "glob": "assets/composition/**/pom.xml*",
-          "pattern": "<quarkus\\.platform\\.version>([^<]+)</quarkus\\.platform\\.version>"
-        },
-        {
           "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<quarkus\\.platform\\.version>([^<]+)</quarkus\\.platform\\.version>"
         },
@@ -49,12 +45,12 @@
     {
       "id": "jvm-quarkus-platform-gradle-properties",
       "family": "jvm",
-      "description": "Quarkus platform version in the Gradle stacks' gradle.properties — has already drifted from its sibling pin (3.34.6); kept as its own entry so the report shows both",
+      "description": "Quarkus platform version in the Gradle stacks' generated gradle.properties (FRAMEWORKS.quarkus.gradleProperties) — has already drifted from its sibling pin (3.34.6); kept as its own entry so the report shows both",
       "value": "3.38.2",
       "locations": [
         {
-          "glob": "assets/composition/walking-skeleton/**/gradle.properties",
-          "pattern": "^quarkus\\.platform\\.version=(\\S+)"
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
+          "pattern": "quarkus\\.platform\\.version=([\\w.-]+)"
         }
       ],
       "check": {
@@ -69,10 +65,6 @@
       "description": "Spring Boot (Maven property, Gradle plugin, Gradle BOM coordinate)",
       "value": "4.1.0",
       "locations": [
-        {
-          "glob": "assets/composition/**/pom.xml*",
-          "pattern": "<spring-boot\\.version>([^<]+)</spring-boot\\.version>"
-        },
         {
           "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<spring-boot\\.version>([^<]+)</spring-boot\\.version>"
@@ -140,10 +132,6 @@
       "value": "2.4.10",
       "locations": [
         {
-          "glob": "assets/composition/**/*.kts*",
-          "pattern": "kotlin\\(\"[\\w.]+\"\\) version \"([\\w.-]+)\""
-        },
-        {
           "glob": "assets/composition/**/pom.xml*",
           "pattern": "<kotlin\\.version>([^<]+)</kotlin\\.version>"
         },
@@ -165,7 +153,7 @@
       "value": "2.3.11",
       "locations": [
         {
-          "glob": "assets/composition/**/*.kts*",
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "id\\(\"com\\.google\\.devtools\\.ksp\"\\) version \"([\\w.-]+)\""
         }
       ],
@@ -193,11 +181,11 @@
     {
       "id": "jvm-foojay-resolver",
       "family": "jvm",
-      "description": "Foojay toolchain resolver convention plugin in settings.gradle.kts",
+      "description": "Foojay toolchain resolver convention plugin in the generated settings.gradle.kts",
       "value": "1.0.0",
       "locations": [
         {
-          "glob": "assets/composition/**/*.kts*",
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "id\\(\"org\\.gradle\\.toolchains\\.foojay-resolver-convention\"\\) version \"([\\w.-]+)\""
         }
       ],
@@ -221,7 +209,7 @@
           "pattern": "<(?:maven\\.compiler\\.release|jdk\\.version|release\\.version)>(\\d+)</"
         },
         {
-          "glob": "assets/composition/**/*.kts*",
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "JavaLanguageVersion\\.of\\((\\d+)\\)"
         },
         {
@@ -350,10 +338,6 @@
       "value": "3.15.0",
       "locations": [
         {
-          "glob": "assets/composition/**/pom.xml*",
-          "pattern": "<artifactId>maven-compiler-plugin</artifactId>\\s*<version>([^<]+)</version>"
-        },
-        {
           "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<artifactId>maven-compiler-plugin</artifactId>\\s*<version>([^<]+)</version>"
         }
@@ -370,10 +354,6 @@
       "description": "Maven Surefire plugin",
       "value": "3.5.6",
       "locations": [
-        {
-          "glob": "assets/composition/**/pom.xml*",
-          "pattern": "<artifactId>maven-surefire-plugin</artifactId>\\s*<version>([^<]+)</version>"
-        },
         {
           "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<artifactId>maven-surefire-plugin</artifactId>\\s*<version>([^<]+)</version>"
@@ -771,12 +751,8 @@
       "value": ">=22.18",
       "locations": [
         {
-          "glob": "assets/composition/walking-skeleton/ts-http-bootstrap/**/package.json.ejs",
-          "pattern": "\"node\": \"(>=[\\d.]+)\""
-        },
-        {
-          "glob": "assets/composition/walking-skeleton/ts-cli-bootstrap/**/package.json.ejs",
-          "pattern": "\"node\": \"(>=[\\d.]+)\""
+          "glob": "src/domain/core/adapters/ts-shared-root.ts",
+          "pattern": "node: '(>=[\\d.]+)'"
         },
         {
           "glob": "assets/composition/walking-skeleton/wc-spa-bootstrap/**/package.json.ejs",
@@ -885,12 +861,16 @@
     {
       "id": "ts-dependency-cruiser",
       "family": "ts",
-      "description": "dependency-cruiser in the modulith ts-http root",
+      "description": "dependency-cruiser in the modulith TypeScript roots — the generated one (ts-shared-root.ts) and the web-components template",
       "value": "^18.1.1",
       "locations": [
         {
           "glob": "assets/composition/**/package.json*",
           "pattern": "\"dependency-cruiser\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/ts-shared-root.ts",
+          "pattern": "DEPENDENCY_CRUISER = '([^']+)'"
         }
       ],
       "check": {
