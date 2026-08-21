@@ -90,7 +90,7 @@ describe('fullstack-ts composite install (monorepo)', () => {
 
   it('writes a product README with the Node run order', () => {
     const readme = read('README.md') ?? '';
-    expect(readme).toContain('npm run dev');
+    expect(readme).toContain('npm run dev:rest');
     expect(readme).toContain('contract/greet.openapi.yaml');
   });
 
