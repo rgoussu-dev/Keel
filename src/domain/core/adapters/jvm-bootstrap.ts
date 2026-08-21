@@ -80,6 +80,34 @@ const ARCH_TAG: Readonly<Record<JvmArch, string>> = {
   rest: 'arch.server-http',
 };
 
+/**
+ * The other entrypoint bootstrap of the same (framework, language)
+ * pair — the adapter this one composes with when a tag set carries
+ * both `arch.cli` and `arch.server-http`.
+ *
+ * Both declare the same two sticky questions, and sticky memory is
+ * keyed **per adapter**: the engine resolves them once per bootstrap,
+ * so on a combo stack `basePackage` / `projectName` are asked twice
+ * and nothing reconciles two different answers. Gradle would quietly
+ * keep whichever bootstrap seeded the root first; Maven cannot read
+ * the reactor at all, because every module's `<parent>` then names an
+ * artifactId the root does not have. So the second bootstrap to
+ * resolve defers to the first's recorded answers — one project, one
+ * name — which is also what makes the two root-file seeds
+ * byte-identical, the precondition the whole upsert rests on.
+ *
+ * Declaring it as {@link Adapter.sharesAnswersWith} rather than
+ * reading it in `contribute` matters: the engine then treats the
+ * sibling's answer as this adapter's sticky memory, so the question
+ * is not asked a second time *and* the value is recorded under this
+ * id too — which is what every downstream adapter reads.
+ */
+function siblingBootstrapId(spec: JvmBootstrapSpec): string {
+  const other: JvmArch = spec.arch === 'cli' ? 'rest' : 'cli';
+  const kotlin = spec.language === 'kotlin' ? '-kotlin' : '';
+  return `walking-skeleton/${spec.framework}-${other}${kotlin}-bootstrap`;
+}
+
 function questions(spec: JvmBootstrapSpec): readonly Question[] {
   const langLabel = spec.language === 'java' ? 'Java' : 'Kotlin';
   return [
@@ -122,6 +150,7 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
       requires: [`framework.${spec.framework}`, ARCH_TAG[spec.arch], `lang.${spec.language}`],
     },
     questions: questions(spec),
+    sharesAnswersWith: [siblingBootstrapId(spec)],
     async contribute(ctx) {
       const basePackage = validateBasePackage(ctx.answer('basePackage').trim(), shortName);
       const projectName = validateProjectName(ctx.answer('projectName').trim(), shortName);

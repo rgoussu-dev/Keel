@@ -29,6 +29,7 @@ import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolch
 import { applyContribution, makeCtx, type ApplyMode, type ApplyResult } from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {
+  Adapter,
   DeferredAction,
   AgenticBundle,
   InstalledVertical,
@@ -81,7 +82,7 @@ export async function installVertical(
   const allTagsAdded = new Set<Tag>();
 
   for (const adapter of ordered) {
-    const stored = running.answers[adapter.id] ?? {};
+    const stored = { ...sharedAnswers(running, adapter), ...(running.answers[adapter.id] ?? {}) };
     const resolution = await resolveAdapterAnswers(adapter, stored, inputs.mode, inputs.prompt);
 
     running = foldAnswers(running, adapter.id, resolution.answers, resolution.updates);
@@ -117,6 +118,20 @@ export async function installVertical(
       actions: collectedActions,
     },
   };
+}
+
+/**
+ * The sticky memory an adapter borrows from its
+ * {@link Adapter.sharesAnswersWith} siblings — earlier entries first,
+ * each overridden by the next, and all of them by the adapter's own
+ * recorded answers at the call site.
+ */
+function sharedAnswers(manifest: ManifestV2, adapter: Adapter): Record<string, string> {
+  const shared: Record<string, string> = {};
+  for (const id of adapter.sharesAnswersWith ?? []) {
+    Object.assign(shared, manifest.answers[id] ?? {});
+  }
+  return shared;
 }
 
 function foldAnswers(

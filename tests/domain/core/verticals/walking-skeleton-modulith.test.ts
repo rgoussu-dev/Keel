@@ -700,6 +700,59 @@ describe('walking-skeleton under layout.modulith (composed cli + server-http)', 
     }
   }
 
+  it('gives the whole reactor one identity when only one bootstrap was answered', async () => {
+    // Both bootstraps declare the same two sticky questions, and
+    // sticky memory is per-adapter — so nothing in the engine
+    // reconciles two answers. Gradle would keep whichever seeded the
+    // root first; Maven cannot read a reactor whose modules parent an
+    // artifactId the root does not have.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-modulith-identity-'));
+    cwds.push(dir);
+    const tree = new FsTree(dir);
+    await installVertical({
+      vertical: walkingSkeletonVertical,
+      manifest: {
+        ...emptyManifestV2('2026-08-14T00:00:00Z', '0.5.0-alpha'),
+        tags: comboTags('quarkus', 'lang.java', 'maven'),
+        answers: {
+          [QUARKUS_CLI_BOOTSTRAP_ID]: { basePackage: 'com.acme', projectName: 'answered-once' },
+        },
+      },
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd: dir,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-14T12:00:00Z',
+    });
+
+    const root = read(tree, 'pom.xml');
+    expect(root).toContain('<groupId>com.acme</groupId>');
+    expect(root).toContain('<artifactId>answered-once</artifactId>');
+    for (const module of MODULES) {
+      const pom = read(tree, `${module}/pom.xml`);
+      // The unanswered bootstrap must not have fallen back to the
+      // question defaults: a module parenting `com.example:
+      // walking-skeleton` names a reactor root that does not exist,
+      // and Maven refuses to read the project at all.
+      expect(pom, `${module} fell back to the default projectName`).not.toContain(
+        'walking-skeleton',
+      );
+      expect(pom, `${module} fell back to the default basePackage`).not.toContain('com.example');
+    }
+
+    // And the answer must be *recorded* under the second bootstrap's
+    // id, not merely used by it: every downstream adapter reads the
+    // manifest, so an unrecorded answer puts their sources under the
+    // default package while the rest of the project sits under the
+    // answered one — which compiles, and then fails to start.
+    const fake =
+      'modules/greeting/infra/clock/fake/src/main/java/com/acme/greeting/infra/clock/fake/FakeClock.java';
+    expect(tree.read(fake), `${fake} — a downstream adapter read a stale answer`).not.toBeNull();
+  });
+
   it('keeps every module archive uniquely named, whichever framework composed it', async () => {
     // `contract` names two modules once both entrypoints are present
     // (`domain/contract` and `user-side/api/contract`), and a flat
