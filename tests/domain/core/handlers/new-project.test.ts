@@ -553,45 +553,28 @@ describe('keel.new-project module-layout selection', () => {
    * This replaced a test that used `rust-cli` as its example of a
    * stack shipping one layout. Roadmap item I is what made that
    * example impossible: with I.4 the fifth and last stack family got
-   * the dial, so no single-arch service stack shipped a single
-   * layout any more — until the composable-entrypoint combo stacks
-   * (`quarkus-cli-rest`, …, `ts-cli-http`) landed, which deliberately
-   * ship `arch.cli` + `arch.server-http` on one hexagon under the
-   * basic layout only: composing two entrypoints under the modulith
-   * is the same "shared root files must upsert instead of
-   * whole-file-write" mechanism `jvm-shared-root.ts` /
-   * `ts-shared-root.ts` already solved for `basic`, not yet ported to
-   * the modulith tree shape (tracked on the roadmap).
-   *
-   * `go-cli-http` / `rust-cli-http` are not in that exemption list:
-   * their entrypoints were already additive under both layouts
-   * (`go-cli-bootstrap` / `rust-cli-bootstrap`'s docs), so those two
-   * combos keep the dial.
+   * the dial, so no single-arch service stack shipped a single layout
+   * any more. The composable-entrypoint combos (`quarkus-cli-rest`,
+   * …, `ts-cli-http`) were the last exemption — they shipped
+   * `arch.cli` + `arch.server-http` on one hexagon under `basic`
+   * only, until the same shared-root upsert mechanism reached the
+   * modulith tree shape. The list is now empty, and that is the
+   * assertion.
    *
    * The branch this guards is kept rather than deleted — a future
    * stack that ships one layout must still reject the flag rather
    * than silently accept one it cannot honour — and this test pins
-   * the invariant as "every service stack offers the dial, except
-   * this named, temporary list" rather than letting it go untested.
+   * the invariant as "every service stack offers the dial" rather
+   * than letting it go untested.
    */
-  it('offers the module-layout dial on every service stack but the named basic-only combos', () => {
-    const singleLayoutCombosOnly = [
-      'quarkus-cli-rest',
-      'quarkus-cli-rest-kotlin',
-      'spring-cli-rest',
-      'spring-cli-rest-kotlin',
-      'micronaut-cli-rest',
-      'micronaut-cli-rest-kotlin',
-      'ts-cli-http',
-    ].sort();
-
+  it('offers the module-layout dial on every service stack', () => {
     const singleLayout = Object.values(STACKS)
       .filter((stack) => stack.services === undefined)
       .filter((stack) => stack.moduleLayouts === undefined)
       .map((stack) => stack.id)
       .sort();
 
-    expect(singleLayout).toEqual(singleLayoutCombosOnly);
+    expect(singleLayout).toEqual([]);
   });
 
   it('rejects --module-layout on composite stacks', async () => {
