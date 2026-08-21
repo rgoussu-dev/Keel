@@ -41,7 +41,7 @@ describe.skipIf(skipJvmCliE2E)('walking-skeleton Spring CLI e2e', () => {
         {
           stack: 'spring-cli',
           bootstrapId: 'walking-skeleton/spring-cli-bootstrap',
-          runJar: ['application', 'cli', 'build', 'libs', 'cli-0.1.0-SNAPSHOT.jar'],
+          runJar: ['application', 'cli', 'build', 'libs', 'application-cli-0.1.0-SNAPSHOT.jar'],
           argv: ['hello', '--name', 'E2E'],
           expectedStdout: 'Hello, E2E!',
         },

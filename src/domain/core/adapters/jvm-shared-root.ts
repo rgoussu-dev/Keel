@@ -222,14 +222,11 @@ function gradleBuildSeed(
     // Archive file names must be unique for the same reason: a boot/
     // shadow jar (and any flat lib/ layout) packs libraries by file
     // name, so domain/contract and application/rest/contract both
-    // producing contract-<version>.jar would collide. Scoped to
-    // "contract" modules specifically — renaming every module here
-    // would change the runnable jar's own name (application/cli's,
-    // application/rest/executable's), which nothing needs disambiguated.
+    // producing contract-<version>.jar would collide — so every
+    // module's archive is named after its full path, matching the
+    // Maven artifactIds these builds already carry.
     tasks.withType<Jar>().configureEach {
-        if (project.name == "contract") {
-            archiveBaseName.set(project.path.removePrefix(":").replace(':', '-'))
-        }
+        archiveBaseName.set(project.path.removePrefix(":").replace(':', '-'))
     }`
     : '';
   return `plugins {
@@ -450,8 +447,8 @@ function gradleReadmeSection(inputs: JvmRootInputs): { arch: JvmRootArch; body: 
       inputs.framework === 'quarkus'
         ? `./gradlew :application:cli:build -Dquarkus.package.type=native`
         : inputs.framework === 'spring'
-          ? `./gradlew build\njava -jar application/cli/build/libs/cli-0.1.0-SNAPSHOT.jar hello --name World`
-          : `./gradlew build\njava -jar application/cli/build/libs/cli-0.1.0-SNAPSHOT-all.jar hello --name World`;
+          ? `./gradlew build\njava -jar application/cli/build/libs/application-cli-0.1.0-SNAPSHOT.jar hello --name World`
+          : `./gradlew build\njava -jar application/cli/build/libs/application-cli-0.1.0-SNAPSHOT-all.jar hello --name World`;
     const buildHeading = inputs.framework === 'quarkus' ? 'Build a native binary' : 'Build';
     return {
       arch: 'cli',
