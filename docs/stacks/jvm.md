@@ -1,19 +1,26 @@
 # JVM stacks — Quarkus, Spring Boot, Micronaut
 
-Twelve stacks share this page: three frameworks × two shapes × two
-languages. The domain trisection is **byte-for-byte identical across
-the three frameworks per language** — only the application layer and
-the build wiring change.
+Eighteen stacks share this page: three frameworks × three shapes ×
+two languages. The domain trisection is **byte-for-byte identical
+across the three frameworks per language** — only the application
+layer and the build wiring change.
 
-| Framework     | CLI (Java)      | REST (Java)      | CLI (Kotlin)           | REST (Kotlin)           |
-| ------------- | --------------- | ---------------- | ---------------------- | ----------------------- |
-| Quarkus 3     | `quarkus-cli`   | `quarkus-rest`   | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   |
-| Spring Boot 4 | `spring-cli`    | `spring-rest`    | `spring-cli-kotlin`    | `spring-rest-kotlin`    |
-| Micronaut 4   | `micronaut-cli` | `micronaut-rest` | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` |
+| Framework     | CLI (Java)      | REST (Java)      | CLI+REST (Java)      | CLI (Kotlin)           | REST (Kotlin)           | CLI+REST (Kotlin)           |
+| ------------- | --------------- | ---------------- | -------------------- | ---------------------- | ----------------------- | --------------------------- |
+| Quarkus 3     | `quarkus-cli`   | `quarkus-rest`   | `quarkus-cli-rest`   | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | `quarkus-cli-rest-kotlin`   |
+| Spring Boot 4 | `spring-cli`    | `spring-rest`    | `spring-cli-rest`    | `spring-cli-kotlin`    | `spring-rest-kotlin`    | `spring-cli-rest-kotlin`    |
+| Micronaut 4   | `micronaut-cli` | `micronaut-rest` | `micronaut-cli-rest` | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` |
+
+The `CLI+REST` columns are the six stacks that compose `arch.cli` and
+`arch.server-http` onto one hexagon — one shared domain, both
+deployment units (see `jvm-shared-root.ts`) — and, for now, ship under
+`basic` only; composing under `modulith` is on the
+[roadmap](../roadmap.md).
 
 All target **Java 25** (Kotlin twins on JVM 25), build with **Gradle
 or Maven**, and scaffold on either **module layout** — `basic` (the
-flat trisection) or `modulith`. Both are your pick.
+flat trisection) or `modulith` — except the six `*-cli-rest*` stacks,
+which are `basic` only for now.
 
 ### A second bounded context
 
@@ -70,6 +77,7 @@ npx @rgoussu.dev/keel new --stack=quarkus-rest              # interactive
 npx @rgoussu.dev/keel new --stack=spring-rest --build-system maven
 npx @rgoussu.dev/keel new --stack=micronaut-cli-kotlin --yes
 npx @rgoussu.dev/keel new --stack=quarkus-rest --module-layout modulith
+npx @rgoussu.dev/keel new --stack=quarkus-cli-rest             # both entrypoints, one hexagon
 ```
 
 ## Prerequisites

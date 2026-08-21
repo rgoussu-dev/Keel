@@ -40,7 +40,7 @@ describe.skipIf(skipJvmCliE2E)('walking-skeleton Micronaut CLI e2e', () => {
         {
           stack: 'micronaut-cli',
           bootstrapId: 'walking-skeleton/micronaut-cli-bootstrap',
-          runJar: ['application', 'cli', 'build', 'libs', 'cli-0.1.0-SNAPSHOT-all.jar'],
+          runJar: ['application', 'cli', 'build', 'libs', 'application-cli-0.1.0-SNAPSHOT-all.jar'],
           argv: ['hello', '--name', 'E2E'],
           expectedStdout: 'Hello, E2E!',
         },

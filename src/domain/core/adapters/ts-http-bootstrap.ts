@@ -19,6 +19,7 @@ import {
   TS_BOOTSTRAP_QUESTIONS,
   TS_HTTP_BOOTSTRAP_ID,
 } from './ts-bootstrap.js';
+import { tsEntrypointContribution } from './ts-shared-root.js';
 
 export { TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';
 
@@ -37,6 +38,11 @@ export const tsHttpBootstrapAdapter: Adapter = {
       '',
       shell.vars,
     );
-    return { files: [...shell.files, ...own] };
+    return tsEntrypointContribution({
+      arch: 'rest',
+      projectName: shell.projectName,
+      shell,
+      own,
+    });
   },
 };

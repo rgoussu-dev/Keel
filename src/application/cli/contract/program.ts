@@ -26,16 +26,28 @@ import {
   type UnresolvedPrefix,
 } from '../../../domain/toolchain/contract/commands.js';
 
+/** One `keel new --list` entry: a stack id + its one-line description. */
+export interface StackOption {
+  readonly id: string;
+  readonly description: string;
+}
+
+/** One `keel add --list` entry: a vertical id + its one-line description. */
+export interface VerticalOption {
+  readonly id: string;
+  readonly description: string;
+}
+
 /** What the composition root wires into the CLI adapter. */
 export interface CliDeps {
   readonly mediator: Mediator;
   readonly logger: Logger;
   /** Version string shown by `keel --version`. */
   readonly version: string;
-  /** Stack ids listed in `keel new`'s help text. */
-  readonly availableStacks: readonly string[];
-  /** Vertical ids listed in `keel add`'s help text. */
-  readonly availableVerticals: readonly string[];
+  /** Stacks listed in `keel new`'s help text and `keel new --list`. */
+  readonly availableStacks: readonly StackOption[];
+  /** Verticals listed in `keel add`'s help text and `keel add --list`. */
+  readonly availableVerticals: readonly VerticalOption[];
   /** Working directory commands run against; defaults to `process.cwd()`. */
   readonly cwd?: () => string;
 }
@@ -65,11 +77,12 @@ export function buildProgram(deps: CliDeps): Command {
   program
     .command('new')
     .description(
-      `Bootstrap a greenfield project from a stack preset (available: ${deps.availableStacks.join(', ')}).`,
+      `Bootstrap a greenfield project from a stack preset (available: ${deps.availableStacks.map((s) => s.id).join(', ')}).`,
     )
     .option('-s, --stack <id>', 'stack preset id', 'quarkus-cli')
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
+    .option('--list', 'list available stacks with their descriptions, then exit', false)
     .option(
       '--layout <layout>',
       "repository layout for composite stacks: 'monorepo' or 'polyrepo' (prompted when omitted)",
@@ -97,12 +110,17 @@ export function buildProgram(deps: CliDeps): Command {
         stack: string;
         yes: boolean;
         dryRun: boolean;
+        list: boolean;
         layout?: string;
         buildSystem?: string;
         moduleLayout?: string;
         withPeerContext: boolean;
         set: string[];
       }): Promise<void> => {
+        if (opts.list) {
+          printOptionList('Available stacks', deps.availableStacks, deps.logger);
+          return;
+        }
         const dir = cwd();
         const result = await deps.mediator.dispatch(
           newProjectCommand({
@@ -125,12 +143,13 @@ export function buildProgram(deps: CliDeps): Command {
     );
 
   program
-    .command('add <target> [name]')
+    .command('add [target] [name]')
     .description(
-      `Install a vertical onto an existing keel project (available: ${deps.availableVerticals.join(', ')}), or add a bounded context with 'keel add module <name>'.`,
+      `Install a vertical onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}), or add a bounded context with 'keel add module <name>'.`,
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
+    .option('--list', 'list available verticals with their descriptions, then exit', false)
     .option(
       '--reapply',
       're-render an already-installed vertical from its recorded answers, showing a diff against the working tree; refuses on conflict',
@@ -147,10 +166,26 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .action(
       async (
-        target: string,
+        target: string | undefined,
         name: string | undefined,
-        opts: { yes: boolean; dryRun: boolean; reapply: boolean; consumes?: string; set: string[] },
+        opts: {
+          yes: boolean;
+          dryRun: boolean;
+          list: boolean;
+          reapply: boolean;
+          consumes?: string;
+          set: string[];
+        },
       ): Promise<void> => {
+        if (opts.list) {
+          printOptionList('Available verticals', deps.availableVerticals, deps.logger);
+          return;
+        }
+        if (target === undefined) {
+          throw new Error(
+            "keel add: missing target — pass a vertical id, 'module <name>', or --list",
+          );
+        }
         if (target === MODULE_TARGET && opts.reapply) {
           throw new Error("--reapply applies to verticals; 'keel add module' does not support it");
         }
@@ -317,6 +352,19 @@ function printUnresolved(unresolved: readonly UnresolvedPrefix[], log: Logger): 
 
 function formatTags(tags: readonly string[]): string {
   return tags.length > 0 ? tags.join(', ') : '(none)';
+}
+
+/** Renders `--list` output for `keel new`/`keel add`: one id + description per line. */
+function printOptionList(
+  header: string,
+  options: readonly { readonly id: string; readonly description: string }[],
+  log: Logger,
+): void {
+  log.info(`${header}:`);
+  const width = Math.max(...options.map((o) => o.id.length));
+  for (const option of options) {
+    log.info(`  ${option.id.padEnd(width)}  ${option.description}`);
+  }
 }
 
 /**

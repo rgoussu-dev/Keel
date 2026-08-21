@@ -197,3 +197,31 @@ describe.each([
     expect(adapters.map((a) => a.id)).toContain(id);
   });
 });
+
+/**
+ * The Kotlin half of `walking-skeleton.test.ts`'s combined-arch
+ * coverage — Kotlin's root `build.gradle.kts` needs the `kotlin("jvm")`
+ * base plugin plus a framework-specific one (`plugin.allopen` for
+ * Quarkus), and the composable-entrypoint seed used to omit the base
+ * plugin, a regression only a real Gradle configure phase (not a
+ * string-contains check on its own) would have caught — see
+ * `jvm-shared-root.ts`.
+ */
+describe('walking-skeleton vertical (Quarkus Kotlin, composed cli + server-http)', () => {
+  it('emits the Kotlin plugin block once on the shared root build file', async () => {
+    const { tree, cwd } = await installWith(kotlinTags('quarkus', 'arch.cli', 'arch.server-http'));
+    cwds.push(cwd);
+
+    expect(tree.read('application/cli/build.gradle.kts')).not.toBeNull();
+    expect(tree.read('application/rest/executable/build.gradle.kts')).not.toBeNull();
+
+    const root = tree.read('build.gradle.kts')?.toString() ?? '';
+    expect(root).toContain('kotlin("jvm") version');
+    expect(root).toContain('kotlin("plugin.allopen") version');
+    expect(root.match(/kotlin\("jvm"\) version/g)).toHaveLength(1);
+
+    const settings = tree.read('settings.gradle.kts')?.toString() ?? '';
+    expect(settings).toContain('include(":application:cli")');
+    expect(settings).toContain('include(":application:rest:executable")');
+  });
+});

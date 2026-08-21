@@ -8,6 +8,35 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Composable entrypoints — `arch.cli` + `arch.server-http` on one
+  hexagon.** Go and Rust already shipped both a CLI and an HTTP
+  deployment unit on the same tag set; the JVM and TypeScript stacks
+  now do too, via nine new stack presets: `quarkus-cli-rest`,
+  `quarkus-cli-rest-kotlin`, `spring-cli-rest`,
+  `spring-cli-rest-kotlin`, `micronaut-cli-rest`,
+  `micronaut-cli-rest-kotlin`, `go-cli-http`, `rust-cli-http`,
+  `ts-cli-http`. One shared domain, both deployment units — the shared
+  root files (`settings.gradle.kts`/`pom.xml`, `build.gradle.kts`,
+  `gradle.properties`, root `package.json`, `README.md`) upsert
+  instead of each entrypoint writing its own whole-file copy
+  (`jvm-shared-root.ts`, `ts-shared-root.ts` — the same "shared-file
+  upsert" pattern `go-cli-bootstrap` already used for its README
+  section). Ships under the `basic` module layout only for now;
+  composing under `modulith` is on the roadmap.
+  - The JVM domain templates (`jvm-domain/java`, `jvm-domain/kotlin`)
+    unify on the richer REST shape (the `GreetRejected` validation
+    path), so the CLI entrypoint of every combo — and of every
+    existing `*-cli` stack — now demonstrates the same domain-error
+    mapping the REST entrypoint always did.
+  - The TypeScript root `package.json` now names each entrypoint's
+    scripts explicitly rather than a bare `start`/`dev` —
+    `start:cli`, `start:rest`, `dev:rest` — on every `ts-cli`,
+    `ts-http`, and `ts-cli-http` scaffold, so the same names work
+    whichever stack (or both) you picked.
+- **`keel new --list` / `keel add --list`.** Prints every stack (or
+  vertical) id with its one-line description, then exits — nothing is
+  scaffolded. `keel add --list` needs no existing project.
+
 - **`code-style` — the layout contract, wired so nobody configures
   it.** A new vertical installed by every stack (and addable with
   `keel add code-style`), closing a gap where scaffolded projects

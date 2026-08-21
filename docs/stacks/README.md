@@ -12,22 +12,27 @@ they spare you naming every tag and vertical by hand, nothing more.
 
 ## The matrix
 
-| Language / framework   | CLI                    | HTTP service            | SPA              | Fullstack product     | Docs                                |
-| ---------------------- | ---------------------- | ----------------------- | ---------------- | --------------------- | ----------------------------------- |
-| Java · Quarkus 3       | `quarkus-cli`          | `quarkus-rest`          | —                | `fullstack`           | [JVM](jvm.md)                       |
-| Kotlin · Quarkus 3     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | —                | —                     | [JVM](jvm.md)                       |
-| Java · Spring Boot 4   | `spring-cli`           | `spring-rest`           | —                | `fullstack-spring`    | [JVM](jvm.md)                       |
-| Kotlin · Spring Boot 4 | `spring-cli-kotlin`    | `spring-rest-kotlin`    | —                | —                     | [JVM](jvm.md)                       |
-| Java · Micronaut 4     | `micronaut-cli`        | `micronaut-rest`        | —                | `fullstack-micronaut` | [JVM](jvm.md)                       |
-| Kotlin · Micronaut 4   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | —                | —                     | [JVM](jvm.md)                       |
-| Go · stdlib            | `go-cli`               | `go-http`               | —                | `fullstack-go`        | [Go](go.md)                         |
-| Rust · stdlib / axum   | `rust-cli`             | `rust-http`             | —                | `fullstack-rust`      | [Rust](rust.md)                     |
-| TypeScript · Node      | `ts-cli`               | `ts-http`               | —                | `fullstack-ts`        | [TypeScript](ts-http.md)            |
-| TypeScript · web comps | —                      | —                       | `web-components` | frontend of all       | [web-components](web-components.md) |
+| Language / framework   | CLI                    | HTTP service            | CLI + HTTP                  | SPA              | Fullstack product     | Docs                                |
+| ---------------------- | ---------------------- | ----------------------- | --------------------------- | ---------------- | --------------------- | ----------------------------------- |
+| Java · Quarkus 3       | `quarkus-cli`          | `quarkus-rest`          | `quarkus-cli-rest`          | —                | `fullstack`           | [JVM](jvm.md)                       |
+| Kotlin · Quarkus 3     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | `quarkus-cli-rest-kotlin`   | —                | —                     | [JVM](jvm.md)                       |
+| Java · Spring Boot 4   | `spring-cli`           | `spring-rest`           | `spring-cli-rest`           | —                | `fullstack-spring`    | [JVM](jvm.md)                       |
+| Kotlin · Spring Boot 4 | `spring-cli-kotlin`    | `spring-rest-kotlin`    | `spring-cli-rest-kotlin`    | —                | —                     | [JVM](jvm.md)                       |
+| Java · Micronaut 4     | `micronaut-cli`        | `micronaut-rest`        | `micronaut-cli-rest`        | —                | `fullstack-micronaut` | [JVM](jvm.md)                       |
+| Kotlin · Micronaut 4   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` | —                | —                     | [JVM](jvm.md)                       |
+| Go · stdlib            | `go-cli`               | `go-http`               | `go-cli-http`               | —                | `fullstack-go`        | [Go](go.md)                         |
+| Rust · stdlib / axum   | `rust-cli`             | `rust-http`             | `rust-cli-http`             | —                | `fullstack-rust`      | [Rust](rust.md)                     |
+| TypeScript · Node      | `ts-cli`               | `ts-http`               | `ts-cli-http`               | —                | `fullstack-ts`        | [TypeScript](ts-http.md)            |
+| TypeScript · web comps | —                      | —                       | —                           | `web-components` | frontend of all       | [web-components](web-components.md) |
 
 The domain trisection is byte-for-byte identical across frameworks per
 language — only the application layer and build wiring change. **The
 conventions, not the framework, are the product.**
+
+The **CLI + HTTP** column composes both entrypoints onto one hexagon
+instead of picking between them — the same domain, two ways in. It
+ships under the `basic` module layout only for now; composing under
+`modulith` is on the [roadmap](../roadmap.md).
 
 ## Module layout
 

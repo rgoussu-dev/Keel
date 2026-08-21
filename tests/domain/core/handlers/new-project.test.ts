@@ -550,27 +550,48 @@ describe('keel.new-project module-layout selection', () => {
   });
 
   /**
-   * This replaces a test that used `rust-cli` as its example of a
+   * This replaced a test that used `rust-cli` as its example of a
    * stack shipping one layout. Roadmap item I is what made that
    * example impossible: with I.4 the fifth and last stack family got
-   * the dial, so **no service stack ships a single layout any more**
-   * and the `single module layout` branch in `new-project` is no
-   * longer reachable through any real stack.
+   * the dial, so no single-arch service stack shipped a single
+   * layout any more — until the composable-entrypoint combo stacks
+   * (`quarkus-cli-rest`, …, `ts-cli-http`) landed, which deliberately
+   * ship `arch.cli` + `arch.server-http` on one hexagon under the
+   * basic layout only: composing two entrypoints under the modulith
+   * is the same "shared root files must upsert instead of
+   * whole-file-write" mechanism `jvm-shared-root.ts` /
+   * `ts-shared-root.ts` already solved for `basic`, not yet ported to
+   * the modulith tree shape (tracked on the roadmap).
    *
-   * The branch is kept rather than deleted — a future stack that
-   * ships one layout must still reject the flag rather than silently
-   * accept one it cannot honour — but a test pinning it would have to
-   * invent a stack to do so. What is worth pinning instead is the
-   * invariant item I actually establishes, which is this one, and
-   * which would otherwise be asserted nowhere.
+   * `go-cli-http` / `rust-cli-http` are not in that exemption list:
+   * their entrypoints were already additive under both layouts
+   * (`go-cli-bootstrap` / `rust-cli-bootstrap`'s docs), so those two
+   * combos keep the dial.
+   *
+   * The branch this guards is kept rather than deleted — a future
+   * stack that ships one layout must still reject the flag rather
+   * than silently accept one it cannot honour — and this test pins
+   * the invariant as "every service stack offers the dial, except
+   * this named, temporary list" rather than letting it go untested.
    */
-  it('offers the module-layout dial on every service stack', () => {
+  it('offers the module-layout dial on every service stack but the named basic-only combos', () => {
+    const singleLayoutCombosOnly = [
+      'quarkus-cli-rest',
+      'quarkus-cli-rest-kotlin',
+      'spring-cli-rest',
+      'spring-cli-rest-kotlin',
+      'micronaut-cli-rest',
+      'micronaut-cli-rest-kotlin',
+      'ts-cli-http',
+    ].sort();
+
     const singleLayout = Object.values(STACKS)
       .filter((stack) => stack.services === undefined)
       .filter((stack) => stack.moduleLayouts === undefined)
-      .map((stack) => stack.id);
+      .map((stack) => stack.id)
+      .sort();
 
-    expect(singleLayout).toEqual([]);
+    expect(singleLayout).toEqual(singleLayoutCombosOnly);
   });
 
   it('rejects --module-layout on composite stacks', async () => {
@@ -628,6 +649,13 @@ describe('keel.new-project peer-context selection', () => {
    * where it scaffolds a second context, and rejected everywhere
    * else — never accepted in silence.
    *
+   * `keel.invalid-module-layout` counts as rejected too: the
+   * basic-only composable-entrypoint combo stacks (see the
+   * module-layout dial test above) refuse `--module-layout modulith`
+   * itself before peer-context resolution is ever reached, which is
+   * a more fundamental "no" than "no peer-context adapter" but not a
+   * silent accept.
+   *
    * Deliberately not written against a named unsupported stack. That
    * is what the first version did, and it went stale in the same
    * commit that gave Go its adapter.
@@ -640,7 +668,8 @@ describe('keel.new-project peer-context selection', () => {
         ? result.value.changes.some((change) => change.path.includes('guestbook'))
           ? 'scaffolded'
           : 'accepted in silence'
-        : result.error.code === 'keel.invalid-peer-context'
+        : result.error.code === 'keel.invalid-peer-context' ||
+            result.error.code === 'keel.invalid-module-layout'
           ? 'rejected'
           : `failed with ${result.error.code}`;
     }

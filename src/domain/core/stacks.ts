@@ -181,6 +181,52 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     projects: ['peer.api.rest'],
   },
+  'quarkus-cli-rest': {
+    id: 'quarkus-cli-rest',
+    description:
+      'Quarkus 3 CLI + REST service (Java 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
+  'quarkus-cli-rest-kotlin': {
+    id: 'quarkus-cli-rest-kotlin',
+    description:
+      'Quarkus 3 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+    tags: [
+      'lang.kotlin',
+      'runtime.jvm',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
   'spring-cli': {
     id: 'spring-cli',
     description: 'Spring Boot 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
@@ -219,6 +265,52 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
+  'spring-cli-rest': {
+    id: 'spring-cli-rest',
+    description:
+      'Spring Boot 4 CLI + REST service (Java 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'framework.spring',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
+  'spring-cli-rest-kotlin': {
+    id: 'spring-cli-rest-kotlin',
+    description:
+      'Spring Boot 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+    tags: [
+      'lang.kotlin',
+      'runtime.jvm',
+      'framework.spring',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -283,6 +375,52 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     projects: ['peer.api.rest'],
   },
+  'micronaut-cli-rest': {
+    id: 'micronaut-cli-rest',
+    description:
+      'Micronaut 4 CLI + REST service (Java 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+    tags: [
+      'lang.java',
+      'runtime.jvm',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
+  'micronaut-cli-rest-kotlin': {
+    id: 'micronaut-cli-rest-kotlin',
+    description:
+      'Micronaut 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+    tags: [
+      'lang.kotlin',
+      'runtime.jvm',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ],
+    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
   'go-cli': {
     id: 'go-cli',
     description: 'Go CLI on the stdlib, hexagonal layout, no mediator object.',
@@ -294,6 +432,22 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     id: 'go-http',
     description: 'Go HTTP service on stdlib net/http, hexagonal layout, no mediator object.',
     tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
+    moduleLayouts: MODULE_LAYOUTS,
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
+  'go-cli-http': {
+    id: 'go-cli-http',
+    description:
+      'Go CLI + HTTP service on the stdlib, one shared module with both entrypoints, hexagonal layout, no mediator object.',
+    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
     moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
@@ -327,6 +481,22 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     ],
     projects: ['peer.api.rest'],
   },
+  'rust-cli-http': {
+    id: 'rust-cli-http',
+    description:
+      'Rust CLI + HTTP service on axum + tokio, one shared package with both entrypoints, hexagonal layout, no mediator object.',
+    tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
+    moduleLayouts: MODULE_LAYOUTS,
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
   'ts-cli': {
     id: 'ts-cli',
     description:
@@ -343,6 +513,22 @@ export const STACKS: Readonly<Record<string, Stack>> = {
     tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
     moduleLayouts: MODULE_LAYOUTS,
+    verticals: [
+      vcsVertical,
+      walkingSkeletonVertical,
+      codeStyleVertical,
+      devEnvVertical,
+      observabilityVertical,
+      devContainerVertical,
+    ],
+    projects: ['peer.api.rest'],
+  },
+  'ts-cli-http': {
+    id: 'ts-cli-http',
+    description:
+      'TypeScript CLI + HTTP service on Node (22.18+ runs the sources directly), one shared workspace with both entrypoints, basic module layout, registry mediator; npm or pnpm.',
+    tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
+    buildSystems: [NPM_BUILD, PNPM_BUILD],
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -445,4 +631,18 @@ export function getStack(id: string): Stack | null {
 /** Lists the available stack ids in deterministic order. */
 export function listStackIds(): readonly string[] {
   return Object.keys(STACKS).sort();
+}
+
+/** One stack's id + description, for `keel new --list`. */
+export interface StackSummary {
+  readonly id: string;
+  readonly description: string;
+}
+
+/** Lists every registered stack's id + description, in deterministic order. */
+export function listStacks(): readonly StackSummary[] {
+  return listStackIds().map((id) => {
+    const stack = STACKS[id];
+    return { id, description: stack?.description ?? '' };
+  });
 }

@@ -58,9 +58,15 @@ Highlights that hold everywhere:
   emits one hexagon per bounded context under `modules/` composed by
   `application/<typology>` assemblies. Same adapters, same answers —
   a different shape. → [Module layout](../stacks/jvm.md#module-layout)
-- Go and Rust entrypoints **compose** — a tag set carrying both
-  `arch.cli` and `arch.server-http` ships both deployment units on one
-  module/package.
+- Entrypoints **compose** — a tag set carrying both `arch.cli` and
+  `arch.server-http` ships both deployment units on one hexagon,
+  across every family: Go and Rust always did (one module/package,
+  no change needed), and the JVM and TypeScript stacks now do too
+  (`quarkus-cli-rest`, …, `ts-cli-http` — see the [stack
+  catalog](../stacks/README.md#the-matrix)), sharing one domain and
+  upserting the root build files instead of writing them whole. Ships
+  under the `basic` module layout only for now; `modulith` composition
+  is on the [roadmap](../roadmap.md).
 - Build wrappers are **generated, never committed as binaries** (the
   build tool must be on PATH at scaffold time).
 - TypeScript workspaces have their dependencies **installed at

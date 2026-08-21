@@ -202,3 +202,34 @@ describe('walking-skeleton vertical (Maven, Kotlin combos)', () => {
     ).not.toBeNull();
   });
 });
+
+/**
+ * A tag set carrying both `arch.cli` and `arch.server-http` resolves
+ * both Maven bootstrap adapters onto one root `pom.xml` — the Maven
+ * half of `walking-skeleton.test.ts`'s Gradle combined-arch coverage.
+ */
+describe('walking-skeleton vertical (Maven, composed cli + server-http)', () => {
+  it('lists every entrypoint module on the one root pom', async () => {
+    const { tree, cwd } = await installWith([
+      'lang.java',
+      'runtime.jvm',
+      'pkg.maven',
+      'framework.quarkus',
+      'arch.hexagonal',
+      'arch.cli',
+      'arch.server-http',
+    ]);
+    cwds.push(cwd);
+
+    expect(tree.read('application/cli/pom.xml')).not.toBeNull();
+    expect(tree.read('application/rest/contract/pom.xml')).not.toBeNull();
+    expect(tree.read('application/rest/executable/pom.xml')).not.toBeNull();
+
+    const rootPom = tree.read('pom.xml')?.toString() ?? '';
+    expect(rootPom).toContain('<module>domain/kernel</module>');
+    expect(rootPom).toContain('<module>application/cli</module>');
+    expect(rootPom).toContain('<module>application/rest/contract</module>');
+    expect(rootPom).toContain('<module>application/rest/executable</module>');
+    expect(rootPom.match(/<module>domain\/kernel<\/module>/g)).toHaveLength(1);
+  });
+});

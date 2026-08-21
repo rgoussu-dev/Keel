@@ -225,3 +225,34 @@ describe('walking-skeleton vertical (TypeScript CLI, modulith)', () => {
     expect(manifest).toContain('"@acme/guestbook"');
   });
 });
+
+/**
+ * A tag set carrying both `arch.cli` and `arch.server-http` resolves
+ * both TS bootstrap adapters onto one shared workspace — the
+ * `ts-shared-root.ts` mechanism. The regression this guards: before
+ * it, both bootstraps called `renderTsWorkspaceShell` and rendered
+ * their own whole-file root `package.json` and `README.md`, so the
+ * second adapter's `files` write conflicted on both.
+ */
+describe('walking-skeleton vertical (TypeScript, composed cli + server-http)', () => {
+  it('renders both deployment units onto one root package.json and README', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.server-http'));
+    cwds.push(cwd);
+
+    expect(tree.read('application/cli/src/main.ts')).not.toBeNull();
+    expect(tree.read('application/rest/src/main.ts')).not.toBeNull();
+
+    const pkg = JSON.parse(tree.read('package.json')?.toString() ?? '{}') as {
+      workspaces?: string[];
+      scripts?: Record<string, string>;
+    };
+    expect(pkg.workspaces).toEqual(['domain/*', 'application/*', 'infrastructure/*']);
+    expect(pkg.scripts?.['start:cli']).toBe('node application/cli/src/main.ts');
+    expect(pkg.scripts?.['start:rest']).toBe('node application/rest/src/main.ts');
+    expect(pkg.scripts?.['dev:rest']).toBe('node --watch application/rest/src/main.ts');
+
+    const readme = tree.read('README.md')?.toString() ?? '';
+    expect(readme).toContain('### cli');
+    expect(readme).toContain('### rest');
+  });
+});
