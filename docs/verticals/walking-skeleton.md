@@ -64,9 +64,11 @@ Highlights that hold everywhere:
   no change needed), and the JVM and TypeScript stacks now do too
   (`quarkus-cli-rest`, …, `ts-cli-http` — see the [stack
   catalog](../stacks/README.md#the-matrix)), sharing one domain and
-  upserting the root build files instead of writing them whole. Ships
-  under the `basic` module layout only for now; `modulith` composition
-  is on the [roadmap](../roadmap.md).
+  upserting the root build files instead of writing them whole. This
+  holds under **both** module layouts: under the modulith an
+  entrypoint contributes its driving adapter inside the bounded
+  context as well as its assembly, and the seeded root files carry
+  both.
 - Build wrappers are **generated, never committed as binaries** (the
   build tool must be on PATH at scaffold time).
 - TypeScript workspaces have their dependencies **installed at
