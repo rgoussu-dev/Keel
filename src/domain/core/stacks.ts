@@ -184,7 +184,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'quarkus-cli-rest': {
     id: 'quarkus-cli-rest',
     description:
-      'Quarkus 3 CLI + REST service (Java 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+      'Quarkus 3 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
     tags: [
       'lang.java',
       'runtime.jvm',
@@ -194,6 +194,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -207,7 +208,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'quarkus-cli-rest-kotlin': {
     id: 'quarkus-cli-rest-kotlin',
     description:
-      'Quarkus 3 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+      'Quarkus 3 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
     tags: [
       'lang.kotlin',
       'runtime.jvm',
@@ -217,6 +218,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -278,7 +280,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'spring-cli-rest': {
     id: 'spring-cli-rest',
     description:
-      'Spring Boot 4 CLI + REST service (Java 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+      'Spring Boot 4 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
     tags: [
       'lang.java',
       'runtime.jvm',
@@ -288,6 +290,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -301,7 +304,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'spring-cli-rest-kotlin': {
     id: 'spring-cli-rest-kotlin',
     description:
-      'Spring Boot 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+      'Spring Boot 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
     tags: [
       'lang.kotlin',
       'runtime.jvm',
@@ -311,6 +314,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -378,7 +382,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'micronaut-cli-rest': {
     id: 'micronaut-cli-rest',
     description:
-      'Micronaut 4 CLI + REST service (Java 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+      'Micronaut 4 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
     tags: [
       'lang.java',
       'runtime.jvm',
@@ -388,6 +392,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -401,7 +406,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'micronaut-cli-rest-kotlin': {
     id: 'micronaut-cli-rest-kotlin',
     description:
-      'Micronaut 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints, basic module layout; Gradle or Maven.',
+      'Micronaut 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
     tags: [
       'lang.kotlin',
       'runtime.jvm',
@@ -411,6 +416,7 @@ export const STACKS: Readonly<Record<string, Stack>> = {
       'arch.server-http',
     ],
     buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
@@ -526,9 +532,10 @@ export const STACKS: Readonly<Record<string, Stack>> = {
   'ts-cli-http': {
     id: 'ts-cli-http',
     description:
-      'TypeScript CLI + HTTP service on Node (22.18+ runs the sources directly), one shared workspace with both entrypoints, basic module layout, registry mediator; npm or pnpm.',
+      'TypeScript CLI + HTTP service on Node (22.18+ runs the sources directly), one shared workspace with both entrypoints, registry mediator; npm or pnpm; basic or modulith layout.',
     tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
     buildSystems: [NPM_BUILD, PNPM_BUILD],
+    moduleLayouts: MODULE_LAYOUTS,
     verticals: [
       vcsVertical,
       walkingSkeletonVertical,
