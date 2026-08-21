@@ -13,6 +13,7 @@ import {
   ciProvider,
   providerTag,
   ciFormatCheck,
+  ciLintCheck,
 } from './ci-pipeline.js';
 
 export const RUST_PIPELINE_ID = 'ci/rust-pipeline';
@@ -27,6 +28,7 @@ export const rustPipelineAdapter: Adapter = {
     const provider = ciProvider(ctx.answer('provider'), RUST_PIPELINE_ID);
     const files = await ctx.templates.render(ciTemplateId('rust-pipeline', provider), '', {
       formatCheck: ciFormatCheck(ctx.manifest.tags),
+      lintCheck: ciLintCheck(ctx.manifest.tags),
     });
     return { files, tagsAdd: [providerTag(provider)] };
   },

@@ -34,6 +34,24 @@
  * tree clean **by construction** instead, at the cost of one extra
  * build-tool invocation — which is what keeps the project's first CI
  * run green.
+ *
+ * **Wildcard imports are forbidden here, in the formatter's own
+ * block, not in a separate `code-style/jvm-lint` step.** Kotlin
+ * already gets this for free — `ktlint`'s default ruleset fires
+ * `standard:no-wildcard-imports` — and Spotless allows exactly one
+ * `java { }` / `kotlin { }` block per project, so a second Spotless
+ * format spec for the same language is not an option: the aggregate
+ * `spotlessApply` task applies *every* registered format, and a
+ * lint-only step Spotless "cannot auto-fix" (its own message) fails
+ * that task rather than being silently skipped — verified on real
+ * Gradle. `forbidWildcardImports()` was chosen over its autofixing
+ * sibling `expandWildcardImports()` for the same reason: the point is
+ * parity with Kotlin's existing behaviour (the hook already blocks a
+ * wildcard-importing commit today, since #103), not a quieter
+ * rewrite. `code-style/jvm-lint` exists only to declare the `linter`
+ * dimension covered; the enforcement itself lives here, gated by
+ * *this* adapter's existing predicate and template, at zero marginal
+ * build cost.
  */
 
 import {
@@ -130,6 +148,9 @@ export function renderGradleSpotlessBlock(tags: readonly string[]): string {
           `                .lineLength(${style.lineWidth ?? 120})`,
           '            endWithNewline()',
           '            trimTrailingWhitespace()',
+          "            // linter dimension: parity with ktlint's default",
+          '            // standard:no-wildcard-imports on the Kotlin side.',
+          '            forbidWildcardImports()',
           '        }',
         ];
   return [
@@ -201,6 +222,9 @@ function renderMavenSpotlessPlugin(tags: readonly string[]): string {
           '              </princeOfSpace>',
           '              <endWithNewline/>',
           '              <trimTrailingWhitespace/>',
+          "              <!-- linter dimension: parity with ktlint's default",
+          '                   standard:no-wildcard-imports on the Kotlin side. -->',
+          '              <forbidWildcardImports/>',
           '            </java>',
         ];
   return [
