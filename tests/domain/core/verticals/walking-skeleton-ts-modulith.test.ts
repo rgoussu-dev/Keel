@@ -463,3 +463,98 @@ describe('the ts-http peer context', () => {
     }
   });
 });
+
+/**
+ * A tag set carrying both `arch.cli` and `arch.server-http` resolves
+ * both TypeScript bootstraps under the modulith too. Nothing about
+ * the *workspace* had to change for that — `application/*` already
+ * covers a second deployment unit — but the root `package.json` and
+ * `README.md` were whole-file writes from each entrypoint's own
+ * template tree, so the second adapter to resolve conflicted on both.
+ * They are now a shared seed plus an idempotent per-arch `apply`,
+ * which is also why the run scripts are named per entrypoint:
+ * `start`/`dev` would have been one name for two assemblies.
+ */
+describe('walking-skeleton under layout.modulith (composed cli + server-http)', () => {
+  const comboTags = (pmTag: string): string[] => [
+    'lang.typescript',
+    'runtime.node',
+    pmTag,
+    'arch.hexagonal',
+    'arch.cli',
+    'arch.server-http',
+    MODULITH_LAYOUT_TAG,
+  ];
+
+  const comboAnswers = {
+    'walking-skeleton/ts-cli-bootstrap': { npmScope: SCOPE, projectName: 'skel' },
+    'walking-skeleton/ts-http-bootstrap': { npmScope: SCOPE, projectName: 'skel' },
+  };
+
+  const installCombo = async (pmTag: string): Promise<FsTree> => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ts-modulith-combo-'));
+    cwds.push(cwd);
+    const tree = new FsTree(cwd);
+    await installVertical({
+      vertical: walkingSkeletonVertical,
+      manifest: {
+        ...emptyManifestV2('2026-08-15T00:00:00Z', '0.5.0-alpha'),
+        tags: comboTags(pmTag),
+        answers: comboAnswers,
+      },
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-15T12:00:00Z',
+    });
+    return tree;
+  };
+
+  for (const pmTag of ['pkg.npm', 'pkg.pnpm']) {
+    it(`ships both deployment units on one context under ${pmTag}`, async () => {
+      const tree = await installCombo(pmTag);
+
+      for (const file of [
+        'platform/kernel/package.json',
+        'modules/greeting/package.json',
+        'modules/greeting/src/service.ts',
+        'application/cli/src/main.ts',
+        'application/rest/src/main.ts',
+        '.dependency-cruiser.cjs',
+      ]) {
+        expect(tree.read(file), `missing ${file}`).not.toBeNull();
+      }
+    });
+
+    it(`gives each entrypoint its own run script under ${pmTag}`, async () => {
+      const tree = await installCombo(pmTag);
+      const scripts = json(tree, 'package.json')['scripts'] as Record<string, string>;
+
+      expect(scripts).toMatchObject({
+        'start:cli': 'node application/cli/src/main.ts',
+        'start:rest': 'node application/rest/src/main.ts',
+        'dev:rest': 'node --watch application/rest/src/main.ts',
+      });
+      // The modulith's own script survives the merge: it is seeded,
+      // not contributed by either entrypoint.
+      expect(scripts['lint']).toBe('depcruise platform modules application');
+      expect(json(tree, 'package.json')['devDependencies']).toMatchObject({
+        'dependency-cruiser': expect.any(String) as unknown as string,
+      });
+    });
+  }
+
+  it('documents both entrypoints under one layout section', async () => {
+    const readme = read(await installCombo('pkg.npm'), 'README.md');
+
+    expect(readme).toContain('### cli');
+    expect(readme).toContain('### rest');
+    // The shared half is seeded once, not repeated by the second
+    // adapter to resolve.
+    expect(readme.split('## Adding a second bounded context')).toHaveLength(2);
+  });
+});
