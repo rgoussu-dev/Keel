@@ -310,6 +310,13 @@ function resolveWorkspaceBin(startDir: string, name: string): string {
  * Calling the binary directly has no such intermediary to disagree
  * with.
  *
+ * `--host 127.0.0.1` pins the bind address rather than leaving it to
+ * Vite's own `localhost` default: `findFreePort()` below probes
+ * `127.0.0.1` explicitly, and on a host where that and `localhost`
+ * resolve to different loopback families (`::1` vs `127.0.0.1` —
+ * observed on GitHub-hosted runners), a fetch to the probed address
+ * would time out against a server bound to the other one.
+ *
  * Polls the port rather than parsing Vite's startup banner, whose
  * wording is Vite's own and not a contract this suite should depend
  * on. `--strictPort` turns "the port I picked is already taken", which
@@ -320,7 +327,7 @@ export async function startDevServer(appCwd: string): Promise<DevServer> {
   const port = await findFreePort();
   const baseUrl = `http://127.0.0.1:${port}`;
   const vite = resolveWorkspaceBin(appCwd, 'vite');
-  const child = spawn(vite, ['--port', String(port), '--strictPort'], {
+  const child = spawn(vite, ['--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
     cwd: appCwd,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
