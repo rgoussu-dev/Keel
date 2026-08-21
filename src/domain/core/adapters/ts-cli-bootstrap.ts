@@ -21,6 +21,7 @@ import type { Adapter } from '../../contract/composition.js';
 import {
   renderTsWorkspaceShell,
   TS_BOOTSTRAP_QUESTIONS,
+  TS_HTTP_BOOTSTRAP_ID,
   TS_CLI_BOOTSTRAP_ID,
 } from './ts-bootstrap.js';
 import { tsEntrypointContribution } from './ts-shared-root.js';
@@ -35,6 +36,12 @@ export const tsCliBootstrapAdapter: Adapter = {
   covers: ['entrypoint'],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.cli'] },
   questions: TS_BOOTSTRAP_QUESTIONS,
+  // A workspace carrying both entrypoints resolves both
+  // bootstraps, and they declare the same two sticky questions:
+  // without this the user is asked for the scope and the project
+  // name twice, and two different answers leave the assembly
+  // depending on a scope the context does not publish.
+  sharesAnswersWith: [TS_HTTP_BOOTSTRAP_ID],
   async contribute(ctx) {
     const shell = await renderTsWorkspaceShell(ctx, TS_CLI_BOOTSTRAP_ID);
     const own = await ctx.templates.render(

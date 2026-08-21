@@ -548,6 +548,47 @@ describe('walking-skeleton under layout.modulith (composed cli + server-http)', 
     });
   }
 
+  it('gives the whole workspace one scope when only one bootstrap was answered', async () => {
+    // Sticky memory is per adapter, so nothing in the engine
+    // reconciles two answers to the same question. A scope that
+    // disagrees is not cosmetic here: the assembly would depend on
+    // `@given/greeting` while the context publishes `@acme/greeting`,
+    // and the install the scaffold runs cannot resolve it.
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ts-modulith-identity-'));
+    cwds.push(cwd);
+    const tree = new FsTree(cwd);
+    await installVertical({
+      vertical: walkingSkeletonVertical,
+      manifest: {
+        ...emptyManifestV2('2026-08-15T00:00:00Z', '0.5.0-alpha'),
+        tags: comboTags('pkg.npm'),
+        answers: {
+          'walking-skeleton/ts-cli-bootstrap': { npmScope: 'given', projectName: 'answered-once' },
+        },
+      },
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-15T12:00:00Z',
+    });
+
+    expect(json(tree, 'package.json')['name']).toBe('answered-once');
+    for (const manifest of [
+      'platform/kernel/package.json',
+      'modules/greeting/package.json',
+      'application/cli/package.json',
+      'application/rest/package.json',
+    ]) {
+      expect(read(tree, manifest), `${manifest} fell back to the default scope`).not.toContain(
+        '@acme/',
+      );
+    }
+  });
+
   it('documents both entrypoints under one layout section', async () => {
     const readme = read(await installCombo('pkg.npm'), 'README.md');
 

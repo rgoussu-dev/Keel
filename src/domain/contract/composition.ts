@@ -209,6 +209,28 @@ export interface Adapter {
   readonly predicate: Predicate;
   readonly questions?: readonly Question[];
   readonly after?: readonly string[];
+  /**
+   * Other adapters whose recorded answers count as this one's sticky
+   * memory, tried in order before its own.
+   *
+   * Sticky memory is keyed per adapter, which is right while one
+   * question belongs to one adapter. It stops being right when two
+   * adapters cover the *same dimension of the same project* and
+   * declare the same question — the composable entrypoint bootstraps,
+   * where a tag set carrying both `arch.cli` and `arch.server-http`
+   * resolves two of them. There the engine would ask the user for the
+   * project's package and name twice, and nothing would reconcile two
+   * different answers: on the JVM every module's `<parent>` would name
+   * an artifactId the reactor root does not have, and in a TypeScript
+   * workspace the assembly would depend on a scope the context does
+   * not publish.
+   *
+   * Naming the sibling here makes the second adapter to resolve read
+   * the first's answer as memory — so it is neither asked again nor
+   * free to disagree — and `foldAnswers` records it under this
+   * adapter's id too, which is what downstream adapters read.
+   */
+  readonly sharesAnswersWith?: readonly string[];
   contribute(ctx: Ctx): Promise<Contribution> | Contribution;
 }
 
