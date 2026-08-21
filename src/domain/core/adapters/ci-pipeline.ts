@@ -12,7 +12,12 @@
  * choice belongs to the user, sticky so it is asked exactly once.
  */
 
-import { STYLE_MANAGED_TAG, formatterCommandsFor } from './code-style.js';
+import {
+  LINT_MANAGED_TAG,
+  STYLE_MANAGED_TAG,
+  formatterCommandsFor,
+  linterCommandsFor,
+} from './code-style.js';
 import type { Question, Tag } from '../../contract/composition.js';
 
 /** A CI provider keel can emit a pipeline for. */
@@ -88,4 +93,20 @@ export function ciTemplateId(adapter: string, provider: CiProvider): string {
 export function ciFormatCheck(tags: readonly string[]): string | undefined {
   if (!tags.includes(STYLE_MANAGED_TAG)) return undefined;
   return formatterCommandsFor(tags)?.check;
+}
+
+/**
+ * The lint-check command a pipeline should gate on, or `undefined`
+ * when there is none to run — either the project never installed the
+ * `code-style` vertical's `linter` dimension, or (the JVM family) the
+ * dimension is covered but has no command of its own because the
+ * check rides inside `ciFormatCheck` instead. Mirrors `ciFormatCheck`
+ * exactly, including the reason for gating on the tag rather than the
+ * language: a project scaffolded before this dimension existed gets
+ * no lint step rather than one calling a command its build cannot
+ * answer.
+ */
+export function ciLintCheck(tags: readonly string[]): string | undefined {
+  if (!tags.includes(LINT_MANAGED_TAG)) return undefined;
+  return linterCommandsFor(tags)?.check;
 }

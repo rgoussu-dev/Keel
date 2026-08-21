@@ -30,3 +30,8 @@ jobs:
 
       - name: Test
         run: cargo test --workspace
+<% if (lintCheck) { -%>
+
+      - name: Lint
+        run: <%- lintCheck %>
+<% } -%>

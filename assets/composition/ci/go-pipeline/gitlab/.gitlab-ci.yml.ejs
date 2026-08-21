@@ -12,3 +12,6 @@ build:
 <% } -%>
     - go build ./...
     - go test ./...
+<% if (lintCheck) { -%>
+    - <%- lintCheck %>
+<% } -%>

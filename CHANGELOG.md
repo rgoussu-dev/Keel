@@ -47,6 +47,41 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `style.managed` tag so a project without the vertical gets no format
   step rather than one calling a command its build cannot answer.
 
+- **`code-style`'s third dimension: `linter`** — naming case, wildcard
+  imports, and doc comments on public API, the free-tier slice of
+  static analysis this vertical always meant to grow into. Closes the
+  gap where the binding spec promises a `/docs-check` audit
+  (`assets/project/AGENTS.md` §8) that no command in the repository
+  actually performed.
+  - Free, no new dependency: Rust gets all three legs
+    (`cargo clippy --workspace --all-targets -- -D warnings -D missing_docs -D clippy::wildcard_imports`,
+    verified against real clippy — `wildcard_imports` and
+    `missing_docs` are both allow-by-default and need the explicit
+    `-D`), Go gets `go vet ./...`. The JVM family's wildcard-import
+    check rides inside the existing Spotless block —
+    `forbidWildcardImports()` for Java, parity with Kotlin's
+    already-shipping ktlint default — rather than a command of its
+    own, so `code-style/jvm-lint` exists only to satisfy dimension
+    coverage.
+  - The one family with no zero-dependency subset of this scope:
+    TypeScript has no wildcard-import syntax, and naming case plus doc
+    comments both need a rule engine. ESLint 10.8.1 +
+    `typescript-eslint` 8.67.0 (`naming-convention`) +
+    eslint-plugin-jsdoc 64.2.1 (`publicOnly: true`) ship for the web
+    family, run as `<pm> exec eslint .` rather than a `package.json`
+    script so the existing `"lint"` (depcruise, on the modulith
+    layouts) is never shadowed.
+  - **CI-only, no hook**, unlike the formatter: most findings cannot
+    be auto-fixed, and the one kind that can (`eslint --fix`,
+    `clippy --fix`) risks reflowing `.ejs`-templated or
+    regex-anchored source `keel add module` expects verbatim later.
+    `ciLintCheck` gates every emitted pipeline (both providers, all
+    four families) on the `style.lint-managed` tag, mirroring the
+    format gate exactly.
+  - Checkstyle, detekt and golangci-lint's `revive`/`exported` rule —
+    the naming-case and doc-comment legs for Go and the JVM — are a
+    separately-argued follow-up, not shipped here (roadmap item O).
+
 ### Changed
 
 - **The pre-commit hook's format step is now sentinel-delimited**, so

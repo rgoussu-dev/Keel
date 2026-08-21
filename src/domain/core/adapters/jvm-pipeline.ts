@@ -22,6 +22,7 @@ import {
   ciProvider,
   providerTag,
   ciFormatCheck,
+  ciLintCheck,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -41,6 +42,7 @@ export const jvmPipelineAdapter: Adapter = {
       buildSystem,
       jdkVersion: pins.version('jdk'),
       formatCheck: ciFormatCheck(ctx.manifest.tags),
+      lintCheck: ciLintCheck(ctx.manifest.tags),
     });
     return { files, tagsAdd: [providerTag(provider)] };
   },

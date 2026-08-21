@@ -1855,6 +1855,54 @@
         "type": "npm",
         "package": "prettier"
       }
+    },
+    {
+      "id": "ts-eslint",
+      "family": "ts",
+      "description": "ESLint in the workspace root, added by the code-style vertical's linter dimension — the web family's only route to naming-case and doc-comment checks, since TypeScript has no zero-dependency subset of this scope",
+      "value": "^10.8.1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/web-lint.ts",
+          "pattern": "(?<!TYPESCRIPT_)ESLINT_VERSION = '([^']+)'"
+        }
+      ],
+      "check": {
+        "type": "npm",
+        "package": "eslint"
+      }
+    },
+    {
+      "id": "ts-typescript-eslint",
+      "family": "ts",
+      "description": "typescript-eslint (parser + plugin + configs meta-package), driving the naming-convention rule",
+      "value": "^8.67.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/web-lint.ts",
+          "pattern": "TYPESCRIPT_ESLINT_VERSION = '([^']+)'"
+        }
+      ],
+      "check": {
+        "type": "npm",
+        "package": "typescript-eslint"
+      }
+    },
+    {
+      "id": "ts-eslint-plugin-jsdoc",
+      "family": "ts",
+      "description": "eslint-plugin-jsdoc, gating exported symbols on a doc comment — the public-API-docs leg of the linter dimension for the web family",
+      "value": "^64.2.1",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/web-lint.ts",
+          "pattern": "ESLINT_PLUGIN_JSDOC_VERSION = '([^']+)'"
+        }
+      ],
+      "check": {
+        "type": "npm",
+        "package": "eslint-plugin-jsdoc"
+      }
     }
   ]
 }

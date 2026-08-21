@@ -1881,20 +1881,128 @@ shape the formatter would rewrite — the `.ejs` blind spot made
 visible.
 
 It rides the existing `jvm-basic-quarkus` shard rather than taking one
-of its own: **131.42s for both cases** on a warm home (76.9s + 52.4s),
-against a matrix whose slowest shard is 371s. A shard of its own would
-have bought attribution and no wall clock, and the second case reuses
-almost everything the first resolved — so the two share one
-`GRADLE_USER_HOME` per the run-217 cache lesson, not one per case.
+of its own. That figure needs a correction rather than a restatement:
+the section originally cited a local **131.42s for both cases** on a
+warm home, against a matrix whose slowest shard was 371s. Neither
+number describes what ships. The floor shard itself moved — **371s →
+486s (+31%)** — once the scaffold-time `spotlessApply` deferred action
+landed for every JVM stack, not only `quarkus-cli`; that action's cost
+is real per-scaffold time, paid once per e2e case rather than once for
+`code-style` specifically, and `jvm-basic-quarkus` is now measured at
+**480s**, six seconds off the 486s floor rather than comfortably under
+it. The `jvm-add-module-*` shards (AGENTS.md §9) run **63s–239s,
+median 138s** on the shape that ships today — all still inside the
+floor, so "measure the runner, not a local run" is the number worth
+keeping even though the specific figures it first shipped with were
+wrong. A shard of its own would have bought attribution and no wall
+clock, and the second case reuses almost everything the first
+resolved — so the two share one `GRADLE_USER_HOME` per the run-217
+cache lesson, not one per case.
 
 ### Not in scope for O
 
-**Static analysis.** `golangci-lint`, `clippy`, Error Prone, NullAway
-and Checkstyle are a different axis — bug-finding, not layout — and
-each is an extra binary or an extra gate. This vertical is about the
-layout contract, which is why Go and Rust cost the emitted project
-nothing at all. Static analysis deserves its own item and its own
-argument about what a scaffolded project should be forced to pass.
+**Static analysis, mostly.** `golangci-lint`, Checkstyle and detekt are
+a different axis — bug-finding, not layout — and each is an extra
+binary or an extra gate; they stay out of scope here, deserving their
+own item and their own argument about what a scaffolded project should
+be forced to pass. A **free-tier slice** shipped as a follow-up
+instead — naming case, wildcard imports, and doc comments on public
+API, exactly where the toolchain already enforces it at zero new
+dependency (rustc/clippy for Rust, `go vet` for Go, the existing
+Spotless block for the JVM family) or where the resolver's
+universal-coverage rule left no honest alternative (ESLint for the web
+family — see the `linter` dimension below). Error Prone and NullAway
+remain fully out of scope; they solve a different problem (bug classes
+in already-correct-looking code) than this vertical's layout-and-style
+remit.
+
+### `linter` — the free-tier slice, added after O shipped
+
+**The gap, once O closed the format one.** `assets/project/AGENTS.md`
+§8 promises `/docs-check` audits the full surface, and no such command
+exists anywhere in the repository — a scaffolded project is told it
+has a docs audit it does not ship. Closing that gap needed _some_
+mechanical enforcement of "public API has a doc comment" before a
+`/docs-check` command could honestly claim to audit anything, which is
+the throughline connecting this section back to O: the `code-style`
+vertical is where "a layout rule every stack agrees to" already lives,
+and naming case / wildcard imports / doc comments are the same kind of
+rule — cheap to state, tedious to hand-enforce, differently
+implemented per ecosystem. `linter` became `code-style`'s third
+dimension rather than a new vertical for that reason.
+
+**Free first, verified rather than assumed.** Rust gets all three legs
+at zero new dependency — `non_snake_case`/`non_camel_case_types` are
+warn-by-default rustc lints, so plain `-D warnings` already promotes
+them, but `clippy::wildcard_imports` (the pedantic group) and
+`missing_docs` (also a rustc lint) are _not_ warn-by-default. A survey
+reading would have missed that; running real clippy 0.1.94 against a
+scratch crate did not — `-D warnings` alone let a `use x::*` and an
+undocumented `pub fn` straight through, so the CI command names both
+lints explicitly. Go gets `go vet` (naming case and doc comments stay
+out of scope for Go until `golangci-lint`'s `revive` lands; Go has no
+wildcard-import syntax at all, so that leg doesn't apply). Checkstyle,
+detekt and golangci-lint's `revive`/`exported` rule are still the
+separately-argued follow-up the "not in scope" note above describes.
+
+**The JVM family's leg rides inside the _formatter_, not a new
+command.** Kotlin already forbids wildcard imports for free —
+ktlint's default ruleset ships `standard:no-wildcard-imports`, true
+since O shipped, no change needed. Java needed one line —
+`forbidWildcardImports()` in the same Spotless `java { }` block
+`jvm-format` already renders — but _where_ that line lives was not
+obvious and cost real verification. Spotless allows exactly one
+`java`/`kotlin` format per project; a second, lint-only format was the
+first idea and it does not work — the aggregate `spotlessApply` task
+applies _every_ registered format, and a step Spotless "cannot
+auto-fix" (its own message) fails that task rather than being skipped,
+proven on real Gradle and real Maven alike. That would have broken the
+pre-commit hook on any wildcard import, silently expanding the
+"hook auto-fixes" contract into "hook sometimes blocks." The fix was
+`forbidWildcardImports()` (check-only) over its autofixing sibling
+`expandWildcardImports()`, added to the _existing_ Java block instead
+of a new one — which, verified on the same real Gradle/Maven setup,
+reproduces exactly Kotlin's existing behaviour: the hook already
+blocks a wildcard-importing commit today for Kotlin, so Java now
+matches it instead of silently rewriting around it. `code-style/jvm-lint`
+exists only to satisfy the resolver's dimension-coverage check; it
+contributes nothing itself.
+
+**The design decision this item had to make explicitly: lint is
+CI-only, never the hook.** The formatter model is "hook auto-fixes, CI
+gates." Lint does not map onto it the same way: most findings
+(a naming violation, a missing doc comment) cannot be mechanically
+repaired, and the one kind that can be — `eslint --fix`,
+`clippy --fix` — is the exact hazard `jvm-format`'s own module docs
+already name for the formatter: a fixer reflowing `.ejs`-templated or
+regex-anchored source that a later `keel add module` expects to find
+verbatim. So `LinterCommands` has no `format` half at all, unlike
+`FormatterCommands` — the pre-commit hook stays formatter-only, and
+`ciLintCheck` in `ci-pipeline.ts` is the only caller of
+`linterCommandsFor`. A project fails this check in CI, the same place
+any other scaffolder's Checkstyle or ESLint finding would surface.
+
+**Why the web family shipped now instead of waiting for the paid
+tier.** `resolveVertical` requires every dimension in
+`codeStyleVertical.dimensions` to be covered by some matching adapter,
+for _every_ tag set — there is no "this family opts out." Adding
+`linter` to that list without a web adapter would have broken every
+TypeScript and web-components install outright. TypeScript also turned
+out to have **no** zero-dependency subset of this scope at all: it has
+no wildcard-import syntax (`import * as ns` is a namespace import, not
+Java/Kotlin/Rust's bring-everything-into-scope kind), and both naming
+case and doc comments need a rule engine `tsc` does not provide. So
+ESLint 10.8.1 + `typescript-eslint` 8.67.0 (naming-convention) +
+eslint-plugin-jsdoc 64.2.1 (`publicOnly: true`, matching the binding
+spec's "public API only" comments policy) shipped now rather than
+being deferred with Checkstyle/detekt/golangci-lint — verified on a
+real scratch workspace, both rules firing on a violating file and
+passing clean on a compliant one. The command is a direct
+`eslint .` (via `<pm> exec`), not a `package.json` script: the
+modulith layouts already define `"lint"` for `depcruise` (an
+architecture rule, not a style one), and the established
+never-overwrite-an-existing-script contract would have made a
+same-named script silently never run ESLint there.
 
 **Ratcheting** (`ratchetFrom`, `--new-from-merge-base`) is for
 brownfield adoption on a codebase that is already dirty. keel's

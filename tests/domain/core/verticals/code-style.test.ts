@@ -17,7 +17,10 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { codeStyleVertical } from '../../../../src/domain/core/verticals/code-style.js';
-import { STYLE_MANAGED_TAG } from '../../../../src/domain/core/adapters/code-style.js';
+import {
+  LINT_MANAGED_TAG,
+  STYLE_MANAGED_TAG,
+} from '../../../../src/domain/core/adapters/code-style.js';
 import { renderPreCommitHook } from '../../../../src/domain/core/adapters/claude-kit.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -285,5 +288,65 @@ describe('code-style vertical — Rust, Go and the web stacks', () => {
     };
     expect(pkg.scripts.format).toBe('biome format --write .');
     expect(pkg.scripts['format:check']).toBe('prettier --check .');
+  });
+});
+
+describe('code-style vertical — the linter dimension', () => {
+  it('covers every family without a ResolutionError, and records the tag', async () => {
+    for (const tags of [JVM_GRADLE, JVM_MAVEN, JVM_KOTLIN, GO, RUST, TS, WC]) {
+      const { result } = await installWith(tags);
+      expect(result.manifest.tags, tags.join(',')).toContain(LINT_MANAGED_TAG);
+    }
+  });
+
+  it('adds forbidWildcardImports() to the Java Spotless block, for parity with Kotlin', async () => {
+    const { tree } = await installWith(JVM_GRADLE);
+    const build = tree.read('build.gradle.kts')?.toString() ?? '';
+    expect(build).toContain('forbidWildcardImports()');
+  });
+
+  it('adds <forbidWildcardImports/> to the Maven Spotless plugin, same as Gradle', async () => {
+    const { tree } = await installWith(JVM_MAVEN);
+    const pom = tree.read('pom.xml')?.toString() ?? '';
+    expect(pom).toContain('<forbidWildcardImports/>');
+  });
+
+  it('adds nothing extra for Kotlin — ktlint’s default ruleset already forbids it', async () => {
+    const { tree } = await installWith(JVM_KOTLIN);
+    const build = tree.read('build.gradle.kts')?.toString() ?? '';
+    expect(build).not.toContain('forbidWildcardImports');
+  });
+
+  it('contributes no files for Go or Rust — go vet and clippy need no config', async () => {
+    for (const tags of [GO, RUST]) {
+      const { tree } = await installWith(tags);
+      expect(tree.read('.golangci.yml')).toBeNull();
+      expect(tree.read('clippy.toml')).toBeNull();
+    }
+  });
+
+  it('adds eslint.config.js and the three devDependencies for the web family', async () => {
+    const { tree } = await installWith(TS);
+    const config = tree.read('eslint.config.js')?.toString() ?? '';
+    expect(config).toContain('@typescript-eslint/naming-convention');
+    expect(config).toContain('jsdoc/require-jsdoc');
+    expect(config).toContain('publicOnly: true');
+
+    const pkg = JSON.parse(tree.read('package.json')?.toString() ?? '{}') as {
+      devDependencies: Record<string, string>;
+    };
+    expect(pkg.devDependencies.eslint).toBeDefined();
+    expect(pkg.devDependencies['typescript-eslint']).toBeDefined();
+    expect(pkg.devDependencies['eslint-plugin-jsdoc']).toBeDefined();
+  });
+
+  it('never overwrites an eslint devDependency the project already pins', async () => {
+    const mine = JSON.stringify({ name: 'x', devDependencies: { eslint: '9.0.0' } }, null, 2);
+    const { tree } = await installWith(WC, { 'package.json': `${mine}\n` });
+    const pkg = JSON.parse(tree.read('package.json')?.toString() ?? '{}') as {
+      devDependencies: Record<string, string>;
+    };
+    expect(pkg.devDependencies.eslint).toBe('9.0.0');
+    expect(pkg.devDependencies['typescript-eslint']).toBeDefined();
   });
 });

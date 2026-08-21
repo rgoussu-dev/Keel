@@ -9,3 +9,6 @@ build:
 <% } -%>
     - cargo build --workspace
     - cargo test --workspace
+<% if (lintCheck) { -%>
+    - <%- lintCheck %>
+<% } -%>

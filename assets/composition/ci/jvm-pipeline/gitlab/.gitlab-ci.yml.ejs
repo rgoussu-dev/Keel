@@ -10,6 +10,9 @@ build:
     - <%- formatCheck %>
 <% } -%>
     - ./gradlew build --no-daemon --stacktrace
+<% if (lintCheck) { -%>
+    - <%- lintCheck %>
+<% } -%>
   cache:
     key: gradle
     paths:
@@ -27,6 +30,9 @@ build:
     - <%- formatCheck %>
 <% } -%>
     - ./mvnw --batch-mode verify
+<% if (lintCheck) { -%>
+    - <%- lintCheck %>
+<% } -%>
   cache:
     key: maven
     paths:

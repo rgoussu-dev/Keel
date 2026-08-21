@@ -286,6 +286,12 @@ export function gitAttributesSeed(): string {
 /** The `code-style` dimension covered per stack family. */
 export const FORMATTER_DIMENSION = 'formatter';
 
+/** The `code-style` dimension covered by each family's static checks. */
+export const LINTER_DIMENSION = 'linter';
+
+/** Promoted by every `code-style` linter adapter. */
+export const LINT_MANAGED_TAG: Tag = 'style.lint-managed';
+
 /** Path of the pre-commit hook the family adapters wire their formatter into. */
 export const HOOK_TARGET = '.claude/hooks/pre-commit-format.sh';
 
@@ -407,6 +413,110 @@ export function formatterAdapter(
           },
         ],
         tagsAdd: [STYLE_MANAGED_TAG],
+      };
+    },
+  };
+}
+
+/**
+ * One family's lint check — the `linter` dimension's whole enforcement
+ * contract, and a deliberately narrower one than {@link FormatterCommands}.
+ *
+ * There is no `fix` half. Most of what a linter catches — a naming
+ * violation, a missing doc comment — cannot be mechanically repaired,
+ * and the one shape that *can* auto-fix (an `eslint --fix`, a
+ * `clippy --fix`) is exactly the hazard `jvm-format`'s module docs
+ * already name: a fixer running over `.ejs`-templated or
+ * regex-anchored source can reflow what a later `keel add module`
+ * expects to find verbatim. So `check` is CI-only by construction —
+ * the pre-commit hook stays formatter-only, and `ciLintCheck` in
+ * `ci-pipeline.ts` is the only caller. A project failing this check
+ * finds out in CI, the same place a Checkstyle or ESLint finding
+ * would surface on any other scaffolder.
+ *
+ * `undefined` from {@link linterCommandsFor} is a real state, not a
+ * gap: the JVM family's free-tier check (wildcard imports) rides
+ * inside the *formatter*'s own Spotless block rather than a command of
+ * its own — see `jvm-format.ts` for why a second Spotless format
+ * cannot host it safely.
+ */
+export interface LinterCommands {
+  /** Verify-only, run by CI. Must exit non-zero on a finding. */
+  readonly check: string;
+}
+
+/**
+ * The lint commands for a project's tag set, or `undefined` when the
+ * family has nothing to run as a distinct step.
+ *
+ * Only the free tier is wired here (roadmap item O): rustc/clippy's
+ * built-in lints for Rust, `go vet` for Go — both already ship with
+ * the toolchain the project requires regardless — and ESLint for the
+ * web family, the one family with no zero-dependency subset of this
+ * scope (TypeScript has no wildcard-import concept, and naming case
+ * and doc comments both need a rule engine). Checkstyle, detekt and
+ * golangci-lint are a separately-argued follow-up (see
+ * `docs/verticals/code-style.md`), so a JVM tag set returns
+ * `undefined` here on purpose.
+ */
+export function linterCommandsFor(tags: readonly string[]): LinterCommands | undefined {
+  if (tags.includes('lang.go')) {
+    return { check: 'go vet ./...' };
+  }
+  if (tags.includes('lang.rust')) {
+    // clippy's default lint set is warn-on-correctness/style/perf only —
+    // `wildcard_imports` lives in the allow-by-default pedantic group and
+    // `missing_docs` is a rustc lint at allow by default, so both need an
+    // explicit `-D`; verified against real clippy 0.1.94, which silently
+    // let a `use x::*` and an undocumented `pub fn` through `-D warnings`
+    // alone.
+    return {
+      check:
+        'cargo clippy --workspace --all-targets -- -D warnings -D missing_docs -D clippy::wildcard_imports',
+    };
+  }
+  if (tags.includes('lang.typescript')) {
+    // A direct binary invocation rather than a `package.json` script:
+    // the modulith layouts already define `"lint"` for `depcruise`
+    // (an architecture rule, not a style one), and the existing
+    // "never overwrite a script the project already defines" contract
+    // means a same-named script would silently never run ESLint there.
+    return { check: `${webPackageManager(tags)} exec eslint .` };
+  }
+  return undefined;
+}
+
+/** What one family linter adapter contributes beyond the shared tag. */
+export interface LinterSpec {
+  readonly files?: readonly ContributionFile[];
+  readonly patches?: readonly ContributionPatch[];
+}
+
+/**
+ * Declares one family linter adapter.
+ *
+ * Deliberately thinner than {@link formatterAdapter}: there is no hook
+ * wiring (lint is CI-only, see {@link LinterCommands}) and no implicit
+ * command lookup, because not every family surfaces one — the JVM
+ * adapter covers the dimension without a `check` of its own. Each
+ * family decides for itself what, if anything, it needs to render.
+ */
+export function linterAdapter(
+  id: string,
+  requires: readonly Tag[],
+  spec: (ctx: Ctx) => LinterSpec,
+): Adapter {
+  return {
+    id,
+    vertical: 'code-style',
+    covers: [LINTER_DIMENSION],
+    predicate: { requires },
+    contribute(ctx: Ctx): Contribution {
+      const { files, patches } = spec(ctx);
+      return {
+        files: files ?? [],
+        patches: patches ?? [],
+        tagsAdd: [LINT_MANAGED_TAG],
       };
     },
   };

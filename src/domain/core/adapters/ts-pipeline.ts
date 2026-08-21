@@ -26,6 +26,7 @@ import {
   ciProvider,
   providerTag,
   ciFormatCheck,
+  ciLintCheck,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -45,6 +46,7 @@ export const tsPipelineAdapter: Adapter = {
       pm,
       nodeVersion: pins.version('node'),
       formatCheck: ciFormatCheck(ctx.manifest.tags),
+      lintCheck: ciLintCheck(ctx.manifest.tags),
     });
     return { files, tagsAdd: [providerTag(provider)] };
   },

@@ -31,3 +31,8 @@ jobs:
 
       - name: Test
         run: go test ./...
+<% if (lintCheck) { -%>
+
+      - name: Lint
+        run: <%- lintCheck %>
+<% } -%>

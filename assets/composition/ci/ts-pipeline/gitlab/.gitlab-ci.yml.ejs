@@ -15,6 +15,9 @@ build:
     - pnpm run --if-present lint
     - pnpm run --if-present build
     - pnpm test
+<% if (lintCheck) { -%>
+    - <%- lintCheck %>
+<% } -%>
   cache:
     key: pnpm
     paths:
@@ -35,6 +38,9 @@ build:
     - npm run lint --if-present
     - npm run build --if-present
     - npm test
+<% if (lintCheck) { -%>
+    - <%- lintCheck %>
+<% } -%>
   cache:
     key: npm
     paths:

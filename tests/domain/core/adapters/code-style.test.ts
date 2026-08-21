@@ -12,10 +12,13 @@ import { describe, expect, it } from 'vitest';
 import {
   EDITORCONFIG_TARGET,
   GITATTRIBUTES_TARGET,
+  LINT_MANAGED_TAG,
   STYLE_BEGIN,
   STYLE_END,
   STYLE_MANAGED_TAG,
   editorConfigSeed,
+  linterAdapter,
+  linterCommandsFor,
   renderEditorConfig,
   renderGitAttributes,
   styleFor,
@@ -163,5 +166,69 @@ describe('editor-baseline adapter', () => {
     const out = patch?.apply('root = true\r\n');
     expect(out).toContain('\r\n');
     expect(out).not.toMatch(/[^\r]\n/);
+  });
+});
+
+describe('linterCommandsFor', () => {
+  it('returns undefined for the JVM family — the check rides inside spotlessCheck', () => {
+    expect(linterCommandsFor(['lang.java', 'runtime.jvm', 'pkg.gradle'])).toBeUndefined();
+    expect(linterCommandsFor(['lang.kotlin', 'runtime.jvm', 'pkg.maven'])).toBeUndefined();
+  });
+
+  it('gives Go a plain go vet, no new dependency', () => {
+    expect(linterCommandsFor(['lang.go', 'pkg.go-modules'])).toEqual({ check: 'go vet ./...' });
+  });
+
+  it('promotes clippy’s allow-by-default lints to hard errors for Rust', () => {
+    // wildcard_imports (pedantic group) and missing_docs are both
+    // allow-by-default — verified against real clippy 0.1.94, where
+    // `-D warnings` alone let both straight through.
+    expect(linterCommandsFor(['lang.rust', 'pkg.cargo'])).toEqual({
+      check:
+        'cargo clippy --workspace --all-targets -- -D warnings -D missing_docs -D clippy::wildcard_imports',
+    });
+  });
+
+  it('runs ESLint directly rather than through a package.json script', () => {
+    // "lint" is already the depcruise architecture-lint script on the
+    // modulith layouts; a same-named script would silently never run.
+    expect(linterCommandsFor(['lang.typescript', 'pkg.npm'])).toEqual({
+      check: 'npm exec eslint .',
+    });
+    expect(linterCommandsFor(['lang.typescript', 'pkg.pnpm'])).toEqual({
+      check: 'pnpm exec eslint .',
+    });
+  });
+
+  it('returns undefined for a tag set no family matches', () => {
+    expect(linterCommandsFor(['lang.cobol'])).toBeUndefined();
+  });
+});
+
+describe('linterAdapter', () => {
+  const noopAdapter = linterAdapter('test/lint', ['lang.go'], () => ({}));
+
+  it('declares the linter dimension, the given predicate, and no hook wiring', () => {
+    expect(noopAdapter.vertical).toBe('code-style');
+    expect(noopAdapter.covers).toEqual(['linter']);
+    expect(noopAdapter.predicate).toEqual({ requires: ['lang.go'] });
+  });
+
+  it('promotes style.lint-managed even when the spec contributes nothing', async () => {
+    const contribution = await noopAdapter.contribute(noCtx);
+    expect(contribution.files).toEqual([]);
+    expect(contribution.patches).toEqual([]);
+    expect(contribution.tagsAdd).toEqual([LINT_MANAGED_TAG]);
+  });
+
+  it('passes through files and patches the spec returns', async () => {
+    const withContent = linterAdapter('test/lint-files', ['lang.typescript'], () => ({
+      files: [{ path: 'eslint.config.js', content: '// x' }],
+      patches: [{ target: 'package.json', apply: (e: string) => e }],
+    }));
+    const contribution = await withContent.contribute(noCtx);
+    expect(contribution.files).toHaveLength(1);
+    expect(contribution.patches).toHaveLength(1);
+    expect(contribution.tagsAdd).toEqual([LINT_MANAGED_TAG]);
   });
 });

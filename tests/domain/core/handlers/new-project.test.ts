@@ -109,6 +109,7 @@ describe('keel.new-project (keel new)', () => {
         'layout.basic',
         'pkg.gradle',
         'runtime.jvm',
+        'style.lint-managed',
         'style.managed',
       ].sort(),
     );
@@ -179,6 +180,7 @@ describe('keel.new-project (keel new)', () => {
         'lang.go',
         'layout.basic',
         'pkg.go-modules',
+        'style.lint-managed',
         'style.managed',
       ].sort(),
     );
@@ -240,6 +242,7 @@ describe('keel.new-project (keel new)', () => {
         'lang.rust',
         'layout.basic',
         'pkg.cargo',
+        'style.lint-managed',
         'style.managed',
       ].sort(),
     );

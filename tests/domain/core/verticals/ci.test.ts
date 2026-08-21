@@ -375,3 +375,60 @@ describe('ci vertical — the code-style format gate', () => {
     }
   });
 });
+
+describe('ci vertical — the code-style lint gate', () => {
+  // Mirrors the format gate above. The JVM family is deliberately
+  // absent from `cases`: its free-tier check rides inside
+  // `spotlessCheck` (the format gate), so `ciLintCheck` returns
+  // `undefined` and no separate "Lint" step is ever emitted for it —
+  // asserted below rather than assumed.
+  const cases: ReadonlyArray<readonly [string, string[], string]> = [
+    ['go', ['lang.go', 'pkg.go-modules'], 'go vet ./...'],
+    [
+      'rust',
+      ['lang.rust', 'pkg.cargo'],
+      'cargo clippy --workspace --all-targets -- -D warnings -D missing_docs -D clippy::wildcard_imports',
+    ],
+    ['ts/npm', ['lang.typescript', 'runtime.node', 'pkg.npm'], 'npm exec eslint .'],
+    ['ts/pnpm', ['lang.typescript', 'runtime.node', 'pkg.pnpm'], 'pnpm exec eslint .'],
+  ];
+
+  it('gates each family on its own lint command when style.lint-managed is set', async () => {
+    for (const [label, tags, command] of cases) {
+      const { workflow } = await installCi([...tags, 'style.lint-managed']);
+      expect(workflow, `${label} github`).toContain(command);
+      expect(workflow, `${label} github`).toContain('Lint');
+    }
+  });
+
+  it('emits the same gate on the GitLab flavor', async () => {
+    for (const [label, tags, command] of cases) {
+      const { gitlab } = await installCi([...tags, 'style.lint-managed'], {
+        'ci/go-pipeline': { provider: 'gitlab-ci' },
+        'ci/rust-pipeline': { provider: 'gitlab-ci' },
+        'ci/ts-pipeline': { provider: 'gitlab-ci' },
+      });
+      expect(gitlab, `${label} gitlab`).toContain(command);
+    }
+  });
+
+  it('emits no lint step at all without the tag', async () => {
+    for (const [label, tags, command] of cases) {
+      const { workflow } = await installCi([...tags]);
+      expect(workflow, `${label} must not gate`).not.toContain(command);
+    }
+  });
+
+  it('never emits a lint step for the JVM family — the check rides inside spotlessCheck', async () => {
+    const jvmCases: ReadonlyArray<readonly [string, string[]]> = [
+      ['jvm/gradle', ['lang.java', 'runtime.jvm', 'pkg.gradle']],
+      ['jvm/maven', ['lang.java', 'runtime.jvm', 'pkg.maven']],
+    ];
+    for (const [label, tags] of jvmCases) {
+      const { workflow } = await installCi([...tags, 'style.managed', 'style.lint-managed']);
+      expect(workflow, `${label} must not gate on a second lint step`).not.toContain(
+        '\n      - name: Lint\n',
+      );
+    }
+  });
+});
