@@ -1,5 +1,9 @@
 import { defineConfig } from 'vite';
-import { DESIGN_SYSTEM, vendorDesignSystem } from './vendor-design-system';
+import {
+  DESIGN_SYSTEM,
+  serveVendoredDesignSystem,
+  vendorDesignSystem,
+} from './vendor-design-system';
 
 export default defineConfig({
   build: {
@@ -8,5 +12,9 @@ export default defineConfig({
       external: [DESIGN_SYSTEM],
     },
   },
-  plugins: [vendorDesignSystem()],
+  // `vendorDesignSystem` copies the design system's build into `dist/vendor`
+  // on `vite build`; `serveVendoredDesignSystem` serves the same files
+  // straight from its `dist/` on `vite dev`, since `build` is the only one
+  // of the two a bundling step runs.
+  plugins: [vendorDesignSystem(), serveVendoredDesignSystem()],
 });

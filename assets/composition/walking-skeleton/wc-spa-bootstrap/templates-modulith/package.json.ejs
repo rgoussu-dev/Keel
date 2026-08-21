@@ -9,7 +9,7 @@
 <% if (pm === 'pnpm') { -%>
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "pnpm -C application/web-app run dev",
+    "dev": "pnpm -C design-system run build && pnpm -C application/web-app run dev",
     "build": "pnpm -r --if-present --workspace-concurrency=1 run build",
     "lint": "depcruise design-system platform modules application",
     "test": "pnpm -r --if-present run test",
@@ -18,7 +18,7 @@
 <% } else { -%>
   "workspaces": [<%- workspaceGlobs %>],
   "scripts": {
-    "dev": "npm run dev --workspace application/web-app",
+    "dev": "npm run build --workspace design-system && npm run dev --workspace application/web-app",
     "build": "npm run build --workspaces --if-present",
     "lint": "depcruise design-system platform modules application",
     "test": "npm run test --workspaces --if-present",
