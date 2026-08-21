@@ -19,6 +19,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { createServer } from 'node:http';
+import net from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
@@ -175,6 +176,40 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Headless Chromium, dumping the DOM of `url` once nothing is pending.
+ *
+ * `--virtual-time-budget` is what makes the render deterministic: it
+ * advances the page's clock to the budget and dumps then, rather than
+ * sleeping and hoping.
+ */
+async function dumpDom(url: string): Promise<string> {
+  return await new Promise<string>((resolve, reject) => {
+    const browser = spawn(
+      chromium ?? 'chromium',
+      [
+        '--headless',
+        '--no-sandbox',
+        '--disable-gpu',
+        '--virtual-time-budget=5000',
+        '--dump-dom',
+        url,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    let dom = '';
+    let diagnostics = '';
+    browser.stdout.on('data', (chunk: Buffer) => (dom += chunk.toString()));
+    browser.stderr.on('data', (chunk: Buffer) => (diagnostics += chunk.toString()));
+    browser.on('error', reject);
+    browser.on('close', (code) =>
+      code === 0
+        ? resolve(dom)
+        : reject(new Error(`chromium failed (exit ${code})\n${diagnostics}`)),
+    );
+  });
+}
+
+/**
  * Serves a built bundle and returns the DOM headless Chromium renders
  * from it.
  *
@@ -187,10 +222,6 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
  * nothing to do with the bundle, and one of them bit the first time it
  * ran on a runner, reporting only "never came up". Port 0 lets the OS
  * choose, so parallel suites cannot collide either.
- *
- * `--virtual-time-budget` is what makes the render deterministic: it
- * advances the page's clock to the budget and dumps once nothing is
- * pending, rather than sleeping and hoping.
  */
 export async function renderInChromium(distDir: string): Promise<string> {
   const server = createServer((request, response) => {
@@ -217,33 +248,126 @@ export async function renderInChromium(distDir: string): Promise<string> {
     // requests lives in this process, and a synchronous spawn blocks
     // the event loop that would serve them — the page would load
     // nothing and the assertions would blame the bundle.
-    return await new Promise<string>((resolve, reject) => {
-      const browser = spawn(
-        chromium ?? 'chromium',
-        [
-          '--headless',
-          '--no-sandbox',
-          '--disable-gpu',
-          '--virtual-time-budget=5000',
-          '--dump-dom',
-          `http://127.0.0.1:${address.port}/`,
-        ],
-        { stdio: ['ignore', 'pipe', 'pipe'] },
-      );
-      let dom = '';
-      let diagnostics = '';
-      browser.stdout.on('data', (chunk: Buffer) => (dom += chunk.toString()));
-      browser.stderr.on('data', (chunk: Buffer) => (diagnostics += chunk.toString()));
-      browser.on('error', reject);
-      browser.on('close', (code) =>
-        code === 0
-          ? resolve(dom)
-          : reject(new Error(`chromium failed (exit ${code})\n${diagnostics}`)),
-      );
-    });
+    return await dumpDom(`http://127.0.0.1:${address.port}/`);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+}
+
+/** An OS-assigned free TCP port, the same way `renderInChromium` picks one. */
+async function findFreePort(): Promise<number> {
+  return await new Promise<number>((resolve, reject) => {
+    const probe = net.createServer();
+    probe.on('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (address === null || typeof address === 'string') {
+        reject(new Error('no ephemeral port'));
+        return;
+      }
+      probe.close(() => resolve(address.port));
+    });
+  });
+}
+
+/** A running dev server, and how to stop it. */
+export interface DevServer {
+  readonly baseUrl: string;
+  stop(): Promise<void>;
+}
+
+/**
+ * Finds `<name>`'s binary the way npm/pnpm/node's own resolver would:
+ * walking up from `startDir` for the first `node_modules/.bin/<name>`.
+ * pnpm symlinks it into every workspace package's own `node_modules`;
+ * npm workspaces hoist it to the root's instead — so a package
+ * directory alone isn't enough under npm, and the walk is what covers
+ * both without needing to know which package manager scaffolded this
+ * project.
+ */
+function resolveWorkspaceBin(startDir: string, name: string): string {
+  let dir = startDir;
+  for (;;) {
+    const candidate = path.join(dir, 'node_modules', '.bin', name);
+    if (fs.pathExistsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) throw new Error(`${name}: no node_modules/.bin/${name} above ${startDir}`);
+    dir = parent;
+  }
+}
+
+/**
+ * Starts the local Vite binary in `appCwd` (an app package directory,
+ * e.g. `application/web-app` — not the workspace root, whose `dev`
+ * script chains a prior build step this helper does not repeat) on a
+ * free port, and waits until it answers before returning.
+ *
+ * Invokes `node_modules/.bin/vite` directly rather than `<pm> run dev
+ * -- --port …`: pnpm forwards the `--` separator itself into the
+ * script's argv instead of stripping it (npm strips it), and Vite's
+ * cac-based CLI treats a literal `--` as "stop parsing flags" — so
+ * `--port`/`--strictPort` silently never reached Vite through pnpm.
+ * Calling the binary directly has no such intermediary to disagree
+ * with.
+ *
+ * `--host 127.0.0.1` pins the bind address rather than leaving it to
+ * Vite's own `localhost` default: `findFreePort()` below probes
+ * `127.0.0.1` explicitly, and on a host where that and `localhost`
+ * resolve to different loopback families (`::1` vs `127.0.0.1` —
+ * observed on GitHub-hosted runners), a fetch to the probed address
+ * would time out against a server bound to the other one.
+ *
+ * Polls the port rather than parsing Vite's startup banner, whose
+ * wording is Vite's own and not a contract this suite should depend
+ * on. `--strictPort` turns "the port I picked is already taken", which
+ * would otherwise make Vite silently retry the next one, into a loud
+ * failure instead — the whole point of picking the port ourselves.
+ */
+export async function startDevServer(appCwd: string): Promise<DevServer> {
+  const port = await findFreePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const vite = resolveWorkspaceBin(appCwd, 'vite');
+  const child = spawn(vite, ['--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
+    cwd: appCwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
+  child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+  let exited: number | null = null;
+  child.once('exit', (code) => (exited = code));
+
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    if (exited !== null) {
+      throw new Error(`dev server exited early (code ${exited})\n${stdout}\n${stderr}`);
+    }
+    try {
+      const response = await fetch(`${baseUrl}/`);
+      if (response.ok) {
+        return {
+          baseUrl,
+          stop: () =>
+            new Promise<void>((resolve) => {
+              // A grace period after exit, not just the exit event
+              // itself: Vite's dependency optimizer can still be
+              // flushing writes under `node_modules/.vite` for a
+              // moment after the main process is gone, and the
+              // caller's next step is usually removing this very
+              // directory tree.
+              child.once('exit', () => setTimeout(resolve, 250));
+              child.kill();
+            }),
+        };
+      }
+    } catch {
+      // Not accepting connections yet.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  child.kill();
+  throw new Error(`dev server never answered on ${baseUrl}\n${stdout}\n${stderr}`);
 }
 
 /**

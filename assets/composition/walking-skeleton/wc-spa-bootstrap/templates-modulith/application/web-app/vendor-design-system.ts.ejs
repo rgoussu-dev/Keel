@@ -1,9 +1,14 @@
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+const VENDOR_ASSETS: Readonly<Record<string, string>> = {
+  'design-system.js': 'text/javascript; charset=utf-8',
+  'design-system.css': 'text/css; charset=utf-8',
+};
 
 /**
  * Puts the design system's own build output where the import map in
@@ -30,17 +35,59 @@ export function vendorDesignSystem(): Plugin {
     closeBundle(): void {
       const out = resolve(here, 'dist/vendor');
       mkdirSync(out, { recursive: true });
-      for (const asset of ['design-system.js', 'design-system.css']) {
-        const from = resolve(dist, asset);
-        if (!existsSync(from)) {
-          throw new Error(
-            `vendor-design-system: ${from} is missing — build the design system first (the root \`build\` script does, in workspace order).`,
-          );
-        }
-        copyFileSync(from, resolve(out, asset));
+      for (const asset of Object.keys(VENDOR_ASSETS)) {
+        copyFileSync(requireAsset(dist, asset), resolve(out, asset));
       }
     },
   };
+}
+
+/**
+ * `vendorDesignSystem()`'s dev-time counterpart: `closeBundle` only
+ * fires on `vite build`, so without this the import map's target,
+ * `/vendor/design-system.js`, 404s under `vite dev` and every element
+ * the design system defines silently fails to upgrade. This serves the
+ * same two files straight out of the design system's own `dist/`
+ * instead of copying them, so a `<pm> -C design-system run build`
+ * (the root `dev` script runs it first) is enough to pick up an edit
+ * without restarting the app's dev server.
+ */
+export function serveVendoredDesignSystem(): Plugin {
+  const dist = resolve(here, '<%= designSystemDist %>');
+  return {
+    name: 'serve-vendored-design-system',
+    apply: 'serve',
+    configureServer(server): void {
+      server.middlewares.use((req, res, next) => {
+        const asset = req.url?.startsWith('/vendor/') ? req.url.slice('/vendor/'.length) : '';
+        const contentType = VENDOR_ASSETS[asset];
+        if (contentType === undefined) {
+          next();
+          return;
+        }
+        const from = resolve(dist, asset);
+        if (!existsSync(from)) {
+          res.statusCode = 404;
+          res.end(
+            `vendor-design-system: ${from} is missing — build the design system first (\`<pm> -C design-system run build\`).`,
+          );
+          return;
+        }
+        res.setHeader('Content-Type', contentType);
+        res.end(readFileSync(from));
+      });
+    },
+  };
+}
+
+function requireAsset(dist: string, asset: string): string {
+  const from = resolve(dist, asset);
+  if (!existsSync(from)) {
+    throw new Error(
+      `vendor-design-system: ${from} is missing — build the design system first (the root \`build\` script does, in workspace order).`,
+    );
+  }
+  return from;
 }
 
 /** The specifier the import map resolves, and the bundler leaves alone. */

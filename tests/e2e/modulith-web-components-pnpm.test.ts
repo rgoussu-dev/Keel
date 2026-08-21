@@ -33,6 +33,7 @@ import {
   runStep,
   scaffold,
   skipWebE2E,
+  startDevServer,
 } from '../support/web-e2e.js';
 
 const PM = 'pnpm' as const;
@@ -115,6 +116,38 @@ describe.skipIf(skipWebE2E(PM))(`web-components modulith e2e (${PM})`, () => {
       // …and so did the design system's, through the import map.
       expect(dom).toContain('<acme-button type="submit"><button');
       expect(dom).toContain('<acme-greeting-card');
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  /**
+   * `closeBundle`, the hook that vendors the design system for
+   * `dist/`, only fires on `vite build` — the dev server needs its own
+   * route to the same two files, or the import map's target 404s and
+   * every design-system element silently fails to upgrade under
+   * `<pm> run dev`. This is the case above, run against the dev
+   * server instead of a build.
+   */
+  it(
+    'serves the vendored design system from the dev server',
+    async () => {
+      await modulith();
+      runStep(cwd, `${PM} -C design-system run build`, PM, ['-C', 'design-system', 'run', 'build']);
+
+      const server = await startDevServer(path.join(cwd, 'application', 'web-app'));
+      try {
+        const html = await (await fetch(`${server.baseUrl}/`)).text();
+        expect(html).toContain('"@acme/design-system": "/vendor/design-system.js"');
+
+        const js = await fetch(`${server.baseUrl}/vendor/design-system.js`);
+        expect(js.status).toBe(200);
+        expect(await js.text()).toContain('acme-button');
+
+        const css = await fetch(`${server.baseUrl}/vendor/design-system.css`);
+        expect(css.status).toBe(200);
+      } finally {
+        await server.stop();
+      }
     },
     E2E_TIMEOUT_MS,
   );

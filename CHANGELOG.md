@@ -1841,6 +1841,28 @@ ci`/`containerization`/`distribution` on a service follow the same
   procedure, distinct from the thing it warns against — hashing our
   own download and calling the result published.
 
+### Fixed
+
+- **The `web-components` dev server now serves the vendored design
+  system under `--module-layout=modulith`.** `vite build` already
+  copied the design system's build output to where the import map in
+  `index.html` expects it (`/vendor/design-system.{js,css}`), but
+  `vite dev` never did — that copy runs from a Rollup `closeBundle`
+  hook, which only fires on a real build. Every custom element the
+  design system defines silently failed to upgrade under `<pm> dev`,
+  with nothing in the console to point at why. A new
+  `serveVendoredDesignSystem()` Vite plugin serves the same two files
+  straight from the design system's `dist/` while the dev server is
+  running, and the root `dev` script now builds the design system
+  first so it exists before the app's dev server starts.
+- **The `web-components` `dev` script now binds every interface**
+  (`vite --host`, both layouts), not just loopback. Vite's own default
+  is `localhost`-only, which is invisible to whatever forwards a port
+  in from outside a container or a remote dev environment — from
+  inside, the server looked and behaved correctly; from anywhere that
+  matters for previewing it, it looked like nothing was listening at
+  all.
+
 ## [0.5.0-alpha] — 2026-08-09
 
 ### Changed
