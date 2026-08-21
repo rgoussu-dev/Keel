@@ -191,6 +191,25 @@ describe('walking-skeleton vertical (Micronaut CLI)', () => {
     expect(cliBuild).toContain('mainClass.set("com.example.cli.Main")');
   });
 
+  /**
+   * Regression: the shared root build.gradle.kts's `archiveBaseName`
+   * override (added to keep `domain/contract` and
+   * `application/rest/contract` from colliding on `contract-<version>.jar`
+   * once both entrypoints can coexist — see jvm-shared-root.ts) once
+   * applied to every subproject unconditionally, which renamed the
+   * CLI's own shadow jar from `cli-0.1.0-SNAPSHOT-all.jar` to
+   * `application-cli-0.1.0-SNAPSHOT-all.jar` and broke the e2e run
+   * that launches it by name. Scoped to `contract`-named modules only.
+   */
+  it('does not rename the CLI module jar on the shared root build file', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.cli'));
+    cwds.push(cwd);
+
+    const root = tree.read('build.gradle.kts')?.toString() ?? '';
+    // Guarded to "contract" modules — never the CLI's own shadow jar.
+    expect(root).toContain('if (project.name == "contract")');
+  });
+
   it('imports the @DomainHandler types instead of processing the domain build', async () => {
     const { tree, cwd } = await installWith(baseTags('arch.server-http'));
     cwds.push(cwd);

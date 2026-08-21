@@ -221,10 +221,15 @@ function gradleBuildSeed(
 
     // Archive file names must be unique for the same reason: a boot/
     // shadow jar (and any flat lib/ layout) packs libraries by file
-    // name, so two modules both producing contract-<version>.jar
-    // would collide.
+    // name, so domain/contract and application/rest/contract both
+    // producing contract-<version>.jar would collide. Scoped to
+    // "contract" modules specifically — renaming every module here
+    // would change the runnable jar's own name (application/cli's,
+    // application/rest/executable's), which nothing needs disambiguated.
     tasks.withType<Jar>().configureEach {
-        archiveBaseName.set(project.path.removePrefix(":").replace(':', '-'))
+        if (project.name == "contract") {
+            archiveBaseName.set(project.path.removePrefix(":").replace(':', '-'))
+        }
     }`
     : '';
   return `plugins {
