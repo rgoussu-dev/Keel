@@ -5,24 +5,32 @@
  * Kotlin — emits the same shape: the binding-spec domain trisection
  * (`domain/kernel`, `domain/contract`, `domain/core`) plus a
  * framework-specific application layer. The trisection is
- * framework-independent per language, so it lives in shared template
- * trees (`assets/composition/walking-skeleton/jvm-domain/<lang>-<arch>`)
- * and each adapter renders it alongside its own application tree.
+ * framework- and arch-independent per language, so under the basic
+ * module layout it lives in one shared template tree per language
+ * (`assets/composition/walking-skeleton/jvm-domain/<lang>`) and each
+ * adapter renders it alongside its own application tree.
  *
  * Build files are not part of the source trees: they live in
  * build-system trees under
  * `assets/composition/walking-skeleton/jvm-build/<build-system>/`
  * (a shared `domain/` tree for the module build files plus one tree
- * per combination), selected at contribute time from the manifest's
- * `pkg.*` tag — the same sources scaffold onto Gradle or Maven.
+ * per combination for the `application/` module(s)), selected at
+ * contribute time from the manifest's `pkg.*` tag — the same sources
+ * scaffold onto Gradle or Maven. The root files every entrypoint of
+ * a (framework, language) pair shares — `settings.gradle.kts`/
+ * `pom.xml`, `build.gradle.kts`, `gradle.properties`, `README.md` —
+ * are generated in `jvm-shared-root.ts` instead of templated, since
+ * two entrypoints (`arch.cli` + `arch.server-http` both present)
+ * must compose onto them rather than each writing a whole-file copy.
  *
- * The manifest's `layout.*` tag selects the module layout the same
- * way: under `layout.modulith` every tree above has a `*-modulith`
- * sibling emitting the same walking skeleton carved into
- * `platform/` + `modules/<context>/` + `application/<typology>`. The
- * two layouts are alternative *shapes* of one adapter, not two
- * adapters, so the manifest answers and the adapter id are identical
- * either way and downstream adapters keep reading them unchanged.
+ * The manifest's `layout.*` tag selects the module layout: under
+ * `layout.modulith` every tree above has a `*-modulith` sibling
+ * emitting the same walking skeleton carved into `platform/` +
+ * `modules/<context>/` + `application/<typology>`, unchanged from
+ * before this file composed `arch.cli` + `arch.server-http` under
+ * `basic` — the modulith layout still renders one whole-file,
+ * per-(framework, arch, language) tree and does not yet compose two
+ * entrypoints (roadmap).
  *
  * One adapter per (framework, arch, language) combination — the
  * resolver picks by predicate (`framework.*` + `arch.*` + `lang.*`),
@@ -34,8 +42,14 @@
 
 import { jvmBuildSystem } from './jvm-build-system.js';
 import { jvmModuleLayout } from './jvm-module-layout.js';
+import { jvmSharedRootPatches, type JvmFramework } from './jvm-shared-root.js';
 import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
-import type { Adapter, Question } from '../../contract/composition.js';
+import type {
+  Adapter,
+  ContributionFile,
+  ContributionPatch,
+  Question,
+} from '../../contract/composition.js';
 
 /** Languages the JVM bootstraps scaffold. */
 export type JvmLanguage = 'java' | 'kotlin';
@@ -43,12 +57,14 @@ export type JvmLanguage = 'java' | 'kotlin';
 /** Entrypoint shapes the JVM bootstraps scaffold. */
 export type JvmArch = 'cli' | 'rest';
 
+export type { JvmFramework } from './jvm-shared-root.js';
+
 /** Declaration of one JVM bootstrap combination. */
 export interface JvmBootstrapSpec {
   /** Full adapter id, e.g. `walking-skeleton/spring-rest-bootstrap`. */
   readonly id: string;
   /** Framework tag suffix: `quarkus`, `spring`, `micronaut`. */
-  readonly framework: string;
+  readonly framework: JvmFramework;
   readonly arch: JvmArch;
   readonly language: JvmLanguage;
   /**
@@ -95,8 +111,6 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
 export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
   const shortName = spec.id.split('/').pop() ?? spec.id;
   const combo = shortName.replace(/-bootstrap$/, '');
-  const domainTemplateId = (suffix: string): string =>
-    `composition/walking-skeleton/jvm-domain${suffix}/${spec.language}-${spec.arch}`;
   const appTemplateId = (suffix: string): string =>
     `composition/walking-skeleton/${spec.templateDir}/templates${suffix}`;
   return {
@@ -117,15 +131,89 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
       };
       const buildSystem = jvmBuildSystem(ctx.manifest.tags);
       const modulith = jvmModuleLayout(ctx.manifest.tags) === 'modulith';
-      const suffix = modulith ? '-modulith' : '';
-      const buildRoot = `composition/walking-skeleton/jvm-build${suffix}/${buildSystem}`;
-      const [domain, app, domainBuild, appBuild] = await Promise.all([
-        ctx.templates.render(`${domainTemplateId(suffix)}`, '', vars),
-        ctx.templates.render(`${appTemplateId(suffix)}`, '', vars),
-        ctx.templates.render(`${buildRoot}/${modulith ? 'shared' : 'domain'}`, '', vars),
+      const buildRoot = `composition/walking-skeleton/jvm-build${modulith ? '-modulith' : ''}/${buildSystem}`;
+
+      if (modulith) {
+        // Unmodified pre-existing behavior: the modulith layout keeps
+        // its own per-(framework, arch, language) domain tree and
+        // whole-file root files — composing `arch.cli` +
+        // `arch.server-http` there is roadmap, not shipped.
+        const domainTemplateId = `composition/walking-skeleton/jvm-domain-modulith/${spec.language}-${spec.arch}`;
+        const [domain, app, domainBuild, appBuild] = await Promise.all([
+          ctx.templates.render(domainTemplateId, '', vars),
+          ctx.templates.render(appTemplateId('-modulith'), '', vars),
+          ctx.templates.render(`${buildRoot}/shared`, '', vars),
+          ctx.templates.render(`${buildRoot}/${combo}`, '', vars),
+        ]);
+        return { files: [...domain, ...app, ...domainBuild, ...appBuild] };
+      }
+
+      // Basic layout: the domain tree, the domain modules' build
+      // files, and every shared (non `application/`) path any
+      // rendered tree touches (e.g. Quarkus's CDI `beans.xml`,
+      // `.gitignore`) are identical across every entrypoint of this
+      // (framework, language) pair, so they upsert via a
+      // seed+identity patch instead of a whole-file write — the same
+      // "shared-file upsert" `apply.ts` documents, letting `arch.cli`
+      // and `arch.server-http` both resolve without conflict. Root
+      // files that genuinely differ per entrypoint (module lists,
+      // README sections) upsert too, with an idempotent per-arch
+      // `apply` — see `jvm-shared-root.ts`.
+      const domainTemplateId = `composition/walking-skeleton/jvm-domain/${spec.language}`;
+      const [domain, app, domainBuild, appOwn] = await Promise.all([
+        ctx.templates.render(domainTemplateId, '', vars),
+        ctx.templates.render(appTemplateId(''), '', vars),
+        ctx.templates.render(`${buildRoot}/domain`, '', vars),
         ctx.templates.render(`${buildRoot}/${combo}`, '', vars),
       ]);
-      return { files: [...domain, ...app, ...domainBuild, ...appBuild] };
+      const [appShared, appFiles] = partitionByApplicationPrefix(app);
+      return {
+        files: [...appFiles, ...appOwn],
+        patches: [
+          ...toUpsertPatches([...domain, ...domainBuild, ...appShared]),
+          ...jvmSharedRootPatches({
+            framework: spec.framework,
+            arch: spec.arch,
+            language: spec.language,
+            buildSystem,
+            basePackage,
+            projectName,
+          }),
+        ],
+      };
     },
   };
+}
+
+/**
+ * Splits a rendered tree into files under `application/` (never
+ * shared between entrypoints — kept as whole-file writes) and
+ * everything else (shared across every entrypoint of the same
+ * (framework, language) pair, and so must upsert).
+ */
+function partitionByApplicationPrefix(
+  files: readonly ContributionFile[],
+): readonly [shared: readonly ContributionFile[], own: readonly ContributionFile[]] {
+  const shared: ContributionFile[] = [];
+  const own: ContributionFile[] = [];
+  for (const f of files) (f.path.startsWith('application/') ? own : shared).push(f);
+  return [shared, own];
+}
+
+/**
+ * Converts whole-file contributions into upsert patches: the content
+ * becomes both the seed (used when no entrypoint has written the
+ * path yet) and, since the content is identical regardless of which
+ * entrypoint runs, the target the `apply` leaves unchanged.
+ */
+function toUpsertPatches(files: readonly ContributionFile[]): readonly ContributionPatch[] {
+  return files.map((f) => ({
+    target: f.path,
+    seed: contentToString(f.content),
+    apply: (existing) => existing,
+  }));
+}
+
+function contentToString(content: Buffer | string): string {
+  return Buffer.isBuffer(content) ? content.toString('utf8') : content;
 }

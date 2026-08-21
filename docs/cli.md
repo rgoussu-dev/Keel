@@ -26,14 +26,16 @@ keel new --stack=<id> [options]
 | `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                    |
 | `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise. |
 | `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                    |
-| `--with-peer-context`     | Every stack offering `--module-layout=modulith` — the twelve JVM stacks, `go-cli`/`go-http`, `rust-cli`/`rust-http`, `ts-cli`/`ts-http` and `web-components`: also scaffold a second bounded context reaching the first only through its peer seam. Rejected, with the stack named, on a stack whose modulith has no peer context.                                   |
+| `--with-peer-context`     | Every stack offering `--module-layout=modulith` — the twelve JVM stacks, `go-cli`/`go-http`/`go-cli-http`, `rust-cli`/`rust-http`/`rust-cli-http`, `ts-cli`/`ts-http` and `web-components`: also scaffold a second bounded context reaching the first only through its peer seam. Rejected, with the stack named, on a stack whose modulith has no peer context.     |
 | `-y, --yes`               | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                                             |
 | `--dry-run`               | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                                             |
+| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                |
 | `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                       |
 
 Examples:
 
 ```sh
+keel new --list                                     # every stack id + description
 keel new --stack=quarkus-rest                       # interactive
 keel new --stack=spring-rest --build-system maven   # pin the build system
 keel new --stack=fullstack --layout polyrepo        # one repo per service
@@ -41,6 +43,7 @@ keel new --stack=fullstack --build-system backend=maven,frontend=pnpm  # per-ser
 keel new --stack=quarkus-rest --module-layout modulith  # modules/ + platform/ + application/
 keel new --stack=go-http --yes                      # all defaults, no prompts
 keel new --stack=rust-cli --dry-run                 # inspect the plan first
+keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a REST entrypoint both
 ```
 
 ## `keel add`
@@ -65,8 +68,12 @@ message naming the gap** (e.g. `observability` on a CLI project).
 | ------------- | ------------------------------------------------------------------ |
 | `-y, --yes`   | Non-interactive — defaults for every question.                     |
 | `--dry-run`   | Print the plan; write nothing.                                     |
+| `--list`      | List every vertical id with its one-line description, then exit.   |
 | `--reapply`   | Re-render an installed vertical from its recorded answers.         |
 | `--set <k=v>` | Preset an answer (same shape as `keel new`). Not with `--reapply`. |
+
+`keel add --list` needs no existing project — it just prints the
+catalog.
 
 Adding an already-installed vertical errors with
 `keel.vertical-already-installed` — that is what `--reapply` is for.
@@ -159,8 +166,8 @@ project's stack has no bounded-context adapter, in which case the
 command would otherwise scaffold nothing at all and report success.
 
 Supported on every stack that ships a modulith: the twelve JVM stacks,
-`go-cli`/`go-http`, `rust-cli`/`rust-http`, `ts-cli`/`ts-http` and
-`web-components`.
+`go-cli`/`go-http`/`go-cli-http`, `rust-cli`/`rust-http`/`rust-cli-http`,
+`ts-cli`/`ts-http` and `web-components`.
 
 ## `keel link`
 

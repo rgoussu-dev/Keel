@@ -53,3 +53,17 @@ export function getVertical(id: string): Vertical | null {
 export function listVerticalIds(): readonly string[] {
   return Object.keys(VERTICALS).sort();
 }
+
+/** One vertical's id + description, for `keel add --list`. */
+export interface VerticalSummary {
+  readonly id: string;
+  readonly description: string;
+}
+
+/** Lists every registered vertical's id + description, in deterministic order. */
+export function listVerticals(): readonly VerticalSummary[] {
+  return listVerticalIds().map((id) => {
+    const vertical = VERTICALS[id];
+    return { id, description: vertical?.description ?? '' };
+  });
+}

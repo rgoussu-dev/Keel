@@ -1,18 +1,21 @@
 # Rust stacks
 
-| Stack       | Shape                            | Entry tags                       |
-| ----------- | -------------------------------- | -------------------------------- |
-| `rust-cli`  | Dependency-free terminal binary  | `lang.rust` + `arch.cli`         |
-| `rust-http` | HTTP service on **axum + tokio** | `lang.rust` + `arch.server-http` |
+| Stack           | Shape                                | Entry tags                                    |
+| --------------- | ------------------------------------ | --------------------------------------------- |
+| `rust-cli`      | Dependency-free terminal binary      | `lang.rust` + `arch.cli`                      |
+| `rust-http`     | HTTP service on **axum + tokio**     | `lang.rust` + `arch.server-http`              |
+| `rust-cli-http` | Both entrypoints, one shared package | `lang.rust` + `arch.cli` + `arch.server-http` |
 
 The two entrypoints **compose**: a tag set carrying both ships both
-deployment units on one shared package.
+deployment units on one shared package — `rust-cli-http` is that
+combination as a named preset.
 
 ## How to
 
 ```sh
 mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=rust-http    # or rust-cli
+npx @rgoussu.dev/keel new --stack=rust-cli-http # both entrypoints
 ```
 
 Both stacks offer a **module layout** — `basic` (the flat single

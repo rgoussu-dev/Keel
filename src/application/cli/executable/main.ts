@@ -15,8 +15,8 @@ import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.j
 import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
 import { ToolchainCheckHandler } from '../../../domain/toolchain/core/check.js';
 import { ToolchainInstallHandler } from '../../../domain/toolchain/core/install.js';
-import { listStackIds } from '../../../domain/core/stacks.js';
-import { listVerticalIds } from '../../../domain/core/verticals/index.js';
+import { listStacks } from '../../../domain/core/stacks.js';
+import { listVerticals } from '../../../domain/core/verticals/index.js';
 import { consoleLogger } from '../../../infrastructure/commons/console-logger.js';
 import { systemClock } from '../../../infrastructure/commons/system-clock.js';
 import { fsManifestStore } from '../../../infrastructure/manifest/fs-manifest-store.js';
@@ -53,8 +53,8 @@ export async function main(argv: string[]): Promise<void> {
     mediator,
     logger: consoleLogger,
     version: keelVersion,
-    availableStacks: listStackIds(),
-    availableVerticals: listVerticalIds(),
+    availableStacks: listStacks(),
+    availableVerticals: listVerticals(),
   });
 
   try {

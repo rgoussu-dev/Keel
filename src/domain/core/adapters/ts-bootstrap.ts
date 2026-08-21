@@ -90,6 +90,8 @@ export function tsBootstrapAnswers(
 export interface TsWorkspaceShell {
   /** The rendered shared trees: domain packages + pnpm workspace file. */
   readonly files: ContributionFile[];
+  /** The validated `projectName` answer, named out of `vars` for callers that only need this. */
+  readonly projectName: string;
   /** Template variables, ready for the entrypoint's own trees. */
   readonly vars: Readonly<Record<string, string>>;
   /** `-modulith` under that layout, `''` under `basic`. */
@@ -118,7 +120,7 @@ export async function renderTsWorkspaceShell(
   if (ws.pm === 'pnpm') {
     files.push(...(await ctx.templates.render(`${TEMPLATE_ROOT}/pm${suffix}/pnpm`, '', vars)));
   }
-  return { files, vars, suffix, layout, ws };
+  return { files, projectName, vars, suffix, layout, ws };
 }
 
 /**

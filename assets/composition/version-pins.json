@@ -28,6 +28,10 @@
           "pattern": "<quarkus\\.platform\\.version>([^<]+)</quarkus\\.platform\\.version>"
         },
         {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
+          "pattern": "<quarkus\\.platform\\.version>([^<]+)</quarkus\\.platform\\.version>"
+        },
+        {
           "glob": "assets/composition/**/*.kts*",
           "pattern": "\"io\\.quarkus\\.platform:quarkus-bom:([\\w.-]+)\""
         },
@@ -70,6 +74,10 @@
           "pattern": "<spring-boot\\.version>([^<]+)</spring-boot\\.version>"
         },
         {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
+          "pattern": "<spring-boot\\.version>([^<]+)</spring-boot\\.version>"
+        },
+        {
           "glob": "assets/composition/**/*.kts*",
           "pattern": "id\\(\"org\\.springframework\\.boot\"\\) version \"([\\w.-]+)\""
         },
@@ -92,6 +100,10 @@
       "locations": [
         {
           "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<micronaut\\.version>([^<]+)</micronaut\\.version>"
+        },
+        {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<micronaut\\.version>([^<]+)</micronaut\\.version>"
         },
         {
@@ -134,6 +146,10 @@
         {
           "glob": "assets/composition/**/pom.xml*",
           "pattern": "<kotlin\\.version>([^<]+)</kotlin\\.version>"
+        },
+        {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
+          "pattern": "KOTLIN_VERSION = '([\\w.-]+)'"
         }
       ],
       "check": {
@@ -198,6 +214,10 @@
       "locations": [
         {
           "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<(?:maven\\.compiler\\.release|jdk\\.version|release\\.version)>(\\d+)</"
+        },
+        {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<(?:maven\\.compiler\\.release|jdk\\.version|release\\.version)>(\\d+)</"
         },
         {
@@ -332,6 +352,10 @@
         {
           "glob": "assets/composition/**/pom.xml*",
           "pattern": "<artifactId>maven-compiler-plugin</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
+          "pattern": "<artifactId>maven-compiler-plugin</artifactId>\\s*<version>([^<]+)</version>"
         }
       ],
       "check": {
@@ -348,6 +372,10 @@
       "locations": [
         {
           "glob": "assets/composition/**/pom.xml*",
+          "pattern": "<artifactId>maven-surefire-plugin</artifactId>\\s*<version>([^<]+)</version>"
+        },
+        {
+          "glob": "src/domain/core/adapters/jvm-shared-root.ts",
           "pattern": "<artifactId>maven-surefire-plugin</artifactId>\\s*<version>([^<]+)</version>"
         }
       ],
@@ -775,6 +803,22 @@
       "check": {
         "type": "npm",
         "package": "pnpm"
+      }
+    },
+    {
+      "id": "ts-scaffolded-project-version",
+      "family": "ts",
+      "description": "The scaffolded project's own starting semver in the root package.json ts-shared-root.ts generates (arch.cli + arch.server-http composed on one workspace) — not an upstream dependency, so nothing to track against latest; every other TS/web package.json template starts a fresh project at the same 0.0.0",
+      "value": "0.0.0",
+      "locations": [
+        {
+          "glob": "src/domain/core/adapters/ts-shared-root.ts",
+          "pattern": "version: '([\\d.]+)'"
+        }
+      ],
+      "check": {
+        "type": "none",
+        "reason": "a fresh scaffold's own version number, not a pin on anything upstream — changing it is a keel convention decision, human-reviewed like any pin bump"
       }
     },
     {

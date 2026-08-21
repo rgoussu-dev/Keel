@@ -263,3 +263,54 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
     ).rejects.toThrow(/invalid projectName/);
   });
 });
+
+/**
+ * A tag set carrying both `arch.cli` and `arch.server-http` resolves
+ * both JVM bootstrap adapters — the composable-entrypoint mechanism
+ * `jvm-shared-root.ts` implements, mirroring what Go and Rust already
+ * did. The regression this guards: before that mechanism, both
+ * bootstraps rendered their own whole-file copy of `settings.gradle.kts`
+ * / `build.gradle.kts` / `gradle.properties` / `README.md`, so the
+ * second adapter's `files` write threw `ContributionConflictError` on
+ * a path the first had already created.
+ */
+describe('walking-skeleton vertical (Quarkus, composed cli + server-http)', () => {
+  it('renders both entrypoints onto one shared domain and root files', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.cli', 'arch.server-http'));
+    cwds.push(cwd);
+
+    const expected = [
+      'domain/core/src/main/java/com/example/core/greet/GreetHandler.java',
+      'domain/contract/src/main/java/com/example/contract/greet/GreetRejected.java',
+      'application/cli/src/main/java/com/example/cli/HelloCommand.java',
+      'application/rest/executable/src/main/java/com/example/rest/GreetResource.java',
+      'application/rest/contract/src/main/java/com/example/rest/contract/GreetResponse.java',
+    ];
+    for (const p of expected) {
+      expect(tree.read(p), `missing ${p}`).not.toBeNull();
+    }
+
+    const settings = tree.read('settings.gradle.kts')?.toString() ?? '';
+    expect(settings).toContain('include(":domain:kernel")');
+    expect(settings).toContain('include(":application:cli")');
+    expect(settings).toContain('include(":application:rest:contract")');
+    expect(settings).toContain('include(":application:rest:executable")');
+    // Every include appears exactly once — the shared seed is upserted,
+    // never re-emitted whole by the second adapter to resolve.
+    expect(settings.match(/include\(":domain:kernel"\)/g)).toHaveLength(1);
+
+    const readme = tree.read('README.md')?.toString() ?? '';
+    expect(readme).toContain('### cli');
+    expect(readme).toContain('### rest');
+  });
+
+  it('unifies the domain content on the richer (REST) shape, so the CLI handler validates too', async () => {
+    const { tree, cwd } = await installWith(baseTags('arch.cli', 'arch.server-http'));
+    cwds.push(cwd);
+
+    const handler = tree
+      .read('domain/core/src/main/java/com/example/core/greet/GreetHandler.java')
+      ?.toString();
+    expect(handler).toContain('GreetRejected');
+  });
+});

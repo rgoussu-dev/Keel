@@ -38,22 +38,23 @@ conventions travel with the code.
 
 ## Pick your stack
 
-One engine, 24 stacks — the same conventions rendered as idiomatic
+One engine, 34 stacks — the same conventions rendered as idiomatic
 Java, Kotlin, Go, Rust, or TypeScript. Pick a cell, run
-`npx @rgoussu.dev/keel new --stack=<id>`:
+`npx @rgoussu.dev/keel new --stack=<id>` (or `keel new --list` to see
+every id with its description):
 
-| Language / framework                                                    | CLI                    | HTTP service            | SPA              | Fullstack product     |
-| ----------------------------------------------------------------------- | ---------------------- | ----------------------- | ---------------- | --------------------- |
-| **Java · Quarkus 3** ([docs](docs/stacks/jvm.md))                       | `quarkus-cli`          | `quarkus-rest`          | —                | `fullstack`           |
-| **Kotlin · Quarkus 3** ([docs](docs/stacks/jvm.md))                     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | —                | —                     |
-| **Java · Spring Boot 4** ([docs](docs/stacks/jvm.md))                   | `spring-cli`           | `spring-rest`           | —                | `fullstack-spring`    |
-| **Kotlin · Spring Boot 4** ([docs](docs/stacks/jvm.md))                 | `spring-cli-kotlin`    | `spring-rest-kotlin`    | —                | —                     |
-| **Java · Micronaut 4** ([docs](docs/stacks/jvm.md))                     | `micronaut-cli`        | `micronaut-rest`        | —                | `fullstack-micronaut` |
-| **Kotlin · Micronaut 4** ([docs](docs/stacks/jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | —                | —                     |
-| **Go · stdlib** ([docs](docs/stacks/go.md))                             | `go-cli`               | `go-http`               | —                | `fullstack-go`        |
-| **Rust · stdlib / axum** ([docs](docs/stacks/rust.md))                  | `rust-cli`             | `rust-http`             | —                | `fullstack-rust`      |
-| **TypeScript · Node** ([docs](docs/stacks/ts-http.md))                  | `ts-cli`               | `ts-http`               | —                | `fullstack-ts`        |
-| **TypeScript · web components** ([docs](docs/stacks/web-components.md)) | —                      | —                       | `web-components` | (frontend of all)     |
+| Language / framework                                                    | CLI                    | HTTP service            | CLI + HTTP                  | SPA              | Fullstack product     |
+| ----------------------------------------------------------------------- | ---------------------- | ----------------------- | --------------------------- | ---------------- | --------------------- |
+| **Java · Quarkus 3** ([docs](docs/stacks/jvm.md))                       | `quarkus-cli`          | `quarkus-rest`          | `quarkus-cli-rest`          | —                | `fullstack`           |
+| **Kotlin · Quarkus 3** ([docs](docs/stacks/jvm.md))                     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | `quarkus-cli-rest-kotlin`   | —                | —                     |
+| **Java · Spring Boot 4** ([docs](docs/stacks/jvm.md))                   | `spring-cli`           | `spring-rest`           | `spring-cli-rest`           | —                | `fullstack-spring`    |
+| **Kotlin · Spring Boot 4** ([docs](docs/stacks/jvm.md))                 | `spring-cli-kotlin`    | `spring-rest-kotlin`    | `spring-cli-rest-kotlin`    | —                | —                     |
+| **Java · Micronaut 4** ([docs](docs/stacks/jvm.md))                     | `micronaut-cli`        | `micronaut-rest`        | `micronaut-cli-rest`        | —                | `fullstack-micronaut` |
+| **Kotlin · Micronaut 4** ([docs](docs/stacks/jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` | —                | —                     |
+| **Go · stdlib** ([docs](docs/stacks/go.md))                             | `go-cli`               | `go-http`               | `go-cli-http`               | —                | `fullstack-go`        |
+| **Rust · stdlib / axum** ([docs](docs/stacks/rust.md))                  | `rust-cli`             | `rust-http`             | `rust-cli-http`             | —                | `fullstack-rust`      |
+| **TypeScript · Node** ([docs](docs/stacks/ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http`               | —                | `fullstack-ts`        |
+| **TypeScript · web components** ([docs](docs/stacks/web-components.md)) | —                      | —                       | —                           | `web-components` | (frontend of all)     |
 
 Every stack page lists its **prerequisites**, the **questions asked**,
 and the **exact tree generated** — start at the

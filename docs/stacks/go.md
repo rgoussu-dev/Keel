@@ -1,21 +1,25 @@
 # Go stacks
 
-| Stack     | Shape                             | Entry tags                     |
-| --------- | --------------------------------- | ------------------------------ |
-| `go-cli`  | Terminal binary on the stdlib     | `lang.go` + `arch.cli`         |
-| `go-http` | HTTP service on stdlib `net/http` | `lang.go` + `arch.server-http` |
+| Stack         | Shape                               | Entry tags                                  |
+| ------------- | ----------------------------------- | ------------------------------------------- |
+| `go-cli`      | Terminal binary on the stdlib       | `lang.go` + `arch.cli`                      |
+| `go-http`     | HTTP service on stdlib `net/http`   | `lang.go` + `arch.server-http`              |
+| `go-cli-http` | Both entrypoints, one shared module | `lang.go` + `arch.cli` + `arch.server-http` |
 
 The two entrypoints **compose**: a tag set carrying both ships both
-deployment units on one shared module.
+deployment units on one shared module — `go-cli-http` is that
+combination as a named preset, so you don't have to name every tag by
+hand.
 
-Both scaffold on either **module layout** — `basic` (the flat tree
-below) or `modulith`. Your pick; `basic` is the default.
+Every stack scaffolds on either **module layout** — `basic` (the flat
+tree below) or `modulith`. Your pick; `basic` is the default.
 
 ## How to
 
 ```sh
 mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=go-http     # or go-cli
+npx @rgoussu.dev/keel new --stack=go-cli-http # both entrypoints
 npx @rgoussu.dev/keel new --stack=go-http --module-layout modulith
 ```
 

@@ -15,9 +15,18 @@ says no, 1 for a defect).
 
 ```sh
 mkdir my-service && cd my-service
-npx @rgoussu.dev/keel new --stack=ts-http    # node:http service
-npx @rgoussu.dev/keel new --stack=ts-cli     # command-line tool
+npx @rgoussu.dev/keel new --stack=ts-http      # node:http service
+npx @rgoussu.dev/keel new --stack=ts-cli       # command-line tool
+npx @rgoussu.dev/keel new --stack=ts-cli-http  # both entrypoints, one workspace
 ```
+
+The two entrypoints **compose**: `ts-cli-http` is `ts-cli` and
+`ts-http` at once — one shared domain and workspace, both deployment
+units — under the `basic` module layout (composing under `modulith` is
+on the [roadmap](../roadmap.md)). The root `package.json` names each
+entrypoint's scripts explicitly rather than a bare `start`/`dev`, so
+the same names work whichever of the three stacks you picked:
+`start:cli`, `start:rest`, `dev:rest`.
 
 ## Prerequisites
 
@@ -227,9 +236,9 @@ the only thing holding it, here as everywhere on this stack.
 ## Verify it runs
 
 ```sh
-npm test          # or pnpm test
-npm start         # ts-http: GET http://localhost:8080/greet?name=World
-npm start -- --name World    # ts-cli: Hello, World! on stdout
+npm test                          # or pnpm test
+npm run start:rest                # ts-http: GET http://localhost:8080/greet?name=World
+npm run start:cli -- --name World # ts-cli: Hello, World! on stdout
 ```
 
 ## Add next
