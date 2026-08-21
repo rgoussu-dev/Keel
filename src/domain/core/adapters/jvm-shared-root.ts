@@ -1,6 +1,7 @@
 /**
  * Shared root-file patches for the JVM walking-skeleton bootstraps
- * (basic module layout only).
+ * under the **basic** module layout — the modulith sibling is
+ * [`jvm-shared-root-modulith.ts`](./jvm-shared-root-modulith.js).
  *
  * Every JVM entrypoint bootstrap (`quarkus-cli-bootstrap`,
  * `quarkus-rest-bootstrap`, …) used to render its own whole-file copy
@@ -24,6 +25,15 @@
  * the seed already uses the collision-safe (path-derived Gradle
  * group, `<module>`-per-entrypoint Maven) shape every framework's
  * REST variant already had.
+ *
+ * The seed builders are exported rather than private because the two
+ * layouts emit the *same root files* — a `settings.gradle.kts` with a
+ * `rootProject.name` and a module list, one `build.gradle.kts`
+ * configuring every subproject, a reactor `pom.xml` — and differ only
+ * in which modules seed them and what the README says. So the
+ * builders live here and the modulith module supplies its own module
+ * lists, comments and README bodies; nothing a layout does not share
+ * leaves its own module.
  */
 
 import type { ContributionPatch } from '../../contract/composition.js';
@@ -49,14 +59,14 @@ export interface JvmRootInputs {
   readonly projectName: string;
 }
 
-interface FrameworkMeta {
+export interface FrameworkMeta {
   readonly label: string;
   /** Inner lines of the root `gradle.properties`. */
   readonly gradleProperties: readonly string[];
   /** Inner lines of the root Maven `<properties>` block. */
   readonly mavenProperties: readonly string[];
   /**
-   * Whether the root `build.gradle.kts`/`pom.xml` needs the
+   * Whether the **basic** layout's root `build.gradle.kts` needs the
    * `archiveBaseName` block: Spring's boot jar and Micronaut's shadow
    * jar both pack by file name, so `application/rest/contract` and
    * `domain/contract` colliding on `contract-<version>.jar` is a real
@@ -67,9 +77,11 @@ interface FrameworkMeta {
   readonly kotlinGradlePlugins: readonly string[];
 }
 
-const KOTLIN_VERSION = '2.4.10';
+/** The Kotlin toolchain every JVM template pins. */
+export const KOTLIN_VERSION = '2.4.10';
 
-const FRAMEWORKS: Readonly<Record<JvmFramework, FrameworkMeta>> = {
+/** Per-framework facts both module layouts' root files are built from. */
+export const FRAMEWORKS: Readonly<Record<JvmFramework, FrameworkMeta>> = {
   quarkus: {
     label: 'Quarkus',
     gradleProperties: ['quarkus.platform.version=3.38.2'],
@@ -96,11 +108,37 @@ const FRAMEWORKS: Readonly<Record<JvmFramework, FrameworkMeta>> = {
   },
 };
 
+/**
+ * Module paths every basic-layout entrypoint shares — the domain
+ * trisection, which is the project as it looks with no entrypoint yet.
+ */
+const SEED_MODULES: readonly string[] = ['domain/kernel', 'domain/contract', 'domain/core'];
+
 /** Maven/Gradle module paths one arch's entrypoint contributes. */
 const ARCH_MODULES: Readonly<Record<JvmRootArch, readonly string[]>> = {
   cli: ['application/cli'],
   rest: ['application/rest/contract', 'application/rest/executable'],
 };
+
+/**
+ * Why the basic layout derives each subproject's Gradle group from its
+ * path. Passed to {@link gradleBuildSeed} rather than baked into it —
+ * the modulith hits the same clash for a different reason and says so
+ * in its own words.
+ */
+const GROUP_NOTE = `    // "contract" exists under both domain/ and application/rest/, and
+    // Gradle conflict-resolves subprojects that share module
+    // coordinates (group:name) into a single module — so derive each
+    // group from the project path to keep every module's coordinates
+    // unique.`;
+
+/** Why the archives are named after their path, where they must be. */
+const ARCHIVE_NOTE = `    // Archive file names must be unique for the same reason: a boot/
+    // shadow jar (and any flat lib/ layout) packs libraries by file
+    // name, so domain/contract and application/rest/contract both
+    // producing contract-<version>.jar would collide — so every
+    // module's archive is named after its full path, matching the
+    // Maven artifactIds these builds already carry.`;
 
 /**
  * The root-file patches one JVM entrypoint bootstrap contributes,
@@ -118,17 +156,24 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   return [
     {
       target: 'settings.gradle.kts',
-      seed: gradleSettingsSeed(inputs.projectName),
-      apply: (existing) => appendMissingLines(existing, gradleIncludeLines(inputs.arch)),
+      seed: gradleSettingsSeed(inputs.projectName, SEED_MODULES),
+      apply: (existing) =>
+        appendMissingLines(existing, gradleIncludeLines(ARCH_MODULES[inputs.arch])),
     },
     {
       target: 'build.gradle.kts',
-      seed: gradleBuildSeed(inputs.framework, inputs.language, inputs.basePackage),
+      seed: gradleBuildSeed({
+        framework: inputs.framework,
+        language: inputs.language,
+        basePackage: inputs.basePackage,
+        groupNote: GROUP_NOTE,
+        archiveNote: meta.archiveBaseName ? ARCHIVE_NOTE : null,
+      }),
       apply: (existing) => existing,
     },
     {
       target: 'gradle.properties',
-      seed: `${['org.gradle.parallel=true', 'org.gradle.caching=true', ...meta.gradleProperties].join('\n')}\n`,
+      seed: gradlePropertiesSeed(inputs.framework),
       apply: (existing) => existing,
     },
     {
@@ -144,12 +189,13 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   return [
     {
       target: 'pom.xml',
-      seed: mavenPomSeed(
-        inputs.language,
-        inputs.basePackage,
-        inputs.projectName,
-        meta.mavenProperties,
-      ),
+      seed: mavenPomSeed({
+        language: inputs.language,
+        basePackage: inputs.basePackage,
+        projectName: inputs.projectName,
+        frameworkProperties: meta.mavenProperties,
+        modules: SEED_MODULES,
+      }),
       apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
     },
     {
@@ -160,7 +206,12 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   ];
 }
 
-function gradleSettingsSeed(projectName: string): string {
+/**
+ * The root `settings.gradle.kts` as it looks with no entrypoint yet:
+ * the toolchain resolver, the project name, and the modules every
+ * entrypoint of this layout shares.
+ */
+export function gradleSettingsSeed(projectName: string, modules: readonly string[]): string {
   return `plugins {
     // Auto-provisions the pinned Java toolchain (JDK 25) when the
     // machine's installed JDK does not match.
@@ -169,14 +220,37 @@ function gradleSettingsSeed(projectName: string): string {
 
 rootProject.name = "${projectName}"
 
-include(":domain:kernel")
-include(":domain:contract")
-include(":domain:core")
+${gradleIncludeLines(modules).join('\n')}
 `;
 }
 
-function gradleIncludeLines(arch: JvmRootArch): readonly string[] {
-  return ARCH_MODULES[arch].map((m) => `include(":${m.replace(/\//g, ':')}")`);
+/** `include(…)` lines for a set of `a/b/c` module paths. */
+export function gradleIncludeLines(modules: readonly string[]): readonly string[] {
+  return modules.map((m) => `include(":${m.replace(/\//g, ':')}")`);
+}
+
+/** The root `gradle.properties`, identical for every entrypoint. */
+export function gradlePropertiesSeed(framework: JvmFramework): string {
+  return `${['org.gradle.parallel=true', 'org.gradle.caching=true', ...FRAMEWORKS[framework].gradleProperties].join('\n')}\n`;
+}
+
+/** What {@link gradleBuildSeed} needs beyond the framework facts. */
+export interface GradleBuildSeedInputs {
+  readonly framework: JvmFramework;
+  readonly language: JvmRootLanguage;
+  readonly basePackage: string;
+  /**
+   * The comment above the path-derived `group`, already indented as
+   * emitted. Both layouts derive the group for the same mechanical
+   * reason and hit it through different module names, so each says
+   * why in its own terms.
+   */
+  readonly groupNote: string;
+  /**
+   * The comment above the `archiveBaseName` block, indented as
+   * emitted — or `null` where the layout needs no such block.
+   */
+  readonly archiveNote: string | null;
 }
 
 /**
@@ -188,11 +262,8 @@ function gradleIncludeLines(arch: JvmRootArch): readonly string[] {
  * unconditionally is what lets `cli` and `rest` share one seed with
  * an identity `apply`.
  */
-function gradleBuildSeed(
-  framework: JvmFramework,
-  language: JvmRootLanguage,
-  basePackage: string,
-): string {
+export function gradleBuildSeed(inputs: GradleBuildSeedInputs): string {
+  const { framework, language, basePackage } = inputs;
   const meta = FRAMEWORKS[framework];
   const plugins =
     language === 'java'
@@ -216,19 +287,15 @@ function gradleBuildSeed(
             languageVersion = JavaLanguageVersion.of(25)
         }
     }`;
-  const archiveBaseNameBlock = meta.archiveBaseName
-    ? `
+  const archiveBaseNameBlock =
+    inputs.archiveNote === null
+      ? ''
+      : `
 
-    // Archive file names must be unique for the same reason: a boot/
-    // shadow jar (and any flat lib/ layout) packs libraries by file
-    // name, so domain/contract and application/rest/contract both
-    // producing contract-<version>.jar would collide — so every
-    // module's archive is named after its full path, matching the
-    // Maven artifactIds these builds already carry.
+${inputs.archiveNote}
     tasks.withType<Jar>().configureEach {
         archiveBaseName.set(project.path.removePrefix(":").replace(':', '-'))
-    }`
-    : '';
+    }`;
   return `plugins {
 ${plugins}
 }
@@ -245,11 +312,7 @@ allprojects {
 subprojects {
     ${applyPlugin}
 
-    // "contract" exists under both domain/ and application/rest/, and
-    // Gradle conflict-resolves subprojects that share module
-    // coordinates (group:name) into a single module — so derive each
-    // group from the project path to keep every module's coordinates
-    // unique.
+${inputs.groupNote}
     group = "${basePackage}" + path.substringBeforeLast(':').replace(':', '.')${archiveBaseNameBlock}
 
     ${languageBlock}
@@ -297,12 +360,33 @@ function mavenKotlinBlock(): {
   };
 }
 
-function mavenPomSeed(
-  language: JvmRootLanguage,
-  basePackage: string,
-  projectName: string,
-  frameworkProperties: readonly string[],
-): string {
+/** What {@link mavenPomSeed} needs to render one reactor root. */
+export interface MavenPomSeedInputs {
+  readonly language: JvmRootLanguage;
+  readonly basePackage: string;
+  readonly projectName: string;
+  /** Inner lines of the framework's `<properties>` contribution. */
+  readonly frameworkProperties: readonly string[];
+  /** The modules every entrypoint of this layout shares. */
+  readonly modules: readonly string[];
+  /**
+   * A `<dependencyManagement>` block for the reactor root, rendered
+   * verbatim between `</properties>` and the Kotlin reactor
+   * dependencies — leading and trailing newline included, as the
+   * surrounding template expects. Empty where the framework's own
+   * parent pom already manages every module's versions.
+   */
+  readonly dependencyManagement?: string;
+}
+
+/**
+ * The reactor `pom.xml` as it looks with no entrypoint yet. Only the
+ * seeded `<modules>` list moves with the layout; everything else —
+ * the coordinates, the release/encoding properties, the Kotlin
+ * reactor block, the pinned plugins — is the same file either way.
+ */
+export function mavenPomSeed(inputs: MavenPomSeedInputs): string {
+  const { language, basePackage, projectName, frameworkProperties } = inputs;
   const kotlin = language === 'kotlin' ? mavenKotlinBlock() : null;
   const propsBlock = ['<maven.compiler.release>25</maven.compiler.release>']
     .concat('<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>')
@@ -351,15 +435,13 @@ function mavenPomSeed(
   <packaging>pom</packaging>
 
   <modules>
-    <module>domain/kernel</module>
-    <module>domain/contract</module>
-    <module>domain/core</module>
+${inputs.modules.map((m) => `    <module>${m}</module>`).join('\n')}
   </modules>
 
   <properties>
 ${propsBlock}
   </properties>
-${kotlin?.dependencies ?? ''}
+${inputs.dependencyManagement ?? ''}${kotlin?.dependencies ?? ''}
   <build>
 ${kotlin?.build ?? ''}    <pluginManagement>
       <plugins>
@@ -380,7 +462,12 @@ ${kotlin?.build ?? ''}    <pluginManagement>
 `;
 }
 
-function insertModules(existing: string, modules: readonly string[]): string {
+/**
+ * Adds any of `modules` the reactor root does not already list,
+ * immediately before the `</modules>` close. Idempotent, so the
+ * second entrypoint to resolve composes onto the first's list.
+ */
+export function insertModules(existing: string, modules: readonly string[]): string {
   const missing = modules.filter((m) => !existing.includes(`<module>${m}</module>`));
   if (missing.length === 0) return existing;
   const eol = eolOf(existing);
@@ -389,7 +476,8 @@ function insertModules(existing: string, modules: readonly string[]): string {
   return existing.replace(marker, `${lines}${marker}`);
 }
 
-function appendMissingLines(existing: string, lines: readonly string[]): string {
+/** Appends whichever of `lines` the file does not already carry. */
+export function appendMissingLines(existing: string, lines: readonly string[]): string {
   const missing = lines.filter((l) => !existing.includes(l));
   if (missing.length === 0) return existing;
   const eol = eolOf(existing);
@@ -425,7 +513,11 @@ function readmeMarker(arch: JvmRootArch): string {
   return `\n### ${arch}\n`;
 }
 
-function appendReadmeSection(
+/**
+ * Appends one entrypoint's README section unless its marker is
+ * already there — the idempotence the shared-file upsert needs.
+ */
+export function appendReadmeSection(
   existing: string,
   section: { arch: JvmRootArch; body: string },
 ): string {
