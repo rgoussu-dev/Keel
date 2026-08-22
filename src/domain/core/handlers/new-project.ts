@@ -41,6 +41,7 @@ import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { InstallReport, NewProjectCommand, RepoLayout } from '../../contract/commands.js';
 import type { DeferredAction, Question, Tree, Vertical } from '../../contract/composition.js';
+import type { Asker } from '../../contract/ports/prompt.js';
 import {
   emptyManifestV2,
   projectScopeRoot,
@@ -63,8 +64,34 @@ import { vcsVertical } from '../verticals/vcs.js';
 import type { InstallDeps } from './deps.js';
 import type { Tag } from '../../contract/composition.js';
 
+/**
+ * Question ids of the three **stack-level** dials — the choices the
+ * install handler resolves itself rather than delegating to a
+ * composition adapter.
+ *
+ * Exported because an answer to one of these has no home in
+ * `manifest.answers`: it is a field of {@link NewProjectCommand}. A
+ * front end that collects answers before dispatching (`keel ui`) has
+ * to route each one back to the right field, and it reads these ids
+ * to do it — see `domain/core/preview.ts`.
+ */
+export const LAYOUT_QUESTION_ID = 'layout';
+
+/** @see LAYOUT_QUESTION_ID */
+export const MODULE_LAYOUT_QUESTION_ID = 'moduleLayout';
+
+/** @see LAYOUT_QUESTION_ID */
+export const BUILD_SYSTEM_QUESTION_ID = 'buildSystem';
+
+/**
+ * Separates the build-system question id from the service path on a
+ * composite install (`buildSystem:backend`), where the choice is per
+ * service and one id would collide.
+ */
+export const SERVICE_QUESTION_SEPARATOR = ':';
+
 const LAYOUT_QUESTION: Question = {
-  id: 'layout',
+  id: LAYOUT_QUESTION_ID,
   prompt: 'Repository layout',
   doc: 'How the services of this product live in version control.',
   choices: [
@@ -215,7 +242,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
-    const layout = await this.resolveLayout(command);
+    const layout = await this.resolveLayout(command, stack);
     if (!layout.ok) return layout;
 
     const builds = await this.resolveServiceBuildSystems(command, stack, resolved);
@@ -418,7 +445,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       return ok(chosen.tag);
     }
     if (!command.interactive || options.length === 1) return ok(fallback.tag);
-    const answer = (await this.deps.prompt.ask(buildSystemQuestion(options, fallback))).trim();
+    const answer = (
+      await this.deps.prompt.ask(buildSystemQuestion(options, fallback), stackAsker(stack))
+    ).trim();
     const chosen = options.find((o) => o.id === answer);
     if (!chosen) return err(invalidBuildSystem(stack, answer, options));
     return ok(chosen.tag);
@@ -470,7 +499,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         continue;
       }
       const answer = (
-        await this.deps.prompt.ask(serviceBuildSystemQuestion(service, options, fallback))
+        await this.deps.prompt.ask(
+          serviceBuildSystemQuestion(service, options, fallback),
+          stackAsker(stack),
+        )
       ).trim();
       const match = options.find((o) => o.id === answer);
       if (!match) return err(invalidBuildSystem(service.stack, answer, options));
@@ -509,13 +541,18 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       return ok(chosen.tag);
     }
     if (!command.interactive || options.length === 1) return ok(fallback.tag);
-    const answer = (await this.deps.prompt.ask(moduleLayoutQuestion(options, fallback))).trim();
+    const answer = (
+      await this.deps.prompt.ask(moduleLayoutQuestion(options, fallback), stackAsker(stack))
+    ).trim();
     const chosen = options.find((o) => o.id === answer);
     if (!chosen) return err(invalidModuleLayout(stack, answer, options));
     return ok(chosen.tag);
   }
 
-  private async resolveLayout(command: NewProjectCommand): Promise<Result<RepoLayout>> {
+  private async resolveLayout(
+    command: NewProjectCommand,
+    stack: Stack,
+  ): Promise<Result<RepoLayout>> {
     if (command.layout !== undefined) {
       if (command.layout !== 'monorepo' && command.layout !== 'polyrepo') {
         return err(
@@ -528,7 +565,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       return ok(command.layout);
     }
     if (!command.interactive) return ok('monorepo');
-    const answer = (await this.deps.prompt.ask(LAYOUT_QUESTION)).trim();
+    const answer = (await this.deps.prompt.ask(LAYOUT_QUESTION, stackAsker(stack))).trim();
     if (answer !== 'monorepo' && answer !== 'polyrepo') {
       return err(
         new DomainError(
@@ -541,12 +578,17 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }
 }
 
+/** The asker every stack-level dial carries. @see LAYOUT_QUESTION_ID */
+function stackAsker(stack: Stack): Asker {
+  return { kind: 'stack', id: stack.id };
+}
+
 function buildSystemQuestion(
   options: readonly BuildSystemOption[],
   fallback: BuildSystemOption,
 ): Question {
   return {
-    id: 'buildSystem',
+    id: BUILD_SYSTEM_QUESTION_ID,
     prompt: 'Build system',
     doc: 'How the scaffolded project is built; every other choice is unaffected.',
     choices: options.map((o) => ({ value: o.id, label: o.label, doc: o.doc })),
@@ -568,7 +610,7 @@ function serviceBuildSystemQuestion(
 ): Question {
   return {
     ...buildSystemQuestion(options, fallback),
-    id: `buildSystem:${service.path}`,
+    id: `${BUILD_SYSTEM_QUESTION_ID}${SERVICE_QUESTION_SEPARATOR}${service.path}`,
     prompt: `Build system for ${service.path} (${service.stack.id})`,
   };
 }
@@ -626,7 +668,7 @@ function moduleLayoutQuestion(
   fallback: ModuleLayoutOption,
 ): Question {
   return {
-    id: 'moduleLayout',
+    id: MODULE_LAYOUT_QUESTION_ID,
     prompt: 'Module layout',
     doc: 'How the project is carved into modules. Not the repository layout — this is about bounded contexts, not repositories.',
     choices: options.map((o) => ({ value: o.id, label: o.label, doc: o.doc })),

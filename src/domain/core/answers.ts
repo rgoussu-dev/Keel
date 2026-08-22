@@ -20,7 +20,7 @@
  */
 
 import type { Adapter, Question } from '../contract/composition.js';
-import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
+import type { AnswerMode, Asker, Prompt } from '../contract/ports/prompt.js';
 
 /** Result of resolving a single question. */
 export interface AnswerResolution {
@@ -35,12 +35,15 @@ export interface AnswerResolution {
  *
  * @param stored - sticky answers previously recorded for this adapter
  *                 (`manifest.answers[adapterId]`). Pass `{}` if none.
+ * @param asker - who declared the question, forwarded to the prompt
+ *                so an answer can be attributed back to its home.
  */
 export async function resolveAnswer(
   question: Question,
   stored: Readonly<Record<string, string>>,
   mode: AnswerMode,
   prompt: Prompt,
+  asker: Asker,
 ): Promise<AnswerResolution> {
   if (question.memory === 'sticky') {
     const memo = stored[question.id];
@@ -50,7 +53,7 @@ export async function resolveAnswer(
     validateChoice(question, question.default);
     return { value: question.default, persist: question.memory === 'sticky' };
   }
-  const value = await prompt.ask(question);
+  const value = await prompt.ask(question, asker);
   validateChoice(question, value);
   return { value, persist: question.memory === 'sticky' };
 }
@@ -73,7 +76,10 @@ export async function resolveAdapterAnswers(
       throw new Error(`adapter '${adapter.id}' declares duplicate question id '${q.id}'`);
     }
     seen.add(q.id);
-    const r = await resolveAnswer(q, storedForAdapter, mode, prompt);
+    const r = await resolveAnswer(q, storedForAdapter, mode, prompt, {
+      kind: 'adapter',
+      id: adapter.id,
+    });
     answers[q.id] = r.value;
     if (r.persist) updates[q.id] = r.value;
   }
