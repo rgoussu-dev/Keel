@@ -43,9 +43,22 @@ const optedIn = process.env.KEEL_RUN_E2E === '1';
 const optedOut = process.env.KEEL_SKIP_E2E === '1';
 const onCI = process.env.CI === 'true';
 
+/**
+ * The opt-in rule on its own, with no toolchain in it.
+ *
+ * Every suite here answers to the same two switches; only *which*
+ * tools it additionally needs differs. A suite whose toolchain is
+ * neither of the package managers — the `keel ui` one, which needs a
+ * browser and nothing else — composes this with its own probe rather
+ * than claiming an npm it never runs.
+ */
+export function skipE2E(): boolean {
+  return optedOut || (onCI && !optedIn);
+}
+
 /** Whether the suites for `pm` should skip themselves. */
 export function skipWebE2E(pm: PackageManager): boolean {
-  return optedOut || !onPath(pm) || (onCI && !optedIn);
+  return skipE2E() || !onPath(pm);
 }
 
 /** A temp directory, removed by the caller. */
