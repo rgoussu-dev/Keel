@@ -75,6 +75,28 @@ module.exports = {
       to: { path: '^src/(domain/(core|toolchain/core)|infrastructure)/' },
     },
     {
+      name: 'web-contract-is-a-dumb-adapter',
+      comment:
+        'application/web/contract maps HTTP to commands/queries and Results back; like the CLI adapter it may not touch domain/core, domain/toolchain/core, or infrastructure — wiring and sockets are the executable’s job.',
+      severity: 'error',
+      from: { path: '^src/application/web/contract/' },
+      to: { path: '^src/(domain/(core|toolchain/core)|infrastructure)/' },
+    },
+    {
+      name: 'primary-adapters-stay-apart',
+      comment:
+        'the CLI and the local UI are two primary adapters over the same mediator, not layers of each other. The CLI adapter may name the UI server’s *type* (application/web/contract/server.ts) so `keel ui` can be injected; nothing else crosses. application/cli/executable is exempt as the process composition root — it is the one place that wires both.',
+      severity: 'error',
+      from: {
+        path: '^src/application/(cli|web)/',
+        pathNot: '^src/application/cli/executable/',
+      },
+      to: {
+        path: '^src/application/(cli|web)/',
+        pathNot: ['^src/application/$1/', '^src/application/web/contract/server\\.ts$'],
+      },
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       from: {},
