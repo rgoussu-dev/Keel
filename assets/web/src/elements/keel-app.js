@@ -118,9 +118,12 @@ export class KeelApp extends HTMLElement {
         ? { buildSystem: target.buildSystem ?? stack.buildSystems[0].id }
         : {}),
       ...(moduleLayout === undefined ? {} : { moduleLayout }),
-      ...(stack.peerContext && moduleLayout === 'modulith' && target.withPeerContext === true
-        ? { withPeerContext: true }
-        : {}),
+      // Always sent, never omitted. An absent `withPeerContext` is
+      // what makes the install *ask* — and the page has already
+      // offered the choice as a checkbox, so the question would
+      // arrive as a second control saying the same thing.
+      withPeerContext:
+        stack.peerContext && moduleLayout === 'modulith' && target.withPeerContext === true,
     };
   }
 
@@ -164,6 +167,9 @@ export class KeelApp extends HTMLElement {
       };
     } else if (binding.kind === 'buildSystem' && binding.service !== undefined) {
       this.#retarget({ buildSystem: `${binding.service}=${value}` });
+      return;
+    } else if (binding.kind === 'withPeerContext') {
+      this.#retarget({ withPeerContext: value === 'yes' });
       return;
     } else {
       this.#retarget({ [binding.kind]: value });

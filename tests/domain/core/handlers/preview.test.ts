@@ -58,7 +58,9 @@ async function previewNew(
         stack: overrides.stack ?? 'ts-cli',
         buildSystem: overrides.buildSystem ?? 'npm',
         moduleLayout: overrides.moduleLayout ?? 'basic',
-        ...(overrides.withPeerContext === true ? { withPeerContext: true } : {}),
+        ...(overrides.withPeerContext === undefined
+          ? {}
+          : { withPeerContext: overrides.withPeerContext }),
       },
       answers,
     }),
@@ -152,6 +154,46 @@ describe('keel.preview', () => {
     const preview = await previewNew();
     expect(preview.actions).toContain('git init -b main');
     expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
+  });
+
+  it('leaves the wizard’s review step out of the question set', async () => {
+    // `keel new`'s interactive flow ends each staging attempt with a
+    // proceed/edit/cancel question. It is flow control, not part of
+    // the plan — a preview takes its default (which is what ends the
+    // loop at the first plan) and must not report it, or a form would
+    // render "Review the plan above" as a field to fill in.
+    const preview = await previewNew();
+    expect(preview.questions.map((pending) => pending.id)).not.toContain('keel.review');
+  });
+
+  it('asks for the stack when the target names none, and binds it to the field', async () => {
+    const preview = expectOk(
+      await installMediator().dispatch(
+        previewQuery({ cwd, target: { kind: 'new-project' }, answers: {} }),
+      ),
+    );
+    expect(preview.questions[0]).toMatchObject({ id: 'stack', binding: { kind: 'stack' } });
+    expect(preview.subject).toBe('quarkus-cli');
+  });
+
+  it('does not ask about the peer context once the target has decided', async () => {
+    // An absent `withPeerContext` is what makes the install ask, so a
+    // caller that already offered the choice sends it either way.
+    const decided = await previewNew({ moduleLayout: 'modulith', withPeerContext: false });
+    expect(decided.questions.map((pending) => pending.id)).not.toContain('withPeerContext');
+
+    const undecided = expectOk(
+      await installMediator().dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'new-project', stack: 'ts-cli', moduleLayout: 'modulith' },
+          answers: {},
+        }),
+      ),
+    );
+    expect(undecided.questions.map((pending) => pending.binding)).toContainEqual({
+      kind: 'withPeerContext',
+    });
   });
 
   it('surfaces a domain refusal as an Err, exactly as the command would', async () => {

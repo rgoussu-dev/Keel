@@ -19,12 +19,18 @@ your machine exactly as they do from the CLI.
 
 ## What it adds over the CLI
 
-The CLI asks one question at a time and prints the plan at the end.
-The page shows the whole form at once and the plan **while you are
-still choosing** — flip Gradle to Maven, or `basic` to `modulith`, and
-the file tree redraws before anything is written. That is the whole
-argument for it: on a stack you have not used before, the tree is the
-documentation.
+`keel new` is already a guided wizard: it asks one question at a time,
+then shows the staged plan and lets you jump back and change an answer
+before committing. What it cannot do is show you the plan _while you
+are still choosing_. The page can — flip Gradle to Maven, or `basic`
+to `modulith`, and the file tree redraws before anything is written,
+without a round trip through the review step. On a stack you have not
+used before, that tree is the documentation.
+
+The two share everything below the transport: the same stacks, the
+same adapters, the same questions in the same order, and the same
+plan. Neither is a subset of the other's capabilities — pick the one
+that suits how you are working.
 
 It also reads what your project already is. Point it at a directory
 holding a keel manifest and it becomes the brownfield page: verticals
@@ -58,7 +64,16 @@ the server to preview the install, renders the questions that came
 back, folds a changed answer into the request, and previews again.
 Each pass runs the **real** engine as a dry run
 (`keel.preview`), so the form can never offer a question the install
-does not ask, or hide one it does.
+does not ask, or hide one it does. It is the same trick the CLI
+wizard's own back-and-forth plays, from the other side: the wizard
+replays recorded answers until one of them stops matching, the page
+re-resolves from scratch each time.
+
+One question is deliberately absent from the form: the wizard's
+proceed / change / cancel review step. That is flow control rather
+than part of the plan — the page's Generate button is the same
+decision — so it is marked as such at the port and dropped from the
+reported set.
 
 Two consequences worth knowing:
 

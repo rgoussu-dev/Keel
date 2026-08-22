@@ -12,7 +12,10 @@ mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=quarkus-rest
 ```
 
-Sixty seconds later you have:
+That walks you through the questions the stack still needs answered,
+shows the plan it's about to scaffold, and waits for you to confirm —
+pass `-y, --yes` instead to skip straight to the defaults with no
+prompts at all. Sixty seconds later you have:
 
 - a **hexagonal multi-module project** with the dependency rule laid
   out (`domain/kernel ← domain/contract ← domain/core`),
@@ -239,10 +242,11 @@ npx @rgoussu.dev/keel ui        # prints http://127.0.0.1:7420/?token=… and bl
 
 A Spring-Initializr-shaped page for the same engine, served from your
 own machine — nothing is uploaded, and the files land wherever you
-point it. What it adds over the CLI is the **plan while you are still
-choosing**: flip Gradle to Maven, or `basic` to `modulith`, and the
-file tree redraws before anything is written. On a stack you have not
-used before, that tree is the documentation.
+point it. `keel new` is already a guided wizard; what the page adds is
+the **plan while you are still choosing**: flip Gradle to Maven, or
+`basic` to `modulith`, and the file tree redraws before anything is
+written, without a round trip through the review step. On a stack you
+have not used before, that tree is the documentation.
 
 It also reads what your project already is. Point it at a directory
 holding a keel manifest and it becomes the brownfield page — verticals

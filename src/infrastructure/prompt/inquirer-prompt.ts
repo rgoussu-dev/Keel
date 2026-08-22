@@ -3,6 +3,11 @@
  * `@inquirer/prompts`. Picks `select` for choice questions and a
  * free-form `input` (with the default pre-filled) otherwise.
  *
+ * `question.doc` is mandatory on every `Question` precisely so it is
+ * never lost: `select` surfaces it as each choice's own description,
+ * and `input` — which `@inquirer/prompts` gives no description slot
+ * of its own — has it appended to the message on its own line.
+ *
  * Boolean-shaped questions can be modelled as a `select` with values
  * `'yes' | 'no'`; no `confirm` shortcut is exposed, keeping the
  * answer alphabet uniformly stringy in the manifest.
@@ -32,6 +37,9 @@ export const inquirerPrompt: Prompt = {
       });
       return value;
     }
-    return input({ message: question.prompt, default: question.default });
+    return input({
+      message: question.doc.length > 0 ? `${question.prompt}\n  ${question.doc}` : question.prompt,
+      default: question.default,
+    });
   },
 };

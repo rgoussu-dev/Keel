@@ -30,7 +30,8 @@
  *
  * Nothing is committed and nothing is persisted: the dry-run branch
  * of each install handler returns before `tree.commit()`, and the
- * deferred actions are described, never run.
+ * deferred actions are described, never run. Nothing is printed
+ * either — see {@link QUIET}.
  */
 
 import type { Action } from '../../kernel/action.js';
@@ -41,12 +42,32 @@ import {
   type InstallCommand,
   type InstallReport,
 } from '../../contract/commands.js';
+import type { Logger } from '../../contract/ports/logger.js';
 import type { InstallPreview, PreviewQuery } from '../../contract/queries.js';
 import { recordingPrompt } from '../preview.js';
 import { AddModuleHandler } from './add-module.js';
 import { AddVerticalHandler } from './add-vertical.js';
 import type { InstallDeps } from './deps.js';
 import { NewProjectHandler } from './new-project.js';
+
+/**
+ * The logger a preview narrates through: none of them.
+ *
+ * A preview's output is the value it returns, and the run it drives
+ * narrates for a terminal — the `keel new` wizard prints the whole
+ * staged plan before its review step. Under `keel ui` that terminal
+ * belongs to a server nobody is reading, and the page re-previews on
+ * every change, so the plan would be printed hundreds of lines at a
+ * time per keystroke. A query with a side effect on stderr is a query
+ * with a side effect.
+ */
+const QUIET: Logger = {
+  info: () => undefined,
+  success: () => undefined,
+  warn: () => undefined,
+  error: () => undefined,
+  debug: () => undefined,
+};
 
 /** Executes {@link PreviewQuery}s. */
 export class PreviewHandler implements Handler<PreviewQuery> {
@@ -58,7 +79,7 @@ export class PreviewHandler implements Handler<PreviewQuery> {
 
   async handle(query: PreviewQuery): Promise<Result<InstallPreview>> {
     const recorder = recordingPrompt(query.answers);
-    const deps: InstallDeps = { ...this.deps, prompt: recorder.prompt };
+    const deps: InstallDeps = { ...this.deps, prompt: recorder.prompt, logger: QUIET };
     const command = installCommandFor(query.target, {
       cwd: query.cwd,
       // Answers reach the run through the prompt, never the manifest

@@ -87,7 +87,10 @@ export function buildProgram(deps: CliDeps): Command {
     .description(
       `Bootstrap a greenfield project from a stack preset (available: ${deps.availableStacks.map((s) => s.id).join(', ')}).`,
     )
-    .option('-s, --stack <id>', 'stack preset id', 'quarkus-cli')
+    .option(
+      '-s, --stack <id>',
+      'stack preset id (prompted when omitted and interactive; defaults to quarkus-cli otherwise)',
+    )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
     .option('--list', 'list available stacks with their descriptions, then exit', false)
@@ -115,7 +118,7 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .action(
       async (opts: {
-        stack: string;
+        stack?: string;
         yes: boolean;
         dryRun: boolean;
         list: boolean;
@@ -133,10 +136,10 @@ export function buildProgram(deps: CliDeps): Command {
         const result = await deps.mediator.dispatch(
           newProjectCommand({
             cwd: dir,
-            stack: opts.stack,
             answers: parseSetAnswers(opts.set),
             interactive: !opts.yes,
             dryRun: opts.dryRun,
+            ...(opts.stack !== undefined ? { stack: opts.stack } : {}),
             ...(opts.layout !== undefined ? { layout: opts.layout as RepoLayout } : {}),
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
             ...(opts.moduleLayout !== undefined ? { moduleLayout: opts.moduleLayout } : {}),

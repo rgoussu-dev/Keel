@@ -2055,6 +2055,20 @@ Measured: a full preview of `quarkus-rest` under the modulith is
 ~60ms in-process, so a 120ms debounce makes the loop feel like a form
 rather than a request.
 
+**It landed alongside the `keel new` wizard**, which shipped from the
+other direction in the same window and asks the same questions through
+the same port. They are complements rather than rivals: the wizard
+stages, reviews and lets you jump back; the page shows the plan while
+the choices are still moving. Merging them cost one real reconciliation
+— the wizard's review step is a question the engine asks that is _not_
+part of the plan, and a prompt collecting answers instead of blocking
+cannot tell the two apart from the question alone. `Asker` already
+existed for the neighbouring problem, so it grew a `control` kind and
+`WizardPrompt.askDirect` carries it; the preview takes its default and
+drops it. A preview also runs with no logger, since the wizard prints
+its whole staged plan before reviewing and `keel ui` re-previews on
+every change.
+
 ### Three things that came out of it that were not obvious going in
 
 - **The Prompt port needed to say who was asking.** A question id is

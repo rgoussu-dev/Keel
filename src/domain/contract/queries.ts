@@ -107,9 +107,12 @@ export function catalogQuery(): CatalogQuery {
  */
 export type AnswerBinding =
   | { readonly kind: 'answer'; readonly adapter: string; readonly question: string }
+  | { readonly kind: 'stack' }
   | { readonly kind: 'layout' }
   | { readonly kind: 'moduleLayout' }
-  | { readonly kind: 'buildSystem'; readonly service?: string };
+  | { readonly kind: 'buildSystem'; readonly service?: string }
+  /** Answered `yes` / `no`; the field it fills is a boolean. */
+  | { readonly kind: 'withPeerContext' };
 
 /**
  * A question the previewed install asked, with the value the preview

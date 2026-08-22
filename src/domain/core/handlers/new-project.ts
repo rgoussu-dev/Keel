@@ -2,8 +2,10 @@
  * Handler for `keel.new-project` — bootstrap a greenfield project
  * from a stack preset.
  *
- * Single-service pipeline:
- *   1. Resolve the stack preset (`quarkus-cli`, …).
+ * Non-interactive pipeline (`--yes`, or any run with `interactive:
+ * false`):
+ *   1. Resolve the stack (the `--stack` flag, or the default preset
+ *      when omitted).
  *   2. Refuse if a manifest already exists under the project scope —
  *      `keel new` is greenfield-only; brownfield is `keel add`.
  *   3. Build an empty v2 manifest seeded with the stack's tags, its
@@ -33,6 +35,19 @@
  * root artifacts exist. Commit order matches the single flow, per
  * scope: trees, then manifests, then deferred actions (root first,
  * then services in declaration order).
+ *
+ * **Interactive pipeline** wraps either of the above in a wizard
+ * rather than replacing them: `handle()` stages the full plan (every
+ * question the chosen stack, layout, build system and adapters would
+ * ask, in the same order they always resolved in) through a
+ * {@link WizardPrompt}, then shows a review of the plan — proceed,
+ * cancel, or jump back to any answered question and re-stage from
+ * there. Nothing is committed until the plan is proceeded on; a
+ * `--dry-run` interactive run reviews the same way but never commits.
+ * Non-interactive runs never see the review step at all — the wizard
+ * is purely additive over the two staging pipelines above, which is
+ * why they stay data-in/data-out (`stage → {report, scopes}`) with
+ * committing pulled out into `finish`.
  */
 
 import path from 'node:path';
@@ -40,8 +55,14 @@ import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { InstallReport, NewProjectCommand, RepoLayout } from '../../contract/commands.js';
-import type { DeferredAction, Question, Tree, Vertical } from '../../contract/composition.js';
-import type { Asker } from '../../contract/ports/prompt.js';
+import type {
+  DeferredAction,
+  Question,
+  QuestionChoice,
+  Tree,
+  Vertical,
+} from '../../contract/composition.js';
+import type { Asker, Prompt } from '../../contract/ports/prompt.js';
 import {
   emptyManifestV2,
   projectScopeRoot,
@@ -59,13 +80,22 @@ import {
 } from '../adapters/module-layout.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { installVertical } from '../install.js';
-import { getStack, listStackIds, STACKS, type BuildSystemOption, type Stack } from '../stacks.js';
+import {
+  getStack,
+  listStackIds,
+  listStacks,
+  STACKS,
+  type BuildSystemOption,
+  type Stack,
+  type StackSummary,
+} from '../stacks.js';
 import { vcsVertical } from '../verticals/vcs.js';
+import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
 import type { Tag } from '../../contract/composition.js';
 
 /**
- * Question ids of the three **stack-level** dials — the choices the
+ * Question ids of the four **stack-level** dials — the choices the
  * install handler resolves itself rather than delegating to a
  * composition adapter.
  *
@@ -89,6 +119,24 @@ export const BUILD_SYSTEM_QUESTION_ID = 'buildSystem';
  * service and one id would collide.
  */
 export const SERVICE_QUESTION_SEPARATOR = ':';
+
+/**
+ * Question id of the wizard's stack question — the fourth
+ * stack-level dial, and the same story as the three above: its answer
+ * is `NewProjectCommand.stack`, not an entry in `manifest.answers`.
+ */
+export const STACK_QUESTION_ID = 'stack';
+
+/** @see LAYOUT_QUESTION_ID */
+export const PEER_CONTEXT_QUESTION_ID = 'withPeerContext';
+
+/** `--stack` when omitted from a non-interactive run. */
+const DEFAULT_STACK_ID = 'quarkus-cli';
+
+/** The review step's own control-question choices, not staged answers. */
+const PROCEED = 'proceed';
+const CANCEL = 'cancel';
+const EDIT_PREFIX = 'edit:';
 
 const LAYOUT_QUESTION: Question = {
   id: LAYOUT_QUESTION_ID,
@@ -126,6 +174,18 @@ interface StagedScope {
   readonly actions: readonly DeferredAction[];
 }
 
+/** A fully-staged plan: nothing committed yet, the caller's to `finish`. */
+interface StagedPlan {
+  readonly report: InstallReport;
+  readonly scopes: readonly StagedScope[];
+}
+
+/** What the user chose at the review step. */
+type ReviewDecision =
+  | { readonly kind: 'proceed' }
+  | { readonly kind: 'cancel' }
+  | { readonly kind: 'edit'; readonly index: number };
+
 /** Executes {@link NewProjectCommand}s. */
 export class NewProjectHandler implements Handler<NewProjectCommand> {
   constructor(private readonly deps: InstallDeps) {}
@@ -135,36 +195,122 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }
 
   async handle(command: NewProjectCommand): Promise<Result<InstallReport>> {
-    const stack = getStack(command.stack);
-    if (!stack) {
-      return err(
-        new DomainError(
-          `unknown stack '${command.stack}'; available: ${listStackIds().join(', ')}`,
-          'keel.unknown-stack',
-        ),
-      );
+    const wizard = new WizardPrompt(this.deps.prompt);
+    for (;;) {
+      wizard.beginAttempt();
+      const attempt = await this.stage(command, wizard);
+      if (!attempt.ok) return attempt;
+      if (!command.interactive) return this.finish(command, attempt.value);
+
+      const decision = await this.review(wizard, attempt.value.report);
+      if (decision.kind === 'proceed') return this.finish(command, attempt.value);
+      if (decision.kind === 'cancel') return err(cancelledError());
+      wizard.prepareEdit(decision.index);
     }
-    return stack.services
-      ? this.handleComposite(command, stack)
-      : this.handleSingle(command, stack);
   }
 
-  private async handleSingle(
+  /** Resolves the stack and runs the matching staging pipeline. Commits nothing. */
+  private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
+    const stackId = await this.resolveStackId(command, prompt);
+    const stack = getStack(stackId);
+    if (!stack) return err(unknownStackError(stackId));
+    return stack.services
+      ? this.stageComposite(command, stack, prompt)
+      : this.stageSingle(command, stack, prompt);
+  }
+
+  /** Commits a staged plan unless the run is a dry-run, and unwraps it to the report. */
+  private async finish(
+    command: NewProjectCommand,
+    attempt: StagedPlan,
+  ): Promise<Result<InstallReport>> {
+    if (!command.dryRun) await this.commitScopes(attempt.scopes);
+    return ok(attempt.report);
+  }
+
+  /**
+   * Resolves the stack id: the `--stack` flag when supplied, the
+   * interactive choice otherwise, the default preset when neither
+   * interactive nor supplied. The single most consequential choice a
+   * `keel new` run makes, and so the first question the wizard asks.
+   */
+  private async resolveStackId(command: NewProjectCommand, prompt: Prompt): Promise<string> {
+    if (command.stack !== undefined) return command.stack;
+    if (!command.interactive) return DEFAULT_STACK_ID;
+    return (await prompt.ask(stackQuestion(listStacks()), NEW_PROJECT_ASKER)).trim();
+  }
+
+  /**
+   * Shows the staged plan and asks the user to proceed, cancel, or
+   * jump back to a previously-answered question. Every recorded
+   * answer becomes a "change this" choice, described by its own
+   * question's prompt and doc so the review reads like a plan
+   * summary rather than a bare list of ids.
+   */
+  private async review(wizard: WizardPrompt, report: InstallReport): Promise<ReviewDecision> {
+    this.printPlan(report);
+    const choices: QuestionChoice[] = [
+      {
+        value: PROCEED,
+        label: 'Proceed — scaffold as shown above',
+        doc: 'Commit the plan above.',
+      },
+      ...wizard.recorded.map((r, index) => ({
+        value: `${EDIT_PREFIX}${index}`,
+        label: `Change: ${r.question.prompt} = ${answerLabel(r)}`,
+        doc: r.question.doc,
+      })),
+      {
+        value: CANCEL,
+        label: 'Cancel — write nothing',
+        doc: 'Abort the run; nothing is written.',
+      },
+    ];
+    const answer = await wizard.askDirect({
+      id: 'keel.review',
+      prompt: 'Review the plan above',
+      doc: 'Pick "Change: …" to jump back to that question and re-answer it — every question asked after it is re-resolved, since a later choice may depend on it.',
+      choices,
+      default: PROCEED,
+      memory: 'repeat',
+    });
+    if (answer === PROCEED) return { kind: 'proceed' };
+    if (answer === CANCEL) return { kind: 'cancel' };
+    return { kind: 'edit', index: Number(answer.slice(EDIT_PREFIX.length)) };
+  }
+
+  private printPlan(report: InstallReport): void {
+    this.deps.logger.info(`keel new ${report.subject}: planned changes`);
+    for (const c of report.changes) {
+      const tag = c.kind === 'create' ? '+' : c.kind === 'modify' ? '~' : '-';
+      this.deps.logger.info(`  ${tag} ${c.path}`);
+    }
+    for (const a of report.actions) this.deps.logger.info(`  ! ${a}`);
+  }
+
+  private async stageSingle(
     command: NewProjectCommand,
     stack: Stack,
-  ): Promise<Result<InstallReport>> {
+    prompt: Prompt,
+  ): Promise<Result<StagedPlan>> {
     const scopeRoot = projectScopeRoot(command.cwd);
     if ((await this.deps.manifests.read(scopeRoot)) !== null) {
       return err(alreadyInitialised(scopeRoot));
     }
 
-    const buildTag = await this.resolveBuildSystem(command, stack);
+    const buildTag = await this.resolveBuildSystem(command, stack, prompt);
     if (!buildTag.ok) return buildTag;
 
-    const layoutTag = await this.resolveModuleLayout(command, stack);
+    const layoutTag = await this.resolveModuleLayout(command, stack, prompt);
     if (!layoutTag.ok) return layoutTag;
 
-    const peerTag = peerContextTag(command, stack, buildTag.value, layoutTag.value);
+    const peerTag = await this.resolveWithPeerContext(
+      command,
+      stack,
+      buildTag.value,
+      layoutTag.value,
+      prompt,
+    );
     if (!peerTag.ok) return peerTag;
 
     const now = this.deps.clock.nowIso();
@@ -180,6 +326,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       skipVcs: false,
       command,
       now,
+      prompt,
     });
 
     const report: InstallReport = {
@@ -189,15 +336,14 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       committed: !command.dryRun,
     };
 
-    if (command.dryRun) return ok(report);
-    await this.commitScopes([staged]);
-    return ok(report);
+    return ok({ report, scopes: [staged] });
   }
 
-  private async handleComposite(
+  private async stageComposite(
     command: NewProjectCommand,
     stack: Stack,
-  ): Promise<Result<InstallReport>> {
+    prompt: Prompt,
+  ): Promise<Result<StagedPlan>> {
     const resolved: ResolvedService[] = [];
     for (const service of stack.services ?? []) {
       const serviceStack = getStack(service.stack);
@@ -242,10 +388,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
-    const layout = await this.resolveLayout(command, stack);
+    const layout = await this.resolveLayout(command, stack, prompt);
     if (!layout.ok) return layout;
 
-    const builds = await this.resolveServiceBuildSystems(command, stack, resolved);
+    const builds = await this.resolveServiceBuildSystems(command, stack, resolved, prompt);
     if (!builds.ok) return builds;
 
     const rootScope = projectScopeRoot(command.cwd);
@@ -283,6 +429,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           skipVcs: false,
           command,
           now,
+          prompt,
         }),
       );
     }
@@ -301,6 +448,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           extraVerticals: service.extraVerticals,
           command,
           now,
+          prompt,
         }),
       );
     }
@@ -322,9 +470,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       committed: !command.dryRun,
     };
 
-    if (command.dryRun) return ok(report);
-    await this.commitScopes(scopes);
-    return ok(report);
+    return ok({ report, scopes });
   }
 
   /**
@@ -348,6 +494,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     extraVerticals?: readonly Vertical[];
     command: NewProjectCommand;
     now: string;
+    prompt: Prompt;
   }): Promise<StagedScope> {
     let manifest: ManifestV2 = {
       ...emptyManifestV2(inputs.now, this.deps.keelVersion),
@@ -377,7 +524,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         manifest,
         tree,
         mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
-        prompt: this.deps.prompt,
+        prompt: inputs.prompt,
         logger: this.deps.logger,
         cwd: inputs.cwd,
         templates: this.deps.templates,
@@ -423,6 +570,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async resolveBuildSystem(
     command: NewProjectCommand,
     stack: Stack,
+    prompt: Prompt,
   ): Promise<Result<Tag | null>> {
     const options = stack.buildSystems ?? [];
     const fallback = options[0];
@@ -446,7 +594,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }
     if (!command.interactive || options.length === 1) return ok(fallback.tag);
     const answer = (
-      await this.deps.prompt.ask(buildSystemQuestion(options, fallback), stackAsker(stack))
+      await prompt.ask(buildSystemQuestion(options, fallback), stackAsker(stack))
     ).trim();
     const chosen = options.find((o) => o.id === answer);
     if (!chosen) return err(invalidBuildSystem(stack, answer, options));
@@ -466,6 +614,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     command: NewProjectCommand,
     stack: Stack,
     services: readonly ResolvedService[],
+    prompt: Prompt,
   ): Promise<Result<ReadonlyMap<string, BuildSystemOption | null>>> {
     const explicit = parseServiceBuildSystems(command.buildSystem, stack, services);
     if (!explicit.ok) return explicit;
@@ -499,10 +648,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         continue;
       }
       const answer = (
-        await this.deps.prompt.ask(
-          serviceBuildSystemQuestion(service, options, fallback),
-          stackAsker(stack),
-        )
+        await prompt.ask(serviceBuildSystemQuestion(service, options, fallback), stackAsker(stack))
       ).trim();
       const match = options.find((o) => o.id === answer);
       if (!match) return err(invalidBuildSystem(service.stack, answer, options));
@@ -521,6 +667,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async resolveModuleLayout(
     command: NewProjectCommand,
     stack: Stack,
+    prompt: Prompt,
   ): Promise<Result<Tag | null>> {
     const options = stack.moduleLayouts ?? [];
     const fallback = options[0];
@@ -542,16 +689,47 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }
     if (!command.interactive || options.length === 1) return ok(fallback.tag);
     const answer = (
-      await this.deps.prompt.ask(moduleLayoutQuestion(options, fallback), stackAsker(stack))
+      await prompt.ask(moduleLayoutQuestion(options, fallback), stackAsker(stack))
     ).trim();
     const chosen = options.find((o) => o.id === answer);
     if (!chosen) return err(invalidModuleLayout(stack, answer, options));
     return ok(chosen.tag);
   }
 
+  /**
+   * Resolves whether to also scaffold the peer context: the
+   * `--with-peer-context` flag when supplied (validated against both
+   * gates below regardless of source), the interactive choice when
+   * the flag was omitted and the layout already resolved to modulith
+   * on a stack whose modulith actually carries a peer context, `no`
+   * otherwise. Asking is conditioned on both gates already passing
+   * so the question is only ever offered where accepting `yes` would
+   * actually scaffold something.
+   */
+  private async resolveWithPeerContext(
+    command: NewProjectCommand,
+    stack: Stack,
+    buildTag: Tag | null,
+    layoutTag: Tag | null,
+    prompt: Prompt,
+  ): Promise<Result<Tag | null>> {
+    let want = command.withPeerContext === true;
+    if (
+      command.withPeerContext === undefined &&
+      command.interactive &&
+      layoutTag === MODULITH_LAYOUT_TAG &&
+      emitsPeerContext(stack, stackTags(stack, buildTag, layoutTag))
+    ) {
+      const answer = (await prompt.ask(peerContextQuestion(), stackAsker(stack))).trim();
+      want = answer === 'yes';
+    }
+    return peerContextTag(want, stack, buildTag, layoutTag);
+  }
+
   private async resolveLayout(
     command: NewProjectCommand,
     stack: Stack,
+    prompt: Prompt,
   ): Promise<Result<RepoLayout>> {
     if (command.layout !== undefined) {
       if (command.layout !== 'monorepo' && command.layout !== 'polyrepo') {
@@ -565,7 +743,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       return ok(command.layout);
     }
     if (!command.interactive) return ok('monorepo');
-    const answer = (await this.deps.prompt.ask(LAYOUT_QUESTION, stackAsker(stack))).trim();
+    const answer = (await prompt.ask(LAYOUT_QUESTION, stackAsker(stack))).trim();
     if (answer !== 'monorepo' && answer !== 'polyrepo') {
       return err(
         new DomainError(
@@ -581,6 +759,55 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 /** The asker every stack-level dial carries. @see LAYOUT_QUESTION_ID */
 function stackAsker(stack: Stack): Asker {
   return { kind: 'stack', id: stack.id };
+}
+
+/**
+ * The asker of the stack question itself, which is asked before any
+ * stack has been picked — so it names the command rather than a
+ * preset.
+ */
+const NEW_PROJECT_ASKER: Asker = { kind: 'stack', id: 'keel.new-project' };
+
+/** The wizard's first question: which stack preset to scaffold from. */
+function stackQuestion(options: readonly StackSummary[]): Question {
+  return {
+    id: STACK_QUESTION_ID,
+    prompt: 'Stack',
+    doc: 'The preset combination of capabilities and verticals to scaffold from.',
+    choices: options.map((o) => ({ value: o.id, label: o.id, doc: o.description })),
+    default: DEFAULT_STACK_ID,
+    memory: 'repeat',
+  };
+}
+
+function peerContextQuestion(): Question {
+  return {
+    id: PEER_CONTEXT_QUESTION_ID,
+    prompt: 'Also scaffold a second bounded context (peer context)?',
+    doc: 'Adds a peer module reaching the skeleton only through its user-side/service seam — a second context demonstrating the modulith boundary.',
+    choices: [
+      { value: 'yes', label: 'yes', doc: 'Scaffold the peer context alongside the skeleton.' },
+      { value: 'no', label: 'no', doc: 'Just the skeleton context.' },
+    ],
+    default: 'no',
+    memory: 'repeat',
+  };
+}
+
+/** The review step's label for one recorded answer: its choice's label, or the raw value. */
+function answerLabel(r: RecordedAnswer): string {
+  return r.question.choices?.find((c) => c.value === r.value)?.label ?? r.value;
+}
+
+function cancelledError(): DomainError {
+  return new DomainError('cancelled by user — nothing written', 'keel.cancelled');
+}
+
+function unknownStackError(id: string): DomainError {
+  return new DomainError(
+    `unknown stack '${id}'; available: ${listStackIds().join(', ')}`,
+    'keel.unknown-stack',
+  );
 }
 
 function buildSystemQuestion(
@@ -709,7 +936,8 @@ function defaultBuildTag(stack: Stack): Tag | null {
 }
 
 /**
- * Resolves `--with-peer-context` into the tag that seeds the second
+ * Resolves `want` (a peer context was requested, whether by flag or
+ * by the interactive wizard) into the tag that seeds the second
  * bounded context, rejecting it wherever the request cannot be
  * honoured. Two gates, and the second exists because the resolver
  * cannot keep it.
@@ -728,15 +956,17 @@ function defaultBuildTag(stack: Stack): Tag | null {
  *
  * Both fail at the front door with the stack named, which beats
  * scaffolding half of what was asked for and leaving the user to
- * wonder where the other context went.
+ * wonder where the other context went. The interactive wizard never
+ * exercises either failure branch — it only offers the question once
+ * both gates already pass — but the flag path still needs them.
  */
 function peerContextTag(
-  command: NewProjectCommand,
+  want: boolean,
   stack: Stack,
   buildTag: Tag | null,
   layoutTag: Tag | null,
 ): Result<Tag | null> {
-  if (command.withPeerContext !== true) return ok(null);
+  if (!want) return ok(null);
   if (layoutTag !== MODULITH_LAYOUT_TAG) {
     return err(
       new DomainError(

@@ -25,7 +25,9 @@ import {
   BUILD_SYSTEM_QUESTION_ID,
   LAYOUT_QUESTION_ID,
   MODULE_LAYOUT_QUESTION_ID,
+  PEER_CONTEXT_QUESTION_ID,
   SERVICE_QUESTION_SEPARATOR,
+  STACK_QUESTION_ID,
 } from './handlers/new-project.js';
 
 /** A prompt that answers without blocking, and remembers being asked. */
@@ -52,6 +54,12 @@ export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
   const recorded: PendingQuestion[] = [];
   const prompt: Prompt = {
     ask(question: Question, asker: Asker): Promise<string> {
+      // The `keel new` wizard's review step asks what to do next, not
+      // what to scaffold. Taking its default ends the staging loop at
+      // the first plan — which is the whole of a preview — and keeping
+      // it out of `recorded` keeps a flow-control prompt from
+      // arriving at a form as a field.
+      if (asker.kind === 'control') return Promise.resolve(question.default);
       const binding = bindingFor(question, asker);
       const value = suppliedAnswer(answers, binding) ?? question.default;
       recorded.push({
@@ -85,7 +93,9 @@ export function bindingFor(question: Question, asker: Asker): AnswerBinding {
   if (asker.kind !== 'stack') {
     return { kind: 'answer', adapter: asker.id, question: question.id };
   }
+  if (question.id === STACK_QUESTION_ID) return { kind: 'stack' };
   if (question.id === LAYOUT_QUESTION_ID) return { kind: 'layout' };
+  if (question.id === PEER_CONTEXT_QUESTION_ID) return { kind: 'withPeerContext' };
   if (question.id === MODULE_LAYOUT_QUESTION_ID) return { kind: 'moduleLayout' };
   const [head, service] = splitServiceQuestion(question.id);
   if (head === BUILD_SYSTEM_QUESTION_ID) {

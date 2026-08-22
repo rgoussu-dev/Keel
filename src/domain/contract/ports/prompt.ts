@@ -27,10 +27,16 @@ export interface Asker {
    * `adapter` — a composition adapter's own choice point, recorded
    * as sticky memory under the adapter's id.
    * `stack` — a stack-level dial resolved by the install handler
-   * (repository layout, build system, module layout); never sticky.
+   * (which stack, repository layout, build system, module layout,
+   * peer context); never sticky, and recorded as a field of the
+   * command rather than in `manifest.answers`.
    * `toolchain` — the provisioning context's manager dial.
+   * `control` — flow control rather than part of the plan: the
+   * `keel new` wizard's proceed/edit/cancel review step. Its answer
+   * is not an answer to anything, and a front end that collects
+   * answers must not render it as a field.
    */
-  readonly kind: 'adapter' | 'stack' | 'toolchain';
+  readonly kind: 'adapter' | 'stack' | 'toolchain' | 'control';
   /** The adapter id, the stack id, or the provisioning context's name. */
   readonly id: string;
 }

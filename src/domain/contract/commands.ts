@@ -49,8 +49,12 @@ export type RepoLayout = 'monorepo' | 'polyrepo';
 export interface NewProjectCommand extends Command<InstallReport> {
   readonly kind: 'keel.new-project';
   readonly cwd: string;
-  /** Stack preset id, e.g. `quarkus-cli`. */
-  readonly stack: string;
+  /**
+   * Stack preset id, e.g. `quarkus-cli`. When absent, interactive
+   * installs prompt for it (the wizard's first and most consequential
+   * question) and non-interactive installs default to `quarkus-cli`.
+   */
+  readonly stack?: string;
   readonly answers: PresetAnswers;
   readonly interactive: boolean;
   readonly dryRun: boolean;
@@ -230,7 +234,8 @@ export type InstallTarget = NewProjectTarget | AddVerticalTarget | AddModuleTarg
 /** Bootstrap a greenfield project — the subject of {@link NewProjectCommand}. */
 export interface NewProjectTarget {
   readonly kind: 'new-project';
-  readonly stack: string;
+  /** Absent asks for it, exactly as an omitted `--stack` does. */
+  readonly stack?: string;
   readonly layout?: RepoLayout;
   readonly buildSystem?: string;
   readonly moduleLayout?: string;
@@ -272,14 +277,19 @@ export function installCommandFor(target: InstallTarget, run: InstallRun): Insta
     case 'new-project':
       return newProjectCommand({
         cwd: run.cwd,
-        stack: target.stack,
         answers: run.answers,
         interactive: run.interactive,
         dryRun: run.dryRun,
+        ...(target.stack === undefined ? {} : { stack: target.stack }),
         ...(target.layout === undefined ? {} : { layout: target.layout }),
         ...(target.buildSystem === undefined ? {} : { buildSystem: target.buildSystem }),
         ...(target.moduleLayout === undefined ? {} : { moduleLayout: target.moduleLayout }),
-        ...(target.withPeerContext === true ? { withPeerContext: true } : {}),
+        // Passed through even when false: absent means "ask", and a
+        // front end that has already offered the choice must be able
+        // to say no as well as yes.
+        ...(target.withPeerContext === undefined
+          ? {}
+          : { withPeerContext: target.withPeerContext }),
       });
     case 'add-vertical':
       return addVerticalCommand({

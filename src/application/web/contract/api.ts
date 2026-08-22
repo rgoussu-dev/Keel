@@ -94,7 +94,7 @@ const answersSchema: z.ZodType<PresetAnswers> = z.record(z.record(z.string()));
 const targetSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('new-project'),
-    stack: z.string().min(1),
+    stack: z.string().min(1).optional(),
     layout: z.enum(['monorepo', 'polyrepo']).optional(),
     buildSystem: z.string().min(1).optional(),
     moduleLayout: z.string().min(1).optional(),
@@ -214,7 +214,7 @@ function narrow(target: z.infer<typeof targetSchema>): InstallTarget {
     case 'new-project':
       return {
         kind: 'new-project',
-        stack: target.stack,
+        ...(target.stack === undefined ? {} : { stack: target.stack }),
         ...(target.layout === undefined ? {} : { layout: target.layout }),
         ...(target.buildSystem === undefined ? {} : { buildSystem: target.buildSystem }),
         ...(target.moduleLayout === undefined ? {} : { moduleLayout: target.moduleLayout }),
