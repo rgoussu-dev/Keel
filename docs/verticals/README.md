@@ -76,6 +76,12 @@ the release pipeline builds that Dockerfile. See
 family promotes — `keel add distribution` first. CLI shapes never
 carry it, so they hard-fail. See [`iac`](iac.md).
 
+The "first" in ⁴ and ⁵ is an order, not a separate run:
+[`keel new --with`](../cli.md#keel-new) installs extras in the order
+named, so `--with containerization,distribution,iac` is one run and
+the same three ids in another order are refused up front, naming the
+one to list them after.
+
 ## Prerequisites per vertical
 
 Beyond the [stack's own prerequisites](../stacks/README.md#prerequisites-at-a-glance):
