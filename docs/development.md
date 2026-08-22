@@ -269,10 +269,9 @@ whole half built by hand, `modulith` shipped with none of it built at
 all, and the modulith cells re-exercise the shared seed builders on
 every run anyway. Shards follow the `jvm-modulith-*` convention rather
 than the job-per-cell one above: a combo cell builds two assemblies,
-and `jvm-combo-quarkus-java` run exactly as declared measures 227.55s
-wall against a 225.43s longest file (locally, on 4 vCPUs, with cold
-caches), which is inside the matrix floor — so three per shard cost
-no wall clock.
+and `jvm-combo-quarkus-java` run exactly as declared measures 265.02s
+wall against a 263.05s longest file on the runner, inside a 436s
+matrix floor — so three per shard cost no wall clock.
 
 Language is an axis on the modulith half only, and the grid is what
 made it one. A shard that runs nothing is worse than no shard, since

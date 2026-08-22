@@ -334,21 +334,25 @@ jobs:
           # 57s–213s each, comfortably inside the 371s matrix floor, so
           # attribution was free. These cells build *two* assemblies
           # apiece, so they cost more — and the number is measured on
-          # the shape that ships rather than estimated. Running
-          # `jvm-combo-quarkus-java` exactly as declared here, locally
-          # on 4 vCPUs with cold caches: **227.55s wall, 546.98s of
-          # test time across three files, longest file
-          # `combo-modulith-quarkus-cli-rest-gradle` at 225.43s**,
-          # divisor 2.40. That is inside the 371s matrix floor, so
-          # these shards cost no wall clock, where eighteen shards
-          # would pay eighteen cold JDK+Gradle provisions for a red X
-          # that framework × language already names precisely enough.
+          # the shape that ships. On the runner (run 32574792585, the
+          # grid's first green): `jvm-combo-quarkus-java` is **265.02s
+          # wall, 655.35s of test time across three files, longest
+          # file `combo-basic-quarkus-cli-rest-gradle` at 263.05s**,
+          # divisor 2.47 — 307s as a job, with provisioning. The six
+          # shards span 174–307s as jobs, and the matrix floor that
+          # run was `jvm-modulith-quarkus-java` at 436s. So these
+          # shards cost no wall clock, where eighteen would pay
+          # eighteen cold JDK+Gradle provisions for a red X that
+          # framework × language already names precisely enough.
           #
-          # Local figures, not runner figures — this repo's other
-          # measurements are from the runner and the two are not
-          # interchangeable. Replace them once this grid has a green
-          # e2e run to read them off. `mvn` is in every shard because
-          # every shard carries at least one Maven cell.
+          # Two of those three files are within 1.7s of each other
+          # (263.05s and 261.39s), so neither is *the* floor here —
+          # the Maven cell at 130.91s is half of either. And the local
+          # measurement this replaced said 227.55s with the *other*
+          # Gradle cell longest, which is the standing warning with a
+          # number: a laptop reorders a tie the runner reorders back.
+          # `mvn` is in every shard because every shard carries at
+          # least one Maven cell.
           - id: jvm-combo-quarkus-java
             tools: java javac gradle mvn
             files: >-
@@ -538,12 +542,13 @@ jobs:
           # need. And `web` is already fourteen files at ~189s wall
           # against a ~111s floor; three more real installs would push
           # its wall up, where one more parallel shard pushes the
-          # phase's up by nothing. Measured as declared here, locally
-          # on 4 vCPUs with cold caches: **41.81s wall, 85.65s of test
-          # time, longest file `combo-modulith-ts-cli-http-npm` at
-          # 40.06s** — an order of magnitude inside the ~371s matrix
-          # floor. There is no build step to pay for; the install is
-          # the cost, and npm's is twice pnpm's here.
+          # phase's up by nothing. On the runner (run 32574792585):
+          # **35.82s wall, 75.90s of test time, longest file
+          # `combo-modulith-ts-cli-http-npm` at 34.56s** — 53s as a
+          # job, an order of magnitude inside the matrix floor. There
+          # is no build step to pay for; the install is the cost, and
+          # npm's is the best part of twice pnpm's here (34.56s
+          # against 21.60s on the same layout).
           - id: web-combo
             tools: npm pnpm
             files: >-
