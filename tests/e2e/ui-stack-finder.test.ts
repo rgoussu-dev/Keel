@@ -41,7 +41,7 @@
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Locator, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -62,6 +62,26 @@ const SETTLE_MS = 20_000;
  * mistaken for one that has already finished.
  */
 const QUIET_MS = 400;
+
+/**
+ * The probed browser as an **absolute** path, or null.
+ *
+ * The shared probe answers with a bare command name when it finds one
+ * on PATH — `google-chrome` on a GitHub-hosted runner, where no
+ * Playwright download layout exists. That is enough for the other
+ * browser-driven suites, which hand it to `spawn` and let PATH
+ * resolution do the rest; Playwright instead stats `executablePath`
+ * against the working directory and refuses a name it cannot find
+ * there. Resolving here rather than widening the probe keeps the two
+ * consumers honest about what each of them needs.
+ */
+const browserBinary = ((): string | null => {
+  if (chromium === null || path.isAbsolute(chromium)) return chromium;
+  const found = spawnSync(process.platform === 'win32' ? 'where' : 'which', [chromium], {
+    encoding: 'utf8',
+  });
+  return found.status === 0 ? (found.stdout.split('\n')[0]?.trim() ?? null) : null;
+})();
 
 /* ---- the server under test ------------------------------------- */
 
@@ -223,7 +243,7 @@ let page: Page;
 let traffic: Traffic;
 let mishaps: string[];
 
-describe.skipIf(skipE2E() || chromium === null)('keel ui — the stack finder facets', () => {
+describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack finder facets', () => {
   beforeAll(async () => {
     // `bin/keel.js` loads `dist/`, and the e2e job installs without
     // building. Compiling here is what makes this suite test the
@@ -239,7 +259,7 @@ describe.skipIf(skipE2E() || chromium === null)('keel ui — the stack finder fa
     cwd = await mkTempDir('keel-ui-facets-e2e-');
     ui = await startUi(cwd);
     browser = await browserType.launch({
-      ...(chromium === null ? {} : { executablePath: chromium }),
+      ...(browserBinary === null ? {} : { executablePath: browserBinary }),
       args: ['--no-sandbox'],
     });
   }, E2E_TIMEOUT_MS);
