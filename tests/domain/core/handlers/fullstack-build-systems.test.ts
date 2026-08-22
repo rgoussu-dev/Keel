@@ -189,6 +189,7 @@ describe('fullstack per-service build systems (--build-system path=id)', () => {
       projectName: 'walking-skeleton',
       npmScope: 'acme',
       stack: 'granular',
+      'keel.review': 'proceed',
     });
     const { runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred, prompt });

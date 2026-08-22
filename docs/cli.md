@@ -20,23 +20,24 @@ Bootstrap a greenfield project from a [stack preset](stacks/README.md).
 keel new --stack=<id> [options]
 ```
 
-| Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Defaults to `quarkus-cli`.                                                                                                                                                                                                                                                                              |
-| `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                    |
-| `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise. |
-| `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                    |
-| `--with-peer-context`     | Every stack offering `--module-layout=modulith`, which is every single-service stack: also scaffold a second bounded context reaching the first only through its peer seam. On a stack composing both entrypoints the peer is wired into **both** assemblies. Rejected, with the stack named, on a stack whose modulith has no peer context.                         |
-| `-y, --yes`               | Non-interactive — use defaults for unanswered questions.                                                                                                                                                                                                                                                                                                             |
-| `--dry-run`               | Print the plan without writing any file.                                                                                                                                                                                                                                                                                                                             |
-| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                |
-| `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                       |
+| Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Prompted first when interactive and omitted — the wizard's opening question. Defaults to `quarkus-cli` otherwise.                                                                                                                                                                                                                                                                                                                                                                        |
+| `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise.                                                                                                                                                                                  |
+| `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                                                                                                                                                                                                     |
+| `--with-peer-context`     | Every stack offering `--module-layout=modulith`, which is every single-service stack: also scaffold a second bounded context reaching the first only through its peer seam. On a stack composing both entrypoints the peer is wired into **both** assemblies. Rejected, with the stack named, on a stack whose modulith has no peer context. Prompted, interactively, the moment `--module-layout` resolves to `modulith` on a stack that actually has a peer-context adapter — passing the flag on the command line always suppresses that question. |
+| `-y, --yes`               | Non-interactive — use defaults for unanswered questions. Skips the wizard and the review step entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 Examples:
 
 ```sh
 keel new --list                                     # every stack id + description
-keel new --stack=quarkus-rest                       # interactive
+keel new                                            # interactive: the wizard asks the stack first
+keel new --stack=quarkus-rest                       # interactive, stack already decided
 keel new --stack=spring-rest --build-system maven   # pin the build system
 keel new --stack=fullstack --layout polyrepo        # one repo per service
 keel new --stack=fullstack --build-system backend=maven,frontend=pnpm  # per-service build systems
@@ -45,6 +46,33 @@ keel new --stack=go-http --yes                      # all defaults, no prompts
 keel new --stack=rust-cli --dry-run                 # inspect the plan first
 keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a REST entrypoint both
 ```
+
+### The interactive wizard
+
+Every flag above doubles as a question: pass it and its question is
+skipped, omit it interactively and the wizard asks. The order is
+designed rather than incidental — the stack first (the most
+consequential choice), then the repository layout or build system,
+then the module layout, then the peer context when the modulith
+supports one, then each installed adapter's own questions in the
+order they resolve.
+
+Once everything is answered, the wizard shows the same plan
+`--dry-run` prints — every file that would be created or changed,
+every deferred action that would run — and asks what to do next:
+
+- **Proceed** — commit the plan as shown (or, under `--dry-run`,
+  report it without committing).
+- **Change: …** — jump back to any question already answered
+  (stack, layout, an adapter's base package, …) and re-answer it.
+  Everything asked after that question is re-resolved, since a later
+  choice may depend on it — picking a different stack, for instance,
+  changes which adapters run at all.
+- **Cancel** — abort with `keel.cancelled`; nothing is written.
+
+`-y, --yes` bypasses the wizard and the review step entirely — every
+question resolves to its default and the plan commits immediately,
+which is what scripts and the e2e harness rely on.
 
 ## `keel add`
 

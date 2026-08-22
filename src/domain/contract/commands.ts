@@ -49,8 +49,12 @@ export type RepoLayout = 'monorepo' | 'polyrepo';
 export interface NewProjectCommand extends Command<InstallReport> {
   readonly kind: 'keel.new-project';
   readonly cwd: string;
-  /** Stack preset id, e.g. `quarkus-cli`. */
-  readonly stack: string;
+  /**
+   * Stack preset id, e.g. `quarkus-cli`. When absent, interactive
+   * installs prompt for it (the wizard's first and most consequential
+   * question) and non-interactive installs default to `quarkus-cli`.
+   */
+  readonly stack?: string;
   readonly answers: PresetAnswers;
   readonly interactive: boolean;
   readonly dryRun: boolean;

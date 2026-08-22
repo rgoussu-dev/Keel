@@ -288,6 +288,7 @@ describe('fullstack composite install (polyrepo)', () => {
       projectName: 'walking-skeleton',
       npmScope: 'acme',
       stack: 'granular',
+      'keel.review': 'proceed',
     });
     const { runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred, prompt });
