@@ -14,9 +14,15 @@
  *
  * Failures are thrown as `ResolutionError` so callers can show a
  * structured error to the user instead of a stack trace.
+ *
+ * Step 3 is also askable ahead of time, and answered rather than
+ * thrown: `coversFor` for a yes/no (what a menu prunes with) and
+ * `coverageGap` for the same answer with the missing dimensions and
+ * the tags that would cover them attached (what a refusal is written
+ * from).
  */
 
-import { matches } from './predicate.js';
+import { matches, matchesPattern } from './predicate.js';
 import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 
 /**
@@ -65,6 +71,31 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
 }
 
 /**
+ * Why a vertical would not resolve against a tag set: the dimensions
+ * left uncovered, and the tags that would cover them.
+ */
+export interface CoverageGap {
+  readonly verticalId: string;
+  /** Dimensions no predicate-matching adapter covers. */
+  readonly dimensions: readonly string[];
+  /**
+   * Tags that would close the gap — for each uncovered dimension,
+   * the unmet `requires` of the adapter *nearest* to matching (the
+   * one missing fewest tags), unioned and sorted.
+   *
+   * "Nearest" rather than "all candidates" because the union over
+   * every adapter that covers a dimension is a list of every stack
+   * shape keel supports, which tells a user nothing. On a CLI preset
+   * asking for `persistence`, the nearest adapter is the one for
+   * that framework, missing only `arch.server-http` — which is the
+   * whole answer. Empty when the vertical has no adapter for a
+   * dimension at all, or when the only candidates are ruled out by
+   * an `excludes` entry: adding a tag never un-matches one of those.
+   */
+  readonly enablers: readonly Tag[];
+}
+
+/**
  * Whether `vertical` would resolve against `tags` — i.e. whether
  * every dimension it declares is covered by an adapter the predicate
  * filter keeps.
@@ -79,9 +110,46 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
  * hidden option is at worst one `keel add` away.
  */
 export function coversFor(vertical: Vertical, tags: Iterable<Tag>): boolean {
+  return coverageGap(vertical, tags) === null;
+}
+
+/**
+ * {@link coversFor}, with the reason attached: `null` when the
+ * vertical resolves, a {@link CoverageGap} naming what is missing
+ * when it does not.
+ *
+ * Same conservatism, same tag set, one extra job — a caller that
+ * refuses ahead of the resolver can say *why* rather than making the
+ * user run into the throw to find out.
+ */
+export function coverageGap(vertical: Vertical, tags: Iterable<Tag>): CoverageGap | null {
   const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
   const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
-  return uncoveredDimensions(vertical, matched).length === 0;
+  const dimensions = uncoveredDimensions(vertical, matched);
+  if (dimensions.length === 0) return null;
+  return { verticalId: vertical.id, dimensions, enablers: enablers(vertical, dimensions, tagSet) };
+}
+
+function enablers(
+  vertical: Vertical,
+  dimensions: readonly string[],
+  tagSet: ReadonlySet<Tag>,
+): readonly Tag[] {
+  const out = new Set<Tag>();
+  for (const dimension of dimensions) {
+    let nearest: readonly Tag[] | null = null;
+    for (const adapter of vertical.adapters) {
+      if (!adapter.covers.includes(dimension)) continue;
+      // An adapter an `excludes` entry rules out stays ruled out
+      // however many tags are added — it is no one's enabler.
+      if ((adapter.predicate.excludes ?? []).some((e) => matchesPattern(e, tagSet))) continue;
+      const unmet = (adapter.predicate.requires ?? []).filter((r) => !matchesPattern(r, tagSet));
+      if (unmet.length === 0) continue;
+      if (nearest === null || unmet.length < nearest.length) nearest = unmet;
+    }
+    for (const tag of nearest ?? []) out.add(tag);
+  }
+  return [...out].sort();
 }
 
 function uncoveredDimensions(vertical: Vertical, matched: readonly Adapter[]): readonly string[] {
