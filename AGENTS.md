@@ -290,11 +290,12 @@ would ship as separate packages implementing the same port.
   is the fast gate — lint, typecheck, test, build across Node 22 and 24;
   `tests/e2e/` self-skips there, since it is opt-in on CI. `e2e` is the
   other half, running with `KEEL_RUN_E2E=1` and **sharded by toolchain**:
-  33 `jvm-*` shards (JDK 25 + Gradle 9.7.0, plus Maven on every
-  `jvm-modulith-*` and every `jvm-add-module-*-maven`), `go` (Go +
-  Docker), `rust` (cargo), `web` (npm/pnpm + Chrome). Each shard
-  provisions only what its suites probe for. Between the two jobs,
-  nothing in the suite is skipped for want of a tool.
+  40 `jvm-*` shards (JDK 25 + Gradle 9.7.0, plus Maven on every
+  `jvm-modulith-*`, every `jvm-combo-*` and every
+  `jvm-add-module-*-maven`), `go` (Go + Docker), `rust` (cargo), `web`
+  (npm/pnpm + Chrome) and `web-combo` (npm/pnpm). Each shard provisions
+  only what its suites probe for. Between the two jobs, nothing in the
+  suite is skipped for want of a tool.
 - **The JVM shards follow the grid, and the grid comes first.** The
   `basic` typology splits by framework — `jvm-basic-quarkus`,
   `-spring`, `-micronaut`, four stacks each (CLI and REST × Java and
@@ -358,33 +359,20 @@ would ship as separate packages implementing the same port.
   **Six shards, not eighteen, and that is the opposite call from
   `add-module-*` one bullet down.** These follow the `jvm-modulith-*`
   convention (framework × language, three files a shard). A job per
-  cell earned its keep there because those cells run 57s–213s, well
-  inside the 371s matrix floor, so attribution was free; a combo cell
-  builds _two_ assemblies, so it costs more — and the number comes from
-  running a shard exactly as declared. On the runner (run 32574792585,
-  the grid's first green): `jvm-combo-quarkus-java` is **265.02s wall,
-  655.35s of test time across three files, longest file
-  `combo-basic-quarkus-cli-rest-gradle` at 263.05s**, divisor 2.47 —
-  307s as a job with provisioning. The six shards span 174–307s as
-  jobs, against a matrix floor of `jvm-modulith-quarkus-java` at 436s
-  that run. So they cost no wall clock — where eighteen shards would
-  buy eighteen cold JDK+Gradle provisions for a red X that
-  framework × language already names. `web-combo` is **35.82s wall,
-  75.90s of test time, longest `combo-modulith-ts-cli-http-npm` at
-  34.56s** (53s as a job); it gets a shard rather than riding `web`
-  because its cells render nothing, so a shard probing for Chromium
-  would misdescribe them.
+  cell earned its keep there because those cells are cheap enough to
+  finish well inside the matrix floor, so attribution was free; a combo
+  cell builds _two_ assemblies, so it costs more. Grouped three to a
+  shard they still finish inside that floor and cost the e2e phase no
+  wall clock, where eighteen shards would buy eighteen cold
+  JDK+Gradle provisions for a red X that framework × language already
+  names. `web-combo` gets a shard rather than riding `web` because its
+  cells render nothing, so a shard probing for Chromium would
+  misdescribe them.
 
-  Two readings of those numbers are worth keeping. The shard's two
-  Gradle cells land within 1.7s of each other (263.05s and 261.39s)
-  with the Maven cell at half either — so no single file is the floor
-  here, and the standing "a long case gets its own file" instinct
-  would buy nothing. And the local measurement these replaced said
-  227.55s with the _other_ Gradle cell longest: a 4-vCPU box runs this
-  shard ~15% faster than the runner and reorders a tie the runner
-  reorders back, which is the re-measure-on-the-shape-you-ship rule
-  with a number attached. Local figures and runner figures are not
-  interchangeable anywhere in this file.
+  Within the heaviest combo shard the two Gradle cells are effectively
+  tied and the Maven one is roughly half either, so no single file is
+  that shard's floor and the standing "a long case gets its own file"
+  instinct buys nothing here.
 
   **Every cell ends in a runtime entrypoint check.** A green compile
   is not the claim — both entrypoints reachable off one hexagon is.
@@ -438,62 +426,40 @@ would ship as separate packages implementing the same port.
   triple for this command. Collapsing it back is one edit — merge the
   `files` lists by framework × language, as the modulith grid does —
   and the suites need no change for it.
-- **They moved the floors of the shards they landed in, and the
-  numbers are on the runner — read the JVM ones as history.**
-  `jvm-modulith-quarkus-java` was recorded at 415s against a 260s
-  floor when J.1 shipped, then at **483.25s wall, 1234.37s of test
-  time across eight files, longest file `add-module-jvm` at 262.28s**
-  once the two JVM `add-module` suites rode in it. (565.60s against a
-  391.27s floor before the cache fix below.) **That shape no longer
-  ships**: both files left for cells of their own when the add-module
-  grid landed, so the shard is back to its six modulith files and the
-  483.25s figure describes a configuration nobody runs. What the
-  numbers still settle is the cache lesson below, which was measured
-  inside them.
+- **`jvm-modulith-quarkus-java` is the slowest shard in the matrix,
+  and it is what the whole e2e phase's wall clock is floored by.**
+  That is the bar to check a new shard against: one that finishes
+  inside it is free, one that does not moves the phase. Every
+  `jvm-add-module-*` shard and every `jvm-combo-*` shard finishes
+  inside it, which is what makes a job per cell cost nothing there.
+  If that shard grows, split it before adding to it.
 
-  **Measured on the shape that does ship** (run 229, all 38 checks
-  green): `jvm-modulith-quarkus-java` is **371s**, down from 483.25s,
-  and still the slowest shard in the matrix — so the "split it first
-  if it grows" note survives its own correction. The 24
-  `jvm-add-module-*` shards run **57s–213s**, median ~115s. Every one
-  of them finishes inside the slowest pre-existing shard, which is the
-  number that matters: **a job per cell here costs zero wall clock**,
-  and the whole e2e phase is still floored at 371s by a shard that has
-  nothing to do with this command.
+  Two results worth keeping because they invert the obvious guess. The
+  **Maven cells are consistently faster than the Gradle ones** across
+  the add-module grid — Maven's half is the cheap half, the opposite
+  of the assumption that made `-maven` a separate file "for the
+  standing reason a long case is". And on `web` the floor changed
+  hands when `add-module-wc` landed: the standing note naming
+  `modulith-wc-peer-context` as the permanent floor was wrong within
+  one release. The one-shard conclusion for `web` survives; the file
+  named in it did not.
 
-  One result worth keeping because it inverts the obvious guess: the
-  **Maven cells are consistently faster than the Gradle ones** —
-  57–122s against 100–213s, with no overlap at the extremes. Maven's
-  half of this grid is the cheap half, which is the opposite of the
-  assumption that made `-maven` a separate file "for the standing
-  reason a long case is". On `web`, the
-  floor changed hands outright: **188.68s wall over eleven files,
-  longest `add-module-wc` at 110.94s**, where the standing note says
-  `modulith-wc-peer-context` "is the floor and will stay the floor" —
-  it is now second at 103.75s. The one-shard conclusion survives (the
-  floor is 59% of the wall, as it was), but the file named in it does
-  not.
-
-- **A shared dependency cache per file is worth more than a split,
-  and here that is measured rather than assumed.** Both JVM
-  `add-module` suites first shipped taking a fresh `GRADLE_USER_HOME`
-  / `-Dmaven.repo.local` in `beforeEach`, so their second case
-  re-resolved and re-downloaded everything the first had just
-  fetched. On the runner that showed as `add-module-jvm` = 257.95s +
-  **133.32s**. Moving the cache to `beforeAll` — one home per file,
-  the project tree still per case — takes the second case to
-  **25.92s**, the file from 391.27s to **262.28s**, and the shard from
-  565.60s to **483.25s**. All four figures are from the runner, one
-  commit apart.
+- **A shared dependency cache per file is worth more than a split.**
+  Both JVM `add-module` suites first shipped taking a fresh
+  `GRADLE_USER_HOME` / `-Dmaven.repo.local` in `beforeEach`, so their
+  second case re-resolved and re-downloaded everything the first had
+  just fetched — enough to make the file look like a file wanting to
+  be two. Moving the cache to `beforeAll` (one home per file, the
+  project tree still per case) took most of the second case's cost
+  away and the shard's with it.
 
   That answers the split question, and inverts the obvious reading of
-  it. Two long cases in one file look like a file wanting to be two;
-  splitting those two cases would hand the second its own cold Gradle
-  resolve back and cost ~107s to buy attribution. It is the run-217
-  `go` lesson with a number attached: **fix the cache, not the file
-  layout**. So the two cells that carry a negative keep both cases in
-  one file with one shared home (`beforeAll`), and any future suite
-  running two real builds should share its home from the start.
+  it: splitting those two cases would hand the second its own cold
+  Gradle resolve back and buy attribution with wall clock. **Fix the
+  cache, not the file layout.** So the two cells that carry a negative
+  keep both cases in one file with one shared home (`beforeAll`), and
+  any suite running two real builds should share its home from the
+  start.
 
   Note what this does _not_ say. It is an argument about two cases of
   the same cell, where the second reuses the first's artifacts almost

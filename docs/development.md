@@ -269,9 +269,8 @@ whole half built by hand, `modulith` shipped with none of it built at
 all, and the modulith cells re-exercise the shared seed builders on
 every run anyway. Shards follow the `jvm-modulith-*` convention rather
 than the job-per-cell one above: a combo cell builds two assemblies,
-and `jvm-combo-quarkus-java` run exactly as declared measures 265.02s
-wall against a 263.05s longest file on the runner, inside a 436s
-matrix floor — so three per shard cost no wall clock.
+and three per shard still finish inside the matrix floor, so they cost
+no wall clock.
 
 Language is an axis on the modulith half only, and the grid is what
 made it one. A shard that runs nothing is worse than no shard, since
@@ -282,12 +281,10 @@ shards already sit near their longest-file floor, so splitting them
 by language would buy attribution and no wall clock, at the price of
 three more JDK provisionings.
 
-Measured on 4 vCPUs with cold caches, the modulith shards run
-160–415s against sequential totals of 359–1015s — a divisor of
-2.22–2.45, never near the 4 the core count suggests, because each
-Gradle build is itself parallel and concurrent ones contend.
-`jvm-modulith-micronaut-kotlin` is already floor-bound (252s wall
-against a 249s longest file), which is where splitting stops paying.
+Sharding buys much less than the shard count suggests, because each
+Gradle build is itself parallel and concurrent ones contend. The
+smallest modulith shard is already bound by its own longest file,
+which is where splitting stops paying.
 
 Each shard lists its files explicitly in `.github/workflows/ci.yml`,
 which means **a new suite must be added to a shard or it never runs**.
@@ -303,13 +300,12 @@ a new file over another `it` in a long one.
 
 The other half of that detail is that parallel workers do not divide the
 work by their number. Each Gradle build is itself parallel, so
-concurrent ones contend on a 4-vCPU runner: measured, the divisor is
-about 2.3 inside a four-file JVM shard and 2.8 across a sixteen-file
-one — it climbs with the file count and never approaches 4. The
-practical consequence is for measurement rather than for design — a file
-timed while sixteen neighbours race it reads far slower than the same
-file timed against three, so **re-measure on the shard shape you intend
-to ship** before rebalancing the matrix.
+concurrent ones contend, and the effective divisor climbs with the file
+count without ever approaching the core count. The practical
+consequence is for measurement rather than for design — a file timed
+while many neighbours race it reads far slower than the same file timed
+against two, so **re-measure on the shard shape you intend to ship**
+before rebalancing the matrix.
 
 Locally you are more likely to have one JDK than two, which is where the
 next paragraph bites.

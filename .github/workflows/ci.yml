@@ -90,23 +90,18 @@ jobs:
   # non-coverage, so do not delete it when editing the matrix.
   #
   # Vitest parallelises across files but runs the tests inside one file
-  # in sequence, so the slowest single *file* is a shard's floor. Four
-  # concurrent JVM builds on a 4-vCPU runner do not get 4× though —
-  # measured across the six modulith shards the divisor is 2.22–2.45,
-  # because each Gradle build is itself parallel and they contend.
-  # Both numbers move when suites are added; re-measure before
-  # rebalancing, and measure on the shard shape actually shipped, since
-  # a file timed against 16 neighbours is far slower than the same file
-  # timed against three.
+  # in sequence, so the slowest single *file* is a shard's floor.
+  # Concurrent JVM builds on a runner do not scale with the core count
+  # either, since each Gradle build is itself parallel and they
+  # contend. Re-measure before rebalancing, and measure on the shard
+  # shape actually shipped — a file timed against many neighbours
+  # reads far slower than the same file timed against two.
   #
-  # For scale: the commit before this split ran all 25 modulith files
-  # as one job and took 1475s on a runner, against a slowest shard of
-  # 415s here — the split is worth ~3.5x, not attribution alone.
-  #
-  # The floor is why this split stops here rather than going finer.
-  # `jvm-modulith-micronaut-kotlin` runs 252s against a 249s longest
-  # file: it is already floor-bound, so halving it again would buy
-  # attribution and nothing else.
+  # Splitting the modulith files out of one job was worth several times
+  # over what attribution alone would buy. The floor is why it stops
+  # here rather than going finer: the smallest of these shards is
+  # already bound by its own longest file, so halving it again would
+  # buy attribution and nothing else.
   #
   # `keel add module` then populates that same 24-cell grid a second
   # time, and there the split goes all the way down: one cell, one
@@ -173,9 +168,9 @@ jobs:
           # The engine dial's cell: `modulith-persistence` with the
           # sticky engine answer preset to mariadb. A shard of its own
           # rather than a seventh file above — that shard is the
-          # matrix floor (371s on run 229), so co-locating another
-          # persistence build would raise the whole e2e phase's wall,
-          # where one more parallel shard raises nothing.
+          # matrix floor, so co-locating another persistence build
+          # would raise the whole e2e phase's wall, where one more
+          # parallel shard raises nothing.
           - id: jvm-persistence-mariadb
             tools: java javac gradle
             files: >-
@@ -330,29 +325,20 @@ jobs:
           # **Six shards, not eighteen.** This follows the
           # `jvm-modulith-*` convention (framework × language), not the
           # `jvm-add-module-*` one (a job per cell). The add-module
-          # grid earned a job per cell because its 24 cells run
-          # 57s–213s each, comfortably inside the 371s matrix floor, so
+          # grid earned a job per cell because its cells are cheap
+          # enough to finish comfortably inside the matrix floor, so
           # attribution was free. These cells build *two* assemblies
-          # apiece, so they cost more — and the number is measured on
-          # the shape that ships. On the runner (run 32574792585, the
-          # grid's first green): `jvm-combo-quarkus-java` is **265.02s
-          # wall, 655.35s of test time across three files, longest
-          # file `combo-basic-quarkus-cli-rest-gradle` at 263.05s**,
-          # divisor 2.47 — 307s as a job, with provisioning. The six
-          # shards span 174–307s as jobs, and the matrix floor that
-          # run was `jvm-modulith-quarkus-java` at 436s. So these
-          # shards cost no wall clock, where eighteen would pay
-          # eighteen cold JDK+Gradle provisions for a red X that
-          # framework × language already names precisely enough.
+          # apiece, so they cost more; grouped three to a shard they
+          # still finish inside that floor and cost the phase no wall
+          # clock, where eighteen would pay eighteen cold JDK+Gradle
+          # provisions for a red X that framework × language already
+          # names precisely enough.
           #
-          # Two of those three files are within 1.7s of each other
-          # (263.05s and 261.39s), so neither is *the* floor here —
-          # the Maven cell at 130.91s is half of either. And the local
-          # measurement this replaced said 227.55s with the *other*
-          # Gradle cell longest, which is the standing warning with a
-          # number: a laptop reorders a tie the runner reorders back.
-          # `mvn` is in every shard because every shard carries at
-          # least one Maven cell.
+          # Within a shard the two Gradle cells are effectively tied
+          # and the Maven one is roughly half either, so no single
+          # file is the floor here and peeling one out would buy
+          # nothing. `mvn` is in every shard because every shard
+          # carries at least one Maven cell.
           - id: jvm-combo-quarkus-java
             tools: java javac gradle mvn
             files: >-
@@ -390,50 +376,34 @@ jobs:
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-maven.test.ts
               tests/e2e/combo-basic-micronaut-cli-rest-kotlin-maven.test.ts
           # Six files where there were two, and the shape came from
-          # measurements that twice contradicted the obvious answer.
-          # Both are kept, because either one alone reads as an
-          # argument for the wrong thing.
+          # a measurement that twice contradicted the obvious answer.
           #
-          # Run 216, when the modulith cells first landed: 341.77s of
-          # test time in 137.07s wall, and `modulith-go-http` alone
-          # was 135.97s — the file *was* the job. It held two long
-          # cases in sequence, the cell at 87.96s and `keel add
-          # persistence` at 47.63s, so the standing convention applied:
-          # a long case gets its own file.
-          #
-          # Run 217, after that split: 159.37s wall, and the
-          # persistence case had gone from 47.63s to 100.03s. The
-          # split made the job *slower*. Cause: each suite took a
-          # fresh GOCACHE/GOPATH in its own `beforeAll`, so a file
-          # peeled off the end paid a cold stdlib-and-dependencies
-          # compile that it used to inherit warm. Splitting a file
-          # bought a second cold compile and sold nothing.
+          # When the modulith cells first landed, `modulith-go-http`
+          # alone *was* the job: it held two long cases in sequence,
+          # so the standing convention applied — a long case gets its
+          # own file. Splitting it made the job **slower**. Cause:
+          # each suite took a fresh GOCACHE/GOPATH in its own
+          # `beforeAll`, so a file peeled off the end paid a cold
+          # stdlib-and-dependencies compile it used to inherit warm.
+          # Splitting a file bought a second cold compile and sold
+          # nothing.
           #
           # The fix was the cache, not the file layout:
           # `sharedGoHome()` gives every suite in a run one
           # content-addressed cache, so the cold compile happens once
-          # per run instead of once per file.
-          #
-          # Run 218, the shipped shape: 251.57s of test time in 90.28s
-          # wall — 34% under the 137.07s this started at, and 43%
-          # under the split-with-per-file-caches shape. Per file,
-          # `fullstack-go` 83.61s, `modulith-go-http` 75.16s,
-          # `modulith-go-persistence` 63.57s, `walking-skeleton-go`
-          # 7.61s, `modulith-go-cli` 4.68s. The last two are what a
-          # warm cache looks like: `walking-skeleton-go` was 63.50s a
-          # run earlier.
+          # per run instead of once per file. The shipped shape is
+          # comfortably faster than either earlier one.
           #
           # Still one shard, and now for a reason it did not have
-          # before: the floor is `fullstack-go` at 83.61s against a
-          # 90.28s wall, so the job is bound by a file none of this
-          # work added. Splitting further would buy attribution and no
-          # wall clock. `docker` remains for `fullstack-go` alone.
+          # before: the floor is `fullstack-go`, a file none of this
+          # work added, so splitting further would buy attribution and
+          # no wall clock. `docker` remains for `fullstack-go` alone.
           # `modulith-go-persistence-liquibase` rides here rather than
-          # in a shard of its own: it is the persistence cell's ~64s
-          # shape again with a different migrations/ unit, and this
-          # job's wall is `fullstack-go` — a parallel file under the
-          # floor costs nothing, where a new shard would need the
-          # exact-match `Setup Go` condition widened to earn the same.
+          # in a shard of its own: it is the persistence cell's shape
+          # again with a different migrations/ unit, and a parallel
+          # file under the floor costs nothing, where a new shard
+          # would need the exact-match `Setup Go` condition widened to
+          # earn the same.
           - id: go
             tools: go docker
             files: >-
@@ -445,31 +415,25 @@ jobs:
               tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts
-          # Six files, one shard — and unlike every earlier revision of
-          # this comment, that is now a choice with a cost rather than
-          # a free one. Measured on this runner when the persistence
-          # cell landed: 427.14s of test time in 180.08s wall, divisor
-          # 2.37, longest single file 178.88s. The wall *is* that file.
-          # The five older files sum to 248.27s with a longest of
-          # 91.97s, which is the ~98s floor this job used to sit at.
+          # Six files, one shard — and unlike every earlier revision
+          # of this comment, that is now a choice with a cost rather
+          # than a free one.
           #
-          # So the standing argument no longer applies as written. The
-          # old shape was floor-bound by files that all paid the same
-          # cold axum compile, which is why splitting bought
+          # The old shape was floor-bound by files that all paid the
+          # same cold axum compile, which is why splitting bought
           # attribution and nothing else. `modulith-rust-persistence`
           # pays a cold `postgres` compile on top of that one and is
-          # nearly twice the next-slowest file, so peeling it out would
+          # comfortably the slowest file here, so peeling it out would
           # cut real wall clock rather than relabel it.
           #
-          # How much is not measured, and the honest bound matters:
-          # 178.88s is the *contended* cost — it shared four cores with
-          # five other files for its first ~92s. Run alone it would be
-          # faster (locally, 98.99s alone against 195.29s contended),
-          # so a split plausibly lands this job near ~120s rather than
-          # at the ~90s the arithmetic of "max of the two halves"
-          # suggests. Kept as one shard until someone measures the
-          # uncontended number instead of estimating it; that is the
-          # one figure the decision still turns on.
+          # How much, nobody has measured, and the honest bound
+          # matters: that file's cost is a *contended* one — it shares
+          # the runner's cores with five others for much of its life,
+          # and run alone it would be faster, so a split lands this
+          # job well short of what "max of the two halves" suggests.
+          # Kept as one shard until someone measures the uncontended
+          # cost instead of estimating it; that is the one thing the
+          # decision still turns on.
           #
           # `tools:` stays `cargo`, and the persistence cell is why
           # that is worth stating: its contract test wants a Postgres
@@ -496,25 +460,21 @@ jobs:
           # files now, and `modulith-web-components-pnpm` is a cell
           # that had never been built at all.
           #
-          # Measured on the runner (run 216), not on a laptop — the
-          # laptop was optimistic by a third here: 266.80s of test
-          # time in 94.98s wall, divisor 2.81, longest single file
-          # `modulith-wc-peer-context` at 62.85s. It installs three
-          # workspaces and renders two of them in Chromium, so it is
-          # the floor and will stay the floor.
-          #
-          # One shard, because 62.85s against a 94.98s wall is
-          # headroom rather than a job pinned to one file — unlike the
-          # `go` shard above, which was, and which got a file split
-          # rather than a shard split for it. Peeling the modulith
-          # cases out of `wc-walking-skeleton` lowered this shard's
-          # floor rather than raising it. `browser` stays in `tools:`
-          # because three suites now render.
+          # One shard, because its longest file leaves headroom
+          # against the job's wall rather than pinning it — unlike the
+          # `go` shard above, which was pinned, and which got a file
+          # split rather than a shard split for it. Peeling the
+          # modulith cases out of `wc-walking-skeleton` lowered this
+          # shard's floor rather than raising it. `browser` stays in
+          # `tools:` because three suites render. Measure this one on
+          # the runner rather than a laptop: a laptop reads
+          # optimistically here, and the floor has already changed
+          # hands once between files.
           #
           # The three `ts-cli` suites (basic + two modulith cells)
-          # ride here too: measured locally they run inside the
-          # existing floor, and they render nothing, so the shard's
-          # shape and tools are unchanged.
+          # ride here too: they run inside the existing floor, and
+          # they render nothing, so the shard's shape and tools are
+          # unchanged.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -539,16 +499,13 @@ jobs:
           # three of its suites render in Chromium, and these render
           # nothing — a shard that probes for a browser it never uses
           # is a provisioning cost and a lie about what the suites
-          # need. And `web` is already fourteen files at ~189s wall
-          # against a ~111s floor; three more real installs would push
-          # its wall up, where one more parallel shard pushes the
-          # phase's up by nothing. On the runner (run 32574792585):
-          # **35.82s wall, 75.90s of test time, longest file
-          # `combo-modulith-ts-cli-http-npm` at 34.56s** — 53s as a
-          # job, an order of magnitude inside the matrix floor. There
-          # is no build step to pay for; the install is the cost, and
-          # npm's is the best part of twice pnpm's here (34.56s
-          # against 21.60s on the same layout).
+          # need. And `web` already carries fourteen files with real
+          # headroom to spare; three more real installs would push its
+          # wall up, where one more parallel shard pushes the
+          # phase's up by nothing — this shard lands an order of
+          # magnitude inside the matrix floor. There is no build step
+          # to pay for; the install is the cost, and npm's is the best
+          # part of twice pnpm's on the same layout.
           - id: web-combo
             tools: npm pnpm
             files: >-
