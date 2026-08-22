@@ -4,7 +4,20 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'assets/**', 'tests/**/fixtures/**'],
+    /**
+     * `assets/` is template content — ejs sources that are not valid
+     * JavaScript until rendered — with one exception: `assets/web/`
+     * is the `keel ui` page, shipped as-is and executed by a browser.
+     * Shipped code nothing checks is the hazard this repo guards
+     * everywhere else, so it is linted like the rest.
+     */
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'assets/composition/**',
+      'assets/project/**',
+      'tests/**/fixtures/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -22,6 +35,21 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'no-console': ['warn', { allow: ['error', 'warn'] }],
+    },
+  },
+  {
+    files: ['assets/web/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'no-console': ['error', { allow: ['error', 'warn'] }],
     },
   },
   {

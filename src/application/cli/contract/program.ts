@@ -18,6 +18,7 @@ import {
   type InstallReport,
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
+import type { ServeUi } from '../../web/contract/server.js';
 import {
   toolchainCheckQuery,
   toolchainInstallCommand,
@@ -50,6 +51,13 @@ export interface CliDeps {
   readonly availableVerticals: readonly VerticalOption[];
   /** Working directory commands run against; defaults to `process.cwd()`. */
   readonly cwd?: () => string;
+  /**
+   * Starts the local scaffolding UI. Injected rather than imported
+   * because this module may not touch sockets or `domain/core` — the
+   * composition root supplies the real server, exactly as it supplies
+   * the Mediator.
+   */
+  readonly serveUi: ServeUi;
 }
 
 /**
@@ -231,6 +239,28 @@ export function buildProgram(deps: CliDeps): Command {
       deps.logger.info(`  → projects here: ${formatTags(report.projectedHere)}`);
       deps.logger.info(`  ← projects there: ${formatTags(report.projectedThere)}`);
       deps.logger.success('keel link: peers recorded in both manifests');
+    });
+
+  program
+    .command('ui')
+    .description(
+      'Serve the local scaffolding UI on loopback and print its URL — the same stacks, verticals and questions as the CLI, as a form with a live file-tree preview.',
+    )
+    .option('-p, --port <port>', 'port to bind; 0 asks the OS for a free one', '7420')
+    .option('--host <host>', 'loopback interface to bind', '127.0.0.1')
+    .action(async (opts: { port: string; host: string }): Promise<void> => {
+      const port = Number.parseInt(opts.port, 10);
+      if (!Number.isInteger(port) || port < 0 || port > 65535) {
+        throw new Error(`keel ui: --port expects 0-65535, got '${opts.port}'`);
+      }
+      const server = await deps.serveUi({ host: opts.host, port, cwd: cwd() });
+      deps.logger.success(`keel ui: serving on ${server.url}`);
+      deps.logger.info('Open that URL — the token in it is what authorises the page.');
+      deps.logger.info('Press Ctrl-C to stop.');
+      const stop = (): void => void server.close();
+      process.once('SIGINT', stop);
+      process.once('SIGTERM', stop);
+      await server.closed;
     });
 
   const toolchain = program

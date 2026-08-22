@@ -63,6 +63,11 @@ Every stack page lists its **prerequisites**, the **questions asked**,
 and the **exact tree generated** — start at the
 [stack catalog](docs/stacks/README.md).
 
+Prefer to see the tree before you commit to it?
+`npx @rgoussu.dev/keel ui` serves the same engine as a form on
+loopback, with the file tree redrawing as you change a dial — see
+[**How to scaffold from a browser**](#how-to-scaffold-from-a-browser).
+
 ---
 
 ## How to
@@ -229,6 +234,33 @@ pinned by an OpenAPI contract, and monorepo products ship
 **Prerequisites:** those of both services; Docker to run the compose
 story. → [Fullstack products](docs/stacks/fullstack.md)
 
+### How to scaffold from a browser
+
+```sh
+npx @rgoussu.dev/keel ui        # prints http://127.0.0.1:7420/?token=… and blocks
+```
+
+A Spring-Initializr-shaped page for the same engine, served from your
+own machine — nothing is uploaded, and the files land wherever you
+point it. `keel new` is already a guided wizard; what the page adds is
+the **plan while you are still choosing**: flip Gradle to Maven, or
+`basic` to `modulith`, and the file tree redraws before anything is
+written, without a round trip through the review step. On a stack you
+have not used before, that tree is the documentation.
+
+It also reads what your project already is. Point it at a directory
+holding a keel manifest and it becomes the brownfield page — verticals
+already installed offered for re-render rather than a second install,
+and "add a bounded context" shown only where `keel add module` would
+actually be accepted.
+
+The URL carries a per-run token, and the server binds loopback only
+and checks `Host` and `Origin` — a local port is reachable by every
+page in your browser, so treat the URL as a secret and Ctrl-C when
+you are done.
+
+→ [The local scaffolder](docs/ui.md), including its JSON API.
+
 ### How to grow an existing keel project
 
 ```sh
@@ -330,6 +362,7 @@ be added later, is one table in the
 | See every stack, its prerequisites, its output | [Stack catalog](docs/stacks/README.md)        |
 | See every vertical and where it applies        | [Verticals catalog](docs/verticals/README.md) |
 | Look up a command or flag                      | [CLI reference](docs/cli.md)                  |
+| Scaffold from a browser instead                | [The local scaffolder](docs/ui.md)            |
 | Understand tags, adapters, predicates, peers   | [Composition model](docs/composition.md)      |
 | Know the conventions scaffolded projects carry | [Binding spec](assets/project/AGENTS.md)      |
 | Hack on keel itself                            | [Development guide](docs/development.md)      |

@@ -2012,6 +2012,149 @@ onto a large existing project.
 
 ---
 
+## P — `keel ui`: the local scaffolder ✅
+
+A Spring-Initializr-shaped front end for the engine the CLI already
+drives, served on loopback by `keel ui`. Shipped whole: greenfield and
+brownfield, composites included.
+
+**What it is for, stated precisely, because "a GUI for the CLI" is not
+a reason.** The CLI asks one question at a time and prints the plan
+once, at the end. That is the right shape for someone who knows what
+`--module-layout=modulith` does to a Quarkus tree. It is the wrong
+shape for someone finding out — and keel now has 34 stacks, two module
+layouts, two build systems on most of them, and a peer-context flag,
+which is a space nobody holds in their head. The page shows the plan
+**while the choices are still moving**: flip Gradle to Maven and the
+file tree redraws before anything is written. On an unfamiliar stack
+the tree is the documentation, and `--dry-run` is the same information
+delivered too late and as a scroll of paths.
+
+### The finding that shaped it
+
+**keel has no static form to render, and that is not an
+implementation detail — it is the composition model.** An adapter is
+asked its questions only once its predicate matched, and a predicate
+reads capability tags an earlier adapter promoted. So "which questions
+does `quarkus-rest` have?" has no answer independent of the answers
+already given. Walking the registry to build a schema would produce a
+superset at best and a wrong set in practice, and the wrongness would
+be invisible: a form offering a question the install never asks looks
+exactly like a form that works.
+
+The answer is to stop enumerating and start **discovering**.
+`keel.preview` runs the _real_ install as a dry run with a prompt that
+answers from a supplied map instead of blocking, and records what it
+was asked. The page loops: preview, render, fold a changed answer in,
+preview again. It converges because each pass resolves exactly the way
+a commit would, and it cannot drift from the engine because it _is_
+the engine — the alternative was a second implementation of adapter
+resolution, which is the kind of copy that goes wrong quietly.
+
+Measured: a full preview of `quarkus-rest` under the modulith is
+~60ms in-process, so a 120ms debounce makes the loop feel like a form
+rather than a request.
+
+**It landed alongside the `keel new` wizard**, which shipped from the
+other direction in the same window and asks the same questions through
+the same port. They are complements rather than rivals: the wizard
+stages, reviews and lets you jump back; the page shows the plan while
+the choices are still moving. Merging them cost one real reconciliation
+— the wizard's review step is a question the engine asks that is _not_
+part of the plan, and a prompt collecting answers instead of blocking
+cannot tell the two apart from the question alone. `Asker` already
+existed for the neighbouring problem, so it grew a `control` kind and
+`WizardPrompt.askDirect` carries it; the preview takes its default and
+drops it. A preview also runs with no logger, since the wizard prints
+its whole staged plan before reviewing and `keel ui` re-previews on
+every change.
+
+### Three things that came out of it that were not obvious going in
+
+- **The Prompt port needed to say who was asking.** A question id is
+  unique within its asker and nowhere else, and the two kinds of asker
+  record their answers in completely different places: an adapter's
+  answer is sticky memory under `manifest.answers[adapterId]`, while
+  `buildSystem` belongs to no adapter at all and is a field of
+  `NewProjectCommand`. Without attribution a recorded answer cannot be
+  routed back. `ask(question, asker)` is the whole change, and six
+  call sites.
+
+- **Preset answers must travel through the prompt, not the manifest.**
+  The obvious implementation seeds `command.answers` with what the
+  form has gathered. It is wrong in a way that only a form notices: a
+  sticky answer in the manifest short-circuits its question _before_
+  the prompt sees it, so the field would vanish from the form the
+  moment it was used. Routing every answer through the recording
+  prompt keeps the set whole and resolves to identical values.
+
+- **A stack-level dial is the mirror image, and belongs on the
+  catalog.** Set `buildSystem` on the command and the install stops
+  asking about it — so a control driven by the preview would disappear
+  on first use, for the opposite reason. Those controls render from
+  `keel.catalog` instead, which describes them statically because that
+  is what they are. The split is exact: catalog for the dials, preview
+  for everything conditional.
+
+### What shipped
+
+- **A second primary adapter, not a second engine**
+  (`src/application/web/`), under the same dependency rule as the CLI
+  and enforced the same way. `contract/` is `UiRequest` → command or
+  query → `UiResponse` with no `node:http` anywhere in it, so the
+  whole request path — guards, routing, mapping, error translation —
+  is tested by calling a function. `executable/` owns the socket.
+  Two new dependency-cruiser rules hold the seam: the web contract may
+  not reach `domain/core` or `infrastructure`, and the two primary
+  adapters may not import each other (bar the types-only
+  `contract/server.ts` the CLI names to inject `keel ui`, and
+  `cli/executable`, which is the process composition root and wires
+  both).
+
+- **Three queries** (`domain/contract/queries.ts`): `keel.catalog`,
+  `keel.preview`, `keel.project-status`. The last is the brownfield
+  half, and every field on it mirrors a refusal a handler would issue
+  — `canAddModule` runs the same `emitsFor` probe `keel add module`'s
+  front door runs, so a family with no context adapter greys the
+  control out instead of being told no after typing a name.
+
+- **The page** (`assets/web/`): framework-free custom elements on
+  `@rgoussu.dev/planks`, the design system keel already emits for its
+  `web-components` stack. **No bundler** — planks ships one 28KB ESM
+  file, the page is native custom elements, and the browser loads both
+  directly; a build step would put keel's release on a bundler and let
+  the shipped UI drift from the source beside it. `pnpm lint` grew to
+  cover `assets/web`, since shipped code nothing checks is the hazard
+  this repo guards everywhere else.
+
+- **Three guards on the loopback port**, because loopback is not a
+  boundary — `http://127.0.0.1:7420` is same-machine, not same-origin,
+  and this server writes files on request. A per-run token in a custom
+  header (which also forces a preflight nobody answers), a `Host`
+  allowlist against DNS rebinding, and an `Origin` allowlist. No CORS
+  header is ever sent. They are unit-tested as a function of a
+  request, which is the only way each door gets its own case.
+
+### Deliberately not in scope
+
+- **A hosted Initializr.** keel's value is a tree on disk with `git
+init` and a resolved toolchain, not a zip. A remote service would
+  have to give up the deferred actions, which are half the "sixty
+  seconds later" claim.
+- **Editing an answer on `--reapply`.** The page shows what the run
+  asks, and a reapply asks nothing — its answers are frozen by design
+  (item **L**). Changing one stays out of scope in both front ends at
+  once, which is the right way for that to stay consistent.
+- **An e2e suite of its own.** The server is exercised over a real
+  socket in `verify` (`tests/application/web/server.test.ts` previews
+  and then scaffolds a `ts-cli` project), and the page was driven in a
+  real browser during development. A shard that boots Chromium to
+  re-assert what the API tests already assert would buy a screenshot
+  and cost a browser download; the day the page grows logic worth
+  testing through the DOM, that changes.
+
+---
+
 ## Backlog (unordered)
 
 - ~~**A second bounded context in the modulith skeleton**~~ —

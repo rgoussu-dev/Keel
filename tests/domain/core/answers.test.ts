@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { resolveAdapterAnswers, resolveAnswer } from '../../../src/domain/core/answers.js';
-import type { Prompt } from '../../../src/domain/contract/ports/prompt.js';
+import type { Asker, Prompt } from '../../../src/domain/contract/ports/prompt.js';
 import type { Adapter, Contribution, Question } from '../../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
+
+const asker: Asker = { kind: 'adapter', id: 'test/adapter' };
 
 const scripted = (...replies: string[]): Prompt => {
   let i = 0;
@@ -37,13 +39,19 @@ const stickyQ = (id: string, def: string, ...choices: string[]): Question =>
 describe('resolveAnswer', () => {
   it('returns sticky stored answer without prompting', async () => {
     const q = stickyQ('targets', 'linux-amd64');
-    const r = await resolveAnswer(q, { targets: 'linux-arm64' }, 'interactive', failingPrompt);
+    const r = await resolveAnswer(
+      q,
+      { targets: 'linux-arm64' },
+      'interactive',
+      failingPrompt,
+      asker,
+    );
     expect(r).toEqual({ value: 'linux-arm64', persist: false });
   });
 
   it('returns default in non-interactive mode (sticky → persist)', async () => {
     const q = stickyQ('targets', 'linux-amd64');
-    const r = await resolveAnswer(q, {}, 'non-interactive', failingPrompt);
+    const r = await resolveAnswer(q, {}, 'non-interactive', failingPrompt, asker);
     expect(r).toEqual({ value: 'linux-amd64', persist: true });
   });
 
@@ -55,13 +63,13 @@ describe('resolveAnswer', () => {
       default: 'patch',
       memory: 'repeat',
     };
-    const r = await resolveAnswer(q, {}, 'non-interactive', failingPrompt);
+    const r = await resolveAnswer(q, {}, 'non-interactive', failingPrompt, asker);
     expect(r).toEqual({ value: 'patch', persist: false });
   });
 
   it('prompts when interactive and no stored answer (sticky → persist)', async () => {
     const q = stickyQ('targets', 'linux-amd64');
-    const r = await resolveAnswer(q, {}, 'interactive', scripted('darwin-arm64'));
+    const r = await resolveAnswer(q, {}, 'interactive', scripted('darwin-arm64'), asker);
     expect(r).toEqual({ value: 'darwin-arm64', persist: true });
   });
 
@@ -73,13 +81,13 @@ describe('resolveAnswer', () => {
       default: 'x',
       memory: 'repeat',
     };
-    const r = await resolveAnswer(q, { note: 'old' }, 'interactive', scripted('new'));
+    const r = await resolveAnswer(q, { note: 'old' }, 'interactive', scripted('new'), asker);
     expect(r).toEqual({ value: 'new', persist: false });
   });
 
   it('rejects values not in `choices`', async () => {
     const q = stickyQ('backend', 'xray', 'xray', 'datadog');
-    await expect(resolveAnswer(q, {}, 'interactive', scripted('honeycomb'))).rejects.toThrow(
+    await expect(resolveAnswer(q, {}, 'interactive', scripted('honeycomb'), asker)).rejects.toThrow(
       /invalid value/,
     );
   });
@@ -115,6 +123,25 @@ describe('resolveAdapterAnswers', () => {
     const r = await resolveAdapterAnswers(a, {}, 'interactive', scripted('darwin-arm64'));
     expect(r.answers).toEqual({ targets: 'darwin-arm64' });
     expect(r.updates).toEqual({ targets: 'darwin-arm64' });
+  });
+
+  it('attributes every question to the adapter that declared it', async () => {
+    const recorded: Asker[] = [];
+    const recording: Prompt = {
+      ask: async (_question, who) => {
+        recorded.push(who);
+        return 'x';
+      },
+    };
+    const a = adapter([
+      { id: 'one', prompt: 'one', doc: '', default: 'd', memory: 'repeat' },
+      { id: 'two', prompt: 'two', doc: '', default: 'd', memory: 'repeat' },
+    ]);
+    await resolveAdapterAnswers(a, {}, 'interactive', recording);
+    expect(recorded).toEqual([
+      { kind: 'adapter', id: 'test/adapter' },
+      { kind: 'adapter', id: 'test/adapter' },
+    ]);
   });
 
   it('rejects duplicate question ids on the same adapter', async () => {

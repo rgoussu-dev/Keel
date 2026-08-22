@@ -10,7 +10,7 @@
 import type { ManifestV2 } from '../../contract/manifest.js';
 import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { ProcessRunner } from '../../contract/ports/process-runner.js';
-import type { Prompt } from '../../contract/ports/prompt.js';
+import type { Asker, Prompt } from '../../contract/ports/prompt.js';
 import type { Tree, TreeFactory } from '../../contract/ports/tree.js';
 import type { ToolchainBlock, ToolchainNeed, ToolchainTool } from '../../contract/toolchain.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
@@ -30,6 +30,12 @@ import type {
   SpelledNeed,
   ToolchainProvider,
 } from './provider.js';
+
+/**
+ * The provisioning context is its own hexagon, so its manager dial is
+ * asked by the context rather than by any composition adapter.
+ */
+const TOOLCHAIN_ASKER: Asker = { kind: 'toolchain', id: 'toolchain' };
 
 /**
  * The ports the provisioning handlers are wired with — all from
@@ -142,7 +148,7 @@ export async function resolveChoice(
     if (!fallback) throw new Error('unreachable: a non-empty choice list has a head');
     return ok({ choice: fallback, isNew: true });
   }
-  const answer = await deps.prompt.ask(dialQuestion(choices));
+  const answer = await deps.prompt.ask(dialQuestion(choices), TOOLCHAIN_ASKER);
   const picked = pick(answer, 'answer');
   return picked.ok ? ok({ choice: picked.value, isNew: true }) : picked;
 }

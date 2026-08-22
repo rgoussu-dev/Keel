@@ -27,13 +27,16 @@
  */
 
 import type { Question } from '../contract/composition.js';
-import type { Prompt } from '../contract/ports/prompt.js';
+import type { Asker, Prompt } from '../contract/ports/prompt.js';
 
 /** One resolved question, in the order it was asked. */
 export interface RecordedAnswer {
   readonly question: Question;
   readonly value: string;
 }
+
+/** @see WizardPrompt.askDirect */
+const CONTROL_ASKER: Asker = { kind: 'control', id: 'keel.new-project' };
 
 export class WizardPrompt implements Prompt {
   /** Every question asked (and its answer) during the current attempt, in order. */
@@ -63,7 +66,7 @@ export class WizardPrompt implements Prompt {
     this.editIndex = index;
   }
 
-  async ask(question: Question): Promise<string> {
+  async ask(question: Question, asker: Asker): Promise<string> {
     const index = this.cursor++;
     if (this.replaying && index !== this.editIndex) {
       const cached = this.previous[index];
@@ -73,7 +76,7 @@ export class WizardPrompt implements Prompt {
       }
     }
     this.replaying = false;
-    const value = await this.underlying.ask(question);
+    const value = await this.underlying.ask(question, asker);
     this.recorded.push({ question, value });
     return value;
   }
@@ -82,8 +85,15 @@ export class WizardPrompt implements Prompt {
    * Asks a question outside the staged sequence — the review step's
    * own proceed/edit/cancel prompt, which controls the flow rather
    * than being part of the plan it is reviewing.
+   *
+   * It carries the `control` asker, which is that same distinction
+   * made visible to the port rather than only to this method's name.
+   * A prompt adapter that collects answers instead of blocking — the
+   * one `keel.preview` runs — has to tell a question about the plan
+   * from a question about what to do next, and cannot from the
+   * question alone.
    */
   askDirect(question: Question): Promise<string> {
-    return this.underlying.ask(question);
+    return this.underlying.ask(question, CONTROL_ASKER);
   }
 }

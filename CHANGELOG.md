@@ -8,6 +8,60 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel ui` — the local scaffolder.** A Spring-Initializr-shaped
+  front end for the engine the CLI already drives, served on loopback
+  and stopped with Ctrl-C. Point it at an empty directory and it is
+  `keel new`; point it at a keel project and it becomes `keel add` /
+  `keel add module`, offering only what that project can take. What it
+  adds over the CLI is the **plan while the choices are still moving**:
+  the file tree redraws on every change, before anything is written.
+  Nothing is uploaded — the server is your own `keel` install and the
+  deferred actions run on your machine. See
+  [`docs/ui.md`](docs/ui.md).
+  - **A second primary adapter, not a second engine**
+    (`src/application/web/`). `contract/` maps a request to a command
+    or query from `domain/contract` and a `Result` back to a response
+    — the same rule the CLI adapter lives under, enforced by
+    dependency-cruiser; `executable/` owns the socket, the token and
+    the asset roots. The two primary adapters never import each other,
+    bar the types-only `ServeUi` the CLI needs to inject `keel ui`.
+  - **Three new queries make the form possible**
+    (`domain/contract/queries.ts`). `keel.catalog` reports every stack
+    and vertical with its dials — including whether
+    `--with-peer-context` buys anything, probed against the adapter set
+    rather than listed. `keel.project-status` reports what a directory
+    already holds, mirroring the refusals the brownfield handlers would
+    issue so a control can be absent instead of an error. `keel.preview`
+    runs a real install as a dry run and reports both halves of it: the
+    questions it asked and the plan it produced.
+  - **The question set is discovered, not enumerated.** An adapter is
+    asked only once its predicate matched, and a predicate reads tags
+    an earlier answer folded in, so there is no static form to render.
+    `keel.preview` runs the real engine with a prompt that answers
+    instead of blocking and records as it goes — which is why the form
+    can never offer a question the install does not ask, or hide one it
+    does.
+  - **The page is framework-free custom elements on
+    `@rgoussu.dev/planks`** (`assets/web/`), the same design system
+    keel emits for its `web-components` stack, served as ESM with no
+    bundler. It is linted like the rest of the source: `pnpm lint` now
+    covers `assets/web` alongside `src` and `tests`.
+  - **The loopback port is guarded three ways**, because it is
+    reachable by every page in the user's browser: a per-run token in a
+    custom header (which also forces a preflight this server answers
+    for nobody), a `Host` allowlist against DNS rebinding, and an
+    `Origin` allowlist. No CORS header is ever sent.
+  - **The `keel new` wizard's review step is flow control, and now says
+    so.** `WizardPrompt.askDirect` marks its proceed/edit/cancel
+    question with the `control` asker, so a prompt that collects
+    answers instead of blocking can tell a question about the plan from
+    a question about what to do next. `keel.preview` takes its default
+    (ending the staging loop at the first plan) and keeps it out of the
+    reported question set, where it would otherwise arrive at a form as
+    a field. A preview also narrates through no logger at all — the
+    wizard prints its whole staged plan before reviewing, which under
+    `keel ui` is hundreds of lines per keystroke to a terminal nobody
+    is reading.
 - **`keel new`'s interactive flow is now a guided wizard, not a bare
   question queue.** The stack itself is the first question asked —
   `keel new` bare or `--stack` omitted no longer silently defaults to
@@ -26,17 +80,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   `WizardPrompt` layered over the existing `Prompt` port in
   `domain/core` rather than growing the port itself, so the interactive
   adapter and its fakes stay unchanged in shape.
-
-### Fixed
-
-- **A free-form interactive question's `doc` was invisible.** The
-  inquirer adapter surfaced an adapter-written `Question.doc` as each
-  choice's own description on a `select` question, but a free-form
-  `input` question — which `@inquirer/prompts` gives no description
-  slot of its own — silently dropped it. It now appends the doc on its
-  own line under the prompt.
-
-### Added
 
 - **Composable entrypoints — `arch.cli` + `arch.server-http` on one
   hexagon.** Go and Rust already shipped both a CLI and an HTTP
@@ -162,54 +205,6 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   - Checkstyle, detekt and golangci-lint's `revive`/`exported` rule —
     the naming-case and doc-comment legs for Go and the JVM — are a
     separately-argued follow-up, not shipped here (roadmap item O).
-
-### Changed
-
-- **The pre-commit hook's format step is now sentinel-delimited**, so
-  `code-style` can wire a formatter into an already-emitted hook —
-  greenfield and brownfield through one mechanism. The hook's
-  behaviour is unchanged where a formatter already existed (Go, Rust).
-- **Enforcement is hook-fixes / CI-checks.** `isEnforceCheck = false`
-  on Gradle and no lifecycle binding on Maven, so a formatting drift
-  never fails `./gradlew build` or `mvnw verify`; the pipeline gates
-  on it instead. Without this a formatter disagreement would break a
-  freshly scaffolded project's very first build.
-
-### Changed
-
-- **Every emitted-template pin bumped to the latest stable its feed
-  reports** — the version-currency registry's first full sweep.
-  Quarkus platform 3.38.2 (and the Gradle stacks' `gradle.properties`
-  finally agreeing with Maven's pin), Micronaut platform 5.1.1 with
-  its Gradle plugin 5.0.2 and Data TX 5.1.1, Kotlin 2.4.10, JUnit
-  Jupiter 6.1.3, Flyway 13.3.0 with the CLI
-  image lifted to the same major, Shadow 9.6.1, Gradle wrapper 9.7.0
-  (keel's own e2e host Gradle moves with it), GraalVM Native Build
-  Tools 1.1.9, protobuf-java 4.35.1 (the Micronaut Maven compatibility
-  pin follows Micronaut 5's OTel gencode), Node images and CI
-  node-version to the 24 LTS, TypeScript ^6.0.0, Vitest ^4.1.0,
-  @testcontainers/postgresql ^12.1.0, Vite ^8.2.0, @rgoussu.dev/planks
-  ^0.3.1, Go 1.26, the
-  emitted workflows' action majors (checkout v7, setup-go v7,
-  setup-java v5, setup-node v7, docker login v4, upload-artifact v7,
-  download-artifact v8, gh-release v3) and the monitoring images
-  (otel-collector 0.159.0, Tempo 3.0.3, Prometheus 3.14.0, Grafana
-  13.2.0, otel-lgtm 0.30.2). Four deliberate holds, each recorded
-  beside its registry entry: `jakarta.inject-api` stays 2.0.1 (the
-  `.MR` upload is a maintenance re-tag, not a newer library),
-  `@types/node` moves to ^24 to match the Node major the scaffolds run
-  rather than npm's latest, TypeScript stays below 7 because
-  dependency-cruiser — the tool holding the emitted seam wall —
-  supports `>=2 <7` and cruises nothing under 7, and Testcontainers
-  stays on the latest 1.x because 2.x renames the per-database module
-  artifacts the templates use. The Micronaut 5 platform BOM stopped
-  managing `jackson-module-kotlin` under Maven, so the Micronaut
-  Kotlin templates now carry its version explicitly (2.22.2).
-  PostgreSQL 18, MariaDB 12 (the long-term series; 13.0 is rolling),
-  Alpine 3, JDK 25 LTS, KSP 2.3.11, setup-graalvm v1 and Loki 3.7.6
-  were already current.
-
-### Added
 
 - **Single-source pins: the dev container and CI converge on the
   toolchain needs (roadmap N.5).** The `toolchain` block, the
@@ -1104,332 +1099,6 @@ ci`/`containerization`/`distribution` on a service follow the same
   is the trade being declined. The enforcement stays open; the stance
   does not.
 
-### Changed
-
-- **The SPA's containerization target is now an assets image — a
-  breaking change to the (unreleased) emitted artifact shape.**
-  `containerization/wc-spa-image` used to bake the Vite bundle onto
-  `nginx:alpine`; it now emits an image containing **only the
-  bundle**, whose entrypoint clears a mounted volume, copies the
-  bundle in, templates `env.js` from the environment, and exits.
-  Serving is deploy-time wiring: the emitted `compose.yaml` runs the
-  assets image as an init container (`restart: 'no'`, nginx gated on
-  `service_completed_successfully`) and an **unmodified official
-  nginx** serves the named volume with the history-API-fallback
-  config mounted read-only. The clear-then-copy order is load-bearing
-  — stale files from the previous release must not survive — and
-  tested. Why: the bundle's lifecycle decouples from the server's — a
-  frontend release replaces the assets image and re-runs it; nginx
-  never rebuilds — and deploy-time `env.js` is what makes one bundle
-  serve every environment. `fullstack/product-compose` migrated to
-  the same shape in the same change: the root compose gains the named
-  volume and the stock nginx service, whose `/api` proxy target is
-  now an env-configured `BACKEND_URL` (defaulting to the sibling
-  service) substituted by the official image's envsubst entrypoint
-  instead of a hostname baked into a custom image.
-
-### Fixed
-
-- **`--with-peer-context` on Rust no longer warns.** The emitted
-  `guestbook.rs` wiring exposed `pub fn wire()`, which nothing in
-  `main` calls, so every `cargo build` of a Rust peer-context project
-  reported `function 'wire' is never used`. The added-context
-  templates already carry `#[allow(dead_code)]` with an explanation
-  telling you to delete it once `main` calls the function; the peer's
-  wiring now says the same thing, including the part that catches
-  people out — the test below it drives `wire()`, and that is not a
-  use `cargo build` counts.
-
-- **The web-components wiring test drives the real seam of an added
-  context, not a fake of it.** When `--consumes` named a context that
-  `keel add module` had itself added, the emitted assembly test stood
-  up a hand-written `<Consumes>Service` object, because building the
-  real one would have meant knowing what _that_ context consumes —
-  which only its own wiring module knows.
-
-  So the wiring module now says it. Every web-components context
-  gains `create<Name>ContextService()`, a fresh self-contained
-  instance that assembles its own consumed chain, which is the shape
-  `ts-http`, Rust and Go already had and the invariant the family was
-  missing: a consumer reaches an added context through _that
-  context's own wiring function_. The test calls it and never names
-  what the consumed context consumes.
-
-  It is deliberately separate from `create<Name>Wiring`, which stays
-  the single live instance `main.ts` holds — a second call there
-  would build a second store and split the page's state from its
-  peers', which is what that function's own note warns about.
-
-- **Reserved module names now cover every target language's
-  keywords.** `parseModuleName` claimed to reject anything "reserved
-  in at least one of Go, Rust, Java or Kotlin" and rejected about a
-  third of them: `keel add module case` scaffolded a tree whose Java
-  package clause is a syntax error, `keel add module map` one whose Go
-  package clause is. The list is now four per-language arrays plus the
-  structural one, so the claim is checkable against each language's
-  grammar rather than invisible in a merged list.
-
-- **`keel add module` installs the workspace it just widened**, on
-  `ts-http` and `web-components`. A workspace package the root
-  manifest now lists but the store has never seen is not resolvable —
-  nothing symlinks it into `node_modules` — so every import of the new
-  context was a `TS2307` and a project keel had just reported as ready
-  did not typecheck. `keel new` gets the install for free from the
-  walking skeleton's own adapter running last; anything layered onto a
-  live project has to ask for it, as `ts-persistence` already did.
-
-- **`--with-peer-context` on a stack that has no peer context was a
-  silent no-op.** `keel new --stack=go-http|ts-http|web-components
---module-layout=modulith --with-peer-context` accepted the flag,
-  emitted a single bounded context, and exited 0 — the user asked for
-  two contexts, was told nothing, and got one. The flag is now
-  rejected at the front door with the stack named and the supported
-  stacks listed.
-
-  The gap was structural rather than an oversight. Every other "no
-  adapter for this stack" is caught by the resolver's
-  uncovered-dimension hard-fail, and a peer-context adapter declares
-  `covers: []` — it contributes a _context_, not a dimension — so a
-  family with no such adapter resolves cleanly and emits nothing.
-  The new check is derived from the adapter set rather than from a
-  list of stack ids, so a family gaining its adapter opens the front
-  door by itself; a written-down list would go stale in the same
-  silence.
-
-  The layout rejection's wording changed with it. It said a second
-  context "meets the first at user-side/service", which is the JVM
-  and Rust spelling of the seam — Go has no such path — so it now
-  names the seam without spelling a path no stack of that family has.
-
-- **A Micronaut modulith on Maven could not be built at all.** Every
-  module of the reactor except the assembly parents the reactor root,
-  and that root managed no versions — so the one library module
-  carrying Micronaut types (`user-side/api/adapters` for REST,
-  `user-side/cli` for the CLI) declared `io.micronaut:*` coordinates
-  with no version anywhere to resolve them from. Maven failed before
-  compiling anything, while reading the POMs:
-  `'dependencies.dependency.version' for io.micronaut:… is missing`.
-  The reactor root now imports `io.micronaut.platform:micronaut-platform`
-  in `dependencyManagement`, which is the same BOM the assembly gets by
-  parenting `micronaut-parent`. Affects all four Micronaut modulith
-  stacks on Maven — REST and CLI, Java and Kotlin.
-
-  Gradle was never affected: the Micronaut plugin applies the platform
-  to each project it is applied to, so nothing there depends on the
-  root. The defect survived because no Micronaut project had ever been
-  built with Maven, in any layout or language — the Maven e2e coverage
-  added alongside the peer context only reached Quarkus and Spring.
-
-- **A Micronaut library module contributed no beans under Maven.**
-  Micronaut resolves beans at compile time and does it per compiled
-  module, so the modulith's one framework-facing library module — the
-  `@Controller` under `user-side/api/adapters`, the `@Command` under
-  `user-side/cli` — has to run the annotation processor itself. Its
-  Maven pom had no `<build>` section at all, so it did not. The
-  failure was entirely silent: sources compiled, the jar was produced,
-  the application started, and every route 404'd. The Gradle twin was
-  never affected — it applies `io.micronaut.library`, which is exactly
-  this. The four Micronaut modulith stacks now configure
-  `micronaut-inject-java` as an annotation-processor path, through
-  `kapt` on the Kotlin ones.
-
-- **Micronaut's OTLP registry resolved an unusable protobuf under
-  Maven.** `micronaut-micrometer-registry-otlp` ships
-  protobuf-generated classes that call
-  `com.google.protobuf.RuntimeVersion`, which exists only in
-  protobuf-java 4.x — but it asks for 4.28.3 in its Gradle module
-  metadata and 3.25.8 in its POM. Gradle reads the first and resolves
-  a working classpath; Maven reads the second and resolves a broken
-  one, where the meter registry cannot be instantiated
-  (`NoClassDefFoundError com/google/protobuf/RuntimeVersion$RuntimeDomain`)
-  and every `@MicronautTest` in the assembly fails before exercising a
-  route. The emitted pom now pins protobuf-java to the version Gradle
-  picks. Affects **both module layouts** — `basic` was equally broken,
-  and equally unbuilt.
-
-- **The Go persistence slice's pgx contract test could never pass
-  against a real Docker daemon.** It started its Testcontainers
-  PostgreSQL with no wait strategy, so the container was declared ready
-  the instant it started — and PostgreSQL restarts itself once after
-  first-time init, so the very next connection was reset
-  (`failed to receive message: unexpected EOF`). The test now passes
-  `postgres.BasicWaitStrategies()`, which waits for the readiness log
-  twice, exactly as the module ships it for.
-
-  It hid for as long as it did because the test skips itself without a
-  daemon, and no environment that ran it had one. Running the e2e suite
-  in CI is what surfaced it.
-
-- **`ts-http` documented a wall it does not have.** The emitted README,
-  the stack page and the README all said the domain packages'
-  `"types": []` made a domain import of `node:*` a compile error. It
-  does not: `types: []` suppresses the automatic global `@types`, while
-  an explicit `import … from 'node:async_hooks'` still resolves and
-  typechecks clean — checked against a scaffolded `basic` project, so
-  the claim was wrong from the start. The `exports` map is the wall
-  that does hold, and is now what the docs point at; "the domain never
-  imports the platform" is stated as a review rule under `basic` and
-  enforced by the `modulith` layout's `domain-knows-no-platform`
-  dependency-cruiser rule.
-
-- **`observability` emitted its package but never wired `main.go` on a
-  Go modulith.** The `cmd/http/main.go` patch anchored on the flat
-  import path, so under `layout.modulith` it matched nothing and the
-  adapter's drift guard silently returned the file unchanged — probes,
-  correlation ids and telemetry all present on disk and none of them
-  reachable. `go build` stayed green throughout, because unwired code
-  compiles. Both the patch target and the import now resolve through
-  `goLayout`.
-
-- **The Maven modulith leaked the provider's domain past the peer
-  seam.** `greeting-user-side-service` declared
-  `greeting-domain-contract` at default `compile` scope, which Maven
-  resolves transitively — so any peer depending on the service module
-  also got the greeting domain on its compile classpath, and the
-  property the whole layout exists to enforce silently did not hold.
-  (The Gradle twin was always correct: `implementation` scope.) The
-  dependency is now `<optional>true</optional>`, Maven's only
-  non-transitive compile scope. Verified by building a three-module
-  reactor: the peer compiled an import of the provider's domain
-  before the fix and fails to resolve it after.
-
-- **The modulith's composition root could not survive a second
-  context.** Producing the peer-facing service eagerly while building
-  the mediator closes a construction cycle (mediator → handler →
-  port → service → mediator); the container recursed until the stack
-  ran out. The peer port is now bound from a lazily-resolved
-  `Instance`, which is also how a remote gateway would behave. Only
-  reachable with `--with-peer-context`, so no released project is
-  affected.
-
-- **The `modulith` module layout for the JVM stacks.**
-  `keel new --module-layout=modulith` (or the new interactive "Module
-  layout" question) scaffolds the walking skeleton carved one bounded context
-  at a time: `platform/kernel` for the dispatch vocabulary,
-  `modules/<context>/` for a whole hexagon
-  (`user-side/{api,cli,service}` + `domain/{contract,core}` +
-  `infra/`), and `application/<typology>` for the runnable assembly
-  that mounts them. All twelve JVM combinations (Quarkus / Spring /
-  Micronaut × CLI / REST × Java / Kotlin) on Gradle and Maven alike.
-  The distinguishing piece is `user-side/service`: the in-process
-  driving adapter a **peer module** consumes through a driven port it
-  declares in its own vocabulary — the only dependency edge allowed
-  between modules, and the seam that turns extracting a context into
-  its own service into a wiring change. The service module declares
-  its domain as `implementation` scope, so a peer physically cannot
-  compile against it. `basic` — the flat trisection — stays the
-  default, and a manifest carrying no `layout.*` tag resolves to it,
-  so nothing about existing projects changes. A new e2e test builds a
-  generated modulith project with the real toolchain, runs its suite
-  and drives `/greet` against the booted assembly, beside the existing
-  per-framework ones.
-- **Layout as a composition primitive.** `layout.basic` /
-  `layout.modulith` capability tags, a `Stack.moduleLayouts` option
-  list mirroring `buildSystems`, and `--module-layout` on `keel new`
-  (rejected, with a message, for stacks that ship one layout and for
-  composite stacks). Adapters that write outside their own template
-  tree now read paths and packages from `jvmLayout(tags)` instead of
-  naming a directory, so `observability`, `containerization`,
-  `gateway` and `persistence` compose on either layout:
-  observability lands in the assembly, where correlation ids and
-  probes belong, and persistence in the bounded context, where its
-  port belongs. `jvmLayout` also derives Maven artifactIds and the
-  depth back to the project root, so no adapter hand-computes a
-  `<relativePath>` or a `filesystem:` migration location again.
-- **The `persistence` vertical** — SQL persistence for every HTTP
-  stack (`keel add persistence`), PostgreSQL as the default engine
-  behind an extensible engine spec. Five dimensions: a `datasource`
-  (the stack's idiomatic pool — Agroal, Hikari, pgx, the sync
-  `postgres` crate, `pg` — env-only prod config, compose database in
-  dev, throwaway Testcontainers PostgreSQL in tests, pool health →
-  readiness and pool metrics/JDBC spans → telemetry with the
-  observability vertical on the JVM); transaction management as a
-  **domain secondary port** shaped as a Unit of Work, with per-stack
-  adapters (JTA on Quarkus, `TransactionTemplate` on Spring,
-  `TransactionOperations` on Micronaut, the transaction riding the
-  context on Go / `AsyncLocalStorage` on TS, a shared-connection
-  transaction on Rust) beside canonical counting fakes; a repository
-  example (`GreetingLog` port, SQL adapter contract-tested against a
-  Testcontainers PostgreSQL that skips without Docker, in-memory
-  fake, record/list operations demarcating writes with the unit of
-  work, `POST`/`GET /greetings`); **migrations as their own
-  deployment unit** (`migrations/` — plain-SQL Flyway scripts in a
-  self-contained container run against the database before the
-  service deploys, never from inside it, with dev/test replaying the
-  same SQL at startup as a local-loop convenience); and the dev
-  database + healthcheck-gated migrations one-shot patched into
-  `dev/compose.yaml`. Covered per stack by one predicate-selected
-  adapter: Quarkus/Spring/Micronaut in Java and Kotlin (Gradle or
-  Maven), `go-http`, `rust-http`, `ts-http`. On the JVM the vertical
-  serves **both module layouts**: under `layout.modulith` the driven
-  port and its handlers land in the bounded context
-  (`modules/<context>/domain/…`), the JDBC and unit-of-work adapters
-  in `modules/<context>/infra/`, the `/greetings` resource in the
-  context's `user-side/api/adapters`, and only the datasource,
-  migration config and framework boot test in the
-  `application/api` assembly — so extracting the context into its own
-  service takes its persistence with it.
-- **`@DomainHandler` — container discovery of handlers on the JVM
-  stacks.** Handlers in scaffolded projects now carry a marker the
-  **domain owns** (`domain/contract`), so a new aggregate no longer
-  needs an edit in the composition root. No framework stereotype ever
-  appears in domain code: the marker is meta-annotated only with
-  Jakarta specification APIs (`jakarta.inject`,
-  `jakarta.enterprise.cdi-api`), declared `compileOnly`/`provided` so
-  neither reaches a runtime classpath, and each composition root reads
-  the same marker in its own idiom — a CDI stereotype for Quarkus (the
-  domain modules ship a `beans.xml` marking them bean archives), a
-  `@ComponentScan` include filter for Spring, and `@Import` for
-  Micronaut Java. Mediator factories now take the discovered
-  collection instead of constructing handlers by hand, and the
-  `persistence` vertical's greeting-log handlers ride the same
-  marker — so on Quarkus and Spring it no longer rewrites the
-  composition root at all, and on Micronaut Java it only names the
-  new package in `@Import` (which does not scan sub-packages).
-  Micronaut Kotlin keeps its explicit wiring in both verticals.
-- **Dedicated documentation under `docs/`** — cross-linked pages for
-  every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
-  `web-components`, fullstack) and every vertical
-  (`docs/verticals/`), each with explicit prerequisites (toolchains
-  on PATH, env vars), the questions asked, and the generated tree;
-  plus a full CLI reference (`docs/cli.md`), the composition model
-  with diagrams (`docs/composition.md`), and contributor/maintainer
-  guides (`docs/development.md`, `docs/release.md`).
-- **`CONTRIBUTING.md`** — the fork → branch → PR contribution
-  workflow, commit conventions, and pointers into the docs.
-
-### Changed
-
-- **README reorganized for first-time users** — prose trimmed in
-  favor of a stack matrix, per-family "How to" sections (command +
-  what you get + prerequisites), a composition diagram, and a
-  verticals table; the deep material moved to `docs/` with
-  cross-links.
-
-### Fixed
-
-- **Adapter patches preserve the patched file's line endings.** Every
-  text patch (the gateway CORS decorations, the Cargo/README/module
-  registrations of the walking-skeleton adapters, the Spring native
-  build wiring, the observability and dev-env patchers) spliced
-  LF-only content, mixing endings in brownfield CRLF files — e.g.
-  Windows checkouts under `core.autocrlf` — and multi-line anchors
-  (`rust-cors`'s serve block, the observability assembly-point
-  rewires) failed to match outright on them. Patches now share the
-  `eolOf` / `withEol` / `eolAware` helpers: simple splices convert
-  their fragments and anchors to the file's dominant EOL, and the
-  multi-anchor patchers run on LF-normalized text with the file's
-  EOL restored after. LF files round-trip byte-identical.
-- **`fullstack/product-compose` ships a `.dockerignore` beside every
-  Dockerfile.** Its multi-stage builds `COPY . .`, so the whole
-  context — including `.env` and package-manager rc files — reached
-  the builder (and, for the single-stage `ts-http` image, the final
-  image). Each deployment unit now excludes VCS metadata, secrets,
-  and host build outputs (`build`/`target`/`bin`/`node_modules`/
-  `dist`) from its context.
-
-### Added
-
 - **`containerization` vertical** (`keel add containerization`) — a
   thin Dockerfile (plus `.dockerignore`) beside the deployment unit
   for every HTTP-shaped stack. No build stage anywhere: the image
@@ -1757,6 +1426,91 @@ ci`/`containerization`/`distribution` on a service follow the same
 
 ### Changed
 
+- **The `Prompt` port carries an `Asker`.** `ask(question, asker)`
+  names who is asking — a composition adapter, a stack-level dial, or
+  the provisioning context. A question id is unique within its asker
+  and nowhere else, and the two record their answers in completely
+  different places (`manifest.answers[adapterId]` versus a field of the
+  command), so a non-terminal front end cannot route an answer back
+  without it. Affects anyone implementing the port directly; the
+  shipped `FakePrompt` now also records the askers it saw.
+- **`InstallTarget` names what to install** independently of which
+  command carries it (`domain/contract/commands.ts`), with
+  `installCommandFor` as the single mapping to a command — so
+  `keel.preview` and a committing install cannot disagree about what a
+  target means. It mirrors `NewProjectCommand` field for field, an
+  optional `stack` included: absent asks for it, exactly as an omitted
+  `--stack` does.
+- **The pre-commit hook's format step is now sentinel-delimited**, so
+  `code-style` can wire a formatter into an already-emitted hook —
+  greenfield and brownfield through one mechanism. The hook's
+  behaviour is unchanged where a formatter already existed (Go, Rust).
+- **Enforcement is hook-fixes / CI-checks.** `isEnforceCheck = false`
+  on Gradle and no lifecycle binding on Maven, so a formatting drift
+  never fails `./gradlew build` or `mvnw verify`; the pipeline gates
+  on it instead. Without this a formatter disagreement would break a
+  freshly scaffolded project's very first build.
+
+- **Every emitted-template pin bumped to the latest stable its feed
+  reports** — the version-currency registry's first full sweep.
+  Quarkus platform 3.38.2 (and the Gradle stacks' `gradle.properties`
+  finally agreeing with Maven's pin), Micronaut platform 5.1.1 with
+  its Gradle plugin 5.0.2 and Data TX 5.1.1, Kotlin 2.4.10, JUnit
+  Jupiter 6.1.3, Flyway 13.3.0 with the CLI
+  image lifted to the same major, Shadow 9.6.1, Gradle wrapper 9.7.0
+  (keel's own e2e host Gradle moves with it), GraalVM Native Build
+  Tools 1.1.9, protobuf-java 4.35.1 (the Micronaut Maven compatibility
+  pin follows Micronaut 5's OTel gencode), Node images and CI
+  node-version to the 24 LTS, TypeScript ^6.0.0, Vitest ^4.1.0,
+  @testcontainers/postgresql ^12.1.0, Vite ^8.2.0, @rgoussu.dev/planks
+  ^0.3.1, Go 1.26, the
+  emitted workflows' action majors (checkout v7, setup-go v7,
+  setup-java v5, setup-node v7, docker login v4, upload-artifact v7,
+  download-artifact v8, gh-release v3) and the monitoring images
+  (otel-collector 0.159.0, Tempo 3.0.3, Prometheus 3.14.0, Grafana
+  13.2.0, otel-lgtm 0.30.2). Four deliberate holds, each recorded
+  beside its registry entry: `jakarta.inject-api` stays 2.0.1 (the
+  `.MR` upload is a maintenance re-tag, not a newer library),
+  `@types/node` moves to ^24 to match the Node major the scaffolds run
+  rather than npm's latest, TypeScript stays below 7 because
+  dependency-cruiser — the tool holding the emitted seam wall —
+  supports `>=2 <7` and cruises nothing under 7, and Testcontainers
+  stays on the latest 1.x because 2.x renames the per-database module
+  artifacts the templates use. The Micronaut 5 platform BOM stopped
+  managing `jackson-module-kotlin` under Maven, so the Micronaut
+  Kotlin templates now carry its version explicitly (2.22.2).
+  PostgreSQL 18, MariaDB 12 (the long-term series; 13.0 is rolling),
+  Alpine 3, JDK 25 LTS, KSP 2.3.11, setup-graalvm v1 and Loki 3.7.6
+  were already current.
+
+- **The SPA's containerization target is now an assets image — a
+  breaking change to the (unreleased) emitted artifact shape.**
+  `containerization/wc-spa-image` used to bake the Vite bundle onto
+  `nginx:alpine`; it now emits an image containing **only the
+  bundle**, whose entrypoint clears a mounted volume, copies the
+  bundle in, templates `env.js` from the environment, and exits.
+  Serving is deploy-time wiring: the emitted `compose.yaml` runs the
+  assets image as an init container (`restart: 'no'`, nginx gated on
+  `service_completed_successfully`) and an **unmodified official
+  nginx** serves the named volume with the history-API-fallback
+  config mounted read-only. The clear-then-copy order is load-bearing
+  — stale files from the previous release must not survive — and
+  tested. Why: the bundle's lifecycle decouples from the server's — a
+  frontend release replaces the assets image and re-runs it; nginx
+  never rebuilds — and deploy-time `env.js` is what makes one bundle
+  serve every environment. `fullstack/product-compose` migrated to
+  the same shape in the same change: the root compose gains the named
+  volume and the stock nginx service, whose `/api` proxy target is
+  now an env-configured `BACKEND_URL` (defaulting to the sibling
+  service) substituted by the official image's envsubst entrypoint
+  instead of a hostname baked into a custom image.
+
+- **README reorganized for first-time users** — prose trimmed in
+  favor of a stack matrix, per-family "How to" sections (command +
+  what you get + prerequisites), a composition diagram, and a
+  verticals table; the deep material moved to `docs/` with
+  cross-links.
+
 - **README reframed around the bootstrapper.** The tagline and _Why
   keel_ now lead with what `keel new` produces — a runnable,
   production-shaped walking skeleton in under a minute — with the
@@ -1817,6 +1571,301 @@ ci`/`containerization`/`distribution` on a service follow the same
 
 ### Fixed
 
+- **A free-form interactive question's `doc` was invisible.** The
+  inquirer adapter surfaced an adapter-written `Question.doc` as each
+  choice's own description on a `select` question, but a free-form
+  `input` question — which `@inquirer/prompts` gives no description
+  slot of its own — silently dropped it. It now appends the doc on its
+  own line under the prompt.
+
+- **`--with-peer-context` on Rust no longer warns.** The emitted
+  `guestbook.rs` wiring exposed `pub fn wire()`, which nothing in
+  `main` calls, so every `cargo build` of a Rust peer-context project
+  reported `function 'wire' is never used`. The added-context
+  templates already carry `#[allow(dead_code)]` with an explanation
+  telling you to delete it once `main` calls the function; the peer's
+  wiring now says the same thing, including the part that catches
+  people out — the test below it drives `wire()`, and that is not a
+  use `cargo build` counts.
+
+- **The web-components wiring test drives the real seam of an added
+  context, not a fake of it.** When `--consumes` named a context that
+  `keel add module` had itself added, the emitted assembly test stood
+  up a hand-written `<Consumes>Service` object, because building the
+  real one would have meant knowing what _that_ context consumes —
+  which only its own wiring module knows.
+
+  So the wiring module now says it. Every web-components context
+  gains `create<Name>ContextService()`, a fresh self-contained
+  instance that assembles its own consumed chain, which is the shape
+  `ts-http`, Rust and Go already had and the invariant the family was
+  missing: a consumer reaches an added context through _that
+  context's own wiring function_. The test calls it and never names
+  what the consumed context consumes.
+
+  It is deliberately separate from `create<Name>Wiring`, which stays
+  the single live instance `main.ts` holds — a second call there
+  would build a second store and split the page's state from its
+  peers', which is what that function's own note warns about.
+
+- **Reserved module names now cover every target language's
+  keywords.** `parseModuleName` claimed to reject anything "reserved
+  in at least one of Go, Rust, Java or Kotlin" and rejected about a
+  third of them: `keel add module case` scaffolded a tree whose Java
+  package clause is a syntax error, `keel add module map` one whose Go
+  package clause is. The list is now four per-language arrays plus the
+  structural one, so the claim is checkable against each language's
+  grammar rather than invisible in a merged list.
+
+- **`keel add module` installs the workspace it just widened**, on
+  `ts-http` and `web-components`. A workspace package the root
+  manifest now lists but the store has never seen is not resolvable —
+  nothing symlinks it into `node_modules` — so every import of the new
+  context was a `TS2307` and a project keel had just reported as ready
+  did not typecheck. `keel new` gets the install for free from the
+  walking skeleton's own adapter running last; anything layered onto a
+  live project has to ask for it, as `ts-persistence` already did.
+
+- **`--with-peer-context` on a stack that has no peer context was a
+  silent no-op.** `keel new --stack=go-http|ts-http|web-components
+--module-layout=modulith --with-peer-context` accepted the flag,
+  emitted a single bounded context, and exited 0 — the user asked for
+  two contexts, was told nothing, and got one. The flag is now
+  rejected at the front door with the stack named and the supported
+  stacks listed.
+
+  The gap was structural rather than an oversight. Every other "no
+  adapter for this stack" is caught by the resolver's
+  uncovered-dimension hard-fail, and a peer-context adapter declares
+  `covers: []` — it contributes a _context_, not a dimension — so a
+  family with no such adapter resolves cleanly and emits nothing.
+  The new check is derived from the adapter set rather than from a
+  list of stack ids, so a family gaining its adapter opens the front
+  door by itself; a written-down list would go stale in the same
+  silence.
+
+  The layout rejection's wording changed with it. It said a second
+  context "meets the first at user-side/service", which is the JVM
+  and Rust spelling of the seam — Go has no such path — so it now
+  names the seam without spelling a path no stack of that family has.
+
+- **A Micronaut modulith on Maven could not be built at all.** Every
+  module of the reactor except the assembly parents the reactor root,
+  and that root managed no versions — so the one library module
+  carrying Micronaut types (`user-side/api/adapters` for REST,
+  `user-side/cli` for the CLI) declared `io.micronaut:*` coordinates
+  with no version anywhere to resolve them from. Maven failed before
+  compiling anything, while reading the POMs:
+  `'dependencies.dependency.version' for io.micronaut:… is missing`.
+  The reactor root now imports `io.micronaut.platform:micronaut-platform`
+  in `dependencyManagement`, which is the same BOM the assembly gets by
+  parenting `micronaut-parent`. Affects all four Micronaut modulith
+  stacks on Maven — REST and CLI, Java and Kotlin.
+
+  Gradle was never affected: the Micronaut plugin applies the platform
+  to each project it is applied to, so nothing there depends on the
+  root. The defect survived because no Micronaut project had ever been
+  built with Maven, in any layout or language — the Maven e2e coverage
+  added alongside the peer context only reached Quarkus and Spring.
+
+- **A Micronaut library module contributed no beans under Maven.**
+  Micronaut resolves beans at compile time and does it per compiled
+  module, so the modulith's one framework-facing library module — the
+  `@Controller` under `user-side/api/adapters`, the `@Command` under
+  `user-side/cli` — has to run the annotation processor itself. Its
+  Maven pom had no `<build>` section at all, so it did not. The
+  failure was entirely silent: sources compiled, the jar was produced,
+  the application started, and every route 404'd. The Gradle twin was
+  never affected — it applies `io.micronaut.library`, which is exactly
+  this. The four Micronaut modulith stacks now configure
+  `micronaut-inject-java` as an annotation-processor path, through
+  `kapt` on the Kotlin ones.
+
+- **Micronaut's OTLP registry resolved an unusable protobuf under
+  Maven.** `micronaut-micrometer-registry-otlp` ships
+  protobuf-generated classes that call
+  `com.google.protobuf.RuntimeVersion`, which exists only in
+  protobuf-java 4.x — but it asks for 4.28.3 in its Gradle module
+  metadata and 3.25.8 in its POM. Gradle reads the first and resolves
+  a working classpath; Maven reads the second and resolves a broken
+  one, where the meter registry cannot be instantiated
+  (`NoClassDefFoundError com/google/protobuf/RuntimeVersion$RuntimeDomain`)
+  and every `@MicronautTest` in the assembly fails before exercising a
+  route. The emitted pom now pins protobuf-java to the version Gradle
+  picks. Affects **both module layouts** — `basic` was equally broken,
+  and equally unbuilt.
+
+- **The Go persistence slice's pgx contract test could never pass
+  against a real Docker daemon.** It started its Testcontainers
+  PostgreSQL with no wait strategy, so the container was declared ready
+  the instant it started — and PostgreSQL restarts itself once after
+  first-time init, so the very next connection was reset
+  (`failed to receive message: unexpected EOF`). The test now passes
+  `postgres.BasicWaitStrategies()`, which waits for the readiness log
+  twice, exactly as the module ships it for.
+
+  It hid for as long as it did because the test skips itself without a
+  daemon, and no environment that ran it had one. Running the e2e suite
+  in CI is what surfaced it.
+
+- **`ts-http` documented a wall it does not have.** The emitted README,
+  the stack page and the README all said the domain packages'
+  `"types": []` made a domain import of `node:*` a compile error. It
+  does not: `types: []` suppresses the automatic global `@types`, while
+  an explicit `import … from 'node:async_hooks'` still resolves and
+  typechecks clean — checked against a scaffolded `basic` project, so
+  the claim was wrong from the start. The `exports` map is the wall
+  that does hold, and is now what the docs point at; "the domain never
+  imports the platform" is stated as a review rule under `basic` and
+  enforced by the `modulith` layout's `domain-knows-no-platform`
+  dependency-cruiser rule.
+
+- **`observability` emitted its package but never wired `main.go` on a
+  Go modulith.** The `cmd/http/main.go` patch anchored on the flat
+  import path, so under `layout.modulith` it matched nothing and the
+  adapter's drift guard silently returned the file unchanged — probes,
+  correlation ids and telemetry all present on disk and none of them
+  reachable. `go build` stayed green throughout, because unwired code
+  compiles. Both the patch target and the import now resolve through
+  `goLayout`.
+
+- **The Maven modulith leaked the provider's domain past the peer
+  seam.** `greeting-user-side-service` declared
+  `greeting-domain-contract` at default `compile` scope, which Maven
+  resolves transitively — so any peer depending on the service module
+  also got the greeting domain on its compile classpath, and the
+  property the whole layout exists to enforce silently did not hold.
+  (The Gradle twin was always correct: `implementation` scope.) The
+  dependency is now `<optional>true</optional>`, Maven's only
+  non-transitive compile scope. Verified by building a three-module
+  reactor: the peer compiled an import of the provider's domain
+  before the fix and fails to resolve it after.
+
+- **The modulith's composition root could not survive a second
+  context.** Producing the peer-facing service eagerly while building
+  the mediator closes a construction cycle (mediator → handler →
+  port → service → mediator); the container recursed until the stack
+  ran out. The peer port is now bound from a lazily-resolved
+  `Instance`, which is also how a remote gateway would behave. Only
+  reachable with `--with-peer-context`, so no released project is
+  affected.
+
+- **The `modulith` module layout for the JVM stacks.**
+  `keel new --module-layout=modulith` (or the new interactive "Module
+  layout" question) scaffolds the walking skeleton carved one bounded context
+  at a time: `platform/kernel` for the dispatch vocabulary,
+  `modules/<context>/` for a whole hexagon
+  (`user-side/{api,cli,service}` + `domain/{contract,core}` +
+  `infra/`), and `application/<typology>` for the runnable assembly
+  that mounts them. All twelve JVM combinations (Quarkus / Spring /
+  Micronaut × CLI / REST × Java / Kotlin) on Gradle and Maven alike.
+  The distinguishing piece is `user-side/service`: the in-process
+  driving adapter a **peer module** consumes through a driven port it
+  declares in its own vocabulary — the only dependency edge allowed
+  between modules, and the seam that turns extracting a context into
+  its own service into a wiring change. The service module declares
+  its domain as `implementation` scope, so a peer physically cannot
+  compile against it. `basic` — the flat trisection — stays the
+  default, and a manifest carrying no `layout.*` tag resolves to it,
+  so nothing about existing projects changes. A new e2e test builds a
+  generated modulith project with the real toolchain, runs its suite
+  and drives `/greet` against the booted assembly, beside the existing
+  per-framework ones.
+- **Layout as a composition primitive.** `layout.basic` /
+  `layout.modulith` capability tags, a `Stack.moduleLayouts` option
+  list mirroring `buildSystems`, and `--module-layout` on `keel new`
+  (rejected, with a message, for stacks that ship one layout and for
+  composite stacks). Adapters that write outside their own template
+  tree now read paths and packages from `jvmLayout(tags)` instead of
+  naming a directory, so `observability`, `containerization`,
+  `gateway` and `persistence` compose on either layout:
+  observability lands in the assembly, where correlation ids and
+  probes belong, and persistence in the bounded context, where its
+  port belongs. `jvmLayout` also derives Maven artifactIds and the
+  depth back to the project root, so no adapter hand-computes a
+  `<relativePath>` or a `filesystem:` migration location again.
+- **The `persistence` vertical** — SQL persistence for every HTTP
+  stack (`keel add persistence`), PostgreSQL as the default engine
+  behind an extensible engine spec. Five dimensions: a `datasource`
+  (the stack's idiomatic pool — Agroal, Hikari, pgx, the sync
+  `postgres` crate, `pg` — env-only prod config, compose database in
+  dev, throwaway Testcontainers PostgreSQL in tests, pool health →
+  readiness and pool metrics/JDBC spans → telemetry with the
+  observability vertical on the JVM); transaction management as a
+  **domain secondary port** shaped as a Unit of Work, with per-stack
+  adapters (JTA on Quarkus, `TransactionTemplate` on Spring,
+  `TransactionOperations` on Micronaut, the transaction riding the
+  context on Go / `AsyncLocalStorage` on TS, a shared-connection
+  transaction on Rust) beside canonical counting fakes; a repository
+  example (`GreetingLog` port, SQL adapter contract-tested against a
+  Testcontainers PostgreSQL that skips without Docker, in-memory
+  fake, record/list operations demarcating writes with the unit of
+  work, `POST`/`GET /greetings`); **migrations as their own
+  deployment unit** (`migrations/` — plain-SQL Flyway scripts in a
+  self-contained container run against the database before the
+  service deploys, never from inside it, with dev/test replaying the
+  same SQL at startup as a local-loop convenience); and the dev
+  database + healthcheck-gated migrations one-shot patched into
+  `dev/compose.yaml`. Covered per stack by one predicate-selected
+  adapter: Quarkus/Spring/Micronaut in Java and Kotlin (Gradle or
+  Maven), `go-http`, `rust-http`, `ts-http`. On the JVM the vertical
+  serves **both module layouts**: under `layout.modulith` the driven
+  port and its handlers land in the bounded context
+  (`modules/<context>/domain/…`), the JDBC and unit-of-work adapters
+  in `modules/<context>/infra/`, the `/greetings` resource in the
+  context's `user-side/api/adapters`, and only the datasource,
+  migration config and framework boot test in the
+  `application/api` assembly — so extracting the context into its own
+  service takes its persistence with it.
+- **`@DomainHandler` — container discovery of handlers on the JVM
+  stacks.** Handlers in scaffolded projects now carry a marker the
+  **domain owns** (`domain/contract`), so a new aggregate no longer
+  needs an edit in the composition root. No framework stereotype ever
+  appears in domain code: the marker is meta-annotated only with
+  Jakarta specification APIs (`jakarta.inject`,
+  `jakarta.enterprise.cdi-api`), declared `compileOnly`/`provided` so
+  neither reaches a runtime classpath, and each composition root reads
+  the same marker in its own idiom — a CDI stereotype for Quarkus (the
+  domain modules ship a `beans.xml` marking them bean archives), a
+  `@ComponentScan` include filter for Spring, and `@Import` for
+  Micronaut Java. Mediator factories now take the discovered
+  collection instead of constructing handlers by hand, and the
+  `persistence` vertical's greeting-log handlers ride the same
+  marker — so on Quarkus and Spring it no longer rewrites the
+  composition root at all, and on Micronaut Java it only names the
+  new package in `@Import` (which does not scan sub-packages).
+  Micronaut Kotlin keeps its explicit wiring in both verticals.
+- **Dedicated documentation under `docs/`** — cross-linked pages for
+  every stack family (`docs/stacks/`: JVM, Go, Rust, `ts-http`,
+  `web-components`, fullstack) and every vertical
+  (`docs/verticals/`), each with explicit prerequisites (toolchains
+  on PATH, env vars), the questions asked, and the generated tree;
+  plus a full CLI reference (`docs/cli.md`), the composition model
+  with diagrams (`docs/composition.md`), and contributor/maintainer
+  guides (`docs/development.md`, `docs/release.md`).
+- **`CONTRIBUTING.md`** — the fork → branch → PR contribution
+  workflow, commit conventions, and pointers into the docs.
+
+- **Adapter patches preserve the patched file's line endings.** Every
+  text patch (the gateway CORS decorations, the Cargo/README/module
+  registrations of the walking-skeleton adapters, the Spring native
+  build wiring, the observability and dev-env patchers) spliced
+  LF-only content, mixing endings in brownfield CRLF files — e.g.
+  Windows checkouts under `core.autocrlf` — and multi-line anchors
+  (`rust-cors`'s serve block, the observability assembly-point
+  rewires) failed to match outright on them. Patches now share the
+  `eolOf` / `withEol` / `eolAware` helpers: simple splices convert
+  their fragments and anchors to the file's dominant EOL, and the
+  multi-anchor patchers run on LF-normalized text with the file's
+  EOL restored after. LF files round-trip byte-identical.
+- **`fullstack/product-compose` ships a `.dockerignore` beside every
+  Dockerfile.** Its multi-stage builds `COPY . .`, so the whole
+  context — including `.env` and package-manager rc files — reached
+  the builder (and, for the single-stage `ts-http` image, the final
+  image). Each deployment unit now excludes VCS metadata, secrets,
+  and host build outputs (`build`/`target`/`bin`/`node_modules`/
+  `dist`) from its context.
+
 - **The `ts-http` 500 problem detail is redacted in production.**
   The rejected-dispatch handler echoed `error.message` to clients
   unconditionally; under `NODE_ENV=production` the detail is now the
@@ -1865,8 +1914,6 @@ ci`/`containerization`/`distribution` on a service follow the same
   `CLAUDE.md` pointer) instead of the pre-v0.5 `infrastructure/cli`
   shape, and the `quarkus-cli` seed-tag list includes `runtime.jvm`.
 
-### Fixed
-
 - **The mutation run aborts on its own dry run.** Every push to `main`
   since the single-source pins landed has failed
   `.github/workflows/mutation.yml` before testing a single mutant:
@@ -1892,8 +1939,6 @@ ci`/`containerization`/`distribution` on a service follow the same
   agree. `docs/development.md` records that cross-check as the
   procedure, distinct from the thing it warns against — hashing our
   own download and calling the result published.
-
-### Fixed
 
 - **The `web-components` dev server now serves the vendored design
   system under `--module-layout=modulith`.** `vite build` already

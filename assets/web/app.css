@@ -1,0 +1,334 @@
+/*
+ * The page's own layer on top of planks.
+ *
+ * planks supplies the spacing scale (`--s*`), the measure and the
+ * layout primitives; everything here is colour, type weight and the
+ * handful of component looks the layout primitives do not cover.
+ * Both themes are defined from tokens so `prefers-color-scheme` is
+ * one block rather than a second stylesheet.
+ */
+
+:root {
+  --keel-ink: #16181d;
+  --keel-ink-soft: #5b6371;
+  --keel-paper: #fbfbfc;
+  --keel-panel: #ffffff;
+  --keel-line: #dfe2e8;
+  --keel-accent: #1d6f7a;
+  --keel-accent-ink: #ffffff;
+  --keel-create: #1a7f4b;
+  --keel-modify: #9a6206;
+  --keel-delete: #a8302a;
+  --keel-danger: #a8302a;
+  --keel-danger-bg: #fdf1f0;
+  --keel-radius: 6px;
+  --font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --keel-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --keel-ink: #e7eaef;
+    --keel-ink-soft: #98a1b0;
+    --keel-paper: #14161a;
+    --keel-panel: #1b1e24;
+    --keel-line: #2c313a;
+    --keel-accent: #4bb3c0;
+    --keel-accent-ink: #0d1013;
+    --keel-create: #5cc98c;
+    --keel-modify: #d7a94a;
+    --keel-delete: #e8837c;
+    --keel-danger: #e8837c;
+    --keel-danger-bg: #2a1d1d;
+  }
+}
+
+/*
+ * planks clamps everything to `--measure` and exempts the structural
+ * tags it knows about. These are this page's: containers, list
+ * scaffolding and the elements it defines, all of which are layout
+ * and none of which is prose. Paragraphs stay clamped — 60ch is the
+ * right measure for the help text under a control.
+ *
+ * `:where()` keeps it at zero specificity, so a planks component's
+ * own structural rule still wins.
+ */
+:where(
+  section,
+  article,
+  aside,
+  label,
+  ul,
+  ol,
+  li,
+  keel-app,
+  keel-target-picker,
+  keel-new-form,
+  keel-add-form,
+  keel-question-list,
+  keel-file-tree,
+  keel-plan
+) {
+  max-inline-size: none;
+}
+
+body {
+  background: var(--keel-paper);
+  color: var(--keel-ink);
+  font-family: var(--font-family);
+  line-height: 1.5;
+}
+
+/* --- type ------------------------------------------------------- */
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.2;
+  font-weight: 600;
+}
+h1 {
+  font-size: var(--s1);
+}
+h2 {
+  font-size: var(--s0);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--keel-ink-soft);
+}
+h3 {
+  font-size: var(--s0);
+}
+
+p {
+  margin: 0;
+}
+
+.muted {
+  color: var(--keel-ink-soft);
+  font-size: var(--s-1);
+}
+
+code,
+.mono {
+  font-family: var(--keel-mono);
+  font-size: 0.9em;
+}
+
+/* --- surfaces --------------------------------------------------- */
+
+.panel {
+  background: var(--keel-panel);
+  border: 1px solid var(--keel-line);
+  border-radius: var(--keel-radius);
+  padding: var(--s0);
+}
+
+.masthead {
+  border-bottom: 1px solid var(--keel-line);
+  background: var(--keel-panel);
+}
+
+.masthead .wordmark {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.error {
+  border: 1px solid var(--keel-danger);
+  background: var(--keel-danger-bg);
+  color: var(--keel-danger);
+  border-radius: var(--keel-radius);
+  padding: var(--s-1) var(--s0);
+}
+
+.error .code {
+  font-family: var(--keel-mono);
+  font-size: var(--s-2);
+  opacity: 0.75;
+  display: block;
+}
+
+/* --- controls --------------------------------------------------- */
+
+label {
+  display: block;
+  font-size: var(--s-1);
+  font-weight: 600;
+}
+
+input[type='text'],
+select {
+  inline-size: 100%;
+  max-inline-size: none;
+  padding: var(--s-2) var(--s-1);
+  border: 1px solid var(--keel-line);
+  border-radius: var(--keel-radius);
+  background: var(--keel-panel);
+  color: inherit;
+  font: inherit;
+}
+
+input[type='text'] {
+  font-family: var(--keel-mono);
+  font-size: 0.9em;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--keel-accent);
+  outline-offset: 1px;
+}
+
+button {
+  font: inherit;
+  padding: var(--s-2) var(--s0);
+  border-radius: var(--keel-radius);
+  border: 1px solid var(--keel-line);
+  background: var(--keel-panel);
+  color: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--keel-accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--keel-accent);
+  border-color: var(--keel-accent);
+  color: var(--keel-accent-ink);
+  font-weight: 600;
+}
+
+button.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--keel-accent);
+  text-decoration: underline;
+}
+
+.checkbox {
+  display: flex;
+  gap: var(--s-1);
+  align-items: start;
+  font-weight: 400;
+}
+
+.checkbox input {
+  margin-block-start: 0.3em;
+}
+
+/* --- the target picker ------------------------------------------ */
+
+.crumbs button {
+  padding: var(--s-3) var(--s-2);
+  font-size: var(--s-1);
+}
+
+.folders {
+  max-block-size: 12rem;
+  overflow-y: auto;
+  border: 1px solid var(--keel-line);
+  border-radius: var(--keel-radius);
+}
+
+.folders button {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: none;
+  text-align: start;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: var(--s-2) var(--s-1);
+  font-family: var(--keel-mono);
+  font-size: 0.85em;
+}
+
+.folders button:hover {
+  background: color-mix(in srgb, var(--keel-accent) 12%, transparent);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--s-2);
+  border-radius: 999px;
+  border: 1px solid var(--keel-line);
+  font-size: var(--s-2);
+  color: var(--keel-ink-soft);
+}
+
+/* --- the plan --------------------------------------------------- */
+
+.tree {
+  font-family: var(--keel-mono);
+  font-size: 0.85em;
+  max-block-size: 60vh;
+  overflow: auto;
+}
+
+.tree ul {
+  list-style: none;
+  margin: 0;
+  padding-inline-start: var(--s0);
+}
+
+.tree > ul {
+  padding-inline-start: 0;
+}
+
+.tree li {
+  white-space: nowrap;
+}
+
+.tree .dir {
+  color: var(--keel-ink-soft);
+}
+
+.tree .create::before {
+  content: '+ ';
+  color: var(--keel-create);
+}
+.tree .modify::before {
+  content: '~ ';
+  color: var(--keel-modify);
+}
+.tree .delete::before {
+  content: '- ';
+  color: var(--keel-delete);
+}
+
+.actions li {
+  font-family: var(--keel-mono);
+  font-size: 0.85em;
+}
+
+.stale {
+  opacity: 0.45;
+  transition: opacity 120ms ease-in;
+}
+
+/* --- misc ------------------------------------------------------- */
+
+ul.plain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.grow {
+  flex-grow: 1;
+}
+
+[hidden] {
+  display: none !important;
+}

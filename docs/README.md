@@ -9,6 +9,8 @@ when you need depth.
 - [README — quickstart & stack matrix](../README.md)
 - [CLI reference](cli.md) — every command, flag, and non-interactive
   option.
+- [`keel ui` — the local scaffolder](ui.md) — the same engine as a
+  form with a live plan, served on loopback.
 
 ## Stacks
 

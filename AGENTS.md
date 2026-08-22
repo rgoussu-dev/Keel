@@ -192,11 +192,21 @@ src/
                           # domain/contract — the seam is held by
                           # .dependency-cruiser.cjs both ways
   application/
-    cli/
+    cli/                  # primary adapter #1 — the `keel` binary
       contract/           # commander → commands → mediator → Result
                           # rendered; zero business logic
-      executable/         # composition root: wires infra adapters +
-                          # handlers + mediator; no logic
+      executable/         # process composition root: wires infra
+                          # adapters + handlers + mediator + the UI
+                          # server; no logic
+    web/                  # primary adapter #2 — `keel ui`, the local
+      contract/           # scaffolder. contract/ maps UiRequest →
+      executable/         # commands/queries → UiResponse (no
+                          # node:http) and holds the loopback guards;
+                          # executable/ owns the socket, the per-run
+                          # token and the asset roots. The two primary
+                          # adapters never import each other, bar the
+                          # types-only contract/server.ts the CLI
+                          # names to inject `keel ui`
   infrastructure/         # one directory per port, real adapter +
     tree/ prompt/         # canonical fake side by side
     manifest/ template/
@@ -211,6 +221,10 @@ assets/
                           # picked by the manifest's `layout.*` tag
   project/                # binding spec (AGENTS.md) — source of truth
                           # for the universal engineering conventions
+  web/                    # the `keel ui` page: framework-free custom
+                          # elements on @rgoussu.dev/planks, served
+                          # as-is (no bundler). Linted with src/tests,
+                          # unlike the ejs template trees above
 tests/                    # vitest; mirrors src/ (domain/, e2e/,
   support/factory.ts      # infrastructure/); the shared test Factory
 bin/keel.js               # npm bin entry → dist/application/cli/executable

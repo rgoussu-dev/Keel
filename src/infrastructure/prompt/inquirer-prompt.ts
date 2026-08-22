@@ -15,11 +15,16 @@
 
 import { input, select } from '@inquirer/prompts';
 import type { Question } from '../../domain/contract/composition.js';
-import type { Prompt } from '../../domain/contract/ports/prompt.js';
+import type { Asker, Prompt } from '../../domain/contract/ports/prompt.js';
 
 /** The terminal prompt the CLI wires by default. */
 export const inquirerPrompt: Prompt = {
-  async ask(question: Question): Promise<string> {
+  async ask(question: Question, asker: Asker): Promise<string> {
+    // The terminal shows the question, not its provenance: the CLI
+    // asks in resolution order, so "which adapter wants this?" is
+    // context the user already has. The asker is here for the ports
+    // that cannot rely on ordering — see `Asker`.
+    void asker;
     if (question.choices && question.choices.length > 0) {
       const value = await select<string>({
         message: question.prompt,
