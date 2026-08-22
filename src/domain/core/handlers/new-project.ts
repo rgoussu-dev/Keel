@@ -1128,8 +1128,21 @@ function peerContextQuestion(): Question {
   };
 }
 
-/** The review step's label for one recorded answer: its choice's label, or the raw value. */
+/**
+ * The review step's label for one recorded answer: its choice's
+ * label, or the raw value.
+ *
+ * A `multi-select` answer is a *set*, and neither branch above reads
+ * one: `'cli,server-http'` matches no single choice, and `''` — the
+ * legitimate "none" — renders as nothing at all, leaving the review
+ * line "Change: Additional verticals = " trailing into space. So a
+ * set is spelled out by its values, and an empty one says so.
+ */
 function answerLabel(r: RecordedAnswer): string {
+  if (r.question.kind === 'multi-select') {
+    const chosen = decodeSelection(r.value);
+    return chosen.length === 0 ? '(none)' : chosen.join(', ');
+  }
   return r.question.choices?.find((c) => c.value === r.value)?.label ?? r.value;
 }
 

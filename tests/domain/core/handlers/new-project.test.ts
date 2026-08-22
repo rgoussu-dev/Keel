@@ -1245,6 +1245,31 @@ describe('keel.new-project extra verticals', () => {
     expect(error.message).toContain('twice');
   });
 
+  it('reads as a set at the review step, empty included', async () => {
+    const prompt = new FakePrompt({
+      language: 'go',
+      entrypoints: 'cli,server-http',
+      moduleLayout: 'basic',
+      extraVerticals: '',
+      modulePath: 'example.com/demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      stack: 'granular',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    const review = prompt.questions.find((q) => q.id === 'keel.review');
+    const labels = review?.choices?.map((c) => c.label) ?? [];
+    expect(labels).toContain('Change: User-side adapters (Go) = cli, server-http');
+    expect(labels).toContain('Change: Additional verticals = (none)');
+  });
+
   it('rejects --with on a composite stack, whose services declare their own', async () => {
     const error = expectErr(
       await installMediator().dispatch(
