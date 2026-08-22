@@ -466,7 +466,7 @@ jobs:
           # split rather than a shard split for it. Peeling the
           # modulith cases out of `wc-walking-skeleton` lowered this
           # shard's floor rather than raising it. `browser` stays in
-          # `tools:` because three suites render. Measure this one on
+          # `tools:` because four suites render. Measure this one on
           # the runner rather than a laptop: a laptop reads
           # optimistically here, and the floor has already changed
           # hands once between files.
@@ -475,6 +475,13 @@ jobs:
           # ride here too: they run inside the existing floor, and
           # they render nothing, so the shard's shape and tools are
           # unchanged.
+          #
+          # `ui-stack-finder` is the fourth renderer, and the only
+          # suite here that scaffolds nothing: it spawns `keel ui` and
+          # drives the page with Playwright. It belongs in this shard
+          # rather than one of its own precisely because `browser` is
+          # already declared here, and it runs an order of magnitude
+          # inside the floor.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -492,14 +499,15 @@ jobs:
               tests/e2e/add-module-ts.test.ts
               tests/e2e/add-module-wc.test.ts
               tests/e2e/fullstack.test.ts
+              tests/e2e/ui-stack-finder.test.ts
           # The TypeScript half of the composed-entrypoint grid, in a
           # shard of its own rather than as three more files above.
           # Two reasons, and neither is wall clock inside this job:
           # the `web` shard carries `browser` in `tools:` because
-          # three of its suites render in Chromium, and these render
+          # four of its suites render in Chromium, and these render
           # nothing — a shard that probes for a browser it never uses
           # is a provisioning cost and a lie about what the suites
-          # need. And `web` already carries fourteen files with real
+          # need. And `web` already carries fifteen files with real
           # headroom to spare; three more real installs would push its
           # wall up, where one more parallel shard pushes the
           # phase's up by nothing — this shard lands an order of
