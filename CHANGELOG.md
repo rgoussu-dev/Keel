@@ -8,6 +8,50 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel ui` — the local scaffolder.** A Spring-Initializr-shaped
+  front end for the engine the CLI already drives, served on loopback
+  and stopped with Ctrl-C. Point it at an empty directory and it is
+  `keel new`; point it at a keel project and it becomes `keel add` /
+  `keel add module`, offering only what that project can take. What it
+  adds over the CLI is the **plan while the choices are still moving**:
+  the file tree redraws on every change, before anything is written.
+  Nothing is uploaded — the server is your own `keel` install and the
+  deferred actions run on your machine. See
+  [`docs/ui.md`](docs/ui.md).
+  - **A second primary adapter, not a second engine**
+    (`src/application/web/`). `contract/` maps a request to a command
+    or query from `domain/contract` and a `Result` back to a response
+    — the same rule the CLI adapter lives under, enforced by
+    dependency-cruiser; `executable/` owns the socket, the token and
+    the asset roots. The two primary adapters never import each other,
+    bar the types-only `ServeUi` the CLI needs to inject `keel ui`.
+  - **Three new queries make the form possible**
+    (`domain/contract/queries.ts`). `keel.catalog` reports every stack
+    and vertical with its dials — including whether
+    `--with-peer-context` buys anything, probed against the adapter set
+    rather than listed. `keel.project-status` reports what a directory
+    already holds, mirroring the refusals the brownfield handlers would
+    issue so a control can be absent instead of an error. `keel.preview`
+    runs a real install as a dry run and reports both halves of it: the
+    questions it asked and the plan it produced.
+  - **The question set is discovered, not enumerated.** An adapter is
+    asked only once its predicate matched, and a predicate reads tags
+    an earlier answer folded in, so there is no static form to render.
+    `keel.preview` runs the real engine with a prompt that answers
+    instead of blocking and records as it goes — which is why the form
+    can never offer a question the install does not ask, or hide one it
+    does.
+  - **The page is framework-free custom elements on
+    `@rgoussu.dev/planks`** (`assets/web/`), the same design system
+    keel emits for its `web-components` stack, served as ESM with no
+    bundler. It is linted like the rest of the source: `pnpm lint` now
+    covers `assets/web` alongside `src` and `tests`.
+  - **The loopback port is guarded three ways**, because it is
+    reachable by every page in the user's browser: a per-run token in a
+    custom header (which also forces a preflight this server answers
+    for nobody), a `Host` allowlist against DNS rebinding, and an
+    `Origin` allowlist. No CORS header is ever sent.
+
 - **Composable entrypoints — `arch.cli` + `arch.server-http` on one
   hexagon.** Go and Rust already shipped both a CLI and an HTTP
   deployment unit on the same tag set; the JVM and TypeScript stacks
@@ -135,6 +179,19 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The `Prompt` port carries an `Asker`.** `ask(question, asker)`
+  names who is asking — a composition adapter, a stack-level dial, or
+  the provisioning context. A question id is unique within its asker
+  and nowhere else, and the two record their answers in completely
+  different places (`manifest.answers[adapterId]` versus a field of the
+  command), so a non-terminal front end cannot route an answer back
+  without it. Affects anyone implementing the port directly; the
+  shipped `FakePrompt` now also records the askers it saw.
+- **`InstallTarget` names what to install** independently of which
+  command carries it (`domain/contract/commands.ts`), with
+  `installCommandFor` as the single mapping to a command — so
+  `keel.preview` and a committing install cannot disagree about what a
+  target means.
 - **The pre-commit hook's format step is now sentinel-delimited**, so
   `code-style` can wire a formatter into an already-emitted hook —
   greenfield and brownfield through one mechanism. The hook's

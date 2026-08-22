@@ -185,6 +185,31 @@ Each project's manifest records the other's projected tags
 (`peer.api.rest`, `peer.ui.spa`); see
 [peers in the composition model](composition.md#peer-tags-and-products).
 
+## `keel ui`
+
+Serve the local scaffolder — the same stacks, verticals and questions
+as the commands above, as a form with a live file-tree preview. Runs
+entirely on your machine; nothing is uploaded.
+
+```sh
+keel ui                 # prints http://127.0.0.1:7420/?token=… and blocks
+keel ui --port 0        # let the OS pick a free port
+```
+
+| Option              | Meaning                                                           |
+| ------------------- | ----------------------------------------------------------------- |
+| `-p, --port <port>` | Port to bind. Defaults to `7420`; `0` asks the OS for a free one. |
+| `--host <host>`     | Loopback interface to bind. Defaults to `127.0.0.1`.              |
+
+Open the printed URL — **the token in it is what authorises the page**
+— and stop the server with Ctrl-C. Point it at an empty directory and
+it is `keel new`; point it at an existing keel project and it becomes
+`keel add` / `keel add module`, offering only what that project can
+actually take.
+
+Full reference, including the JSON API and how the loopback port is
+protected: [the local scaffolder](ui.md).
+
 ## `keel toolchain`
 
 Provision the project's **declared toolchain** — the manifest's
