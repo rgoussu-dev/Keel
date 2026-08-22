@@ -87,11 +87,14 @@ import {
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
 import { emitsFor } from '../adapters/context-support.js';
+import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from '../compatibility.js';
 import { installVertical } from '../install.js';
 import {
+  assemblableStacks,
   getStack,
   listStackIds,
   listStacks,
+  stackTagsFor,
   STACKS,
   type BuildSystemOption,
   type Stack,
@@ -330,7 +333,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * from being asked "which framework?" over a menu of one.
    */
   private async drillDown(prompt: Prompt): Promise<Result<string>> {
-    const paths = wizardPaths(Object.values(STACKS));
+    // Every menu below narrows within these, so filtering the input is
+    // what guards the whole drill-down: a preset no setting of its
+    // dials can assemble legally is absent from the language list, the
+    // adapter list and the framework list at once, and from the flat
+    // escape hatch too. One filter, because they are all one walk over
+    // the same set.
+    const paths = wizardPaths(assemblableStacks());
     const language = (await prompt.ask(languageQuestion(paths), NEW_PROJECT_ASKER)).trim();
     if (language === BY_ID_LANGUAGE) {
       return ok((await prompt.ask(stackQuestion(listStacks()), NEW_PROJECT_ASKER)).trim());
@@ -430,7 +439,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const buildTag = await this.resolveBuildSystem(command, stack, prompt);
     if (!buildTag.ok) return buildTag;
 
-    const layoutTag = await this.resolveModuleLayout(command, stack, prompt);
+    const layoutTag = await this.resolveModuleLayout(command, stack, buildTag.value, prompt);
     if (!layoutTag.ok) return layoutTag;
 
     const peerTag = await this.resolveWithPeerContext(
@@ -446,10 +455,16 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // tag set the other three settle — a vertical no adapter here can
     // cover must not be on it.
     const extras = await this.resolveExtraVerticals(command, stack, prompt, [
-      ...stackTags(stack, buildTag.value, layoutTag.value),
+      ...stackTagsFor(stack, buildTag.value, layoutTag.value),
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
     if (!extras.ok) return extras;
+
+    const legal = assemblyIsLegal(stack, extras.value, [
+      ...stackTagsFor(stack, buildTag.value, layoutTag.value),
+      ...(peerTag.value ? [peerTag.value] : []),
+    ]);
+    if (!legal.ok) return legal;
 
     const now = this.deps.clock.nowIso();
     const staged = await this.stageStack({
@@ -740,12 +755,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       }
       return ok(chosen.tag);
     }
-    if (!command.interactive || options.length === 1) return ok(fallback.tag);
+    const offered = legalBuildSystems(stack, options);
+    if (!command.interactive || offered.length <= 1) return ok((offered[0] ?? fallback).tag);
     const answer = (
-      await prompt.ask(buildSystemQuestion(options, fallback), stackAsker(stack))
+      await prompt.ask(buildSystemQuestion(offered, offered[0] ?? fallback), stackAsker(stack))
     ).trim();
-    const chosen = options.find((o) => o.id === answer);
-    if (!chosen) return err(invalidBuildSystem(stack, answer, options));
+    const chosen = offered.find((o) => o.id === answer);
+    if (!chosen) return err(invalidBuildSystem(stack, answer, offered));
     return ok(chosen.tag);
   }
 
@@ -815,6 +831,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async resolveModuleLayout(
     command: NewProjectCommand,
     stack: Stack,
+    buildTag: Tag | null,
     prompt: Prompt,
   ): Promise<Result<Tag | null>> {
     const options = stack.moduleLayouts ?? [];
@@ -835,12 +852,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       if (!chosen) return err(invalidModuleLayout(stack, command.moduleLayout, options));
       return ok(chosen.tag);
     }
-    if (!command.interactive || options.length === 1) return ok(fallback.tag);
+    const offered = legalModuleLayouts(stack, buildTag, options);
+    if (!command.interactive || offered.length <= 1) return ok((offered[0] ?? fallback).tag);
     const answer = (
-      await prompt.ask(moduleLayoutQuestion(options, fallback), stackAsker(stack))
+      await prompt.ask(moduleLayoutQuestion(offered, offered[0] ?? fallback), stackAsker(stack))
     ).trim();
-    const chosen = options.find((o) => o.id === answer);
-    if (!chosen) return err(invalidModuleLayout(stack, answer, options));
+    const chosen = offered.find((o) => o.id === answer);
+    if (!chosen) return err(invalidModuleLayout(stack, answer, offered));
     return ok(chosen.tag);
   }
 
@@ -865,13 +883,20 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     if (
       command.withPeerContext === undefined &&
       command.interactive &&
-      layoutTag === MODULITH_LAYOUT_TAG &&
-      emitsPeerContext(stack, stackTags(stack, buildTag, layoutTag))
+      // The layout rule, read as a filter this time — the same
+      // sentence the gate refuses by. It used to be spelled out here
+      // as `layoutTag === MODULITH_LAYOUT_TAG`, a second copy of a
+      // rule declared elsewhere, which is exactly how a menu and a
+      // refusal come to disagree.
+      legalWith(conflictsOf(piecesOf(stack)), stackTagsFor(stack, buildTag, layoutTag), [
+        PEER_CONTEXT_TAG,
+      ]) &&
+      emitsPeerContext(stack, stackTagsFor(stack, buildTag, layoutTag))
     ) {
       const answer = (await prompt.ask(peerContextQuestion(), stackAsker(stack))).trim();
       want = answer === 'yes';
     }
-    return peerContextTag(want, stack, buildTag, layoutTag);
+    return peerContextTag(want, stack, buildTag);
   }
 
   /**
@@ -913,7 +938,19 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const candidates = listVerticals().filter((summary) => {
       if (own.has(summary.id)) return false;
       const vertical = getVertical(summary.id);
-      return vertical !== null && coversFor(vertical, seed);
+      if (vertical === null) return false;
+      // Two ways a vertical is a dead end here, and both are asked
+      // ahead of the install rather than discovered inside it: no
+      // adapter covers one of its dimensions, or one of its own rules
+      // is broken by what the other dials have settled.
+      //
+      // Coverage reads `seed` and the rules read `tags`, because a
+      // promotable tag cuts opposite ways: it can only *help* an
+      // adapter match, and it can only *create* a conflict. Hiding a
+      // vertical over a tag that may never appear would take away a
+      // legal choice; the assembly gate still refuses it if the tag
+      // does appear.
+      return coversFor(vertical, seed) && assemblyRefusal([vertical], tags) === null;
     });
     const requested =
       command.extraVerticals !== undefined
@@ -986,6 +1023,87 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }
     return ok(answer);
   }
+}
+
+/**
+ * The pieces whose rules govern an assembly of this stack: the preset
+ * itself and every vertical it installs. @see assemblyRefusal
+ */
+function piecesOf(stack: Stack): readonly ConflictSource[] {
+  return [stack, ...stack.verticals];
+}
+
+/**
+ * The build systems worth offering: those some module layout can
+ * still complete legally.
+ *
+ * "Some layout", because this dial settles first and the layout is
+ * not chosen yet. Offering a build system that only works under one
+ * of two layouts is right — the layout menu narrows next, with this
+ * answer in hand. Dropping one that works under neither is what keeps
+ * the user off a road with no legal end.
+ */
+function legalBuildSystems(
+  stack: Stack,
+  options: readonly BuildSystemOption[],
+): readonly BuildSystemOption[] {
+  const layouts: readonly (Tag | null)[] = stack.moduleLayouts?.map((o) => o.tag) ?? [null];
+  const offered = options.filter((option) =>
+    layouts.some(
+      (layout) =>
+        assemblyRefusal(piecesOf(stack), stackTagsFor(stack, option.tag, layout)) === null,
+    ),
+  );
+  // Every option refused is not a menu, it is a refusal — and the
+  // assembly gate is the thing that says so, in the rule's own words.
+  // Handing the dial back unfiltered lets the run reach it.
+  return offered.length === 0 ? options : offered;
+}
+
+/**
+ * The module layouts worth offering, given the build system already
+ * settled — exact rather than optimistic, since this is the last dial
+ * to put a tag on the assembly.
+ */
+function legalModuleLayouts(
+  stack: Stack,
+  buildTag: Tag | null,
+  options: readonly ModuleLayoutOption[],
+): readonly ModuleLayoutOption[] {
+  const offered = options.filter(
+    (option) =>
+      assemblyRefusal(piecesOf(stack), stackTagsFor(stack, buildTag, option.tag)) === null,
+  );
+  return offered.length === 0 ? options : offered;
+}
+
+/**
+ * Refuses an assembly a piece has declared illegal.
+ *
+ * The **loud** half of the compatibility declaration (`../compatibility.ts`).
+ * Every piece coming together in this run — the stack and every
+ * vertical it installs, the `--with` extras included — contributes its
+ * rules, and the tag set the dials settled is checked against all of
+ * them at once.
+ *
+ * Placed after the last dial and before the first file, so it sees the
+ * whole assembly and nothing has been written when it refuses. Earlier
+ * would check a set still missing a tag; later would mean a project on
+ * disk in a shape its own pieces call impossible.
+ *
+ * The message is the rule's own sentence plus the tags that matched,
+ * which is what a hand-written check keeps losing — an uncovered
+ * dimension names the symptom, a rule names the two capabilities that
+ * cannot sit together.
+ */
+function assemblyIsLegal(
+  stack: Stack,
+  extras: readonly Vertical[],
+  tags: readonly Tag[],
+): Result<null> {
+  const refusal = assemblyRefusal([stack, ...stack.verticals, ...extras], tags);
+  if (refusal === null) return ok(null);
+  return err(new DomainError(`stack '${stack.id}': ${refusal}`, 'keel.incompatible'));
 }
 
 /** Every tag installing `verticals` may promote, in one flat list. */
@@ -1423,24 +1541,22 @@ function defaultBuildTag(stack: Stack): Tag | null {
  * exercises either failure branch — it only offers the question once
  * both gates already pass — but the flag path still needs them.
  */
-function peerContextTag(
-  want: boolean,
-  stack: Stack,
-  buildTag: Tag | null,
-  layoutTag: Tag | null,
-): Result<Tag | null> {
+function peerContextTag(want: boolean, stack: Stack, buildTag: Tag | null): Result<Tag | null> {
   if (!want) return ok(null);
-  if (layoutTag !== MODULITH_LAYOUT_TAG) {
-    return err(
-      new DomainError(
-        `--with-peer-context needs the modulith layout: a second bounded context reaches the first only through the peer-facing seam the modulith puts between them, and the flat layout is a single hexagon with no seam to cross. Add --module-layout=modulith${
-          stack.moduleLayouts === undefined ? ` (stack '${stack.id}' does not offer one)` : ''
-        }`,
-        'keel.invalid-peer-context',
-      ),
-    );
-  }
-  if (!emitsPeerContext(stack, stackTags(stack, buildTag, layoutTag))) {
+  // The layout rule that used to live here is a declaration now —
+  // `PEER_CONTEXT_NEEDS_MODULITH`, owned by the vertical whose
+  // capability it constrains, enforced by {@link assemblyIsLegal} and
+  // read a second time by the dial menus. That is the half a
+  // hand-written branch never had: the choice is no longer offered
+  // and then refused.
+  //
+  // What stays is the **capability** probe, which is not a conflict.
+  // It asks whether this stack's adapters emit a peer context at all,
+  // and it asks hypothetically — against the layout that creates the
+  // seam rather than the one the user set — so the answer is about
+  // the stack. Otherwise a stack that could never carry one would be
+  // told to switch layout first, and still get nothing.
+  if (!emitsPeerContext(stack, stackTagsFor(stack, buildTag, MODULITH_LAYOUT_TAG))) {
     return err(
       new DomainError(
         `stack '${stack.id}' has no peer-context adapter — --with-peer-context would scaffold nothing at all. Stacks that support it: ${peerContextStackIds().join(', ')}`,
@@ -1480,9 +1596,6 @@ function scaffoldedModules(
 }
 
 /** The tag set a single-service install of `stack` would carry. */
-function stackTags(stack: Stack, buildTag: Tag | null, layoutTag: Tag | null): readonly Tag[] {
-  return [...stack.tags, ...(buildTag ? [buildTag] : []), ...(layoutTag ? [layoutTag] : [])];
-}
 
 /**
  * Whether any adapter this stack would install actually emits the
@@ -1506,7 +1619,7 @@ function peerContextStackIds(): readonly string[] {
   return Object.values(STACKS)
     .filter((stack) => stack.services === undefined)
     .filter((stack) =>
-      emitsPeerContext(stack, stackTags(stack, defaultBuildTag(stack), MODULITH_LAYOUT_TAG)),
+      emitsPeerContext(stack, stackTagsFor(stack, defaultBuildTag(stack), MODULITH_LAYOUT_TAG)),
     )
     .map((stack) => stack.id)
     .sort();

@@ -740,8 +740,13 @@ describe('keel.new-project peer-context selection', () => {
       ),
     );
 
-    expect(error.code).toBe('keel.invalid-peer-context');
+    // A declared rule now, not a hand-written branch — so the refusal
+    // carries the rule's id and the tags that matched, and the same
+    // sentence is what keeps the choice off the interactive menu.
+    expect(error.code).toBe('keel.incompatible');
     expect(error.message).toMatch(/needs the modulith layout/);
+    expect(error.message).toContain('walking-skeleton/peer-context-needs-modulith');
+    expect(error.message).toContain('modules.peer-context');
     // Language-neutral: `user-side/service` is the JVM and Rust
     // spelling of the seam, and Go has no such path at all.
     expect(error.message).not.toMatch(/user-side\/service/);
@@ -1451,6 +1456,51 @@ describe('keel.new-project interactive peer-context question', () => {
       ),
     );
     expect(prompt.asked).not.toContain('withPeerContext');
+  });
+
+  it('offers the choice exactly where the gate would accept it', async () => {
+    // The property the declaration exists for: the menu and the
+    // refusal are one rule read from two ends. Under each layout,
+    // whether the question is asked must match whether the flag is
+    // accepted — a rule taught to one and not the other is precisely
+    // the "offered, then rejected" the hand-written branch shipped.
+    for (const layout of ['basic', 'modulith'] as const) {
+      const prompt = new FakePrompt({
+        moduleLayout: layout,
+        withPeerContext: 'no',
+        projectName: 'shipper',
+        remote: '',
+        defaultBranch: 'main',
+        extraVerticals: '',
+        'keel.review': 'proceed',
+      });
+      expectOk(
+        await installMediator({ prompt }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'rust-cli',
+            answers: {},
+            interactive: true,
+            dryRun: true,
+          }),
+        ),
+      );
+      const offered = prompt.asked.includes('withPeerContext');
+
+      const flagged = await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'rust-cli',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          moduleLayout: layout,
+          withPeerContext: true,
+        }),
+      );
+      expect(offered).toBe(flagged.ok);
+      if (!flagged.ok) expect(flagged.error.code).toBe('keel.incompatible');
+    }
   });
 
   it('an explicit --with-peer-context suppresses the question even under an interactively-chosen modulith', async () => {

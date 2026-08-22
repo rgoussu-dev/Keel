@@ -41,15 +41,23 @@ export function matches(predicate: Predicate, tagSet: ReadonlySet<Tag>): boolean
  * tests; not used by the resolver directly.
  */
 export function matchesPattern(pattern: string, tagSet: ReadonlySet<Tag>): boolean {
+  return tagsMatching(pattern, tagSet).length > 0;
+}
+
+/**
+ * The tags of `tagSet` that match the pattern, in set order.
+ *
+ * {@link matchesPattern} asks whether any did; this asks which, which
+ * is what a message naming the offending capabilities needs — a
+ * refusal that says `layout.basic` beats one that says `layout.*`.
+ * One walk of the grammar serves both, so a glob cannot mean two
+ * things.
+ */
+export function tagsMatching(pattern: string, tagSet: ReadonlySet<Tag>): readonly Tag[] {
   validatePattern(pattern);
-  if (pattern.endsWith('*')) {
-    const prefix = pattern.slice(0, -1);
-    for (const tag of tagSet) {
-      if (tag.startsWith(prefix)) return true;
-    }
-    return false;
-  }
-  return tagSet.has(pattern);
+  if (!pattern.endsWith('*')) return tagSet.has(pattern) ? [pattern] : [];
+  const prefix = pattern.slice(0, -1);
+  return [...tagSet].filter((tag) => tag.startsWith(prefix));
 }
 
 /**

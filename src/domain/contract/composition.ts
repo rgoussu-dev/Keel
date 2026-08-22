@@ -39,6 +39,60 @@ export interface Predicate {
 }
 
 /**
+ * A declared **incompatibility** between capabilities: a combination
+ * of tags that must never be assembled, and why.
+ *
+ * The mirror image of {@link Predicate}, and deliberately the same
+ * evaluation. A predicate says *when a piece applies*; a conflict says
+ * *when an assembly is illegal*. Both are "all of these present, none
+ * of those" over the tag set, which is why `violatedBy` is `matches`
+ * with the fields renamed — one grammar, two polarities, no second
+ * matcher to drift.
+ *
+ * Two shapes cover what pieces need to say:
+ *
+ * - **Mutual exclusion** — `{ when: ['a', 'b'] }`: illegal together,
+ *   legal apart.
+ * - **A requirement, spelled as its violation** —
+ *   `{ when: ['a'], unless: ['b'] }`: `a` is illegal unless `b` is
+ *   there. More than one `unless` reads as "unless any of these".
+ *
+ * Declared by the piece that owns the rule — a {@link Vertical} whose
+ * capability is the one being constrained, or a stack whose
+ * combination of dials is — never centrally, so a piece arriving from
+ * outside this repository brings its own rules with it.
+ *
+ * The engine reads every declaration **twice**: once to refuse an
+ * assembly that violates it, naming the rule and the tags that
+ * matched, and once to keep the violating choice off the menu in the
+ * first place. A rule stated once cannot have those two answers
+ * disagree.
+ */
+export interface Conflict {
+  /**
+   * Stable id, namespaced by its declarer
+   * (`walking-skeleton/peer-context-needs-modulith`). It appears in
+   * the refusal, so it is what a user searches for.
+   */
+  readonly id: string;
+  /**
+   * The combination that bites: **every** pattern here must match the
+   * tag set. Same grammar as a predicate's — trailing `*` globs, no
+   * bare `*`. Never empty; an empty `when` would forbid everything.
+   */
+  readonly when: readonly Tag[];
+  /** …and **none** of these present, which is what makes it legal after all. */
+  readonly unless?: readonly Tag[];
+  /**
+   * One line the user reads: what cannot go together, and what to do
+   * instead. This is the whole of the error message, so write it as
+   * one — the engine adds the rule id and the offending tags, not the
+   * explanation.
+   */
+  readonly reason: string;
+}
+
+/**
  * A user-facing question posed by an adapter that has a choice point
  * (e.g. "which observability backend?", "which native targets?").
  *
@@ -302,6 +356,11 @@ export interface Vertical {
   readonly description: string;
   readonly dimensions: readonly string[];
   readonly adapters: readonly Adapter[];
+  /**
+   * Incompatibilities this vertical's own capabilities create. Read
+   * by every assembly this vertical is part of — see {@link Conflict}.
+   */
+  readonly conflicts?: readonly Conflict[];
   /**
    * Every tag installing this vertical may promote — the union over
    * its adapters' {@link Contribution.tagsAdd}, including the ones

@@ -38,7 +38,7 @@ import type {
 } from '../../contract/queries.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from '../adapters/module-layout.js';
-import { getStack, listStackIds, STACKS, type BuildSystemOption, type Stack } from '../stacks.js';
+import { assemblableStacks, getStack, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   entrypointCombinations,
   entrypointStep,
@@ -72,7 +72,11 @@ export class CatalogHandler implements Handler<CatalogQuery> {
  * resolve to.
  */
 function describeFinder(): StackFinder {
-  const paths = wizardPaths(Object.values(STACKS));
+  // The same filter the terminal drill-down walks, so the page's
+  // facets and the wizard's questions offer the same presets. A grid
+  // reported from an unfiltered registry would put a dead end on a
+  // control that has no way to explain it.
+  const paths = wizardPaths(assemblableStacks());
   return {
     languages: languageChoices(paths).map((language) => describeLanguage(paths, language)),
     defaultStack: DEFAULT_STACK_ID,
@@ -125,10 +129,10 @@ function asChoiceDescriptor(choice: ChoiceDescriptorLike): ChoiceDescriptor {
 }
 
 function describeStacks(): readonly StackDescriptor[] {
-  return listStackIds().flatMap((id) => {
-    const stack = getStack(id);
-    return stack ? [describeStack(stack)] : [];
-  });
+  // Assemblable only, for the same reason the finder is: a catalog is
+  // what a front end renders as available, and a preset whose every
+  // dial setting the rules refuse is not.
+  return assemblableStacks().map(describeStack);
 }
 
 function describeStack(stack: Stack): StackDescriptor {
