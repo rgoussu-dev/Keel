@@ -43,6 +43,12 @@ adapter; an uncovered dimension **hard-fails the install with a
 message naming the gap** — that is why `keel add observability` on a
 CLI project refuses to half-install (no probe surface to cover).
 
+The message names the **cause** beside the gap: an uncovered dimension
+is almost never a missing adapter but one present and filtered, so the
+refusal also lists the adapters that cover the dimension and the
+predicate term that kept each out (`'quarkus-cli-bootstrap' needs
+'framework.quarkus'`).
+
 ### Stacks
 
 A stack preset (`keel new --stack=<id>`) is **sugar over a list of
@@ -53,6 +59,60 @@ composes the `vcs` and `walking-skeleton` verticals. `quarkus-rest`
 swaps `arch.cli` for `arch.server-http` and the same verticals compose
 the REST shape. Adding a stack is a couple of lines in
 [`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts).
+
+### Conflicts
+
+A `predicate` says when a piece **applies**. A `Conflict` says when an
+assembly is **illegal** — a combination of tags that must never be
+built, and why:
+
+```ts
+{
+  id: 'walking-skeleton/peer-context-needs-modulith',
+  when: ['modules.peer-context'],
+  unless: ['layout.modulith'],
+  reason: 'a second bounded context needs the modulith layout: …',
+}
+```
+
+Two shapes cover what pieces need to say. `{ when: ['a', 'b'] }` is a
+**mutual exclusion** — legal apart, illegal together.
+`{ when: ['a'], unless: ['b'] }` is a **requirement spelled as its
+violation** — `a` is illegal unless `b` is there, and more than one
+`unless` reads as "unless any of these".
+
+The evaluation is a predicate's, exactly: all of `when` present, none
+of `unless`. Same grammar (trailing `*` globs, no bare `*`), same
+matcher, opposite polarity.
+
+**Declared by the piece that owns the rule** — the vertical whose
+capability is constrained, or the stack whose combination of dials is
+— never in a central table. That is what lets a preset or vertical
+arriving from outside this repository bring its own rules with it, and
+it is why an assembly reads the declarations of every piece coming
+together: neither piece alone knows the whole of it.
+
+**Read twice, which is the point.** The engine refuses an assembly
+that violates a rule, naming the rule, its reason and the tags that
+matched — and it filters the same rule out of every menu, so the
+choice is never offered in the first place. A rule stated once cannot
+have those two answers disagree, which is exactly what a hand-written
+check kept failing at: `--with-peer-context` used to be offered
+against the flat layout and _then_ rejected.
+
+Concretely, the menus that narrow as answers land:
+
+| menu                       | filtered by                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| build system               | some module layout must still complete it legally                                   |
+| module layout              | exact — the build system is already settled                                         |
+| peer context               | offered only where switching it on stays legal                                      |
+| extra verticals (`--with`) | coverage (`coversFor`) **and** the vertical's own rules                             |
+| the stack drill-down       | presets no setting of their dials can build are absent from all three steps at once |
+
+A preset is hidden only when **every** setting of its dials is
+refused. Anything stricter would take away a preset reachable by
+moving a dial.
 
 ### Module layout
 

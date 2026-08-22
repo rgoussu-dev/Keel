@@ -8,6 +8,49 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Declared compatibility: one rule, read twice.** A `Conflict` names
+  a combination of capability tags that must never be assembled, and
+  why — `{ when: ['a', 'b'] }` for a mutual exclusion,
+  `{ when: ['a'], unless: ['b'] }` for a requirement spelled as its
+  violation. The evaluation is a `Predicate`'s exactly, with the
+  polarity flipped: same glob grammar, same matcher, no second one to
+  drift.
+  - **Refused loudly.** `keel new` checks the tag set its dials
+    settled against every rule the stack and its verticals declare,
+    after the last dial and before the first file; `keel add` asks the
+    same of a vertical against the manifest's tags. Both report every
+    violation with the rule's own sentence, the tags that matched and
+    the rule id, under `keel.incompatible`.
+  - **And filtered, from the same sentence.** Every menu narrows by
+    the rules as answers land — build system, module layout, peer
+    context, `--with` verticals, and the stack drill-down, whose three
+    steps are guarded at once because they are one walk over the same
+    set. `keel.catalog` reads the same filter, so `keel ui`'s facets
+    and the terminal wizard offer the same presets. A preset is hidden
+    only when _every_ setting of its dials is refused.
+  - **Declared by the piece that owns the rule** — a vertical or a
+    stack, never a central table — so a preset or vertical supplied
+    from outside this repository brings its own rules. `Stack` and
+    `Vertical` both gained a `conflicts` field.
+  - The first rule to move is the peer context's: `--with-peer-context`
+    needs the modulith layout. It was a hand-written branch, which is
+    why the refusal existed and the menu did not — the choice was
+    offered under the flat layout and then rejected. Its error code
+    changes from `keel.invalid-peer-context` to `keel.incompatible`;
+    the separate "this stack has no peer-context adapter" refusal keeps
+    the old code, and now asks its question against the layout that
+    creates the seam, so a stack that could never carry one is told so
+    rather than sent to change layout first and still get nothing.
+
+### Changed
+
+- **An uncovered dimension now names its cause.** `no adapter covers
+dimension(s): entrypoint` is true and nearly useless — the adapter is
+  almost always present and filtered, wanting a tag the assembly does
+  not carry. The refusal lists up to three near misses
+  (`'quarkus-cli-bootstrap' needs 'framework.quarkus'`) and carries all
+  of them in `ResolutionError.detail.near`.
+
 - **`keel ui` gets the drill-down too, as facets.** The page's stack
   picker was a flat select over every preset; above it now sit the
   same three narrowing controls `keel new` asks as questions —
