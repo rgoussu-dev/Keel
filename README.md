@@ -12,7 +12,10 @@ mkdir my-service && cd my-service
 npx @rgoussu.dev/keel new --stack=quarkus-rest
 ```
 
-Sixty seconds later you have:
+That walks you through the questions the stack still needs answered,
+shows the plan it's about to scaffold, and waits for you to confirm —
+pass `-y, --yes` instead to skip straight to the defaults with no
+prompts at all. Sixty seconds later you have:
 
 - a **hexagonal multi-module project** with the dependency rule laid
   out (`domain/kernel ← domain/contract ← domain/core`),

@@ -378,6 +378,7 @@ describe('keel.new-project build-system selection', () => {
       defaultBranch: 'main',
       basePackage: 'com.acme.cli',
       projectName: 'demo',
+      'keel.review': 'proceed',
     });
     const mediator = installMediator({
       prompt,
@@ -506,10 +507,12 @@ describe('keel.new-project module-layout selection', () => {
     const prompt = new FakePrompt({
       buildSystem: 'gradle',
       moduleLayout: 'modulith',
+      withPeerContext: 'no',
       remote: '',
       defaultBranch: 'main',
       basePackage: 'com.acme.cli',
       projectName: 'demo',
+      'keel.review': 'proceed',
     });
     const mediator = installMediator({
       prompt,
@@ -814,5 +817,305 @@ describe('keel new records its bounded contexts', () => {
       ['greeting', true],
       ['guestbook', false],
     ]);
+  });
+});
+
+/**
+ * The wizard's first question: which stack to scaffold. Gap #1 from
+ * the interactive-flow issue — `keel new` used to default to
+ * `quarkus-cli` silently, even when interactive.
+ */
+describe('keel.new-project stack selection', () => {
+  it('prompts for the stack first when interactive and omitted', async () => {
+    const prompt = new FakePrompt({
+      stack: 'quarkus-cli',
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.subject).toBe('quarkus-cli');
+    expect(prompt.asked[0]).toBe('stack');
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
+  });
+
+  it('an explicit --stack suppresses the stack question', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.subject).toBe('quarkus-cli');
+    expect(prompt.asked).not.toContain('stack');
+  });
+
+  it('defaults to quarkus-cli non-interactively when omitted', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.subject).toBe('quarkus-cli');
+  });
+});
+
+/**
+ * Gap #2 from the interactive-flow issue: `--with-peer-context` was
+ * flag-only, never offered to an interactive user who picked the
+ * modulith layout.
+ */
+describe('keel.new-project interactive peer-context question', () => {
+  it('offers the peer context once the layout resolves to modulith interactively', async () => {
+    const prompt = new FakePrompt({
+      moduleLayout: 'modulith',
+      withPeerContext: 'yes',
+      projectName: 'shipper',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept([
+        'walking-skeleton/rust-bootstrap',
+        'walking-skeleton/cargo-check',
+      ]),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'rust-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(prompt.asked).toContain('withPeerContext');
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.modules.map((m) => m.name)).toContain('guestbook');
+  });
+
+  it('never offers the peer context under the flat layout', async () => {
+    const prompt = new FakePrompt({
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      buildSystem: 'gradle',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(prompt.asked).not.toContain('withPeerContext');
+  });
+
+  it('an explicit --with-peer-context suppresses the question even under an interactively-chosen modulith', async () => {
+    const prompt = new FakePrompt({
+      moduleLayout: 'modulith',
+      projectName: 'shipper',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept([
+        'walking-skeleton/rust-bootstrap',
+        'walking-skeleton/cargo-check',
+      ]),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'rust-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+          withPeerContext: true,
+        }),
+      ),
+    );
+    expect(prompt.asked).not.toContain('withPeerContext');
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.modules.map((m) => m.name)).toContain('guestbook');
+  });
+});
+
+/**
+ * Gaps #3/#4 from the interactive-flow issue: no review step, no way
+ * back. The review step shows the staged plan and lets the user
+ * proceed, cancel, or jump back to any answered question — which
+ * re-stages everything asked from that point on, since a later
+ * choice may depend on it.
+ */
+describe('keel.new-project review step', () => {
+  it('cancelling at review writes nothing and reports keel.cancelled', async () => {
+    const prompt = new FakePrompt({
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'cancel',
+    });
+    const mediator = installMediator({ prompt });
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+          buildSystem: 'gradle',
+          moduleLayout: 'basic',
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.cancelled');
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(false);
+    expect(await fsManifestStore.read(projectScopeRoot(cwd))).toBeNull();
+  });
+
+  it('jumping back to an earlier answer re-stages everything asked after it', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: ['maven', 'gradle'],
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': ['edit:0', 'proceed'],
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(report.committed).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'pom.xml'))).toBe(false);
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.tags).toContain('pkg.gradle');
+    expect(manifest?.tags).not.toContain('pkg.maven');
+  });
+
+  it('reviews the plan under --dry-run interactively without committing', async () => {
+    const prompt = new FakePrompt({
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+          buildSystem: 'gradle',
+          moduleLayout: 'basic',
+        }),
+      ),
+    );
+    expect(report.committed).toBe(false);
+    expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(false);
+  });
+});
+
+/** `--yes` (non-interactive) must never ask anything, review included. */
+describe('keel.new-project --yes stays fully non-interactive', () => {
+  it('never touches the prompt port, even with no stack, build system, or module layout given', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    // `installMediator()`'s default prompt (`rejectingPrompt`) fails the
+    // test the moment anything calls `ask` — reaching here at all is
+    // the assertion that nothing did.
+    expect(report.committed).toBe(true);
   });
 });

@@ -8,6 +8,36 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel new`'s interactive flow is now a guided wizard, not a bare
+  question queue.** The stack itself is the first question asked —
+  `keel new` bare or `--stack` omitted no longer silently defaults to
+  `quarkus-cli` when interactive. `--with-peer-context` is now offered
+  interactively the moment `--module-layout` resolves to `modulith` on
+  a stack whose modulith actually has a peer context, instead of being
+  flag-only. Every question order stays flag-suppressible: supplying a
+  flag on the command line always skips its question, and `--yes`
+  stays fully non-interactive with no prompts at all. After every
+  question resolves, a review step shows the full plan (the same
+  file/action list `--dry-run` prints) and lets you proceed, cancel
+  (`keel.cancelled`, nothing written), or jump back to any answered
+  question and re-answer it — everything asked after that question is
+  re-resolved, since a later choice may cascade (a different stack or
+  build system can change which adapters run at all). Implemented as a
+  `WizardPrompt` layered over the existing `Prompt` port in
+  `domain/core` rather than growing the port itself, so the interactive
+  adapter and its fakes stay unchanged in shape.
+
+### Fixed
+
+- **A free-form interactive question's `doc` was invisible.** The
+  inquirer adapter surfaced an adapter-written `Question.doc` as each
+  choice's own description on a `select` question, but a free-form
+  `input` question — which `@inquirer/prompts` gives no description
+  slot of its own — silently dropped it. It now appends the doc on its
+  own line under the prompt.
+
+### Added
+
 - **Composable entrypoints — `arch.cli` + `arch.server-http` on one
   hexagon.** Go and Rust already shipped both a CLI and an HTTP
   deployment unit on the same tag set; the JVM and TypeScript stacks
