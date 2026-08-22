@@ -34,12 +34,49 @@ export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
 /** Whether the JVM CLI e2e tests should be skipped in this run. */
 export const skipJvmCliE2E = skipJvmE2E;
 
-/** Framework-specific parameters of one JVM CLI e2e run. */
-export interface JvmCliE2ESpec extends JvmRunnableSpec {
+/**
+ * What running a packaged CLI jar must prove, independent of how the
+ * project it came from was scaffolded.
+ *
+ * Split out from {@link JvmCliE2ESpec} so a suite that drives *two*
+ * entrypoints off one hexagon (`jvm-combo-e2e.ts`) asserts the CLI
+ * half through the very same code a CLI-only cell does. Two harnesses
+ * spelling "the picocli wiring found the command" slightly
+ * differently would be two claims, not one.
+ */
+export interface JvmCliContract {
   /** Arguments handed to the packaged jar. */
   readonly argv: readonly string[];
   /** Text the run must print on stdout. */
   readonly expectedStdout: string;
+}
+
+/** Framework-specific parameters of one JVM CLI e2e run. */
+export interface JvmCliE2ESpec extends JvmRunnableSpec, JvmCliContract {}
+
+/**
+ * Runs a packaged CLI jar once and asserts its stdout — the step that
+ * says the picocli wiring found the command, the container found the
+ * handler, and the mediator dispatched to it.
+ */
+export function driveCliJar(
+  runJar: string,
+  contract: JvmCliContract,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): void {
+  const run = spawnSync(javaLauncher(), ['-jar', runJar, ...contract.argv], {
+    cwd,
+    env,
+    encoding: 'utf8',
+  });
+  if (run.status !== 0) {
+    throw new Error(
+      `java -jar ${path.relative(cwd, runJar)} ${contract.argv.join(' ')} failed ` +
+        `(exit ${run.status})\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
+    );
+  }
+  expect(run.stdout).toContain(contract.expectedStdout);
 }
 
 /**
@@ -66,16 +103,5 @@ export async function runJvmCliE2E(
   const runJar = runnableJar(spec, cwd);
   expect(await fs.pathExists(runJar), `missing ${runJar}`).toBe(true);
 
-  const run = spawnSync(javaLauncher(), ['-jar', runJar, ...spec.argv], {
-    cwd,
-    env,
-    encoding: 'utf8',
-  });
-  if (run.status !== 0) {
-    throw new Error(
-      `java -jar ${path.relative(cwd, runJar)} ${spec.argv.join(' ')} failed ` +
-        `(exit ${run.status})\nstdout:\n${run.stdout}\nstderr:\n${run.stderr}`,
-    );
-  }
-  expect(run.stdout).toContain(spec.expectedStdout);
+  driveCliJar(runJar, spec, cwd, env);
 }
