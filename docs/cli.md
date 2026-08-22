@@ -126,6 +126,32 @@ instead of four. `--with` is the flag half and suppresses the
 question, `--with ''` included — that is how you say "none"
 explicitly.
 
+`--with` is checked rather than pruned, at the front door — before
+the first adapter question, never eight questions later:
+
+- an id that is not a registered vertical, or one the stack already
+  installs, is refused with the list of what is available here;
+- so is one this stack cannot cover, named with the dimension it
+  could not cover and the tag that would have covered it — the same
+  fact the menu's pruning states by omission:
+
+  ```
+  $ keel new --stack=quarkus-cli --with persistence
+  stack 'quarkus-cli' cannot carry vertical 'persistence': no adapter
+  covers dimension(s) datasource, …; an adapter would need tag(s)
+  arch.server-http, which this stack does not have — drop
+  'persistence' from --with, or scaffold a stack that does
+  ```
+
+The check walks the list the way the install will run it — in the
+order named, each extra against the tags its predecessors promote —
+so a composition where one extra is what enables the next is
+accepted, not refused. `--with containerization,distribution,iac` is
+legal on a REST stack (`iac` is keyed on the `dist.container-image`
+tag `distribution` promotes); the same three ids in another order are
+refused naming the one to list it after, since extras install in the
+order `--with` names them.
+
 Once everything is answered, the wizard shows the same plan
 `--dry-run` prints — every file that would be created or changed,
 every deferred action that would run — and asks what to do next:

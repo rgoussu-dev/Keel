@@ -56,9 +56,37 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
     already carries are refused at the front door with the available
     list spelled out. Rejected on composite stacks, whose services
     declare their own extras and where `--with` names no service.
+  - **An uncoverable id is refused there too**, rather than reaching
+    the resolver's throw after every other question has been asked.
+    `keel new --stack=quarkus-cli --with persistence` now says which
+    dimension no adapter covers and which tag would have covered it
+    (`arch.server-http`) — the fact the menu's pruning states by
+    omission, said out loud. `coverageGap(vertical, tags)` is
+    `coversFor` with that reason attached; it reports the unmet
+    `requires` of the adapter _nearest_ to matching, not of every
+    stack shape keel supports.
+  - **The check walks the extras the way the install runs them** — in
+    the order named, each against the tags its predecessors promote —
+    because a flat probe would refuse the compositions `--with`
+    exists for. `--with containerization,distribution,iac` is legal
+    on a REST stack (`iac` is keyed on the `dist.container-image` tag
+    `distribution` promotes); the same three ids in another order are
+    refused naming the one to list it after, not called impossible.
   - `keel.preview` binds the answer as `{ kind: 'extraVerticals' }`
     and `NewProjectTarget` carries the list, so `keel ui` round-trips
     it like any other dial.
+
+- **`Vertical.promotes`: what installing a vertical may add to the
+  tag set.** The union over its adapters' `tagsAdd`, including the
+  ones only some answers produce (either container-image flavor,
+  every SQL engine, either CI provider). A tag promoted at install
+  time was invisible to anything reasoning before the install, which
+  is what a front-door coverage check has to do; this is the static
+  half of that answer. Over-declaring only defers a refusal to the
+  resolver, and under-declaring would refuse a legal composition — so
+  the installer checks each contribution's `tagsAdd` against the
+  declaration and throws on a tag no vertical claims, which keeps the
+  two from drifting apart in silence.
 
 - **`keel new` finds your stack for you: a guided drill-down.** There
   are 33 presets, and knowing you want "Kotlin, a CLI and an HTTP

@@ -43,6 +43,21 @@ adapter; an uncovered dimension **hard-fails the install with a
 message naming the gap** — that is why `keel add observability` on a
 CLI project refuses to half-install (no probe surface to cover).
 
+A vertical also declares **`promotes`**: every tag installing it may
+add, the union over its adapters' `tagsAdd` including the ones only
+some answers produce (either container-image flavor, every SQL
+engine, either CI provider). It exists because a tag promoted at
+install time is invisible to anything reasoning _before_ the install,
+and something has to: `keel new --with containerization,distribution,iac`
+is a legal composition only because `distribution` promotes the
+`dist.container-image` tag `iac` is keyed on, so a front door that
+checked coverage flatly would refuse the very composition `--with`
+exists for (see [`keel new --with`](cli.md#keel-new)). Over-declaring
+is safe — it only defers a refusal to the resolver. Under-declaring
+would refuse a legal composition, so the installer checks each
+contribution's `tagsAdd` against the declaration and throws on a tag
+no vertical claims.
+
 ### Stacks
 
 A stack preset (`keel new --stack=<id>`) is **sugar over a list of
