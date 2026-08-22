@@ -192,8 +192,14 @@ export const EXTRA_VERTICALS_QUESTION_ID = 'extraVerticals';
  */
 export const BY_ID_LANGUAGE = 'keel.by-id';
 
-/** `--stack` when omitted from a non-interactive run. */
-const DEFAULT_STACK_ID = 'quarkus-cli';
+/**
+ * `--stack` when omitted from a non-interactive run, and the preset
+ * every interactive default composes to. Exported because
+ * `keel.catalog` reports the drill-down's default language, and "the
+ * language of *this* preset" is the only definition that keeps a
+ * form's defaults and the terminal's the same.
+ */
+export const DEFAULT_STACK_ID = 'quarkus-cli';
 
 /** The review step's own control-question choices, not staged answers. */
 const PROCEED = 'proceed';

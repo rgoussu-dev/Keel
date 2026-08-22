@@ -8,6 +8,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel ui` gets the drill-down too, as facets.** The page's stack
+  picker was a flat select over every preset; above it now sit the
+  same three narrowing controls `keel new` asks as questions —
+  language, user-side adapters (a checkbox group), framework — each
+  re-filtering the others and resolving to a preset. Ticking both
+  adapters gives the composed preset, emptying the group is refused
+  rather than resolved, and moving one facet keeps the others where
+  the new choice still offers them (Java → Kotlin with CLI + HTTP on
+  Spring lands on `spring-cli-rest-kotlin`).
+  - **The grid is reported, not re-derived.** `keel.catalog` gained a
+    `finder`: a tree of language → entrypoint combination → framework,
+    each leaf naming a preset, built by the same `stack-wizard.ts`
+    functions the terminal wizard asks from. The page walks the tree
+    and never sees a capability tag — a page deriving the grid from
+    `stacks[].tags` would be a second implementation of a vocabulary
+    that is not its to know, and would drift from the terminal's the
+    first time a tag moved.
+  - The **Stack** select stays: it shows the result, it picks a preset
+    by name, and it is the only route to a fullstack product, which
+    names no language and so appears in no facet.
+  - **The blank form now opens on `quarkus-cli`** — the preset an
+    omitted `--stack` resolves to, reported whole as
+    `finder.defaultStack`. It previously opened on `fullstack`, the
+    alphabetically first entry of the catalog, which is the last thing
+    a blank form should presume.
+
 - **`keel new --with`, and the wizard's fourth step: extra verticals
   in the same run.** `NewProjectCommand.extraVerticals` existed only
   for a composite stack's services; the single-service path never

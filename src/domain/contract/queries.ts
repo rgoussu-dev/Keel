@@ -36,6 +36,93 @@ import type { Tag } from './tags.js';
 export interface Catalog {
   readonly stacks: readonly StackDescriptor[];
   readonly verticals: readonly VerticalDescriptor[];
+  /** The guided stack finder, for a front end that offers one. */
+  readonly finder: StackFinder;
+}
+
+/**
+ * The `keel new` drill-down as data: **language → user-side adapters
+ * → framework**, narrowing to a preset.
+ *
+ * Reported rather than re-derived, and that is the whole point of it
+ * being here. The grid is a reading of the stacks' capability tags —
+ * which `lang.*` and `runtime.*` pair makes a language node, which
+ * `arch.*` tags name an entrypoint rather than a shape, how a subset
+ * that no preset covers is kept off the menu. A front end deriving
+ * that from {@link StackDescriptor.tags} would be a second
+ * implementation of a vocabulary that is not its to know, and it
+ * would drift from the terminal's the first time a tag moved. So the
+ * engine walks its own catalog and hands over the tree; a page
+ * renders three dependent controls and knows nothing about tags.
+ *
+ * Composite products are deliberately absent: they carry no `lang.*`
+ * tag, being products rather than projects. `stacks` still lists them
+ * — a finder is an aid to picking, never the only way to pick.
+ */
+export interface StackFinder {
+  readonly languages: readonly LanguageNode[];
+  /**
+   * Where a form should open: the preset an omitted `--stack`
+   * resolves to, so a blank form and a bare `keel new` agree.
+   *
+   * Reported whole rather than as a default per facet, because
+   * recomposing it is exactly the step that goes wrong: the facets
+   * are alphabetical and the default framework is not the first of
+   * them. One field, one answer, no arithmetic at the other end.
+   */
+  readonly defaultStack: string;
+}
+
+/** One language node of the {@link StackFinder}. */
+export interface LanguageNode {
+  /** e.g. `java@jvm`, `go`, `typescript@browser`. Opaque to a front end. */
+  readonly id: string;
+  readonly label: string;
+  readonly doc: string;
+  /**
+   * How to ask which entrypoints, or null when this language reaches
+   * exactly one combination and the question answers itself.
+   */
+  readonly entrypointStep: EntrypointStepDescriptor | null;
+  readonly combinations: readonly EntrypointCombination[];
+}
+
+/**
+ * The entrypoint question's shape for one language.
+ *
+ * `multi-select` where every non-empty subset of `choices` is a
+ * preset — the ordinary case, and a checkbox group. `select` over
+ * spelled-out combinations where it is not, so a pairing no preset
+ * covers is never on the menu. A front end that renders the first as
+ * a single-choice control offers a combination it cannot resolve.
+ */
+export interface EntrypointStepDescriptor {
+  readonly kind: 'select' | 'multi-select';
+  readonly choices: readonly ChoiceDescriptor[];
+  /** Encoded selection — comma-joined, as a `multi-select` answer is. */
+  readonly default: string;
+}
+
+/** One reachable set of entrypoints, and the presets it leads to. */
+export interface EntrypointCombination {
+  /** Entrypoint ids in menu order; what the step's answer decodes to. */
+  readonly entrypoints: readonly string[];
+  /**
+   * One entry per framework reachable here. More than one means the
+   * framework step has something to ask; exactly one means it answers
+   * itself — and either way each entry names the preset it resolves
+   * to, which is the only value a front end sends back.
+   */
+  readonly frameworks: readonly FrameworkPreset[];
+}
+
+/** One framework of an {@link EntrypointCombination}, and its preset. */
+export interface FrameworkPreset {
+  /** Framework id; `''` for a preset declaring none. */
+  readonly id: string;
+  readonly label: string;
+  /** The stack id this framework resolves to — a `StackDescriptor.id`. */
+  readonly stack: string;
 }
 
 /** One selectable value of a dial, as a front end would render it. */

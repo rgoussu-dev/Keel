@@ -233,6 +233,40 @@ export function entrypointStep(
 }
 
 /**
+ * Every framework reachable from a chosen language and entrypoint
+ * set, with the preset each one names — always the whole list, even
+ * when it holds one entry.
+ *
+ * The unfiltered half of {@link frameworkChoices}. A terminal asks
+ * only where a choice remains, so `frameworkChoices` returns null for
+ * a list of one; a form has to *render* what a single-framework
+ * combination resolves to, and dropping the entry would leave it
+ * nothing to name. Same data, two audiences.
+ */
+export function frameworkPaths(
+  paths: readonly WizardPath[],
+  language: string,
+  entrypoints: readonly string[],
+): readonly FrameworkPath[] {
+  const here = matching(paths, language, entrypoints);
+  return [...new Set(here.map((path) => path.framework ?? ''))].sort().flatMap((framework) => {
+    const path = here.find((candidate) => (candidate.framework ?? '') === framework);
+    return path === undefined
+      ? []
+      : [{ id: framework, label: frameworkLabel(framework), stackId: path.stackId }];
+  });
+}
+
+/** One framework of a (language, entrypoints) pair. @see frameworkPaths */
+export interface FrameworkPath {
+  /** The framework tag's last segment; `''` for a stack declaring none. */
+  readonly id: string;
+  readonly label: string;
+  /** The preset this framework names — one, by the uniqueness invariant. */
+  readonly stackId: string;
+}
+
+/**
  * The framework menu for a chosen language and entrypoint set, or
  * null when the choice makes itself — one framework, or none at all.
  */
@@ -241,17 +275,30 @@ export function frameworkChoices(
   language: string,
   entrypoints: readonly string[],
 ): readonly QuestionChoice[] | null {
-  const here = matching(paths, language, entrypoints);
-  const distinct = [...new Set(here.map((path) => path.framework ?? ''))].sort();
-  if (distinct.length <= 1) return null;
-  return distinct.map((framework) => {
-    const covered = here.filter((path) => (path.framework ?? '') === framework);
-    return {
-      value: framework,
-      label: framework === '' ? 'none — the language’s own runtime, no framework' : framework,
-      doc: presetsDoc(covered),
-    };
-  });
+  const reachable = frameworkPaths(paths, language, entrypoints);
+  if (reachable.length <= 1) return null;
+  return reachable.map((framework) => ({
+    value: framework.id,
+    label: framework.label,
+    doc: framework.stackId,
+  }));
+}
+
+/** Human-readable label of a framework node. */
+export function frameworkLabel(framework: string): string {
+  return framework === '' ? 'none — the language’s own runtime, no framework' : framework;
+}
+
+/**
+ * The distinct entrypoint combinations a language reaches, fewest
+ * entrypoints first — the keys {@link entrypointStep}'s answer
+ * decodes to, and what a faceted front end walks instead of asking.
+ */
+export function entrypointCombinations(
+  paths: readonly WizardPath[],
+  language: string,
+): readonly (readonly string[])[] {
+  return distinctCombinations(paths.filter((path) => path.language === language));
 }
 
 /**

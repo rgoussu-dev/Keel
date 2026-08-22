@@ -43,6 +43,7 @@ install, and "add a bounded context" appears only where
 | Region                | What it does                                                                                                                                |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Project directory** | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                            |
+| **Find a stack**      | Three facets — language, user-side adapters, framework — narrowing to a preset. The browser half of the `keel new` drill-down.              |
 | **Stack + dials**     | The stack, its build system, its module layout, the repository layout of a composite, and `--with-peer-context`. Rendered from the catalog. |
 | **Questions**         | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.           |
 | **Plan**              | The file tree the install would write (`+` new, `~` modified, `-` removed), the deferred actions, and the Generate button.                  |
@@ -50,6 +51,44 @@ install, and "add a bounded context" appears only where
 After a successful generate the page re-reads the directory and turns
 into the brownfield one, so layering `ci` onto what you just scaffolded
 is the next click.
+
+## Finding a stack: the same drill-down, laid flat
+
+`keel new` asks for the stack as three narrowing questions —
+[language → user-side adapters → framework](cli.md#finding-a-stack-the-drill-down).
+The page asks the same three, as **facets**: all visible at once,
+each re-filtering the others, resolving to a preset as they move.
+
+- **Language** — Java, Kotlin, Go, Rust, TypeScript (Node),
+  TypeScript (browser).
+- **User-side adapters** — a checkbox group. Ticking both gives the
+  **composed** preset (`quarkus-cli-rest`, `go-cli-http`): one
+  project, one domain, both entrypoints, never two services. Emptying
+  it is refused rather than resolved — the control snaps back, since
+  no preset has no way in. Absent where the language reaches one
+  combination, as the browser target does.
+- **Framework** — Quarkus, Spring or Micronaut. Absent where the
+  language and adapters chosen leave only one, which is everywhere
+  outside the JVM.
+
+Moving one facet keeps the others where the new choice still offers
+them: switching Java → Kotlin with CLI + HTTP on Spring lands on
+`spring-cli-rest-kotlin`, not back at square one.
+
+The **Stack** select below them stays, and it is not redundant. It is
+the result of the facets, it is the way to pick a preset by name, and
+it is the only way to reach a [fullstack product](stacks/README.md) —
+two services name no single language, so no facet can offer one. Pick
+one there and the facets show `— a fullstack product (two services)`;
+choosing a language from that is how you come back out.
+
+The facets are rendered from `Catalog.finder`, which the engine builds
+by reading the same stack tags the terminal wizard reads. The page
+never sees a tag: it walks a tree of language → combination →
+framework and sends back the preset it lands on. That is deliberate —
+a page deriving the grid from `stacks[].tags` would be a second
+implementation of a vocabulary that is not its to know, and it would
+drift from the terminal's the first time a tag moved.
 
 ## Why the questions are not one static form
 
@@ -130,13 +169,13 @@ The page is a client, not a privileged one — everything it can do is a
 route, and every route is one dispatch through the same mediator the
 CLI uses. Useful if you would rather script it than click it.
 
-| Route               | Body / query               | Dispatches                                  |
-| ------------------- | -------------------------- | ------------------------------------------- |
-| `GET  /api/catalog` | —                          | `keel.catalog` — stacks, verticals, dials   |
-| `GET  /api/project` | `?path=<abs>`              | `keel.project-status`                       |
-| `GET  /api/browse`  | `?path=<abs>`              | directory listing for the picker            |
-| `POST /api/preview` | `{ cwd, target, answers }` | `keel.preview` — writes nothing             |
-| `POST /api/install` | the identical body         | `keel new` / `keel add` / `keel add module` |
+| Route               | Body / query               | Dispatches                                        |
+| ------------------- | -------------------------- | ------------------------------------------------- |
+| `GET  /api/catalog` | —                          | `keel.catalog` — stacks, verticals, dials, finder |
+| `GET  /api/project` | `?path=<abs>`              | `keel.project-status`                             |
+| `GET  /api/browse`  | `?path=<abs>`              | directory listing for the picker                  |
+| `POST /api/preview` | `{ cwd, target, answers }` | `keel.preview` — writes nothing                   |
+| `POST /api/install` | the identical body         | `keel new` / `keel add` / `keel add module`       |
 
 `target` is one of:
 
