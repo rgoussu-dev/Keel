@@ -68,6 +68,13 @@ export function providerTag(provider: CiProvider): Tag {
 }
 
 /**
+ * Every tag a pipeline adapter may promote — one per provider,
+ * the dial deciding which. This is the `ci` vertical's `promotes`
+ * set.
+ */
+export const CI_PROVIDER_TAGS: readonly Tag[] = Object.values(TAG_BY_PROVIDER);
+
+/**
  * The template tree for `adapter` under `provider` — each pipeline
  * adapter keeps one subtree per provider (`github/`, `gitlab/`)
  * rather than one adapter per provider.

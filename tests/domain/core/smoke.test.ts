@@ -34,6 +34,10 @@ const distribution: Vertical = {
   id: 'distribution',
   description: 'how this project ships',
   dimensions: ['build', 'release'],
+  // Declared because an adapter below promotes it: the installer
+  // holds `promotes` to being the whole set, so anything reasoning
+  // about promotions ahead of an install reads a complete list.
+  promotes: ['runtime.graalvm-native'],
   adapters: [
     // Quarkus CLI native build, only when the matching tags are present.
     {
@@ -179,5 +183,31 @@ describe('installVertical end-to-end', () => {
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toThrow(/release/);
+  });
+
+  it('refuses a tag the vertical does not declare in `promotes`', async () => {
+    const tree = new FsTree(tmp);
+    const manifest = {
+      ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
+      tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+    };
+    // `promotes` is what a caller reasoning ahead of an install reads
+    // — a front-door coverage check, say. An adapter quietly adding a
+    // tag outside it makes that list a lie, so the engine says so
+    // here rather than letting a legal composition be refused later.
+    await expect(
+      installVertical({
+        vertical: { ...distribution, promotes: [] },
+        manifest,
+        tree,
+        mode: 'non-interactive',
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        now: () => '2026-04-26T12:00:00Z',
+      }),
+    ).rejects.toThrow(/runtime\.graalvm-native.*does not declare/);
   });
 });

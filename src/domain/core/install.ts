@@ -98,6 +98,7 @@ export async function installVertical(
     applyContribution(adapter, contribution, inputs.tree, inputs.apply);
 
     if (contribution.tagsAdd && contribution.tagsAdd.length > 0) {
+      assertDeclaredPromotions(inputs.vertical, adapter, contribution.tagsAdd);
       running = foldTags(running, contribution.tagsAdd);
       for (const t of contribution.tagsAdd) allTagsAdded.add(t);
     }
@@ -118,6 +119,30 @@ export async function installVertical(
       actions: collectedActions,
     },
   };
+}
+
+/**
+ * Holds `Vertical.promotes` to its meaning: the complete set of tags
+ * installing the vertical may add.
+ *
+ * The declaration exists so a caller can reason about promotions
+ * *before* the install — which is only sound while it is exhaustive,
+ * and nothing about writing `tagsAdd` in an adapter makes an author
+ * revisit a list in another file. So the engine checks it where the
+ * two meet. An undeclared tag is a keel bug, not a user error, so it
+ * throws rather than travelling as an `Err`.
+ */
+function assertDeclaredPromotions(
+  vertical: Vertical,
+  adapter: Adapter,
+  tagsAdd: readonly Tag[],
+): void {
+  const declared = new Set(vertical.promotes ?? []);
+  const undeclared = tagsAdd.filter((tag) => !declared.has(tag));
+  if (undeclared.length === 0) return;
+  throw new Error(
+    `adapter '${adapter.id}' promotes ${undeclared.join(', ')}, which vertical '${vertical.id}' does not declare in 'promotes' — add it there, or the front-door coverage check will refuse compositions this tag enables`,
+  );
 }
 
 /**

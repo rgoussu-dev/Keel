@@ -72,12 +72,14 @@ import { springRestKotlinBootstrapAdapter } from '../adapters/spring-rest-kotlin
 import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
+import { CLAUDE_KIT_TAG } from '../adapters/claude-kit.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const walkingSkeletonVertical: Vertical = {
   id: 'walking-skeleton',
   description: 'Greenfield project skeleton with a runnable end-to-end slice.',
   dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline', 'agentic-kit'],
+  promotes: [CLAUDE_KIT_TAG],
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,

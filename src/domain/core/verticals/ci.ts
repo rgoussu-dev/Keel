@@ -26,6 +26,7 @@ import { goPipelineAdapter } from '../adapters/go-pipeline.js';
 import { jvmPipelineAdapter } from '../adapters/jvm-pipeline.js';
 import { rustPipelineAdapter } from '../adapters/rust-pipeline.js';
 import { tsPipelineAdapter } from '../adapters/ts-pipeline.js';
+import { CI_PROVIDER_TAGS } from '../adapters/ci-pipeline.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const ciVertical: Vertical = {
@@ -33,5 +34,6 @@ export const ciVertical: Vertical = {
   description:
     'The pipeline every push has to pass: build and test on GitHub Actions or GitLab CI.',
   dimensions: ['pipeline'],
+  promotes: CI_PROVIDER_TAGS,
   adapters: [jvmPipelineAdapter, goPipelineAdapter, rustPipelineAdapter, tsPipelineAdapter],
 };

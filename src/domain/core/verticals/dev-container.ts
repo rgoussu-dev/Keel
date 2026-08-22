@@ -24,6 +24,7 @@ import { goDevcontainerAdapter } from '../adapters/go-devcontainer.js';
 import { jvmDevcontainerAdapter } from '../adapters/jvm-devcontainer.js';
 import { nodeDevcontainerAdapter } from '../adapters/node-devcontainer.js';
 import { rustDevcontainerAdapter } from '../adapters/rust-devcontainer.js';
+import { DEV_CONTAINER_TAG } from '../adapters/dev-container.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const devContainerVertical: Vertical = {
@@ -31,6 +32,7 @@ export const devContainerVertical: Vertical = {
   description:
     'Dev Container definition: a containerized dev environment that attaches to the dev env when present.',
   dimensions: ['definition'],
+  promotes: [DEV_CONTAINER_TAG],
   adapters: [
     jvmDevcontainerAdapter,
     goDevcontainerAdapter,
