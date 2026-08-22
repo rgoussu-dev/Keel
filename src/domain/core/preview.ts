@@ -66,6 +66,7 @@ export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
         id: question.id,
         prompt: question.prompt,
         doc: question.doc,
+        ...(question.kind === undefined ? {} : { kind: question.kind }),
         ...(question.choices === undefined ? {} : { choices: question.choices }),
         default: question.default,
         value,

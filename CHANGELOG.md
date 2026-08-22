@@ -8,6 +8,21 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Multi-select questions on the `Prompt` port.** A `Question` may
+  now declare `kind: 'multi-select'`, and the terminal adapter renders
+  it as an inquirer `checkbox` instead of a `select`. The answer stays
+  a **string** — the chosen values comma-joined, with
+  `encodeSelection` / `decodeSelection` in
+  `domain/contract/composition.ts` at both ends — so `Prompt.ask`
+  still returns `Promise<string>` and nothing that consumes an answer
+  had to move: sticky memory, `--set adapterId:questionId=value`, the
+  wizard's replay, and `keel ui`'s form all keep working unchanged. A
+  non-empty `default` reads as "at least one is required" and the
+  checkbox enforces it. `keel.preview` reports the `kind` alongside
+  the choices, and the `keel ui` question list renders a set question
+  as a `<select multiple>` rather than silently offering one value
+  where a set was asked for.
+
 - **`keel ui` — the local scaffolder.** A Spring-Initializr-shaped
   front end for the engine the CLI already drives, served on loopback
   and stopped with Ctrl-C. Point it at an empty directory and it is

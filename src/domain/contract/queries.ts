@@ -128,6 +128,15 @@ export interface PendingQuestion {
   readonly id: string;
   readonly prompt: string;
   readonly doc: string;
+  /**
+   * `multi-select` when the question picks a *set* of `choices` — the
+   * answer being those values comma-joined, exactly as
+   * `Question.kind` defines it. Absent means one choice. A form that
+   * ignores this renders a set question as a single-choice control
+   * and sends back an answer the install cannot honour, so it is
+   * reported rather than left to be inferred.
+   */
+  readonly kind?: 'select' | 'multi-select';
   readonly choices?: readonly QuestionChoice[];
   readonly default: string;
   /** What this preview resolved the question to. */

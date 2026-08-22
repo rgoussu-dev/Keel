@@ -56,7 +56,33 @@ export interface Question {
   readonly id: string;
   readonly prompt: string;
   readonly doc: string;
+  /**
+   * How `choices` are picked from. Absent means `select` — one
+   * choice, the shape every question had before multi-select
+   * existed, and the shape an adapter should keep unless it really
+   * needs a set.
+   *
+   * Under `multi-select` the answer is **still a string**: the chosen
+   * values joined by {@link SELECTION_SEPARATOR}, in choice order,
+   * and the empty string for "none". Encoding the set rather than
+   * widening `Prompt.ask` to `string | string[]` is what keeps the
+   * port's return type — and therefore every adapter, the manifest's
+   * answer map, `--set adapterId:questionId=value`, and the sticky
+   * memory that replays it — untouched. Use
+   * {@link encodeSelection} / {@link decodeSelection} at both ends
+   * rather than splitting by hand.
+   *
+   * Ignored without `choices`: a free-form input has no set to pick.
+   */
+  readonly kind?: 'select' | 'multi-select';
   readonly choices?: readonly QuestionChoice[];
+  /**
+   * The answer a non-interactive run resolves to. Under
+   * `multi-select` it is an encoded selection like any other answer,
+   * so `''` is the legitimate "none by default" — and a prompt
+   * adapter may read a non-empty default as "at least one is
+   * required".
+   */
   readonly default: string;
   readonly memory: 'sticky' | 'repeat';
 }
@@ -66,6 +92,30 @@ export interface QuestionChoice {
   readonly value: string;
   readonly label: string;
   readonly doc: string;
+}
+
+/**
+ * What joins the values of a `multi-select` answer. A comma, which
+ * is why a choice `value` may not contain one — the same constraint
+ * `--build-system backend=maven,frontend=pnpm` already lives under.
+ */
+export const SELECTION_SEPARATOR = ',';
+
+/** Encodes a chosen set as the single string a `multi-select` answer is. */
+export function encodeSelection(values: readonly string[]): string {
+  return values.join(SELECTION_SEPARATOR);
+}
+
+/**
+ * Decodes a `multi-select` answer back into the values it names.
+ * Blank entries are dropped, so `''` decodes to no values at all and
+ * a stray separator is not a value of its own.
+ */
+export function decodeSelection(answer: string): readonly string[] {
+  return answer
+    .split(SELECTION_SEPARATOR)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 }
 
 /**

@@ -5,8 +5,9 @@
  * reported, and each answer is emitted back with the *binding* the
  * preview attached to it. The element therefore knows nothing about
  * which adapter asked what, or which command field an answer lands
- * in: it renders `choices` as a `<select>` and everything else as a
- * text input, and hands the binding straight back.
+ * in: it renders `choices` as a `<select>` (a `multiple` one when the
+ * question picks a set) and everything else as a text input, and
+ * hands the binding straight back.
  *
  * Questions in, `question-answered` out:
  * `{ binding, value }`.
@@ -64,7 +65,7 @@ export class KeelQuestionList extends HTMLElement {
       this.dispatchEvent(
         new CustomEvent('question-answered', {
           bubbles: true,
-          detail: { binding: question.binding, value: control.value },
+          detail: { binding: question.binding, value: valueOf(control) },
         }),
       );
     });
@@ -90,15 +91,38 @@ export class KeelQuestionList extends HTMLElement {
 function selectFor(question, id) {
   const select = document.createElement('select');
   select.id = id;
+  // A set question answers with its values comma-joined — the
+  // encoding `Question.kind: 'multi-select'` defines — so the control
+  // has to be `multiple` and the answer has to be re-joined on the
+  // way out. See `valueOf`.
+  const many = question.kind === 'multi-select';
+  const chosen = new Set(many ? splitSelection(question.value) : [question.value]);
+  select.multiple = many;
+  if (many) select.size = Math.min(question.choices.length, 6);
   for (const choice of question.choices) {
     const option = document.createElement('option');
     option.value = choice.value;
     option.textContent = choice.label;
     option.title = choice.doc;
+    option.selected = chosen.has(choice.value);
     select.append(option);
   }
-  select.value = question.value;
+  if (!many) select.value = question.value;
   return select;
+}
+
+/** The answer a control carries, encoded the way its question expects. */
+function valueOf(control) {
+  if (control.multiple !== true) return control.value;
+  return [...control.selectedOptions].map((option) => option.value).join(',');
+}
+
+/** Splits an encoded `multi-select` answer, dropping blanks. */
+function splitSelection(answer) {
+  return (answer ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 }
 
 function inputFor(question, id) {
