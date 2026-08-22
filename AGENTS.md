@@ -338,6 +338,45 @@ would ship as separate packages implementing the same port.
   `--with-peer-context` (what proves that adapter family is additive),
   the second is a vertical layered onto a cell. A new stack or build
   system means new cells, and they go in the matrix in the same change.
+- **The combo grid is 21 cells, and its two halves are covered to
+  different depths on purpose.** The stacks pairing `arch.cli` with
+  `arch.server-http` ship one hexagon with two deployment units, and
+  `tests/e2e/combo-<layout>-<stack>-<build>.test.ts` is one file per
+  cell, same rule as above. The `modulith` half is **exhausted** — 6
+  JVM combo stacks × 2 build systems, plus `ts-cli-http` × npm and
+  pnpm = 14 — because that is the half issue #108 was about and no
+  build had ever compiled one. The `basic` half is **sampled at one
+  build per stack** (7), the build system alternating so both appear
+  against each framework and each language, and the TypeScript sample
+  taking pnpm rather than npm: PR #110 built the whole `basic` half by
+  hand before shipping the mechanism, so what was missing there was a
+  standing check, not a first look — and the 14 modulith cells
+  re-exercise the seed builders in `jvm-shared-root.ts` on every run
+  regardless. What is genuinely `basic`-only is the per-arch module
+  list and the README shape, and one build per stack pins those.
+
+  **Six shards, not eighteen, and that is the opposite call from
+  `add-module-*` one bullet down.** These follow the `jvm-modulith-*`
+  convention (framework × language, three files a shard). A job per
+  cell earned its keep there because those cells run 57s–213s, well
+  inside the 371s matrix floor, so attribution was free; a combo cell
+  builds _two_ assemblies and measures ~120–190s cold on a 4-core box,
+  and three of them in one shard still land under that floor — where
+  eighteen shards would buy eighteen cold JDK+Gradle provisions for a
+  red X that framework × language already names. The three TypeScript
+  cells get `web-combo` rather than riding `web`: they render nothing,
+  so a shard probing for Chromium would misdescribe them.
+
+  **Every cell ends in a runtime entrypoint check.** A green compile
+  is not the claim — both entrypoints reachable off one hexagon is.
+  The two drive steps are the single-entrypoint suites' own
+  (`driveCliJar`, `driveRestJar`), lifted into
+  `tests/support/jvm-combo-e2e.ts` so a combo cell asserts the same
+  stdout and the same `/greet` wire contract rather than a paraphrase.
+  Each cell also asserts the root build file registers every module
+  exactly once — the shared-root upsert's whole reason to exist, and
+  the one failure a scaffold-and-read test cannot see.
+
 - **On the JVM, `add-module-*` _is_ a grid — the same 24 cells, and
   one job each.** `tests/e2e/add-module-<stack>-<build>.test.ts`, 12
   stacks × 2 build systems, named so "every cell has a suite" is

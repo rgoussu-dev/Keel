@@ -110,6 +110,38 @@ quarkus-cli-rest`) rather than leaving it to be inferred.
   as a `<select multiple>` rather than silently offering one value
   where a set was asked for.
 
+- **The composed-entrypoint e2e grid — 21 cells that build for real.**
+  The stacks pairing `arch.cli` with `arch.server-http` had no
+  end-to-end coverage at all: every claim about a two-entrypoint
+  hexagon was asserted at the domain-test level, and no real
+  `gradle`/`mvn`/`npm`/`pnpm` build had ever compiled one under either
+  module layout. `tests/e2e/combo-<layout>-<stack>-<build>.test.ts` is
+  one file per cell, so "every cell has a suite" is checkable from
+  `ls`.
+  - **The `modulith` half is exhausted** — 6 JVM combo stacks × Gradle
+    and Maven, plus `ts-cli-http` × npm and pnpm. That is the half
+    issue #108 is about: `jvm-shared-root-modulith.ts` and
+    `ts-shared-root.ts`'s modulith branch had shipped without a build
+    ever touching them.
+  - **The `basic` half is sampled** at one build per stack (7 cells),
+    the build system alternating so both appear against each framework
+    and each language, and the TypeScript sample taking pnpm — the
+    package manager whose isolated store refuses an undeclared
+    dependency npm's hoisting would hide.
+  - **Every cell ends in a runtime entrypoint check**, not a green
+    compile: the CLI assembly's jar (or `main.ts`) greets on stdout,
+    and the REST assembly's boots and answers the whole `/greet` wire
+    contract — the same two drive steps the single-entrypoint cells
+    use, lifted into `tests/support/jvm-combo-e2e.ts` and
+    `ts-combo-e2e.ts` so 21 cells cannot drift into 21 slightly
+    different assertions. Each also asserts the root build file
+    registers every module _exactly once_, which is the regression the
+    shared-root upsert exists to prevent.
+  - **Six new CI shards** (`jvm-combo-<framework>-<language>`), three
+    files each, following the `jvm-modulith-*` convention rather than
+    the job-per-cell one — see `AGENTS.md` §9 for why the two grids
+    differ. The TypeScript cells ride a `web-combo` shard of their own.
+
 - **`keel ui` — the local scaffolder.** A Spring-Initializr-shaped
   front end for the engine the CLI already drives, served on loopback
   and stopped with Ctrl-C. Point it at an empty directory and it is
