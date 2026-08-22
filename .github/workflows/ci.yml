@@ -480,8 +480,11 @@ jobs:
           # suite here that scaffolds nothing: it spawns `keel ui` and
           # drives the page with Playwright. It belongs in this shard
           # rather than one of its own precisely because `browser` is
-          # already declared here, and it runs an order of magnitude
-          # inside the floor.
+          # already declared here, and it finishes inside this shard's
+          # floor rather than becoming it. It reads optimistically on a
+          # laptop — its `beforeAll` compiles `dist/` and launches a
+          # browser, and both cost more on a runner — so measure it
+          # there, as the note above says.
           - id: web
             tools: npm pnpm browser
             files: >-

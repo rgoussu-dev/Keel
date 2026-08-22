@@ -58,8 +58,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
     Playwright's `uncheck()`, which would time out for precisely the
     reason the case exists — the handler puts the box back.
   - Rides the existing `web` shard, which already declares
-    `browser` in `tools:`, and finishes an order of magnitude inside
-    that shard's floor.
+    `browser` in `tools:`, and finishes inside that shard's floor
+    rather than becoming it.
 
 - **`keel new --with`, and the wizard's fourth step: extra verticals
   in the same run.** `NewProjectCommand.extraVerticals` existed only
