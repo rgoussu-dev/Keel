@@ -27,12 +27,15 @@ import { quarkusCliNativeAdapter } from '../adapters/quarkus-cli-native.js';
 import { rustContainerAdapter } from '../adapters/rust-container.js';
 import { tsContainerAdapter } from '../adapters/ts-container.js';
 import { wcContainerAdapter } from '../adapters/wc-container.js';
+import { GRAALVM_NATIVE_TAG } from '../adapters/container-image.js';
+import { DIST_CONTAINER_TAG } from '../adapters/distribution-container.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const distributionVertical: Vertical = {
   id: 'distribution',
   description: 'How this project ships.',
   dimensions: ['build', 'release-channel'],
+  promotes: [DIST_CONTAINER_TAG, GRAALVM_NATIVE_TAG],
   adapters: [
     quarkusCliNativeAdapter,
     jvmContainerAdapter,

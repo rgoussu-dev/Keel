@@ -193,7 +193,13 @@ export interface Contribution {
   readonly patches?: readonly ContributionPatch[];
   /** Agentic affordances shipped alongside the code change. */
   readonly agentic?: AgenticBundle;
-  /** Capability tags this adapter promotes into the manifest. */
+  /**
+   * Capability tags this adapter promotes into the manifest. Every
+   * one of them must appear in the parent {@link Vertical.promotes}
+   * set — the installer checks it, so a tag no vertical declares
+   * fails loudly instead of silently breaking the front-door
+   * coverage check that reads that declaration.
+   */
   readonly tagsAdd?: readonly Tag[];
   /**
    * Toolchain needs this adapter declares. The installer folds them
@@ -355,6 +361,27 @@ export interface Vertical {
    * by every assembly this vertical is part of — see {@link Conflict}.
    */
   readonly conflicts?: readonly Conflict[];
+  /**
+   * Every tag installing this vertical may promote — the union over
+   * its adapters' {@link Contribution.tagsAdd}, including the ones
+   * only some answers produce (both container-image flavors, every
+   * SQL engine, either CI provider).
+   *
+   * Declared because a tag promoted at install time is invisible to
+   * anything reasoning *before* the install: `coversFor` sees the
+   * tags it is given, so a front door checking `--with
+   * distribution,iac` ahead of time would refuse `iac` for want of
+   * the `dist.container-image` tag `distribution` is there to
+   * promote. This is the static half of that answer — what *may*
+   * appear, never what will.
+   *
+   * Over-declaring is safe (it only defers a refusal to the
+   * resolver); under-declaring risks refusing a legal composition,
+   * which is why {@link Contribution.tagsAdd} is checked against
+   * this set at install time and a tag outside it is a hard error.
+   * Omit only when no adapter of the vertical promotes anything.
+   */
+  readonly promotes?: readonly Tag[];
 }
 
 /**

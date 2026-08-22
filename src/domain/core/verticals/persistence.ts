@@ -59,6 +59,8 @@ import {
   springPersistenceKotlinAdapter,
 } from '../adapters/spring-persistence.js';
 import { tsPersistenceAdapter } from '../adapters/ts-persistence.js';
+import { FLYWAY_TAG, LIQUIBASE_TAG } from '../adapters/migrations-tool.js';
+import { SQL_ENGINES } from '../adapters/persistence-engine.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const persistenceVertical: Vertical = {
@@ -72,6 +74,7 @@ export const persistenceVertical: Vertical = {
     'migrations',
     'database-compose',
   ],
+  promotes: [...SQL_ENGINES.map((engine) => engine.tag), FLYWAY_TAG, LIQUIBASE_TAG],
   adapters: [
     quarkusPersistenceAdapter,
     quarkusPersistenceKotlinAdapter,

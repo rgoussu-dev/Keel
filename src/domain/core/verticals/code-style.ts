@@ -50,6 +50,7 @@ import { rustFormatAdapter } from '../adapters/rust-format.js';
 import { rustLintAdapter } from '../adapters/rust-lint.js';
 import { webFormatAdapter } from '../adapters/web-format.js';
 import { webLintAdapter } from '../adapters/web-lint.js';
+import { LINT_MANAGED_TAG, STYLE_MANAGED_TAG } from '../adapters/code-style.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const codeStyleVertical: Vertical = {
@@ -57,6 +58,7 @@ export const codeStyleVertical: Vertical = {
   description:
     'Editor layout contract, the stack’s own formatter, and its free-tier static checks — from one style model.',
   dimensions: ['editor-baseline', FORMATTER_DIMENSION, LINTER_DIMENSION],
+  promotes: [STYLE_MANAGED_TAG, LINT_MANAGED_TAG],
   adapters: [
     editorBaselineAdapter,
     jvmFormatAdapter,

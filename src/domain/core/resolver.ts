@@ -14,9 +14,15 @@
  *
  * Failures are thrown as `ResolutionError` so callers can show a
  * structured error to the user instead of a stack trace.
+ *
+ * Step 3 is also askable ahead of time, and answered rather than
+ * thrown: `coversFor` for a yes/no (what a menu prunes with) and
+ * `coverageGap` for the same answer with the missing dimensions and
+ * the tags that would cover them attached (what a refusal is written
+ * from).
  */
 
-import { failingTerm, matches } from './predicate.js';
+import { matches, matchesPattern } from './predicate.js';
 import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 
 /**
@@ -40,26 +46,14 @@ export type ResolutionErrorDetail =
       kind: 'uncovered';
       dimensions: readonly string[];
       /**
-       * The adapters that *would* have covered one of those
-       * dimensions, and the predicate term that kept each one out.
-       *
-       * The cause, beside the symptom. An uncovered dimension is
-       * almost never a missing adapter — it is an adapter present and
-       * filtered, and without this the user is told which hole exists
-       * but nothing about what would fill it.
+       * The tags that would close the gap — {@link CoverageGap.enablers},
+       * carried here so the thrown refusal says as much as the
+       * answered one. The throw is the last line of defence, which
+       * makes it the worst place to report only the symptom.
        */
-      near: readonly NearMiss[];
+      enablers: readonly Tag[];
     }
   | { kind: 'cycle'; adapters: readonly string[] };
-
-/** An adapter that covers an uncovered dimension but did not match. */
-export interface NearMiss {
-  readonly adapter: string;
-  readonly dimension: string;
-  /** `requires` — the tag was absent; `excludes` — it was present. */
-  readonly kind: 'requires' | 'excludes';
-  readonly pattern: string;
-}
 
 /**
  * Resolves a vertical for a given tag set. Returns the adapters that
@@ -73,18 +67,45 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
   const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
   const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
 
-  const uncovered = uncoveredDimensions(vertical, matched);
-  if (uncovered.length > 0) {
-    const near = nearMisses(vertical, uncovered, tagSet);
+  // Thrown from the same {@link coverageGap} a front door answers
+  // with, so the refusal a user runs into and the one they are shown
+  // ahead of time cannot say different things.
+  const gap = gapFrom(vertical, matched, tagSet);
+  if (gap !== null) {
     throw new ResolutionError(
-      `vertical '${vertical.id}': no adapter covers dimension(s): ${uncovered.join(', ')}${describeNear(near)}`,
+      `vertical '${vertical.id}': no adapter covers dimension(s): ${gap.dimensions.join(', ')}${describeEnablers(gap.enablers)}`,
       vertical.id,
       'uncovered',
-      { kind: 'uncovered', dimensions: uncovered, near },
+      { kind: 'uncovered', dimensions: gap.dimensions, enablers: gap.enablers },
     );
   }
 
   return topoSort(matched, vertical.id);
+}
+
+/**
+ * Why a vertical would not resolve against a tag set: the dimensions
+ * left uncovered, and the tags that would cover them.
+ */
+export interface CoverageGap {
+  readonly verticalId: string;
+  /** Dimensions no predicate-matching adapter covers. */
+  readonly dimensions: readonly string[];
+  /**
+   * Tags that would close the gap — for each uncovered dimension,
+   * the unmet `requires` of the adapter *nearest* to matching (the
+   * one missing fewest tags), unioned and sorted.
+   *
+   * "Nearest" rather than "all candidates" because the union over
+   * every adapter that covers a dimension is a list of every stack
+   * shape keel supports, which tells a user nothing. On a CLI preset
+   * asking for `persistence`, the nearest adapter is the one for
+   * that framework, missing only `arch.server-http` — which is the
+   * whole answer. Empty when the vertical has no adapter for a
+   * dimension at all, or when the only candidates are ruled out by
+   * an `excludes` entry: adding a tag never un-matches one of those.
+   */
+  readonly enablers: readonly Tag[];
 }
 
 /**
@@ -102,57 +123,63 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
  * hidden option is at worst one `keel add` away.
  */
 export function coversFor(vertical: Vertical, tags: Iterable<Tag>): boolean {
-  const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
-  const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
-  return uncoveredDimensions(vertical, matched).length === 0;
+  return coverageGap(vertical, tags) === null;
 }
 
 /**
- * The adapters that cover an uncovered dimension but were filtered
- * out, with the predicate term that did it.
+ * {@link coversFor}, with the reason attached: `null` when the
+ * vertical resolves, a {@link CoverageGap} naming what is missing
+ * when it does not.
  *
- * Why an uncovered dimension needs this at all: the resolver's hard
- * fail is the last line of defence, so the assemblies reaching it are
- * the ones nobody predicted. "No adapter covers 'entrypoint'" is true
- * and nearly useless — the adapter is right there, wanting a tag the
- * assembly does not carry, and naming that tag turns a dead end into
- * an instruction.
+ * Same conservatism, same tag set, one extra job — a caller that
+ * refuses ahead of the resolver can say *why* rather than making the
+ * user run into the throw to find out.
  */
-function nearMisses(
+export function coverageGap(vertical: Vertical, tags: Iterable<Tag>): CoverageGap | null {
+  const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
+  return gapFrom(
+    vertical,
+    vertical.adapters.filter((a) => matches(a.predicate, tagSet)),
+    tagSet,
+  );
+}
+
+/** The gap, given the adapters the predicate filter already kept. */
+function gapFrom(
   vertical: Vertical,
-  uncovered: readonly string[],
+  matched: readonly Adapter[],
   tagSet: ReadonlySet<Tag>,
-): readonly NearMiss[] {
-  const misses: NearMiss[] = [];
-  for (const dimension of uncovered) {
+): CoverageGap | null {
+  const dimensions = uncoveredDimensions(vertical, matched);
+  if (dimensions.length === 0) return null;
+  return { verticalId: vertical.id, dimensions, enablers: enablers(vertical, dimensions, tagSet) };
+}
+
+/** The enablers as one clause, or nothing when there are none to name. */
+function describeEnablers(enabling: readonly Tag[]): string {
+  return enabling.length === 0 ? '' : ` — would need ${enabling.join(', ')}`;
+}
+
+function enablers(
+  vertical: Vertical,
+  dimensions: readonly string[],
+  tagSet: ReadonlySet<Tag>,
+): readonly Tag[] {
+  const out = new Set<Tag>();
+  for (const dimension of dimensions) {
+    let nearest: readonly Tag[] | null = null;
     for (const adapter of vertical.adapters) {
       if (!adapter.covers.includes(dimension)) continue;
-      const term = failingTerm(adapter.predicate, tagSet);
-      if (term === null) continue;
-      misses.push({ adapter: adapter.id, dimension, kind: term.kind, pattern: term.pattern });
+      // An adapter an `excludes` entry rules out stays ruled out
+      // however many tags are added — it is no one's enabler.
+      if ((adapter.predicate.excludes ?? []).some((e) => matchesPattern(e, tagSet))) continue;
+      const unmet = (adapter.predicate.requires ?? []).filter((r) => !matchesPattern(r, tagSet));
+      if (unmet.length === 0) continue;
+      if (nearest === null || unmet.length < nearest.length) nearest = unmet;
     }
+    for (const tag of nearest ?? []) out.add(tag);
   }
-  return misses;
-}
-
-/**
- * The near misses as one clause, capped.
- *
- * A dimension covered by twenty adapters — the JVM bootstraps — would
- * otherwise print twenty near misses to say one thing. Three is
- * enough to show the shape of what is missing; the rest are in
- * `detail.near` for a UI that wants them.
- */
-function describeNear(near: readonly NearMiss[]): string {
-  if (near.length === 0) return '';
-  const shown = near
-    .slice(0, 3)
-    .map(
-      (miss) =>
-        `'${miss.adapter}' ${miss.kind === 'requires' ? 'needs' : 'is ruled out by'} '${miss.pattern}'`,
-    );
-  const rest = near.length - shown.length;
-  return ` — ${shown.join('; ')}${rest > 0 ? `; and ${rest} more` : ''}`;
+  return [...out].sort();
 }
 
 function uncoveredDimensions(vertical: Vertical, matched: readonly Adapter[]): readonly string[] {

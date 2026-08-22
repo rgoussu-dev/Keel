@@ -43,11 +43,27 @@ adapter; an uncovered dimension **hard-fails the install with a
 message naming the gap** — that is why `keel add observability` on a
 CLI project refuses to half-install (no probe surface to cover).
 
-The message names the **cause** beside the gap: an uncovered dimension
-is almost never a missing adapter but one present and filtered, so the
-refusal also lists the adapters that cover the dimension and the
-predicate term that kept each out (`'quarkus-cli-bootstrap' needs
-'framework.quarkus'`).
+The refusal also names what would close the gap: `coverageGap` picks
+the adapter _nearest_ to matching and reports its unmet `requires`, so
+the message says `would need arch.server-http` rather than only which
+dimension is empty. `resolveVertical` throws from that same gap, so
+the refusal a user runs into and the one a front door shows ahead of
+time cannot say different things.
+
+A vertical also declares **`promotes`**: every tag installing it may
+add, the union over its adapters' `tagsAdd` including the ones only
+some answers produce (either container-image flavor, every SQL
+engine, either CI provider). It exists because a tag promoted at
+install time is invisible to anything reasoning _before_ the install,
+and something has to: `keel new --with containerization,distribution,iac`
+is a legal composition only because `distribution` promotes the
+`dist.container-image` tag `iac` is keyed on, so a front door that
+checked coverage flatly would refuse the very composition `--with`
+exists for (see [`keel new --with`](cli.md#keel-new)). Over-declaring
+is safe — it only defers a refusal to the resolver. Under-declaring
+would refuse a legal composition, so the installer checks each
+contribution's `tagsAdd` against the declaration and throws on a tag
+no vertical claims.
 
 ### Stacks
 

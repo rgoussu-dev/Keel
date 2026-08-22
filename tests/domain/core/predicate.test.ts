@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failingTerm, matches, validatePattern } from '../../../src/domain/core/predicate.js';
+import { matches, validatePattern } from '../../../src/domain/core/predicate.js';
 
 const tagSet = (...tags: string[]): ReadonlySet<string> => new Set(tags);
 
@@ -61,32 +61,5 @@ describe('validatePattern', () => {
     expect(() => validatePattern('*')).toThrow();
     expect(() => validatePattern('*foo')).toThrow();
     expect(() => validatePattern('a*b')).toThrow();
-  });
-});
-
-describe('failingTerm', () => {
-  it('is null when the predicate matches', () => {
-    expect(failingTerm({ requires: ['lang.java'] }, new Set(['lang.java']))).toBeNull();
-  });
-
-  it('names the required tag that was absent', () => {
-    expect(failingTerm({ requires: ['lang.java', 'pkg.maven'] }, new Set(['lang.java']))).toEqual({
-      kind: 'requires',
-      pattern: 'pkg.maven',
-    });
-  });
-
-  it('names the excluded tag that was present', () => {
-    expect(failingTerm({ excludes: ['pkg.maven'] }, new Set(['pkg.maven']))).toEqual({
-      kind: 'excludes',
-      pattern: 'pkg.maven',
-    });
-  });
-
-  it('reports one term, since a predicate is a conjunction', () => {
-    // One unmet term is a complete answer, and the shortest one is
-    // the most readable.
-    const term = failingTerm({ requires: ['a.one', 'a.two'] }, new Set<string>());
-    expect(term).toEqual({ kind: 'requires', pattern: 'a.one' });
   });
 });

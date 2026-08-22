@@ -112,7 +112,7 @@ import {
   type EntrypointStep,
   type WizardPath,
 } from '../stack-wizard.js';
-import { coversFor } from '../resolver.js';
+import { coverageGap, coversFor, type CoverageGap } from '../resolver.js';
 import { getVertical, listVerticals, type VerticalSummary } from '../verticals/index.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
@@ -912,15 +912,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * nothing and would hard-fail at install, which is the dead end an
    * interactive flow must not offer. That probe is
    * {@link coversFor}, run against the tag set the other three dials
-   * settled, which is why this question comes last among them.
+   * settled — which is why this question comes last among them —
+   * plus what the stack's own verticals promote on their way past.
    *
    * `--with` is not pruned the same way — it is checked, not
    * filtered: a name that is not a registered vertical, or is one the
    * stack already carries, is refused at the front door with the list
-   * spelled out, exactly as `keel add` refuses an unknown id. A name
-   * that is registered but uncoverable still reaches the resolver's
-   * own refusal, which names the dimension it could not cover — a
-   * better message than anything this could invent.
+   * spelled out, exactly as `keel add` refuses an unknown id. Coverage
+   * is checked there too, but not with the menu's flat probe — see
+   * {@link preflightCoverage}.
    */
   private async resolveExtraVerticals(
     command: NewProjectCommand,
@@ -929,6 +929,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     tags: readonly Tag[],
   ): Promise<Result<readonly Vertical[]>> {
     const own = new Set(stack.verticals.map((v) => v.id));
+    // What is on the table before any extra runs: the dials' tags
+    // plus whatever the stack's own verticals promote while
+    // installing. A stack that ships `distribution` itself makes
+    // `iac` legal here, and neither the menu nor the front door
+    // should pretend otherwise.
+    const seed = [...tags, ...promotedBy(stack.verticals)];
     const candidates = listVerticals().filter((summary) => {
       if (own.has(summary.id)) return false;
       const vertical = getVertical(summary.id);
@@ -937,7 +943,14 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       // ahead of the install rather than discovered inside it: no
       // adapter covers one of its dimensions, or one of its own rules
       // is broken by what the other dials have settled.
-      return coversFor(vertical, tags) && assemblyRefusal([vertical], tags) === null;
+      //
+      // Coverage reads `seed` and the rules read `tags`, because a
+      // promotable tag cuts opposite ways: it can only *help* an
+      // adapter match, and it can only *create* a conflict. Hiding a
+      // vertical over a tag that may never appear would take away a
+      // legal choice; the assembly gate still refuses it if the tag
+      // does appear.
+      return coversFor(vertical, seed) && assemblyRefusal([vertical], tags) === null;
     });
     const requested =
       command.extraVerticals !== undefined
@@ -976,6 +989,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       }
       chosen.push(vertical);
     }
+
+    const refusal = preflightCoverage(stack, chosen, seed);
+    if (refusal) return err(refusal);
     return ok(chosen);
   }
 
@@ -1088,6 +1104,107 @@ function assemblyIsLegal(
   const refusal = assemblyRefusal([stack, ...stack.verticals, ...extras], tags);
   if (refusal === null) return ok(null);
   return err(new DomainError(`stack '${stack.id}': ${refusal}`, 'keel.incompatible'));
+}
+
+/** Every tag installing `verticals` may promote, in one flat list. */
+function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
+  return verticals.flatMap((vertical) => vertical.promotes ?? []);
+}
+
+/**
+ * The front door's coverage check for `--with`: refuses an extra no
+ * adapter here can cover, *before* any adapter question is asked.
+ *
+ * It cannot be the menu's flat `coversFor` probe. That probe is
+ * conservative — it sees the tags it is given, never the ones an
+ * adapter promotes at install time — and conservatism that only hides
+ * a menu entry becomes a wrong answer the moment it refuses a
+ * command: `--with distribution,iac` is exactly the composition
+ * `--with` exists for (`iac` is keyed on the `dist.container-image`
+ * tag `distribution` promotes), and a flat probe rejects it.
+ *
+ * So the check walks the extras the way the install will run them —
+ * in the order named, each against the tags its predecessors leave
+ * behind, seeded with what the stack's own verticals promote. What
+ * "leave behind" means statically is `Vertical.promotes`, the union
+ * of tags a vertical's adapters may add; over-declaring there only
+ * defers a refusal to the resolver, and under-declaring is what the
+ * installer's own assertion exists to prevent.
+ *
+ * That leaves three outcomes per extra, and the middle one is the
+ * reason the walk is ordered rather than a set operation:
+ *
+ *   - covered at its turn → nothing to say;
+ *   - uncovered now, covered once a *later* extra has run → the
+ *     order is the bug, so the refusal names the extra to list it
+ *     after rather than pretending the composition is illegal;
+ *   - uncovered whatever the rest of the list does → the stack
+ *     cannot carry it, named with the dimension and the tags that
+ *     would have covered it.
+ *
+ * The resolver's `ResolutionError` stays a throw: it escapes
+ * `installVertical` from every caller (`keel add` on a project whose
+ * shape cannot take the vertical does the same), and turning it into
+ * an `Err` is a decision about every escape from the install engine,
+ * not about `--with`. This path simply no longer reaches it — and
+ * refuses with more than it could have said.
+ */
+function preflightCoverage(
+  stack: Stack,
+  chosen: readonly Vertical[],
+  seed: readonly Tag[],
+): DomainError | null {
+  const running = new Set<Tag>(seed);
+  for (const [index, vertical] of chosen.entries()) {
+    const gap = coverageGap(vertical, running);
+    if (gap === null) {
+      for (const tag of vertical.promotes ?? []) running.add(tag);
+      continue;
+    }
+    const later = chosen.slice(index + 1);
+    const singleHanded = later.filter((other) =>
+      coversFor(vertical, [...running, ...(other.promotes ?? [])]),
+    );
+    if (singleHanded.length > 0) return outOfOrder(vertical, gap, singleHanded);
+    if (coversFor(vertical, [...running, ...promotedBy(later)])) {
+      return outOfOrder(
+        vertical,
+        gap,
+        later.filter((other) => (other.promotes ?? []).length > 0),
+      );
+    }
+    return uncoverable(stack, vertical, gap);
+  }
+  return null;
+}
+
+/** The refusal for an extra listed before whatever would enable it. */
+function outOfOrder(
+  vertical: Vertical,
+  gap: CoverageGap,
+  enablers: readonly Vertical[],
+): DomainError {
+  const names = enablers.map((v) => `'${v.id}'`).join(' and ');
+  const promote = enablers.length > 1 ? 'promote' : 'promotes';
+  return new DomainError(
+    `vertical '${vertical.id}' cannot be installed before ${names}: dimension(s) ${gap.dimensions.join(
+      ', ',
+    )} need tag(s) ${gap.enablers.join(', ')}, which ${names} ${promote} — --with installs extras in the order named, so list '${vertical.id}' after ${names}`,
+    'keel.extra-verticals-order',
+  );
+}
+
+/** The refusal for an extra this stack has no adapter for, in any order. */
+function uncoverable(stack: Stack, vertical: Vertical, gap: CoverageGap): DomainError {
+  const missing = `no adapter covers dimension(s) ${gap.dimensions.join(', ')}`;
+  const fix =
+    gap.enablers.length > 0
+      ? `an adapter would need tag(s) ${gap.enablers.join(', ')}, which this stack does not have — drop '${vertical.id}' from --with, or scaffold a stack that does`
+      : `no adapter of '${vertical.id}' can cover them here — drop it from --with`;
+  return new DomainError(
+    `stack '${stack.id}' cannot carry vertical '${vertical.id}': ${missing}; ${fix}`,
+    'keel.uncoverable-vertical',
+  );
 }
 
 /** The asker every stack-level dial carries. @see LAYOUT_QUESTION_ID */

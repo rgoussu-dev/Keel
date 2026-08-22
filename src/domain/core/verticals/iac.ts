@@ -12,12 +12,18 @@
  * infrastructure keel cannot honestly wire to anything.
  */
 
-import { iacDeployTargetAdapter } from '../adapters/iac-deploy-target.js';
+import {
+  IAC_CLOUDS,
+  OPENTOFU_TAG,
+  cloudTag,
+  iacDeployTargetAdapter,
+} from '../adapters/iac-deploy-target.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const iacVertical: Vertical = {
   id: 'iac',
   description: 'Where this project runs — the OpenTofu deploy target.',
   dimensions: ['deploy-target'],
+  promotes: [OPENTOFU_TAG, ...IAC_CLOUDS.map(cloudTag)],
   adapters: [iacDeployTargetAdapter],
 };

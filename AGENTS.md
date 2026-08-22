@@ -339,6 +339,18 @@ would ship as separate packages implementing the same port.
   `walking-skeleton-*` files keep the `basic` layout **only**; a
   modulith case living inside one is invisible to `ls tests/e2e/` and
   floors that file, which is exactly the state I.6 found and fixed.
+- **`keel ui` has one browser-driven suite, and it is not a cell.**
+  `tests/e2e/ui-stack-finder.test.ts` spawns `keel ui --port 0`,
+  parses the URL and token the CLI prints, and drives the page with
+  Playwright — the only suite here that scaffolds no project and runs
+  no build. It rides the `web` shard, which already declares
+  `browser` in `tools:`. What it covers is the seam nothing else can:
+  the facets' narrowing is pure and unit-tested, but the element
+  rebuilds its subtree on every change and `<keel-app>` replaces the
+  element itself, so keeping a choice is a claim about surviving a
+  DOM replacement. A page-level suite is the only thing that sees a
+  `pageerror` too — a throw inside a listener leaves the form looking
+  right and aborts the rest of that handler.
 - **The modulith grid is 24 cells and one file is one cell.**
   12 stacks × 2 build systems, named
   `tests/e2e/modulith-<stack>-<build>.test.ts` so "every cell has a

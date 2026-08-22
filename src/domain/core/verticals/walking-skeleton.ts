@@ -73,6 +73,7 @@ import { springRestKotlinBootstrapAdapter } from '../adapters/spring-rest-kotlin
 import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
+import { CLAUDE_KIT_TAG } from '../adapters/claude-kit.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const walkingSkeletonVertical: Vertical = {
@@ -82,6 +83,7 @@ export const walkingSkeletonVertical: Vertical = {
   // The peer context is this vertical's capability, so the rule
   // constraining it is this vertical's to declare. @see Conflict
   conflicts: [PEER_CONTEXT_NEEDS_MODULITH],
+  promotes: [CLAUDE_KIT_TAG],
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,

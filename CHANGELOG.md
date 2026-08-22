@@ -44,12 +44,13 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- **An uncovered dimension now names its cause.** `no adapter covers
-dimension(s): entrypoint` is true and nearly useless — the adapter is
-  almost always present and filtered, wanting a tag the assembly does
-  not carry. The refusal lists up to three near misses
-  (`'quarkus-cli-bootstrap' needs 'framework.quarkus'`) and carries all
-  of them in `ResolutionError.detail.near`.
+- **The resolver's thrown refusal now says what the front door says.**
+  `resolveVertical` reported only which dimension was empty, while
+  `coverageGap` — added for the `--with` front door — could already
+  name the tags that would close it. The throw is built from that same
+  gap now (`would need arch.server-http`, and `detail.enablers`
+  alongside `detail.dimensions`), so the refusal a user runs into and
+  the one they are shown ahead of time cannot differ.
 
 - **`keel ui` gets the drill-down too, as facets.** The page's stack
   picker was a flat select over every preset; above it now sit the
@@ -77,6 +78,33 @@ dimension(s): entrypoint` is true and nearly useless — the adapter is
     alphabetically first entry of the catalog, which is the last thing
     a blank form should presume.
 
+- **The `keel ui` facets, driven in a real browser.**
+  `tests/e2e/ui-stack-finder.test.ts` spawns `keel ui --port 0`, reads
+  the URL and token it prints, and drives the page with Playwright.
+  The narrowing was unit-tested and the catalog DTO was tested, but
+  nothing had ever loaded the page: the facets were verified by hand
+  in Chromium once and never again. What only a browser can see is
+  the part between the two — `<keel-new-form>` rebuilds its subtree on
+  every change and `<keel-app>` replaces the element itself, so every
+  claim about keeping a choice is a claim about surviving a DOM
+  replacement.
+  - **Eight cases**: the form opens on `quarkus-cli` rather than the
+    catalog's alphabetically first entry; a language move keeps the
+    entrypoints and framework (including off their defaults, where a
+    dropped carry-over is otherwise invisible); ticking the second
+    adapter gives the composed preset and never a two-service product;
+    clearing the last checked adapter is refused and the control snaps
+    back; `go` drops the framework facet and `typescript@browser`
+    drops both; and the `fullstack` product shows the language
+    placeholder and comes back out of it. A `pageerror` or a
+    `console.error` anywhere in a case fails it.
+  - The refusal case clicks the checkbox for real rather than calling
+    Playwright's `uncheck()`, which would time out for precisely the
+    reason the case exists — the handler puts the box back.
+  - Rides the existing `web` shard, which already declares
+    `browser` in `tools:`, and finishes inside that shard's floor
+    rather than becoming it.
+
 - **`keel new --with`, and the wizard's fourth step: extra verticals
   in the same run.** `NewProjectCommand.extraVerticals` existed only
   for a composite stack's services; the single-service path never
@@ -99,9 +127,37 @@ dimension(s): entrypoint` is true and nearly useless — the adapter is
     already carries are refused at the front door with the available
     list spelled out. Rejected on composite stacks, whose services
     declare their own extras and where `--with` names no service.
+  - **An uncoverable id is refused there too**, rather than reaching
+    the resolver's throw after every other question has been asked.
+    `keel new --stack=quarkus-cli --with persistence` now says which
+    dimension no adapter covers and which tag would have covered it
+    (`arch.server-http`) — the fact the menu's pruning states by
+    omission, said out loud. `coverageGap(vertical, tags)` is
+    `coversFor` with that reason attached; it reports the unmet
+    `requires` of the adapter _nearest_ to matching, not of every
+    stack shape keel supports.
+  - **The check walks the extras the way the install runs them** — in
+    the order named, each against the tags its predecessors promote —
+    because a flat probe would refuse the compositions `--with`
+    exists for. `--with containerization,distribution,iac` is legal
+    on a REST stack (`iac` is keyed on the `dist.container-image` tag
+    `distribution` promotes); the same three ids in another order are
+    refused naming the one to list it after, not called impossible.
   - `keel.preview` binds the answer as `{ kind: 'extraVerticals' }`
     and `NewProjectTarget` carries the list, so `keel ui` round-trips
     it like any other dial.
+
+- **`Vertical.promotes`: what installing a vertical may add to the
+  tag set.** The union over its adapters' `tagsAdd`, including the
+  ones only some answers produce (either container-image flavor,
+  every SQL engine, either CI provider). A tag promoted at install
+  time was invisible to anything reasoning before the install, which
+  is what a front-door coverage check has to do; this is the static
+  half of that answer. Over-declaring only defers a refusal to the
+  resolver, and under-declaring would refuse a legal composition — so
+  the installer checks each contribution's `tagsAdd` against the
+  declaration and throws on a tag no vertical claims, which keeps the
+  two from drifting apart in silence.
 
 - **`keel new` finds your stack for you: a guided drill-down.** There
   are 33 presets, and knowing you want "Kotlin, a CLI and an HTTP

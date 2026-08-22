@@ -28,13 +28,24 @@
  * in a file — provider credentials ride the environment, 12-factor.
  */
 
-import type { Adapter, Ctx, ManifestV2, Question } from '../../contract/composition.js';
+import type { Adapter, Ctx, ManifestV2, Question, Tag } from '../../contract/composition.js';
 import { bootstrapProjectName, deployFlavor, type DeployFlavor } from './distribution-container.js';
 
 export const IAC_DEPLOY_TARGET_ID = 'iac/deploy-target';
 
 /** A cloud provider keel can provision a deploy target on. */
 export type IacCloud = 'digitalocean' | 'scaleway';
+
+/** Every cloud the dial offers, in choice order. */
+export const IAC_CLOUDS: readonly IacCloud[] = ['digitalocean', 'scaleway'];
+
+/** The tag recorded once a deploy target exists, whatever the cloud. */
+export const OPENTOFU_TAG: Tag = 'iac.opentofu';
+
+/** The capability tag naming the cloud a deploy target was provisioned on. */
+export function cloudTag(cloud: IacCloud): Tag {
+  return `cloud.${cloud}`;
+}
 
 /**
  * The cloud dial. DigitalOcean and Scaleway are the blessed shapes:
@@ -67,8 +78,11 @@ export const CLOUD_QUESTION: Question = {
 
 /** Validates a raw `cloud` answer, failing loudly on anything else. */
 export function iacCloud(raw: string, requesterId: string): IacCloud {
-  if (raw === 'digitalocean' || raw === 'scaleway') return raw;
-  throw new Error(`${requesterId}: unsupported cloud '${raw}'; supported: digitalocean, scaleway`);
+  const cloud = IAC_CLOUDS.find((c) => c === raw);
+  if (cloud) return cloud;
+  throw new Error(
+    `${requesterId}: unsupported cloud '${raw}'; supported: ${IAC_CLOUDS.join(', ')}`,
+  );
 }
 
 /**
@@ -101,6 +115,6 @@ export const iacDeployTargetAdapter: Adapter = {
       ...(await ctx.templates.render(`composition/iac/deploy-target/${cloud}/common`, '', vars)),
       ...(await ctx.templates.render(`composition/iac/deploy-target/${cloud}/${flavor}`, '', vars)),
     ];
-    return { files, tagsAdd: ['iac.opentofu', `cloud.${cloud}`] };
+    return { files, tagsAdd: [OPENTOFU_TAG, cloudTag(cloud)] };
   },
 };
