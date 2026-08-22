@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Conflict } from '../../../src/domain/contract/composition.js';
 import {
+  assemblyRefusal,
   conflictsOf,
   legalWith,
   violatedBy,
@@ -137,6 +138,36 @@ describe('violationMessage', () => {
     const message = violationMessage(NO_JVM_IN_BROWSER, ['runtime.browser', 'pkg.gradle-kts']);
     expect(message).toContain('pkg.gradle-kts');
     expect(message).not.toContain('pkg.gradle*');
+  });
+});
+
+describe('assemblyRefusal', () => {
+  const pieces = [{ conflicts: [NEEDS_MODULITH] }, { conflicts: [NOT_BOTH] }];
+
+  it('is null for an assembly its pieces allow', () => {
+    expect(assemblyRefusal(pieces, ['layout.modulith', 'modules.peer-context'])).toBeNull();
+  });
+
+  it('spells out every violation, not just the first', () => {
+    // An assembly broken two ways is fixed twice; revealing the
+    // second only after the first is fixed wastes a round trip.
+    const refusal = assemblyRefusal(pieces, [
+      'modules.peer-context',
+      'layout.basic',
+      'pkg.gradle',
+      'pkg.maven',
+    ]);
+    expect(refusal).toContain(NEEDS_MODULITH.reason);
+    expect(refusal).toContain(NOT_BOTH.reason);
+  });
+
+  it('reads the rules of every piece coming together', () => {
+    // Neither piece alone knows the whole assembly, which is why the
+    // stack's rules and its verticals' are gathered as one set.
+    expect(
+      assemblyRefusal([{ conflicts: [NOT_BOTH] }], ['pkg.gradle', 'pkg.maven']),
+    ).not.toBeNull();
+    expect(assemblyRefusal([{}], ['pkg.gradle', 'pkg.maven'])).toBeNull();
   });
 });
 

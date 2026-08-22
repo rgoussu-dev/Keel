@@ -130,6 +130,31 @@ export function violationMessage(conflict: Conflict, tags: Iterable<Tag>): strin
 }
 
 /**
+ * The refusal an assembly has earned, or null when it has earned
+ * none: every rule the pieces declare, evaluated against the tags,
+ * and every violation spelled out.
+ *
+ * The one place the loud reading is assembled, so `keel new` and
+ * `keel add` refuse in the same words — they differ only in the
+ * sentence they put in front of it, because "this preset cannot be
+ * built" and "this vertical cannot be installed here" are different
+ * situations reaching the same rule.
+ *
+ * Every violation, not the first: an assembly broken two ways is
+ * fixed twice, and a refusal that reveals the second problem only
+ * after the first is fixed is a refusal that wastes a round trip.
+ */
+export function assemblyRefusal(
+  pieces: Iterable<ConflictSource>,
+  tags: Iterable<Tag>,
+): string | null {
+  const all = [...tags];
+  const broken = violatedBy(conflictsOf(pieces), all);
+  if (broken.length === 0) return null;
+  return broken.map((conflict) => violationMessage(conflict, all)).join('; ');
+}
+
+/**
  * Throws if a rule is malformed. Called on every evaluation rather
  * than at registration, because a rule can arrive from a plugin that
  * never ran this repository's tests.

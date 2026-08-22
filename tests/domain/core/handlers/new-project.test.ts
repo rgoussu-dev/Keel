@@ -740,8 +740,13 @@ describe('keel.new-project peer-context selection', () => {
       ),
     );
 
-    expect(error.code).toBe('keel.invalid-peer-context');
+    // A declared rule now, not a hand-written branch — so the refusal
+    // carries the rule's id and the tags that matched, and the same
+    // sentence is what keeps the choice off the interactive menu.
+    expect(error.code).toBe('keel.incompatible');
     expect(error.message).toMatch(/needs the modulith layout/);
+    expect(error.message).toContain('walking-skeleton/peer-context-needs-modulith');
+    expect(error.message).toContain('modules.peer-context');
     // Language-neutral: `user-side/service` is the JVM and Rust
     // spelling of the seam, and Go has no such path at all.
     expect(error.message).not.toMatch(/user-side\/service/);

@@ -87,6 +87,7 @@ import {
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
 import { emitsFor } from '../adapters/context-support.js';
+import { assemblyRefusal } from '../compatibility.js';
 import { installVertical } from '../install.js';
 import {
   getStack,
@@ -450,6 +451,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
     if (!extras.ok) return extras;
+
+    const legal = assemblyIsLegal(stack, extras.value, [
+      ...stackTags(stack, buildTag.value, layoutTag.value),
+      ...(peerTag.value ? [peerTag.value] : []),
+    ]);
+    if (!legal.ok) return legal;
 
     const now = this.deps.clock.nowIso();
     const staged = await this.stageStack({
@@ -871,7 +878,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       const answer = (await prompt.ask(peerContextQuestion(), stackAsker(stack))).trim();
       want = answer === 'yes';
     }
-    return peerContextTag(want, stack, buildTag, layoutTag);
+    return peerContextTag(want, stack, buildTag);
   }
 
   /**
@@ -977,6 +984,35 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }
     return ok(answer);
   }
+}
+
+/**
+ * Refuses an assembly a piece has declared illegal.
+ *
+ * The **loud** half of the compatibility declaration (`../compatibility.ts`).
+ * Every piece coming together in this run — the stack and every
+ * vertical it installs, the `--with` extras included — contributes its
+ * rules, and the tag set the dials settled is checked against all of
+ * them at once.
+ *
+ * Placed after the last dial and before the first file, so it sees the
+ * whole assembly and nothing has been written when it refuses. Earlier
+ * would check a set still missing a tag; later would mean a project on
+ * disk in a shape its own pieces call impossible.
+ *
+ * The message is the rule's own sentence plus the tags that matched,
+ * which is what a hand-written check keeps losing — an uncovered
+ * dimension names the symptom, a rule names the two capabilities that
+ * cannot sit together.
+ */
+function assemblyIsLegal(
+  stack: Stack,
+  extras: readonly Vertical[],
+  tags: readonly Tag[],
+): Result<null> {
+  const refusal = assemblyRefusal([stack, ...stack.verticals, ...extras], tags);
+  if (refusal === null) return ok(null);
+  return err(new DomainError(`stack '${stack.id}': ${refusal}`, 'keel.incompatible'));
 }
 
 /** The asker every stack-level dial carries. @see LAYOUT_QUESTION_ID */
@@ -1313,24 +1349,22 @@ function defaultBuildTag(stack: Stack): Tag | null {
  * exercises either failure branch — it only offers the question once
  * both gates already pass — but the flag path still needs them.
  */
-function peerContextTag(
-  want: boolean,
-  stack: Stack,
-  buildTag: Tag | null,
-  layoutTag: Tag | null,
-): Result<Tag | null> {
+function peerContextTag(want: boolean, stack: Stack, buildTag: Tag | null): Result<Tag | null> {
   if (!want) return ok(null);
-  if (layoutTag !== MODULITH_LAYOUT_TAG) {
-    return err(
-      new DomainError(
-        `--with-peer-context needs the modulith layout: a second bounded context reaches the first only through the peer-facing seam the modulith puts between them, and the flat layout is a single hexagon with no seam to cross. Add --module-layout=modulith${
-          stack.moduleLayouts === undefined ? ` (stack '${stack.id}' does not offer one)` : ''
-        }`,
-        'keel.invalid-peer-context',
-      ),
-    );
-  }
-  if (!emitsPeerContext(stack, stackTags(stack, buildTag, layoutTag))) {
+  // The layout rule that used to live here is a declaration now —
+  // `PEER_CONTEXT_NEEDS_MODULITH`, owned by the vertical whose
+  // capability it constrains, enforced by {@link assemblyIsLegal} and
+  // read a second time by the dial menus. That is the half a
+  // hand-written branch never had: the choice is no longer offered
+  // and then refused.
+  //
+  // What stays is the **capability** probe, which is not a conflict.
+  // It asks whether this stack's adapters emit a peer context at all,
+  // and it asks hypothetically — against the layout that creates the
+  // seam rather than the one the user set — so the answer is about
+  // the stack. Otherwise a stack that could never carry one would be
+  // told to switch layout first, and still get nothing.
+  if (!emitsPeerContext(stack, stackTags(stack, buildTag, MODULITH_LAYOUT_TAG))) {
     return err(
       new DomainError(
         `stack '${stack.id}' has no peer-context adapter — --with-peer-context would scaffold nothing at all. Stacks that support it: ${peerContextStackIds().join(', ')}`,

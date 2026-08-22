@@ -34,7 +34,7 @@ import { gatewayVertical } from './verticals/gateway.js';
 import { vcsVertical } from './verticals/vcs.js';
 import { walkingSkeletonVertical } from './verticals/walking-skeleton.js';
 import { MODULE_LAYOUTS, type ModuleLayoutOption } from './adapters/module-layout.js';
-import type { Tag, Vertical } from '../contract/composition.js';
+import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 
 /**
  * One selectable build system of a stack. The choice folds a `pkg.*`
@@ -130,6 +130,17 @@ export interface Stack {
   readonly projects?: readonly Tag[];
   /** Present on composite stacks: the services to scaffold. */
   readonly services?: readonly StackService[];
+  /**
+   * Incompatibilities this preset's own combination of dials creates
+   * — a build system its module layout cannot take, a capability its
+   * framework will not carry.
+   *
+   * A stack's rules and a vertical's are read together, because an
+   * assembly is the pieces coming together and neither piece alone
+   * knows the whole of it. Declared here rather than centrally so a
+   * preset arriving from outside this file brings its own. @see Conflict
+   */
+  readonly conflicts?: readonly Conflict[];
 }
 
 export const STACKS: Readonly<Record<string, Stack>> = {

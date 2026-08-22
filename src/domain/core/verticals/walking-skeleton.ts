@@ -19,6 +19,7 @@
  */
 
 import { claudeCoreAdapter } from '../adapters/claude-core.js';
+import { PEER_CONTEXT_NEEDS_MODULITH } from '../adapters/module-layout.js';
 import { goClaudeKitAdapter } from '../adapters/go-claude-kit.js';
 import { jvmClaudeKitAdapter } from '../adapters/jvm-claude-kit.js';
 import { rustClaudeKitAdapter } from '../adapters/rust-claude-kit.js';
@@ -78,6 +79,9 @@ export const walkingSkeletonVertical: Vertical = {
   id: 'walking-skeleton',
   description: 'Greenfield project skeleton with a runnable end-to-end slice.',
   dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline', 'agentic-kit'],
+  // The peer context is this vertical's capability, so the rule
+  // constraining it is this vertical's to declare. @see Conflict
+  conflicts: [PEER_CONTEXT_NEEDS_MODULITH],
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,
