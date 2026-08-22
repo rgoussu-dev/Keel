@@ -96,18 +96,28 @@ export function runFails(cwd: string, cmd: string, args: readonly string[]): str
 
 /** What to scaffold, and how. */
 export interface WebProjectSpec {
-  readonly stack: 'ts-cli' | 'ts-http' | 'web-components';
+  readonly stack: 'ts-cli' | 'ts-http' | 'ts-cli-http' | 'web-components';
   readonly projectName: string;
   readonly buildSystem: PackageManager;
   readonly moduleLayout?: string;
   readonly withPeerContext?: boolean;
 }
 
-/** The bootstrap adapter each stack records its answers under. */
-const BOOTSTRAP: Readonly<Record<WebProjectSpec['stack'], string>> = {
-  'ts-cli': 'walking-skeleton/ts-cli-bootstrap',
-  'ts-http': 'walking-skeleton/ts-http-bootstrap',
-  'web-components': 'walking-skeleton/wc-spa-bootstrap',
+/**
+ * The bootstrap adapters each stack records its answers under.
+ *
+ * A list, because `ts-cli-http` resolves two of them: both declare
+ * `npmScope`/`projectName`, and `sharesAnswersWith` reconciles what
+ * one of them was *asked* rather than what a non-interactive run was
+ * handed. Answering both by id is deterministic whichever of the two
+ * the resolver reaches first — and the cost of getting it wrong is
+ * an assembly depending on a scope the context does not publish.
+ */
+const BOOTSTRAP: Readonly<Record<WebProjectSpec['stack'], readonly string[]>> = {
+  'ts-cli': ['walking-skeleton/ts-cli-bootstrap'],
+  'ts-http': ['walking-skeleton/ts-http-bootstrap'],
+  'ts-cli-http': ['walking-skeleton/ts-cli-bootstrap', 'walking-skeleton/ts-http-bootstrap'],
+  'web-components': ['walking-skeleton/wc-spa-bootstrap'],
 };
 
 /**
@@ -129,7 +139,12 @@ export async function scaffold(spec: WebProjectSpec, cwd: string): Promise<void>
         cwd,
         stack: spec.stack,
         answers: {
-          [BOOTSTRAP[spec.stack]]: { npmScope: 'acme', projectName: spec.projectName },
+          ...Object.fromEntries(
+            BOOTSTRAP[spec.stack].map((id) => [
+              id,
+              { npmScope: 'acme', projectName: spec.projectName },
+            ]),
+          ),
           'vcs/git-init': { remote: '', defaultBranch: 'main' },
         },
         interactive: false,

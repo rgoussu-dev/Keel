@@ -37,7 +37,12 @@ export const skipJvmRestE2E = skipJvmE2E;
 
 const APP_START_TIMEOUT_MS = 60 * 1000;
 
-const startApp = (
+/**
+ * Boots a packaged jar and resolves once it announces the port it
+ * bound. Exported so `jvm-combo-e2e.ts` boots the REST assembly the
+ * same way a REST-only cell does.
+ */
+export const startApp = (
   runJar: string,
   jvmFlags: readonly string[],
   announceRe: RegExp,
@@ -71,7 +76,8 @@ const startApp = (
     });
   });
 
-const stopApp = async (child: ChildProcess): Promise<void> => {
+/** Stops a jar started by {@link startApp}, SIGTERM then SIGKILL. */
+export const stopApp = async (child: ChildProcess): Promise<void> => {
   if (child.exitCode !== null) return;
   await new Promise<void>((resolve) => {
     child.once('exit', () => {
@@ -82,8 +88,16 @@ const stopApp = async (child: ChildProcess): Promise<void> => {
   });
 };
 
-/** Framework-specific parameters of one JVM REST e2e run. */
-export interface JvmRestE2ESpec extends JvmRunnableSpec {
+/**
+ * What booting a packaged REST jar must prove, independent of how the
+ * project it came from was scaffolded.
+ *
+ * Split out from {@link JvmRestE2ESpec} for the same reason its CLI
+ * counterpart is: the combo cells drive both entrypoints off one
+ * hexagon, and they must assert the *same* wire contract a REST-only
+ * cell does rather than a paraphrase of it.
+ */
+export interface JvmRestContract {
   /** JVM flag that requests an ephemeral port. */
   readonly randomPortFlag: string;
   /** Log line announcing the bound port; group 1 is the port. */
@@ -97,6 +111,59 @@ export interface JvmRestE2ESpec extends JvmRunnableSpec {
    * that silences telemetry export (no collector runs in e2e).
    */
   readonly extraJvmFlags?: readonly string[];
+}
+
+/** Framework-specific parameters of one JVM REST e2e run. */
+export interface JvmRestE2ESpec extends JvmRunnableSpec, JvmRestContract {}
+
+/**
+ * Boots a packaged REST jar on an ephemeral port and drives the whole
+ * `/greet` wire contract against it — named, defaulted and rejected
+ * requests, both health probes, and the correlation id in both its
+ * echoed and its minted form.
+ */
+export async function driveRestJar(
+  runJar: string,
+  contract: JvmRestContract,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const { child, port } = await startApp(
+    runJar,
+    [contract.randomPortFlag, ...(contract.extraJvmFlags ?? [])],
+    contract.announceRe,
+    cwd,
+    env,
+  );
+  try {
+    const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+
+    const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=%20%20`);
+    expect(rejected.status).toBe(400);
+    expect(rejected.headers.get('content-type')).toContain('application/problem+json');
+    const problem = (await rejected.json()) as Record<string, unknown>;
+    expect(problem.title).toBe('Greeting rejected');
+    expect(problem.status).toBe(400);
+    expect(problem.detail).toBe('name must not be blank');
+
+    // Observability seam: both probes answer, and the correlation id
+    // round-trips (echoed when supplied, minted when absent).
+    const live = await fetch(`http://127.0.0.1:${port}${contract.healthLivePath}`);
+    expect(live.status, contract.healthLivePath).toBe(200);
+    const readyProbe = await fetch(`http://127.0.0.1:${port}${contract.healthReadyPath}`);
+    expect(readyProbe.status, contract.healthReadyPath).toBe(200);
+
+    const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
+      headers: { 'X-Correlation-Id': 'corr-e2e' },
+    });
+    expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+    const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+    expect(minted.headers.get('x-correlation-id')).toBeTruthy();
+  } finally {
+    await stopApp(child);
+  }
 }
 
 /**
@@ -166,40 +233,5 @@ export async function runJvmRestE2E(
   const runJar = runnableJar(spec, cwd);
   expect(await fs.pathExists(runJar), `missing ${runJar}`).toBe(true);
 
-  const { child, port } = await startApp(
-    runJar,
-    [spec.randomPortFlag, ...(spec.extraJvmFlags ?? [])],
-    spec.announceRe,
-    cwd,
-    env,
-  );
-  try {
-    const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
-    expect(ok.status).toBe(200);
-    expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
-
-    const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=%20%20`);
-    expect(rejected.status).toBe(400);
-    expect(rejected.headers.get('content-type')).toContain('application/problem+json');
-    const problem = (await rejected.json()) as Record<string, unknown>;
-    expect(problem.title).toBe('Greeting rejected');
-    expect(problem.status).toBe(400);
-    expect(problem.detail).toBe('name must not be blank');
-
-    // Observability seam: both probes answer, and the correlation id
-    // round-trips (echoed when supplied, minted when absent).
-    const live = await fetch(`http://127.0.0.1:${port}${spec.healthLivePath}`);
-    expect(live.status, spec.healthLivePath).toBe(200);
-    const readyProbe = await fetch(`http://127.0.0.1:${port}${spec.healthReadyPath}`);
-    expect(readyProbe.status, spec.healthReadyPath).toBe(200);
-
-    const correlated = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`, {
-      headers: { 'X-Correlation-Id': 'corr-e2e' },
-    });
-    expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
-    const minted = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
-    expect(minted.headers.get('x-correlation-id')).toBeTruthy();
-  } finally {
-    await stopApp(child);
-  }
+  await driveRestJar(runJar, spec, cwd, env);
 }

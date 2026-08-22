@@ -251,8 +251,16 @@ export const dockerAvailable = (): boolean =>
 export interface JvmProjectSpec {
   /** Stack preset to scaffold. */
   readonly stack: string;
-  /** Bootstrap adapter id the sticky answers are recorded under. */
-  readonly bootstrapId: string;
+  /**
+   * Bootstrap adapter id the sticky answers are recorded under.
+   *
+   * A list when the stack composes two entrypoints: both bootstraps
+   * declare `basePackage`/`projectName`, and `sharesAnswersWith` only
+   * reconciles what one of them was *asked*. Answering both by id is
+   * what a non-interactive run has instead, and it is deterministic
+   * regardless of which of the two the resolver reaches first.
+   */
+  readonly bootstrapId: string | readonly string[];
   /** Module layout to scaffold; the stack's default when omitted. */
   readonly moduleLayout?: string;
   /** Build system to scaffold and build with; Gradle when omitted. */
@@ -293,16 +301,18 @@ export async function scaffold(spec: JvmProjectSpec, cwd: string): Promise<void>
       ]),
     }),
   });
+  const identity = {
+    basePackage: 'com.acme.e2e',
+    projectName: `walking-skeleton-${spec.stack}-e2e`,
+  };
+  const bootstrapIds = typeof spec.bootstrapId === 'string' ? [spec.bootstrapId] : spec.bootstrapId;
   expectOk(
     await mediator.dispatch(
       newProjectCommand({
         cwd,
         stack: spec.stack,
         answers: {
-          [spec.bootstrapId]: {
-            basePackage: 'com.acme.e2e',
-            projectName: `walking-skeleton-${spec.stack}-e2e`,
-          },
+          ...Object.fromEntries(bootstrapIds.map((id) => [id, identity])),
           'vcs/git-init': { remote: '', defaultBranch: 'main' },
         },
         interactive: false,
