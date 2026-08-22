@@ -14,6 +14,16 @@ function question(id: string): Question {
   return { id, prompt: id, doc: id, default: 'default', memory: 'repeat' };
 }
 
+/** The same, as a set question — the answer being an encoded selection. */
+function setQuestion(id: string, choices: readonly string[]): Question {
+  return {
+    ...question(id),
+    kind: 'multi-select',
+    choices: choices.map((value) => ({ value, label: value, doc: value })),
+    default: '',
+  };
+}
+
 /** Records every id it was asked, in order, and answers from a fixed map. */
 class CountingPrompt implements Prompt {
   readonly calls: string[] = [];
@@ -85,6 +95,72 @@ describe('WizardPrompt', () => {
 
     expect(underlying.calls).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(wizard.recorded.map((r) => r.question.id)).toEqual(['a', 'd', 'e']);
+  });
+
+  /**
+   * The whole reason a set question is a `Question` with an encoded
+   * answer rather than a mechanism of its own: the wizard's replay,
+   * its edit, and its review list are positional over `Question`s and
+   * stringly over answers, and a set that travels any other way is
+   * invisible to all three.
+   */
+  it('replays a set answer like any other, since it is a string like any other', async () => {
+    const underlying = new CountingPrompt({
+      language: 'go',
+      entrypoints: 'cli,server-http',
+      extraVerticals: '',
+    });
+    const wizard = new WizardPrompt(underlying);
+
+    wizard.beginAttempt();
+    await wizard.ask(question('language'));
+    await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
+    await wizard.ask(setQuestion('extraVerticals', ['ci']));
+
+    wizard.beginAttempt();
+    await wizard.ask(question('language'));
+    const entrypoints = await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
+    const extras = await wizard.ask(setQuestion('extraVerticals', ['ci']));
+
+    expect(underlying.calls).toEqual(['language', 'entrypoints', 'extraVerticals']);
+    expect(entrypoints).toBe('cli,server-http');
+    // The empty selection is an answer, not a missing one: replayed
+    // rather than re-asked.
+    expect(extras).toBe('');
+  });
+
+  it('re-asks a set question when it is the one being edited', async () => {
+    const underlying = new CountingPrompt({
+      language: 'go',
+      entrypoints: 'cli,server-http',
+      extraVerticals: 'ci',
+    });
+    const wizard = new WizardPrompt(underlying);
+
+    wizard.beginAttempt();
+    await wizard.ask(question('language'));
+    await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
+    await wizard.ask(setQuestion('extraVerticals', ['ci']));
+
+    wizard.prepareEdit(1);
+    wizard.beginAttempt();
+    await wizard.ask(question('language'));
+    await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
+    await wizard.ask(setQuestion('extraVerticals', ['ci']));
+
+    // The edited set, and everything after it, went back to the user.
+    expect(underlying.calls).toEqual([
+      'language',
+      'entrypoints',
+      'extraVerticals',
+      'entrypoints',
+      'extraVerticals',
+    ]);
+    expect(wizard.recorded.map((r) => r.question.kind)).toEqual([
+      undefined,
+      'multi-select',
+      'multi-select',
+    ]);
   });
 
   it('askDirect bypasses recording and the positional cursor', async () => {

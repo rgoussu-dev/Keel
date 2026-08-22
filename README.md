@@ -33,6 +33,19 @@ prompts at all. Sixty seconds later you have:
   a `run` skill so "launch the app and check it" works out of the box
   ([docs](docs/verticals/walking-skeleton.md#the-claude-kit)).
 
+**Don't know the stack id?** Leave `--stack` off:
+
+```sh
+npx @rgoussu.dev/keel new
+```
+
+and keel asks for it in three narrowing questions instead —
+**language → user-side adapters → framework**. Pick both `CLI` and
+`HTTP server` and you get the composed preset: one project, one
+domain, both entrypoints. Every menu is derived from the presets
+still reachable, so it can't walk you into a combination that doesn't
+exist ([details](docs/cli.md#finding-a-stack-the-drill-down)).
+
 keel is **project-scoped only**: it writes into your project directory
 and never touches `~/.claude` or any global configuration. The
 conventions travel with the code.
@@ -42,9 +55,11 @@ conventions travel with the code.
 ## Pick your stack
 
 One engine, 34 stacks — the same conventions rendered as idiomatic
-Java, Kotlin, Go, Rust, or TypeScript. Pick a cell, run
-`npx @rgoussu.dev/keel new --stack=<id>` (or `keel new --list` to see
-every id with its description):
+Java, Kotlin, Go, Rust, or TypeScript. Pick a cell and run
+`npx @rgoussu.dev/keel new --stack=<id>` — or run `keel new` with no
+`--stack` and let [the drill-down](docs/cli.md#finding-a-stack-the-drill-down)
+find the cell for you (`keel new --list` prints every id with its
+description):
 
 | Language / framework                                                    | CLI                    | HTTP service            | CLI + HTTP                  | SPA              | Fullstack product     |
 | ----------------------------------------------------------------------- | ---------------------- | ----------------------- | --------------------------- | ---------------- | --------------------- |

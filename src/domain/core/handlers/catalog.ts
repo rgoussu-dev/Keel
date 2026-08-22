@@ -29,14 +29,26 @@ import type {
   Catalog,
   CatalogQuery,
   ChoiceDescriptor,
+  EntrypointCombination,
+  LanguageNode,
   ServiceDescriptor,
   StackDescriptor,
+  StackFinder,
   VerticalDescriptor,
 } from '../../contract/queries.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from '../adapters/module-layout.js';
-import { getStack, listStackIds, type BuildSystemOption, type Stack } from '../stacks.js';
+import { getStack, listStackIds, STACKS, type BuildSystemOption, type Stack } from '../stacks.js';
+import {
+  entrypointCombinations,
+  entrypointStep,
+  frameworkPaths,
+  languageChoices,
+  wizardPaths,
+  type WizardPath,
+} from '../stack-wizard.js';
 import { listVerticalIds, VERTICALS } from '../verticals/index.js';
+import { DEFAULT_STACK_ID } from './new-project.js';
 
 /** Executes {@link CatalogQuery}s. */
 export class CatalogHandler implements Handler<CatalogQuery> {
@@ -45,8 +57,71 @@ export class CatalogHandler implements Handler<CatalogQuery> {
   }
 
   handle(): Promise<Result<Catalog>> {
-    return Promise.resolve(ok({ stacks: describeStacks(), verticals: describeVerticals() }));
+    return Promise.resolve(
+      ok({ stacks: describeStacks(), verticals: describeVerticals(), finder: describeFinder() }),
+    );
   }
+}
+
+/**
+ * The drill-down, walked once and handed over as a tree.
+ *
+ * Every node comes from `../stack-wizard.ts` — the same functions the
+ * terminal wizard asks its questions from — so a form and a terminal
+ * cannot disagree about which combinations exist or what they
+ * resolve to.
+ */
+function describeFinder(): StackFinder {
+  const paths = wizardPaths(Object.values(STACKS));
+  return {
+    languages: languageChoices(paths).map((language) => describeLanguage(paths, language)),
+    defaultStack: DEFAULT_STACK_ID,
+  };
+}
+
+function describeLanguage(
+  paths: readonly WizardPath[],
+  language: ChoiceDescriptorLike,
+): LanguageNode {
+  const step = entrypointStep(paths, language.value, DEFAULT_STACK_ID);
+  return {
+    id: language.value,
+    label: language.label,
+    doc: language.doc,
+    entrypointStep:
+      step === null
+        ? null
+        : { kind: step.kind, choices: step.choices.map(asChoiceDescriptor), default: step.default },
+    combinations: entrypointCombinations(paths, language.value).map((entrypoints) =>
+      describeCombination(paths, language.value, entrypoints),
+    ),
+  };
+}
+
+function describeCombination(
+  paths: readonly WizardPath[],
+  language: string,
+  entrypoints: readonly string[],
+): EntrypointCombination {
+  return {
+    entrypoints: [...entrypoints],
+    frameworks: frameworkPaths(paths, language, entrypoints).map((framework) => ({
+      id: framework.id,
+      label: framework.label,
+      stack: framework.stackId,
+    })),
+  };
+}
+
+/** A `QuestionChoice`, which is the shape the wizard's menus come in. */
+interface ChoiceDescriptorLike {
+  readonly value: string;
+  readonly label: string;
+  readonly doc: string;
+}
+
+function asChoiceDescriptor(choice: ChoiceDescriptorLike): ChoiceDescriptor {
+  return { id: choice.value, label: choice.label, doc: choice.doc };
 }
 
 function describeStacks(): readonly StackDescriptor[] {

@@ -8,6 +8,108 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel ui` gets the drill-down too, as facets.** The page's stack
+  picker was a flat select over every preset; above it now sit the
+  same three narrowing controls `keel new` asks as questions —
+  language, user-side adapters (a checkbox group), framework — each
+  re-filtering the others and resolving to a preset. Ticking both
+  adapters gives the composed preset, emptying the group is refused
+  rather than resolved, and moving one facet keeps the others where
+  the new choice still offers them (Java → Kotlin with CLI + HTTP on
+  Spring lands on `spring-cli-rest-kotlin`).
+  - **The grid is reported, not re-derived.** `keel.catalog` gained a
+    `finder`: a tree of language → entrypoint combination → framework,
+    each leaf naming a preset, built by the same `stack-wizard.ts`
+    functions the terminal wizard asks from. The page walks the tree
+    and never sees a capability tag — a page deriving the grid from
+    `stacks[].tags` would be a second implementation of a vocabulary
+    that is not its to know, and would drift from the terminal's the
+    first time a tag moved.
+  - The **Stack** select stays: it shows the result, it picks a preset
+    by name, and it is the only route to a fullstack product, which
+    names no language and so appears in no facet.
+  - **The blank form now opens on `quarkus-cli`** — the preset an
+    omitted `--stack` resolves to, reported whole as
+    `finder.defaultStack`. It previously opened on `fullstack`, the
+    alphabetically first entry of the catalog, which is the last thing
+    a blank form should presume.
+
+- **`keel new --with`, and the wizard's fourth step: extra verticals
+  in the same run.** `NewProjectCommand.extraVerticals` existed only
+  for a composite stack's services; the single-service path never
+  threaded it. It does now, as a flag (`--with distribution,ci`) and
+  as the wizard's last stack-level question — a multi-select
+  defaulting to none. Layering here is not the same as running
+  `keel add` once per vertical afterwards: in one run the extras
+  resolve against one another's tags, and the review step shows one
+  plan instead of four.
+  - **The menu is pruned twice**: the stack's own verticals are off it
+    (the stack installs them either way), and so is anything this
+    project cannot cover — `persistence` on a CLI-only preset resolves
+    to nothing and would hard-fail at install. The new
+    `coversFor(vertical, tags)` in `domain/core/resolver.ts` is the
+    resolver's own coverage check asked ahead of time and answered
+    rather than thrown; the question comes last among the stack dials
+    so it can be pruned against what the other three settled.
+  - `--with` suppresses the question, `--with ''` included — that is
+    how a script says "none" explicitly. Unknown ids and ids the stack
+    already carries are refused at the front door with the available
+    list spelled out. Rejected on composite stacks, whose services
+    declare their own extras and where `--with` names no service.
+  - `keel.preview` binds the answer as `{ kind: 'extraVerticals' }`
+    and `NewProjectTarget` carries the list, so `keel ui` round-trips
+    it like any other dial.
+
+- **`keel new` finds your stack for you: a guided drill-down.** There
+  are 33 presets, and knowing you want "Kotlin, a CLI and an HTTP
+  endpoint, on Spring" is much easier than knowing that is spelled
+  `spring-cli-rest-kotlin`. Run `keel new` with no `--stack` and the
+  wizard now asks three narrowing questions instead of one flat menu
+  of ids: **language → user-side adapters → framework**.
+  - **The adapter step is a multi-select, and picking two means the
+    composed preset** — one project, one domain, both entrypoints
+    (`quarkus-cli-rest`, `go-cli-http`, `ts-cli-http`) — never two
+    services. The question says so, and the run prints the preset it
+    resolved to (`keel new: Java + CLI + HTTP server + quarkus →
+quarkus-cli-rest`) rather than leaving it to be inferred.
+  - **The framework step is asked only where a choice remains** —
+    Quarkus/Spring/Micronaut on the JVM. Go, Rust and TypeScript are
+    never asked, and the browser target skips the adapter step too,
+    reaching one combination.
+  - **Every menu is derived from the catalog's tags**
+    (`domain/core/stack-wizard.ts`), so a preset added tomorrow
+    appears by itself, and a combination no preset covers is never on
+    offer — the wizard cannot walk you into a dead end and announce it
+    at the bottom. The language node is qualified by the runtime,
+    which is what separates `ts-cli` from `web-components` and keeps
+    the SPA out of a checkbox it could not be combined from. Where a
+    language's entrypoint subsets are ever incomplete, the step falls
+    back to spelling the combinations out.
+  - **The answer is always a registered stack id**, so `--stack` and
+    the drill-down resolve through exactly the same path from there
+    on, and every step is reviewable and re-answerable at the wizard's
+    review step like any other question. `--stack` skips all three;
+    `--yes` stays fully non-interactive. Taking every default lands on
+    `quarkus-cli`, the preset an omitted `--stack` has always meant.
+  - **The fullstack products keep their route**: they name no single
+    language, so the language menu's last entry falls through to the
+    flat list of every preset.
+
+- **Multi-select questions on the `Prompt` port.** A `Question` may
+  now declare `kind: 'multi-select'`, and the terminal adapter renders
+  it as an inquirer `checkbox` instead of a `select`. The answer stays
+  a **string** — the chosen values comma-joined, with
+  `encodeSelection` / `decodeSelection` in
+  `domain/contract/composition.ts` at both ends — so `Prompt.ask`
+  still returns `Promise<string>` and nothing that consumes an answer
+  had to move: sticky memory, `--set adapterId:questionId=value`, the
+  wizard's replay, and `keel ui`'s form all keep working unchanged. A
+  non-empty `default` reads as "at least one is required" and the
+  checkbox enforces it. `keel.preview` reports the `kind` alongside
+  the choices, and the `keel ui` question list renders a set question
+  as a `<select multiple>` rather than silently offering one value
+  where a set was asked for.
+
 - **`keel ui` — the local scaffolder.** A Spring-Initializr-shaped
   front end for the engine the CLI already drives, served on loopback
   and stopped with Ctrl-C. Point it at an empty directory and it is

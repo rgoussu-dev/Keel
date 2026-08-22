@@ -98,6 +98,25 @@ export interface NewProjectCommand extends Command<InstallReport> {
    * the second context to meet the first at.
    */
   readonly withPeerContext?: boolean;
+  /**
+   * Verticals to install **on top of** the stack's own list, in this
+   * order, as part of the same run — `persistence`, `distribution`,
+   * `iac`, … Ids from the brownfield registry
+   * (`domain/core/verticals/index.ts`), the same ones `keel add`
+   * takes.
+   *
+   * The greenfield counterpart of running `keel add <vertical>` once
+   * per vertical straight after `keel new`, and it is genuinely not
+   * the same thing: layered in the same run they resolve against one
+   * another's tags, and the review step shows one plan instead of
+   * four.
+   *
+   * When absent, interactive single-service installs prompt for it
+   * and non-interactive ones install none. Rejected on composite
+   * stacks, whose services declare their own extras — "which service
+   * gets it?" has no defensible default.
+   */
+  readonly extraVerticals?: readonly string[];
 }
 
 /** Layer an additional vertical onto an initialised project. */
@@ -240,6 +259,7 @@ export interface NewProjectTarget {
   readonly buildSystem?: string;
   readonly moduleLayout?: string;
   readonly withPeerContext?: boolean;
+  readonly extraVerticals?: readonly string[];
 }
 
 /** Layer a vertical — the subject of {@link AddVerticalCommand}. */
@@ -290,6 +310,10 @@ export function installCommandFor(target: InstallTarget, run: InstallRun): Insta
         ...(target.withPeerContext === undefined
           ? {}
           : { withPeerContext: target.withPeerContext }),
+        // Passed through even when empty, for the same reason: absent
+        // means "ask", and a front end that has already offered the
+        // list must be able to say "none".
+        ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
       });
     case 'add-vertical':
       return addVerticalCommand({

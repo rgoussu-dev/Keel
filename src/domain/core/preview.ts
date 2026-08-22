@@ -23,12 +23,28 @@ import type { AnswerBinding, PendingQuestion } from '../contract/queries.js';
 import type { Asker, Prompt } from '../contract/ports/prompt.js';
 import {
   BUILD_SYSTEM_QUESTION_ID,
+  ENTRYPOINTS_QUESTION_ID,
+  EXTRA_VERTICALS_QUESTION_ID,
+  FRAMEWORK_QUESTION_ID,
+  LANGUAGE_QUESTION_ID,
   LAYOUT_QUESTION_ID,
   MODULE_LAYOUT_QUESTION_ID,
   PEER_CONTEXT_QUESTION_ID,
   SERVICE_QUESTION_SEPARATOR,
   STACK_QUESTION_ID,
 } from './handlers/new-project.js';
+
+/**
+ * The drill-down's three steps (see `./stack-wizard.ts`). None of
+ * them is a field of the command: they are how a *terminal* user
+ * navigates to a stack id, and the only thing they leave behind is
+ * the `stack` the last one resolves to.
+ */
+const DRILL_DOWN_QUESTION_IDS: readonly string[] = [
+  LANGUAGE_QUESTION_ID,
+  ENTRYPOINTS_QUESTION_ID,
+  FRAMEWORK_QUESTION_ID,
+];
 
 /** A prompt that answers without blocking, and remembers being asked. */
 export interface RecordingPrompt {
@@ -66,6 +82,7 @@ export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
         id: question.id,
         prompt: question.prompt,
         doc: question.doc,
+        ...(question.kind === undefined ? {} : { kind: question.kind }),
         ...(question.choices === undefined ? {} : { choices: question.choices }),
         default: question.default,
         value,
@@ -94,8 +111,19 @@ export function bindingFor(question: Question, asker: Asker): AnswerBinding {
     return { kind: 'answer', adapter: asker.id, question: question.id };
   }
   if (question.id === STACK_QUESTION_ID) return { kind: 'stack' };
+  // Bound as an answer rather than to a field, deliberately. Three
+  // questions cannot fill one `stack`, and binding any of them to it
+  // would have a front end post `java@jvm` as a stack id. An answer
+  // binding round-trips harmlessly instead: it reaches the drill-down
+  // through the prompt on the next preview and resolves the same way.
+  // A front end with a stack picker sends `stack` and never sees
+  // these at all, which is what `keel ui` does.
+  if (DRILL_DOWN_QUESTION_IDS.includes(question.id)) {
+    return { kind: 'answer', adapter: asker.id, question: question.id };
+  }
   if (question.id === LAYOUT_QUESTION_ID) return { kind: 'layout' };
   if (question.id === PEER_CONTEXT_QUESTION_ID) return { kind: 'withPeerContext' };
+  if (question.id === EXTRA_VERTICALS_QUESTION_ID) return { kind: 'extraVerticals' };
   if (question.id === MODULE_LAYOUT_QUESTION_ID) return { kind: 'moduleLayout' };
   const [head, service] = splitServiceQuestion(question.id);
   if (head === BUILD_SYSTEM_QUESTION_ID) {

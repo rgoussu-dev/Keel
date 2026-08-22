@@ -99,6 +99,7 @@ const targetSchema = z.discriminatedUnion('kind', [
     buildSystem: z.string().min(1).optional(),
     moduleLayout: z.string().min(1).optional(),
     withPeerContext: z.boolean().optional(),
+    extraVerticals: z.array(z.string().min(1)).optional(),
   }),
   z.object({
     kind: z.literal('add-vertical'),
@@ -221,6 +222,7 @@ function narrow(target: z.infer<typeof targetSchema>): InstallTarget {
         ...(target.withPeerContext === undefined
           ? {}
           : { withPeerContext: target.withPeerContext }),
+        ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
       };
     case 'add-vertical':
       return {

@@ -21,6 +21,13 @@ export class FakePrompt implements Prompt {
   readonly asked: string[] = [];
   /** Askers of each question, in the same order as {@link asked}. */
   readonly askers: Asker[] = [];
+  /**
+   * The questions themselves, in the same order as {@link asked} —
+   * for the assertions that are about how a question was *posed*
+   * (its `kind`, the choices it offered) rather than about the answer
+   * it got back.
+   */
+  readonly questions: Question[] = [];
 
   private readonly queues = new Map<string, string[]>();
 
@@ -33,6 +40,7 @@ export class FakePrompt implements Prompt {
   ask(question: Question, asker: Asker): Promise<string> {
     this.asked.push(question.id);
     this.askers.push(asker);
+    this.questions.push(question);
     const queue = this.queues.get(question.id);
     if (!queue || queue.length === 0) {
       return Promise.reject(

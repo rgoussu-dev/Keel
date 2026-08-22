@@ -22,6 +22,7 @@
  */
 
 import * as api from '../api.js';
+import { defaultStack } from '../finder.js';
 
 /** How long to wait after a change before re-previewing. */
 const DEBOUNCE_MS = 120;
@@ -82,9 +83,16 @@ export class KeelApp extends HTMLElement {
     this.#previewSoon();
   }
 
+  /**
+   * Where the greenfield form opens: the preset the finder's defaults
+   * compose to, which is the one an omitted `--stack` resolves to in
+   * a terminal. Falling back to the first of `stacks` would open on a
+   * fullstack product — alphabetically first, and a two-service
+   * product is the last thing a blank form should presume.
+   */
   #defaultNewTarget() {
-    const stack = this.#catalog.stacks[0];
-    return this.#withStackDefaults({ kind: 'new-project', stack: stack.id });
+    const stack = defaultStack(this.#catalog.finder) ?? this.#catalog.stacks[0]?.id;
+    return this.#withStackDefaults({ kind: 'new-project', stack });
   }
 
   /**
@@ -170,6 +178,15 @@ export class KeelApp extends HTMLElement {
       return;
     } else if (binding.kind === 'withPeerContext') {
       this.#retarget({ withPeerContext: value === 'yes' });
+      return;
+    } else if (binding.kind === 'extraVerticals') {
+      // A set answer: comma-joined on the wire, a list in the target.
+      this.#retarget({
+        extraVerticals: value
+          .split(',')
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0),
+      });
       return;
     } else {
       this.#retarget({ [binding.kind]: value });

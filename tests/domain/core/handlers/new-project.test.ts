@@ -378,6 +378,7 @@ describe('keel.new-project build-system selection', () => {
       defaultBranch: 'main',
       basePackage: 'com.acme.cli',
       projectName: 'demo',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -512,6 +513,7 @@ describe('keel.new-project module-layout selection', () => {
       defaultBranch: 'main',
       basePackage: 'com.acme.cli',
       projectName: 'demo',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -826,15 +828,18 @@ describe('keel new records its bounded contexts', () => {
  * `quarkus-cli` silently, even when interactive.
  */
 describe('keel.new-project stack selection', () => {
-  it('prompts for the stack first when interactive and omitted', async () => {
+  it('drills down language → adapters → framework when interactive and omitted', async () => {
     const prompt = new FakePrompt({
-      stack: 'quarkus-cli',
+      language: 'java@jvm',
+      entrypoints: 'cli',
+      framework: 'quarkus',
       buildSystem: 'gradle',
       moduleLayout: 'basic',
       basePackage: 'com.acme.cli',
       projectName: 'demo',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -852,11 +857,127 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('quarkus-cli');
-    expect(prompt.asked[0]).toBe('stack');
+    expect(prompt.asked.slice(0, 3)).toEqual(['language', 'entrypoints', 'framework']);
+    expect(prompt.asked).not.toContain('stack');
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
   });
 
-  it('an explicit --stack suppresses the stack question', async () => {
+  it('resolves both user-side adapters to the composed preset, not a product', async () => {
+    const prompt = new FakePrompt({
+      language: 'go',
+      entrypoints: 'cli,server-http',
+      moduleLayout: 'basic',
+      modulePath: 'example.com/demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      // `observability/monitoring-compose` declares a question of its
+      // own under this id; the wizard's own `stack` question is not
+      // asked here, and the two are told apart by their asker.
+      stack: 'granular',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/go-mod-tidy']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('go-cli-http');
+    // One project, not two services — nothing is scaffolded under a
+    // service subdirectory.
+    expect(report.changes.every((c) => !c.path.startsWith('backend/'))).toBe(true);
+  });
+
+  it('never asks for a framework where the language has only one', async () => {
+    const prompt = new FakePrompt({
+      language: 'rust',
+      entrypoints: 'cli',
+      moduleLayout: 'basic',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('rust-cli');
+    expect(prompt.asked).not.toContain('framework');
+  });
+
+  it('skips the adapter question where the language reaches one combination', async () => {
+    const prompt = new FakePrompt({
+      language: 'typescript@browser',
+      buildSystem: 'npm',
+      moduleLayout: 'basic',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('web-components');
+    expect(prompt.asked).not.toContain('entrypoints');
+    expect(prompt.asked).not.toContain('framework');
+  });
+
+  it('falls through to the flat preset list for the products no language covers', async () => {
+    const prompt = new FakePrompt({
+      language: 'keel.by-id',
+      // Asked twice under one id, by two different askers: the
+      // wizard's flat preset list, then the backend's
+      // `observability/monitoring-compose` dial.
+      stack: ['fullstack-go', 'granular'],
+      layout: 'monorepo',
+      'buildSystem:frontend': 'npm',
+      modulePath: 'example.com/demo',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('fullstack-go');
+    expect(prompt.asked.slice(0, 2)).toEqual(['language', 'stack']);
+  });
+
+  it('rejects a combination the menus never offered', async () => {
+    const prompt = new FakePrompt({ language: 'typescript@node', entrypoints: 'spa' });
+    const mediator = installMediator({ prompt });
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toContain('TypeScript (Node)');
+    expect(error.message).toContain('Browser SPA');
+  });
+
+  it('an explicit --stack suppresses the whole drill-down', async () => {
     const prompt = new FakePrompt({
       buildSystem: 'gradle',
       moduleLayout: 'basic',
@@ -864,6 +985,7 @@ describe('keel.new-project stack selection', () => {
       projectName: 'demo',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -883,6 +1005,9 @@ describe('keel.new-project stack selection', () => {
     );
     expect(report.subject).toBe('quarkus-cli');
     expect(prompt.asked).not.toContain('stack');
+    expect(prompt.asked).not.toContain('language');
+    expect(prompt.asked).not.toContain('entrypoints');
+    expect(prompt.asked).not.toContain('framework');
   });
 
   it('defaults to quarkus-cli non-interactively when omitted', async () => {
@@ -904,6 +1029,266 @@ describe('keel.new-project stack selection', () => {
 });
 
 /**
+ * The wizard's fourth step: verticals layered on top of the stack's
+ * own, in the same run. `--with` is the flag half; the multi-select
+ * is the interactive half.
+ */
+describe('keel.new-project extra verticals', () => {
+  it('layers the verticals --with names on top of the stack’s own', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+          extraVerticals: ['distribution', 'ci'],
+        }),
+      ),
+    );
+    expect(report.subject).toBe('quarkus-cli');
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    const installed = manifest?.verticals.map((v) => v.id) ?? [];
+    expect(installed).toContain('distribution');
+    expect(installed).toContain('ci');
+    // The stack's own first, the extras after, in the order named —
+    // which is what lets them resolve against one another's tags.
+    expect(installed.slice(-2)).toEqual(['distribution', 'ci']);
+  });
+
+  it('installs none when --with is omitted non-interactively', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.verticals.map((v) => v.id)).not.toContain('distribution');
+  });
+
+  it('asks for them interactively, as a set, and honours the answer', async () => {
+    const prompt = new FakePrompt({
+      extraVerticals: 'ci',
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      provider: 'github-actions',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(prompt.asked).toContain('extraVerticals');
+    expect(report.changes.some((c) => c.path.startsWith('.github/workflows/'))).toBe(true);
+  });
+
+  it('is asked last of the stack dials, so the menu can be pruned against their answers', async () => {
+    const prompt = new FakePrompt({
+      extraVerticals: '',
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(prompt.asked.slice(0, 3)).toEqual(['buildSystem', 'moduleLayout', 'extraVerticals']);
+  });
+
+  it('never offers a vertical the stack already installs, nor one it cannot cover', async () => {
+    const prompt = new FakePrompt({
+      extraVerticals: '',
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+        }),
+      ),
+    );
+    const asked = prompt.questions.find((q) => q.id === 'extraVerticals');
+    expect(asked?.kind).toBe('multi-select');
+    const offered = asked?.choices?.map((c) => c.value) ?? [];
+    for (const own of STACKS['quarkus-cli']?.verticals ?? []) {
+      expect(offered).not.toContain(own.id);
+    }
+    expect(offered).toContain('ci');
+    // `persistence` needs a datasource adapter, and a CLI-only preset
+    // has none — offering it would be offering a `ResolutionError`.
+    expect(offered).not.toContain('persistence');
+  });
+
+  it('an explicit --with suppresses the question, including when it is empty', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+          extraVerticals: [],
+        }),
+      ),
+    );
+    expect(prompt.asked).not.toContain('extraVerticals');
+  });
+
+  it('rejects an unknown vertical id, naming what is available here', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['nonsense'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-vertical');
+    expect(error.message).toContain('ci');
+  });
+
+  it('rejects a vertical the stack already installs', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['vcs'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-extra-verticals');
+    expect(error.message).toContain('already installs');
+  });
+
+  it('rejects the same vertical named twice', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['ci', 'ci'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-extra-verticals');
+    expect(error.message).toContain('twice');
+  });
+
+  it('reads as a set at the review step, empty included', async () => {
+    const prompt = new FakePrompt({
+      language: 'go',
+      entrypoints: 'cli,server-http',
+      moduleLayout: 'basic',
+      extraVerticals: '',
+      modulePath: 'example.com/demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      stack: 'granular',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    const review = prompt.questions.find((q) => q.id === 'keel.review');
+    const labels = review?.choices?.map((c) => c.label) ?? [];
+    expect(labels).toContain('Change: User-side adapters (Go) = cli, server-http');
+    expect(labels).toContain('Change: Additional verticals = (none)');
+  });
+
+  it('rejects --with on a composite stack, whose services declare their own', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['ci'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-extra-verticals');
+    expect(error.message).toContain('composite');
+  });
+});
+
+/**
  * Gap #2 from the interactive-flow issue: `--with-peer-context` was
  * flag-only, never offered to an interactive user who picked the
  * modulith layout.
@@ -916,6 +1301,7 @@ describe('keel.new-project interactive peer-context question', () => {
       projectName: 'shipper',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -949,6 +1335,7 @@ describe('keel.new-project interactive peer-context question', () => {
       remote: '',
       defaultBranch: 'main',
       buildSystem: 'gradle',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -975,6 +1362,7 @@ describe('keel.new-project interactive peer-context question', () => {
       projectName: 'shipper',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({
@@ -1016,6 +1404,7 @@ describe('keel.new-project review step', () => {
       projectName: 'demo',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': 'cancel',
     });
     const mediator = installMediator({ prompt });
@@ -1045,6 +1434,7 @@ describe('keel.new-project review step', () => {
       projectName: 'demo',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': ['edit:0', 'proceed'],
     });
     const mediator = installMediator({
@@ -1076,6 +1466,7 @@ describe('keel.new-project review step', () => {
       projectName: 'demo',
       remote: '',
       defaultBranch: 'main',
+      extraVerticals: '',
       'keel.review': 'proceed',
     });
     const mediator = installMediator({ prompt });
