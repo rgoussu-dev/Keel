@@ -27,12 +27,14 @@ import { rustHttpImageAdapter } from '../adapters/rust-http-image.js';
 import { tsHttpImageAdapter } from '../adapters/ts-http-image.js';
 import { springRestImageAdapter } from '../adapters/spring-rest-image.js';
 import { wcSpaImageAdapter } from '../adapters/wc-spa-image.js';
+import { CONTAINER_IMAGE_TAG, GRAALVM_NATIVE_TAG } from '../adapters/container-image.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const containerizationVertical: Vertical = {
   id: 'containerization',
   description: 'How this project runs as a container image.',
   dimensions: ['image'],
+  promotes: [CONTAINER_IMAGE_TAG, GRAALVM_NATIVE_TAG],
   adapters: [
     quarkusRestImageAdapter,
     springRestImageAdapter,

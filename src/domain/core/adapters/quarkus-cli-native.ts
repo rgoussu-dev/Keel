@@ -27,6 +27,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { GRAALVM_NATIVE_TAG } from './container-image.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
 
@@ -109,7 +110,7 @@ export const quarkusCliNativeAdapter: Adapter = {
     });
     return {
       files,
-      tagsAdd: ['runtime.graalvm-native'],
+      tagsAdd: [GRAALVM_NATIVE_TAG],
     };
   },
 };
