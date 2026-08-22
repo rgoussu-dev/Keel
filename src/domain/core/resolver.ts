@@ -64,6 +64,26 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
   return topoSort(matched, vertical.id);
 }
 
+/**
+ * Whether `vertical` would resolve against `tags` — i.e. whether
+ * every dimension it declares is covered by an adapter the predicate
+ * filter keeps.
+ *
+ * The same check {@link resolveVertical} hard-fails on, asked ahead
+ * of time and answered instead of thrown. What it is for is menus: a
+ * vertical offered to a project that cannot take it is a choice whose
+ * only outcome is a `ResolutionError` eight questions later, which is
+ * exactly the dead end an interactive flow must not walk the user
+ * into. Conservative by construction — it sees the tags it is given,
+ * not the ones an adapter would promote at install time — so a
+ * hidden option is at worst one `keel add` away.
+ */
+export function coversFor(vertical: Vertical, tags: Iterable<Tag>): boolean {
+  const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
+  const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
+  return uncoveredDimensions(vertical, matched).length === 0;
+}
+
 function uncoveredDimensions(vertical: Vertical, matched: readonly Adapter[]): readonly string[] {
   const covered = new Set<string>();
   for (const a of matched) {

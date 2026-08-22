@@ -171,6 +171,15 @@ export class KeelApp extends HTMLElement {
     } else if (binding.kind === 'withPeerContext') {
       this.#retarget({ withPeerContext: value === 'yes' });
       return;
+    } else if (binding.kind === 'extraVerticals') {
+      // A set answer: comma-joined on the wire, a list in the target.
+      this.#retarget({
+        extraVerticals: value
+          .split(',')
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0),
+      });
+      return;
     } else {
       this.#retarget({ [binding.kind]: value });
       return;

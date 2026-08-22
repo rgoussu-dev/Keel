@@ -112,6 +112,10 @@ export function buildProgram(deps: CliDeps): Command {
       false,
     )
     .option(
+      '--with <ids>',
+      `verticals to install on top of the stack's own, comma-separated (e.g. 'persistence,iac'); prompted when omitted and interactive, none otherwise. Single-service stacks only`,
+    )
+    .option(
       '--set <kv...>',
       'preset an answer as adapterId:questionId=value (repeatable)',
       [] as string[],
@@ -126,6 +130,7 @@ export function buildProgram(deps: CliDeps): Command {
         buildSystem?: string;
         moduleLayout?: string;
         withPeerContext: boolean;
+        with?: string;
         set: string[];
       }): Promise<void> => {
         if (opts.list) {
@@ -144,6 +149,7 @@ export function buildProgram(deps: CliDeps): Command {
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
             ...(opts.moduleLayout !== undefined ? { moduleLayout: opts.moduleLayout } : {}),
             ...(opts.withPeerContext ? { withPeerContext: true } : {}),
+            ...(opts.with === undefined ? {} : { extraVerticals: parseVerticalList(opts.with) }),
           }),
         );
         const report = unwrap(result);
@@ -436,6 +442,20 @@ function printReport(header: string, report: InstallReport, log: Logger): void {
       log.info(`  ${painted}`);
     }
   }
+}
+
+/**
+ * Parses `--with persistence,iac` into the ids it names.
+ *
+ * Empty entries are dropped, so `--with ''` and `--with ,` both mean
+ * "none" — which is a real answer here, not a missing one: passing
+ * the flag at all is what suppresses the question.
+ */
+export function parseVerticalList(raw: string): readonly string[] {
+  return raw
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
 }
 
 /**

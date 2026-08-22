@@ -62,12 +62,13 @@ import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { InstallReport, NewProjectCommand, RepoLayout } from '../../contract/commands.js';
-import type {
-  DeferredAction,
-  Question,
-  QuestionChoice,
-  Tree,
-  Vertical,
+import {
+  decodeSelection,
+  type DeferredAction,
+  type Question,
+  type QuestionChoice,
+  type Tree,
+  type Vertical,
 } from '../../contract/composition.js';
 import type { Asker, Prompt } from '../../contract/ports/prompt.js';
 import {
@@ -108,6 +109,8 @@ import {
   type EntrypointStep,
   type WizardPath,
 } from '../stack-wizard.js';
+import { coversFor } from '../resolver.js';
+import { getVertical, listVerticals, type VerticalSummary } from '../verticals/index.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -167,6 +170,15 @@ export const ENTRYPOINTS_QUESTION_ID = 'entrypoints';
 
 /** @see LANGUAGE_QUESTION_ID */
 export const FRAMEWORK_QUESTION_ID = 'framework';
+
+/**
+ * Question id of the wizard's extra-verticals step — a stack-level
+ * dial like the four above, its answer being
+ * {@link NewProjectCommand.extraVerticals} rather than an entry in
+ * `manifest.answers`. A `multi-select`, so the answer is a
+ * comma-joined list of vertical ids.
+ */
+export const EXTRA_VERTICALS_QUESTION_ID = 'extraVerticals';
 
 /**
  * The language menu's escape hatch: pick a preset by id instead.
@@ -424,6 +436,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     );
     if (!peerTag.ok) return peerTag;
 
+    // Last of the stack dials, because the menu is pruned against the
+    // tag set the other three settle — a vertical no adapter here can
+    // cover must not be on it.
+    const extras = await this.resolveExtraVerticals(command, stack, prompt, [
+      ...stackTags(stack, buildTag.value, layoutTag.value),
+      ...(peerTag.value ? [peerTag.value] : []),
+    ]);
+    if (!extras.ok) return extras;
+
     const now = this.deps.clock.nowIso();
     const staged = await this.stageStack({
       prefix: '',
@@ -435,6 +456,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       peers: [],
       services: [],
       skipVcs: false,
+      extraVerticals: extras.value,
       command,
       now,
       prompt,
@@ -495,6 +517,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         new DomainError(
           `stack '${stack.id}' is composite — its services scaffold on each service stack's default module layout, so --with-peer-context does not apply`,
           'keel.invalid-peer-context',
+        ),
+      );
+    }
+
+    if (command.extraVerticals !== undefined && command.extraVerticals.length > 0) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' is composite — each service declares its own extra verticals, and '--with' names no service. Scaffold the product, then 'keel add ${command.extraVerticals[0] ?? ''}' inside the service that needs it`,
+          'keel.invalid-extra-verticals',
         ),
       );
     }
@@ -837,6 +868,81 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     return peerContextTag(want, stack, buildTag, layoutTag);
   }
 
+  /**
+   * Resolves the verticals to layer on top of the stack's own: the
+   * `--with` list when supplied, the interactive multi-select
+   * otherwise, none when neither.
+   *
+   * **The menu is pruned twice.** The stack's own verticals are off
+   * it — the stack installs them either way, and naming one would be
+   * asking for a second install of something already in the plan.
+   * And so is any vertical whose dimensions no adapter covers for
+   * this stack: `persistence` on a CLI-only preset resolves to
+   * nothing and would hard-fail at install, which is the dead end an
+   * interactive flow must not offer. That probe is
+   * {@link coversFor}, run against the tag set the other three dials
+   * settled, which is why this question comes last among them.
+   *
+   * `--with` is not pruned the same way — it is checked, not
+   * filtered: a name that is not a registered vertical, or is one the
+   * stack already carries, is refused at the front door with the list
+   * spelled out, exactly as `keel add` refuses an unknown id. A name
+   * that is registered but uncoverable still reaches the resolver's
+   * own refusal, which names the dimension it could not cover — a
+   * better message than anything this could invent.
+   */
+  private async resolveExtraVerticals(
+    command: NewProjectCommand,
+    stack: Stack,
+    prompt: Prompt,
+    tags: readonly Tag[],
+  ): Promise<Result<readonly Vertical[]>> {
+    const own = new Set(stack.verticals.map((v) => v.id));
+    const candidates = listVerticals().filter((summary) => {
+      if (own.has(summary.id)) return false;
+      const vertical = getVertical(summary.id);
+      return vertical !== null && coversFor(vertical, tags);
+    });
+    const requested =
+      command.extraVerticals !== undefined
+        ? command.extraVerticals
+        : !command.interactive || candidates.length === 0
+          ? []
+          : decodeSelection(
+              await prompt.ask(extraVerticalsQuestion(candidates, stack), stackAsker(stack)),
+            );
+
+    const chosen: Vertical[] = [];
+    for (const id of requested) {
+      if (own.has(id)) {
+        return err(
+          new DomainError(
+            `stack '${stack.id}' already installs vertical '${id}' — remove it from --with`,
+            'keel.invalid-extra-verticals',
+          ),
+        );
+      }
+      const vertical = getVertical(id);
+      if (!vertical) {
+        return err(
+          new DomainError(
+            `unknown vertical '${id}'; available on top of stack '${stack.id}': ${candidates
+              .map((v) => v.id)
+              .join(', ')}`,
+            'keel.unknown-vertical',
+          ),
+        );
+      }
+      if (chosen.some((v) => v.id === id)) {
+        return err(
+          new DomainError(`--with names vertical '${id}' twice`, 'keel.invalid-extra-verticals'),
+        );
+      }
+      chosen.push(vertical);
+    }
+    return ok(chosen);
+  }
+
   private async resolveLayout(
     command: NewProjectCommand,
     stack: Stack,
@@ -984,6 +1090,26 @@ function stackQuestion(options: readonly StackSummary[]): Question {
     doc: 'The preset combination of capabilities and verticals to scaffold from.',
     choices: options.map((o) => ({ value: o.id, label: o.id, doc: o.description })),
     default: DEFAULT_STACK_ID,
+    memory: 'repeat',
+  };
+}
+
+/**
+ * The wizard's fourth step: which verticals to layer on top of the
+ * stack's own, in the same run.
+ *
+ * A `multi-select` defaulting to none — the stack's list is a
+ * coherent starting point by construction, so "nothing extra" is the
+ * answer that needs no justification.
+ */
+function extraVerticalsQuestion(candidates: readonly VerticalSummary[], stack: Stack): Question {
+  return {
+    id: EXTRA_VERTICALS_QUESTION_ID,
+    prompt: 'Additional verticals',
+    doc: `Installed on top of what '${stack.id}' already brings, in the same run — so they resolve against one another's tags and the review below shows one plan. Everything here is also available later with 'keel add'.`,
+    kind: 'multi-select',
+    choices: candidates.map((v) => ({ value: v.id, label: v.id, doc: v.description })),
+    default: '',
     memory: 'repeat',
   };
 }

@@ -8,6 +8,32 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel new --with`, and the wizard's fourth step: extra verticals
+  in the same run.** `NewProjectCommand.extraVerticals` existed only
+  for a composite stack's services; the single-service path never
+  threaded it. It does now, as a flag (`--with distribution,ci`) and
+  as the wizard's last stack-level question — a multi-select
+  defaulting to none. Layering here is not the same as running
+  `keel add` once per vertical afterwards: in one run the extras
+  resolve against one another's tags, and the review step shows one
+  plan instead of four.
+  - **The menu is pruned twice**: the stack's own verticals are off it
+    (the stack installs them either way), and so is anything this
+    project cannot cover — `persistence` on a CLI-only preset resolves
+    to nothing and would hard-fail at install. The new
+    `coversFor(vertical, tags)` in `domain/core/resolver.ts` is the
+    resolver's own coverage check asked ahead of time and answered
+    rather than thrown; the question comes last among the stack dials
+    so it can be pruned against what the other three settled.
+  - `--with` suppresses the question, `--with ''` included — that is
+    how a script says "none" explicitly. Unknown ids and ids the stack
+    already carries are refused at the front door with the available
+    list spelled out. Rejected on composite stacks, whose services
+    declare their own extras and where `--with` names no service.
+  - `keel.preview` binds the answer as `{ kind: 'extraVerticals' }`
+    and `NewProjectTarget` carries the list, so `keel ui` round-trips
+    it like any other dial.
+
 - **`keel new` finds your stack for you: a guided drill-down.** There
   are 33 presets, and knowing you want "Kotlin, a CLI and an HTTP
   endpoint, on Spring" is much easier than knowing that is spelled

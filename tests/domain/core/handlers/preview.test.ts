@@ -89,12 +89,14 @@ describe('keel.preview', () => {
     const preview = await previewNew();
     expect(preview.subject).toBe('ts-cli');
     expect(preview.questions.map((pending) => pending.id)).toEqual([
+      'extraVerticals',
       'remote',
       'defaultBranch',
       'npmScope',
       'projectName',
     ]);
     expect(preview.questions.map((pending) => pending.binding)).toEqual([
+      { kind: 'extraVerticals' },
       { kind: 'answer', adapter: 'vcs/git-init', question: 'remote' },
       { kind: 'answer', adapter: 'vcs/git-init', question: 'defaultBranch' },
       { kind: 'answer', adapter: BOOTSTRAP, question: 'npmScope' },

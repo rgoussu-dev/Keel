@@ -112,7 +112,12 @@ export type AnswerBinding =
   | { readonly kind: 'moduleLayout' }
   | { readonly kind: 'buildSystem'; readonly service?: string }
   /** Answered `yes` / `no`; the field it fills is a boolean. */
-  | { readonly kind: 'withPeerContext' };
+  | { readonly kind: 'withPeerContext' }
+  /**
+   * A `multi-select` answer: the field it fills is a list of vertical
+   * ids, so a caller splits the answer on commas on the way back.
+   */
+  | { readonly kind: 'extraVerticals' };
 
 /**
  * A question the previewed install asked, with the value the preview

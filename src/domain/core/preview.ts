@@ -24,6 +24,7 @@ import type { Asker, Prompt } from '../contract/ports/prompt.js';
 import {
   BUILD_SYSTEM_QUESTION_ID,
   ENTRYPOINTS_QUESTION_ID,
+  EXTRA_VERTICALS_QUESTION_ID,
   FRAMEWORK_QUESTION_ID,
   LANGUAGE_QUESTION_ID,
   LAYOUT_QUESTION_ID,
@@ -122,6 +123,7 @@ export function bindingFor(question: Question, asker: Asker): AnswerBinding {
   }
   if (question.id === LAYOUT_QUESTION_ID) return { kind: 'layout' };
   if (question.id === PEER_CONTEXT_QUESTION_ID) return { kind: 'withPeerContext' };
+  if (question.id === EXTRA_VERTICALS_QUESTION_ID) return { kind: 'extraVerticals' };
   if (question.id === MODULE_LAYOUT_QUESTION_ID) return { kind: 'moduleLayout' };
   const [head, service] = splitServiceQuestion(question.id);
   if (head === BUILD_SYSTEM_QUESTION_ID) {

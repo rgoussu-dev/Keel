@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ResolutionError, resolveVertical } from '../../../src/domain/core/resolver.js';
+import { ResolutionError, coversFor, resolveVertical } from '../../../src/domain/core/resolver.js';
 import type { Adapter, Contribution, Vertical } from '../../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
@@ -133,5 +133,40 @@ describe('resolveVertical', () => {
       ],
     };
     expect(resolveVertical(v, []).map((a) => a.id)).toEqual(['alpha', 'mid', 'zeta']);
+  });
+});
+
+/**
+ * The same coverage check, asked ahead of time. What it is for is
+ * menus: `keel new`'s extra-verticals step prunes with it, so an
+ * option that could only ever end in the `ResolutionError` above is
+ * never on the list.
+ */
+describe('coversFor', () => {
+  const vertical: Vertical = {
+    id: 'persistence',
+    description: '',
+    dimensions: ['datasource'],
+    adapters: [
+      stub({
+        id: 'jdbc',
+        covers: ['datasource'],
+        predicate: { requires: ['arch.server-http'] },
+      }),
+    ],
+  };
+
+  it('is true exactly when resolveVertical would not refuse', () => {
+    expect(coversFor(vertical, ['arch.server-http'])).toBe(true);
+    expect(() => resolveVertical(vertical, ['arch.server-http'])).not.toThrow();
+  });
+
+  it('is false where a dimension goes uncovered, instead of throwing', () => {
+    expect(coversFor(vertical, ['arch.cli'])).toBe(false);
+    expect(() => resolveVertical(vertical, ['arch.cli'])).toThrow(ResolutionError);
+  });
+
+  it('is true for a vertical declaring no dimensions at all', () => {
+    expect(coversFor({ id: 'x', description: '', dimensions: [], adapters: [] }, [])).toBe(true);
   });
 });
