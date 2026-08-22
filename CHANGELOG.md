@@ -8,6 +8,41 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel new` finds your stack for you: a guided drill-down.** There
+  are 33 presets, and knowing you want "Kotlin, a CLI and an HTTP
+  endpoint, on Spring" is much easier than knowing that is spelled
+  `spring-cli-rest-kotlin`. Run `keel new` with no `--stack` and the
+  wizard now asks three narrowing questions instead of one flat menu
+  of ids: **language → user-side adapters → framework**.
+  - **The adapter step is a multi-select, and picking two means the
+    composed preset** — one project, one domain, both entrypoints
+    (`quarkus-cli-rest`, `go-cli-http`, `ts-cli-http`) — never two
+    services. The question says so, and the run prints the preset it
+    resolved to (`keel new: Java + CLI + HTTP server + quarkus →
+quarkus-cli-rest`) rather than leaving it to be inferred.
+  - **The framework step is asked only where a choice remains** —
+    Quarkus/Spring/Micronaut on the JVM. Go, Rust and TypeScript are
+    never asked, and the browser target skips the adapter step too,
+    reaching one combination.
+  - **Every menu is derived from the catalog's tags**
+    (`domain/core/stack-wizard.ts`), so a preset added tomorrow
+    appears by itself, and a combination no preset covers is never on
+    offer — the wizard cannot walk you into a dead end and announce it
+    at the bottom. The language node is qualified by the runtime,
+    which is what separates `ts-cli` from `web-components` and keeps
+    the SPA out of a checkbox it could not be combined from. Where a
+    language's entrypoint subsets are ever incomplete, the step falls
+    back to spelling the combinations out.
+  - **The answer is always a registered stack id**, so `--stack` and
+    the drill-down resolve through exactly the same path from there
+    on, and every step is reviewable and re-answerable at the wizard's
+    review step like any other question. `--stack` skips all three;
+    `--yes` stays fully non-interactive. Taking every default lands on
+    `quarkus-cli`, the preset an omitted `--stack` has always meant.
+  - **The fullstack products keep their route**: they name no single
+    language, so the language menu's last entry falls through to the
+    flat list of every preset.
+
 - **Multi-select questions on the `Prompt` port.** A `Question` may
   now declare `kind: 'multi-select'`, and the terminal adapter renders
   it as an inquirer `checkbox` instead of a `select`. The answer stays

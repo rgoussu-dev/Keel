@@ -826,9 +826,11 @@ describe('keel new records its bounded contexts', () => {
  * `quarkus-cli` silently, even when interactive.
  */
 describe('keel.new-project stack selection', () => {
-  it('prompts for the stack first when interactive and omitted', async () => {
+  it('drills down language → adapters → framework when interactive and omitted', async () => {
     const prompt = new FakePrompt({
-      stack: 'quarkus-cli',
+      language: 'java@jvm',
+      entrypoints: 'cli',
+      framework: 'quarkus',
       buildSystem: 'gradle',
       moduleLayout: 'basic',
       basePackage: 'com.acme.cli',
@@ -852,11 +854,123 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('quarkus-cli');
-    expect(prompt.asked[0]).toBe('stack');
+    expect(prompt.asked.slice(0, 3)).toEqual(['language', 'entrypoints', 'framework']);
+    expect(prompt.asked).not.toContain('stack');
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
   });
 
-  it('an explicit --stack suppresses the stack question', async () => {
+  it('resolves both user-side adapters to the composed preset, not a product', async () => {
+    const prompt = new FakePrompt({
+      language: 'go',
+      entrypoints: 'cli,server-http',
+      moduleLayout: 'basic',
+      modulePath: 'example.com/demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      // `observability/monitoring-compose` declares a question of its
+      // own under this id; the wizard's own `stack` question is not
+      // asked here, and the two are told apart by their asker.
+      stack: 'granular',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({
+      prompt,
+      runDeferred: runActionsExcept(['walking-skeleton/go-mod-tidy']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('go-cli-http');
+    // One project, not two services — nothing is scaffolded under a
+    // service subdirectory.
+    expect(report.changes.every((c) => !c.path.startsWith('backend/'))).toBe(true);
+  });
+
+  it('never asks for a framework where the language has only one', async () => {
+    const prompt = new FakePrompt({
+      language: 'rust',
+      entrypoints: 'cli',
+      moduleLayout: 'basic',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('rust-cli');
+    expect(prompt.asked).not.toContain('framework');
+  });
+
+  it('skips the adapter question where the language reaches one combination', async () => {
+    const prompt = new FakePrompt({
+      language: 'typescript@browser',
+      buildSystem: 'npm',
+      moduleLayout: 'basic',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('web-components');
+    expect(prompt.asked).not.toContain('entrypoints');
+    expect(prompt.asked).not.toContain('framework');
+  });
+
+  it('falls through to the flat preset list for the products no language covers', async () => {
+    const prompt = new FakePrompt({
+      language: 'keel.by-id',
+      // Asked twice under one id, by two different askers: the
+      // wizard's flat preset list, then the backend's
+      // `observability/monitoring-compose` dial.
+      stack: ['fullstack-go', 'granular'],
+      layout: 'monorepo',
+      'buildSystem:frontend': 'npm',
+      modulePath: 'example.com/demo',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('fullstack-go');
+    expect(prompt.asked.slice(0, 2)).toEqual(['language', 'stack']);
+  });
+
+  it('rejects a combination the menus never offered', async () => {
+    const prompt = new FakePrompt({ language: 'typescript@node', entrypoints: 'spa' });
+    const mediator = installMediator({ prompt });
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toContain('TypeScript (Node)');
+    expect(error.message).toContain('Browser SPA');
+  });
+
+  it('an explicit --stack suppresses the whole drill-down', async () => {
     const prompt = new FakePrompt({
       buildSystem: 'gradle',
       moduleLayout: 'basic',
@@ -883,6 +997,9 @@ describe('keel.new-project stack selection', () => {
     );
     expect(report.subject).toBe('quarkus-cli');
     expect(prompt.asked).not.toContain('stack');
+    expect(prompt.asked).not.toContain('language');
+    expect(prompt.asked).not.toContain('entrypoints');
+    expect(prompt.asked).not.toContain('framework');
   });
 
   it('defaults to quarkus-cli non-interactively when omitted', async () => {

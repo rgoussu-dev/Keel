@@ -166,14 +166,42 @@ describe('keel.preview', () => {
     expect(preview.questions.map((pending) => pending.id)).not.toContain('keel.review');
   });
 
-  it('asks for the stack when the target names none, and binds it to the field', async () => {
+  it('reports the drill-down when the target names no stack, and still lands on the default', async () => {
     const preview = expectOk(
       await installMediator().dispatch(
         previewQuery({ cwd, target: { kind: 'new-project' }, answers: {} }),
       ),
     );
-    expect(preview.questions[0]).toMatchObject({ id: 'stack', binding: { kind: 'stack' } });
+    // A front end with a stack picker sends `stack` and never gets
+    // here — `keel ui` does exactly that. One that does not gets the
+    // wizard's own three steps, each an ordinary answer it can send
+    // back, and the defaults compose to the same preset an omitted
+    // `--stack` has always meant.
+    expect(preview.questions.slice(0, 3).map((q) => q.id)).toEqual([
+      'language',
+      'entrypoints',
+      'framework',
+    ]);
+    expect(preview.questions[1]).toMatchObject({ kind: 'multi-select' });
+    expect(preview.questions[0]?.binding).toEqual({
+      kind: 'answer',
+      adapter: 'keel.new-project',
+      question: 'language',
+    });
     expect(preview.subject).toBe('quarkus-cli');
+  });
+
+  it('resolves a drill-down answer sent back into the preset it names', async () => {
+    const preview = expectOk(
+      await installMediator().dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'new-project' },
+          answers: { 'keel.new-project': { language: 'go', entrypoints: 'cli,server-http' } },
+        }),
+      ),
+    );
+    expect(preview.subject).toBe('go-cli-http');
   });
 
   it('does not ask about the peer context once the target has decided', async () => {

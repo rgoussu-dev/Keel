@@ -48,6 +48,13 @@
  * is purely additive over the two staging pipelines above, which is
  * why they stay data-in/data-out (`stage → {report, scopes}`) with
  * committing pulled out into `finish`.
+ *
+ * With no `--stack`, the stack itself is **discovered rather than
+ * named**: a language → user-side adapters → framework drill-down
+ * (`../stack-wizard.ts`) narrows the catalog three questions at a
+ * time and resolves to a registered stack id, so step 1 above runs
+ * on its result exactly as it runs on a flag. `--stack` skips the
+ * drill-down and `--yes` skips every question, both as before.
  */
 
 import path from 'node:path';
@@ -89,6 +96,18 @@ import {
   type Stack,
   type StackSummary,
 } from '../stacks.js';
+import {
+  entrypointStep,
+  entrypointsLabel,
+  frameworkChoices,
+  languageChoices,
+  languageLabel,
+  normaliseEntrypoints,
+  pathFor,
+  wizardPaths,
+  type EntrypointStep,
+  type WizardPath,
+} from '../stack-wizard.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -129,6 +148,37 @@ export const STACK_QUESTION_ID = 'stack';
 
 /** @see LAYOUT_QUESTION_ID */
 export const PEER_CONTEXT_QUESTION_ID = 'withPeerContext';
+
+/**
+ * Question ids of the three drill-down steps that *produce* a stack
+ * id (see `../stack-wizard.ts`).
+ *
+ * Unlike the dials above, none of these binds to a field of
+ * {@link NewProjectCommand}: they are intermediate, and the only
+ * thing they leave behind is the `stack` the third one resolves to.
+ * A front end that collects answers therefore never sees them — it
+ * sends a `stack` and the drill-down is skipped, exactly as `--stack`
+ * skips it.
+ */
+export const LANGUAGE_QUESTION_ID = 'language';
+
+/** @see LANGUAGE_QUESTION_ID */
+export const ENTRYPOINTS_QUESTION_ID = 'entrypoints';
+
+/** @see LANGUAGE_QUESTION_ID */
+export const FRAMEWORK_QUESTION_ID = 'framework';
+
+/**
+ * The language menu's escape hatch: pick a preset by id instead.
+ *
+ * The drill-down covers every stack that names a language, which is
+ * every single-service preset — but a composite product
+ * (`fullstack`, `fullstack-go`, …) is two services and names none,
+ * so it has no place on a language menu. Rather than leave those
+ * unreachable interactively, the last language choice falls through
+ * to the flat list the wizard asked before this one existed.
+ */
+export const BY_ID_LANGUAGE = 'keel.by-id';
 
 /** `--stack` when omitted from a non-interactive run. */
 const DEFAULT_STACK_ID = 'quarkus-cli';
@@ -211,9 +261,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
   /** Resolves the stack and runs the matching staging pipeline. Commits nothing. */
   private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
-    const stackId = await this.resolveStackId(command, prompt);
-    const stack = getStack(stackId);
-    if (!stack) return err(unknownStackError(stackId));
+    const resolved = await this.resolveStackId(command, prompt);
+    if (!resolved.ok) return resolved;
+    const stack = getStack(resolved.value);
+    if (!stack) return err(unknownStackError(resolved.value));
     return stack.services
       ? this.stageComposite(command, stack, prompt)
       : this.stageSingle(command, stack, prompt);
@@ -230,14 +281,74 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
   /**
    * Resolves the stack id: the `--stack` flag when supplied, the
-   * interactive choice otherwise, the default preset when neither
-   * interactive nor supplied. The single most consequential choice a
-   * `keel new` run makes, and so the first question the wizard asks.
+   * guided drill-down otherwise, the default preset when neither
+   * interactive nor supplied.
+   *
+   * The single most consequential choice a `keel new` run makes, and
+   * a flat list of 33 ids is a poor way to make it — so interactively
+   * it is asked as three narrowing questions rather than one wide
+   * one: **language → user-side adapters → framework**, each menu
+   * derived from the tags of the stacks still reachable from the
+   * answers already given (see `../stack-wizard.ts`). The answer is
+   * always a registered stack id, so everything downstream of here
+   * cannot tell the two routes apart.
    */
-  private async resolveStackId(command: NewProjectCommand, prompt: Prompt): Promise<string> {
-    if (command.stack !== undefined) return command.stack;
-    if (!command.interactive) return DEFAULT_STACK_ID;
-    return (await prompt.ask(stackQuestion(listStacks()), NEW_PROJECT_ASKER)).trim();
+  private async resolveStackId(
+    command: NewProjectCommand,
+    prompt: Prompt,
+  ): Promise<Result<string>> {
+    if (command.stack !== undefined) return ok(command.stack);
+    if (!command.interactive) return ok(DEFAULT_STACK_ID);
+    return this.drillDown(prompt);
+  }
+
+  /**
+   * The guided drill-down, one question at a time.
+   *
+   * Each step is skipped when it has nothing to ask — a language
+   * reaching one entrypoint combination, or an entrypoint
+   * combination reaching one framework, has already answered the
+   * question by existing. That is what keeps Go, Rust and TypeScript
+   * from being asked "which framework?" over a menu of one.
+   */
+  private async drillDown(prompt: Prompt): Promise<Result<string>> {
+    const paths = wizardPaths(Object.values(STACKS));
+    const language = (await prompt.ask(languageQuestion(paths), NEW_PROJECT_ASKER)).trim();
+    if (language === BY_ID_LANGUAGE) {
+      return ok((await prompt.ask(stackQuestion(listStacks()), NEW_PROJECT_ASKER)).trim());
+    }
+
+    const step = entrypointStep(paths, language, DEFAULT_STACK_ID);
+    const entrypoints =
+      step === null
+        ? (paths.find((path) => path.language === language)?.entrypoints ?? [])
+        : normaliseEntrypoints(
+            await prompt.ask(entrypointQuestion(step, language), NEW_PROJECT_ASKER),
+          );
+
+    const frameworks = frameworkChoices(paths, language, entrypoints);
+    const framework =
+      frameworks === null
+        ? null
+        : (
+            await prompt.ask(
+              frameworkQuestion(frameworks, defaultFramework(paths, frameworks)),
+              NEW_PROJECT_ASKER,
+            )
+          ).trim();
+
+    const chosen = pathFor(paths, language, entrypoints, framework);
+    if (chosen === null) return err(noSuchCombination(language, entrypoints, framework));
+    // The composed stack is the surprising half of a two-entrypoint
+    // pick — "both" means one hexagon with two ways in, not two
+    // services — so the run says which preset it landed on rather
+    // than leaving it to be inferred from the file list.
+    this.deps.logger.info(
+      `keel new: ${languageLabel(language)} + ${entrypointsLabel(entrypoints)}${
+        framework === null || framework === '' ? '' : ` + ${framework}`
+      } → ${chosen.stackId}`,
+    );
+    return ok(chosen.stackId);
   }
 
   /**
@@ -768,7 +879,104 @@ function stackAsker(stack: Stack): Asker {
  */
 const NEW_PROJECT_ASKER: Asker = { kind: 'stack', id: 'keel.new-project' };
 
-/** The wizard's first question: which stack preset to scaffold from. */
+/**
+ * The drill-down's first question. Its last choice is the escape
+ * hatch onto {@link stackQuestion}; the rest are derived from the
+ * catalog, so a stack in a new language appears here by itself.
+ */
+function languageQuestion(paths: readonly WizardPath[]): Question {
+  return {
+    id: LANGUAGE_QUESTION_ID,
+    prompt: 'Language',
+    doc: 'The language the project is written in. Everything after this narrows within it.',
+    choices: [
+      ...languageChoices(paths),
+      {
+        value: BY_ID_LANGUAGE,
+        label: 'Other — pick a preset by id',
+        doc: 'The flat list of every preset, including the fullstack products (two services), which name no single language.',
+      },
+    ],
+    default: languageOf(paths, DEFAULT_STACK_ID) ?? languageChoices(paths)[0]?.value ?? '',
+    memory: 'repeat',
+  };
+}
+
+/**
+ * The drill-down's second question: which user-side adapters the
+ * project is driven through.
+ *
+ * A set, not a choice — and the `doc` says what picking two means,
+ * because that is the one answer here with a counter-intuitive
+ * result: it resolves to the **composed** preset, one hexagon with
+ * two entrypoints, and never to a two-service product.
+ */
+function entrypointQuestion(step: EntrypointStep, language: string): Question {
+  return {
+    id: ENTRYPOINTS_QUESTION_ID,
+    prompt: `User-side adapters (${languageLabel(language)})`,
+    doc: 'How the outside world drives the hexagon. Picking more than one gives the composed preset — one project, one domain, both entrypoints — not two services. Two services is a fullstack product, which lives under "Other" on the previous question.',
+    kind: step.kind,
+    choices: step.choices,
+    default: step.default,
+    memory: 'repeat',
+  };
+}
+
+/** The drill-down's third question, asked only where a choice remains. */
+function frameworkQuestion(choices: readonly QuestionChoice[], fallback: string): Question {
+  return {
+    id: FRAMEWORK_QUESTION_ID,
+    prompt: 'Framework',
+    doc: 'Which framework the adapters are built on. Only asked where the language and adapters chosen leave more than one open.',
+    choices,
+    default: fallback,
+    memory: 'repeat',
+  };
+}
+
+/** The language node a given preset sits under, or null if it has none. */
+function languageOf(paths: readonly WizardPath[], stackId: string): string | null {
+  return paths.find((path) => path.stackId === stackId)?.language ?? null;
+}
+
+/**
+ * The framework the drill-down offers first: the default preset's own
+ * where that is on the menu, the first choice otherwise. Together
+ * with the other two defaults it means pressing enter through the
+ * whole wizard lands on the same preset an omitted `--stack` has
+ * always defaulted to.
+ */
+function defaultFramework(
+  paths: readonly WizardPath[],
+  choices: readonly QuestionChoice[],
+): string {
+  const preferred = paths.find((path) => path.stackId === DEFAULT_STACK_ID)?.framework ?? '';
+  if (choices.some((choice) => choice.value === preferred)) return preferred;
+  return choices[0]?.value ?? '';
+}
+
+/**
+ * A combination the menus should never have offered. Reachable only
+ * from an answer the menus did not produce — a scripted prompt, or a
+ * front end posting its own — so it names what it was given rather
+ * than guessing at a near miss.
+ */
+function noSuchCombination(
+  language: string,
+  entrypoints: readonly string[],
+  framework: string | null,
+): DomainError {
+  const named = framework === null || framework === '' ? '' : ` on ${framework}`;
+  return new DomainError(
+    `no preset scaffolds ${languageLabel(language)} with ${
+      entrypoints.length === 0 ? 'no user-side adapter' : entrypointsLabel(entrypoints)
+    }${named} — pick a preset by id with --stack, or 'keel new --list' to see them all`,
+    'keel.unknown-stack',
+  );
+}
+
+/** The wizard's flat fallback: which stack preset to scaffold from. */
 function stackQuestion(options: readonly StackSummary[]): Question {
   return {
     id: STACK_QUESTION_ID,

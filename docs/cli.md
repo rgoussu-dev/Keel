@@ -22,7 +22,7 @@ keel new --stack=<id> [options]
 
 | Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Prompted first when interactive and omitted — the wizard's opening question. Defaults to `quarkus-cli` otherwise.                                                                                                                                                                                                                                                                                                                                                                        |
+| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Omitted interactively, the wizard **drills down to it** — language → user-side adapters → framework (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                                              |
 | `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise.                                                                                                                                                                                  |
 | `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                                                                                                                                                                                                     |
@@ -36,7 +36,7 @@ Examples:
 
 ```sh
 keel new --list                                     # every stack id + description
-keel new                                            # interactive: the wizard asks the stack first
+keel new                                            # interactive: the wizard drills down to a stack
 keel new --stack=quarkus-rest                       # interactive, stack already decided
 keel new --stack=spring-rest --build-system maven   # pin the build system
 keel new --stack=fullstack --layout polyrepo        # one repo per service
@@ -57,6 +57,48 @@ then the module layout, then the peer context when the modulith
 supports one, then each installed adapter's own questions in the
 order they resolve.
 
+#### Finding a stack: the drill-down
+
+There are 33 presets. Knowing you want "Kotlin, a CLI and an HTTP
+endpoint, on Spring" is easy; knowing that is spelled
+`spring-cli-rest-kotlin` is not. So with no `--stack`, the wizard
+asks for the stack in **three narrowing questions** instead of one
+wide one:
+
+1. **Language** — Java, Kotlin, Go, Rust, TypeScript (Node),
+   TypeScript (browser). Each choice names the presets it leads to.
+   The last entry, _Other — pick a preset by id_, falls through to
+   the flat list; that is where the [fullstack
+   products](stacks/README.md) live, since a two-service product
+   names no single language.
+2. **User-side adapters** — a **multi-select**: CLI, HTTP server,
+   or (in the browser) a SPA. Picking more than one resolves to the
+   **composed** preset — one project, one domain, both entrypoints
+   (`quarkus-cli-rest`, `go-cli-http`, `ts-cli-http`, …) — and never
+   to two services. Skipped where the language reaches only one
+   combination, as the browser target does.
+3. **Framework** — Quarkus, Spring or Micronaut. Asked only where
+   the language and adapters chosen leave more than one open, which
+   today means the JVM: Go, Rust and TypeScript are never asked.
+
+Every menu is derived from the tags of the presets still reachable
+from the answers already given, so a combination no preset covers is
+never on offer — the wizard cannot walk you into a dead end and
+announce it at the bottom. The answer is always a registered stack
+id, which is why `--stack` and the drill-down resolve through exactly
+the same code from there on.
+
+Taking every default lands on `quarkus-cli`, the same preset an
+omitted `--stack` has always meant non-interactively. The run prints
+the preset it resolved to before staging it:
+
+```
+keel new: Java + CLI + HTTP server + quarkus → quarkus-cli-rest
+```
+
+Passing `--stack` skips all three questions; `--yes` skips every
+question there is.
+
 Once everything is answered, the wizard shows the same plan
 `--dry-run` prints — every file that would be created or changed,
 every deferred action that would run — and asks what to do next:
@@ -64,7 +106,8 @@ every deferred action that would run — and asks what to do next:
 - **Proceed** — commit the plan as shown (or, under `--dry-run`,
   report it without committing).
 - **Change: …** — jump back to any question already answered
-  (stack, layout, an adapter's base package, …) and re-answer it.
+  (language, adapters, layout, an adapter's base package, …) and
+  re-answer it.
   Everything asked after that question is re-resolved, since a later
   choice may depend on it — picking a different stack, for instance,
   changes which adapters run at all.
