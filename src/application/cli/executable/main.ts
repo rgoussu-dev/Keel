@@ -10,6 +10,9 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { RegistryMediator } from '../../../domain/core/mediator.js';
 import { NewProjectHandler } from '../../../domain/core/handlers/new-project.js';
+import { CatalogHandler } from '../../../domain/core/handlers/catalog.js';
+import { PreviewHandler } from '../../../domain/core/handlers/preview.js';
+import { ProjectStatusHandler } from '../../../domain/core/handlers/project-status.js';
 import { AddModuleHandler } from '../../../domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.js';
 import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
@@ -24,6 +27,7 @@ import { spawnProcessRunner } from '../../../infrastructure/process/spawn-proces
 import { inquirerPrompt } from '../../../infrastructure/prompt/inquirer-prompt.js';
 import { ejsTemplateSource } from '../../../infrastructure/template/ejs-template-source.js';
 import { fsTreeFactory } from '../../../infrastructure/tree/fs-tree.js';
+import { uiServer } from '../../web/executable/server.js';
 import { buildProgram } from '../contract/program.js';
 
 /** Entry point invoked by `bin/keel.js`. */
@@ -47,6 +51,9 @@ export async function main(argv: string[]): Promise<void> {
     new LinkPeerHandler(deps),
     new ToolchainInstallHandler(deps),
     new ToolchainCheckHandler(deps),
+    new CatalogHandler(),
+    new PreviewHandler(deps),
+    new ProjectStatusHandler(deps),
   ]);
 
   const program = buildProgram({
@@ -55,6 +62,7 @@ export async function main(argv: string[]): Promise<void> {
     version: keelVersion,
     availableStacks: listStacks(),
     availableVerticals: listVerticals(),
+    serveUi: uiServer(mediator),
   });
 
   try {

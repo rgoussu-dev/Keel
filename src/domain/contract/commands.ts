@@ -205,3 +205,99 @@ export function addVerticalCommand(
 ): AddVerticalCommand {
   return { kind: 'keel.add-vertical', intent: 'command', ...input };
 }
+
+/**
+ * **What to install**, named independently of which command carries
+ * it — a greenfield stack, a vertical layered onto a project, or a
+ * bounded context added to a modulith.
+ *
+ * The three install-shaped commands above are the operations; this is
+ * the *subject* of one, lifted out so a caller can hold "what the
+ * user picked" before deciding what to do with it. Two callers need
+ * exactly that. `keel.preview` (see `./queries.ts`) runs any of the
+ * three as a dry run and reports what would happen, and a front end
+ * that previews before it commits sends one target to both endpoints.
+ * Without this type each of them would rebuild the same command from
+ * the same fields, and the two copies would drift the first time a
+ * flag was added.
+ *
+ * The CLI does not use it: commander already gives each subcommand
+ * its own typed option bag, and mapping that to a target only to map
+ * the target back to a command would be a round trip for nothing.
+ */
+export type InstallTarget = NewProjectTarget | AddVerticalTarget | AddModuleTarget;
+
+/** Bootstrap a greenfield project — the subject of {@link NewProjectCommand}. */
+export interface NewProjectTarget {
+  readonly kind: 'new-project';
+  readonly stack: string;
+  readonly layout?: RepoLayout;
+  readonly buildSystem?: string;
+  readonly moduleLayout?: string;
+  readonly withPeerContext?: boolean;
+}
+
+/** Layer a vertical — the subject of {@link AddVerticalCommand}. */
+export interface AddVerticalTarget {
+  readonly kind: 'add-vertical';
+  readonly vertical: string;
+  readonly reapply?: boolean;
+}
+
+/** Add a bounded context — the subject of {@link AddModuleCommand}. */
+export interface AddModuleTarget {
+  readonly kind: 'add-module';
+  readonly module: string;
+  readonly consumes?: string;
+}
+
+/** How an {@link InstallTarget} is to be run. */
+export interface InstallRun {
+  readonly cwd: string;
+  readonly answers: PresetAnswers;
+  readonly interactive: boolean;
+  readonly dryRun: boolean;
+}
+
+/** Every command an {@link InstallTarget} can become. */
+export type InstallCommand = NewProjectCommand | AddVerticalCommand | AddModuleCommand;
+
+/**
+ * Builds the command that installs `target` under `run`. The one
+ * place the mapping lives, so preview and commit cannot disagree
+ * about what a target means.
+ */
+export function installCommandFor(target: InstallTarget, run: InstallRun): InstallCommand {
+  switch (target.kind) {
+    case 'new-project':
+      return newProjectCommand({
+        cwd: run.cwd,
+        stack: target.stack,
+        answers: run.answers,
+        interactive: run.interactive,
+        dryRun: run.dryRun,
+        ...(target.layout === undefined ? {} : { layout: target.layout }),
+        ...(target.buildSystem === undefined ? {} : { buildSystem: target.buildSystem }),
+        ...(target.moduleLayout === undefined ? {} : { moduleLayout: target.moduleLayout }),
+        ...(target.withPeerContext === true ? { withPeerContext: true } : {}),
+      });
+    case 'add-vertical':
+      return addVerticalCommand({
+        cwd: run.cwd,
+        vertical: target.vertical,
+        answers: run.answers,
+        interactive: run.interactive,
+        dryRun: run.dryRun,
+        ...(target.reapply === true ? { reapply: true } : {}),
+      });
+    case 'add-module':
+      return addModuleCommand({
+        cwd: run.cwd,
+        module: target.module,
+        answers: run.answers,
+        interactive: run.interactive,
+        dryRun: run.dryRun,
+        ...(target.consumes === undefined ? {} : { consumes: target.consumes }),
+      });
+  }
+}
