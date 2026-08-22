@@ -311,6 +311,80 @@ jobs:
               tests/e2e/modulith-micronaut-rest-kotlin-maven.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-gradle.test.ts
               tests/e2e/modulith-micronaut-cli-kotlin-maven.test.ts
+          # The composed-entrypoint grid: the stacks whose tag set
+          # carries both `arch.cli` and `arch.server-http`, so one
+          # hexagon ships two deployment units. Eighteen files, six
+          # shards, and both numbers are choices worth stating.
+          #
+          # **Eighteen files.** The `modulith` half is exhausted — 6
+          # combo stacks × 2 build systems = 12 — because that is what
+          # issue #108 is about and no build had ever compiled one.
+          # The `basic` half is sampled at one build per stack (6),
+          # the build system alternating so both appear against each
+          # framework and each language: PR #110 built all twelve of
+          # those by hand before shipping, so what was missing there
+          # was a standing check rather than a first look, and the
+          # twelve modulith cells re-exercise the shared seed builders
+          # in `jvm-shared-root.ts` on every run anyway.
+          #
+          # **Six shards, not eighteen.** This follows the
+          # `jvm-modulith-*` convention (framework × language), not the
+          # `jvm-add-module-*` one (a job per cell). The add-module
+          # grid earned a job per cell because its 24 cells run
+          # 57s–213s each, comfortably inside the 371s matrix floor, so
+          # attribution was free. These cells build *two* assemblies
+          # apiece, so they cost more — and the number is measured on
+          # the shape that ships rather than estimated. Running
+          # `jvm-combo-quarkus-java` exactly as declared here, locally
+          # on 4 vCPUs with cold caches: **227.55s wall, 546.98s of
+          # test time across three files, longest file
+          # `combo-modulith-quarkus-cli-rest-gradle` at 225.43s**,
+          # divisor 2.40. That is inside the 371s matrix floor, so
+          # these shards cost no wall clock, where eighteen shards
+          # would pay eighteen cold JDK+Gradle provisions for a red X
+          # that framework × language already names precisely enough.
+          #
+          # Local figures, not runner figures — this repo's other
+          # measurements are from the runner and the two are not
+          # interchangeable. Replace them once this grid has a green
+          # e2e run to read them off. `mvn` is in every shard because
+          # every shard carries at least one Maven cell.
+          - id: jvm-combo-quarkus-java
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/combo-modulith-quarkus-cli-rest-gradle.test.ts
+              tests/e2e/combo-modulith-quarkus-cli-rest-maven.test.ts
+              tests/e2e/combo-basic-quarkus-cli-rest-gradle.test.ts
+          - id: jvm-combo-quarkus-kotlin
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/combo-modulith-quarkus-cli-rest-kotlin-gradle.test.ts
+              tests/e2e/combo-modulith-quarkus-cli-rest-kotlin-maven.test.ts
+              tests/e2e/combo-basic-quarkus-cli-rest-kotlin-maven.test.ts
+          - id: jvm-combo-spring-java
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/combo-modulith-spring-cli-rest-gradle.test.ts
+              tests/e2e/combo-modulith-spring-cli-rest-maven.test.ts
+              tests/e2e/combo-basic-spring-cli-rest-maven.test.ts
+          - id: jvm-combo-spring-kotlin
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/combo-modulith-spring-cli-rest-kotlin-gradle.test.ts
+              tests/e2e/combo-modulith-spring-cli-rest-kotlin-maven.test.ts
+              tests/e2e/combo-basic-spring-cli-rest-kotlin-gradle.test.ts
+          - id: jvm-combo-micronaut-java
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/combo-modulith-micronaut-cli-rest-gradle.test.ts
+              tests/e2e/combo-modulith-micronaut-cli-rest-maven.test.ts
+              tests/e2e/combo-basic-micronaut-cli-rest-gradle.test.ts
+          - id: jvm-combo-micronaut-kotlin
+            tools: java javac gradle mvn
+            files: >-
+              tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-gradle.test.ts
+              tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-maven.test.ts
+              tests/e2e/combo-basic-micronaut-cli-rest-kotlin-maven.test.ts
           # Six files where there were two, and the shape came from
           # measurements that twice contradicted the obvious answer.
           # Both are kept, because either one alone reads as an
@@ -454,6 +528,28 @@ jobs:
               tests/e2e/add-module-ts.test.ts
               tests/e2e/add-module-wc.test.ts
               tests/e2e/fullstack.test.ts
+          # The TypeScript half of the composed-entrypoint grid, in a
+          # shard of its own rather than as three more files above.
+          # Two reasons, and neither is wall clock inside this job:
+          # the `web` shard carries `browser` in `tools:` because
+          # three of its suites render in Chromium, and these render
+          # nothing — a shard that probes for a browser it never uses
+          # is a provisioning cost and a lie about what the suites
+          # need. And `web` is already fourteen files at ~189s wall
+          # against a ~111s floor; three more real installs would push
+          # its wall up, where one more parallel shard pushes the
+          # phase's up by nothing. Measured as declared here, locally
+          # on 4 vCPUs with cold caches: **41.81s wall, 85.65s of test
+          # time, longest file `combo-modulith-ts-cli-http-npm` at
+          # 40.06s** — an order of magnitude inside the ~371s matrix
+          # floor. There is no build step to pay for; the install is
+          # the cost, and npm's is twice pnpm's here.
+          - id: web-combo
+            tools: npm pnpm
+            files: >-
+              tests/e2e/combo-modulith-ts-cli-http-npm.test.ts
+              tests/e2e/combo-modulith-ts-cli-http-pnpm.test.ts
+              tests/e2e/combo-basic-ts-cli-http-pnpm.test.ts
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
