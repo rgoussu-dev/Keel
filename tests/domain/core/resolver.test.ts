@@ -58,7 +58,79 @@ describe('resolveVertical', () => {
     } catch (e) {
       const err = e as ResolutionError;
       expect(err.kind).toBe('uncovered');
-      expect(err.detail).toEqual({ kind: 'uncovered', dimensions: ['deploy-target'] });
+      // Nothing covers `deploy-target` at all, so there is no near
+      // miss to report — the dimension really is empty.
+      expect(err.detail).toEqual({ kind: 'uncovered', dimensions: ['deploy-target'], near: [] });
+    }
+  });
+
+  it('names the adapter a predicate kept out, and the tag it wanted', () => {
+    // The cause beside the symptom. An uncovered dimension is almost
+    // never a missing adapter — it is one present and filtered — and
+    // without this the user is told which hole exists and nothing
+    // about what would fill it.
+    const v: Vertical = {
+      id: 'walking-skeleton',
+      description: '',
+      dimensions: ['entrypoint'],
+      adapters: [
+        stub({
+          id: 'quarkus-cli-bootstrap',
+          covers: ['entrypoint'],
+          predicate: { requires: ['framework.quarkus'] },
+        }),
+        stub({
+          id: 'legacy-bootstrap',
+          covers: ['entrypoint'],
+          predicate: { excludes: ['lang.java'] },
+        }),
+      ],
+    };
+    try {
+      resolveVertical(v, ['lang.java']);
+      expect.fail('expected throw');
+    } catch (e) {
+      const err = e as ResolutionError;
+      expect(err.message).toContain("'quarkus-cli-bootstrap' needs 'framework.quarkus'");
+      expect(err.message).toContain("'legacy-bootstrap' is ruled out by 'lang.java'");
+      expect(err.detail).toMatchObject({
+        near: [
+          {
+            adapter: 'quarkus-cli-bootstrap',
+            dimension: 'entrypoint',
+            kind: 'requires',
+            pattern: 'framework.quarkus',
+          },
+          {
+            adapter: 'legacy-bootstrap',
+            dimension: 'entrypoint',
+            kind: 'excludes',
+            pattern: 'lang.java',
+          },
+        ],
+      });
+    }
+  });
+
+  it('caps the near misses in the message but keeps them all in the detail', () => {
+    // A dimension covered by twenty adapters — the JVM bootstraps —
+    // would otherwise print twenty near misses to say one thing.
+    const v: Vertical = {
+      id: 'many',
+      description: '',
+      dimensions: ['entrypoint'],
+      adapters: ['a', 'b', 'c', 'd', 'e'].map((id) =>
+        stub({ id, covers: ['entrypoint'], predicate: { requires: [`framework.${id}`] } }),
+      ),
+    };
+    try {
+      resolveVertical(v, ['lang.java']);
+      expect.fail('expected throw');
+    } catch (e) {
+      const err = e as ResolutionError;
+      expect(err.message).toContain('and 2 more');
+      expect(err.detail).toMatchObject({ near: expect.any(Array) });
+      expect((err.detail as { near: unknown[] }).near).toHaveLength(5);
     }
   });
 

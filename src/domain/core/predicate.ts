@@ -61,6 +61,37 @@ export function tagsMatching(pattern: string, tagSet: ReadonlySet<Tag>): readonl
 }
 
 /**
+ * The first term of `predicate` that `tagSet` fails, or null when it
+ * matches.
+ *
+ * {@link matches} answers whether a piece applies; this answers
+ * **why it does not**, which is the half an error message needs. An
+ * adapter silently dropped by the predicate filter is invisible in
+ * "no adapter covers dimension 'entrypoint'" — the dimension is the
+ * symptom, and the missing `framework.quarkus` is the cause.
+ *
+ * The first term rather than all of them: a predicate is a
+ * conjunction, so one unmet term is a complete answer, and the
+ * shortest one is the most readable.
+ */
+export function failingTerm(predicate: Predicate, tagSet: ReadonlySet<Tag>): FailingTerm | null {
+  for (const pattern of predicate.requires ?? []) {
+    if (!matchesPattern(pattern, tagSet)) return { kind: 'requires', pattern };
+  }
+  for (const pattern of predicate.excludes ?? []) {
+    if (matchesPattern(pattern, tagSet)) return { kind: 'excludes', pattern };
+  }
+  return null;
+}
+
+/** Why a predicate did not match. @see failingTerm */
+export interface FailingTerm {
+  /** `requires` — the pattern was absent; `excludes` — it was present. */
+  readonly kind: 'requires' | 'excludes';
+  readonly pattern: string;
+}
+
+/**
  * Throws if a pattern is malformed. Callers should run this at
  * adapter-registration time so typos surface before any project
  * touches them.
