@@ -34,6 +34,33 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
     alphabetically first entry of the catalog, which is the last thing
     a blank form should presume.
 
+- **The `keel ui` facets, driven in a real browser.**
+  `tests/e2e/ui-stack-finder.test.ts` spawns `keel ui --port 0`, reads
+  the URL and token it prints, and drives the page with Playwright.
+  The narrowing was unit-tested and the catalog DTO was tested, but
+  nothing had ever loaded the page: the facets were verified by hand
+  in Chromium once and never again. What only a browser can see is
+  the part between the two — `<keel-new-form>` rebuilds its subtree on
+  every change and `<keel-app>` replaces the element itself, so every
+  claim about keeping a choice is a claim about surviving a DOM
+  replacement.
+  - **Eight cases**: the form opens on `quarkus-cli` rather than the
+    catalog's alphabetically first entry; a language move keeps the
+    entrypoints and framework (including off their defaults, where a
+    dropped carry-over is otherwise invisible); ticking the second
+    adapter gives the composed preset and never a two-service product;
+    clearing the last checked adapter is refused and the control snaps
+    back; `go` drops the framework facet and `typescript@browser`
+    drops both; and the `fullstack` product shows the language
+    placeholder and comes back out of it. A `pageerror` or a
+    `console.error` anywhere in a case fails it.
+  - The refusal case clicks the checkbox for real rather than calling
+    Playwright's `uncheck()`, which would time out for precisely the
+    reason the case exists — the handler puts the box back.
+  - Rides the existing `web` shard, which already declares
+    `browser` in `tools:`, and finishes an order of magnitude inside
+    that shard's floor.
+
 - **`keel new --with`, and the wizard's fourth step: extra verticals
   in the same run.** `NewProjectCommand.extraVerticals` existed only
   for a composite stack's services; the single-service path never
