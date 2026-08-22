@@ -1228,6 +1228,103 @@ describe('keel.new-project extra verticals', () => {
     expect(error.message).toContain('already installs');
   });
 
+  it('rejects a vertical no adapter here can cover, naming the dimension and the fix', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['persistence'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toContain("vertical 'persistence'");
+    expect(error.message).toContain('datasource');
+    // What the menu's pruning says implicitly, said out loud: this
+    // preset has no `arch.server-http`, so nothing covers a datasource.
+    expect(error.message).toContain('arch.server-http');
+  });
+
+  it('refuses it at the front door, before a single adapter question', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      basePackage: 'com.acme.cli',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      'keel.review': 'proceed',
+    });
+    const error = expectErr(
+      await installMediator({ prompt }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+          extraVerticals: ['persistence'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    // The whole point of a front door: the bootstrap's questions
+    // never got asked, so nothing was answered for a run that could
+    // only end in a refusal.
+    expect(prompt.asked).not.toContain('basePackage');
+    expect(prompt.asked).not.toContain('projectName');
+  });
+
+  it('accepts extras that enable one another, in the order named', async () => {
+    const mediator = installMediator({
+      runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
+    });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          answers: { 'vcs/git-init': { remote: '', defaultBranch: 'main' } },
+          interactive: false,
+          dryRun: true,
+          // `iac` is keyed on the `dist.container-image` tag
+          // `distribution` promotes at install time, which no flat
+          // coverage probe can see — refusing this composition is
+          // exactly the wrong answer, since it is the one --with
+          // exists to enable.
+          extraVerticals: ['containerization', 'distribution', 'iac'],
+        }),
+      ),
+    );
+    const changed = report.changes.map((c) => c.path);
+    expect(changed).toContain('Dockerfile');
+    expect(changed.some((p) => p.startsWith('iac/'))).toBe(true);
+  });
+
+  it('names the extra to list it after when --with orders the pair backwards', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['iac', 'containerization', 'distribution'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.extra-verticals-order');
+    expect(error.message).toContain("vertical 'iac'");
+    expect(error.message).toContain('dist.container-image');
+    // Not "impossible" — misordered, with the order that works named.
+    expect(error.message).toContain("list 'iac' after 'distribution'");
+  });
+
   it('rejects the same vertical named twice', async () => {
     const error = expectErr(
       await installMediator().dispatch(
