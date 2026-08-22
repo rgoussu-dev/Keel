@@ -360,12 +360,31 @@ would ship as separate packages implementing the same port.
   convention (framework × language, three files a shard). A job per
   cell earned its keep there because those cells run 57s–213s, well
   inside the 371s matrix floor, so attribution was free; a combo cell
-  builds _two_ assemblies and measures ~120–190s cold on a 4-core box,
-  and three of them in one shard still land under that floor — where
-  eighteen shards would buy eighteen cold JDK+Gradle provisions for a
-  red X that framework × language already names. The three TypeScript
-  cells get `web-combo` rather than riding `web`: they render nothing,
-  so a shard probing for Chromium would misdescribe them.
+  builds _two_ assemblies, so it costs more — and the number comes from
+  running a shard exactly as declared. On the runner (run 32574792585,
+  the grid's first green): `jvm-combo-quarkus-java` is **265.02s wall,
+  655.35s of test time across three files, longest file
+  `combo-basic-quarkus-cli-rest-gradle` at 263.05s**, divisor 2.47 —
+  307s as a job with provisioning. The six shards span 174–307s as
+  jobs, against a matrix floor of `jvm-modulith-quarkus-java` at 436s
+  that run. So they cost no wall clock — where eighteen shards would
+  buy eighteen cold JDK+Gradle provisions for a red X that
+  framework × language already names. `web-combo` is **35.82s wall,
+  75.90s of test time, longest `combo-modulith-ts-cli-http-npm` at
+  34.56s** (53s as a job); it gets a shard rather than riding `web`
+  because its cells render nothing, so a shard probing for Chromium
+  would misdescribe them.
+
+  Two readings of those numbers are worth keeping. The shard's two
+  Gradle cells land within 1.7s of each other (263.05s and 261.39s)
+  with the Maven cell at half either — so no single file is the floor
+  here, and the standing "a long case gets its own file" instinct
+  would buy nothing. And the local measurement these replaced said
+  227.55s with the _other_ Gradle cell longest: a 4-vCPU box runs this
+  shard ~15% faster than the runner and reorders a tie the runner
+  reorders back, which is the re-measure-on-the-shape-you-ship rule
+  with a number attached. Local figures and runner figures are not
+  interchangeable anywhere in this file.
 
   **Every cell ends in a runtime entrypoint check.** A green compile
   is not the claim — both entrypoints reachable off one hexagon is.
