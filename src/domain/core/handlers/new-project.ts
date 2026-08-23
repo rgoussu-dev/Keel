@@ -1110,12 +1110,15 @@ function assemblyIsLegal(
  *     cannot carry it, named with the dimension and the tags that
  *     would have covered it.
  *
- * The resolver's `ResolutionError` stays a throw: it escapes
- * `installVertical` from every caller (`keel add` on a project whose
- * shape cannot take the vertical does the same), and turning it into
- * an `Err` is a decision about every escape from the install engine,
- * not about `--with`. This path simply no longer reaches it — and
- * refuses with more than it could have said.
+ * The resolver's `ResolutionError` is still a throw, and still
+ * escapes `installVertical` from every caller (`keel add` on a
+ * project whose shape cannot take the vertical does the same) — but
+ * it is a `DomainError` now, so the mediator puts it back on the
+ * `Err` rail for whichever front end asked. That was the decision
+ * this comment deferred, and it is made where it belongs: at the seam
+ * every escape from the install engine crosses, not here. This path
+ * simply no longer reaches it — and refuses with more than it could
+ * have said, which is why the two sentences differ at all.
  */
 function preflightCoverage(
   stack: Stack,

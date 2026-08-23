@@ -494,7 +494,12 @@ jobs:
           # servers for either suite's cases. It is the shorter of the
           # two, so it does not move this shard's floor; both share
           # their harness (`tests/support/ui-e2e.ts`) rather than two
-          # copies of the spawn-and-settle logic drifting apart.
+          # copies of the spawn-and-settle logic drifting apart. A
+          # third joined them, `ui-refusal`: it seeds its project
+          # in-process with every deferred action faked, so it installs
+          # nothing and probes for nothing this shard does not already
+          # have. Measured level with `ui-plugin-stack`, and both well
+          # under `ui-stack-finder`, which floors the three.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -514,6 +519,7 @@ jobs:
               tests/e2e/fullstack.test.ts
               tests/e2e/ui-stack-finder.test.ts
               tests/e2e/ui-plugin-stack.test.ts
+              tests/e2e/ui-refusal.test.ts
           # The TypeScript half of the composed-entrypoint grid, in a
           # shard of its own rather than as three more files above.
           # Two reasons, and neither is wall clock inside this job:

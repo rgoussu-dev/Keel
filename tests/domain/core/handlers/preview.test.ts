@@ -264,4 +264,38 @@ describe('keel.preview', () => {
     expect(preview.changes.some((change) => change.path.startsWith('.github/'))).toBe(true);
     expect(await fs.readdir(cwd)).toEqual(before);
   });
+
+  it('reports a vertical this project cannot carry as an Err, not a crash', async () => {
+    // The exact call the page makes on every keystroke, against the
+    // one refusal that used to escape the install engine by throwing:
+    // `resolveVertical` hard-fails when no adapter covers a dimension,
+    // and a CLI project has nothing to build a container image from.
+    // A throw is all an HTTP layer can read as a crash, so `keel ui`
+    // answered 500 with a bare string for a refusal that names both
+    // the dimension and the tag that would close it.
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'ts-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          buildSystem: 'npm',
+        }),
+      ),
+    );
+    const error = expectErr(
+      await mediator.dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'add-vertical', vertical: 'containerization' },
+          answers: {},
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toContain('arch.server-http');
+  });
 });

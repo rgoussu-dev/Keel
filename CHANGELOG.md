@@ -6,6 +6,35 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A refusal raised at the bottom of the install now reaches a front
+  end as a refusal.** `resolveVertical` hard-fails when no adapter
+  covers a dimension a vertical declares — `keel add containerization`
+  on a CLI-shaped project, which has nothing to serve an image from —
+  and it did so by throwing a bare `Error` out of `installVertical`,
+  past every menu. The CLI coped, because any throw is a message to
+  its top-level catch; `keel ui` could not, and answered **500 with a
+  bare string**, so the page showed `POST /api/preview failed with
+500` for a refusal that names both the missing dimension and the tag
+  that would close it.
+  - `ResolutionError` is a `DomainError` now, carrying
+    `keel.uncoverable-vertical` (the same code `keel new`'s `--with`
+    preflight already refuses with, it being the same condition) or
+    `keel.adapter-cycle`.
+  - `RegistryMediator.dispatch` normalises a thrown `DomainError` onto
+    the `Err` rail. `Result` is what the Mediator promises every
+    primary adapter, so the seam that promises it is the seam that
+    keeps it — rather than the same try/catch in four handlers and a
+    fifth copy next time. Anything that is not a `DomainError` still
+    throws: a bug must not be dressed up as a refusal.
+  - `keel ui` shows it: the banner carries the code and the message,
+    the plan says it has no tree _because the run was refused_ rather
+    than sitting blank, and the review step repeats the reason next to
+    a Generate button it holds shut. Picking a vertical the project
+    can carry clears all three.
+  - `keel new` and `keel add` print exactly what they printed before.
+
 ### Changed
 
 - **The stack finder is a four-step drill-down now, and it starts with

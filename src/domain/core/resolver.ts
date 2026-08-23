@@ -12,8 +12,10 @@
  *      `vertical.dimensions` must be `covers`'d by at least one
  *      surviving adapter; otherwise hard-fail with a clear message.
  *
- * Failures are thrown as `ResolutionError` so callers can show a
- * structured error to the user instead of a stack trace.
+ * Failures are thrown as `ResolutionError`, which **is** a
+ * `DomainError`: it carries a stable code, so a refusal that escapes
+ * the install engine reaches a front end as the same shape every
+ * other refusal does rather than as an anonymous crash.
  *
  * Step 3 is also askable ahead of time, and answered rather than
  * thrown: `coversFor` for a yes/no (what a menu prunes with) and
@@ -22,21 +24,45 @@
  * from).
  */
 
+import { DomainError } from '../kernel/result.js';
 import { matches, matchesPattern } from './predicate.js';
 import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 
 /**
+ * The code a {@link ResolutionError} carries when a dimension is left
+ * uncovered — the same one `keel new`'s `--with` preflight refuses
+ * with, because it is the same condition. Only the sentence differs,
+ * and only where the preflight genuinely knows more (which extra to
+ * list first).
+ */
+export const UNCOVERED_CODE = 'keel.uncoverable-vertical';
+
+/** The code a {@link ResolutionError} carries for an `after` cycle. */
+export const CYCLE_CODE = 'keel.adapter-cycle';
+
+/**
  * Thrown when adapter resolution fails. The message is intended for
  * direct CLI display; structured fields exist for richer UIs.
+ *
+ * **A `DomainError`, not a bare `Error`**, and that is the whole
+ * difference between a refusal a user can act on and a 500. The
+ * kernel's rule is that expected business failures travel as `Err`
+ * and genuine bugs keep throwing; "this project's shape cannot carry
+ * that vertical" is squarely the former, and it was reaching
+ * `keel ui` as an anonymous crash only because it took the throwing
+ * exit out of the install engine. Carrying a code means the seam
+ * every action crosses can put it back on the `Err` rail — see
+ * `./mediator.ts` — without any caller having to know that
+ * `resolveVertical` throws.
  */
-export class ResolutionError extends Error {
+export class ResolutionError extends DomainError {
   constructor(
     message: string,
     readonly verticalId: string,
     readonly kind: 'uncovered' | 'cycle',
     readonly detail: ResolutionErrorDetail,
   ) {
-    super(message);
+    super(message, kind === 'uncovered' ? UNCOVERED_CODE : CYCLE_CODE);
     this.name = 'ResolutionError';
   }
 }
