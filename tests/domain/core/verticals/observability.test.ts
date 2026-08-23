@@ -193,6 +193,14 @@ describe('observability on the Quarkus REST skeleton (Java, Gradle)', () => {
     ]) {
       expect(tree.exists(`dev/observability/${f}`), f).toBe(true);
     }
+    // Every config mount carries `z`. Without it an SELinux host
+    // (Fedora, RHEL) denies the container the read and the service
+    // exits on `permission denied` — the label is inert everywhere
+    // else, so it costs nothing to always emit it.
+    expect(compose).toContain('/etc/otelcol/config.yaml:ro,z');
+    expect(compose).toContain('/etc/tempo.yaml:ro,z');
+    expect(compose).toContain('/etc/prometheus/prometheus.yml:ro,z');
+    expect(compose).toContain('datasources/datasources.yaml:ro,z');
     expect(read(tree, 'README.md')).toContain('### Dev environment');
     expect(read(tree, 'README.md')).toContain('### Monitoring stack');
   });
@@ -211,6 +219,38 @@ describe('the monitoring stack shape question', () => {
     expect(compose).toContain('"4318:4318"');
     expect(compose).not.toContain('services: {}');
     expect(tree.exists('dev/observability/otel-collector.yaml')).toBe(false);
+  });
+
+  it('writes the mounted config files world-readable, whatever the umask', async () => {
+    // Each of these files is bind-mounted into a container running
+    // as an unprivileged user (tempo 10001, prometheus nobody,
+    // otelcol 10001). A `keel new` run under a umask of 077 would
+    // otherwise emit them 0600 and every one of those containers
+    // would exit on a permission denial — so the mode is the
+    // adapter's to state, not the invoking shell's.
+    const { tree, cwd } = await installBoth([
+      'lang.go',
+      'pkg.go-modules',
+      'arch.hexagonal',
+      'arch.server-http',
+    ]);
+    cwds.push(cwd);
+    const previous = process.umask(0o077);
+    try {
+      await tree.commit();
+    } finally {
+      process.umask(previous);
+    }
+
+    for (const f of [
+      'otel-collector.yaml',
+      'prometheus.yml',
+      'tempo.yaml',
+      'grafana-datasources.yaml',
+    ]) {
+      const mode = (await fs.stat(path.join(cwd, 'dev/observability', f))).mode & 0o777;
+      expect(mode & 0o044, f).toBe(0o044);
+    }
   });
 
   it('refuses to mix monitoring shapes when the sticky answer changes', async () => {

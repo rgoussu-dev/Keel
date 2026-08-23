@@ -22,6 +22,12 @@ Design points:
 - **No install-order coupling** — contributors carry the shared base
   as a patch seed, so each vertical stands alone and whichever runs
   first creates the file.
+- **Every config file a service bind-mounts is mounted `:ro,z`.** On
+  an SELinux host (Fedora, RHEL) an unlabelled bind mount reads
+  inside the container as `permission denied`, which is how a
+  correctly-written config file makes a container exit on startup;
+  `z` relabels the mount and is inert on every other host. Follow the
+  convention when you add your own service.
 
 ## Dimensions & adapters
 
