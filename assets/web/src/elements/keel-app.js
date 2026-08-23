@@ -29,9 +29,21 @@
  * manifest there and only `keel new` applies; a manifest and the page
  * becomes the brownfield one, offering what that project can actually
  * take.
+ *
+ * **The shell, and why the children are kept rather than rebuilt.**
+ * The layout is an application shell — masthead, location bar, then a
+ * form column and a plan column that scroll independently — because
+ * the plan is the whole reason this front end exists over a flag, and
+ * a plan that scrolls away while you move the dials above it is not
+ * doing that job. The children are created once and updated through
+ * their properties for the same class of reason: replacing the form
+ * subtree on every preview took the caret out of whatever field was
+ * being typed in and reset the tree's scroll position, both of which
+ * read as the page fighting the user.
  */
 
 import * as api from '../api.js';
+import { el, icon } from '../dom.js';
 import { defaultStack } from '../finder.js';
 
 /** How long to wait after a change before re-previewing. */
@@ -51,6 +63,8 @@ export class KeelApp extends HTMLElement {
   #busy = false;
   #stale = false;
   #timer = null;
+  /** The document-level shortcut listener, kept so it can be removed. */
+  #onKeydown = null;
   /** Monotonic request id; a reply older than this one is discarded. */
   #generation = 0;
 
@@ -60,11 +74,22 @@ export class KeelApp extends HTMLElement {
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
     this.addEventListener('question-answered', (event) => this.#answer(event.detail));
     this.addEventListener('install-requested', () => void this.#install());
+    this.#onKeydown = (event) => {
+      // The form has no submit button of its own — every control
+      // commits on change — so the shortcut is the keyboard path to
+      // the one irreversible action on the page.
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        if (this.#ready() && !this.#busy && this.#preview !== null) void this.#install();
+      }
+    };
+    document.addEventListener('keydown', this.#onKeydown);
     void this.#boot();
   }
 
   disconnectedCallback() {
     if (this.#timer !== null) clearTimeout(this.#timer);
+    if (this.#onKeydown) document.removeEventListener('keydown', this.#onKeydown);
   }
 
   /* ---- data ---------------------------------------------------- */
@@ -262,40 +287,66 @@ export class KeelApp extends HTMLElement {
 
   /* ---- rendering ----------------------------------------------- */
 
+  /**
+   * The shell, built once.
+   *
+   * Every region below is addressed by `data-role` and updated in
+   * place. Nothing here is re-created on a render, which is what
+   * keeps a caret in the field being typed in and the plan's scroll
+   * position where the reader left it.
+   */
   #scaffold() {
-    this.innerHTML = `
-      <stack-pk space="0">
-        <header class="masthead">
-          <center-pk maxwidth="72rem" gutters="var(--s0)">
-            <cluster-pk space="var(--s0)" align="baseline">
-              <h1 class="wordmark">keel</h1>
-              <p class="muted" data-role="tagline">local scaffolder</p>
-            </cluster-pk>
-          </center-pk>
-        </header>
-        <center-pk maxwidth="72rem" gutters="var(--s0)">
-          <stack-pk space="var(--s1)">
-            <section class="panel">
-              <stack-pk space="var(--s-1)">
-                <h2>Project directory</h2>
-                <keel-target-picker></keel-target-picker>
-              </stack-pk>
-            </section>
-            <div data-role="error" hidden></div>
-            <sidebar-pk side="right" sidewidth="26rem" contentwidth="55%" space="var(--s1)">
-              <section data-role="form"></section>
-              <keel-plan></keel-plan>
-            </sidebar-pk>
-          </stack-pk>
-        </center-pk>
-      </stack-pk>
-    `;
+    this.replaceChildren(
+      el(
+        'header',
+        { class: 'masthead' },
+        el(
+          'div',
+          { class: 'wordmark' },
+          el('span', { class: 'mark', text: 'keel' }),
+          el('span', { class: 'tagline', text: 'local scaffolder' }),
+        ),
+        el('div', { class: 'masthead-meta', attrs: { 'data-role': 'meta' } }),
+      ),
+      el(
+        'div',
+        { class: 'locationbar' },
+        el('keel-target-picker', { attrs: { 'data-role': 'picker' } }),
+      ),
+      el(
+        'div',
+        { class: 'workspace' },
+        el(
+          'div',
+          { class: 'column' },
+          el(
+            'stack-pk',
+            { attrs: { space: 'var(--s1)' } },
+            el('div', { attrs: { 'data-role': 'error' }, hidden: true }),
+            el(
+              'section',
+              { attrs: { 'data-role': 'form' } },
+              el(
+                'div',
+                { class: 'section-head' },
+                el('h2', { attrs: { 'data-role': 'form-heading' } }),
+                el('span', { class: 'muted', attrs: { 'data-role': 'form-note' } }),
+              ),
+              el('div', { attrs: { 'data-role': 'form-host' } }),
+            ),
+            el('keel-question-list'),
+          ),
+        ),
+        el('div', { class: 'column aside' }, el('keel-plan')),
+      ),
+    );
   }
 
   #render() {
     const picker = this.querySelector('keel-target-picker');
     if (picker) picker.listing = this.#listing;
 
+    this.#renderMeta();
     this.#renderError();
     this.#renderForm();
 
@@ -307,7 +358,54 @@ export class KeelApp extends HTMLElement {
       plan.stale = this.#stale;
       plan.ready = this.#ready();
       plan.hint = this.#hint();
+      plan.body = this.#body();
     }
+  }
+
+  /**
+   * The masthead's right-hand side: what mode the page is in, and
+   * what the current directory already holds.
+   *
+   * Both are answers the page had already computed and was showing
+   * nowhere — the mode only implicitly, through which form appeared
+   * halfway down the column.
+   */
+  #renderMeta() {
+    const host = this.querySelector('[data-role="meta"]');
+    if (!host) return;
+    const chips = [];
+    if (this.#status !== null) {
+      chips.push(
+        el(
+          'span',
+          { class: 'chip accent' },
+          el('span', { class: 'dot' }),
+          el('span', {
+            text: this.#status.initialised ? 'keel project' : 'new project',
+          }),
+        ),
+      );
+    }
+    if (this.#status?.initialised) {
+      const installed = this.#status.installed.length;
+      chips.push(
+        el('span', {
+          class: 'chip',
+          text: `${installed} vertical${installed === 1 ? '' : 's'} installed`,
+        }),
+      );
+      if (this.#status.modules.length > 0) {
+        chips.push(
+          el('span', {
+            class: 'chip',
+            text: `${this.#status.modules.length} context${
+              this.#status.modules.length === 1 ? '' : 's'
+            }`,
+          }),
+        );
+      }
+    }
+    host.replaceChildren(...chips);
   }
 
   #ready() {
@@ -336,45 +434,59 @@ export class KeelApp extends HTMLElement {
     box.hidden = this.#error === null;
     box.replaceChildren();
     if (this.#error === null) return;
-    box.className = 'error';
-    const code = document.createElement('span');
-    code.className = 'code';
-    code.textContent = this.#error.code;
-    const message = document.createElement('span');
-    message.textContent = this.#error.message;
-    box.append(code, message);
+    box.className = 'banner error';
+    box.append(
+      el('span', { class: 'banner-icon' }, icon('warn')),
+      el(
+        'span',
+        {},
+        el('span', { class: 'banner-title', text: this.#error.message }),
+        el('span', { class: 'code', text: this.#error.code }),
+      ),
+    );
   }
 
+  /**
+   * The form column, updated rather than rebuilt.
+   *
+   * The greenfield and brownfield forms are different elements, so
+   * one of them is created when the mode changes and kept for as long
+   * as the mode holds.
+   */
   #renderForm() {
-    const host = this.querySelector('[data-role="form"]');
+    const host = this.querySelector('[data-role="form-host"]');
     if (!host || this.#target === null) return;
+    const brownfield = this.#status?.initialised === true;
 
-    const stack = document.createElement('stack-pk');
-    stack.setAttribute('space', 'var(--s1)');
+    const heading = this.querySelector('[data-role="form-heading"]');
+    if (heading) heading.textContent = brownfield ? 'Add to this project' : 'New project';
+    const note = this.querySelector('[data-role="form-note"]');
+    if (note) {
+      note.textContent = brownfield
+        ? 'Layered onto what the manifest already records'
+        : 'Everything below is a dial on one command';
+    }
 
-    const heading = document.createElement('h2');
-    heading.textContent = this.#status?.initialised ? 'Add to this project' : 'New project';
-    stack.append(heading);
-
-    if (this.#status?.initialised) {
-      const form = document.createElement('keel-add-form');
+    const wanted = brownfield ? 'keel-add-form' : 'keel-new-form';
+    let form = host.firstElementChild;
+    if (!form || form.tagName.toLowerCase() !== wanted) {
+      form = document.createElement(wanted);
+      host.replaceChildren(form);
+    }
+    if (brownfield) {
       form.status = this.#status;
       form.target = this.#target;
-      stack.append(form);
     } else {
-      const form = document.createElement('keel-new-form');
       form.catalog = this.#catalog;
       form.dials = this.#dials;
       form.target = this.#target;
-      stack.append(form);
     }
 
-    const questions = document.createElement('keel-question-list');
-    questions.questions = this.#preview?.questions ?? [];
-    const questionsHeading = document.createElement('h2');
-    questionsHeading.textContent = 'Questions';
-    stack.append(questionsHeading, questions);
-
-    host.replaceChildren(stack);
+    const questions = this.querySelector('keel-question-list');
+    // The element heads its own sections: a preview answers with one
+    // flat list, and which of them is a field of the command and
+    // which is an adapter's detail is a reading of the bindings that
+    // only it does.
+    if (questions) questions.questions = this.#preview?.questions ?? [];
   }
 }

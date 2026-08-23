@@ -34,10 +34,18 @@
  * it is also the way to reach a fullstack product, which names no
  * language and so appears in no facet.
  *
+ * **Two cards, and the split is the drill-down's own.** Finding a
+ * preset and configuring the one you found are different questions,
+ * asked in that order by the terminal wizard and run together into
+ * one undifferentiated column by the first version of this form. The
+ * headings are what tell a first-time reader that the second half
+ * only makes sense once the first has settled.
+ *
  * Catalog, dials and target in as properties, `target-changed` out
  * with the fields that moved.
  */
 
+import { el, field, help, select, tile } from '../dom.js';
 import {
   decodeSelection,
   encodeSelection,
@@ -96,37 +104,40 @@ export class KeelNewForm extends HTMLElement {
   #render() {
     if (!this.isConnected || !this.#catalog || !this.#target) return;
     const stack = this.#stack();
-    const form = document.createElement('stack-pk');
-    form.setAttribute('space', 'var(--s0)');
-    form.append(...this.#finderFields());
-    form.append(this.#stackField());
-    if (!stack) {
-      this.replaceChildren(form);
-      return;
-    }
-    if (stack.description !== '') {
-      const doc = document.createElement('p');
-      doc.className = 'muted';
-      doc.textContent = stack.description;
-      form.append(doc);
-    }
-    if (stack.services.length > 0) {
-      form.append(this.#layoutField());
-      for (const service of stack.services) {
-        if (service.buildSystems.length > 1) {
-          form.append(this.#serviceBuildField(service, this.#serviceOptions(service)));
-        }
-      }
-    } else {
-      // The catalog says whether the control exists; the dials say
-      // what may be on it.
-      if (stack.buildSystems.length > 1) form.append(this.#buildField(this.#buildSystems(stack)));
-      if (stack.moduleLayouts.length > 1) {
-        form.append(this.#moduleLayoutField(this.#moduleLayouts(stack)));
-      }
-      if (this.#dials?.peerContext === true) form.append(this.#peerContextField());
-    }
-    this.replaceChildren(form);
+    this.replaceChildren(
+      el(
+        'stack-pk',
+        { attrs: { space: 'var(--s0)' } },
+        this.#finderCard(stack),
+        stack ? this.#dialsCard(stack) : null,
+      ),
+    );
+  }
+
+  /* ---- card one: which preset ---------------------------------- */
+
+  #finderCard(stack) {
+    return el(
+      'section',
+      { class: 'card' },
+      el(
+        'div',
+        { class: 'card-head' },
+        el('h3', { text: 'Find your stack' }),
+        el('span', { class: 'chip accent', text: this.#target.stack || 'nothing chosen' }),
+      ),
+      el(
+        'div',
+        { class: 'card-body' },
+        el(
+          'stack-pk',
+          { attrs: { space: 'var(--s0)' } },
+          ...this.#finderFields(),
+          this.#stackField(),
+          stack && stack.description !== '' ? help(stack.description) : null,
+        ),
+      ),
+    );
   }
 
   /**
@@ -152,6 +163,7 @@ export class KeelNewForm extends HTMLElement {
     const choices = finder.languages.map((language) => ({
       value: language.id,
       label: language.label,
+      doc: language.doc,
     }));
     // A product sits in no language, so the select needs something to
     // display for it — and picking a real language from there is a
@@ -161,13 +173,16 @@ export class KeelNewForm extends HTMLElement {
       id: 'language',
       label: 'Language',
       doc: here?.language.doc ?? 'Pick a language to narrow to a single-project preset.',
-      value: here?.language.id ?? '',
-      choices,
-      onChange: (value) => {
-        const stack = value === '' ? null : pickLanguage(finder, value, here);
-        if (stack) this.#change({ stack });
-        else this.#render();
-      },
+      control: select({
+        id: 'language',
+        value: here?.language.id ?? '',
+        choices,
+        onChange: (value) => {
+          const stack = value === '' ? null : pickLanguage(finder, value, here);
+          if (stack) this.#change({ stack });
+          else this.#render();
+        },
+      }),
     });
   }
 
@@ -180,19 +195,54 @@ export class KeelNewForm extends HTMLElement {
         id: 'entrypoints',
         label: 'User-side adapters',
         doc: ENTRYPOINTS_DOC,
-        value: chosen,
-        choices: step.choices.map((choice) => ({ value: choice.id, label: choice.label })),
-        onChange: (value) => this.#retargetEntrypoints(here, value),
+        control: select({
+          id: 'entrypoints',
+          value: chosen,
+          choices: step.choices.map((choice) => ({
+            value: choice.id,
+            label: choice.label,
+            doc: choice.doc,
+          })),
+          onChange: (value) => this.#retargetEntrypoints(here, value),
+        }),
       });
     }
-    return checkboxes({
-      id: 'entrypoints',
-      label: 'User-side adapters',
-      doc: ENTRYPOINTS_DOC,
-      chosen: decodeSelection(chosen),
-      choices: step.choices,
-      onChange: (values) => this.#retargetEntrypoints(here, encodeSelection(values)),
-    });
+
+    // Tiles rather than a `<select multiple>`: two or three options
+    // that each want a sentence of explanation are a group of
+    // choices, and a multi-select hides both the explanation and the
+    // fact that more than one is allowed.
+    const picked = new Set(decodeSelection(chosen));
+    const tiles = el(
+      'div',
+      { class: 'tiles' },
+      ...step.choices.map((choice) =>
+        tile({
+          value: choice.id,
+          title: choice.label,
+          doc: choice.doc ?? '',
+          checked: picked.has(choice.id),
+          onToggle: (checked) => {
+            const next = step.choices
+              .map((candidate) => candidate.id)
+              .filter((value) => (value === choice.id ? checked : picked.has(value)));
+            this.#retargetEntrypoints(here, encodeSelection(next));
+          },
+        }),
+      ),
+    );
+
+    return el(
+      'div',
+      { class: 'field' },
+      el(
+        'div',
+        { class: 'field-label' },
+        el('p', { id: 'entrypoints', class: 'tile-title', text: 'User-side adapters' }),
+      ),
+      tiles,
+      help(ENTRYPOINTS_DOC, 'margin-block-start: var(--s-3)'),
+    );
   }
 
   /**
@@ -211,27 +261,89 @@ export class KeelNewForm extends HTMLElement {
       id: 'framework',
       label: 'Framework',
       doc: 'Which framework the adapters are built on.',
-      value: here.framework.id,
-      choices: here.combination.frameworks.map((framework) => ({
-        value: framework.id,
-        label: framework.label,
-      })),
-      onChange: (value) => {
-        const chosen = here.combination.frameworks.find((f) => f.id === value);
-        if (chosen) this.#change({ stack: chosen.stack });
-      },
+      control: select({
+        id: 'framework',
+        value: here.framework.id,
+        choices: here.combination.frameworks.map((framework) => ({
+          value: framework.id,
+          label: framework.label,
+        })),
+        onChange: (value) => {
+          const chosen = here.combination.frameworks.find((f) => f.id === value);
+          if (chosen) this.#change({ stack: chosen.stack });
+        },
+      }),
     });
   }
 
+  /**
+   * The flat list of every preset, grouped so a two-service product
+   * is visibly a different kind of thing from a single project —
+   * which is the one distinction the facets above cannot draw,
+   * because a product names no language to be filed under.
+   */
   #stackField() {
-    return field({
+    const control = select({
       id: 'stack',
-      label: 'Stack',
-      doc: '',
       value: this.#target.stack,
-      choices: this.#catalog.stacks.map((stack) => ({ value: stack.id, label: stack.id })),
+      choices: [],
       onChange: (value) => this.#change({ stack: value }),
     });
+    const single = this.#catalog.stacks.filter((stack) => stack.services.length === 0);
+    const products = this.#catalog.stacks.filter((stack) => stack.services.length > 0);
+    for (const [label, group] of [
+      ['Single project', single],
+      ['Fullstack products (two services)', products],
+    ]) {
+      if (group.length === 0) continue;
+      const optgroup = el('optgroup', { attrs: { label } });
+      for (const stack of group) {
+        optgroup.append(
+          el('option', { value: stack.id, text: stack.id, title: stack.description }),
+        );
+      }
+      control.append(optgroup);
+    }
+    control.value = this.#target.stack;
+    return field({ id: 'stack', label: 'Preset', control });
+  }
+
+  /* ---- card two: how it is built ------------------------------- */
+
+  #dialsCard(stack) {
+    const fields = [];
+    if (stack.services.length > 0) {
+      fields.push(this.#layoutField());
+      for (const service of stack.services) {
+        if (service.buildSystems.length > 1) {
+          fields.push(this.#serviceBuildField(service, this.#serviceOptions(service)));
+        }
+      }
+    } else {
+      // The catalog says whether the control exists; the dials say
+      // what may be on it.
+      if (stack.buildSystems.length > 1) fields.push(this.#buildField(this.#buildSystems(stack)));
+      if (stack.moduleLayouts.length > 1) {
+        fields.push(this.#moduleLayoutField(this.#moduleLayouts(stack)));
+      }
+      if (this.#dials?.peerContext === true) fields.push(this.#peerContextField());
+    }
+    if (fields.length === 0) return null;
+    return el(
+      'section',
+      { class: 'card' },
+      el(
+        'div',
+        { class: 'card-head' },
+        el('h3', { text: 'Shape' }),
+        el('span', { class: 'muted', text: 'What this preset lets you change' }),
+      ),
+      el(
+        'div',
+        { class: 'card-body' },
+        el('stack-pk', { attrs: { space: 'var(--s0)' } }, ...fields),
+      ),
+    );
   }
 
   /**
@@ -260,13 +372,17 @@ export class KeelNewForm extends HTMLElement {
   }
 
   #buildField(options) {
+    const value = this.#target.buildSystem ?? options[0].id;
     return field({
       id: 'buildSystem',
       label: 'Build system',
-      doc: docOf(options, this.#target.buildSystem),
-      value: this.#target.buildSystem ?? options[0].id,
-      choices: options.map(asChoice),
-      onChange: (value) => this.#change({ buildSystem: value }),
+      doc: docOf(options, value),
+      control: select({
+        id: 'buildSystem',
+        value,
+        choices: options.map(asChoice),
+        onChange: (chosen) => this.#change({ buildSystem: chosen }),
+      }),
     });
   }
 
@@ -274,25 +390,33 @@ export class KeelNewForm extends HTMLElement {
     const chosen = serviceBuild(this.#target.buildSystem, service.path) ?? options[0].id;
     return field({
       id: `buildSystem-${service.path}`,
-      label: `Build system — ${service.path} (${service.stack})`,
+      label: `Build system — ${service.path}`,
+      tag: service.stack,
       doc: docOf(options, chosen),
-      value: chosen,
-      choices: options.map(asChoice),
-      onChange: (value) =>
-        this.#change({
-          buildSystem: withServiceBuild(this.#target.buildSystem, service.path, value),
-        }),
+      control: select({
+        id: `buildSystem-${service.path}`,
+        value: chosen,
+        choices: options.map(asChoice),
+        onChange: (value) =>
+          this.#change({
+            buildSystem: withServiceBuild(this.#target.buildSystem, service.path, value),
+          }),
+      }),
     });
   }
 
   #moduleLayoutField(options) {
+    const value = this.#target.moduleLayout ?? options[0].id;
     return field({
       id: 'moduleLayout',
       label: 'Module layout',
-      doc: docOf(options, this.#target.moduleLayout),
-      value: this.#target.moduleLayout ?? options[0].id,
-      choices: options.map(asChoice),
-      onChange: (value) => this.#change({ moduleLayout: value }),
+      doc: docOf(options, value),
+      control: select({
+        id: 'moduleLayout',
+        value,
+        choices: options.map(asChoice),
+        onChange: (chosen) => this.#change({ moduleLayout: chosen }),
+      }),
     });
   }
 
@@ -301,108 +425,39 @@ export class KeelNewForm extends HTMLElement {
       id: 'layout',
       label: 'Repository layout',
       doc: 'How the services of this product live in version control.',
-      value: this.#target.layout ?? 'monorepo',
-      choices: [
-        { value: 'monorepo', label: 'monorepo — one repository, services as subdirectories' },
-        { value: 'polyrepo', label: 'polyrepo — one repository per service' },
-      ],
-      onChange: (value) => this.#change({ layout: value }),
+      control: select({
+        id: 'layout',
+        value: this.#target.layout ?? 'monorepo',
+        choices: [
+          { value: 'monorepo', label: 'monorepo — one repository, services as subdirectories' },
+          { value: 'polyrepo', label: 'polyrepo — one repository per service' },
+        ],
+        onChange: (value) => this.#change({ layout: value }),
+      }),
     });
   }
 
   #peerContextField() {
-    const label = document.createElement('label');
-    label.className = 'checkbox';
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.checked = this.#target.withPeerContext === true;
-    box.addEventListener('change', () => this.#change({ withPeerContext: box.checked }));
-    const text = document.createElement('span');
-    text.innerHTML =
-      'Scaffold a second bounded context<br />' +
-      '<span class="muted">It reaches the first only through its <code>user-side/service</code> seam — the inter-context edge made demonstrable rather than merely described.</span>';
-    label.append(box, text);
-    return label;
+    return el(
+      'div',
+      { class: 'tiles' },
+      tile({
+        value: 'peer-context',
+        title: 'Scaffold a second bounded context',
+        doc:
+          'It reaches the first only through its user-side/service seam — the inter-context ' +
+          'edge made demonstrable rather than merely described.',
+        checked: this.#target.withPeerContext === true,
+        onToggle: (checked) => this.#change({ withPeerContext: checked }),
+      }),
+    );
   }
-}
-
-function field({ id, label, doc, value, choices, onChange }) {
-  const wrapper = document.createElement('stack-pk');
-  wrapper.setAttribute('space', 'var(--s-3)');
-
-  const caption = document.createElement('label');
-  caption.setAttribute('for', id);
-  caption.textContent = label;
-
-  const select = document.createElement('select');
-  select.id = id;
-  for (const choice of choices) {
-    const option = document.createElement('option');
-    option.value = choice.value;
-    option.textContent = choice.label;
-    select.append(option);
-  }
-  select.value = value;
-  select.addEventListener('change', () => onChange(select.value));
-
-  wrapper.append(caption, select);
-  if (doc !== '') {
-    const help = document.createElement('p');
-    help.className = 'muted';
-    help.textContent = doc;
-    wrapper.append(help);
-  }
-  return wrapper;
 }
 
 const ENTRYPOINTS_DOC =
   'How the outside world drives the hexagon. Picking more than one gives the composed preset — one project, one domain, both entrypoints — not two services.';
 
-/**
- * A checkbox group, for the entrypoint facet where every subset is a
- * preset. A `<select multiple>` would do the same job and read worse
- * at two or three options, which is all this ever has.
- */
-function checkboxes({ id, label, doc, chosen, choices, onChange }) {
-  const wrapper = document.createElement('stack-pk');
-  wrapper.setAttribute('space', 'var(--s-3)');
-
-  const caption = document.createElement('p');
-  caption.id = id;
-  caption.textContent = label;
-  wrapper.append(caption);
-
-  const picked = new Set(chosen);
-  for (const choice of choices) {
-    const line = document.createElement('label');
-    line.className = 'checkbox';
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.value = choice.id;
-    box.checked = picked.has(choice.id);
-    box.title = choice.doc;
-    box.addEventListener('change', () => {
-      const next = choices
-        .map((candidate) => candidate.id)
-        .filter((value) => (value === choice.id ? box.checked : picked.has(value)));
-      onChange(next);
-    });
-    const text = document.createElement('span');
-    text.textContent = choice.label;
-    line.append(box, text);
-    wrapper.append(line);
-  }
-
-  if (doc !== '') {
-    const help = document.createElement('p');
-    help.className = 'muted';
-    help.textContent = doc;
-    wrapper.append(help);
-  }
-  return wrapper;
-}
-
-const asChoice = (option) => ({ value: option.id, label: option.label });
+const asChoice = (option) => ({ value: option.id, label: option.label, doc: option.doc });
 
 const docOf = (options, id) => options.find((option) => option.id === id)?.doc ?? '';
 

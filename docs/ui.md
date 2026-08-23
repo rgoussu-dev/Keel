@@ -40,13 +40,36 @@ install, and "add a bounded context" appears only where
 
 ## The page
 
-| Region                | What it does                                                                                                                                                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Project directory** | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                           |
-| **Find a stack**      | Three facets — language, user-side adapters, framework — narrowing to a preset. The browser half of the `keel new` drill-down.                                                                             |
-| **Stack + dials**     | The stack, its build system, its module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
-| **Questions**         | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.                                                                          |
-| **Plan**              | The file tree the install would write (`+` new, `~` modified, `-` removed), the deferred actions, and the Generate button.                                                                                 |
+It is an **application shell**, not a long form: a masthead, a
+location bar, and two columns that scroll independently. The plan
+stays on screen for every dial you touch, which is the whole reason
+this front end exists over a flag. Under 62rem the two columns
+collapse into one and the page scrolls as an ordinary document.
+
+| Region              | What it does                                                                                                                                                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Location bar**    | The path, as a trail of clickable segments, plus a folder browser that opens on request. A directory that does not exist yet is fine — it is marked _will be created_.                                     |
+| **Find your stack** | Three facets — language, user-side adapters, framework — narrowing to a preset, and the flat preset list below them. The browser half of the `keel new` drill-down.                                        |
+| **Shape**           | The build system, the module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.            |
+| **Command fields**  | Questions the run asks that are fields of the command rather than an adapter's answer — additional verticals today. Each gets its own section under its own prompt, a set of choices as a list of options. |
+| **Details**         | Everything the composition adapters ask, grouped by the adapter that asked. Conditional, so the list changes as you choose.                                                                                |
+| **Plan**            | The file tree the install would write (`+` new, `~` modified, `-` removed), the deferred actions, the equivalent command line, and the Generate button.                                                    |
+
+The tree is the plan as a reader wants it rather than as the report
+lists it: a chain of single-child directories is one row
+(`src/main/java/com/example`, not five levels of indent), directories
+fold away and stay folded as the dials move, and each carries the
+number of files under it.
+
+**The command line under the plan** is the same install as something
+you could have typed — `keel new --stack quarkus-cli --build-system
+maven --set vcs/git-init:defaultBranch=trunk --yes`, flags
+highlighted, one `--set` per answer you changed, values quoted only
+where a shell would need it. Copy it into a README or a CI job. It is
+derived from the identical body the Generate button posts, so it can
+never describe a different install than the one the button runs.
+
+`Cmd`/`Ctrl` + `Enter` is the Generate button.
 
 After a successful generate the page re-reads the directory and turns
 into the brownfield one, so layering `ci` onto what you just scaffolded
