@@ -29,7 +29,8 @@ import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
-import type { AnswerMap, ManifestV2 } from '../../../../src/domain/contract/composition.js';
+import type { ManifestV2 } from '../../../../src/domain/contract/composition.js';
+import type { PresetAnswers } from '../../../../src/domain/contract/commands.js';
 import { pinValue } from '../../../support/version-pins.js';
 
 let cwds: string[] = [];
@@ -48,7 +49,7 @@ interface InstalledCi {
   readonly manifest: ManifestV2;
 }
 
-async function installCi(tags: string[], answers: AnswerMap = {}): Promise<InstalledCi> {
+async function installCi(tags: string[], answers: PresetAnswers = {}): Promise<InstalledCi> {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ci-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);

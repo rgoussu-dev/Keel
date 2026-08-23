@@ -95,7 +95,13 @@ const runWithRetry = (
   let last: RunResult = { status: null, stdout: '', stderr: '' };
   for (let i = 0; i < attempts; i += 1) {
     const r = spawnSync(cmd, args, options);
-    last = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+    // `spawnSync`'s typing only narrows to a string when the encoding
+    // is statically known; every caller here passes one at runtime.
+    last = {
+      status: r.status,
+      stdout: r.stdout?.toString() ?? '',
+      stderr: r.stderr?.toString() ?? '',
+    };
     if (last.status === 0) return last;
     if (!isTransient(`${last.stdout}\n${last.stderr}`)) return last;
   }

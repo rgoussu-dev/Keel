@@ -17,7 +17,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalogQuery } from '../../../src/domain/contract/queries.js';
 import type { Catalog } from '../../../src/domain/contract/queries.js';
-// @ts-expect-error — plain ESM shipped to the browser, no declarations.
 import {
   hasDials,
   located,
@@ -32,11 +31,21 @@ async function catalog(): Promise<Catalog> {
   return expectOk(await installMediator().dispatch(catalogQuery()));
 }
 
+/**
+ * What `<keel-app>` holds, as `stepsFor` reads it. Spelled out rather
+ * than left as a bag of unknowns so the typecheck compares these
+ * fixtures against the shape the module documents.
+ */
+interface PageState {
+  status: object | null;
+  catalog: object | null;
+  dials: object | null;
+  target: object | null;
+  preview: object | null;
+}
+
 /** The greenfield state a page holds once it has settled on `stack`. */
-async function greenfield(
-  stack: string,
-  extra: Record<string, unknown> = {},
-): Promise<Record<string, unknown>> {
+async function greenfield(stack: string, extra: Partial<PageState> = {}): Promise<PageState> {
   return {
     status: { initialised: false },
     catalog: await catalog(),
@@ -122,7 +131,9 @@ describe('the wizard’s steps', () => {
   });
 
   it('locates the chosen preset for the steps that narrow within it', async () => {
-    expect(located(await greenfield('spring-rest-kotlin')).framework.id).toBe('spring');
+    // Null is a real answer — a preset the tree cannot place — so it
+    // is asserted rather than dereferenced through.
+    expect(located(await greenfield('spring-rest-kotlin'))?.framework.id).toBe('spring');
     expect(located(await greenfield('nonsense'))).toBeNull();
   });
 

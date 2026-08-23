@@ -23,7 +23,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Stack, Vertical } from '../../../src/domain/core/stacks.js';
+import type { Vertical } from '../../../src/domain/contract/composition.js';
+import type { Stack } from '../../../src/domain/core/stacks.js';
 import { STACKS } from '../../../src/domain/core/stacks.js';
 import {
   ENTRYPOINTS,

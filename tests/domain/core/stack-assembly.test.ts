@@ -15,6 +15,7 @@ import {
   assemblies,
   isAssemblable,
   stackTagsFor,
+  type ModuleLayoutOption,
   type Stack,
 } from '../../../src/domain/core/stacks.js';
 import {
@@ -26,8 +27,18 @@ import { wizardPaths } from '../../../src/domain/core/stack-wizard.js';
 
 const GRADLE = { id: 'gradle', tag: 'pkg.gradle' as Tag, label: 'Gradle', doc: '' };
 const MAVEN = { id: 'maven', tag: 'pkg.maven' as Tag, label: 'Maven', doc: '' };
-const BASIC = { id: 'basic', tag: 'layout.basic' as Tag, label: 'basic', doc: '' };
-const MODULITH = { id: 'modulith', tag: 'layout.modulith' as Tag, label: 'modulith', doc: '' };
+const BASIC: ModuleLayoutOption = {
+  id: 'basic',
+  tag: 'layout.basic' as Tag,
+  label: 'basic',
+  doc: '',
+};
+const MODULITH: ModuleLayoutOption = {
+  id: 'modulith',
+  tag: 'layout.modulith' as Tag,
+  label: 'modulith',
+  doc: '',
+};
 
 /** A vertical carrying nothing but a rule. */
 const ruleBearer = (conflicts: readonly Conflict[]): Vertical => ({
@@ -38,15 +49,34 @@ const ruleBearer = (conflicts: readonly Conflict[]): Vertical => ({
   conflicts,
 });
 
-const stackWith = (conflicts: readonly Conflict[], overrides: Partial<Stack> = {}): Stack => ({
-  id: 'demo-stack',
-  description: '',
-  tags: ['lang.java', 'runtime.jvm', 'arch.cli'],
-  buildSystems: [GRADLE, MAVEN],
-  moduleLayouts: [BASIC, MODULITH],
-  verticals: [ruleBearer(conflicts)],
-  ...overrides,
-});
+/**
+ * `Partial<Stack>` that can also say **"this stack has none"**.
+ *
+ * `exactOptionalPropertyTypes` separates an absent optional property
+ * from one set to `undefined`, and a fixture overriding a dial away
+ * means the first. {@link stackWith} therefore drops the keys whose
+ * override is `undefined` rather than assigning them.
+ */
+type StackOverrides = { [K in keyof Stack]?: Stack[K] | undefined };
+
+const stackWith = (conflicts: readonly Conflict[], overrides: StackOverrides = {}): Stack =>
+  settled({
+    id: 'demo-stack',
+    description: '',
+    tags: ['lang.java', 'runtime.jvm', 'arch.cli'],
+    buildSystems: [GRADLE, MAVEN],
+    moduleLayouts: [BASIC, MODULITH],
+    verticals: [ruleBearer(conflicts)],
+    ...overrides,
+  });
+
+/** The same object with every `undefined`-valued key removed. */
+const settled = (draft: StackOverrides): Stack => {
+  for (const key of Object.keys(draft) as (keyof Stack)[]) {
+    if (draft[key] === undefined) delete draft[key];
+  }
+  return draft as Stack;
+};
 
 describe('assemblies', () => {
   it('enumerates one tag set per setting of the dials', () => {

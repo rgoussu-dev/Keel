@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
+import type { Logger } from '../../../src/domain/contract/ports/logger.js';
 import { ActionError, runActions } from '../../../src/domain/core/actions.js';
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 import type { DeferredAction } from '../../../src/domain/contract/composition.js';
 
+// A `Logger`, not a `FakeLogger`: what `runActions` takes is the
+// port, and this one records the wording rather than the entries.
 const recordingLogger = (): {
-  logger: FakeLogger;
+  logger: Logger;
   lines: string[];
 } => {
   const lines: string[] = [];

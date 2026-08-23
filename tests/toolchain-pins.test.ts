@@ -44,7 +44,8 @@ import { devContainerVertical } from '../src/domain/core/verticals/dev-container
 import { ciVertical } from '../src/domain/core/verticals/ci.js';
 import { TOOLCHAIN_PIN_SOURCE, type PinnedTool } from '../src/domain/core/adapters/version-pins.js';
 import { emptyManifestV2 } from '../src/domain/contract/manifest.js';
-import type { AnswerMap, ManifestV2, Vertical } from '../src/domain/contract/composition.js';
+import type { ManifestV2, Vertical } from '../src/domain/contract/composition.js';
+import type { PresetAnswers } from '../src/domain/contract/commands.js';
 import type { ToolchainNeed } from '../src/domain/contract/toolchain.js';
 import type { TemplateSource } from '../src/domain/contract/ports/template-source.js';
 import { FsTree } from '../src/infrastructure/tree/fs-tree.js';
@@ -127,7 +128,11 @@ const devcontainerStatements = (raw: string): Statement[] => {
 
 const pipelineStatements = (surface: 'github' | 'gitlab', raw: string): Statement[] =>
   PIPELINE_DETECTORS.flatMap(({ tool, regex }) =>
-    [...raw.matchAll(regex())].map((match) => ({ surface, tool, version: match[1] })),
+    // A detector whose group did not participate states nothing, which
+    // is not the same as stating an empty version.
+    [...raw.matchAll(regex())].flatMap((match) =>
+      match[1] === undefined ? [] : [{ surface, tool, version: match[1] }],
+    ),
   );
 
 let cwds: string[] = [];
@@ -149,7 +154,7 @@ interface Scaffold {
 interface Scenario {
   readonly id: string;
   readonly tags: readonly string[];
-  readonly answers: AnswerMap;
+  readonly answers: PresetAnswers;
   /** Every `surface:tool` the emitted files must state, sorted. */
   readonly states: readonly string[];
 }
@@ -164,7 +169,7 @@ interface Scenario {
 async function scaffold(scenario: Scenario, templates: TemplateSource): Promise<Scaffold> {
   const emit = async (
     verticals: readonly Vertical[],
-    answers: AnswerMap,
+    answers: PresetAnswers,
   ): Promise<{ tree: FsTree; manifest: ManifestV2 }> => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-toolchain-pins-'));
     cwds.push(cwd);
@@ -272,6 +277,19 @@ const SCENARIOS: readonly Scenario[] = [
   },
 ];
 
+/**
+ * A scenario by id, refusing rather than returning `undefined`.
+ *
+ * By id and not by position: `SCENARIOS[5]` said nothing about which
+ * stack a case was pinning, and reordering the list would have moved
+ * a case's meaning without moving its source.
+ */
+const scenario = (id: string): Scenario => {
+  const found = SCENARIOS.find((candidate) => candidate.id === id);
+  if (found === undefined) throw new Error(`no scenario '${id}'`);
+  return found;
+};
+
 /** The disagreements in one scaffold, as readable lines. */
 const disagreements = ({ needs, statements }: Scaffold): string[] =>
   statements.flatMap((statement) => {
@@ -302,7 +320,7 @@ describe('the single-source rule for toolchain versions', () => {
   );
 
   it('records needs whose versions come from the registry, not from keel', async () => {
-    const { needs } = await scaffold(SCENARIOS[0], ejsTemplateSource);
+    const { needs } = await scaffold(scenario('jvm-gradle'), ejsTemplateSource);
     expect(needs.length).toBeGreaterThan(0);
     for (const need of needs) {
       expect(need.source, `need for ${need.tool}`).toBeDefined();
@@ -334,7 +352,7 @@ describe('one entry drives all three surfaces', () => {
     // under a scaffold and every surface follows. A surface holding a
     // literal of its own would still say 25 and fail here.
     const bumped = await scaffold(
-      SCENARIOS[0],
+      scenario('jvm-gradle'),
       withRegistry((pins) => {
         for (const pin of pins) if (pin.id === 'jvm-jdk') pin.value = '26';
       }),
@@ -357,7 +375,7 @@ describe('one entry drives all three surfaces', () => {
 
   it('moves them together for Node and Go too', async () => {
     const node = await scaffold(
-      SCENARIOS[5],
+      scenario('ts-pnpm'),
       withRegistry((pins) => {
         for (const pin of pins) if (pin.id === 'node-active-lts') pin.value = '26';
       }),
@@ -369,7 +387,7 @@ describe('one entry drives all three surfaces', () => {
     ]);
 
     const go = await scaffold(
-      SCENARIOS[2],
+      scenario('go'),
       withRegistry((pins) => {
         for (const pin of pins) if (pin.id === 'go-toolchain') pin.value = '1.99';
       }),

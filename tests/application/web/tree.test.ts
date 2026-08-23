@@ -10,7 +10,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — plain ESM shipped to the browser, no declarations.
 import { countKinds, foldTree } from '../../../assets/web/src/tree.js';
 
 interface Node {

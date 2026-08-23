@@ -13,12 +13,18 @@
  * Pure, and separate from any element, so the narrowing is testable
  * without a DOM — the same split `tree.js` and `steps.js` live under.
  *
- * @typedef {{ entrypoints: string[], stack: string }} Combination
- * @typedef {{ kind: string, choices: { id: string, label: string, doc: string }[], default: string }} EntrypointStep
- * @typedef {{ id: string, label: string, entrypointStep: EntrypointStep | null, combinations: Combination[] }} FrameworkNode
- * @typedef {{ id: string, label: string, doc: string, frameworks: FrameworkNode[] }} LanguageNode
- * @typedef {{ id: string, label: string, doc: string, languages: LanguageNode[] }} ShapeNode
- * @typedef {{ shapes: ShapeNode[], defaultStack: string }} Finder
+ * The typedefs mirror `Catalog.finder` as the engine reports it,
+ * readonly arrays and all — `tests/application/web/finder.test.ts`
+ * drives these functions with the real payload, so a `StackFinder`
+ * that stopped fitting them would fail the typecheck rather than
+ * quietly diverge.
+ *
+ * @typedef {{ entrypoints: ReadonlyArray<string>, stack: string }} Combination
+ * @typedef {{ kind: string, choices: ReadonlyArray<{ id: string, label: string, doc: string }>, default: string }} EntrypointStep
+ * @typedef {{ id: string, label: string, entrypointStep: EntrypointStep | null, combinations: ReadonlyArray<Combination> }} FrameworkNode
+ * @typedef {{ id: string, label: string, doc: string, frameworks: ReadonlyArray<FrameworkNode> }} LanguageNode
+ * @typedef {{ id: string, label: string, doc: string, languages: ReadonlyArray<LanguageNode> }} ShapeNode
+ * @typedef {{ shapes: ReadonlyArray<ShapeNode>, defaultStack: string }} Finder
  * @typedef {{ shape: ShapeNode, language: LanguageNode, framework: FrameworkNode, combination: Combination }} Located
  */
 
