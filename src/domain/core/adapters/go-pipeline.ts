@@ -11,12 +11,13 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import {
+  ciPipelineContribution,
   ciTemplateId,
   PROVIDER_QUESTION,
   ciProvider,
-  providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -28,6 +29,7 @@ export const goPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['lang.go'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(GO_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), GO_PIPELINE_ID);
     const pins = await loadToolchainPins(ctx, GO_PIPELINE_ID);
@@ -36,6 +38,6 @@ export const goPipelineAdapter: Adapter = {
       formatCheck: ciFormatCheck(ctx.manifest.tags),
       lintCheck: ciLintCheck(ctx.manifest.tags),
     });
-    return { files, tagsAdd: [providerTag(provider)] };
+    return ciPipelineContribution(provider, files);
   },
 };

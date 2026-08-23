@@ -21,12 +21,13 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import {
+  ciPipelineContribution,
   ciTemplateId,
   PROVIDER_QUESTION,
   ciProvider,
-  providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -38,6 +39,7 @@ export const tsPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['lang.typescript'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(TS_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), TS_PIPELINE_ID);
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
@@ -48,6 +50,6 @@ export const tsPipelineAdapter: Adapter = {
       formatCheck: ciFormatCheck(ctx.manifest.tags),
       lintCheck: ciLintCheck(ctx.manifest.tags),
     });
-    return { files, tagsAdd: [providerTag(provider)] };
+    return ciPipelineContribution(provider, files);
   },
 };

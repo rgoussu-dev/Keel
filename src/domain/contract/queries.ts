@@ -42,26 +42,30 @@ export interface Catalog {
 }
 
 /**
- * The `keel new` drill-down as data: **language → user-side adapters
- * → framework**, narrowing to a preset.
+ * The `keel new` drill-down as data: **shape → language → framework
+ * → user-side adapters**, narrowing to a preset.
  *
  * Reported rather than re-derived, and that is the whole point of it
- * being here. The grid is a reading of the stacks' capability tags —
- * which `lang.*` and `runtime.*` pair makes a language node, which
- * `arch.*` tags name an entrypoint rather than a shape, how a subset
- * that no preset covers is kept off the menu. A front end deriving
- * that from {@link StackDescriptor.tags} would be a second
- * implementation of a vocabulary that is not its to know, and it
- * would drift from the terminal's the first time a tag moved. So the
- * engine walks its own catalog and hands over the tree; a page
- * renders three dependent controls and knows nothing about tags.
+ * being here. The tree is a reading of the stacks' capability tags —
+ * which `arch.*` tags name an entrypoint rather than a shape and
+ * which end each is driven from, which `lang.*` and `runtime.*` pair
+ * makes a language node, how a subset that no preset covers is kept
+ * off the menu, how a composite product places itself through its
+ * services. A front end deriving that from
+ * {@link StackDescriptor.tags} would be a second implementation of a
+ * vocabulary that is not its to know, and it would drift from the
+ * terminal's the first time a tag moved. So the engine walks its own
+ * catalog and hands over the tree; a page renders four dependent
+ * controls and knows nothing about tags.
  *
- * Composite products are deliberately absent: they carry no `lang.*`
- * tag, being products rather than projects. `stacks` still lists them
- * — a finder is an aid to picking, never the only way to pick.
+ * Composite products are in the tree, under the `fullstack` shape:
+ * a product carries no `lang.*` tag of its own, but its services do,
+ * and the shape axis is what gave them a branch to sit on. `stacks`
+ * still lists every preset — a finder is an aid to picking, never
+ * the only way to pick.
  */
 export interface StackFinder {
-  readonly languages: readonly LanguageNode[];
+  readonly shapes: readonly ShapeNode[];
   /**
    * Where a form should open: the preset an omitted `--stack`
    * resolves to, so a blank form and a bare `keel new` agree.
@@ -74,22 +78,53 @@ export interface StackFinder {
   readonly defaultStack: string;
 }
 
-/** One language node of the {@link StackFinder}. */
+/**
+ * One shape node of the {@link StackFinder} — what the preset builds,
+ * which is the widest question there is and therefore the first one.
+ */
+export interface ShapeNode {
+  /** `fullstack`, `backend` or `frontend`. */
+  readonly id: string;
+  readonly label: string;
+  readonly doc: string;
+  readonly languages: readonly LanguageNode[];
+}
+
+/**
+ * One language node of a {@link ShapeNode}. For a fullstack product
+ * this is the language of its **backend**: the front end of a
+ * two-service product is what makes it fullstack, and the language
+ * left to choose is the engine's.
+ */
 export interface LanguageNode {
   /** e.g. `java@jvm`, `go`, `typescript@browser`. Opaque to a front end. */
   readonly id: string;
   readonly label: string;
   readonly doc: string;
   /**
-   * How to ask which entrypoints, or null when this language reaches
-   * exactly one combination and the question answers itself.
+   * One entry per framework reachable here. More than one means the
+   * framework facet has something to ask; exactly one means it
+   * answers itself — and either way the node below it names the
+   * presets it resolves to.
+   */
+  readonly frameworks: readonly FrameworkNode[];
+}
+
+/** One framework of a {@link LanguageNode}, and what it still leaves open. */
+export interface FrameworkNode {
+  /** Framework id; `''` for a preset declaring none. */
+  readonly id: string;
+  readonly label: string;
+  /**
+   * How to ask which entrypoints, or null when this combination
+   * reaches exactly one set and the question answers itself.
    */
   readonly entrypointStep: EntrypointStepDescriptor | null;
   readonly combinations: readonly EntrypointCombination[];
 }
 
 /**
- * The entrypoint question's shape for one language.
+ * The entrypoint question's shape for one framework node.
  *
  * `multi-select` where every non-empty subset of `choices` is a
  * preset — the ordinary case, and a checkbox group. `select` over
@@ -104,25 +139,11 @@ export interface EntrypointStepDescriptor {
   readonly default: string;
 }
 
-/** One reachable set of entrypoints, and the presets it leads to. */
+/** One reachable set of entrypoints, and the preset it names. */
 export interface EntrypointCombination {
   /** Entrypoint ids in menu order; what the step's answer decodes to. */
   readonly entrypoints: readonly string[];
-  /**
-   * One entry per framework reachable here. More than one means the
-   * framework step has something to ask; exactly one means it answers
-   * itself — and either way each entry names the preset it resolves
-   * to, which is the only value a front end sends back.
-   */
-  readonly frameworks: readonly FrameworkPreset[];
-}
-
-/** One framework of an {@link EntrypointCombination}, and its preset. */
-export interface FrameworkPreset {
-  /** Framework id; `''` for a preset declaring none. */
-  readonly id: string;
-  readonly label: string;
-  /** The stack id this framework resolves to — a `StackDescriptor.id`. */
+  /** The stack id this leaf resolves to — a `StackDescriptor.id`. */
   readonly stack: string;
 }
 
@@ -163,6 +184,14 @@ export interface ServiceDescriptor {
 /** A vertical `keel add` can install. */
 export interface VerticalDescriptor {
   readonly id: string;
+  /**
+   * The concept it bears, as a person would name it — resolved, so
+   * never absent even where the vertical declared none. A front end
+   * offering verticals shows this and `description` together: the id
+   * is what you type on the command line, the title is what you
+   * recognise, and the description is what installing it buys.
+   */
+  readonly title: string;
   readonly description: string;
   readonly dimensions: readonly string[];
 }

@@ -89,7 +89,7 @@ export const loadRegistry = (): Pin[] =>
 const globToRegExp = (glob: string): RegExp => {
   let source = '';
   for (let i = 0; i < glob.length; i += 1) {
-    const char = glob[i];
+    const char = glob[i] ?? '';
     if (char === '*') {
       if (glob[i + 1] === '*') {
         source += glob[i + 2] === '/' ? '(?:[^/]+/)*' : '.*';

@@ -8,12 +8,13 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import {
+  ciPipelineContribution,
   ciTemplateId,
   PROVIDER_QUESTION,
   ciProvider,
-  providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 
 export const RUST_PIPELINE_ID = 'ci/rust-pipeline';
@@ -24,12 +25,13 @@ export const rustPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['pkg.cargo'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(RUST_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), RUST_PIPELINE_ID);
     const files = await ctx.templates.render(ciTemplateId('rust-pipeline', provider), '', {
       formatCheck: ciFormatCheck(ctx.manifest.tags),
       lintCheck: ciLintCheck(ctx.manifest.tags),
     });
-    return { files, tagsAdd: [providerTag(provider)] };
+    return ciPipelineContribution(provider, files);
   },
 };

@@ -32,7 +32,7 @@ import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { CONTEXT_TAG } from '../adapters/added-context.js';
 import { conflictsOf, legalWith } from '../compatibility.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
-import { listVerticalIds } from '../registry.js';
+import { listVerticalIds, verticalTitle } from '../registry.js';
 
 /** The two ports this query needs. */
 export interface ProjectStatusDeps {
@@ -104,8 +104,15 @@ function describeVertical(registry: Registry, id: string): readonly VerticalDesc
   // A manifest can name a vertical this keel no longer registers (an
   // older install, a renamed id). Reporting it without a description
   // beats dropping it: the project really does have it installed.
-  if (!vertical) return [{ id, description: '', dimensions: [] }];
-  return [{ id, description: vertical.description, dimensions: [...vertical.dimensions] }];
+  if (!vertical) return [{ id, title: id, description: '', dimensions: [] }];
+  return [
+    {
+      id,
+      title: verticalTitle(vertical),
+      description: vertical.description,
+      dimensions: [...vertical.dimensions],
+    },
+  ];
 }
 
 /**

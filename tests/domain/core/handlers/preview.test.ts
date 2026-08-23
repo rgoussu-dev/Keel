@@ -176,19 +176,20 @@ describe('keel.preview', () => {
     );
     // A front end with a stack picker sends `stack` and never gets
     // here — `keel ui` does exactly that. One that does not gets the
-    // wizard's own three steps, each an ordinary answer it can send
+    // wizard's own four steps, each an ordinary answer it can send
     // back, and the defaults compose to the same preset an omitted
     // `--stack` has always meant.
-    expect(preview.questions.slice(0, 3).map((q) => q.id)).toEqual([
+    expect(preview.questions.slice(0, 4).map((q) => q.id)).toEqual([
+      'shape',
       'language',
-      'entrypoints',
       'framework',
+      'entrypoints',
     ]);
-    expect(preview.questions[1]).toMatchObject({ kind: 'multi-select' });
+    expect(preview.questions[3]).toMatchObject({ kind: 'multi-select' });
     expect(preview.questions[0]?.binding).toEqual({
       kind: 'answer',
       adapter: 'keel.new-project',
-      question: 'language',
+      question: 'shape',
     });
     expect(preview.subject).toBe('quarkus-cli');
   });
@@ -199,7 +200,13 @@ describe('keel.preview', () => {
         previewQuery({
           cwd,
           target: { kind: 'new-project' },
-          answers: { 'keel.new-project': { language: 'go', entrypoints: 'cli,server-http' } },
+          answers: {
+            'keel.new-project': {
+              shape: 'backend',
+              language: 'go',
+              entrypoints: 'cli,server-http',
+            },
+          },
         }),
       ),
     );
@@ -256,5 +263,39 @@ describe('keel.preview', () => {
     expect(preview.subject).toBe('ci');
     expect(preview.changes.some((change) => change.path.startsWith('.github/'))).toBe(true);
     expect(await fs.readdir(cwd)).toEqual(before);
+  });
+
+  it('reports a vertical this project cannot carry as an Err, not a crash', async () => {
+    // The exact call the page makes on every keystroke, against the
+    // one refusal that used to escape the install engine by throwing:
+    // `resolveVertical` hard-fails when no adapter covers a dimension,
+    // and a CLI project has nothing to build a container image from.
+    // A throw is all an HTTP layer can read as a crash, so `keel ui`
+    // answered 500 with a bare string for a refusal that names both
+    // the dimension and the tag that would close it.
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'ts-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          buildSystem: 'npm',
+        }),
+      ),
+    );
+    const error = expectErr(
+      await mediator.dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'add-vertical', vertical: 'containerization' },
+          answers: {},
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toContain('arch.server-http');
   });
 });

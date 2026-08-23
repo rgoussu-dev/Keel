@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Question } from '../../../src/domain/contract/composition.js';
-import type { Prompt } from '../../../src/domain/contract/ports/prompt.js';
+import type { Asker, Prompt } from '../../../src/domain/contract/ports/prompt.js';
 import { WizardPrompt } from '../../../src/domain/core/wizard-prompt.js';
 
 /** A minimal, valid `Question` for a given id — content beyond `id` doesn't matter here. */
@@ -24,6 +24,13 @@ function setQuestion(id: string, choices: readonly string[]): Question {
   };
 }
 
+/**
+ * The asker every question here carries. `WizardPrompt` routes on the
+ * question's id and its position in the sequence, never on who asked,
+ * so one asker throughout keeps the cases about the thing under test.
+ */
+const ASKER: Asker = { kind: 'stack', id: 'keel.new-project' };
+
 /** Records every id it was asked, in order, and answers from a fixed map. */
 class CountingPrompt implements Prompt {
   readonly calls: string[] = [];
@@ -37,21 +44,24 @@ class CountingPrompt implements Prompt {
   }
 }
 
+/** `WizardPrompt.ask` with the asker filled in. @see ASKER */
+const ask = (wizard: WizardPrompt, q: Question): Promise<string> => wizard.ask(q, ASKER);
+
 describe('WizardPrompt', () => {
   it('replays a repeated attempt verbatim without touching the underlying prompt', async () => {
     const underlying = new CountingPrompt({ a: '1', b: '2', c: '3' });
     const wizard = new WizardPrompt(underlying);
 
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    await wizard.ask(question('b'));
-    await wizard.ask(question('c'));
+    await ask(wizard, question('a'));
+    await ask(wizard, question('b'));
+    await ask(wizard, question('c'));
     expect(underlying.calls).toEqual(['a', 'b', 'c']);
 
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    await wizard.ask(question('b'));
-    await wizard.ask(question('c'));
+    await ask(wizard, question('a'));
+    await ask(wizard, question('b'));
+    await ask(wizard, question('c'));
     expect(underlying.calls).toEqual(['a', 'b', 'c']);
     expect(wizard.recorded.map((r) => r.value)).toEqual(['1', '2', '3']);
   });
@@ -61,15 +71,15 @@ describe('WizardPrompt', () => {
     const wizard = new WizardPrompt(underlying);
 
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    await wizard.ask(question('b'));
-    await wizard.ask(question('c'));
+    await ask(wizard, question('a'));
+    await ask(wizard, question('b'));
+    await ask(wizard, question('c'));
 
     wizard.prepareEdit(1);
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    const b = await wizard.ask(question('b'));
-    const c = await wizard.ask(question('c'));
+    await ask(wizard, question('a'));
+    const b = await ask(wizard, question('b'));
+    const c = await ask(wizard, question('c'));
 
     expect(underlying.calls).toEqual(['a', 'b', 'c', 'b', 'c']);
     expect(b).toBe('2');
@@ -82,16 +92,16 @@ describe('WizardPrompt', () => {
     const wizard = new WizardPrompt(underlying);
 
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    await wizard.ask(question('b'));
-    await wizard.ask(question('c'));
+    await ask(wizard, question('a'));
+    await ask(wizard, question('b'));
+    await ask(wizard, question('c'));
 
     // No edit requested, but position 1 now asks a different question —
     // e.g. an earlier answer changed which adapters apply from here on.
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    await wizard.ask(question('d'));
-    await wizard.ask(question('e'));
+    await ask(wizard, question('a'));
+    await ask(wizard, question('d'));
+    await ask(wizard, question('e'));
 
     expect(underlying.calls).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(wizard.recorded.map((r) => r.question.id)).toEqual(['a', 'd', 'e']);
@@ -113,14 +123,14 @@ describe('WizardPrompt', () => {
     const wizard = new WizardPrompt(underlying);
 
     wizard.beginAttempt();
-    await wizard.ask(question('language'));
-    await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
-    await wizard.ask(setQuestion('extraVerticals', ['ci']));
+    await ask(wizard, question('language'));
+    await ask(wizard, setQuestion('entrypoints', ['cli', 'server-http']));
+    await ask(wizard, setQuestion('extraVerticals', ['ci']));
 
     wizard.beginAttempt();
-    await wizard.ask(question('language'));
-    const entrypoints = await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
-    const extras = await wizard.ask(setQuestion('extraVerticals', ['ci']));
+    await ask(wizard, question('language'));
+    const entrypoints = await ask(wizard, setQuestion('entrypoints', ['cli', 'server-http']));
+    const extras = await ask(wizard, setQuestion('extraVerticals', ['ci']));
 
     expect(underlying.calls).toEqual(['language', 'entrypoints', 'extraVerticals']);
     expect(entrypoints).toBe('cli,server-http');
@@ -138,15 +148,15 @@ describe('WizardPrompt', () => {
     const wizard = new WizardPrompt(underlying);
 
     wizard.beginAttempt();
-    await wizard.ask(question('language'));
-    await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
-    await wizard.ask(setQuestion('extraVerticals', ['ci']));
+    await ask(wizard, question('language'));
+    await ask(wizard, setQuestion('entrypoints', ['cli', 'server-http']));
+    await ask(wizard, setQuestion('extraVerticals', ['ci']));
 
     wizard.prepareEdit(1);
     wizard.beginAttempt();
-    await wizard.ask(question('language'));
-    await wizard.ask(setQuestion('entrypoints', ['cli', 'server-http']));
-    await wizard.ask(setQuestion('extraVerticals', ['ci']));
+    await ask(wizard, question('language'));
+    await ask(wizard, setQuestion('entrypoints', ['cli', 'server-http']));
+    await ask(wizard, setQuestion('extraVerticals', ['ci']));
 
     // The edited set, and everything after it, went back to the user.
     expect(underlying.calls).toEqual([
@@ -168,9 +178,9 @@ describe('WizardPrompt', () => {
     const wizard = new WizardPrompt(underlying);
 
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
+    await ask(wizard, question('a'));
     const reviewAnswer = await wizard.askDirect(question('review'));
-    await wizard.ask(question('b'));
+    await ask(wizard, question('b'));
 
     expect(reviewAnswer).toBe('proceed');
     expect(wizard.recorded.map((r) => r.question.id)).toEqual(['a', 'b']);
@@ -178,8 +188,8 @@ describe('WizardPrompt', () => {
     // Replaying the next attempt still lines 'a' and 'b' up correctly —
     // askDirect never consumed a position in the staged sequence.
     wizard.beginAttempt();
-    await wizard.ask(question('a'));
-    await wizard.ask(question('b'));
+    await ask(wizard, question('a'));
+    await ask(wizard, question('b'));
     expect(underlying.calls).toEqual(['a', 'review', 'b']);
   });
 });

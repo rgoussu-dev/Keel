@@ -1,12 +1,13 @@
 /**
- * `<keel-new-form>` — the greenfield half: the stack and its dials.
+ * `<keel-new-form>` — the greenfield half, one step at a time.
  *
- * These controls are **not** rendered from the preview's question
- * list, and the difference matters. A stack-level dial is a field of
- * the command, so once it is set the install stops asking about it —
- * a control driven by the preview would vanish the moment it was
- * used. Everything conditional comes back from the preview instead
- * and is rendered by `<keel-question-list>`.
+ * The element renders **one** step of the drill-down or the dials,
+ * whichever `step` names. That is the whole difference from the form
+ * this replaced: the four narrowing questions used to sit on screen
+ * together as facets, and now they are asked the way the terminal
+ * wizard asks them — widest first, each within the last — because
+ * "language, adapters, framework, all at once" is a grid you have to
+ * already understand to use.
  *
  * **Two sources, and each answers a different question.** Whether a
  * dial exists at all is a property of the preset, so the catalog
@@ -23,41 +24,34 @@
  * `peer-context-needs-modulith` living in the browser; it now asks
  * `dials.peerContext`, which is the declaration itself.
  *
- * **Finding the stack.** Above those dials sit three facets —
- * language, user-side adapters, framework — the browser half of the
- * drill-down `keel new` asks as questions. They are the same tree
- * either way (`Catalog.finder`, walked by `../finder.js`), narrowed
- * differently: a terminal asks in sequence because it has no choice,
- * a form shows all three at once and re-filters as they move. What
- * they produce is a preset id, so `target.stack` stays the single
- * source of truth and the flat picker below them keeps working —
- * it is also the way to reach a fullstack product, which names no
- * language and so appears in no facet.
+ * **These controls are not rendered from the preview's question
+ * list**, and the difference matters. A stack-level dial is a field of
+ * the command, so once it is set the install stops asking about it —
+ * a control driven by the preview would vanish the moment it was
+ * used. Everything conditional comes back from the preview instead
+ * and is rendered by `<keel-question-list>`.
  *
- * **Two cards, and the split is the drill-down's own.** Finding a
- * preset and configuring the one you found are different questions,
- * asked in that order by the terminal wizard and run together into
- * one undifferentiated column by the first version of this form. The
- * headings are what tell a first-time reader that the second half
- * only makes sense once the first has settled.
- *
- * Catalog, dials and target in as properties, `target-changed` out
- * with the fields that moved.
+ * Catalog, dials, target and step in as properties, `target-changed`
+ * out with the fields that moved.
  */
 
-import { el, field, help, select, tile } from '../dom.js';
 import {
   decodeSelection,
   encodeSelection,
   locate,
   pickEntrypoints,
+  pickFramework,
   pickLanguage,
+  pickShape,
 } from '../finder.js';
+import { cards, checkboxCards, note } from '../dom.js';
+import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
 export class KeelNewForm extends HTMLElement {
   #catalog = null;
   #dials = null;
   #target = null;
+  #step = SHAPE;
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -82,6 +76,12 @@ export class KeelNewForm extends HTMLElement {
     this.#render();
   }
 
+  /** @param {string} value which step to render; see `../steps.js` */
+  set step(value) {
+    this.#step = value;
+    this.#render();
+  }
+
   connectedCallback() {
     this.#render();
   }
@@ -90,11 +90,17 @@ export class KeelNewForm extends HTMLElement {
     this.dispatchEvent(new CustomEvent('target-changed', { bubbles: true, detail: patch }));
   }
 
+  /** Moves to `stack`, or re-renders to snap a refused control back. */
+  #moveTo(stack) {
+    if (stack) this.#change({ stack });
+    else this.#render();
+  }
+
   #stack() {
     return this.#catalog?.stacks.find((stack) => stack.id === this.#target?.stack) ?? null;
   }
 
-  /** Where the current preset sits in the finder; null for a product. */
+  /** Where the current preset sits in the finder; null if unplaceable. */
   #located() {
     const finder = this.#catalog?.finder;
     if (!finder || !this.#target?.stack) return null;
@@ -103,247 +109,122 @@ export class KeelNewForm extends HTMLElement {
 
   #render() {
     if (!this.isConnected || !this.#catalog || !this.#target) return;
-    const stack = this.#stack();
-    this.replaceChildren(
-      el(
-        'stack-pk',
-        { attrs: { space: 'var(--s0)' } },
-        this.#finderCard(stack),
-        stack ? this.#dialsCard(stack) : null,
-      ),
-    );
+    const form = document.createElement('stack-pk');
+    form.setAttribute('space', 'var(--s0)');
+    form.append(...this.#fields());
+    this.replaceChildren(form);
   }
 
-  /* ---- card one: which preset ---------------------------------- */
-
-  #finderCard(stack) {
-    return el(
-      'section',
-      { class: 'card' },
-      el(
-        'div',
-        { class: 'card-head' },
-        el('h3', { text: 'Find your stack' }),
-        el('span', { class: 'chip accent', text: this.#target.stack || 'nothing chosen' }),
-      ),
-      el(
-        'div',
-        { class: 'card-body' },
-        el(
-          'stack-pk',
-          { attrs: { space: 'var(--s0)' } },
-          ...this.#finderFields(),
-          this.#stackField(),
-          stack && stack.description !== '' ? help(stack.description) : null,
-        ),
-      ),
-    );
-  }
-
-  /**
-   * The three facets, in narrowing order. Each is dropped where it
-   * has nothing to ask: a language reaching one entrypoint
-   * combination, or a combination reaching one framework, has
-   * answered by existing — the same rule the terminal wizard skips a
-   * question under.
-   */
-  #finderFields() {
-    const finder = this.#catalog.finder;
-    if (!finder || finder.languages.length === 0) return [];
+  /** The controls of the step being shown, or an explanation of its absence. */
+  #fields() {
     const here = this.#located();
-    const fields = [this.#languageField(finder, here)];
-    if (!here) return fields;
-    const step = here.language.entrypointStep;
-    if (step) fields.push(this.#entrypointsField(here, step));
-    if (here.combination.frameworks.length > 1) fields.push(this.#frameworkField(here));
-    return fields;
+    if (this.#step === SHAPE) return [this.#shapeField(here)];
+    if (this.#step === OPTIONS) return this.#optionFields();
+    if (!here) return [note(UNPLACEABLE)];
+    if (this.#step === LANGUAGE) return [this.#languageField(here)];
+    if (this.#step === FRAMEWORK) return [this.#frameworkField(here)];
+    if (this.#step === ENTRYPOINTS) return [this.#entrypointsField(here)];
+    return [];
   }
 
-  #languageField(finder, here) {
-    const choices = finder.languages.map((language) => ({
-      value: language.id,
-      label: language.label,
-      doc: language.doc,
-    }));
-    // A product sits in no language, so the select needs something to
-    // display for it — and picking a real language from there is a
-    // legitimate move out of the product and into a preset.
-    if (!here) choices.unshift({ value: '', label: '— a fullstack product (two services)' });
-    return field({
-      id: 'language',
-      label: 'Language',
-      doc: here?.language.doc ?? 'Pick a language to narrow to a single-project preset.',
-      control: select({
-        id: 'language',
-        value: here?.language.id ?? '',
-        choices,
-        onChange: (value) => {
-          const stack = value === '' ? null : pickLanguage(finder, value, here);
-          if (stack) this.#change({ stack });
-          else this.#render();
-        },
-      }),
+  /* ---- the drill-down ------------------------------------------ */
+
+  #shapeField(here) {
+    const finder = this.#catalog.finder;
+    return cards({
+      id: 'shape',
+      chosen: here?.shape.id ?? '',
+      choices: (finder?.shapes ?? []).map((shape) => ({
+        value: shape.id,
+        label: shape.label,
+        doc: shape.doc,
+      })),
+      onChange: (value) => this.#moveTo(pickShape(finder, value, here)),
     });
   }
 
-  #entrypointsField(here, step) {
-    const chosen = encodeSelection(here.combination.entrypoints);
-    // 'select' means this language's subsets are not all presets, so
-    // the combinations are spelled out and a single choice is right.
-    if (step.kind !== 'multi-select') {
-      return field({
-        id: 'entrypoints',
-        label: 'User-side adapters',
-        doc: ENTRYPOINTS_DOC,
-        control: select({
-          id: 'entrypoints',
-          value: chosen,
-          choices: step.choices.map((choice) => ({
-            value: choice.id,
-            label: choice.label,
-            doc: choice.doc,
-          })),
-          onChange: (value) => this.#retargetEntrypoints(here, value),
-        }),
-      });
-    }
-
-    // Tiles rather than a `<select multiple>`: two or three options
-    // that each want a sentence of explanation are a group of
-    // choices, and a multi-select hides both the explanation and the
-    // fact that more than one is allowed.
-    const picked = new Set(decodeSelection(chosen));
-    const tiles = el(
-      'div',
-      { class: 'tiles' },
-      ...step.choices.map((choice) =>
-        tile({
-          value: choice.id,
-          title: choice.label,
-          doc: choice.doc ?? '',
-          checked: picked.has(choice.id),
-          onToggle: (checked) => {
-            const next = step.choices
-              .map((candidate) => candidate.id)
-              .filter((value) => (value === choice.id ? checked : picked.has(value)));
-            this.#retargetEntrypoints(here, encodeSelection(next));
-          },
-        }),
-      ),
-    );
-
-    return el(
-      'div',
-      { class: 'field' },
-      el(
-        'div',
-        { class: 'field-label' },
-        el('p', { id: 'entrypoints', class: 'tile-title', text: 'User-side adapters' }),
-      ),
-      tiles,
-      help(ENTRYPOINTS_DOC, 'margin-block-start: var(--s-3)'),
-    );
-  }
-
-  /**
-   * Moves to the combination `answer` names — or snaps the control
-   * back when it names none, which is how an emptied checkbox group
-   * is refused rather than resolved to a preset nobody asked for.
-   */
-  #retargetEntrypoints(here, answer) {
-    const stack = pickEntrypoints(here.language, answer, here);
-    if (stack) this.#change({ stack });
-    else this.#render();
+  #languageField(here) {
+    return cards({
+      id: 'language',
+      chosen: here.language.id,
+      choices: here.shape.languages.map((language) => ({
+        value: language.id,
+        label: language.label,
+        doc: language.doc,
+      })),
+      onChange: (value) => this.#moveTo(pickLanguage(here.shape, value, here)),
+    });
   }
 
   #frameworkField(here) {
-    return field({
+    return cards({
       id: 'framework',
-      label: 'Framework',
-      doc: 'Which framework the adapters are built on.',
-      control: select({
-        id: 'framework',
-        value: here.framework.id,
-        choices: here.combination.frameworks.map((framework) => ({
-          value: framework.id,
-          label: framework.label,
-        })),
-        onChange: (value) => {
-          const chosen = here.combination.frameworks.find((f) => f.id === value);
-          if (chosen) this.#change({ stack: chosen.stack });
-        },
-      }),
+      chosen: here.framework.id,
+      choices: here.language.frameworks.map((framework) => ({
+        value: framework.id,
+        label: framework.label,
+        doc: framework.combinations.map((combination) => combination.stack).join(', '),
+      })),
+      onChange: (value) => this.#moveTo(pickFramework(here.language, value, here)),
     });
   }
 
   /**
-   * The flat list of every preset, grouped so a two-service product
-   * is visibly a different kind of thing from a single project —
-   * which is the one distinction the facets above cannot draw,
-   * because a product names no language to be filed under.
+   * The last narrowing step. A checkbox group where every subset of
+   * what it shows is a preset, and a single choice over spelled-out
+   * combinations where it is not — the engine says which, because a
+   * page guessing wrong offers a combination it cannot resolve.
    */
-  #stackField() {
-    const control = select({
-      id: 'stack',
-      value: this.#target.stack,
-      choices: [],
-      onChange: (value) => this.#change({ stack: value }),
-    });
-    const single = this.#catalog.stacks.filter((stack) => stack.services.length === 0);
-    const products = this.#catalog.stacks.filter((stack) => stack.services.length > 0);
-    for (const [label, group] of [
-      ['Single project', single],
-      ['Fullstack products (two services)', products],
-    ]) {
-      if (group.length === 0) continue;
-      const optgroup = el('optgroup', { attrs: { label } });
-      for (const stack of group) {
-        optgroup.append(
-          el('option', { value: stack.id, text: stack.id, title: stack.description }),
-        );
-      }
-      control.append(optgroup);
+  #entrypointsField(here) {
+    const step = here.framework.entrypointStep;
+    const chosen = encodeSelection(here.combination.entrypoints);
+    if (step.kind !== 'multi-select') {
+      return cards({
+        id: 'entrypoints',
+        chosen,
+        choices: step.choices.map((choice) => ({
+          value: choice.id,
+          label: choice.label,
+          doc: choice.doc,
+        })),
+        onChange: (value) => this.#moveTo(pickEntrypoints(here.framework, value)),
+      });
     }
-    control.value = this.#target.stack;
-    return field({ id: 'stack', label: 'Preset', control });
+    return checkboxCards({
+      id: 'entrypoints',
+      chosen: [...decodeSelection(chosen)],
+      choices: step.choices.map((choice) => ({
+        value: choice.id,
+        label: choice.label,
+        doc: choice.doc,
+      })),
+      onChange: (values) => this.#moveTo(pickEntrypoints(here.framework, encodeSelection(values))),
+    });
   }
 
-  /* ---- card two: how it is built ------------------------------- */
+  /* ---- the dials ----------------------------------------------- */
 
-  #dialsCard(stack) {
-    const fields = [];
+  #optionFields() {
+    const stack = this.#stack();
+    if (!stack) return [note(UNPLACEABLE)];
     if (stack.services.length > 0) {
-      fields.push(this.#layoutField());
+      const fields = [this.#layoutField()];
       for (const service of stack.services) {
         if (service.buildSystems.length > 1) {
           fields.push(this.#serviceBuildField(service, this.#serviceOptions(service)));
         }
       }
-    } else {
-      // The catalog says whether the control exists; the dials say
-      // what may be on it.
-      if (stack.buildSystems.length > 1) fields.push(this.#buildField(this.#buildSystems(stack)));
-      if (stack.moduleLayouts.length > 1) {
-        fields.push(this.#moduleLayoutField(this.#moduleLayouts(stack)));
-      }
-      if (this.#dials?.peerContext === true) fields.push(this.#peerContextField());
+      return fields;
     }
-    if (fields.length === 0) return null;
-    return el(
-      'section',
-      { class: 'card' },
-      el(
-        'div',
-        { class: 'card-head' },
-        el('h3', { text: 'Shape' }),
-        el('span', { class: 'muted', text: 'What this preset lets you change' }),
-      ),
-      el(
-        'div',
-        { class: 'card-body' },
-        el('stack-pk', { attrs: { space: 'var(--s0)' } }, ...fields),
-      ),
-    );
+    const fields = [];
+    // The catalog says whether the control exists; the dials say what
+    // may be on it.
+    if (stack.buildSystems.length > 1) fields.push(this.#buildField(this.#buildSystems(stack)));
+    if (stack.moduleLayouts.length > 1) {
+      fields.push(this.#moduleLayoutField(this.#moduleLayouts(stack)));
+    }
+    if (this.#dials?.peerContext === true) fields.push(this.#peerContextField());
+    return fields.length > 0 ? fields : [note('This preset pins every dial — nothing to choose.')];
   }
 
   /**
@@ -372,17 +253,13 @@ export class KeelNewForm extends HTMLElement {
   }
 
   #buildField(options) {
-    const value = this.#target.buildSystem ?? options[0].id;
     return field({
       id: 'buildSystem',
       label: 'Build system',
-      doc: docOf(options, value),
-      control: select({
-        id: 'buildSystem',
-        value,
-        choices: options.map(asChoice),
-        onChange: (chosen) => this.#change({ buildSystem: chosen }),
-      }),
+      doc: docOf(options, this.#target.buildSystem),
+      value: this.#target.buildSystem ?? options[0].id,
+      choices: options.map(asChoice),
+      onChange: (value) => this.#change({ buildSystem: value }),
     });
   }
 
@@ -390,33 +267,25 @@ export class KeelNewForm extends HTMLElement {
     const chosen = serviceBuild(this.#target.buildSystem, service.path) ?? options[0].id;
     return field({
       id: `buildSystem-${service.path}`,
-      label: `Build system — ${service.path}`,
-      tag: service.stack,
+      label: `Build system — ${service.path} (${service.stack})`,
       doc: docOf(options, chosen),
-      control: select({
-        id: `buildSystem-${service.path}`,
-        value: chosen,
-        choices: options.map(asChoice),
-        onChange: (value) =>
-          this.#change({
-            buildSystem: withServiceBuild(this.#target.buildSystem, service.path, value),
-          }),
-      }),
+      value: chosen,
+      choices: options.map(asChoice),
+      onChange: (value) =>
+        this.#change({
+          buildSystem: withServiceBuild(this.#target.buildSystem, service.path, value),
+        }),
     });
   }
 
   #moduleLayoutField(options) {
-    const value = this.#target.moduleLayout ?? options[0].id;
     return field({
       id: 'moduleLayout',
       label: 'Module layout',
-      doc: docOf(options, value),
-      control: select({
-        id: 'moduleLayout',
-        value,
-        choices: options.map(asChoice),
-        onChange: (chosen) => this.#change({ moduleLayout: chosen }),
-      }),
+      doc: docOf(options, this.#target.moduleLayout),
+      value: this.#target.moduleLayout ?? options[0].id,
+      choices: options.map(asChoice),
+      onChange: (value) => this.#change({ moduleLayout: value }),
     });
   }
 
@@ -425,39 +294,70 @@ export class KeelNewForm extends HTMLElement {
       id: 'layout',
       label: 'Repository layout',
       doc: 'How the services of this product live in version control.',
-      control: select({
-        id: 'layout',
-        value: this.#target.layout ?? 'monorepo',
-        choices: [
-          { value: 'monorepo', label: 'monorepo — one repository, services as subdirectories' },
-          { value: 'polyrepo', label: 'polyrepo — one repository per service' },
-        ],
-        onChange: (value) => this.#change({ layout: value }),
-      }),
+      value: this.#target.layout ?? 'monorepo',
+      choices: [
+        { value: 'monorepo', label: 'monorepo — one repository, services as subdirectories' },
+        { value: 'polyrepo', label: 'polyrepo — one repository per service' },
+      ],
+      onChange: (value) => this.#change({ layout: value }),
     });
   }
 
   #peerContextField() {
-    return el(
-      'div',
-      { class: 'tiles' },
-      tile({
-        value: 'peer-context',
-        title: 'Scaffold a second bounded context',
-        doc:
-          'It reaches the first only through its user-side/service seam — the inter-context ' +
-          'edge made demonstrable rather than merely described.',
-        checked: this.#target.withPeerContext === true,
-        onToggle: (checked) => this.#change({ withPeerContext: checked }),
-      }),
-    );
+    const label = document.createElement('label');
+    label.className = 'checkbox';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.id = 'withPeerContext';
+    box.checked = this.#target.withPeerContext === true;
+    box.addEventListener('change', () => this.#change({ withPeerContext: box.checked }));
+    const text = document.createElement('span');
+    text.innerHTML =
+      'Scaffold a second bounded context<br />' +
+      '<span class="muted">It reaches the first only through its <code>user-side/service</code> seam — the inter-context edge made demonstrable rather than merely described.</span>';
+    label.append(box, text);
+    return label;
   }
 }
 
-const ENTRYPOINTS_DOC =
-  'How the outside world drives the hexagon. Picking more than one gives the composed preset — one project, one domain, both entrypoints — not two services.';
+/**
+ * What a step says when the chosen preset sits nowhere in the finder
+ * tree — a plugin's, most likely. The narrowing has nothing to narrow,
+ * and the preset picker above the rail is the way to move.
+ */
+const UNPLACEABLE =
+  'This preset is not on the guided path — the finder could not place it. Its dials still apply, and the Preset picker above is how to move off it.';
 
-const asChoice = (option) => ({ value: option.id, label: option.label, doc: option.doc });
+function field({ id, label, doc, value, choices, onChange }) {
+  const wrapper = document.createElement('stack-pk');
+  wrapper.setAttribute('space', 'var(--s-3)');
+
+  const caption = document.createElement('label');
+  caption.setAttribute('for', id);
+  caption.textContent = label;
+
+  const select = document.createElement('select');
+  select.id = id;
+  for (const choice of choices) {
+    const option = document.createElement('option');
+    option.value = choice.value;
+    option.textContent = choice.label;
+    select.append(option);
+  }
+  select.value = value;
+  select.addEventListener('change', () => onChange(select.value));
+
+  wrapper.append(caption, select);
+  if (doc !== '') {
+    const help = document.createElement('p');
+    help.className = 'muted';
+    help.textContent = doc;
+    wrapper.append(help);
+  }
+  return wrapper;
+}
+
+const asChoice = (option) => ({ value: option.id, label: option.label });
 
 const docOf = (options, id) => options.find((option) => option.id === id)?.doc ?? '';
 

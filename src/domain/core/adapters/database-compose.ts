@@ -65,7 +65,7 @@ ${engine.composeEnv(database)}
     ports:
       - "${engine.port}:${engine.port}"
     volumes:
-      - db-data:${engine.dataDir}
+      - db-data:${engine.dataVolume}
     healthcheck:
       test: ${engine.healthcheckTest(database)}
       interval: 5s

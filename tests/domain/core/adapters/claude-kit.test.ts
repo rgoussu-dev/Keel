@@ -25,6 +25,17 @@ import {
   type ClaudeKitFamily,
 } from '../../../../src/domain/core/adapters/claude-kit.js';
 
+/**
+ * The same family with **no** formatter — the key absent rather than
+ * set to `undefined`, which is the distinction
+ * `exactOptionalPropertyTypes` draws and the one `ClaudeKitFamily`
+ * means by declaring `formatCommand` optional at all.
+ */
+const withoutFormatter = (base: ClaudeKitFamily): ClaudeKitFamily => {
+  const { formatCommand: _omitted, ...rest } = base;
+  return rest;
+};
+
 const family: ClaudeKitFamily = {
   runbook: '## Stack runbook — Test\n\ncontent',
   runSkill: '---\nname: run\n---\n\nbody\n',
@@ -76,7 +87,7 @@ describe('renderPreCommitHook', () => {
   });
 
   it('verifies only when the family ships no formatter', () => {
-    const hook = renderPreCommitHook({ ...family, formatCommand: undefined });
+    const hook = renderPreCommitHook(withoutFormatter(family));
     expect(hook).not.toContain('git add');
     expect(hook).toContain('tool build && tool test');
   });
@@ -90,7 +101,7 @@ describe('renderPreCommitHook', () => {
   it('always carries the format-step sentinels, even with no formatter', () => {
     // The pair must be present in both shapes, or `code-style` has
     // nowhere to upsert a format command into later.
-    for (const f of [family, { ...family, formatCommand: undefined }]) {
+    for (const f of [family, withoutFormatter(family)]) {
       const hook = renderPreCommitHook(f);
       expect(hook).toContain(FORMAT_STEP_BEGIN);
       expect(hook).toContain(FORMAT_STEP_END);
@@ -105,9 +116,9 @@ describe('renderPreCommitHook', () => {
     try {
       const shapes = {
         formatting: renderPreCommitHook(family),
-        verifyOnly: renderPreCommitHook({ ...family, formatCommand: undefined }),
+        verifyOnly: renderPreCommitHook(withoutFormatter(family)),
         upserted: upsertFormatStep(
-          renderPreCommitHook({ ...family, formatCommand: undefined }),
+          renderPreCommitHook(withoutFormatter(family)),
           './gradlew spotlessApply',
         ),
       };
@@ -123,7 +134,7 @@ describe('renderPreCommitHook', () => {
 });
 
 describe('upsertFormatStep', () => {
-  const verifyOnly = renderPreCommitHook({ ...family, formatCommand: undefined });
+  const verifyOnly = renderPreCommitHook(withoutFormatter(family));
 
   it('adds a format command to a hook emitted without one', () => {
     const next = upsertFormatStep(verifyOnly, './gradlew spotlessApply');
@@ -170,8 +181,8 @@ describe('claudeKitContribution', () => {
     const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.content)) as {
       hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
     };
-    expect(settings.hooks.PreToolUse[0].matcher).toBe('Bash');
-    expect(settings.hooks.PreToolUse[0].hooks[0].command).toBe(
+    expect(settings.hooks.PreToolUse[0]?.matcher).toBe('Bash');
+    expect(settings.hooks.PreToolUse[0]?.hooks[0]?.command).toBe(
       'bash .claude/hooks/pre-commit-format.sh',
     );
     expect(contribution.tagsAdd).toEqual(['agentic.claude-kit']);

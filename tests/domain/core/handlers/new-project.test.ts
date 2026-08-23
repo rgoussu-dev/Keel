@@ -833,11 +833,12 @@ describe('keel new records its bounded contexts', () => {
  * `quarkus-cli` silently, even when interactive.
  */
 describe('keel.new-project stack selection', () => {
-  it('drills down language → adapters → framework when interactive and omitted', async () => {
+  it('drills down shape → language → framework → adapters when interactive and omitted', async () => {
     const prompt = new FakePrompt({
+      shape: 'backend',
       language: 'java@jvm',
-      entrypoints: 'cli',
       framework: 'quarkus',
+      entrypoints: 'cli',
       buildSystem: 'gradle',
       moduleLayout: 'basic',
       basePackage: 'com.acme.cli',
@@ -862,13 +863,14 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('quarkus-cli');
-    expect(prompt.asked.slice(0, 3)).toEqual(['language', 'entrypoints', 'framework']);
+    expect(prompt.asked.slice(0, 4)).toEqual(['shape', 'language', 'framework', 'entrypoints']);
     expect(prompt.asked).not.toContain('stack');
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
   });
 
   it('resolves both user-side adapters to the composed preset, not a product', async () => {
     const prompt = new FakePrompt({
+      shape: 'backend',
       language: 'go',
       entrypoints: 'cli,server-http',
       moduleLayout: 'basic',
@@ -900,6 +902,7 @@ describe('keel.new-project stack selection', () => {
 
   it('never asks for a framework where the language has only one', async () => {
     const prompt = new FakePrompt({
+      shape: 'backend',
       language: 'rust',
       entrypoints: 'cli',
       moduleLayout: 'basic',
@@ -919,9 +922,9 @@ describe('keel.new-project stack selection', () => {
     expect(prompt.asked).not.toContain('framework');
   });
 
-  it('skips the adapter question where the language reaches one combination', async () => {
+  it('asks a frontend nothing past the shape, there being one preset under it', async () => {
     const prompt = new FakePrompt({
-      language: 'typescript@browser',
+      shape: 'frontend',
       buildSystem: 'npm',
       moduleLayout: 'basic',
       npmScope: 'demo',
@@ -938,13 +941,45 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('web-components');
+    expect(prompt.asked).not.toContain('language');
     expect(prompt.asked).not.toContain('entrypoints');
     expect(prompt.asked).not.toContain('framework');
   });
 
-  it('falls through to the flat preset list for the products no language covers', async () => {
+  it('drills down to a two-service product through the fullstack shape', async () => {
     const prompt = new FakePrompt({
-      language: 'keel.by-id',
+      shape: 'fullstack',
+      language: 'go',
+      layout: 'monorepo',
+      'buildSystem:frontend': 'npm',
+      modulePath: 'example.com/demo',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      defaultBranch: 'main',
+      // `observability/monitoring-compose` declares a question under
+      // this id; the wizard's own flat list is not asked here.
+      stack: 'granular',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('fullstack-go');
+    // Go has one framework and the product one entrypoint set, so two
+    // of the four steps answer themselves.
+    expect(prompt.asked.slice(0, 2)).toEqual(['shape', 'language']);
+    expect(prompt.asked).not.toContain('framework');
+    expect(prompt.asked).not.toContain('entrypoints');
+  });
+
+  it('falls through to the flat preset list from the first menu’s escape hatch', async () => {
+    const prompt = new FakePrompt({
+      shape: 'keel.by-id',
       // Asked twice under one id, by two different askers: the
       // wizard's flat preset list, then the backend's
       // `observability/monitoring-compose` dial.
@@ -966,11 +1001,15 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('fullstack-go');
-    expect(prompt.asked.slice(0, 2)).toEqual(['language', 'stack']);
+    expect(prompt.asked.slice(0, 2)).toEqual(['shape', 'stack']);
   });
 
   it('rejects a combination the menus never offered', async () => {
-    const prompt = new FakePrompt({ language: 'typescript@node', entrypoints: 'spa' });
+    const prompt = new FakePrompt({
+      shape: 'backend',
+      language: 'typescript@node',
+      entrypoints: 'spa',
+    });
     const mediator = installMediator({ prompt });
     const error = expectErr(
       await mediator.dispatch(
@@ -1010,6 +1049,7 @@ describe('keel.new-project stack selection', () => {
     );
     expect(report.subject).toBe('quarkus-cli');
     expect(prompt.asked).not.toContain('stack');
+    expect(prompt.asked).not.toContain('shape');
     expect(prompt.asked).not.toContain('language');
     expect(prompt.asked).not.toContain('entrypoints');
     expect(prompt.asked).not.toContain('framework');
@@ -1349,6 +1389,7 @@ describe('keel.new-project extra verticals', () => {
 
   it('reads as a set at the review step, empty included', async () => {
     const prompt = new FakePrompt({
+      shape: 'backend',
       language: 'go',
       entrypoints: 'cli,server-http',
       moduleLayout: 'basic',
@@ -1368,7 +1409,9 @@ describe('keel.new-project extra verticals', () => {
     );
     const review = prompt.questions.find((q) => q.id === 'keel.review');
     const labels = review?.choices?.map((c) => c.label) ?? [];
-    expect(labels).toContain('Change: User-side adapters (Go) = cli, server-http');
+    // The finder's own steps carry their number into the review list,
+    // which is where "jump back to step 3" has to be findable.
+    expect(labels).toContain('Change: Step 3 · User-side adapters (Go) = cli, server-http');
     expect(labels).toContain('Change: Additional verticals = (none)');
   });
 

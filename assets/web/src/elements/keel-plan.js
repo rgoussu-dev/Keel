@@ -1,15 +1,20 @@
 /**
  * `<keel-plan>` — the right-hand column: what this install would
- * write, what it would run afterwards, the command that is equivalent
- * to it, and the button that commits it.
+ * write, what it would run afterwards, and the command that is
+ * equivalent to it.
  *
  * The plan is the whole reason a form beats a flag here. `keel new`
  * tells you the tree after it has written it (or under `--dry-run`,
  * in a scroll of paths); this shows it while the choices are still
  * moving, so a build-system flip is a visible diff rather than an act
- * of faith. The shell keeps this column beside the form rather than
- * below it for the same reason — a plan you have to scroll back to is
- * a plan you stop reading.
+ * of faith. It stays on screen through **every** step of the wizard
+ * for that reason: the tree redrawing as you answer is what makes the
+ * answer mean something, and a stepper that hid it until the end
+ * would have thrown that away. The shell pins this column so that
+ * holds on a long step too, not only a short one.
+ *
+ * The Generate button is not here. It belongs to the review step —
+ * `<keel-review>` — which is the one place the run is committed from.
  *
  * **The skeleton is built once.** Every preview used to replace this
  * subtree, which reset the tree's scroll position on each keystroke:
@@ -18,26 +23,24 @@
  * and only the parts that changed are rewritten.
  *
  * **Why the CLI line is here.** The page and the terminal are two
- * primary adapters over one mediator, so every state this form
+ * primary adapters over one mediator, so every state this wizard
  * reaches is a command somebody could have typed. Showing it turns a
  * one-off click into something that can go in a README or a CI job —
  * and it is how a user who started here learns the command they will
- * use from then on. It is derived from the same body the button
+ * use from then on. It is derived from the same body the review step
  * posts (`../command.js`), so it cannot describe a different install.
  *
- * Preview/report/state in as properties, `install-requested` out.
+ * Preview/report/state in as properties; nothing out.
  */
 
 import { commandFor, commandText } from '../command.js';
-import { el, help, icon } from '../dom.js';
+import { el, icon } from '../dom.js';
 import { countKinds } from '../tree.js';
 
 export class KeelPlan extends HTMLElement {
   #preview = null;
   #report = null;
-  #busy = false;
   #stale = false;
-  #ready = false;
   #hint = '';
   #body = null;
   #built = false;
@@ -54,21 +57,9 @@ export class KeelPlan extends HTMLElement {
     this.#render();
   }
 
-  /** @param {boolean} value whether a request is in flight */
-  set busy(value) {
-    this.#busy = value;
-    this.#render();
-  }
-
   /** @param {boolean} value whether the shown preview predates the current answers */
   set stale(value) {
     this.#stale = value;
-    this.#render();
-  }
-
-  /** @param {boolean} value whether the form is complete enough to install */
-  set ready(value) {
-    this.#ready = value;
     this.#render();
   }
 
@@ -78,7 +69,7 @@ export class KeelPlan extends HTMLElement {
     this.#render();
   }
 
-  /** @param {object|null} value the exact body the Generate button posts */
+  /** @param {object|null} value the exact body the review step posts */
   set body(value) {
     this.#body = value;
     this.#render();
@@ -109,12 +100,7 @@ export class KeelPlan extends HTMLElement {
           'div',
           { class: 'tree-panel' },
           el('div', { class: 'working-bar', attrs: { 'data-role': 'working' }, hidden: true }),
-          el(
-            'div',
-            { class: 'tree', attrs: { 'data-role': 'tree' } },
-            el('keel-file-tree'),
-            el('p', { class: 'tree-empty', attrs: { 'data-role': 'hint' }, hidden: true }),
-          ),
+          el('div', { class: 'tree', attrs: { 'data-role': 'tree' } }),
         ),
         el(
           'section',
@@ -138,7 +124,7 @@ export class KeelPlan extends HTMLElement {
               'button',
               {
                 type: 'button',
-                class: 'ghost icon',
+                class: 'ghost',
                 attrs: { 'data-role': 'copy', 'aria-label': 'Copy the command' },
                 on: { click: () => void this.#copy() },
               },
@@ -147,20 +133,6 @@ export class KeelPlan extends HTMLElement {
             ),
           ),
           el('code', { class: 'cli-block', attrs: { 'data-role': 'cli-text' } }),
-        ),
-        el(
-          'div',
-          { class: 'commit' },
-          el('button', {
-            type: 'button',
-            class: 'primary big',
-            attrs: { 'data-role': 'generate' },
-            on: {
-              click: () =>
-                this.dispatchEvent(new CustomEvent('install-requested', { bubbles: true })),
-            },
-          }),
-          el('p', { class: 'kbd-hint', attrs: { 'data-role': 'kbd' } }),
         ),
       ),
     );
@@ -176,7 +148,6 @@ export class KeelPlan extends HTMLElement {
     this.#renderTree();
     this.#renderActions();
     this.#renderCommand();
-    this.#renderCommit();
   }
 
   #part(role) {
@@ -216,35 +187,47 @@ export class KeelPlan extends HTMLElement {
     if (this.#report === null) return;
     host.className = 'banner success';
     host.replaceChildren(
-      el('span', { class: 'banner-icon' }, icon('check')),
+      el('span', {}, icon('check')),
       el(
         'span',
         {},
         el('span', { class: 'banner-title', text: `Done — ${this.#report.subject}` }),
-        help(
-          `${this.#report.changes.length} files written${
+        el('p', {
+          class: 'help',
+          text: `${this.#report.changes.length} files written${
             this.#report.actions.length > 0 ? `, ${this.#report.actions.length} actions run` : ''
-          }. The form now offers what is left to add.`,
-        ),
+          }.`,
+        }),
       ),
     );
   }
 
+  /**
+   * The tree, or the reason there is none.
+   *
+   * The file tree is **removed** rather than hidden when a hint takes
+   * its place: a refused run has no plan, and a `<keel-file-tree>`
+   * still in the document — empty, or holding the last good tree —
+   * would say it has one.
+   */
   #renderTree() {
     const host = this.#part('tree');
-    const tree = this.querySelector('keel-file-tree');
-    const hint = this.#part('hint');
     const working = this.#part('working');
-    if (!host || !tree || !hint || !working) return;
+    if (!host || !working) return;
 
-    working.hidden = !(this.#stale || this.#busy);
-    host.classList.toggle('stale', this.#stale && !this.#busy);
+    working.hidden = !this.#stale;
+    host.classList.toggle('stale', this.#stale);
 
-    const showHint = this.#hint !== '';
-    hint.hidden = !showHint;
-    hint.textContent = this.#hint;
-    tree.hidden = showHint;
-    if (!showHint) tree.changes = this.#preview?.changes ?? [];
+    if (this.#hint !== '') {
+      host.replaceChildren(el('p', { class: 'tree-empty', text: this.#hint }));
+      return;
+    }
+    let tree = host.querySelector('keel-file-tree');
+    if (!tree) {
+      tree = document.createElement('keel-file-tree');
+      host.replaceChildren(tree);
+    }
+    tree.changes = this.#preview?.changes ?? [];
   }
 
   #renderActions() {
@@ -293,26 +276,6 @@ export class KeelPlan extends HTMLElement {
     setTimeout(() => {
       if (label) label.textContent = 'Copy';
     }, 1600);
-  }
-
-  #renderCommit() {
-    const button = this.#part('generate');
-    const hint = this.#part('kbd');
-    if (!button) return;
-    button.disabled = this.#busy || !this.#ready || this.#preview === null;
-    button.replaceChildren(
-      ...(this.#busy ? [el('span', { class: 'spin' })] : []),
-      el('span', { text: this.#busy ? 'Writing…' : 'Generate' }),
-    );
-    if (hint) {
-      hint.replaceChildren(
-        el('kbd', { text: mac() ? 'Cmd' : 'Ctrl' }),
-        document.createTextNode(' + '),
-        el('kbd', { text: 'Enter' }),
-        document.createTextNode(' writes it to disk'),
-      );
-      hint.hidden = button.disabled;
-    }
   }
 }
 

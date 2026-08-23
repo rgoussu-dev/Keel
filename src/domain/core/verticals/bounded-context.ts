@@ -52,6 +52,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const boundedContextVertical: Vertical = {
   id: 'bounded-context',
+  title: 'Bounded context',
   description: 'One named bounded context under the modulith, and its optional consumer edge.',
   dimensions: [],
   adapters: [

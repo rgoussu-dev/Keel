@@ -353,6 +353,26 @@ export interface Adapter {
  */
 export interface Vertical {
   readonly id: string;
+  /**
+   * The concept this vertical bears, as a person would name it —
+   * "Continuous integration" for `ci`, "Container image" for
+   * `containerization`.
+   *
+   * Optional, and resolved rather than read: `verticalTitle` in
+   * `domain/core/registry.ts` falls back to the id spelled out, so a
+   * plugin that declares none still renders as something a menu can
+   * show. Declare one wherever the id is an abbreviation or a piece
+   * of keel's own jargon — which is most of them, and is the whole
+   * reason this is separate from {@link Vertical.description}: an id
+   * is what you type, a title is what you recognise.
+   */
+  readonly title?: string;
+  /**
+   * One line saying what installing this buys, in the user's terms
+   * rather than the engine's — what appears, what it does for them.
+   * Shown under the title wherever a front end offers the vertical,
+   * and printed by `keel add --list`.
+   */
   readonly description: string;
   readonly dimensions: readonly string[];
   readonly adapters: readonly Adapter[];

@@ -31,6 +31,24 @@ set knows where the repository is hosted, so the choice is yours:
 
 Both flavors run the same commands; only the host differs. The chosen
 flavor promotes its own tag: `ci.github-actions` or `ci.gitlab-ci`.
+The question is shared with [`distribution`](distribution.md) and
+asked once per project: whichever vertical installs first asks, and
+the other borrows the recorded answer.
+
+### On GitLab, the pipeline file is shared
+
+GitLab gives a project one `.gitlab-ci.yml`, and `distribution` writes
+its tag-triggered release jobs into the same file. Each vertical owns
+a **sentinel-delimited region** of it rather than the file —
+`# keel:ci-pipeline:begin` … `:end` here, `# keel:distribution-pipeline:*`
+there — the same idiom [`code-style`](code-style.md) uses for
+`.editorconfig`. So the two install in either order and read the same
+either way (the build gate carries the top-level `image:` and
+`variables:` keys, so it stays on top), `keel add ci --reapply`
+re-renders the gate without touching the release jobs, and a
+hand-written job outside both regions survives untouched. Editing one
+marker of a pair without the other is refused, with the fix in the
+message, rather than guessed at.
 
 ## Dimensions & adapters
 

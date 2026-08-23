@@ -22,7 +22,7 @@
 /**
  * The command equivalent to an install body, as highlightable tokens.
  *
- * @param {{ cwd: string, target: object, answers: Record<string, Record<string, string>> }} body
+ * @param {{ cwd: string, target: object | null, answers: Record<string, Record<string, string>> }} body
  * @returns {Token[]} empty when the target names no command yet
  */
 export function commandFor({ target, answers }) {

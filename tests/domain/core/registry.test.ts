@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import type { Vertical } from '../../../src/domain/contract/composition.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
 import {
+  verticalTitle,
   listStackIds,
   listVerticalIds,
   pluginOrigin,
@@ -114,6 +115,30 @@ describe('registryOf', () => {
     );
     expect(error.message).toContain('registers a stack with no id');
     expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it('spells a title out of the id where a vertical declares none', () => {
+    // A plugin's vertical is the case: keel's own all declare one, so
+    // the fallback would go untested exactly where it is load-bearing.
+    expect(verticalTitle(wellFormed('acme-widget-store'))).toBe('Acme widget store');
+    expect(verticalTitle(wellFormed('ci'))).toBe('Ci');
+    expect(verticalTitle({ ...wellFormed('ci'), title: 'Continuous integration' })).toBe(
+      'Continuous integration',
+    );
+    // An empty string is a declaration of nothing, not a title.
+    expect(verticalTitle({ ...wellFormed('dev-env'), title: '' })).toBe('Dev env');
+  });
+
+  it('gives every shipped vertical a title of its own, none of them the fallback', () => {
+    // The fallback is a floor, not a plan: `iac` reading "Iac" and
+    // `vcs` reading "Vcs" is the whole reason the field exists.
+    for (const vertical of SHIPPED_VERTICALS) {
+      expect({ id: vertical.id, title: vertical.title }).toEqual({
+        id: vertical.id,
+        title: expect.any(String),
+      });
+      expect(vertical.title).not.toBe('');
+    }
   });
 
   it('leaves the shipped pieces untouched when no source follows them', () => {

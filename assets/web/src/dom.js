@@ -1,20 +1,146 @@
 /**
- * The three DOM helpers every element on this page kept re-writing.
+ * The page's shared control shapes.
  *
- * The page builds its DOM imperatively — no template engine, no
- * bundler, and deliberately no `innerHTML` on anything carrying a
- * value the server produced. What that cost, before this module, was
- * five lines of `createElement` / `className` / `textContent` per
- * control, which buried the shape of a form under the mechanics of
- * building one.
+ * One module rather than a copy per element, because a card is a
+ * *decision* the page has already made — that the questions which
+ * decide what gets scaffolded are answered by reading the answers,
+ * not by opening a `<select>` — and a second implementation of it is
+ * a second place for that decision to erode. The narrowing steps and
+ * the brownfield vertical picker are the same control with different
+ * data behind it.
  *
- * `el` is the whole idea: a tag, a bag of properties, and children.
- * `icon`, `field`, `select` and `tile` are the shapes used often
- * enough to deserve a name of their own.
+ * Below the cards sit the smaller shapes the wizard's other halves
+ * need — `el`, the builder everything else is written in; `icon`;
+ * `prose`/`help` for the documentation strings keel writes for a
+ * terminal; and `field`/`select` for the adapters' own questions,
+ * which are free text and one-of-many rather than decisions about
+ * what gets scaffolded, and so are the one place a `<select>` is
+ * still the right control.
  *
- * Pure and DOM-only, so it is as testable as anything else here and
- * imports nothing.
+ * DOM only. Everything that decides *which* choices exist lives in
+ * `finder.js` and `steps.js`, which are pure and tested without a
+ * browser.
+ *
+ * @typedef {{ value: string, label: string, doc?: string, meta?: string, badge?: string }} Choice
  */
+
+/**
+ * A radio group drawn as cards: title, optional id line, optional
+ * badge, description, whole card clickable.
+ *
+ * A `<select>` would do the same job in a tenth of the markup, and it
+ * is what these controls were. It also hides every option but one
+ * behind a click, which is exactly wrong for the questions that
+ * decide what gets scaffolded — "fullstack, backend or frontend?" and
+ * "which capability do I want next?" are questions you answer by
+ * reading the answers.
+ *
+ * @param {{ id: string, chosen: string, choices: Choice[], onChange: (value: string) => void }} spec
+ */
+export function cards({ id, chosen, choices, onChange }) {
+  const group = document.createElement('div');
+  group.className = 'cards';
+  group.id = id;
+  group.setAttribute('role', 'radiogroup');
+  for (const choice of choices) {
+    const card = document.createElement('label');
+    card.className = choice.value === chosen ? 'card chosen' : 'card';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = id;
+    input.value = choice.value;
+    input.checked = choice.value === chosen;
+    input.addEventListener('change', () => onChange(input.value));
+    card.append(input, body(choice));
+    group.append(card);
+  }
+  return group;
+}
+
+/**
+ * The same cards, checkable rather than exclusive — for a step where
+ * every subset of what it shows is a legal answer.
+ *
+ * `onChange` gets the whole new set, in the order the choices are
+ * listed rather than the order they were clicked, so the same
+ * selection always encodes the same way.
+ *
+ * @param {{ id: string, chosen: string[], choices: Choice[], onChange: (values: string[]) => void }} spec
+ */
+export function checkboxCards({ id, chosen, choices, onChange }) {
+  const group = document.createElement('div');
+  group.className = 'cards';
+  group.id = id;
+  const picked = new Set(chosen);
+  for (const choice of choices) {
+    const card = document.createElement('label');
+    card.className = picked.has(choice.value) ? 'card chosen' : 'card';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = choice.value;
+    input.checked = picked.has(choice.value);
+    input.addEventListener('change', () => {
+      onChange(
+        choices
+          .map((candidate) => candidate.value)
+          .filter((value) => (value === choice.value ? input.checked : picked.has(value))),
+      );
+    });
+    card.append(input, body(choice));
+    group.append(card);
+  }
+  return group;
+}
+
+/** A card's text column: title (with its badge), id line, description. */
+function body(choice) {
+  const column = document.createElement('span');
+  column.className = 'card-body';
+
+  const heading = document.createElement('span');
+  heading.className = 'card-heading';
+  const title = document.createElement('span');
+  title.className = 'card-title';
+  title.textContent = choice.label;
+  heading.append(title);
+  if (choice.badge) {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = choice.badge;
+    heading.append(badge);
+  }
+  column.append(heading);
+
+  // The id, where the card stands for something the CLI also names.
+  // It is what `keel add <id>` takes, so a page that showed only the
+  // title would leave the two halves of keel spelling the same
+  // capability differently.
+  if (choice.meta) {
+    const meta = document.createElement('span');
+    meta.className = 'muted mono';
+    meta.textContent = choice.meta;
+    column.append(meta);
+  }
+  if (choice.doc) {
+    const doc = document.createElement('span');
+    doc.className = 'muted';
+    doc.textContent = choice.doc;
+    column.append(doc);
+  }
+  return column;
+}
+
+/** A muted line of prose, for a step with something to say and nothing to ask. */
+export function note(text) {
+  const paragraph = document.createElement('p');
+  paragraph.className = 'muted';
+  paragraph.textContent = text;
+  return paragraph;
+}
+
+/* ================================================================ *
+ * The smaller shapes                                                *
+ * ================================================================ */
 
 /**
  * Builds an element.
@@ -170,29 +296,4 @@ export function select({ id, value, choices, onChange }) {
   node.value = value;
   node.addEventListener('change', () => onChange(node.value));
   return node;
-}
-
-/**
- * One checkbox rendered as a tile: a box, a title and the option's
- * own documentation, which a `title=` tooltip only ever showed to
- * somebody who already knew to hover.
- *
- * @param {{ value: string, title: string, doc?: string, checked: boolean,
- *           onToggle: (checked: boolean) => void }} spec
- * @returns {HTMLElement}
- */
-export function tile({ value, title, doc = '', checked, onToggle }) {
-  const box = el('input', { type: 'checkbox', value, checked });
-  box.addEventListener('change', () => onToggle(box.checked));
-  return el(
-    'label',
-    { class: 'tile' },
-    box,
-    el(
-      'span',
-      { class: 'tile-text' },
-      el('span', { class: 'tile-title', text: title }),
-      doc !== '' ? el('span', { class: 'tile-doc' }, prose(doc)) : null,
-    ),
-  );
 }

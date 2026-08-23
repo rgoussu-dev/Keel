@@ -15,7 +15,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — plain ESM shipped to the browser, no declarations.
 import { commandFor, commandText } from '../../../assets/web/src/command.js';
 
 interface Token {
@@ -23,7 +22,9 @@ interface Token {
   text: string;
 }
 
-const line = (target: object, answers: object = {}): string =>
+type Answers = Record<string, Record<string, string>>;
+
+const line = (target: object, answers: Answers = {}): string =>
   commandText(commandFor({ cwd: '/tmp/demo', target, answers }));
 
 describe('commandFor', () => {

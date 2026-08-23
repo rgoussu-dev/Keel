@@ -48,6 +48,13 @@ const TEMPLATE_ROOT = 'composition/observability/monitoring-compose';
 /** Directory the stack's config files land in. */
 export const MONITORING_CONFIG_DIR = 'dev/observability';
 
+/**
+ * Mode the bind-mounted config files are written with. See the
+ * comment at the call site — the containers reading them are
+ * unprivileged, so the mode cannot depend on the caller's umask.
+ */
+export const MOUNTED_CONFIG_MODE = 0o644;
+
 const README_MARKER = '\n### Monitoring stack\n';
 
 const readmeSection = (): string =>
@@ -68,14 +75,18 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
   # One service per concern, the shape a production deployment grows
   # from: the collector is the single OTLP entrypoint (the service
   # never learns backend addresses), fanning each signal out to its
-  # store. Config files live in dev/observability/. Before
-  # production: real Grafana auth, retention on the stores, container
-  # healthchecks mirroring the service's own probe doctrine.
+  # store. Config files live in dev/observability/, mounted ro,z:
+  # every one of these images runs as an unprivileged user, and the
+  # z relabels the mount for SELinux hosts (Fedora, RHEL) where an
+  # unlabelled bind mount reads as a permission denial. The option is
+  # inert everywhere else. Before production: real Grafana auth,
+  # retention on the stores, container healthchecks mirroring the
+  # service's own probe doctrine.
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.159.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
-      - ./observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - ./observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro,z
     ports:
       - "4317:4317" # OTLP gRPC — the service pushes here
       - "4318:4318" # OTLP HTTP
@@ -88,7 +99,7 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
     image: grafana/tempo:3.0.3
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
-      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro,z
       - tempo-data:/var/tempo
 
   prometheus:
@@ -99,7 +110,7 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
       # arrive through the collector, not by scraping the service).
       - --web.enable-remote-write-receiver
     volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro,z
       - prometheus-data:/prometheus
 
   loki:
@@ -116,7 +127,7 @@ const GRANULAR_SERVICES = `  # --- monitoring (observability vertical) ---------
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
     volumes:
-      - ./observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro,z
       - grafana-data:/var/lib/grafana
     ports:
       - "3000:3000"
@@ -201,11 +212,18 @@ export const monitoringComposeAdapter: Adapter = {
         ],
       };
     }
-    const files = await ctx.templates.render(
+    const rendered = await ctx.templates.render(
       `${TEMPLATE_ROOT}/granular`,
       MONITORING_CONFIG_DIR,
       {},
     );
+    // Every one of these files is bind-mounted into a container that
+    // runs as an unprivileged user, so world-readable is part of the
+    // contract — not something to leave to the umask of whichever
+    // shell ran `keel`. A umask of 077 would otherwise emit 0600
+    // configs and each of those containers would exit on a
+    // permission denial.
+    const files = rendered.map((file) => ({ ...file, mode: MOUNTED_CONFIG_MODE }));
     return {
       files,
       patches: [

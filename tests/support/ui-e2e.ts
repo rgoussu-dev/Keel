@@ -16,17 +16,17 @@
  * there are two: they differ by what is on disk when the page opens.
  */
 
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { type Locator, type Page } from 'playwright';
-import { chromium } from './web-e2e.js';
+import { chromium, runStep } from './web-e2e.js';
 
 /** The repository root, from this file's own location. */
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-/** Where the greenfield form lives; every selector is scoped to it. */
-export const FORM = 'keel-new-form';
 
 /** Long enough for a cold `tsc` plus a browser launch, short of a hang. */
 export const SETTLE_MS = 20_000;
@@ -58,6 +58,94 @@ export const browserBinary = ((): string | null => {
   });
   return found.status === 0 ? (found.stdout.split('\n')[0]?.trim() ?? null) : null;
 })();
+
+/* ---- building the binary under test ---------------------------- */
+
+/**
+ * Compiles `dist/` **once** across every `keel ui` suite in a run,
+ * however many of them vitest is running at the same time.
+ *
+ * `bin/keel.js` loads `dist/`, and the e2e job installs without
+ * building, so each of these suites has to compile before it can
+ * spawn the command rather than a stale artefact of whatever ran
+ * last. Doing that per suite is what broke: vitest parallelises
+ * across files, so three workers ran `tsc` into the *same* `dist/`
+ * while a fourth process — a spawned `keel ui` — was importing out of
+ * it. What comes back from a module being rewritten underneath the
+ * reader is a torn one, and node reports that as
+ * `does not provide an export named 'CatalogHandler'` — a missing
+ * export that is not missing, on a file nobody touched.
+ *
+ * So the build is claimed rather than repeated. `mkdir` is atomic, so
+ * exactly one worker wins it and compiles; the rest wait for the
+ * marker it drops and then use what it built.
+ *
+ * **The claim is keyed by the sources**, not by the run, which is
+ * what keeps "compile, don't trust the last run's artefact" true. A
+ * changed file changes the key and buys a fresh build; an unchanged
+ * tree reuses one, because that build is byte-for-byte the one this
+ * suite would have produced. Nothing here can serve a stale `dist/`
+ * without `src/` being stale too.
+ */
+export function buildCli(): void {
+  const lock = path.join(os.tmpdir(), `keel-ui-e2e-build-${sourceKey()}`);
+  const marker = path.join(lock, 'done');
+  try {
+    fs.mkdirSync(lock, { recursive: false });
+  } catch {
+    // Someone else claimed it: either they are compiling now, or they
+    // finished in an earlier run over these same sources.
+    if (waitForBuild(marker)) return;
+    // They died mid-build. Compiling ourselves is the only way out,
+    // and it is safe: whatever they left behind is what we overwrite.
+  }
+  runStep(
+    repoRoot,
+    'tsc -p tsconfig.build.json',
+    path.join(repoRoot, 'node_modules', '.bin', 'tsc'),
+    ['-p', 'tsconfig.build.json'],
+  );
+  fs.writeFileSync(marker, 'built');
+}
+
+/** Whether the marker turned up before the deadline. */
+function waitForBuild(marker: string): boolean {
+  const deadline = Date.now() + BUILD_WAIT_MS;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(marker)) return true;
+    // Synchronous on purpose: `beforeAll` hooks in sibling workers are
+    // what we are waiting on, and there is nothing else for this one
+    // to do until they are done.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+  }
+  return false;
+}
+
+/** Long enough for a cold `tsc` on a loaded runner, short of a hang. */
+const BUILD_WAIT_MS = 120_000;
+
+/**
+ * A short digest of everything the build reads: the compiler's
+ * configuration and every source file's path and mtime. Two runs over
+ * an untouched tree agree; one file saved and they do not.
+ */
+function sourceKey(): string {
+  const hash = createHash('sha256');
+  const config = path.join(repoRoot, 'tsconfig.build.json');
+  hash.update(repoRoot).update(String(fs.statSync(config).mtimeMs));
+  const src = path.join(repoRoot, 'src');
+  for (const entry of fs.readdirSync(src, { recursive: true, withFileTypes: true }).sort(byName)) {
+    if (!entry.isFile()) continue;
+    const file = path.join(entry.parentPath ?? src, entry.name);
+    hash.update(file).update(String(fs.statSync(file).mtimeMs));
+  }
+  return hash.digest('hex').slice(0, 16);
+}
+
+/** `readdirSync` gives no order guarantee, and a digest needs one. */
+function byName(a: fs.Dirent, b: fs.Dirent): number {
+  return `${a.parentPath}/${a.name}`.localeCompare(`${b.parentPath}/${b.name}`);
+}
 
 /* ---- the server under test ------------------------------------- */
 
@@ -175,20 +263,70 @@ export async function act(traffic: Traffic, interaction: () => Promise<unknown>)
 }
 
 /**
- * A control of the greenfield form, by the id its facet carries.
+ * A control of the page, by the id its step carries.
  *
- * Not always a `<select>`: the entrypoint facet is a checkbox group
- * whose `id` sits on the caption, which is exactly what makes
- * {@link rendered} the right way to ask whether a facet is on the
+ * Unscoped, unlike the version this replaced. The page is a stepper
+ * now: the preset picker lives above the rail, the dials inside the
+ * open step, and the questions in a third element — so "inside
+ * `keel-new-form`" stopped being a useful boundary. Ids are unique
+ * across the page, which is what makes that safe.
+ *
+ * Not always a `<select>`: the narrowing steps are groups of radio
+ * cards whose `id` sits on the group, which is exactly what makes
+ * {@link rendered} the right way to ask whether a control is on the
  * page at all.
  */
-export const control = (page: Page, id: string): Locator => page.locator(`${FORM} #${id}`);
+export const control = (page: Page, id: string): Locator => page.locator(`#${id}`);
+
+/** One choice of a narrowing step, by the value it carries. */
+export const choice = (page: Page, group: string, value: string): Locator =>
+  page.locator(`#${group} input[value="${value}"]`);
+
+/** Whether a choice of a narrowing step is currently picked. */
+export const picked = async (page: Page, group: string, value: string): Promise<boolean> => {
+  const found = choice(page, group, value);
+  return (await found.count()) === 0 ? false : found.isChecked();
+};
 
 /** An entrypoint checkbox, by the adapter id it carries. */
-export const adapter = (page: Page, id: string): Locator =>
-  page.locator(`${FORM} input[type="checkbox"][value="${id}"]`);
+export const adapter = (page: Page, id: string): Locator => choice(page, 'entrypoints', id);
 
-/** The value of a `<select>`, or null when the form does not render it. */
+/** One step's button on the rail. */
+export const railStep = (page: Page, id: string): Locator =>
+  page.locator(`keel-stepper button[data-step="${id}"]`);
+
+/** Whether the rail has a step at all — its absence is an assertion. */
+export const hasStep = async (page: Page, id: string): Promise<boolean> =>
+  (await railStep(page, id).count()) > 0;
+
+/** Every step on the rail, in order. */
+export const railSteps = (page: Page): Promise<string[]> =>
+  page
+    .locator('keel-stepper button')
+    // Structurally, because the typecheck runs without the DOM lib —
+    // this closure is serialised into the browser, where `dataset` is
+    // real.
+    .evaluateAll((nodes) =>
+      nodes.map(
+        (node) => (node as { dataset: Record<string, string | undefined> }).dataset.step ?? '',
+      ),
+    );
+
+/** Opens a step from the rail and waits for the page to settle. */
+export const openStep = (traffic: Traffic, page: Page, id: string): Promise<void> =>
+  act(traffic, () => railStep(page, id).click());
+
+/** Waits until the rail has `id`, then opens it. */
+export async function goToStep(traffic: Traffic, page: Page, id: string): Promise<void> {
+  await until(() => hasStep(page, id), `the rail to offer the ${id} step`);
+  await openStep(traffic, page, id);
+  await until(
+    async () => (await page.locator('[data-role="step-title"]').count()) > 0,
+    'the step to render',
+  );
+}
+
+/** The value of a `<select>`, or null when the page does not render it. */
 export async function valueOf(page: Page, id: string): Promise<string | null> {
   try {
     const found = control(page, id);
@@ -199,13 +337,20 @@ export async function valueOf(page: Page, id: string): Promise<string | null> {
   }
 }
 
-/** Waits until the form reports `stack` as the chosen preset. */
+/**
+ * Waits until the page reports `stack` as the chosen preset.
+ *
+ * The preset picker sits above the rail and is on screen at every
+ * step, which is deliberate: four questions narrow to an id, and a
+ * wizard that hides its own answer until the end cannot be checked.
+ */
 export const stackIs = (page: Page, stack: string): Promise<void> =>
   until(async () => (await valueOf(page, 'stack')) === stack, `the stack to become ${stack}`);
 
 /**
- * Whether a facet is on the page at all. The narrowing controls drop
- * out where they have nothing to ask, so absence is an assertion.
+ * Whether a control is on the page at all. Controls drop out where
+ * they have nothing to ask, and steps drop out with them, so absence
+ * is an assertion.
  */
 export const rendered = async (page: Page, id: string): Promise<boolean> =>
   (await control(page, id).count()) > 0;

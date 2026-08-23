@@ -33,7 +33,9 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const distributionVertical: Vertical = {
   id: 'distribution',
-  description: 'How this project ships.',
+  title: 'Distribution',
+  description:
+    'The release path on a tag push: a cross-compiled native binary attached to a GitHub release, or a container image pushed to the registry with a deployment descriptor beside it.',
   dimensions: ['build', 'release-channel'],
   promotes: [DIST_CONTAINER_TAG, GRAALVM_NATIVE_TAG],
   adapters: [

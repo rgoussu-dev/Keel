@@ -44,8 +44,8 @@ const fetchText = async (url: string): Promise<string> => (await fetchOk(url)).t
 const fetchJson = async (url: string, headers: Record<string, string> = {}): Promise<unknown> =>
   (await fetchOk(url, headers)).json();
 
-const numeric = (segment: string): number | undefined =>
-  /^\d+$/.test(segment) ? Number(segment) : undefined;
+const numeric = (segment: string | undefined): number | undefined =>
+  segment !== undefined && /^\d+$/.test(segment) ? Number(segment) : undefined;
 
 const segments = (version: string): string[] => version.split(/[.-]/);
 
@@ -109,7 +109,9 @@ const rangeSatisfies = (latest: string, range: string): boolean => {
 
 const mavenMetadataVersions = async (repository: string, path: string): Promise<string[]> => {
   const xml = await fetchText(`${repository}/${path}/maven-metadata.xml`);
-  return [...xml.matchAll(/<version>([^<]+)<\/version>/g)].map((match) => match[1]);
+  return [...xml.matchAll(/<version>([^<]+)<\/version>/g)].flatMap((match) =>
+    match[1] === undefined ? [] : [match[1]],
+  );
 };
 
 const githubHeaders = (): Record<string, string> => ({
@@ -211,7 +213,9 @@ const latestFor = (check: Exclude<PinCheck, { type: 'none' }>): Promise<string> 
         const cycles = (await fetchJson(`https://endoflife.date/api/${check.product}.json`)) as {
           cycle: string | number;
         }[];
-        return String(cycles[0].cycle);
+        const newest = cycles[0];
+        if (newest === undefined) throw new Error(`no cycles for "${check.product}"`);
+        return String(newest.cycle);
       });
   }
 };

@@ -8,7 +8,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { PROVIDER_QUESTION } from './ci-pipeline.js';
+import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import { goBootstrapAnswers } from './go-bootstrap.js';
 import {
   containerDistribution,
@@ -24,6 +24,7 @@ export const goContainerAdapter: Adapter = {
   covers: ['build', 'release-channel'],
   predicate: { requires: ['lang.go', 'arch.server-http'] },
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
+  sharesAnswersWith: otherProviderAskers(GO_CONTAINER_ID),
   contribute(ctx) {
     const { projectName } = goBootstrapAnswers(ctx.manifest, GO_CONTAINER_ID);
     return containerDistribution(ctx, {

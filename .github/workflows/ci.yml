@@ -494,7 +494,12 @@ jobs:
           # servers for either suite's cases. It is the shorter of the
           # two, so it does not move this shard's floor; both share
           # their harness (`tests/support/ui-e2e.ts`) rather than two
-          # copies of the spawn-and-settle logic drifting apart.
+          # copies of the spawn-and-settle logic drifting apart. A
+          # third joined them, `ui-refusal`: it seeds its project
+          # in-process with every deferred action faked, so it installs
+          # nothing and probes for nothing this shard does not already
+          # have. Measured level with `ui-plugin-stack`, and both well
+          # under `ui-stack-finder`, which floors the three.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -514,6 +519,7 @@ jobs:
               tests/e2e/fullstack.test.ts
               tests/e2e/ui-stack-finder.test.ts
               tests/e2e/ui-plugin-stack.test.ts
+              tests/e2e/ui-refusal.test.ts
           # The TypeScript half of the composed-entrypoint grid, in a
           # shard of its own rather than as three more files above.
           # Two reasons, and neither is wall clock inside this job:
@@ -534,6 +540,22 @@ jobs:
               tests/e2e/combo-modulith-ts-cli-http-npm.test.ts
               tests/e2e/combo-modulith-ts-cli-http-pnpm.test.ts
               tests/e2e/combo-basic-ts-cli-http-pnpm.test.ts
+          # The only shard whose suite compiles nothing, and the only
+          # one that runs an emitted `dev/compose.yaml`. Every other
+          # docker-using suite reaches its database through
+          # Testcontainers, which mounts no volume — which is how a dev
+          # database that could not start shipped past the whole grid.
+          #
+          # `docker` alone: every deferred action is faked, so the
+          # scaffold needs no JDK even though it is the stack that
+          # reported the bug. One image pull and a first-boot initdb
+          # puts this shard an order of magnitude under the
+          # `jvm-modulith-quarkus-java` floor, so it costs the e2e
+          # phase no wall clock.
+          - id: dev-compose
+            tools: docker
+            files: >-
+              tests/e2e/dev-compose.test.ts
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

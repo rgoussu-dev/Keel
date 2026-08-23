@@ -74,6 +74,17 @@ promotes `runtime.graalvm-native`:
   Gradle plugin, or a `native` Maven profile mirroring the starter
   parent's.
 
+**The answer is recorded either way** — `runtime.graalvm-native` for
+native, `runtime.jvm-image` for JVM — so this is the whole project's
+GraalVM dial, not just this Dockerfile's. That matters on a composed
+`arch.cli + arch.server-http` stack, where
+[`distribution`](distribution.md) has both a container shape and a
+native-binary shape to choose from: with only the native tag on the
+manifest, an absent tag meant either "this project declined GraalVM"
+or "this project has no image at all", and the native-binary shape
+asked for build targets on top of a `jvm` answer. It now stands down
+where the flavor already said no.
+
 ## Module layout
 
 The Dockerfile copies the artifact of whichever module runs, so on a

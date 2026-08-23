@@ -1,5 +1,5 @@
 /**
- * `<keel-question-list>` — the dynamic half of the form.
+ * `<keel-question-list>` — the questions step.
  *
  * Every control here is rendered from a `PendingQuestion` the preview
  * reported, and each answer is emitted back with the *binding* the
@@ -8,23 +8,22 @@
  * in: it reads the binding to decide where a control belongs, renders
  * the value, and hands the binding straight back.
  *
- * **The binding is the layout, and that is the point of this
- * element's shape.** A preview answers with one flat list, and the
- * first version of this page rendered it as one flat list — so "which
- * verticals go in this project", a field of the command that redraws
- * the whole plan, sat between "initial branch name" and "base Java
- * package" under a heading reading *Questions*. They are not the same
- * kind of decision and they do not belong in one column of identical
- * boxes. `binding.kind` already says which is which:
+ * **The binding is the layout.** A preview answers with one flat
+ * list, and rendering it as one flat list put "which verticals go in
+ * this project" — a field of the command that redraws the whole plan
+ * — between "initial branch name" and "base Java package".
+ * `binding.kind` already says which is which:
  *
  * - **Not `answer`** — a field of the command itself
- *   (`extraVerticals` today). It gets its own section, headed by the
- *   question's own prompt, and a set of them is a list of rows you
- *   can read down rather than a grid of boxes you have to scan.
- * - **`answer`** — what a composition adapter asked. These are the
- *   details, they are grouped **by the adapter that asked**, and the
- *   adapter id is the group's heading rather than a mono tag repeated
- *   at the far end of every single label.
+ *   (`extraVerticals` today). It gets its own heading, and a set of
+ *   choices is drawn as cards, the same control the narrowing steps
+ *   use: these are decisions about what gets scaffolded, and you
+ *   answer them by reading the answers.
+ * - **`answer`** — what a composition adapter asked. Free text and
+ *   one-of-many, which is the one place a `<select>` is still right.
+ *   They are grouped **by the adapter that asked**, and the adapter
+ *   id heads the group rather than tagging every label — which is
+ *   also what tells two services' identically-worded questions apart.
  *
  * **The caret survives a re-render.** Every preview re-renders this
  * list, and a form that moves the cursor out of the field being typed
@@ -36,7 +35,7 @@
  * Questions in, `question-answered` out: `{ binding, value }`.
  */
 
-import { el, field, help, prose, select } from '../dom.js';
+import { cards, checkboxCards, el, field, help, select } from '../dom.js';
 
 export class KeelQuestionList extends HTMLElement {
   #questions = [];
@@ -70,19 +69,7 @@ export class KeelQuestionList extends HTMLElement {
 
     if (commandLevel.length === 0 && answers.length === 0) {
       this.replaceChildren(
-        el(
-          'div',
-          { class: 'banner' },
-          el(
-            'span',
-            {},
-            el('span', { class: 'banner-title', text: 'Nothing left to answer' }),
-            el('p', {
-              class: 'help',
-              text: 'This combination has a default for every question it asks.',
-            }),
-          ),
-        ),
+        help('This combination asks nothing — every choice it makes has a default.'),
       );
       return;
     }
@@ -101,26 +88,34 @@ export class KeelQuestionList extends HTMLElement {
 
   /* ---- a field of the command ---------------------------------- */
 
-  /**
-   * A command-level question, as its own section under its own
-   * prompt. A set of choices becomes a list of rows — one line each,
-   * name and description side by side — because that is a thing you
-   * read down, where a grid of equal boxes is a thing you have to
-   * scan and a `<select multiple>` is a thing you lose to a stray
-   * click.
-   */
   #commandSection(question) {
     const id = `q-${key(question.binding)}`;
     const many = question.kind === 'multi-select' && question.choices?.length > 0;
-    const chosen = new Set(splitSelection(question.value));
+    const chosen = splitSelection(question.value);
+    const choices = (question.choices ?? []).map((choice) => ({
+      value: choice.value,
+      label: choice.label,
+      doc: choice.doc,
+    }));
 
-    const body = many
-      ? el(
-          'ul',
-          { class: 'option-list', id },
-          ...question.choices.map((choice) => this.#optionRow(question, choice, chosen)),
-        )
-      : el('div', { class: 'card-body' }, this.#control(question, id));
+    let control;
+    if (many) {
+      control = checkboxCards({
+        id,
+        chosen,
+        choices,
+        onChange: (values) => this.#emit(question.binding, values.join(',')),
+      });
+    } else if (choices.length > 0) {
+      control = cards({
+        id,
+        chosen: question.value,
+        choices,
+        onChange: (value) => this.#emit(question.binding, value),
+      });
+    } else {
+      control = this.#textControl(question, id);
+    }
 
     return el(
       'section',
@@ -128,56 +123,21 @@ export class KeelQuestionList extends HTMLElement {
       el(
         'div',
         { class: 'section-head' },
-        el('h2', { text: question.prompt }),
+        el('h3', { text: question.prompt }),
         many
           ? el('span', {
-              class: chosen.size > 0 ? 'chip accent' : 'chip',
-              text: `${chosen.size} of ${question.choices.length} chosen`,
+              class: chosen.length > 0 ? 'chip accent' : 'chip',
+              text: `${chosen.length} of ${choices.length} chosen`,
             })
           : null,
       ),
       question.doc !== '' ? help(question.doc, 'margin-block-end: var(--s-2)') : null,
-      el('div', { class: 'card' }, body),
-    );
-  }
-
-  #optionRow(question, choice, chosen) {
-    const box = el('input', {
-      type: 'checkbox',
-      value: choice.value,
-      checked: chosen.has(choice.value),
-      on: {
-        change: (event) => {
-          const next = question.choices
-            .map((candidate) => candidate.value)
-            .filter((value) => (value === choice.value ? event.target.checked : chosen.has(value)));
-          this.#emit(question.binding, next.join(','));
-        },
-      },
-    });
-    return el(
-      'li',
-      {},
-      el(
-        'label',
-        { class: 'option' },
-        box,
-        el('span', { class: 'option-name', text: choice.label }),
-        el('span', { class: 'option-doc' }, prose(choice.doc ?? '')),
-      ),
+      control,
     );
   }
 
   /* ---- what the adapters asked --------------------------------- */
 
-  /**
-   * The adapter answers, grouped by their adapter.
-   *
-   * Naming the adapter once per group says what a tag on every label
-   * said, and says it where it is actually useful: two services of a
-   * composite both ask for a project name, and the group is what
-   * tells those two fields apart.
-   */
   #detailSection(answers) {
     const groups = new Map();
     for (const question of answers) {
@@ -186,13 +146,12 @@ export class KeelQuestionList extends HTMLElement {
       groups.get(adapter).push(question);
     }
 
-    const body = el('div', { class: 'card-body' });
     const parts = [];
     for (const [adapter, questions] of groups) {
       parts.push(
         el(
           'div',
-          { class: 'group' },
+          {},
           el('p', { class: 'group-head', text: adapter }),
           el(
             'stack-pk',
@@ -210,7 +169,6 @@ export class KeelQuestionList extends HTMLElement {
         ),
       );
     }
-    body.append(el('stack-pk', { attrs: { space: 'var(--s1)' } }, ...parts));
 
     return el(
       'section',
@@ -218,13 +176,13 @@ export class KeelQuestionList extends HTMLElement {
       el(
         'div',
         { class: 'section-head' },
-        el('h2', { text: 'Details' }),
+        el('h3', { text: 'Details' }),
         el('span', {
           class: 'muted',
           text: `${answers.length} field${answers.length === 1 ? '' : 's'} · every one has a default`,
         }),
       ),
-      el('div', { class: 'card' }, body),
+      el('stack-pk', { attrs: { space: 'var(--s1)' } }, ...parts),
     );
   }
 
@@ -243,6 +201,10 @@ export class KeelQuestionList extends HTMLElement {
         onChange: (value) => this.#emit(question.binding, value),
       });
     }
+    return this.#textControl(question, id);
+  }
+
+  #textControl(question, id) {
     // `change` rather than `input`: a preview per keystroke would
     // re-render the field under the caret. The blur is the commit.
     return el('input', {

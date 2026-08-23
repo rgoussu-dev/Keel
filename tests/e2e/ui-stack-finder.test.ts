@@ -1,14 +1,16 @@
 /**
- * The `keel ui` stack finder, driven in a real browser.
+ * The `keel ui` stepper, driven in a real browser.
  *
- * The three facets — language, user-side adapters, framework — are
- * the browser half of the `keel new` drill-down. Their narrowing is
- * already unit-tested (`tests/application/web/finder.test.ts`) and
- * the tree they walk is tested where it is built
- * (`tests/domain/core/handlers/catalog.test.ts`). What neither can
- * see is the part that lives between them: an element that renders
- * the tree into controls, re-renders on every move, and has to keep
- * a choice across a re-render rather than snap the form back to its
+ * The page asks the same four narrowing questions the `keel new`
+ * wizard does — what you are building, the language, the framework,
+ * the way in — one step at a time. Their narrowing is already
+ * unit-tested (`tests/application/web/finder.test.ts`), which steps
+ * exist is unit-tested next to it (`steps.test.ts`), and the tree
+ * they walk is tested where it is built
+ * (`tests/domain/core/handlers/catalog.test.ts`). What none of them
+ * can see is the part that lives between: an element that renders the
+ * tree into controls, re-renders on every move, and has to keep a
+ * choice across a re-render rather than snap the wizard back to its
  * defaults.
  *
  * That gap is not theoretical. `<keel-new-form>` rebuilds its whole
@@ -21,7 +23,7 @@
  * **The whole binary, not the server module.** This spawns
  * `keel ui --port 0` as a child process and reads the URL it prints,
  * because the token in that URL is the page's only credential: a
- * suite that mints its own would prove the router accepts a token it
+ * suite that minted its own would prove the router accepts a token it
  * was handed, not that the CLI hands the browser one that works. The
  * port is 0 so parallel suites cannot collide, which means the URL
  * has to be parsed rather than assumed. That spawn, and the
@@ -42,18 +44,22 @@
  * manager is probed, because none is run.
  */
 
-import path from 'node:path';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { E2E_TIMEOUT_MS, mkTempDir, runStep, skipE2E } from '../support/web-e2e.js';
+import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
+  buildCli,
   adapter,
   browserBinary,
+  choice,
   control,
+  goToStep,
+  hasStep,
+  picked,
+  railSteps,
   rendered,
-  repoRoot,
   stackIs,
   valueOf,
   startUi,
@@ -71,17 +77,14 @@ let page: Page;
 let traffic: Traffic;
 let mishaps: string[];
 
-describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack finder facets', () => {
+describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided stepper', () => {
   beforeAll(async () => {
-    // `bin/keel.js` loads `dist/`, and the e2e job installs without
-    // building. Compiling here is what makes this suite test the
-    // command rather than a stale artefact of whatever ran last.
-    runStep(
-      repoRoot,
-      'tsc -p tsconfig.build.json',
-      path.join(repoRoot, 'node_modules', '.bin', 'tsc'),
-      ['-p', 'tsconfig.build.json'],
-    );
+    // Compiled rather than assumed, so this suite tests the command
+    // and not a stale artefact of whatever ran last — and claimed
+    // rather than repeated, because three `keel ui` suites run in
+    // parallel and three `tsc` runs into one `dist/` is a torn read
+    // waiting to happen. See `buildCli`.
+    buildCli();
     // An empty directory, so the page opens on the greenfield form
     // rather than the brownfield one.
     cwd = await mkTempDir('keel-ui-facets-e2e-');
@@ -128,14 +131,40 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
   });
 
   it(
-    'opens on the default preset, not on the alphabetically first stack',
+    'opens on the default preset, on the first step, with the whole rail drawn',
     async () => {
       // `fullstack` is first in the catalog and is what a naive
       // `stacks[0]` would land on; the finder's default is what an
       // omitted `--stack` resolves to in a terminal.
       expect(await valueOf(page, 'stack')).toBe('quarkus-cli');
-      expect(await valueOf(page, 'language')).toBe('java@jvm');
-      expect(await valueOf(page, 'framework')).toBe('quarkus');
+      expect(await railSteps(page)).toEqual([
+        'directory',
+        'shape',
+        'language',
+        'framework',
+        'entrypoints',
+        'options',
+        'questions',
+        'review',
+      ]);
+      // Step one is where the run starts, and the plan is already on
+      // screen beside it — the whole reason this page beats a flag.
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Directory');
+      expect(await page.locator('keel-file-tree li').count()).toBeGreaterThan(0);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'walks the four narrowing steps and shows what each one settled',
+    async () => {
+      await goToStep(traffic, page, 'shape');
+      expect(await picked(page, 'shape', 'backend')).toBe(true);
+      await goToStep(traffic, page, 'language');
+      expect(await picked(page, 'language', 'java@jvm')).toBe(true);
+      await goToStep(traffic, page, 'framework');
+      expect(await picked(page, 'framework', 'quarkus')).toBe(true);
+      await goToStep(traffic, page, 'entrypoints');
       expect(await adapter(page, 'cli').isChecked()).toBe(true);
       expect(await adapter(page, 'server-http').isChecked()).toBe(false);
     },
@@ -143,15 +172,40 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
   );
 
   it(
+    'keeps the language and framework when the shape moves to a product',
+    async () => {
+      await goToStep(traffic, page, 'framework');
+      await act(traffic, () => choice(page, 'framework', 'spring').check());
+      await stackIs(page, 'spring-cli');
+
+      await goToStep(traffic, page, 'shape');
+      await act(traffic, () => choice(page, 'shape', 'fullstack').check());
+      // Java + Spring carried across; the entrypoints could not, a
+      // product having its own.
+      await stackIs(page, 'fullstack-spring');
+
+      // A product is two services, so the repository-layout dial is
+      // there and the adapters step is not.
+      expect(await hasStep(page, 'entrypoints')).toBe(false);
+      await goToStep(traffic, page, 'options');
+      expect(await rendered(page, 'layout')).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     'keeps the entrypoints and the framework when the language moves',
     async () => {
-      await act(traffic, () => control(page, 'language').selectOption('kotlin@jvm'));
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
       await stackIs(page, 'quarkus-cli-kotlin');
 
-      // The two facets below the one that moved are the assertion:
-      // a form that restarted its drill-down would show micronaut
+      // The two steps below the one that moved are the assertion: a
+      // wizard that restarted its drill-down would show micronaut
       // here, the first framework alphabetically.
-      expect(await valueOf(page, 'framework')).toBe('quarkus');
+      await goToStep(traffic, page, 'framework');
+      expect(await picked(page, 'framework', 'quarkus')).toBe(true);
+      await goToStep(traffic, page, 'entrypoints');
       expect(await adapter(page, 'cli').isChecked()).toBe(true);
       expect(await adapter(page, 'server-http').isChecked()).toBe(false);
     },
@@ -164,16 +218,21 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
       // The case above moves off the finder's own defaults, where a
       // language change lands on the same preset whether it carried
       // anything or not — dropping the carry-over silently passes it.
-      // Moving both facets first is what makes the carry visible.
+      // Moving both steps first is what makes the carry visible.
+      await goToStep(traffic, page, 'entrypoints');
       await act(traffic, () => adapter(page, 'server-http').click());
       await stackIs(page, 'quarkus-cli-rest');
-      await act(traffic, () => control(page, 'framework').selectOption('micronaut'));
+      await goToStep(traffic, page, 'framework');
+      await act(traffic, () => choice(page, 'framework', 'micronaut').check());
       await stackIs(page, 'micronaut-cli-rest');
 
-      await act(traffic, () => control(page, 'language').selectOption('kotlin@jvm'));
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
       await stackIs(page, 'micronaut-cli-rest-kotlin');
 
-      expect(await valueOf(page, 'framework')).toBe('micronaut');
+      await goToStep(traffic, page, 'framework');
+      expect(await picked(page, 'framework', 'micronaut')).toBe(true);
+      await goToStep(traffic, page, 'entrypoints');
       expect(await adapter(page, 'cli').isChecked()).toBe(true);
       expect(await adapter(page, 'server-http').isChecked()).toBe(true);
     },
@@ -183,18 +242,20 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
   it(
     'composes both entrypoints into one preset, never a two-service product',
     async () => {
-      await act(traffic, () => control(page, 'language').selectOption('kotlin@jvm'));
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
       await stackIs(page, 'quarkus-cli-kotlin');
 
+      await goToStep(traffic, page, 'entrypoints');
       await act(traffic, () => adapter(page, 'server-http').click());
       await stackIs(page, 'quarkus-cli-rest-kotlin');
 
       expect(await adapter(page, 'cli').isChecked()).toBe(true);
       expect(await adapter(page, 'server-http').isChecked()).toBe(true);
-      expect(await valueOf(page, 'framework')).toBe('quarkus');
       // One project with two entrypoints, so no repository layout to
       // choose — that control is what a `fullstack` product renders,
       // and its absence is how "not two services" is visible.
+      await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'layout')).toBe(false);
       expect(await rendered(page, 'moduleLayout')).toBe(true);
     },
@@ -204,6 +265,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
   it(
     'refuses to clear the last checked adapter, and snaps the control back',
     async () => {
+      await goToStep(traffic, page, 'entrypoints');
       await act(traffic, () => adapter(page, 'server-http').click());
       await stackIs(page, 'quarkus-cli-rest');
       await act(traffic, () => adapter(page, 'cli').click());
@@ -221,14 +283,18 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
   );
 
   it(
-    'drops the framework facet for a language that has no frameworks',
+    'drops the framework step for a language that has no frameworks',
     async () => {
-      await act(traffic, () => control(page, 'language').selectOption('go'));
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'go').check());
       await stackIs(page, 'go-cli');
 
-      // Go answers the framework question by existing, so the control
-      // is gone rather than showing one disabled option.
-      expect(await rendered(page, 'framework')).toBe(false);
+      // Go answers the framework question by existing, so the step is
+      // gone rather than showing one disabled option — and the rail is
+      // one shorter for it.
+      expect(await hasStep(page, 'framework')).toBe(false);
+      expect(await hasStep(page, 'entrypoints')).toBe(true);
+      await goToStep(traffic, page, 'entrypoints');
       expect(await adapter(page, 'cli').isChecked()).toBe(true);
       expect(await adapter(page, 'server-http').count()).toBe(1);
     },
@@ -236,45 +302,92 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the stack find
   );
 
   it(
-    'drops both narrowing facets for a language that reaches one preset',
+    'asks a frontend nothing past the shape, there being one preset under it',
     async () => {
-      await act(traffic, () => control(page, 'language').selectOption('typescript@browser'));
+      await goToStep(traffic, page, 'shape');
+      await act(traffic, () => choice(page, 'shape', 'frontend').check());
       await stackIs(page, 'web-components');
 
-      expect(await rendered(page, 'framework')).toBe(false);
-      expect(await rendered(page, 'entrypoints')).toBe(false);
-      expect(await adapter(page, 'cli').count()).toBe(0);
-      expect(await valueOf(page, 'language')).toBe('typescript@browser');
+      expect(await railSteps(page)).toEqual([
+        'directory',
+        'shape',
+        'options',
+        'questions',
+        'review',
+      ]);
+      expect(await hasStep(page, 'language')).toBe(false);
+      expect(await hasStep(page, 'entrypoints')).toBe(false);
     },
     E2E_TIMEOUT_MS,
   );
 
   it(
-    'shows the product placeholder for a fullstack stack, and comes back out of it',
+    'moves back onto the nearest surviving step when one vanishes underneath',
+    async () => {
+      // Standing on Framework and picking a language that has none is
+      // a step back to Language, not a trip to the start.
+      await goToStep(traffic, page, 'framework');
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'rust').check());
+      await stackIs(page, 'rust-cli');
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Language');
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'walks Back and Next through the rail one step at a time',
+    async () => {
+      await act(traffic, () => page.locator('[data-role="next"]').click());
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('What to build');
+      await act(traffic, () => page.locator('[data-role="next"]').click());
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Language');
+      await act(traffic, () => page.locator('[data-role="back"]').click());
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('What to build');
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'ends on a review that lists the choices and can jump back to any of them',
+    async () => {
+      await goToStep(traffic, page, 'review');
+      const summary = await page.locator('keel-review .summary').textContent();
+      expect(summary).toContain('quarkus-cli');
+      expect(summary).toContain('Java');
+      expect(summary).toContain('quarkus');
+      // The plan is ready, so the one button that writes anything is
+      // live — and it is the only one on the page.
+      expect(await page.locator('#generate').isEnabled()).toBe(true);
+
+      await act(traffic, () =>
+        page.locator('keel-review dd', { hasText: 'Java' }).getByRole('button').click(),
+      );
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Language');
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'reaches a preset by id from the picker above the rail, and back out again',
     async () => {
       await act(traffic, () => control(page, 'stack').selectOption('fullstack'));
       await stackIs(page, 'fullstack');
 
-      // A product names no language, so the language facet has
-      // nothing to select and the other two have nothing to narrow.
-      expect(await valueOf(page, 'language')).toBe('');
-      expect(await control(page, 'language').locator('option').first().textContent()).toContain(
-        'fullstack product',
-      );
-      expect(await rendered(page, 'entrypoints')).toBe(false);
-      expect(await rendered(page, 'framework')).toBe(false);
-      // …and the control only a product renders is there instead.
+      await goToStep(traffic, page, 'shape');
+      expect(await picked(page, 'shape', 'fullstack')).toBe(true);
+      // …and the control only a product renders is there.
+      await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'layout')).toBe(true);
 
-      // Picking a language from the placeholder is a legitimate move
-      // back into the single-project half. With nothing to carry
-      // over, it lands on the language's own defaults.
-      await act(traffic, () => control(page, 'language').selectOption('java@jvm'));
-      await stackIs(page, 'micronaut-cli');
-
-      expect(await valueOf(page, 'language')).toBe('java@jvm');
+      // Out again: picking a shape is a legitimate move back into the
+      // single-project half, and the half of the product's entrypoints
+      // a backend can still take comes with it.
+      await goToStep(traffic, page, 'shape');
+      await act(traffic, () => choice(page, 'shape', 'backend').check());
+      await stackIs(page, 'quarkus-rest');
+      await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'layout')).toBe(false);
-      expect(await adapter(page, 'cli').isChecked()).toBe(true);
     },
     E2E_TIMEOUT_MS,
   );

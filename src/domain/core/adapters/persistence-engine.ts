@@ -57,8 +57,17 @@ export interface SqlEngineSpec {
   composeEnv(database: string): string;
   /** The dev container's healthcheck `test:` value (YAML array). */
   healthcheckTest(database: string): string;
-  /** Where the container keeps its data (the `db-data` mount point). */
-  readonly dataDir: string;
+  /**
+   * Where the `db-data` volume mounts — the image's own `VOLUME`,
+   * which is not always the data directory. PostgreSQL 18 moved
+   * `PGDATA` to a version-scoped subdirectory
+   * (`/var/lib/postgresql/<major>/docker`) and its volume up to
+   * `/var/lib/postgresql`; a volume still mounted at the old
+   * `/var/lib/postgresql/data` makes its entrypoint refuse to start
+   * (docker-library/postgres#1259), so this is the mount point, not
+   * the data directory.
+   */
+  readonly dataVolume: string;
   /** Quarkus `db-kind`, doubling as the `quarkus-jdbc-*` suffix. */
   readonly quarkusDbKind: string;
   /** The JDBC driver artifact, pinned where a BOM doesn't cover it. */
@@ -106,7 +115,7 @@ export const POSTGRES: SqlEngineSpec = {
   healthcheckTest(database) {
     return `["CMD-SHELL", "pg_isready -U ${DEV_DB_USER} -d ${database}"]`;
   },
-  dataDir: '/var/lib/postgresql/data',
+  dataVolume: '/var/lib/postgresql',
   quarkusDbKind: 'postgresql',
   jdbcDriver: {
     groupId: 'org.postgresql',
@@ -153,7 +162,7 @@ export const MARIADB: SqlEngineSpec = {
   healthcheckTest() {
     return '["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]';
   },
-  dataDir: '/var/lib/mysql',
+  dataVolume: '/var/lib/mysql',
   quarkusDbKind: 'mariadb',
   jdbcDriver: {
     groupId: 'org.mariadb.jdbc',

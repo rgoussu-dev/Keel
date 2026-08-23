@@ -65,6 +65,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const persistenceVertical: Vertical = {
   id: 'persistence',
+  title: 'Persistence',
   description:
     'SQL persistence: engine-dialed datasource (PostgreSQL default, MariaDB on the JVM), Unit-of-Work port, repository example, isolated migrations (Flyway or Liquibase), dev database.',
   dimensions: [

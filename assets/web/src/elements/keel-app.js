@@ -2,8 +2,23 @@
  * `<keel-app>` — the page's one stateful element.
  *
  * Everything below it is a view: data in as properties, intent out as
- * a `CustomEvent`. This is where the state lives and where the
- * preview loop runs.
+ * a `CustomEvent`. This is where the state lives, where the preview
+ * loop runs, and where the stepper's position is kept.
+ *
+ * **The stepper.** The page asks one question at a time now, widest
+ * first — what you are building, then the language, the framework,
+ * the way in, the dials, the adapters' own questions, and finally the
+ * review that commits it. Which of those steps exist is derived, not
+ * fixed (`../steps.js`): a language reaching one framework has no
+ * framework step, exactly as the terminal wizard skips that question.
+ * Every step stays clickable, so the rail is a map rather than a
+ * gate — nothing here can be in an invalid state, since every dial
+ * has a default and `keel.dials` snaps an illegal combination back.
+ *
+ * **The plan stays visible throughout**, which is the one thing a
+ * stepper must not take away. `keel new` can only show you the tree
+ * after the fact; the whole reason this page exists is that flipping
+ * Gradle to Maven redraws it in place.
  *
  * **The loop.** keel's question set is a function of the answers
  * already given — an adapter is only asked once its predicate
@@ -29,22 +44,27 @@
  * manifest there and only `keel new` applies; a manifest and the page
  * becomes the brownfield one, offering what that project can actually
  * take.
- *
- * **The shell, and why the children are kept rather than rebuilt.**
- * The layout is an application shell — masthead, location bar, then a
- * form column and a plan column that scroll independently — because
- * the plan is the whole reason this front end exists over a flag, and
- * a plan that scrolls away while you move the dials above it is not
- * doing that job. The children are created once and updated through
- * their properties for the same class of reason: replacing the form
- * subtree on every preview took the caret out of whatever field was
- * being typed in and reset the tree's scroll position, both of which
- * read as the page fighting the user.
  */
 
 import * as api from '../api.js';
-import { el, icon } from '../dom.js';
 import { defaultStack } from '../finder.js';
+import {
+  DIRECTORY,
+  ENTRYPOINTS,
+  FRAMEWORK,
+  LANGUAGE,
+  OPTIONS,
+  QUESTIONS,
+  REVIEW,
+  SHAPE,
+  TARGET,
+  chosenStack,
+  located,
+  nextStep,
+  previousStep,
+  settleStep,
+  stepsFor,
+} from '../steps.js';
 
 /** How long to wait after a change before re-previewing. */
 const DEBOUNCE_MS = 120;
@@ -63,8 +83,10 @@ export class KeelApp extends HTMLElement {
   #busy = false;
   #stale = false;
   #timer = null;
-  /** The document-level shortcut listener, kept so it can be removed. */
-  #onKeydown = null;
+  #step = DIRECTORY;
+  /** The step the panel currently holds, and the element holding it. */
+  #drawn = null;
+  #body_ = null;
   /** Monotonic request id; a reply older than this one is discarded. */
   #generation = 0;
 
@@ -73,23 +95,13 @@ export class KeelApp extends HTMLElement {
     this.addEventListener('target-chosen', (event) => void this.#goTo(event.detail.path));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
     this.addEventListener('question-answered', (event) => this.#answer(event.detail));
+    this.addEventListener('step-selected', (event) => this.#goToStep(event.detail.id));
     this.addEventListener('install-requested', () => void this.#install());
-    this.#onKeydown = (event) => {
-      // The form has no submit button of its own — every control
-      // commits on change — so the shortcut is the keyboard path to
-      // the one irreversible action on the page.
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        event.preventDefault();
-        if (this.#ready() && !this.#busy && this.#preview !== null) void this.#install();
-      }
-    };
-    document.addEventListener('keydown', this.#onKeydown);
     void this.#boot();
   }
 
   disconnectedCallback() {
     if (this.#timer !== null) clearTimeout(this.#timer);
-    if (this.#onKeydown) document.removeEventListener('keydown', this.#onKeydown);
   }
 
   /* ---- data ---------------------------------------------------- */
@@ -116,16 +128,18 @@ export class KeelApp extends HTMLElement {
     this.#target = this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget();
     this.#dials = null;
     this.#preview = null;
+    this.#step = DIRECTORY;
+    this.#drawn = null;
     this.#render();
     this.#previewSoon();
   }
 
   /**
-   * Where the greenfield form opens: the preset the finder's defaults
-   * compose to, which is the one an omitted `--stack` resolves to in
-   * a terminal. Falling back to the first of `stacks` would open on a
-   * fullstack product — alphabetically first, and a two-service
-   * product is the last thing a blank form should presume.
+   * Where the greenfield wizard opens: the preset the finder's
+   * defaults compose to, which is the one an omitted `--stack`
+   * resolves to in a terminal. Falling back to the first of `stacks`
+   * would open on a fullstack product — alphabetically first, and a
+   * two-service product is the last thing a blank form should presume.
    *
    * The dials are left off it. They still have to be *set* before the
    * body is posted — an absent dial is one the install would ask
@@ -140,16 +154,27 @@ export class KeelApp extends HTMLElement {
     return { kind: 'new-project', stack };
   }
 
+  /**
+   * Where the brownfield wizard opens: on **no** vertical.
+   *
+   * Picking one for the user was defensible when the control was a
+   * `<select>`, which has to show something. A card group does not,
+   * and the pre-pick was never free: `available` is every registered
+   * vertical not yet installed, coverage not consulted, so whichever
+   * one sorted first could be one this project's shape cannot carry —
+   * and the page opened on a refusal nobody had asked for. An
+   * unanswered question is the honest state, and the plan says so.
+   */
   #defaultAddTarget() {
-    const first = this.#status.available[0] ?? this.#status.installed[0];
-    return {
-      kind: 'add-vertical',
-      vertical: first?.id ?? '',
-      ...(first && this.#status.available.length === 0 ? { reapply: true } : {}),
-    };
+    return { kind: 'add-vertical', vertical: '' };
   }
 
   /* ---- intent -------------------------------------------------- */
+
+  #goToStep(id) {
+    this.#step = settleStep(this.#steps(), id);
+    this.#render();
+  }
 
   #retarget(patch) {
     if (patch.kind !== undefined && patch.kind !== this.#target.kind) {
@@ -285,131 +310,200 @@ export class KeelApp extends HTMLElement {
     this.#render();
   }
 
+  /* ---- the steps ----------------------------------------------- */
+
+  #state() {
+    return {
+      status: this.#status,
+      catalog: this.#catalog,
+      dials: this.#dials,
+      target: this.#target,
+      preview: this.#preview,
+    };
+  }
+
+  #steps() {
+    return stepsFor(this.#state());
+  }
+
+  /**
+   * Every choice this run will make, in the order the wizard asked
+   * them — the review step's rows, each naming the step to jump back
+   * to.
+   *
+   * Read off the same state the steps are derived from, so a choice
+   * that has no step here has no row either: nothing in this list can
+   * name a control the user cannot reach.
+   */
+  #summary() {
+    const rows = [{ step: DIRECTORY, label: 'Directory', value: this.#cwd || '—' }];
+    if (this.#status?.initialised) {
+      rows.push({
+        step: TARGET,
+        label: this.#target?.kind === 'add-module' ? 'Bounded context' : 'Vertical',
+        value:
+          (this.#target?.kind === 'add-module' ? this.#target.module : this.#target?.vertical) ||
+          '—',
+      });
+      if (this.#target?.kind === 'add-module' && this.#target.consumes) {
+        rows.push({ step: TARGET, label: 'Consumes', value: this.#target.consumes });
+      }
+      if (this.#target?.reapply === true) {
+        rows.push({ step: TARGET, label: 'Mode', value: 're-render (already installed)' });
+      }
+      return rows;
+    }
+    const here = located(this.#state());
+    const shown = new Set(this.#steps().map((step) => step.id));
+    if (here) {
+      rows.push({ step: SHAPE, label: 'Building', value: headline(here.shape.label) });
+      if (shown.has(LANGUAGE)) {
+        rows.push({ step: LANGUAGE, label: 'Language', value: here.language.label });
+      }
+      if (shown.has(FRAMEWORK)) {
+        rows.push({ step: FRAMEWORK, label: 'Framework', value: headline(here.framework.label) });
+      }
+      if (shown.has(ENTRYPOINTS)) {
+        rows.push({
+          step: ENTRYPOINTS,
+          label: 'Adapters',
+          value: spellEntrypoints(here),
+        });
+      }
+    }
+    // No jump: the preset picker is above the rail at every step, so a
+    // link back to a control already on screen would be noise.
+    rows.push({ label: 'Preset', value: this.#target?.stack ?? '—' });
+    const stack = chosenStack(this.#state());
+    if (stack && shown.has(OPTIONS)) {
+      if (stack.services.length > 0) {
+        rows.push({ step: OPTIONS, label: 'Repository', value: this.#target.layout ?? 'monorepo' });
+      }
+      if (this.#target.buildSystem) {
+        rows.push({ step: OPTIONS, label: 'Build system', value: this.#target.buildSystem });
+      }
+      if (this.#target.moduleLayout) {
+        rows.push({ step: OPTIONS, label: 'Module layout', value: this.#target.moduleLayout });
+      }
+      if (this.#target.withPeerContext === true) {
+        rows.push({ step: OPTIONS, label: 'Peer context', value: 'yes' });
+      }
+    }
+    const answered = this.#preview?.questions ?? [];
+    if (answered.length > 0) {
+      rows.push({
+        step: QUESTIONS,
+        label: 'Questions',
+        value: `${answered.length} answered`,
+      });
+    }
+    return rows;
+  }
+
   /* ---- rendering ----------------------------------------------- */
 
   /**
    * The shell, built once.
    *
-   * Every region below is addressed by `data-role` and updated in
-   * place. Nothing here is re-created on a render, which is what
-   * keeps a caret in the field being typed in and the plan's scroll
-   * position where the reader left it.
+   * Masthead, then the rail in a band of its own, then two columns
+   * that scroll independently. The rail spans the page because it is
+   * a map of the whole run rather than part of the panel you happen
+   * to have open; the plan gets a column that cannot scroll away,
+   * which is what a stepper owes it.
    */
   #scaffold() {
-    this.replaceChildren(
-      el(
-        'header',
-        { class: 'masthead' },
-        el(
-          'div',
-          { class: 'wordmark' },
-          el('span', { class: 'mark', text: 'keel' }),
-          el('span', { class: 'tagline', text: 'local scaffolder' }),
-        ),
-        el('div', { class: 'masthead-meta', attrs: { 'data-role': 'meta' } }),
-      ),
-      el(
-        'div',
-        { class: 'locationbar' },
-        el('keel-target-picker', { attrs: { 'data-role': 'picker' } }),
-      ),
-      el(
-        'div',
-        { class: 'workspace' },
-        el(
-          'div',
-          { class: 'column' },
-          el(
-            'stack-pk',
-            { attrs: { space: 'var(--s1)' } },
-            el('div', { attrs: { 'data-role': 'error' }, hidden: true }),
-            el(
-              'section',
-              { attrs: { 'data-role': 'form' } },
-              el(
-                'div',
-                { class: 'section-head' },
-                el('h2', { attrs: { 'data-role': 'form-heading' } }),
-                el('span', { class: 'muted', attrs: { 'data-role': 'form-note' } }),
-              ),
-              el('div', { attrs: { 'data-role': 'form-host' } }),
-            ),
-            el('keel-question-list'),
-          ),
-        ),
-        el('div', { class: 'column aside' }, el('keel-plan')),
-      ),
-    );
+    this.innerHTML = `
+      <header class="masthead">
+        <h1 class="wordmark">keel<span class="tagline" data-role="tagline">local scaffolder</span></h1>
+        <div class="masthead-meta" data-role="meta"></div>
+      </header>
+      <div class="railbar">
+        <keel-stepper></keel-stepper>
+        <keel-preset hidden></keel-preset>
+      </div>
+      <div class="workspace">
+        <div class="column">
+          <stack-pk space="var(--s1)">
+            <div data-role="error" hidden></div>
+            <section class="panel" data-role="step"></section>
+          </stack-pk>
+        </div>
+        <div class="column aside">
+          <keel-plan></keel-plan>
+        </div>
+      </div>
+    `;
   }
 
   #render() {
-    const picker = this.querySelector('keel-target-picker');
-    if (picker) picker.listing = this.#listing;
+    const steps = this.#steps();
+    this.#step = settleStep(steps, this.#step);
+
+    const stepper = this.querySelector('keel-stepper');
+    if (stepper) {
+      stepper.steps = steps;
+      stepper.current = this.#step;
+    }
+
+    const preset = this.querySelector('keel-preset');
+    if (preset) {
+      const greenfield = this.#catalog !== null && this.#status?.initialised === false;
+      preset.hidden = !greenfield;
+      if (greenfield) {
+        preset.catalog = this.#catalog;
+        preset.target = this.#target;
+      }
+    }
 
     this.#renderMeta();
     this.#renderError();
-    this.#renderForm();
+    this.#renderStep(steps);
 
     const plan = this.querySelector('keel-plan');
     if (plan) {
       plan.preview = this.#preview;
       plan.report = this.#report;
-      plan.busy = this.#busy;
       plan.stale = this.#stale;
-      plan.ready = this.#ready();
       plan.hint = this.#hint();
       plan.body = this.#body();
     }
   }
 
   /**
-   * The masthead's right-hand side: what mode the page is in, and
-   * what the current directory already holds.
+   * The masthead's right-hand side: which mode the page is in, and
+   * what the directory already holds.
    *
    * Both are answers the page had already computed and was showing
-   * nowhere — the mode only implicitly, through which form appeared
-   * halfway down the column.
+   * nowhere — the mode only implicitly, through which controls the
+   * steps happened to offer.
    */
   #renderMeta() {
     const host = this.querySelector('[data-role="meta"]');
     if (!host) return;
     const chips = [];
     if (this.#status !== null) {
-      chips.push(
-        el(
-          'span',
-          { class: 'chip accent' },
-          el('span', { class: 'dot' }),
-          el('span', {
-            text: this.#status.initialised ? 'keel project' : 'new project',
-          }),
-        ),
-      );
+      const chip = document.createElement('span');
+      chip.className = 'chip accent';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      const text = document.createElement('span');
+      text.textContent = this.#status.initialised ? 'keel project' : 'new project';
+      chip.append(dot, text);
+      chips.push(chip);
     }
     if (this.#status?.initialised) {
       const installed = this.#status.installed.length;
-      chips.push(
-        el('span', {
-          class: 'chip',
-          text: `${installed} vertical${installed === 1 ? '' : 's'} installed`,
-        }),
-      );
+      chips.push(chipOf(`${installed} vertical${installed === 1 ? '' : 's'} installed`));
       if (this.#status.modules.length > 0) {
-        chips.push(
-          el('span', {
-            class: 'chip',
-            text: `${this.#status.modules.length} context${
-              this.#status.modules.length === 1 ? '' : 's'
-            }`,
-          }),
-        );
+        const count = this.#status.modules.length;
+        chips.push(chipOf(`${count} context${count === 1 ? '' : 's'}`));
       }
     }
     host.replaceChildren(...chips);
   }
 
   #ready() {
-    return this.#complete() && this.#error === null;
+    return this.#complete() && this.#error === null && this.#preview !== null;
   }
 
   /** Whether the target carries every field its command requires. */
@@ -420,8 +514,17 @@ export class KeelApp extends HTMLElement {
     return (this.#target.stack ?? '') !== '';
   }
 
-  /** What the plan shows instead of a tree while the form is incomplete. */
+  /**
+   * What the plan shows instead of a tree when it has no tree to
+   * show — a run still being filled in, or one the engine refused.
+   *
+   * An empty panel is the one thing it must not be. A refused run
+   * previews nothing, so the tree would render as a blank box beside
+   * a banner the eye has already skipped past; saying the plan is
+   * missing *because* the run was refused is what connects the two.
+   */
   #hint() {
+    if (this.#error !== null) return 'No plan — this run was refused. The reason is above.';
     if (this.#complete()) return '';
     if (this.#target?.kind === 'add-module') return 'Name the context to see its plan.';
     if (this.#target?.kind === 'add-vertical') return 'Pick a vertical to see its plan.';
@@ -434,59 +537,180 @@ export class KeelApp extends HTMLElement {
     box.hidden = this.#error === null;
     box.replaceChildren();
     if (this.#error === null) return;
-    box.className = 'banner error';
-    box.append(
-      el('span', { class: 'banner-icon' }, icon('warn')),
-      el(
-        'span',
-        {},
-        el('span', { class: 'banner-title', text: this.#error.message }),
-        el('span', { class: 'code', text: this.#error.code }),
-      ),
-    );
+    box.className = 'error';
+    const code = document.createElement('span');
+    code.className = 'code';
+    code.textContent = this.#error.code;
+    const message = document.createElement('span');
+    message.textContent = this.#error.message;
+    box.append(code, message);
   }
 
   /**
-   * The form column, updated rather than rebuilt.
+   * Draws the open step: its heading, its controls, and the two
+   * arrows.
    *
-   * The greenfield and brownfield forms are different elements, so
-   * one of them is created when the mode changes and kept for as long
-   * as the mode holds.
+   * **The body survives a re-render while the step holds.** Every
+   * preview re-renders, and rebuilding the panel took the caret out
+   * of whatever field was being typed in — a text answer is committed
+   * on blur, so the field you are editing is live for as long as you
+   * are editing it. The controls are therefore created when the step
+   * changes and updated through their properties otherwise.
    */
-  #renderForm() {
-    const host = this.querySelector('[data-role="form-host"]');
-    if (!host || this.#target === null) return;
-    const brownfield = this.#status?.initialised === true;
+  #renderStep(steps) {
+    const host = this.querySelector('[data-role="step"]');
+    if (!host || this.#target === null || this.#catalog === null) return;
+    const current = steps.find((step) => step.id === this.#step);
 
-    const heading = this.querySelector('[data-role="form-heading"]');
-    if (heading) heading.textContent = brownfield ? 'Add to this project' : 'New project';
-    const note = this.querySelector('[data-role="form-note"]');
-    if (note) {
-      note.textContent = brownfield
-        ? 'Layered onto what the manifest already records'
-        : 'Everything below is a dial on one command';
+    if (this.#step === this.#drawn && this.#body_ !== null && this.#body_.isConnected) {
+      this.#fillStepBody(this.#body_);
+      this.#fillNavigation(steps);
+      return;
     }
 
-    const wanted = brownfield ? 'keel-add-form' : 'keel-new-form';
-    let form = host.firstElementChild;
-    if (!form || form.tagName.toLowerCase() !== wanted) {
-      form = document.createElement(wanted);
-      host.replaceChildren(form);
-    }
-    if (brownfield) {
-      form.status = this.#status;
-      form.target = this.#target;
-    } else {
-      form.catalog = this.#catalog;
-      form.dials = this.#dials;
-      form.target = this.#target;
-    }
+    const stack = document.createElement('stack-pk');
+    stack.setAttribute('space', 'var(--s0)');
 
-    const questions = this.querySelector('keel-question-list');
-    // The element heads its own sections: a preview answers with one
-    // flat list, and which of them is a field of the command and
-    // which is an adapter's detail is a reading of the bindings that
-    // only it does.
-    if (questions) questions.questions = this.#preview?.questions ?? [];
+    const heading = document.createElement('h2');
+    heading.dataset.role = 'step-title';
+    heading.textContent = current?.label ?? '';
+    stack.append(heading);
+    if (current?.doc) {
+      const doc = document.createElement('p');
+      doc.className = 'muted';
+      doc.textContent = current.doc;
+      stack.append(doc);
+    }
+    this.#body_ = this.#stepBody();
+    this.#drawn = this.#step;
+    stack.append(this.#body_);
+    stack.append(this.#navigation(steps));
+    host.replaceChildren(stack);
   }
+
+  /** The element a step's controls live in, freshly made. */
+  #stepBody() {
+    const tag =
+      this.#step === DIRECTORY
+        ? 'keel-target-picker'
+        : this.#step === TARGET
+          ? 'keel-add-form'
+          : this.#step === QUESTIONS
+            ? 'keel-question-list'
+            : this.#step === REVIEW
+              ? 'keel-review'
+              : 'keel-new-form';
+    const node = document.createElement(tag);
+    this.#fillStepBody(node);
+    return node;
+  }
+
+  /** The data that element takes, on every render including its first. */
+  #fillStepBody(node) {
+    if (this.#step === DIRECTORY) {
+      node.listing = this.#listing;
+      return;
+    }
+    if (this.#step === TARGET) {
+      node.status = this.#status;
+      node.target = this.#target;
+      return;
+    }
+    if (this.#step === QUESTIONS) {
+      node.questions = this.#preview?.questions ?? [];
+      return;
+    }
+    if (this.#step === REVIEW) {
+      node.rows = this.#summary();
+      node.busy = this.#busy;
+      node.ready = this.#ready();
+      node.hint = this.#reviewHint();
+      return;
+    }
+    node.catalog = this.#catalog;
+    node.dials = this.#dials;
+    node.target = this.#target;
+    node.step = this.#step;
+  }
+
+  /**
+   * Why Generate is disabled, when it is — the refusal itself rather
+   * than a pointer to it, because the review step is the one place a
+   * user arrives at *intending* to commit.
+   */
+  #reviewHint() {
+    if (this.#error !== null) return `Refused: ${this.#error.message}`;
+    if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
+    if (this.#preview === null) return 'Waiting for the plan…';
+    return '';
+  }
+
+  /**
+   * The arrows' disabled state, on a render that kept the panel.
+   *
+   * Which steps exist is derived, so the position of the open one can
+   * move without the panel changing — a preview that adds the options
+   * step is not a reason to rebuild the controls under the caret, but
+   * it is a reason for Next to become live.
+   */
+  #fillNavigation(steps) {
+    const at = steps.findIndex((step) => step.id === this.#step);
+    const back = this.querySelector('[data-role="back"]');
+    const next = this.querySelector('[data-role="next"]');
+    if (back) back.disabled = at <= 0;
+    if (next) next.disabled = at < 0 || at >= steps.length - 1;
+  }
+
+  #navigation(steps) {
+    const row = document.createElement('cluster-pk');
+    row.className = 'nav';
+    row.setAttribute('space', 'var(--s-2)');
+    const at = steps.findIndex((step) => step.id === this.#step);
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.dataset.role = 'back';
+    back.textContent = '← Back';
+    back.disabled = at <= 0;
+    back.addEventListener('click', () => this.#goToStep(previousStep(steps, this.#step)));
+
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.dataset.role = 'next';
+    next.className = 'primary';
+    next.textContent = 'Next →';
+    next.disabled = at < 0 || at >= steps.length - 1;
+    next.addEventListener('click', () => this.#goToStep(nextStep(steps, this.#step)));
+
+    row.append(back, next);
+    return row;
+  }
+}
+
+/** One masthead chip. */
+function chipOf(text) {
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.textContent = text;
+  return chip;
+}
+
+/**
+ * The first clause of a label written as `name — what it is`. The
+ * menus spell a choice out because that is a menu's job; a summary
+ * row has a column of its own for the name and no room for the gloss.
+ */
+function headline(label) {
+  return (label ?? '').split(' — ')[0];
+}
+
+/** An entrypoint set, spelled the way its own menu spells it. */
+function spellEntrypoints(here) {
+  const named = new Map(
+    (here.framework.entrypointStep?.choices ?? []).map((choice) => [
+      choice.id,
+      headline(choice.label),
+    ]),
+  );
+  return here.combination.entrypoints.map((id) => named.get(id) ?? id).join(' + ');
 }

@@ -29,9 +29,10 @@ import type {
   Catalog,
   CatalogQuery,
   ChoiceDescriptor,
-  EntrypointCombination,
+  FrameworkNode,
   LanguageNode,
   ServiceDescriptor,
+  ShapeNode,
   StackDescriptor,
   StackFinder,
   VerticalDescriptor,
@@ -39,14 +40,17 @@ import type {
 import { MODULITH_LAYOUT_TAG } from '../adapters/module-layout.js';
 import { emitsPeerContext } from '../dials.js';
 import type { BuildSystemOption, Stack } from '../stacks.js';
-import { assemblableStacks, listVerticals } from '../registry.js';
+import { assemblableStacks, listVerticals, verticalTitle } from '../registry.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import {
   entrypointCombinations,
   entrypointStep,
   frameworkPaths,
   languageChoices,
+  pathFor,
+  shapeChoices,
   wizardPaths,
+  type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
 import { DEFAULT_STACK_ID } from './new-project.js';
@@ -94,47 +98,62 @@ export class CatalogHandler implements Handler<CatalogQuery> {
  */
 function describeFinder(registry: Registry): StackFinder {
   // The same filter the terminal drill-down walks, so the page's
-  // facets and the wizard's questions offer the same presets. A grid
+  // facets and the wizard's questions offer the same presets. A tree
   // reported from an unfiltered registry would put a dead end on a
   // control that has no way to explain it.
   const paths = wizardPaths(assemblableStacks(registry));
   return {
-    languages: languageChoices(paths).map((language) => describeLanguage(paths, language)),
+    shapes: shapeChoices(paths).map((shape) => describeShape(paths, shape)),
     defaultStack: DEFAULT_STACK_ID,
+  };
+}
+
+function describeShape(paths: readonly WizardPath[], shape: ChoiceDescriptorLike): ShapeNode {
+  const id = shape.value as ProjectShape;
+  return {
+    id,
+    label: shape.label,
+    doc: shape.doc,
+    languages: languageChoices(paths, id).map((language) => describeLanguage(paths, id, language)),
   };
 }
 
 function describeLanguage(
   paths: readonly WizardPath[],
+  shape: ProjectShape,
   language: ChoiceDescriptorLike,
 ): LanguageNode {
-  const step = entrypointStep(paths, language.value, DEFAULT_STACK_ID);
   return {
     id: language.value,
     label: language.label,
     doc: language.doc,
-    entrypointStep:
-      step === null
-        ? null
-        : { kind: step.kind, choices: step.choices.map(asChoiceDescriptor), default: step.default },
-    combinations: entrypointCombinations(paths, language.value).map((entrypoints) =>
-      describeCombination(paths, language.value, entrypoints),
+    frameworks: frameworkPaths(paths, shape, language.value).map((framework) =>
+      describeFramework(paths, shape, language.value, framework.id, framework.label),
     ),
   };
 }
 
-function describeCombination(
+function describeFramework(
   paths: readonly WizardPath[],
+  shape: ProjectShape,
   language: string,
-  entrypoints: readonly string[],
-): EntrypointCombination {
+  framework: string,
+  label: string,
+): FrameworkNode {
+  const step = entrypointStep(paths, shape, language, framework, DEFAULT_STACK_ID);
   return {
-    entrypoints: [...entrypoints],
-    frameworks: frameworkPaths(paths, language, entrypoints).map((framework) => ({
-      id: framework.id,
-      label: framework.label,
-      stack: framework.stackId,
-    })),
+    id: framework,
+    label,
+    entrypointStep:
+      step === null
+        ? null
+        : { kind: step.kind, choices: step.choices.map(asChoiceDescriptor), default: step.default },
+    combinations: entrypointCombinations(paths, shape, language, framework).flatMap(
+      (entrypoints) => {
+        const leaf = pathFor(paths, shape, language, framework, entrypoints);
+        return leaf === null ? [] : [{ entrypoints: [...entrypoints], stack: leaf.stackId }];
+      },
+    ),
   };
 }
 
@@ -196,6 +215,7 @@ function describeVerticals(registry: Registry): readonly VerticalDescriptor[] {
       ? [
           {
             id: vertical.id,
+            title: verticalTitle(vertical),
             description: vertical.description,
             dimensions: [...vertical.dimensions],
           },

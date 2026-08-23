@@ -16,7 +16,10 @@ import { KeelApp } from './elements/keel-app.js';
 import { KeelFileTree } from './elements/keel-file-tree.js';
 import { KeelNewForm } from './elements/keel-new-form.js';
 import { KeelPlan } from './elements/keel-plan.js';
+import { KeelPreset } from './elements/keel-preset.js';
 import { KeelQuestionList } from './elements/keel-question-list.js';
+import { KeelReview } from './elements/keel-review.js';
+import { KeelStepper } from './elements/keel-stepper.js';
 import { KeelTargetPicker } from './elements/keel-target-picker.js';
 
 /** Every element the page defines, tag → class. */
@@ -26,7 +29,10 @@ const ELEMENTS = {
   'keel-file-tree': KeelFileTree,
   'keel-new-form': KeelNewForm,
   'keel-plan': KeelPlan,
+  'keel-preset': KeelPreset,
   'keel-question-list': KeelQuestionList,
+  'keel-review': KeelReview,
+  'keel-stepper': KeelStepper,
   'keel-target-picker': KeelTargetPicker,
 };
 

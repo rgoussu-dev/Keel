@@ -108,7 +108,7 @@ const detectors: {
     applies: (file) => byExtension('pom.xml', 'pom.xml.ejs')(file) || isAdapterSource(file),
     regex: () =>
       /<(?:(?:[\w-]+\.)*version|maven\.compiler\.release|jdk\.version|release\.version)>([^<$][^<]*)<\//g,
-    keep: (match) => match[1] !== '0.1.0-SNAPSHOT' && /\d/.test(match[1]),
+    keep: (match) => match[1] !== undefined && match[1] !== '0.1.0-SNAPSHOT' && /\d/.test(match[1]),
   },
   {
     id: 'package-json-dependency',

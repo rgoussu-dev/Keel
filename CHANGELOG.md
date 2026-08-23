@@ -6,6 +6,117 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A refusal raised at the bottom of the install now reaches a front
+  end as a refusal.** `resolveVertical` hard-fails when no adapter
+  covers a dimension a vertical declares — `keel add containerization`
+  on a CLI-shaped project, which has nothing to serve an image from —
+  and it did so by throwing a bare `Error` out of `installVertical`,
+  past every menu. The CLI coped, because any throw is a message to
+  its top-level catch; `keel ui` could not, and answered **500 with a
+  bare string**, so the page showed `POST /api/preview failed with
+500` for a refusal that names both the missing dimension and the tag
+  that would close it.
+  - `ResolutionError` is a `DomainError` now, carrying
+    `keel.uncoverable-vertical` (the same code `keel new`'s `--with`
+    preflight already refuses with, it being the same condition) or
+    `keel.adapter-cycle`.
+  - `RegistryMediator.dispatch` normalises a thrown `DomainError` onto
+    the `Err` rail. `Result` is what the Mediator promises every
+    primary adapter, so the seam that promises it is the seam that
+    keeps it — rather than the same try/catch in four handlers and a
+    fifth copy next time. Anything that is not a `DomainError` still
+    throws: a bug must not be dressed up as a refusal.
+  - `keel ui` shows it: the banner carries the code and the message,
+    the plan says it has no tree _because the run was refused_ rather
+    than sitting blank, and the review step repeats the reason next to
+    a Generate button it holds shut. Picking a vertical the project
+    can carry clears all three.
+  - `keel new` and `keel add` print exactly what they printed before.
+
+### Changed
+
+- **A vertical is offered as a card now, not a line in a `<select>`.**
+  Which capability to add next is the one real question the brownfield
+  page asks, and `iac` or `dev-env` in a dropdown means nothing until
+  you have read what it buys you. Each card names the concept it
+  bears, the id `keel add <id>` takes, and one line on what installing
+  it gets you.
+  - `Vertical` gains an optional **`title`** — the concept, as a
+    person would name it ("Continuous integration", "Container
+    image", "Infrastructure as code"). Resolved rather than read:
+    `verticalTitle` spells a title out of the id where a vertical
+    declares none, so a plugin's renders as `Acme widget` rather than
+    a raw id. Reported on `VerticalDescriptor.title`, so a front end
+    never has to fall back for itself.
+  - The `distribution`, `containerization` and `vcs` descriptions said
+    what the vertical _was_ rather than what it gets you, which is
+    fine beside an id in `--list` and useless as the body of a card.
+    They now say what appears.
+  - **Nothing is pre-selected, and nothing is hidden.** Every
+    registered vertical is offered: one this project's shape cannot
+    carry says so when picked — with the tag that would carry it —
+    rather than being silently absent. Opening on a pre-picked
+    vertical meant opening on a refusal nobody had asked for.
+
+- **The stack finder is a four-step drill-down now, and it starts with
+  what you are building.** Both front ends narrow the same way, widest
+  first: **shape → language → framework → user-side adapters**, where
+  shape is _fullstack_ (a backend and a browser front end together),
+  _backend_ (no front end of its own) or _frontend_. It replaces
+  **language → user-side adapters → framework**, which asked a
+  newcomer to know what a "user-side adapter" is before it asked
+  anything they already knew the answer to.
+  - **A shape is derived, never listed.** Each registered entrypoint
+    declares which end it is driven from (`arch.cli` and
+    `arch.server-http` from the back, `arch.spa` from the front) and a
+    preset's shape is those sides, counted — so a stack that gains an
+    `arch.spa` moves shape on its own.
+  - **The fullstack products are on the guided path at last.** A
+    two-service product carries no `lang.*` tag, so before there was a
+    shape axis it appeared in no menu and `keel new` could only reach
+    it through "pick a preset by id". It places perfectly well through
+    its services: the union of their entrypoints gives the shape, and
+    its one back-side service — its backend — gives the language and
+    framework, which is exactly the choice a fullstack product leaves
+    open. Every shipped preset is now reachable from some path.
+  - **`keel new` says where it is.** The drill-down prints what it is
+    about to ask, numbers each step it actually asks (a step whose
+    answer is already settled is still skipped, so the numbers never
+    claim a question that does not come), and names the preset it
+    landed on: `keel new: Backend · Java · quarkus · CLI + HTTP server
+→ quarkus-cli-rest`. The escape hatch moved with the first
+    question: _Other — pick a preset by id_ is now the last choice of
+    "What are you building?".
+- **`keel ui` is a stepper rather than one long form.** The page walks
+  the same questions in the same order as the terminal wizard — one
+  step at a time, with a rail across the top, Back/Next, and a review
+  at the end listing every choice with a link back to the step that
+  made it. The three side-by-side facets are gone; a drill-down is a
+  tree, and a grid of dependent controls was a shape you had to
+  already understand to use.
+  - **The plan stays on screen at every step**, which is the one thing
+    a stepper must not take away — flipping Gradle to Maven redrawing
+    the file tree in place is the whole reason the page exists.
+  - **Every step on the rail is clickable, not just the ones behind
+    you.** Nothing on the page can be in an invalid state — every dial
+    has a default and `keel.dials` snaps an illegal combination back —
+    so the rail is a map, not a gate, and "just show me the plan" is
+    one click rather than four screens.
+  - **A step with one answer is not a step.** Which steps exist is
+    derived from the same tree the terminal wizard skips a question
+    from: a language reaching one framework has no framework step, a
+    product has no adapters step, and the frontend shape has neither.
+  - **Stepping back keeps what still fits.** Moving the shape from
+    backend to fullstack with Java + Spring chosen lands on
+    `fullstack-spring`; coming out of a product into a backend carries
+    the half of its entrypoints a backend can still take.
+  - **The preset picker sits above the rail and is on screen
+    throughout** — it names the id the answers have landed on, it is
+    the flat list of every preset, and it is the only way to name one
+    the finder could not place (a plugin's, most likely).
+
 ### Added
 
 - **`keel ui` shows the command it is equivalent to.** The page and
@@ -14,8 +125,8 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   have typed. The plan column renders that line — flags highlighted,
   answers as `--set`, values quoted only where a shell needs it — with
   a button that copies it, so a scaffold done by clicking can go into
-  a README or a CI job. Derived from the same body the Generate
-  button posts, so it cannot describe a different install.
+  a README or a CI job. Derived from the same body the review step
+  posts, so it cannot describe a different install.
 
 - **Plugins: a project can supply its own stacks and verticals.** keel
   scans `<cwd>/.keel/plugins` — a directory the project owns — and
@@ -97,40 +208,38 @@ assets }` and its pieces are written against the ordinary
 
 ### Changed
 
-- **`keel ui` is an application shell rather than a long document.**
-  The page's whole argument over a flag is that it shows the plan
-  while the choices are still moving, and the old layout put that plan
-  in a column that scrolled away the moment you reached the questions.
-  It is now a masthead, a location bar and two independently
-  scrolling columns, so the tree, the deferred actions and the
-  Generate button stay on screen for every dial you touch. Below
-  62rem it collapses back to one column and the page scrolls as a
-  document.
-  - **The form no longer fights the user.** The shell, the form
-    elements and the plan's skeleton are built once and updated
-    through their properties instead of being replaced on every
-    preview — which used to take the caret out of the field being
-    typed in and reset the file tree's scroll position on each
-    keystroke. `<keel-question-list>` also restores focus and
-    selection across its own re-render.
-  - **The questions are two kinds of decision, and now look like
+- **`keel ui` is an application shell, so the stepper never takes the
+  plan away.** The wizard's own rule is that the plan stays visible
+  throughout, and a page that scrolls as a document only keeps that
+  promise on a short step. The page is now a masthead, the rail in a
+  band of its own, and two columns that scroll independently: the
+  plan — tree, deferred actions, the command line — holds its own
+  column whatever the step above is doing. Below 62rem it collapses
+  back to one column and the page scrolls as a document.
+  - **The panel no longer fights the user.** The shell and the plan's
+    skeleton are built once and updated through their properties, and
+    a step's controls survive a re-render that did not change the
+    step — which used to take the caret out of the field being typed
+    in and reset the file tree's scroll position on each keystroke.
+    `<keel-question-list>` also restores focus and selection across
+    its own re-render.
+  - **The questions step is two kinds of decision, and now looks like
     it.** A preview answers with one flat list, so "additional
     verticals" — a field of the command that redraws the whole plan —
-    sat between "initial branch name" and "base Java package" under a
-    heading reading _Questions_. `binding.kind` already distinguished
-    them: command-level questions get their own section under their
-    own prompt, a set of choices is a list of rows with each option's
-    documentation beside it rather than a `<select multiple>`, and the
-    adapter answers are grouped under _Details_ by the adapter that
-    asked — which is where the `adapter:question` key now lives,
-    once per group instead of on every label.
+    sat between "initial branch name" and "base Java package".
+    `binding.kind` already distinguished them: a command-level
+    question gets its own heading and is drawn as cards, the same
+    control the narrowing steps use, while the adapters' own
+    questions are grouped under _Details_ by the adapter that asked —
+    which is where the `adapter:question` key now lives, once per
+    group instead of on every label.
   - **The plan's file tree is navigable.** Single-child directory
     chains are joined (`src/main/java/com/example` is one row, not
     five), directories fold away and stay folded across a preview,
     and each carries the number of files under it.
-  - **The target picker is a path bar.** Every segment of the path is
-    a jump, and the folder browser is a disclosure rather than the
-    largest permanently-open region on the page.
+  - **The directory step is a path bar.** Every segment of the path is
+    a jump, and the folder browser opens on request rather than
+    standing permanently open.
   - **Type, colour and spacing are a system.** planks' 1.5 scale is
     kept for space and replaced for text — two steps below its base is
     seven pixels — and the page's tokens now cover both themes from
@@ -2008,6 +2117,54 @@ ci`/`containerization`/`distribution` on a service follow the same
 
 ### Fixed
 
+- **The CI provider was asked twice.** `ci` and `distribution` share
+  one question — where the repository is hosted — but sticky memory is
+  keyed per adapter, so a project taking both verticals was asked
+  "CI provider?" once by its `ci/*-pipeline` adapter and again by its
+  `distribution/*-container` one. The second answer was then thrown
+  away: `distributionProvider` prefers the `ci.*` tag precisely so the
+  two can never emit for different hosts. All nine adapters that
+  declare the question now name the others in `sharesAnswersWith`, so
+  whichever vertical is installed first asks, and the other borrows
+  the recorded answer — including in the reverse order, where
+  `distribution` runs first.
+
+- **On GitLab, `ci` and `distribution` now share the pipeline file
+  instead of racing for it.** GitLab gives a project one
+  `.gitlab-ci.yml`, and both verticals write into it — but only
+  `distribution` upserted, so installing it first left `ci` refusing
+  to overwrite the file (`keel add distribution,ci` under the
+  `gitlab-ci` provider), and `keel add ci --reapply` re-wrote the
+  whole file, silently dropping the release jobs. Each vertical now
+  owns a sentinel-delimited region (`# keel:ci-pipeline:begin` … `:end`
+  and `# keel:distribution-pipeline:*`), the same idiom `code-style`
+  uses for `.editorconfig`. The two install in either order and emit a
+  byte-identical file either way, re-rendering one leaves the other's
+  jobs untouched, and a hand-written job outside both regions
+  survives. A half-deleted marker pair is refused with the fix in the
+  message rather than guessed at.
+
+- **A JVM-flavored image no longer leads to a GraalVM question.** On a
+  composed `arch.cli + arch.server-http` stack (`quarkus-cli-rest` and
+  its siblings) the `distribution` vertical resolves both
+  `quarkus-cli-native` and `jvm-container`, so a user who had just
+  answered "Container image flavor? JVM" was asked which native
+  targets to cross-compile — and `runtime.graalvm-native` was written
+  to the manifest over the top of that answer, which is the very tag
+  `jvm-container` reads to decide whether its release pipeline builds
+  a native artifact for the Dockerfile to copy. The `containerization`
+  vertical now records the flavor either way — `runtime.jvm-image`
+  beside `deploy.container-image` for the JVM flavor,
+  `runtime.graalvm-native` for native — and `quarkus-cli-native`
+  excludes `runtime.jvm-image`. The GraalVM decision is one dial per
+  project, asked once, where the flavor was actually chosen. A
+  CLI-only project ships native binaries exactly as before, and so
+  does a combo that chose the native flavor. A manifest written
+  before this release carries no flavor tag, so a brownfield
+  `keel add distribution` on one keeps the old behavior until
+  `keel add containerization` is re-run — re-record the dial, or add
+  `runtime.jvm-image` to the manifest's tags by hand.
+
 - **A free-form interactive question's `doc` was invisible.** The
   inquirer adapter surfaced an adapter-written `Question.doc` as each
   choice's own description on a `select` question, but a free-form
@@ -2396,6 +2553,46 @@ ci`/`containerization`/`distribution` on a service follow the same
   inside, the server looked and behaved correctly; from anywhere that
   matters for previewing it, it looked like nothing was listening at
   all.
+
+### Fixed
+
+- **The dev database starts.** `dev/compose.yaml` mounted the
+  `db-data` volume at `/var/lib/postgresql/data`, which PostgreSQL 18
+  moved: `PGDATA` is now a version-scoped subdirectory and the
+  image's entrypoint **refuses to start** when it finds a volume at
+  the old path (docker-library/postgres#1259), so
+  `docker compose -f dev/compose.yaml up` died on the `db` service
+  with `there appears to be PostgreSQL data in /var/lib/postgresql/data
+(unused mount/volume)` — and with it the database every HTTP
+  stack's `%dev` profile targets. The volume now mounts the image's
+  own `VOLUME`, per engine (`/var/lib/postgresql` for PostgreSQL,
+  `/var/lib/mysql` for MariaDB).
+  - **Upgrading a project scaffolded before this fix**: the old
+    volume holds a data directory the new mount point exposes at the
+    path the entrypoint rejects. `docker compose -f dev/compose.yaml
+down -v` discards it (dev data, by doctrine), and the migrations
+    one-shot repopulates the schema on the next `up`.
+  - The gap that let it ship is closed too: `tests/e2e/dev-compose.test.ts`
+    is the first suite to actually run an emitted `dev/compose.yaml`,
+    booting the dev database and querying it. Every other
+    docker-using suite reaches its database through Testcontainers,
+    which mounts no volume, so the whole e2e grid was green over a
+    compose file that could not start. It rides a `dev-compose` CI
+    shard of its own, and needs a Docker daemon and no language
+    toolchain.
+
+- **The monitoring stack's config files are readable inside their
+  containers.** The four `dev/observability/` files the granular stack
+  bind-mounts now mount `:ro,z` and are written world-readable. On an
+  SELinux host (Fedora, RHEL) an unlabelled bind mount reads as a
+  permission denial, so `tempo`, `prometheus` and `otel-collector`
+  each exited on `open …: permission denied` while `loki` — the one
+  service with no mounted config — came up fine; the `z` relabels the
+  mount and is inert everywhere else. The explicit mode covers the
+  other half: a `keel new` run under a umask of 077 emitted 0600
+  configs, unreadable to the unprivileged users those images run as.
+  The `nginx.conf` mounts in the containerization, fullstack and
+  spa-deploy compose files carry the same label.
 
 ## [0.5.0-alpha] — 2026-08-09
 

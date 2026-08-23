@@ -220,7 +220,7 @@ describe('claude-kit coverage across the stack registry', () => {
       for (const layout of stack.moduleLayouts ?? [{ tag: null }]) {
         const tags = [
           ...stack.tags,
-          ...(stack.buildSystems ? [stack.buildSystems[0].tag] : []),
+          ...(stack.buildSystems?.[0] ? [stack.buildSystems[0].tag] : []),
           ...(layout.tag ? [layout.tag] : []),
         ];
         const kit = resolveVertical(walkingSkeletonVertical, tags).filter((a) =>

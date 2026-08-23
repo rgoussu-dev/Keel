@@ -7,7 +7,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { PROVIDER_QUESTION } from './ci-pipeline.js';
+import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
 import {
   containerDistribution,
@@ -23,6 +23,7 @@ export const rustContainerAdapter: Adapter = {
   covers: ['build', 'release-channel'],
   predicate: { requires: ['lang.rust', 'arch.server-http'] },
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
+  sharesAnswersWith: otherProviderAskers(RUST_CONTAINER_ID),
   contribute(ctx) {
     const { projectName } = rustBootstrapAnswers(ctx.manifest, RUST_CONTAINER_ID);
     return containerDistribution(ctx, {

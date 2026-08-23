@@ -18,7 +18,12 @@ import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/co
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
-import { expectOk, installMediator, runActionsExcept } from '../../../support/factory.js';
+import {
+  expectErr,
+  expectOk,
+  installMediator,
+  runActionsExcept,
+} from '../../../support/factory.js';
 
 let cwd: string;
 
@@ -330,10 +335,15 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(nginx).toContain('try_files $uri /index.html');
   });
 
-  it('hard-fails on a CLI-shaped project with the uncovered image dimension', async () => {
+  it('refuses a CLI-shaped project with the uncovered image dimension, naming the tag', async () => {
     await seed('quarkus-cli');
-    await expect(
-      installMediator().dispatch(
+    // An `Err`, not a throw. The resolver still hard-fails — this is
+    // its last line of defence, past every menu — but a refusal a
+    // user can act on has to reach a front end as a refusal. It used
+    // to escape the install engine as a bare `Error`, which `keel ui`
+    // could only read as a crash and answered 500 to.
+    const error = expectErr(
+      await installMediator().dispatch(
         addVerticalCommand({
           cwd,
           vertical: 'containerization',
@@ -342,6 +352,10 @@ describe('keel.add-vertical (keel add containerization)', () => {
           dryRun: false,
         }),
       ),
-    ).rejects.toThrow(/no adapter covers dimension\(s\): image/);
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toMatch(/no adapter covers dimension\(s\): image/);
+    // The enabler is the whole answer: it says what shape would carry it.
+    expect(error.message).toContain('arch.server-http');
   });
 });

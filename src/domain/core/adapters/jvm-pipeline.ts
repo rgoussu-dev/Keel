@@ -17,12 +17,13 @@
 import type { Adapter } from '../../contract/composition.js';
 import { jvmBuildSystem } from './container-image.js';
 import {
+  ciPipelineContribution,
   ciTemplateId,
   PROVIDER_QUESTION,
   ciProvider,
-  providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -34,6 +35,7 @@ export const jvmPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['runtime.jvm'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(JVM_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), JVM_PIPELINE_ID);
     const buildSystem = jvmBuildSystem(ctx.manifest, JVM_PIPELINE_ID);
@@ -44,6 +46,6 @@ export const jvmPipelineAdapter: Adapter = {
       formatCheck: ciFormatCheck(ctx.manifest.tags),
       lintCheck: ciLintCheck(ctx.manifest.tags),
     });
-    return { files, tagsAdd: [providerTag(provider)] };
+    return ciPipelineContribution(provider, files);
   },
 };

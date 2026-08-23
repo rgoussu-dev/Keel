@@ -55,6 +55,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const codeStyleVertical: Vertical = {
   id: 'code-style',
+  title: 'Code style',
   description:
     'Editor layout contract, the stack’s own formatter, and its free-tier static checks — from one style model.',
   dimensions: ['editor-baseline', FORMATTER_DIMENSION, LINTER_DIMENSION],
