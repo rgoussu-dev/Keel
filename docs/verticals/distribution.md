@@ -58,8 +58,10 @@ What each family's pipeline does on a `v*` tag:
 GHCR under `github-actions` (a workflow at
 `.github/workflows/release-image.yml`, pushing with the built-in
 `GITHUB_TOKEN`), the GitLab Container Registry under `gitlab-ci`
-(release jobs appended to `.gitlab-ci.yml`, gated on
-`$CI_COMMIT_TAG =~ /^v/`, pushing to `$CI_REGISTRY_IMAGE`). The
+(release jobs joining `.gitlab-ci.yml` as their own
+sentinel-delimited region, gated on `$CI_COMMIT_TAG =~ /^v/`, pushing
+to `$CI_REGISTRY_IMAGE` — see [the shared pipeline
+file](ci.md#on-gitlab-the-pipeline-file-is-shared)). The
 question is the **same sticky question the [`ci`](ci.md) vertical
 asks**, and it is asked **once per project**: the pipeline adapters
 and the container adapters name each other in `sharesAnswersWith`, so

@@ -47,7 +47,12 @@ import type {
   Question,
   Tag,
 } from '../../contract/composition.js';
-import { ciProvider, type CiProvider } from './ci-pipeline.js';
+import {
+  ciProvider,
+  gitlabSectionPatch,
+  DISTRIBUTION_PIPELINE_SECTION,
+  type CiProvider,
+} from './ci-pipeline.js';
 
 /** The tag every distribution container adapter promotes. */
 export const DIST_CONTAINER_TAG: Tag = 'dist.container-image';
@@ -202,7 +207,8 @@ export async function containerDistribution(
       '',
       spec.releaseVars,
     );
-    for (const file of rendered) patches.push(appendPatch(file));
+    for (const file of rendered)
+      patches.push(gitlabSectionPatch(file, DISTRIBUTION_PIPELINE_SECTION));
   }
   files.push(
     ...(await ctx.templates.render(
@@ -212,19 +218,4 @@ export async function containerDistribution(
     )),
   );
   return { files, patches, tagsAdd: [DIST_CONTAINER_TAG] };
-}
-
-/**
- * Appends a rendered GitLab fragment to its target pipeline file,
- * creating the file when the `ci` vertical has not already — the
- * seeded upsert the composition contract exists for.
- */
-function appendPatch(file: ContributionFile): ContributionPatch {
-  const content = typeof file.content === 'string' ? file.content : file.content.toString('utf8');
-  return {
-    target: file.path,
-    seed: '',
-    apply: (existing) =>
-      existing.trim() === '' ? content : `${existing.trimEnd()}\n\n${content.trimStart()}`,
-  };
 }

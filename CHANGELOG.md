@@ -1971,6 +1971,21 @@ ci`/`containerization`/`distribution` on a service follow the same
   the recorded answer — including in the reverse order, where
   `distribution` runs first.
 
+- **On GitLab, `ci` and `distribution` now share the pipeline file
+  instead of racing for it.** GitLab gives a project one
+  `.gitlab-ci.yml`, and both verticals write into it — but only
+  `distribution` upserted, so installing it first left `ci` refusing
+  to overwrite the file (`keel add distribution,ci` under the
+  `gitlab-ci` provider), and `keel add ci --reapply` re-wrote the
+  whole file, silently dropping the release jobs. Each vertical now
+  owns a sentinel-delimited region (`# keel:ci-pipeline:begin` … `:end`
+  and `# keel:distribution-pipeline:*`), the same idiom `code-style`
+  uses for `.editorconfig`. The two install in either order and emit a
+  byte-identical file either way, re-rendering one leaves the other's
+  jobs untouched, and a hand-written job outside both regions
+  survives. A half-deleted marker pair is refused with the fix in the
+  message rather than guessed at.
+
 - **A JVM-flavored image no longer leads to a GraalVM question.** On a
   composed `arch.cli + arch.server-http` stack (`quarkus-cli-rest` and
   its siblings) the `distribution` vertical resolves both
