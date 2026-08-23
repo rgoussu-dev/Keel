@@ -55,8 +55,27 @@ const NO_PLUGINS_ENV = 'KEEL_NO_PLUGINS';
  */
 const EXTRA_PLUGINS_ENV = 'KEEL_PLUGINS';
 
-/** Entry point invoked by `bin/keel.js`. */
+/**
+ * Entry point invoked by `bin/keel.js`.
+ *
+ * The failure transport wraps the **whole** of it, wiring included.
+ * A plugin that throws at load, or a piece the registry refuses,
+ * fails before any command exists to answer with a `Result` — and a
+ * raw stack trace out of `bin/keel.js` would be a worse message for
+ * a plugin author than the sentence the loader already wrote. One
+ * catch, so `keel plugin 'x' failed to load: …` reads exactly like
+ * every other keel error.
+ */
 export async function main(argv: string[]): Promise<void> {
+  try {
+    await run(argv);
+  } catch (err) {
+    consoleLogger.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+}
+
+async function run(argv: string[]): Promise<void> {
   const keelVersion = await readPackageVersion();
   const cwd = process.cwd();
 
@@ -101,12 +120,7 @@ export async function main(argv: string[]): Promise<void> {
     serveUi: uiServer(mediator),
   });
 
-  try {
-    await program.parseAsync(argv);
-  } catch (err) {
-    consoleLogger.error(err instanceof Error ? err.message : String(err));
-    process.exit(1);
-  }
+  await program.parseAsync(argv);
 }
 
 async function readPackageVersion(): Promise<string> {
