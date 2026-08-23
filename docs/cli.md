@@ -535,7 +535,7 @@ questions a plan would ask.
 
 | Variable          | Effect                                                                                                                                                                           |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `KEEL_PLUGINS`    | Extra [plugin](plugins.md) paths (file or directory), `:`-separated, loaded after `<cwd>/.keel/plugins`.                                                                         |
+| `KEEL_PLUGINS`    | Extra [plugin](plugins.md) paths (file or directory), separated by the platform's path delimiter (`:` on POSIX, `;` on Windows), loaded after `<cwd>/.keel/plugins`.             |
 | `KEEL_NO_PLUGINS` | Set to anything: plugin discovery is skipped and only keel's own stacks and verticals are registered. Loading a plugin runs its code — see [Trust](plugins.md#trust--read-this). |
 
 Every plugin that loads prints one line naming it and the module it
