@@ -501,9 +501,12 @@ reason beyond symmetry.
 
 ## Adding surface
 
-- **A stack** is a couple of lines in
-  [`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts) — tags +
-  verticals.
+- **A stack** is an entry in
+  [`src/domain/core/stack-presets.json`](../src/domain/core/stack-presets.json)
+  — tags + vertical ids + the dials it offers. Add it to
+  `tests/domain/core/stack-registry.golden.json` in the same change;
+  that file is the frozen picture of what users see, and the guard
+  beside it fails in `verify` when the two disagree.
 - **An adapter** lives in `src/domain/core/adapters/` with its
   template tree under `assets/composition/<vertical>/<adapter>/`, and
   registers in its vertical's adapter list.

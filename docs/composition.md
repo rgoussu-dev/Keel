@@ -73,8 +73,21 @@ tags + verticals**. Pick `quarkus-cli` and the engine seeds
 `arch.cli` (plus the `pkg.*` tag of your build-system choice), then
 composes the `vcs` and `walking-skeleton` verticals. `quarkus-rest`
 swaps `arch.cli` for `arch.server-http` and the same verticals compose
-the REST shape. Adding a stack is a couple of lines in
-[`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts).
+the REST shape.
+
+Nothing in a preset is code — `tags` and `projects` are strings, and
+every other field references something registered under an id — so the
+presets are **data**, in
+[`src/domain/core/stack-presets.json`](../src/domain/core/stack-presets.json).
+Adding a stack is an entry there.
+[`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts) holds the
+zod schema that file must satisfy, resolves each id against the
+vertical / build-system / module-layout registries at load, and is
+where the resolved `Stack` type lives. A malformed document throws; a
+preset naming a piece this build does not carry is dropped with a
+`PresetProblem` naming it — which is a load-time error for keel's own
+file, and will be the ordinary answer once presets can arrive from a
+plugin.
 
 ### Conflicts
 

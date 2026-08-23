@@ -180,7 +180,10 @@ src/
     core/                 # the engine (predicate, resolver,
                           # compatibility, dials, answers, apply,
                           # install, actions), composition
-                          # adapters/ + verticals/ + stacks,
+                          # adapters/ + verticals/, the stack
+                          # presets as data (stack-presets.json)
+                          # + the schema and id resolution over
+                          # them (stacks.ts),
                           # handlers/ (new-project, add-vertical),
                           # RegistryMediator
     toolchain/            # the provisioning bounded context (own
@@ -243,6 +246,19 @@ to be offered under the flat layout and then rejected. The menu
 filters live in `core/dials.ts` and both front ends call them; a
 copy in a page is the same defect one layer out. See
 `docs/composition.md` → Conflicts and `docs/ui.md`.
+
+Data note: the stack presets are **data**, in
+`src/domain/core/stack-presets.json`, because nothing in a `Stack` is
+code — `tags` and `projects` are strings and every other field names
+something registered under an id. `stacks.ts` holds the zod schema for
+that file, resolves the ids against the registries at load, and keeps
+`Stack` as the resolved in-memory shape. It is a JSON _module import_
+rather than a file read: `getStack`/`listStacks` are synchronous
+everywhere, so the registry has to resolve at load, and a module
+import gets that without `node:fs` or a port in the domain.
+`tests/domain/core/stack-registry.golden.json` freezes what the
+registry projects onto, the way `version-pins.json` and its test do
+one level up — edit a preset, edit the golden.
 
 Naming note: a _composition adapter_ (git-init, quarkus-cli-bootstrap,
 …) is keel **domain content** — a unit contributing files to a

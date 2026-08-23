@@ -8,11 +8,26 @@
  * underlying composition layer doesn't already have, they just spare
  * the user from naming every tag and vertical by hand.
  *
- * Adding a stack: append an entry to `STACKS` whose `tags` and
- * `verticals` describe the desired starting point. The verticals run
- * in array order; if order matters across them (e.g. `vcs` should
- * run before `walking-skeleton` so the project is a repo before
- * files land), reflect that here.
+ * **The presets themselves are data.** Nothing in a `Stack` is code:
+ * `tags` and `projects` are strings, and every other field is a
+ * reference to something registered under an id — a vertical, a build
+ * system, a module layout, a sibling stack. So they live in
+ * `stack-presets.json` beside this module, and this module is the
+ * schema that governs that file, the resolution of its references
+ * against the registries, and the `Stack` type as the resolved
+ * in-memory shape. Adding a stack is an edit to the data file; see
+ * its header.
+ *
+ * The data is a JSON **module import**, not a file read, and that is
+ * the whole reason it sits under `src/` rather than in `assets/`.
+ * `getStack` and `listStacks` are synchronous everywhere they are
+ * called — the CLI, the local UI, the wizard — so the registry has to
+ * resolve at load; reading the file through the `TemplateSource` port
+ * would make it async and infect every caller with a promise for a
+ * table that never changes. A module import is a data dependency the
+ * module system resolves, so the hexagon keeps its wall: no `node:fs`
+ * in the domain, no port, no I/O. `tsc` emits the JSON into `dist/`
+ * beside the code that reads it.
  *
  * A **composite stack** declares `services` instead of scaffolding in
  * place: each service is a full stack installed into its own
@@ -25,15 +40,10 @@
  * where no shared root exists).
  */
 
-import { codeStyleVertical } from './verticals/code-style.js';
-import { fullstackVertical } from './verticals/fullstack.js';
-import { devContainerVertical } from './verticals/dev-container.js';
-import { devEnvVertical } from './verticals/dev-env.js';
-import { observabilityVertical } from './verticals/observability.js';
-import { gatewayVertical } from './verticals/gateway.js';
-import { vcsVertical } from './verticals/vcs.js';
-import { walkingSkeletonVertical } from './verticals/walking-skeleton.js';
-import { MODULE_LAYOUTS, type ModuleLayoutOption } from './adapters/module-layout.js';
+import { z } from 'zod';
+import presetDocument from './stack-presets.json' with { type: 'json' };
+import { getDeclaredVertical } from './verticals/index.js';
+import { getModuleLayoutOption, type ModuleLayoutOption } from './adapters/module-layout.js';
 import { assemblyRefusal } from './compatibility.js';
 import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 
@@ -159,508 +169,246 @@ export interface Stack {
    * A stack's rules and a vertical's are read together, because an
    * assembly is the pieces coming together and neither piece alone
    * knows the whole of it. Declared here rather than centrally so a
-   * preset arriving from outside this file brings its own. @see Conflict
+   * preset arriving from outside this repository brings its own; the
+   * schema below carries the field through unchanged, since a
+   * `Conflict` is already pure data. @see Conflict
    */
   readonly conflicts?: readonly Conflict[];
 }
 
-export const STACKS: Readonly<Record<string, Stack>> = {
-  'quarkus-cli': {
-    id: 'quarkus-cli',
-    description: 'Quarkus 3 CLI (Java 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'quarkus-rest': {
-    id: 'quarkus-rest',
-    description: 'Quarkus 3 REST service (Java 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'quarkus-cli-kotlin': {
-    id: 'quarkus-cli-kotlin',
-    description: 'Quarkus 3 CLI (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'quarkus-rest-kotlin': {
-    id: 'quarkus-rest-kotlin',
-    description: 'Quarkus 3 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.kotlin', 'runtime.jvm', 'framework.quarkus', 'arch.hexagonal', 'arch.server-http'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'quarkus-cli-rest': {
-    id: 'quarkus-cli-rest',
-    description:
-      'Quarkus 3 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'framework.quarkus',
-      'arch.hexagonal',
-      'arch.cli',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'quarkus-cli-rest-kotlin': {
-    id: 'quarkus-cli-rest-kotlin',
-    description:
-      'Quarkus 3 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
-    tags: [
-      'lang.kotlin',
-      'runtime.jvm',
-      'framework.quarkus',
-      'arch.hexagonal',
-      'arch.cli',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'spring-cli': {
-    id: 'spring-cli',
-    description: 'Spring Boot 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'spring-rest': {
-    id: 'spring-rest',
-    description: 'Spring Boot 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.java', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'spring-cli-kotlin': {
-    id: 'spring-cli-kotlin',
-    description: 'Spring Boot 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'spring-rest-kotlin': {
-    id: 'spring-rest-kotlin',
-    description: 'Spring Boot 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.hexagonal', 'arch.server-http'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'spring-cli-rest': {
-    id: 'spring-cli-rest',
-    description:
-      'Spring Boot 4 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'framework.spring',
-      'arch.hexagonal',
-      'arch.cli',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'spring-cli-rest-kotlin': {
-    id: 'spring-cli-rest-kotlin',
-    description:
-      'Spring Boot 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
-    tags: [
-      'lang.kotlin',
-      'runtime.jvm',
-      'framework.spring',
-      'arch.hexagonal',
-      'arch.cli',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'micronaut-cli': {
-    id: 'micronaut-cli',
-    description: 'Micronaut 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'micronaut-rest': {
-    id: 'micronaut-rest',
-    description: 'Micronaut 4 REST service (Java 25), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.java', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.server-http'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'micronaut-cli-kotlin': {
-    id: 'micronaut-cli-kotlin',
-    description: 'Micronaut 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.',
-    tags: ['lang.kotlin', 'runtime.jvm', 'framework.micronaut', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'micronaut-rest-kotlin': {
-    id: 'micronaut-rest-kotlin',
-    description: 'Micronaut 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.',
-    tags: [
-      'lang.kotlin',
-      'runtime.jvm',
-      'framework.micronaut',
-      'arch.hexagonal',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'micronaut-cli-rest': {
-    id: 'micronaut-cli-rest',
-    description:
-      'Micronaut 4 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
-    tags: [
-      'lang.java',
-      'runtime.jvm',
-      'framework.micronaut',
-      'arch.hexagonal',
-      'arch.cli',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'micronaut-cli-rest-kotlin': {
-    id: 'micronaut-cli-rest-kotlin',
-    description:
-      'Micronaut 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.',
-    tags: [
-      'lang.kotlin',
-      'runtime.jvm',
-      'framework.micronaut',
-      'arch.hexagonal',
-      'arch.cli',
-      'arch.server-http',
-    ],
-    buildSystems: [GRADLE_BUILD, MAVEN_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'go-cli': {
-    id: 'go-cli',
-    description: 'Go CLI on the stdlib, hexagonal layout, no mediator object.',
-    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli'],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'go-http': {
-    id: 'go-http',
-    description: 'Go HTTP service on stdlib net/http, hexagonal layout, no mediator object.',
-    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'go-cli-http': {
-    id: 'go-cli-http',
-    description:
-      'Go CLI + HTTP service on the stdlib, one shared module with both entrypoints, hexagonal layout, no mediator object.',
-    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'rust-cli': {
-    id: 'rust-cli',
-    description: 'Rust CLI on the stdlib, hexagonal layout, no mediator object.',
-    tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.cli'],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'rust-http': {
-    id: 'rust-http',
-    description: 'Rust HTTP service on axum + tokio, hexagonal layout, no mediator object.',
-    tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'rust-cli-http': {
-    id: 'rust-cli-http',
-    description:
-      'Rust CLI + HTTP service on axum + tokio, one shared package with both entrypoints, hexagonal layout, no mediator object.',
-    tags: ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'ts-cli': {
-    id: 'ts-cli',
-    description:
-      'TypeScript CLI on Node (22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.',
-    tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.cli'],
-    buildSystems: [NPM_BUILD, PNPM_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-  },
-  'ts-http': {
-    id: 'ts-http',
-    description:
-      'TypeScript HTTP service on node:http (Node 22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.',
-    tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
-    buildSystems: [NPM_BUILD, PNPM_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'ts-cli-http': {
-    id: 'ts-cli-http',
-    description:
-      'TypeScript CLI + HTTP service on Node (22.18+ runs the sources directly), one shared workspace with both entrypoints, registry mediator; npm or pnpm; basic or modulith layout.',
-    tags: ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
-    buildSystems: [NPM_BUILD, PNPM_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [
-      vcsVertical,
-      walkingSkeletonVertical,
-      codeStyleVertical,
-      devEnvVertical,
-      observabilityVertical,
-      devContainerVertical,
-    ],
-    projects: ['peer.api.rest'],
-  },
-  'web-components': {
-    id: 'web-components',
-    description:
-      'Framework-free web-components SPA on Vite (TypeScript workspaces), hexagonal layout; npm or pnpm.',
-    tags: [
-      'lang.typescript',
-      'runtime.browser',
-      'framework.web-components',
-      'arch.hexagonal',
-      'arch.spa',
-    ],
-    buildSystems: [NPM_BUILD, PNPM_BUILD],
-    moduleLayouts: MODULE_LAYOUTS,
-    verticals: [vcsVertical, walkingSkeletonVertical, codeStyleVertical, devContainerVertical],
-    projects: ['peer.ui.spa'],
-  },
-  fullstack: {
-    id: 'fullstack',
-    description:
-      'Fullstack product: quarkus-rest backend + web-components frontend, monorepo or polyrepo.',
-    tags: [],
-    verticals: [vcsVertical, fullstackVertical],
-    services: [
-      { path: 'backend', stack: 'quarkus-rest', extraVerticals: [gatewayVertical] },
-      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
-    ],
-  },
-  'fullstack-spring': {
-    id: 'fullstack-spring',
-    description:
-      'Fullstack product: spring-rest backend + web-components frontend, monorepo or polyrepo.',
-    tags: [],
-    verticals: [vcsVertical, fullstackVertical],
-    services: [
-      { path: 'backend', stack: 'spring-rest', extraVerticals: [gatewayVertical] },
-      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
-    ],
-  },
-  'fullstack-micronaut': {
-    id: 'fullstack-micronaut',
-    description:
-      'Fullstack product: micronaut-rest backend + web-components frontend, monorepo or polyrepo.',
-    tags: [],
-    verticals: [vcsVertical, fullstackVertical],
-    services: [
-      { path: 'backend', stack: 'micronaut-rest', extraVerticals: [gatewayVertical] },
-      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
-    ],
-  },
-  'fullstack-go': {
-    id: 'fullstack-go',
-    description:
-      'Fullstack product: go-http backend + web-components frontend, monorepo or polyrepo.',
-    tags: [],
-    verticals: [vcsVertical, fullstackVertical],
-    services: [
-      { path: 'backend', stack: 'go-http', extraVerticals: [gatewayVertical] },
-      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
-    ],
-  },
-  'fullstack-ts': {
-    id: 'fullstack-ts',
-    description:
-      'Fullstack product: ts-http backend + web-components frontend, monorepo or polyrepo.',
-    tags: [],
-    verticals: [vcsVertical, fullstackVertical],
-    services: [
-      { path: 'backend', stack: 'ts-http', extraVerticals: [gatewayVertical] },
-      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
-    ],
-  },
-  'fullstack-rust': {
-    id: 'fullstack-rust',
-    description:
-      'Fullstack product: rust-http backend + web-components frontend, monorepo or polyrepo.',
-    tags: [],
-    verticals: [vcsVertical, fullstackVertical],
-    services: [
-      { path: 'backend', stack: 'rust-http', extraVerticals: [gatewayVertical] },
-      { path: 'frontend', stack: 'web-components', extraVerticals: [gatewayVertical] },
-    ],
-  },
-};
+/**
+ * The wire shape of one preset in `stack-presets.json`, and the zod
+ * schema that governs it.
+ *
+ * Validated the way `domain/contract/manifest.ts` validates a
+ * manifest, and for the same reason: this is a **boundary**. The file
+ * beside this module happens to be ours, but the shape it has to
+ * satisfy is the shape a preset arriving from outside this repository
+ * will have to satisfy too (roadmap #117), and a hand-rolled cast
+ * over a third party's JSON is how a typo becomes an
+ * `undefined is not iterable` three layers down. One schema serves
+ * both, and it is the published contract for a preset author.
+ */
+const ConflictDataSchema = z.object({
+  id: z.string().min(1),
+  when: z.array(z.string().min(1)).nonempty(),
+  unless: z.array(z.string().min(1)).nonempty().optional(),
+  reason: z.string().min(1),
+});
+
+/** The wire shape of one service of a composite preset. */
+const StackServiceDataSchema = z.object({
+  path: z.string().min(1),
+  stack: z.string().min(1),
+  extraVerticals: z.array(z.string().min(1)).nonempty().optional(),
+});
+
+/**
+ * The wire shape of one preset. Every reference is an id; the
+ * optional lists are `nonempty` so "declares no dials" is spelled by
+ * omission and cannot also be spelled by `[]`, which resolves to a
+ * stack offering a choice of nothing.
+ */
+const StackPresetSchema = z.object({
+  id: z.string().min(1),
+  description: z.string().min(1),
+  tags: z.array(z.string().min(1)),
+  buildSystems: z.array(z.string().min(1)).nonempty().optional(),
+  moduleLayouts: z.array(z.string().min(1)).nonempty().optional(),
+  verticals: z.array(z.string().min(1)),
+  projects: z.array(z.string().min(1)).nonempty().optional(),
+  services: z.array(StackServiceDataSchema).nonempty().optional(),
+  conflicts: z.array(ConflictDataSchema).nonempty().optional(),
+});
+
+/** The whole document. Unknown keys are dropped, `"//"` among them. */
+export const StackPresetsSchema = z.object({
+  presets: z.array(StackPresetSchema),
+});
+
+/** One preset as it is written down, before its references resolve. */
+export type StackPreset = z.infer<typeof StackPresetSchema>;
+
+/** The reference lists a preset can name something unregistered in. */
+export type PresetField = 'id' | 'verticals' | 'buildSystems' | 'moduleLayouts' | 'services';
+
+/** A preset that could not be resolved, and why. */
+export interface PresetProblem {
+  /** Id of the preset that did not resolve. */
+  readonly preset: string;
+  /** Which of its lists carried the unresolvable reference. */
+  readonly field: PresetField;
+  /** The id nothing is registered under. */
+  readonly missing: string;
+  /** One line naming the preset, the field and the id. */
+  readonly message: string;
+}
+
+/** Resolved presets, and the ones that did not resolve. */
+export interface PresetResolution {
+  /** The presets whose every reference resolved, in document order. */
+  readonly stacks: Readonly<Record<string, Stack>>;
+  /** One entry per unresolvable reference; empty on a clean load. */
+  readonly problems: readonly PresetProblem[];
+}
+
+/**
+ * Validates a preset document and resolves each preset's references
+ * against the registries this build carries.
+ *
+ * **A malformed document throws; a dangling reference does not.**
+ * The two failures are different in kind, and conflating them would
+ * get one of them wrong.
+ *
+ * A shape violation — `verticals` a string, `when` empty, no `id` —
+ * is never a piece someone forgot to install. There is no partial
+ * answer to give and nothing a caller could sensibly do with one, so
+ * the schema throws, exactly as `parseManifest` does on a manifest
+ * that is not a manifest.
+ *
+ * A reference to a vertical, build system or module layout that is
+ * not registered is the opposite: the document is well-formed and the
+ * *build* is missing a piece. Under plugins that will be routine and
+ * legitimate — a preset from one plugin naming a vertical from
+ * another the user chose not to install — and the useful answer there
+ * is to drop that preset, keep the rest, and say which piece was
+ * missing. So the preset is dropped and a {@link PresetProblem} is
+ * recorded, every unresolvable reference of it, not just the first:
+ * one run should name everything a user has to install.
+ *
+ * Which leaves the caller to decide what a problem means to it. For
+ * keel's own {@link STACKS} it means a defect in this repository, so
+ * the load below refuses to produce a registry at all — a built-in
+ * preset silently vanishing from `keel new --list` is the one outcome
+ * worse than a crash naming the id.
+ */
+export function resolveStackPresets(raw: unknown): PresetResolution {
+  const document = StackPresetsSchema.parse(raw);
+  const problems: PresetProblem[] = [];
+  const seen = new Set<string>();
+  const resolved: [string, Stack][] = [];
+  for (const preset of document.presets) {
+    if (seen.has(preset.id)) {
+      problems.push(problem(preset.id, 'id', preset.id, 'is declared twice'));
+      continue;
+    }
+    seen.add(preset.id);
+    const stack = resolvePreset(preset, problems);
+    if (stack !== null) resolved.push([stack.id, stack]);
+  }
+  // A Set and `fromEntries` rather than `id in obj` and an assignment:
+  // the ids come off a document, and both of those read through
+  // `Object.prototype` for one written `__proto__` or `toString`.
+  return { stacks: Object.freeze(Object.fromEntries(resolved)), problems };
+}
+
+/** Builds one problem, message included. */
+function problem(
+  preset: string,
+  field: PresetField,
+  missing: string,
+  complaint = 'is not registered',
+): PresetProblem {
+  return {
+    preset,
+    field,
+    missing,
+    message: `stack preset '${preset}': ${field} names '${missing}', which ${complaint}`,
+  };
+}
+
+/**
+ * Resolves one preset, or returns null having recorded why not.
+ * Every reference is attempted even after the first failure, so the
+ * problem list is the whole story rather than its first sentence.
+ */
+function resolvePreset(preset: StackPreset, problems: PresetProblem[]): Stack | null {
+  const before = problems.length;
+  const pick = <T>(
+    ids: readonly string[],
+    field: PresetField,
+    lookup: (id: string) => T | null,
+  ): readonly T[] =>
+    ids.flatMap((id) => {
+      const found = lookup(id);
+      if (found === null) {
+        problems.push(problem(preset.id, field, id));
+        return [];
+      }
+      return [found];
+    });
+
+  const verticals = pick(preset.verticals, 'verticals', getDeclaredVertical);
+  const buildSystems = preset.buildSystems
+    ? pick(preset.buildSystems, 'buildSystems', getBuildSystem)
+    : undefined;
+  const moduleLayouts = preset.moduleLayouts
+    ? pick(preset.moduleLayouts, 'moduleLayouts', getModuleLayoutOption)
+    : undefined;
+  const services = preset.services?.map((service) => ({
+    path: service.path,
+    stack: service.stack,
+    ...(service.extraVerticals
+      ? { extraVerticals: pick(service.extraVerticals, 'services', getDeclaredVertical) }
+      : {}),
+  }));
+
+  if (problems.length > before) return null;
+  return {
+    id: preset.id,
+    description: preset.description,
+    tags: preset.tags,
+    ...(buildSystems ? { buildSystems } : {}),
+    ...(moduleLayouts ? { moduleLayouts } : {}),
+    verticals,
+    ...(preset.projects ? { projects: preset.projects } : {}),
+    ...(services ? { services } : {}),
+    ...(preset.conflicts ? { conflicts: preset.conflicts.map(resolveConflict) } : {}),
+  };
+}
+
+/**
+ * A {@link Conflict} is already pure data — an id, two tag-pattern
+ * lists and a sentence — so it crosses the wire as itself. The only
+ * work here is dropping an absent `unless` rather than carrying it as
+ * `undefined`, which `exactOptionalPropertyTypes` distinguishes.
+ */
+function resolveConflict(conflict: z.infer<typeof ConflictDataSchema>): Conflict {
+  return {
+    id: conflict.id,
+    when: conflict.when,
+    ...(conflict.unless ? { unless: conflict.unless } : {}),
+    reason: conflict.reason,
+  };
+}
+
+/**
+ * The registry, resolved from `stack-presets.json` at load.
+ *
+ * The presets are data, and this is where they become objects. Order
+ * is the document's — `Object.values(STACKS)` yields presets in the
+ * order they are written, which the wizard's grid reads; the id-sorted
+ * views build on {@link listStackIds}.
+ *
+ * A problem here is a defect in this repository rather than a missing
+ * optional install, so it is loud: keel's own data file naming a
+ * piece keel does not define would otherwise drop a preset out of
+ * `keel new --list` with nothing to show for it.
+ * `tests/domain/core/stack-registry.test.ts` catches it in `verify`
+ * first.
+ */
+const RESOLVED = resolveStackPresets(presetDocument);
+
+if (RESOLVED.problems.length > 0) {
+  throw new Error(
+    [
+      'stack-presets.json does not resolve against this build:',
+      ...RESOLVED.problems.map((p) => `  ${p.message}`),
+    ].join('\n'),
+  );
+}
+
+export const STACKS: Readonly<Record<string, Stack>> = RESOLVED.stacks;
 
 /** Returns the stack registered under `id`, or null if absent. */
 export function getStack(id: string): Stack | null {
