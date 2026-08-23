@@ -8,7 +8,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { PROVIDER_QUESTION } from './ci-pipeline.js';
+import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import {
   containerDistribution,
   DEPLOY_QUESTION,
@@ -23,6 +23,7 @@ export const tsContainerAdapter: Adapter = {
   covers: ['build', 'release-channel'],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
+  sharesAnswersWith: otherProviderAskers(TS_CONTAINER_ID),
   contribute(ctx) {
     return containerDistribution(ctx, {
       id: TS_CONTAINER_ID,

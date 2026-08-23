@@ -17,7 +17,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { PROVIDER_QUESTION } from './ci-pipeline.js';
+import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import { wcLayout } from './wc-module-layout.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 import {
@@ -34,6 +34,7 @@ export const wcContainerAdapter: Adapter = {
   covers: ['build', 'release-channel'],
   predicate: { requires: ['framework.web-components', 'arch.spa'] },
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
+  sharesAnswersWith: otherProviderAskers(WC_CONTAINER_ID),
   contribute(ctx) {
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
     const layout = wcLayout(

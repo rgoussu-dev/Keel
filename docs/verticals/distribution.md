@@ -61,9 +61,12 @@ GHCR under `github-actions` (a workflow at
 (release jobs appended to `.gitlab-ci.yml`, gated on
 `$CI_COMMIT_TAG =~ /^v/`, pushing to `$CI_REGISTRY_IMAGE`). The
 question is the **same sticky question the [`ci`](ci.md) vertical
-asks**, and when `ci` already recorded its choice (its `ci.*` tag),
-that answer wins silently — the two verticals can never emit for
-different hosts.
+asks**, and it is asked **once per project**: the pipeline adapters
+and the container adapters name each other in `sharesAnswersWith`, so
+whichever vertical installs first asks and the other borrows the
+recorded answer. When `ci` already recorded its choice (its `ci.*`
+tag), that answer wins at contribute time too — belt and braces, so
+the two verticals can never emit for different hosts.
 
 ### The deployment flavor is a sticky dial
 

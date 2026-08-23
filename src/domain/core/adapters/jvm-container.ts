@@ -17,7 +17,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { PROVIDER_QUESTION } from './ci-pipeline.js';
+import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import {
   GRAALVM_NATIVE_TAG,
   jvmBuildSystem,
@@ -39,6 +39,7 @@ export const jvmContainerAdapter: Adapter = {
   covers: ['build', 'release-channel'],
   predicate: { requires: ['runtime.jvm', 'arch.server-http'] },
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
+  sharesAnswersWith: otherProviderAskers(JVM_CONTAINER_ID),
   contribute(ctx) {
     const framework = jvmRestFramework(ctx.manifest, JVM_CONTAINER_ID);
     const build = jvmBuildSystem(ctx.manifest, JVM_CONTAINER_ID);

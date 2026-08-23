@@ -23,6 +23,7 @@ import {
   providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -34,6 +35,7 @@ export const jvmPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['runtime.jvm'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(JVM_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), JVM_PIPELINE_ID);
     const buildSystem = jvmBuildSystem(ctx.manifest, JVM_PIPELINE_ID);
