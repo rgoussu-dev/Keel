@@ -43,8 +43,9 @@ import {
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
 import { coversFor } from './resolver.js';
-import { getStack, stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
-import { getVertical, listVerticals, type VerticalSummary } from './verticals/index.js';
+import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
+import { listVerticals, type VerticalSummary } from './registry.js';
+import type { Registry } from '../contract/ports/registry.js';
 
 /** The default repository layout of a composite install. */
 const DEFAULT_REPO_LAYOUT: RepoLayout = 'monorepo';
@@ -167,14 +168,15 @@ export function peerContextOffered(
  * still refuses it if the tag does appear.
  */
 export function legalExtraVerticals(
+  registry: Registry,
   stack: Stack,
   tags: readonly Tag[],
 ): readonly VerticalSummary[] {
   const own = new Set(stack.verticals.map((v) => v.id));
   const seed = [...tags, ...promotedBy(stack.verticals)];
-  return listVerticals().filter((summary) => {
+  return listVerticals(registry).filter((summary) => {
     if (own.has(summary.id)) return false;
-    const vertical = getVertical(summary.id);
+    const vertical = registry.vertical(summary.id);
     if (vertical === null) return false;
     return coversFor(vertical, seed) && assemblyRefusal([vertical], tags) === null;
   });
@@ -196,10 +198,10 @@ export function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
  * per menu would be reimplementing that order, and the two would part
  * company the first time a rule spanned three dials.
  */
-export function dialOptionsFor(target: InstallTarget): DialOptions {
+export function dialOptionsFor(registry: Registry, target: InstallTarget): DialOptions {
   if (target.kind !== 'new-project') return undialled(target);
-  const stack = target.stack === undefined ? null : getStack(target.stack);
-  return stack === null ? undialled(target) : stackDials(stack, target);
+  const stack = target.stack === undefined ? null : registry.stack(target.stack);
+  return stack === null ? undialled(target) : stackDials(registry, stack, target);
 }
 
 /**
@@ -210,10 +212,18 @@ export function dialOptionsFor(target: InstallTarget): DialOptions {
  * registry: a preset assembled from a plugin's stack has to get the
  * same answer as one keel ships, and a test proving the menus and the
  * gate agree has to be able to say so about a rule no shipped preset
- * declares.
+ * declares. The registry stays in the signature all the same — the
+ * extras menu is a question about every vertical this run may
+ * install, which is exactly what the registry is.
  */
-export function stackDials(stack: Stack, target: NewProjectTarget): DialOptions {
-  return stack.services === undefined ? singleDials(stack, target) : compositeDials(stack, target);
+export function stackDials(
+  registry: Registry,
+  stack: Stack,
+  target: NewProjectTarget,
+): DialOptions {
+  return stack.services === undefined
+    ? singleDials(registry, stack, target)
+    : compositeDials(registry, stack, target);
 }
 
 /** A target with no stack-level dials at all — every brownfield one. */
@@ -228,7 +238,7 @@ function undialled(target: InstallTarget): DialOptions {
   };
 }
 
-function singleDials(stack: Stack, target: NewProjectTarget): DialOptions {
+function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
   const buildSystems = legalBuildSystems(stack, stack.buildSystems ?? []);
   const build = prefer(buildSystems, target.buildSystem);
   const moduleLayouts = legalModuleLayouts(stack, build?.tag ?? null, stack.moduleLayouts ?? []);
@@ -236,7 +246,7 @@ function singleDials(stack: Stack, target: NewProjectTarget): DialOptions {
 
   const tags = stackTagsFor(stack, build?.tag ?? null, layout?.tag ?? null);
   const peerContext = peerContextOffered(stack, build?.tag ?? null, layout?.tag ?? null);
-  const extraVerticals = legalExtraVerticals(stack, tags);
+  const extraVerticals = legalExtraVerticals(registry, stack, tags);
   const legalExtraIds = new Set(extraVerticals.map((vertical) => vertical.id));
 
   return {
@@ -278,12 +288,12 @@ function singleDials(stack: Stack, target: NewProjectTarget): DialOptions {
  * install refuses all three on a composite, so a settled target must
  * not carry them.
  */
-function compositeDials(stack: Stack, target: NewProjectTarget): DialOptions {
+function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
   const chosen = readServiceBuildSystems(target.buildSystem);
   const services: ServiceDescriptor[] = [];
   const pairs: string[] = [];
   for (const service of stack.services ?? []) {
-    const serviceStack = getStack(service.stack);
+    const serviceStack = registry.stack(service.stack);
     const options = serviceStack?.buildSystems ?? [];
     services.push({
       path: service.path,

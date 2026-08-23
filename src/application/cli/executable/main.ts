@@ -19,8 +19,7 @@ import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.j
 import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
 import { ToolchainCheckHandler } from '../../../domain/toolchain/core/check.js';
 import { ToolchainInstallHandler } from '../../../domain/toolchain/core/install.js';
-import { listStacks } from '../../../domain/core/stacks.js';
-import { listVerticals } from '../../../domain/core/verticals/index.js';
+import { listStacks, listVerticals, shippedRegistry } from '../../../domain/core/registry.js';
 import { consoleLogger } from '../../../infrastructure/commons/console-logger.js';
 import { systemClock } from '../../../infrastructure/commons/system-clock.js';
 import { fsManifestStore } from '../../../infrastructure/manifest/fs-manifest-store.js';
@@ -34,6 +33,7 @@ import { buildProgram } from '../contract/program.js';
 /** Entry point invoked by `bin/keel.js`. */
 export async function main(argv: string[]): Promise<void> {
   const keelVersion = await readPackageVersion();
+  const registry = shippedRegistry;
 
   const deps = {
     trees: fsTreeFactory,
@@ -43,6 +43,7 @@ export async function main(argv: string[]): Promise<void> {
     logger: consoleLogger,
     templates: ejsTemplateSource,
     processes: spawnProcessRunner,
+    registry,
     keelVersion,
   };
   const mediator = new RegistryMediator([
@@ -52,8 +53,8 @@ export async function main(argv: string[]): Promise<void> {
     new LinkPeerHandler(deps),
     new ToolchainInstallHandler(deps),
     new ToolchainCheckHandler(deps),
-    new CatalogHandler(),
-    new DialsHandler(),
+    new CatalogHandler(deps),
+    new DialsHandler(deps),
     new PreviewHandler(deps),
     new ProjectStatusHandler(deps),
   ]);
@@ -62,8 +63,8 @@ export async function main(argv: string[]): Promise<void> {
     mediator,
     logger: consoleLogger,
     version: keelVersion,
-    availableStacks: listStacks(),
-    availableVerticals: listVerticals(),
+    availableStacks: listStacks(registry),
+    availableVerticals: listVerticals(registry),
     serveUi: uiServer(mediator),
   });
 

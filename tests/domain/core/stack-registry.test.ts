@@ -30,12 +30,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  getBuildSystem,
-  getStack,
-  resolveStackPresets,
-  STACKS,
-} from '../../../src/domain/core/stacks.js';
+import { getBuildSystem, resolveStackPresets, STACKS } from '../../../src/domain/core/stacks.js';
+import { shippedRegistry } from '../../../src/domain/core/registry.js';
 import { getModuleLayoutOption } from '../../../src/domain/core/adapters/module-layout.js';
 import { getDeclaredVertical } from '../../../src/domain/core/verticals/index.js';
 import { describeStacks, type StackShape } from '../../support/stack-registry.js';
@@ -88,7 +84,7 @@ describe('resolving the preset data', () => {
     // preset that could only ever fail never reaches a menu.
     for (const stack of Object.values(STACKS)) {
       for (const service of stack.services ?? []) {
-        const target = getStack(service.stack);
+        const target = shippedRegistry.stack(service.stack);
         expect(target, `${stack.id}/${service.path} → ${service.stack}`).not.toBeNull();
         expect(target?.services, `${stack.id}/${service.path} is nested`).toBeUndefined();
       }

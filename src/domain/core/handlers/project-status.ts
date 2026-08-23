@@ -20,6 +20,7 @@ import type { Handler } from '../../kernel/handler.js';
 import { ok, type Result } from '../../kernel/result.js';
 import { projectScopeRoot, type ManifestV2 } from '../../contract/manifest.js';
 import type { ManifestStore } from '../../contract/ports/manifest-store.js';
+import type { Registry } from '../../contract/ports/registry.js';
 import type {
   InstalledVerticalDescriptor,
   ProjectStatus,
@@ -31,11 +32,13 @@ import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { CONTEXT_TAG } from '../adapters/added-context.js';
 import { conflictsOf, legalWith } from '../compatibility.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
-import { listVerticalIds, VERTICALS } from '../verticals/index.js';
+import { listVerticalIds } from '../registry.js';
 
-/** The one port this query needs. */
+/** The two ports this query needs. */
 export interface ProjectStatusDeps {
   readonly manifests: ManifestStore;
+  /** Resolves the descriptions of the verticals a manifest names. */
+  readonly registry: Registry;
 }
 
 /** Executes {@link ProjectStatusQuery}s. */
@@ -49,7 +52,9 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
   async handle(query: ProjectStatusQuery): Promise<Result<ProjectStatus>> {
     const scopeRoot = projectScopeRoot(query.cwd);
     const manifest = await this.deps.manifests.read(scopeRoot);
-    return ok(manifest ? statusOf(scopeRoot, manifest) : uninitialised(scopeRoot));
+    return ok(
+      manifest ? statusOf(this.deps.registry, scopeRoot, manifest) : uninitialised(scopeRoot),
+    );
   }
 }
 
@@ -67,18 +72,18 @@ function uninitialised(scopeRoot: string): ProjectStatus {
   };
 }
 
-function statusOf(scopeRoot: string, manifest: ManifestV2): ProjectStatus {
+function statusOf(registry: Registry, scopeRoot: string, manifest: ManifestV2): ProjectStatus {
   const installedIds = new Set(manifest.verticals.map((v) => v.id));
   return {
     scopeRoot,
     initialised: true,
     tags: [...manifest.tags],
     installed: manifest.verticals.flatMap((entry) =>
-      describeInstalled(entry.id, entry.installedAt),
+      describeInstalled(registry, entry.id, entry.installedAt),
     ),
-    available: listVerticalIds()
+    available: listVerticalIds(registry)
       .filter((id) => !installedIds.has(id))
-      .flatMap(describeVertical),
+      .flatMap((id) => describeVertical(registry, id)),
     modules: [...manifest.modules],
     services: [...manifest.services],
     moduleLayout: moduleLayoutOf(manifest.tags),
@@ -87,14 +92,15 @@ function statusOf(scopeRoot: string, manifest: ManifestV2): ProjectStatus {
 }
 
 function describeInstalled(
+  registry: Registry,
   id: string,
   installedAt: string,
 ): readonly InstalledVerticalDescriptor[] {
-  return describeVertical(id).map((vertical) => ({ ...vertical, installedAt }));
+  return describeVertical(registry, id).map((vertical) => ({ ...vertical, installedAt }));
 }
 
-function describeVertical(id: string): readonly VerticalDescriptor[] {
-  const vertical = VERTICALS[id];
+function describeVertical(registry: Registry, id: string): readonly VerticalDescriptor[] {
+  const vertical = registry.vertical(id);
   // A manifest can name a vertical this keel no longer registers (an
   // older install, a renamed id). Reporting it without a description
   // beats dropping it: the project really does have it installed.

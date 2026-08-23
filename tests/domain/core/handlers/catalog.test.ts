@@ -17,7 +17,7 @@ import { catalogQuery } from '../../../../src/domain/contract/queries.js';
 import type { Catalog, StackDescriptor } from '../../../../src/domain/contract/queries.js';
 import { dialOptionsFor } from '../../../../src/domain/core/dials.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
-import { listVerticalIds } from '../../../../src/domain/core/verticals/index.js';
+import { listVerticalIds, shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
 
 async function catalog(): Promise<Catalog> {
@@ -42,7 +42,7 @@ describe('keel.catalog', () => {
   it('lists every registered stack and vertical', async () => {
     const { stacks, verticals } = await catalog();
     expect(stacks.map((stack) => stack.id)).toEqual(Object.keys(STACKS).sort());
-    expect(verticals.map((vertical) => vertical.id)).toEqual([...listVerticalIds()]);
+    expect(verticals.map((vertical) => vertical.id)).toEqual([...listVerticalIds(shippedRegistry)]);
   });
 
   it('reports a stack’s dials with the default first', async () => {
@@ -123,7 +123,7 @@ describe('keel.catalog', () => {
     expect(stack.buildSystems.map((option) => option.id)).toEqual(['gradle', 'maven']);
     expect(stack.peerContext).toBe(true);
 
-    const onBasic = dialOptionsFor({
+    const onBasic = dialOptionsFor(shippedRegistry, {
       kind: 'new-project',
       stack: 'quarkus-rest',
       moduleLayout: 'basic',
@@ -137,7 +137,7 @@ describe('keel.catalog', () => {
     // thing to render a control *from*, and the dials query only ever
     // takes values off it.
     for (const stack of (await catalog()).stacks) {
-      const dials = dialOptionsFor({ kind: 'new-project', stack: stack.id });
+      const dials = dialOptionsFor(shippedRegistry, { kind: 'new-project', stack: stack.id });
       expect({ id: stack.id, builds: dials.buildSystems }).toEqual({
         id: stack.id,
         builds: stack.buildSystems,

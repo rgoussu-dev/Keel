@@ -7,13 +7,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  BUILD_SYSTEMS,
-  getBuildSystem,
-  listStackIds,
-  listStacks,
-  STACKS,
-} from '../../../src/domain/core/stacks.js';
+import { BUILD_SYSTEMS, getBuildSystem, STACKS } from '../../../src/domain/core/stacks.js';
+import { listStackIds, listStacks, shippedRegistry } from '../../../src/domain/core/registry.js';
 import {
   getModuleLayoutOption,
   MODULE_LAYOUTS,
@@ -21,8 +16,8 @@ import {
 
 describe('listStacks', () => {
   it('lists every registered stack id, sorted, each with a non-empty description', () => {
-    const summaries = listStacks();
-    expect(summaries.map((s) => s.id)).toEqual(listStackIds());
+    const summaries = listStacks(shippedRegistry);
+    expect(summaries.map((s) => s.id)).toEqual(listStackIds(shippedRegistry));
     for (const summary of summaries) {
       expect(summary.description.length, `${summary.id} has an empty description`).toBeGreaterThan(
         0,
@@ -32,7 +27,7 @@ describe('listStacks', () => {
   });
 
   it('includes the composable-entrypoint combo stacks', () => {
-    const ids = listStacks().map((s) => s.id);
+    const ids = listStacks(shippedRegistry).map((s) => s.id);
     for (const id of [
       'quarkus-cli-rest',
       'spring-cli-rest',

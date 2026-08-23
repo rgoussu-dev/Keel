@@ -29,7 +29,8 @@ import { catalogQuery, dialsQuery } from '../../../src/domain/contract/queries.j
 import type { Catalog, DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
 import { piecesOf } from '../../../src/domain/core/dials.js';
-import { getStack, stackTagsFor } from '../../../src/domain/core/stacks.js';
+import { stackTagsFor } from '../../../src/domain/core/stacks.js';
+import { shippedRegistry } from '../../../src/domain/core/registry.js';
 import { PEER_CONTEXT_TAG } from '../../../src/domain/core/adapters/module-layout.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
 import { expectOk, installMediator } from '../../support/factory.js';
@@ -105,7 +106,7 @@ async function reachable(mediator: Mediator, stack: string): Promise<readonly Ne
  * rule to bite on.
  */
 function installRefusal(target: NewProjectTarget): string | null {
-  const stack = getStack(target.stack ?? '');
+  const stack = shippedRegistry.stack(target.stack ?? '');
   if (stack === null || stack.services !== undefined) return null;
   const buildTag = stack.buildSystems?.find((o) => o.id === target.buildSystem)?.tag ?? null;
   const layoutTag = stack.moduleLayouts?.find((o) => o.id === target.moduleLayout)?.tag ?? null;

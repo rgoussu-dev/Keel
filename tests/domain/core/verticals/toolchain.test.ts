@@ -19,7 +19,7 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { toolchainVertical } from '../../../../src/domain/core/verticals/toolchain.js';
-import { getVertical } from '../../../../src/domain/core/verticals/index.js';
+import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
@@ -77,7 +77,7 @@ const baseManifest = (tags: readonly string[]): ManifestV2 => ({
 
 describe('toolchain vertical', () => {
   it('is registered for brownfield installs', () => {
-    expect(getVertical('toolchain')?.id).toBe('toolchain');
+    expect(shippedRegistry.vertical('toolchain')?.id).toBe('toolchain');
   });
 
   it('records JDK + Gradle for a Gradle-tagged JVM stack', async () => {

@@ -52,7 +52,7 @@ import { runActions } from '../actions.js';
 import { ContributionConflictError } from '../apply.js';
 import { unifiedDiff } from '../diff.js';
 import { installVertical } from '../install.js';
-import { getVertical, listVerticalIds } from '../verticals/index.js';
+import { listVerticalIds } from '../registry.js';
 import type { InstallDeps } from './deps.js';
 
 /** Executes {@link AddVerticalCommand}s. */
@@ -64,11 +64,11 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
   }
 
   async handle(command: AddVerticalCommand): Promise<Result<InstallReport>> {
-    const vertical = getVertical(command.vertical);
+    const vertical = this.deps.registry.vertical(command.vertical);
     if (!vertical) {
       return err(
         new DomainError(
-          `unknown vertical '${command.vertical}'; available: ${listVerticalIds().join(', ')}`,
+          `unknown vertical '${command.vertical}'; available: ${listVerticalIds(this.deps.registry).join(', ')}`,
           'keel.unknown-vertical',
         ),
       );

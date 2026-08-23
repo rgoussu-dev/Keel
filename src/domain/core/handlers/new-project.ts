@@ -96,17 +96,14 @@ import {
   promotedBy,
 } from '../dials.js';
 import { installVertical } from '../install.js';
+import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
-  getStack,
   listStackIds,
   listStacks,
-  stackTagsFor,
-  STACKS,
-  type BuildSystemOption,
-  type Stack,
   type StackSummary,
-} from '../stacks.js';
+  type VerticalSummary,
+} from '../registry.js';
 import {
   entrypointStep,
   entrypointsLabel,
@@ -120,10 +117,10 @@ import {
   type WizardPath,
 } from '../stack-wizard.js';
 import { coverageGap, coversFor, type CoverageGap } from '../resolver.js';
-import { getVertical, type VerticalSummary } from '../verticals/index.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
+import type { Registry } from '../../contract/ports/registry.js';
 import type { Tag } from '../../contract/composition.js';
 
 /**
@@ -291,8 +288,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
-    const stack = getStack(resolved.value);
-    if (!stack) return err(unknownStackError(resolved.value));
+    const stack = this.deps.registry.stack(resolved.value);
+    if (!stack) return err(unknownStackError(this.deps.registry, resolved.value));
     return stack.services
       ? this.stageComposite(command, stack, prompt)
       : this.stageSingle(command, stack, prompt);
@@ -346,10 +343,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // adapter list and the framework list at once, and from the flat
     // escape hatch too. One filter, because they are all one walk over
     // the same set.
-    const paths = wizardPaths(assemblableStacks());
+    const paths = wizardPaths(assemblableStacks(this.deps.registry));
     const language = (await prompt.ask(languageQuestion(paths), NEW_PROJECT_ASKER)).trim();
     if (language === BY_ID_LANGUAGE) {
-      return ok((await prompt.ask(stackQuestion(listStacks()), NEW_PROJECT_ASKER)).trim());
+      return ok(
+        (await prompt.ask(stackQuestion(listStacks(this.deps.registry)), NEW_PROJECT_ASKER)).trim(),
+      );
     }
 
     const step = entrypointStep(paths, language, DEFAULT_STACK_ID);
@@ -507,7 +506,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   ): Promise<Result<StagedPlan>> {
     const resolved: ResolvedService[] = [];
     for (const service of stack.services ?? []) {
-      const serviceStack = getStack(service.stack);
+      const serviceStack = this.deps.registry.stack(service.stack);
       if (!serviceStack) {
         return err(
           new DomainError(
@@ -901,7 +900,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       const answer = (await prompt.ask(peerContextQuestion(), stackAsker(stack))).trim();
       want = answer === 'yes';
     }
-    return peerContextTag(want, stack, buildTag);
+    return peerContextTag(this.deps.registry, want, stack, buildTag);
   }
 
   /**
@@ -943,7 +942,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // The same menu `keel.dials` reports, so a form's list and this
     // question's choices cannot come apart — see `../dials.ts` for
     // what makes an extra a dead end here.
-    const candidates = legalExtraVerticals(stack, tags);
+    const candidates = legalExtraVerticals(this.deps.registry, stack, tags);
     const requested =
       command.extraVerticals !== undefined
         ? command.extraVerticals
@@ -963,7 +962,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           ),
         );
       }
-      const vertical = getVertical(id);
+      const vertical = this.deps.registry.vertical(id);
       if (!vertical) {
         return err(
           new DomainError(
@@ -1319,9 +1318,9 @@ function cancelledError(): DomainError {
   return new DomainError('cancelled by user — nothing written', 'keel.cancelled');
 }
 
-function unknownStackError(id: string): DomainError {
+function unknownStackError(registry: Registry, id: string): DomainError {
   return new DomainError(
-    `unknown stack '${id}'; available: ${listStackIds().join(', ')}`,
+    `unknown stack '${id}'; available: ${listStackIds(registry).join(', ')}`,
     'keel.unknown-stack',
   );
 }
@@ -1476,7 +1475,12 @@ function defaultBuildTag(stack: Stack): Tag | null {
  * exercises either failure branch — it only offers the question once
  * both gates already pass — but the flag path still needs them.
  */
-function peerContextTag(want: boolean, stack: Stack, buildTag: Tag | null): Result<Tag | null> {
+function peerContextTag(
+  registry: Registry,
+  want: boolean,
+  stack: Stack,
+  buildTag: Tag | null,
+): Result<Tag | null> {
   if (!want) return ok(null);
   // The layout rule that used to live here is a declaration now —
   // `PEER_CONTEXT_NEEDS_MODULITH`, owned by the vertical whose
@@ -1494,7 +1498,7 @@ function peerContextTag(want: boolean, stack: Stack, buildTag: Tag | null): Resu
   if (!emitsPeerContext(stack, stackTagsFor(stack, buildTag, MODULITH_LAYOUT_TAG))) {
     return err(
       new DomainError(
-        `stack '${stack.id}' has no peer-context adapter — --with-peer-context would scaffold nothing at all. Stacks that support it: ${peerContextStackIds().join(', ')}`,
+        `stack '${stack.id}' has no peer-context adapter — --with-peer-context would scaffold nothing at all. Stacks that support it: ${peerContextStackIds(registry).join(', ')}`,
         'keel.invalid-peer-context',
       ),
     );
@@ -1537,8 +1541,8 @@ function scaffoldedModules(
  * for the rejection message. Derived the same way, on the same
  * defaults `keel new` itself would pick.
  */
-function peerContextStackIds(): readonly string[] {
-  return Object.values(STACKS)
+function peerContextStackIds(registry: Registry): readonly string[] {
+  return [...registry.stacks()]
     .filter((stack) => stack.services === undefined)
     .filter((stack) =>
       emitsPeerContext(stack, stackTagsFor(stack, defaultBuildTag(stack), MODULITH_LAYOUT_TAG)),

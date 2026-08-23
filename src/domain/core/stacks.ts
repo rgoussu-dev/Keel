@@ -43,26 +43,24 @@
 import { z } from 'zod';
 import presetDocument from './stack-presets.json' with { type: 'json' };
 import { getDeclaredVertical } from './verticals/index.js';
-import { getModuleLayoutOption, type ModuleLayoutOption } from './adapters/module-layout.js';
+import { getModuleLayoutOption } from './adapters/module-layout.js';
 import { assemblyRefusal } from './compatibility.js';
-import type { Conflict, Tag, Vertical } from '../contract/composition.js';
+import type { Conflict, Tag } from '../contract/composition.js';
+import type { BuildSystemOption, Stack } from '../contract/stack.js';
 
 /**
- * One selectable build system of a stack. The choice folds a `pkg.*`
- * capability tag into the manifest at install time; everything else
- * (which build-tool adapter fires, which build-file trees render) is
- * ordinary predicate machinery reading that tag.
+ * The stack vocabulary itself lives in `domain/contract/stack.ts` —
+ * the {@link Registry} port names it, and a port may not reach into
+ * `domain/core`. Re-exported here so the presets and the types a
+ * reader wants together stay one import.
  */
-export interface BuildSystemOption {
-  /** User-facing id, e.g. `gradle`, `maven`, `npm`, `pnpm`. */
-  readonly id: string;
-  /** The `pkg.*` tag the choice contributes. */
-  readonly tag: Tag;
-  /** One-line label shown as the interactive choice. */
-  readonly label: string;
-  /** Longer help text for the interactive prompt. */
-  readonly doc: string;
-}
+export type {
+  BuildSystemOption,
+  ModuleLayout,
+  ModuleLayoutOption,
+  Stack,
+  StackService,
+} from '../contract/stack.js';
 
 /** Gradle as a selectable JVM build system. */
 export const GRADLE_BUILD: BuildSystemOption = {
@@ -114,66 +112,6 @@ export const BUILD_SYSTEMS: Readonly<Record<string, BuildSystemOption>> = Object
 /** Returns the build system registered under `id`, or null if absent. */
 export function getBuildSystem(id: string): BuildSystemOption | null {
   return BUILD_SYSTEMS[id] ?? null;
-}
-
-/** One service of a composite stack. */
-export interface StackService {
-  /** Directory the service is scaffolded into, relative to cwd. */
-  readonly path: string;
-  /** Id of the (non-composite) stack the service is built from. */
-  readonly stack: string;
-  /**
-   * Verticals installed on top of the service stack's own list —
-   * typically `gateway`, whose adapters only fire when peer tags are
-   * in scope.
-   */
-  readonly extraVerticals?: readonly Vertical[];
-}
-
-/** A curated greenfield preset. */
-export interface Stack {
-  readonly id: string;
-  readonly description: string;
-  /** Capability tags this stack contributes to the manifest at install time. */
-  readonly tags: readonly Tag[];
-  /**
-   * Build systems this stack can be scaffolded on; the first entry is
-   * the default. Stacks declaring this omit the `pkg.*` tag from
-   * `tags` — the install handler folds the chosen option's tag in.
-   * Absent when the stack's `tags` already pin its only build system.
-   */
-  readonly buildSystems?: readonly BuildSystemOption[];
-  /**
-   * Module layouts this stack can be scaffolded on; the first entry
-   * is the default. Stacks declaring this omit the `layout.*` tag
-   * from `tags` — the install handler folds the chosen option's tag
-   * in. Absent for stacks that ship a single layout, whose adapters
-   * then resolve to `basic`.
-   */
-  readonly moduleLayouts?: readonly ModuleLayoutOption[];
-  /** Verticals to install, in order. */
-  readonly verticals: readonly Vertical[];
-  /**
-   * Peer tags this stack projects onto sibling services when composed
-   * into a product (e.g. `peer.api.rest` for a REST backend). Declared
-   * explicitly — never derived — so the tag vocabulary stays greppable.
-   */
-  readonly projects?: readonly Tag[];
-  /** Present on composite stacks: the services to scaffold. */
-  readonly services?: readonly StackService[];
-  /**
-   * Incompatibilities this preset's own combination of dials creates
-   * — a build system its module layout cannot take, a capability its
-   * framework will not carry.
-   *
-   * A stack's rules and a vertical's are read together, because an
-   * assembly is the pieces coming together and neither piece alone
-   * knows the whole of it. Declared here rather than centrally so a
-   * preset arriving from outside this repository brings its own; the
-   * schema below carries the field through unchanged, since a
-   * `Conflict` is already pure data. @see Conflict
-   */
-  readonly conflicts?: readonly Conflict[];
 }
 
 /**
@@ -410,23 +348,6 @@ if (RESOLVED.problems.length > 0) {
 
 export const STACKS: Readonly<Record<string, Stack>> = RESOLVED.stacks;
 
-/** Returns the stack registered under `id`, or null if absent. */
-export function getStack(id: string): Stack | null {
-  return STACKS[id] ?? null;
-}
-
-/** Lists the available stack ids in deterministic order. */
-export function listStackIds(): readonly string[] {
-  return Object.keys(STACKS).sort();
-}
-
-/** One stack's id + description, for `keel new --list`. */
-export interface StackSummary {
-  readonly id: string;
-  readonly description: string;
-}
-
-/** Lists every registered stack's id + description, in deterministic order. */
 /**
  * The tag set a stack seeds, once its build-system and module-layout
  * dials have settled.
@@ -475,25 +396,4 @@ export function assemblies(stack: Stack): readonly (readonly Tag[])[] {
 export function isAssemblable(stack: Stack): boolean {
   const pieces = [stack, ...stack.verticals];
   return assemblies(stack).some((tags) => assemblyRefusal(pieces, tags) === null);
-}
-
-/** The stacks a menu may offer: every registered one that can be built. */
-export function assemblableStacks(): readonly Stack[] {
-  return listStackIds()
-    .map((id) => STACKS[id])
-    .filter((stack): stack is Stack => stack !== undefined && isAssemblable(stack));
-}
-
-/**
- * Every stack a menu may offer, id-sorted.
- *
- * Filtered by {@link isAssemblable}: a preset no setting of its dials
- * can build is not an option, and listing it as one is a promise the
- * install would break. {@link listStackIds} stays unfiltered — an
- * "unknown stack 'x'; available: …" message is about which ids exist,
- * and hiding a real id there would send the reader looking for a typo
- * they did not make.
- */
-export function listStacks(): readonly StackSummary[] {
-  return assemblableStacks().map((stack) => ({ id: stack.id, description: stack.description }));
 }
