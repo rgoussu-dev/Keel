@@ -20,3 +20,15 @@
 - The page is plain ESM under `assets/web/`, served as-is. Keep it
   that way: no TypeScript, no build step, no dependency that is not
   already a dependency of the package.
+- The page's **logic lives in `assets/web/src/*.js` and its elements
+  stay thin.** `tree.js`, `finder.js` and `command.js` are pure
+  functions over data the domain produced, tested from
+  `tests/application/web/` without a DOM; an element that grows an
+  answer worth being wrong about should hand it to a module there
+  rather than keep it. `dom.js` is the shared builder — no
+  `innerHTML` on anything that came off the wire.
+- **Build the shell and the elements once, update them through
+  properties.** Replacing a subtree on every preview takes the caret
+  out of the field being typed in and resets the plan tree's scroll
+  position. `<keel-app>` keeps its children and swaps only when the
+  greenfield/brownfield mode changes.

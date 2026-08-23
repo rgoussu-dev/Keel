@@ -119,6 +119,15 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`keel ui` shows the command it is equivalent to.** The page and
+  the terminal are two primary adapters over one mediator, so every
+  state the form reaches is a `keel new` or `keel add` somebody could
+  have typed. The plan column renders that line — flags highlighted,
+  answers as `--set`, values quoted only where a shell needs it — with
+  a button that copies it, so a scaffold done by clicking can go into
+  a README or a CI job. Derived from the same body the review step
+  posts, so it cannot describe a different install.
+
 - **Plugins: a project can supply its own stacks and verticals.** keel
   scans `<cwd>/.keel/plugins` — a directory the project owns — and
   loads every entry it finds: a directory holding `keel-plugin.js`, or
@@ -198,6 +207,44 @@ assets }` and its pieces are written against the ordinary
     rather than sent to change layout first and still get nothing.
 
 ### Changed
+
+- **`keel ui` is an application shell, so the stepper never takes the
+  plan away.** The wizard's own rule is that the plan stays visible
+  throughout, and a page that scrolls as a document only keeps that
+  promise on a short step. The page is now a masthead, the rail in a
+  band of its own, and two columns that scroll independently: the
+  plan — tree, deferred actions, the command line — holds its own
+  column whatever the step above is doing. Below 62rem it collapses
+  back to one column and the page scrolls as a document.
+  - **The panel no longer fights the user.** The shell and the plan's
+    skeleton are built once and updated through their properties, and
+    a step's controls survive a re-render that did not change the
+    step — which used to take the caret out of the field being typed
+    in and reset the file tree's scroll position on each keystroke.
+    `<keel-question-list>` also restores focus and selection across
+    its own re-render.
+  - **The questions step is two kinds of decision, and now looks like
+    it.** A preview answers with one flat list, so "additional
+    verticals" — a field of the command that redraws the whole plan —
+    sat between "initial branch name" and "base Java package".
+    `binding.kind` already distinguished them: a command-level
+    question gets its own heading and is drawn as cards, the same
+    control the narrowing steps use, while the adapters' own
+    questions are grouped under _Details_ by the adapter that asked —
+    which is where the `adapter:question` key now lives, once per
+    group instead of on every label.
+  - **The plan's file tree is navigable.** Single-child directory
+    chains are joined (`src/main/java/com/example` is one row, not
+    five), directories fold away and stay folded across a preview,
+    and each carries the number of files under it.
+  - **The directory step is a path bar.** Every segment of the path is
+    a jump, and the folder browser opens on request rather than
+    standing permanently open.
+  - **Type, colour and spacing are a system.** planks' 1.5 scale is
+    kept for space and replaced for text — two steps below its base is
+    seven pixels — and the page's tokens now cover both themes from
+    one set of names. Backtick spans in keel's own documentation
+    strings render as code rather than as punctuation.
 
 - **The stack registry is data.** The 34 presets moved out of the
   TypeScript object literals in `src/domain/core/stacks.ts` and into

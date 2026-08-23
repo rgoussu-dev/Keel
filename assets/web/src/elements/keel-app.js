@@ -84,6 +84,9 @@ export class KeelApp extends HTMLElement {
   #stale = false;
   #timer = null;
   #step = DIRECTORY;
+  /** The step the panel currently holds, and the element holding it. */
+  #drawn = null;
+  #body_ = null;
   /** Monotonic request id; a reply older than this one is discarded. */
   #generation = 0;
 
@@ -126,6 +129,7 @@ export class KeelApp extends HTMLElement {
     this.#dials = null;
     this.#preview = null;
     this.#step = DIRECTORY;
+    this.#drawn = null;
     this.#render();
     this.#previewSoon();
   }
@@ -398,29 +402,36 @@ export class KeelApp extends HTMLElement {
 
   /* ---- rendering ----------------------------------------------- */
 
+  /**
+   * The shell, built once.
+   *
+   * Masthead, then the rail in a band of its own, then two columns
+   * that scroll independently. The rail spans the page because it is
+   * a map of the whole run rather than part of the panel you happen
+   * to have open; the plan gets a column that cannot scroll away,
+   * which is what a stepper owes it.
+   */
   #scaffold() {
     this.innerHTML = `
-      <stack-pk space="0">
-        <header class="masthead">
-          <center-pk maxwidth="72rem" gutters="var(--s0)">
-            <cluster-pk space="var(--s0)" align="baseline">
-              <h1 class="wordmark">keel</h1>
-              <p class="muted" data-role="tagline">local scaffolder</p>
-            </cluster-pk>
-          </center-pk>
-        </header>
-        <center-pk maxwidth="72rem" gutters="var(--s0)">
+      <header class="masthead">
+        <h1 class="wordmark">keel<span class="tagline" data-role="tagline">local scaffolder</span></h1>
+        <div class="masthead-meta" data-role="meta"></div>
+      </header>
+      <div class="railbar">
+        <keel-stepper></keel-stepper>
+        <keel-preset hidden></keel-preset>
+      </div>
+      <div class="workspace">
+        <div class="column">
           <stack-pk space="var(--s1)">
-            <keel-stepper></keel-stepper>
-            <keel-preset hidden></keel-preset>
             <div data-role="error" hidden></div>
-            <sidebar-pk side="right" sidewidth="26rem" contentwidth="55%" space="var(--s1)">
-              <section class="panel" data-role="step"></section>
-              <keel-plan></keel-plan>
-            </sidebar-pk>
+            <section class="panel" data-role="step"></section>
           </stack-pk>
-        </center-pk>
-      </stack-pk>
+        </div>
+        <div class="column aside">
+          <keel-plan></keel-plan>
+        </div>
+      </div>
     `;
   }
 
@@ -444,6 +455,7 @@ export class KeelApp extends HTMLElement {
       }
     }
 
+    this.#renderMeta();
     this.#renderError();
     this.#renderStep(steps);
 
@@ -453,7 +465,41 @@ export class KeelApp extends HTMLElement {
       plan.report = this.#report;
       plan.stale = this.#stale;
       plan.hint = this.#hint();
+      plan.body = this.#body();
     }
+  }
+
+  /**
+   * The masthead's right-hand side: which mode the page is in, and
+   * what the directory already holds.
+   *
+   * Both are answers the page had already computed and was showing
+   * nowhere — the mode only implicitly, through which controls the
+   * steps happened to offer.
+   */
+  #renderMeta() {
+    const host = this.querySelector('[data-role="meta"]');
+    if (!host) return;
+    const chips = [];
+    if (this.#status !== null) {
+      const chip = document.createElement('span');
+      chip.className = 'chip accent';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      const text = document.createElement('span');
+      text.textContent = this.#status.initialised ? 'keel project' : 'new project';
+      chip.append(dot, text);
+      chips.push(chip);
+    }
+    if (this.#status?.initialised) {
+      const installed = this.#status.installed.length;
+      chips.push(chipOf(`${installed} vertical${installed === 1 ? '' : 's'} installed`));
+      if (this.#status.modules.length > 0) {
+        const count = this.#status.modules.length;
+        chips.push(chipOf(`${count} context${count === 1 ? '' : 's'}`));
+      }
+    }
+    host.replaceChildren(...chips);
   }
 
   #ready() {
@@ -500,11 +546,27 @@ export class KeelApp extends HTMLElement {
     box.append(code, message);
   }
 
-  /** Draws the open step: its heading, its controls, and the two arrows. */
+  /**
+   * Draws the open step: its heading, its controls, and the two
+   * arrows.
+   *
+   * **The body survives a re-render while the step holds.** Every
+   * preview re-renders, and rebuilding the panel took the caret out
+   * of whatever field was being typed in — a text answer is committed
+   * on blur, so the field you are editing is live for as long as you
+   * are editing it. The controls are therefore created when the step
+   * changes and updated through their properties otherwise.
+   */
   #renderStep(steps) {
     const host = this.querySelector('[data-role="step"]');
     if (!host || this.#target === null || this.#catalog === null) return;
     const current = steps.find((step) => step.id === this.#step);
+
+    if (this.#step === this.#drawn && this.#body_ !== null && this.#body_.isConnected) {
+      this.#fillStepBody(this.#body_);
+      this.#fillNavigation(steps);
+      return;
+    }
 
     const stack = document.createElement('stack-pk');
     stack.setAttribute('space', 'var(--s0)');
@@ -519,42 +581,56 @@ export class KeelApp extends HTMLElement {
       doc.textContent = current.doc;
       stack.append(doc);
     }
-    stack.append(this.#stepBody());
+    this.#body_ = this.#stepBody();
+    this.#drawn = this.#step;
+    stack.append(this.#body_);
     stack.append(this.#navigation(steps));
     host.replaceChildren(stack);
   }
 
+  /** The element a step's controls live in, freshly made. */
   #stepBody() {
+    const tag =
+      this.#step === DIRECTORY
+        ? 'keel-target-picker'
+        : this.#step === TARGET
+          ? 'keel-add-form'
+          : this.#step === QUESTIONS
+            ? 'keel-question-list'
+            : this.#step === REVIEW
+              ? 'keel-review'
+              : 'keel-new-form';
+    const node = document.createElement(tag);
+    this.#fillStepBody(node);
+    return node;
+  }
+
+  /** The data that element takes, on every render including its first. */
+  #fillStepBody(node) {
     if (this.#step === DIRECTORY) {
-      const picker = document.createElement('keel-target-picker');
-      picker.listing = this.#listing;
-      return picker;
+      node.listing = this.#listing;
+      return;
     }
     if (this.#step === TARGET) {
-      const form = document.createElement('keel-add-form');
-      form.status = this.#status;
-      form.target = this.#target;
-      return form;
+      node.status = this.#status;
+      node.target = this.#target;
+      return;
     }
     if (this.#step === QUESTIONS) {
-      const questions = document.createElement('keel-question-list');
-      questions.questions = this.#preview?.questions ?? [];
-      return questions;
+      node.questions = this.#preview?.questions ?? [];
+      return;
     }
     if (this.#step === REVIEW) {
-      const review = document.createElement('keel-review');
-      review.rows = this.#summary();
-      review.busy = this.#busy;
-      review.ready = this.#ready();
-      review.hint = this.#reviewHint();
-      return review;
+      node.rows = this.#summary();
+      node.busy = this.#busy;
+      node.ready = this.#ready();
+      node.hint = this.#reviewHint();
+      return;
     }
-    const form = document.createElement('keel-new-form');
-    form.catalog = this.#catalog;
-    form.dials = this.#dials;
-    form.target = this.#target;
-    form.step = this.#step;
-    return form;
+    node.catalog = this.#catalog;
+    node.dials = this.#dials;
+    node.target = this.#target;
+    node.step = this.#step;
   }
 
   /**
@@ -567,6 +643,22 @@ export class KeelApp extends HTMLElement {
     if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
     if (this.#preview === null) return 'Waiting for the plan…';
     return '';
+  }
+
+  /**
+   * The arrows' disabled state, on a render that kept the panel.
+   *
+   * Which steps exist is derived, so the position of the open one can
+   * move without the panel changing — a preview that adds the options
+   * step is not a reason to rebuild the controls under the caret, but
+   * it is a reason for Next to become live.
+   */
+  #fillNavigation(steps) {
+    const at = steps.findIndex((step) => step.id === this.#step);
+    const back = this.querySelector('[data-role="back"]');
+    const next = this.querySelector('[data-role="next"]');
+    if (back) back.disabled = at <= 0;
+    if (next) next.disabled = at < 0 || at >= steps.length - 1;
   }
 
   #navigation(steps) {
@@ -593,6 +685,14 @@ export class KeelApp extends HTMLElement {
     row.append(back, next);
     return row;
   }
+}
+
+/** One masthead chip. */
+function chipOf(text) {
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.textContent = text;
+  return chip;
 }
 
 /**
