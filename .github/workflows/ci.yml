@@ -476,8 +476,8 @@ jobs:
           # they render nothing, so the shard's shape and tools are
           # unchanged.
           #
-          # `ui-stack-finder` is the fourth renderer, and the only
-          # suite here that scaffolds nothing: it spawns `keel ui` and
+          # `ui-stack-finder` is the fourth renderer, and one of two
+          # suites here that scaffold nothing: it spawns `keel ui` and
           # drives the page with Playwright. It belongs in this shard
           # rather than one of its own precisely because `browser` is
           # already declared here, and it finishes inside this shard's
@@ -485,6 +485,16 @@ jobs:
           # laptop — its `beforeAll` compiles `dist/` and launches a
           # browser, and both cost more on a runner — so measure it
           # there, as the note above says.
+          #
+          # `ui-plugin-stack` is the other, and it is a separate file
+          # rather than three more cases in the one above for a reason
+          # that is not length: the two differ by *what is on disk when
+          # the page opens*, so each needs its own cwd and its own
+          # `keel ui`. Two `beforeAll`s in one file would spawn both
+          # servers for either suite's cases. It is the shorter of the
+          # two, so it does not move this shard's floor; both share
+          # their harness (`tests/support/ui-e2e.ts`) rather than two
+          # copies of the spawn-and-settle logic drifting apart.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -503,6 +513,7 @@ jobs:
               tests/e2e/add-module-wc.test.ts
               tests/e2e/fullstack.test.ts
               tests/e2e/ui-stack-finder.test.ts
+              tests/e2e/ui-plugin-stack.test.ts
           # The TypeScript half of the composed-entrypoint grid, in a
           # shard of its own rather than as three more files above.
           # Two reasons, and neither is wall clock inside this job:
