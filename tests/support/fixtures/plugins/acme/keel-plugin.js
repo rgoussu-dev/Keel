@@ -13,6 +13,12 @@
  * to refuse `--build-system=fancy --module-layout=basic`, and once to
  * keep `basic` off the module-layout menu when `fancy` is chosen
  * interactively.
+ *
+ * It also emits a **deferred action**, because that is the other half
+ * of what a plugin can do to a machine and the half a files-only
+ * fixture would leave untested: an action runs after `tree.commit()`,
+ * reaches an external tool through the `ProcessRunner` port, and is
+ * skipped — printed, not run — under `--dry-run`.
  */
 
 /** The plugin's name — its message attribution and its template namespace. */
@@ -54,6 +60,16 @@ const MODULITH_LAYOUT = {
   doc: 'Contexts under modules/, shared plumbing under platform/.',
 };
 
+/**
+ * The marker the plugin's deferred action leaves behind.
+ *
+ * Written by a *subprocess*, through the `ProcessRunner` port the
+ * action is handed, rather than by this module calling `fs` itself —
+ * so what the test observes is the port having been wired to a real
+ * runner with the project's own cwd, not merely that a callback ran.
+ */
+const STAMP_FILE = 'acme-stamp.txt';
+
 /** Renders the plugin's own template tree through the shared port. */
 const greetingAdapter = {
   id: 'acme-greeting/file',
@@ -70,11 +86,33 @@ const greetingAdapter = {
     },
   ],
   async contribute(ctx) {
+    const who = ctx.answer('who');
     return {
-      files: await ctx.templates.render(templateId('greeting/templates'), '', {
-        who: ctx.answer('who'),
-      }),
+      files: await ctx.templates.render(templateId('greeting/templates'), '', { who }),
       tagsAdd: ['acme.greeting'],
+      actions: [
+        {
+          id: 'acme-greeting/stamp',
+          description: `stamp the greeting for ${who}`,
+          run({ cwd, processes, logger }) {
+            const result = processes.run(
+              process.execPath,
+              [
+                '-e',
+                `require('node:fs').writeFileSync(process.argv[1], process.argv[2] + '\\n')`,
+                STAMP_FILE,
+                who,
+              ],
+              { cwd },
+            );
+            if (result.status !== 0) {
+              throw new Error(`acme stamp failed (${result.status}): ${result.stderr}`);
+            }
+            logger.info(`acme: stamped ${STAMP_FILE}`);
+            return Promise.resolve();
+          },
+        },
+      ],
     };
   },
 };
