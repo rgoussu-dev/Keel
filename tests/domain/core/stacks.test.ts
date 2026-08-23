@@ -7,7 +7,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { listStackIds, listStacks, STACKS } from '../../../src/domain/core/stacks.js';
+import {
+  BUILD_SYSTEMS,
+  getBuildSystem,
+  listStackIds,
+  listStacks,
+  STACKS,
+} from '../../../src/domain/core/stacks.js';
+import {
+  getModuleLayoutOption,
+  MODULE_LAYOUTS,
+} from '../../../src/domain/core/adapters/module-layout.js';
 
 describe('listStacks', () => {
   it('lists every registered stack id, sorted, each with a non-empty description', () => {
@@ -33,5 +43,27 @@ describe('listStacks', () => {
     ]) {
       expect(ids, `missing ${id}`).toContain(id);
     }
+  });
+});
+
+describe('the dial registries', () => {
+  it('resolves every build system under its own id, to the same option object', () => {
+    for (const [id, option] of Object.entries(BUILD_SYSTEMS)) {
+      expect(option.id).toBe(id);
+      expect(getBuildSystem(id)).toBe(option);
+    }
+    expect(Object.keys(BUILD_SYSTEMS).sort()).toEqual(['gradle', 'maven', 'npm', 'pnpm']);
+  });
+
+  it('resolves every module layout under its own id, to the same option object', () => {
+    for (const option of MODULE_LAYOUTS) {
+      expect(getModuleLayoutOption(option.id)).toBe(option);
+    }
+    expect(MODULE_LAYOUTS.map((o) => o.id)).toEqual(['basic', 'modulith']);
+  });
+
+  it('returns null for an id no option bears', () => {
+    expect(getBuildSystem('bazel')).toBeNull();
+    expect(getModuleLayoutOption('microservices')).toBeNull();
   });
 });
