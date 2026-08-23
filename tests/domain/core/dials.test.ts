@@ -29,14 +29,23 @@ import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
 import { piecesOf, stackDials } from '../../../src/domain/core/dials.js';
 import { shippedRegistry } from '../../../src/domain/core/registry.js';
-import { stackTagsFor, type Stack } from '../../../src/domain/core/stacks.js';
+import {
+  stackTagsFor,
+  type ModuleLayoutOption,
+  type Stack,
+} from '../../../src/domain/core/stacks.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
 const GRADLE = { id: 'gradle', tag: 'pkg.gradle' as Tag, label: 'Gradle', doc: 'gradle' };
 const MAVEN = { id: 'maven', tag: 'pkg.maven' as Tag, label: 'Maven', doc: 'maven' };
-const BASIC = { id: 'basic', tag: 'layout.basic' as Tag, label: 'basic', doc: 'flat' };
-const MODULITH = {
+const BASIC: ModuleLayoutOption = {
+  id: 'basic',
+  tag: 'layout.basic' as Tag,
+  label: 'basic',
+  doc: 'flat',
+};
+const MODULITH: ModuleLayoutOption = {
   id: 'modulith',
   tag: 'layout.modulith' as Tag,
   label: 'modulith',
@@ -52,15 +61,34 @@ const ruleBearer = (conflicts: readonly Conflict[]): Vertical => ({
   conflicts,
 });
 
-const stackWith = (conflicts: readonly Conflict[], overrides: Partial<Stack> = {}): Stack => ({
-  id: 'demo-stack',
-  description: '',
-  tags: ['lang.java', 'runtime.jvm', 'arch.cli'],
-  buildSystems: [GRADLE, MAVEN],
-  moduleLayouts: [BASIC, MODULITH],
-  verticals: [ruleBearer(conflicts)],
-  ...overrides,
-});
+/**
+ * `Partial<Stack>` that can also say **"this stack has none"**.
+ *
+ * `exactOptionalPropertyTypes` separates an absent optional property
+ * from one set to `undefined`, and a fixture overriding a dial away
+ * means the first. {@link stackWith} therefore drops the keys whose
+ * override is `undefined` rather than assigning them.
+ */
+type StackOverrides = { [K in keyof Stack]?: Stack[K] | undefined };
+
+const stackWith = (conflicts: readonly Conflict[], overrides: StackOverrides = {}): Stack =>
+  settled({
+    id: 'demo-stack',
+    description: '',
+    tags: ['lang.java', 'runtime.jvm', 'arch.cli'],
+    buildSystems: [GRADLE, MAVEN],
+    moduleLayouts: [BASIC, MODULITH],
+    verticals: [ruleBearer(conflicts)],
+    ...overrides,
+  });
+
+/** The same object with every `undefined`-valued key removed. */
+const settled = (draft: StackOverrides): Stack => {
+  for (const key of Object.keys(draft) as (keyof Stack)[]) {
+    if (draft[key] === undefined) delete draft[key];
+  }
+  return draft as Stack;
+};
 
 /**
  * The rule no shipped piece declares: one dial constrained against

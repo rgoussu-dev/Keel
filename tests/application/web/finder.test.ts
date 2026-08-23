@@ -17,7 +17,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalogQuery } from '../../../src/domain/contract/queries.js';
 import type { Catalog } from '../../../src/domain/contract/queries.js';
-// @ts-expect-error — plain ESM shipped to the browser, no declarations.
 import {
   decodeSelection,
   defaultStack,
@@ -35,13 +34,27 @@ async function finder(): Promise<Catalog['finder']> {
   return catalog.finder;
 }
 
+/**
+ * `locate`, asserted to have found something.
+ *
+ * `locate` answers null for a preset the tree cannot place, which is
+ * a real answer and has its own case below. Everywhere else a null
+ * would mean the fixture is wrong, and failing on the spot says so
+ * better than a property access on null three lines later.
+ */
+function at(tree: Catalog['finder'], stack: string): NonNullable<ReturnType<typeof locate>> {
+  const found = locate(tree, stack);
+  if (found === null) throw new Error(`the finder cannot place '${stack}'`);
+  return found;
+}
+
 describe('the page’s stack finder', () => {
   it('opens on the preset an omitted --stack resolves to', async () => {
     expect(defaultStack(await finder())).toBe('quarkus-cli');
   });
 
   it('locates a preset by the path that reaches it', async () => {
-    const here = locate(await finder(), 'spring-cli-rest-kotlin');
+    const here = at(await finder(), 'spring-cli-rest-kotlin');
     expect(here.shape.id).toBe('backend');
     expect(here.language.id).toBe('kotlin@jvm');
     expect(here.framework.id).toBe('spring');
@@ -49,7 +62,7 @@ describe('the page’s stack finder', () => {
   });
 
   it('locates a fullstack product too, which is what the shape axis bought', async () => {
-    const here = locate(await finder(), 'fullstack');
+    const here = at(await finder(), 'fullstack');
     expect(here.shape.id).toBe('fullstack');
     expect(here.language.id).toBe('java@jvm');
     expect(here.framework.id).toBe('quarkus');
@@ -61,13 +74,13 @@ describe('the page’s stack finder', () => {
 
   it('keeps the language and framework when the shape moves', async () => {
     const tree = await finder();
-    const here = locate(tree, 'spring-rest');
+    const here = at(tree, 'spring-rest');
     expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-spring');
   });
 
   it('carries the half of a set the new shape can still take', async () => {
     const tree = await finder();
-    const here = locate(tree, 'fullstack');
+    const here = at(tree, 'fullstack');
     // `server-http + spa` cannot survive the move to a backend, but
     // `server-http` can — landing on the CLI preset for want of the
     // half that could not is throwing away an answer that was given.
@@ -76,52 +89,52 @@ describe('the page’s stack finder', () => {
 
   it('falls back where the new shape does not offer the old language', async () => {
     const tree = await finder();
-    const here = locate(tree, 'spring-rest');
+    const here = at(tree, 'spring-rest');
     // The browser is the only frontend language, so nothing carries.
     expect(pickShape(tree, 'frontend', here)).toBe('web-components');
   });
 
   it('keeps the entrypoints and framework when the language moves', async () => {
     const tree = await finder();
-    const here = locate(tree, 'spring-cli-rest');
+    const here = at(tree, 'spring-cli-rest');
     expect(pickLanguage(here.shape, 'kotlin@jvm', here)).toBe('spring-cli-rest-kotlin');
   });
 
   it('falls back where the new language does not offer the old framework', async () => {
     const tree = await finder();
-    const here = locate(tree, 'quarkus-cli-rest');
+    const here = at(tree, 'quarkus-cli-rest');
     // Go has no frameworks at all, so the entrypoints carry alone.
     expect(pickLanguage(here.shape, 'go', here)).toBe('go-cli-http');
   });
 
   it('keeps the entrypoints when the framework moves', async () => {
     const tree = await finder();
-    const here = locate(tree, 'quarkus-cli-rest');
+    const here = at(tree, 'quarkus-cli-rest');
     expect(pickFramework(here.language, 'micronaut', here)).toBe('micronaut-cli-rest');
   });
 
   it('moves to the combination a checkbox group names', async () => {
     const tree = await finder();
-    const here = locate(tree, 'micronaut-cli');
+    const here = at(tree, 'micronaut-cli');
     expect(pickEntrypoints(here.framework, 'cli,server-http')).toBe('micronaut-cli-rest');
     expect(pickEntrypoints(here.framework, 'server-http')).toBe('micronaut-rest');
   });
 
   it('reads a selection in any order, since a checkbox group reports clicks', async () => {
     const tree = await finder();
-    const here = locate(tree, 'go-cli');
+    const here = at(tree, 'go-cli');
     expect(pickEntrypoints(here.framework, 'server-http,cli')).toBe('go-cli-http');
   });
 
   it('refuses an empty selection instead of resolving it to something', async () => {
     const tree = await finder();
-    const here = locate(tree, 'go-cli');
+    const here = at(tree, 'go-cli');
     expect(pickEntrypoints(here.framework, '')).toBeNull();
   });
 
   it('refuses a shape, language or framework it does not know', async () => {
     const tree = await finder();
-    const here = locate(tree, 'go-cli');
+    const here = at(tree, 'go-cli');
     expect(pickShape(tree, 'sideways', here)).toBeNull();
     expect(pickLanguage(here.shape, 'cobol', here)).toBeNull();
     expect(pickFramework(here.language, 'nonesuch', here)).toBeNull();

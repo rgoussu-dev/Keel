@@ -233,7 +233,7 @@ describe('toolchain coverage across the stack registry', () => {
   it('resolves exactly one needs adapter for every non-composite stack', () => {
     for (const stack of Object.values(STACKS)) {
       if (stack.services) continue;
-      const tags = [...stack.tags, ...(stack.buildSystems ? [stack.buildSystems[0].tag] : [])];
+      const tags = [...stack.tags, ...(stack.buildSystems?.[0] ? [stack.buildSystems[0].tag] : [])];
       const resolved = resolveVertical(toolchainVertical, tags);
       expect(resolved, stack.id).toHaveLength(1);
     }

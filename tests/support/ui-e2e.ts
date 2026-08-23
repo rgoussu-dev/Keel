@@ -303,7 +303,14 @@ export const hasStep = async (page: Page, id: string): Promise<boolean> =>
 export const railSteps = (page: Page): Promise<string[]> =>
   page
     .locator('keel-stepper button')
-    .evaluateAll((nodes) => nodes.map((node) => (node as HTMLElement).dataset.step ?? ''));
+    // Structurally, because the typecheck runs without the DOM lib —
+    // this closure is serialised into the browser, where `dataset` is
+    // real.
+    .evaluateAll((nodes) =>
+      nodes.map(
+        (node) => (node as { dataset: Record<string, string | undefined> }).dataset.step ?? '',
+      ),
+    );
 
 /** Opens a step from the rail and waits for the page to settle. */
 export const openStep = (traffic: Traffic, page: Page, id: string): Promise<void> =>
