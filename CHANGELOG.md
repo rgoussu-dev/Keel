@@ -70,6 +70,37 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   second reading, which is the only thing that makes moving a rule
   worth doing.
 
+- **`keel ui` narrows its dials by the same rules, through a new
+  `keel.dials` query.** A `Conflict` can name two dials at once, and a
+  terminal never trips over that because it settles one dial before
+  offering the next. A form has no such order: the page rendered its
+  build-system and module-layout controls from `keel.catalog`, which
+  describes a preset's dials without knowing which combination the
+  user is on — so the first rule to constrain one dial against another
+  would have had the page offer a combination, post it, and get
+  `keel.incompatible` back.
+  - `POST /api/dials` takes the same body `preview` and `install`
+    take, reads only its `target`, and answers with one menu per dial
+    **plus the target snapped to them** — each dial left where the
+    caller put it where the rules still allow it, moved to the first
+    legal value where they do not. The page adopts that target, renders
+    from it, previews it and posts it, so what a control can produce is
+    exactly what `POST /api/install` accepts.
+  - **Flat, not a cross-product.** Reporting legality inside
+    `StackDescriptor` would have grown its shape with every dial added
+    and stopped the catalog being a flat description of a preset;
+    reporting it from `keel.preview` would have withheld the menus
+    precisely where the assembly was already illegal and the caller
+    needed them to recover. `keel.dials` never refuses.
+  - **No rule moved into the browser.** The peer-context checkbox used
+    to read `moduleLayout === 'modulith'`, a third copy of
+    `peer-context-needs-modulith` living in the page; it asks
+    `dials.peerContext` now. The catalog stays derived and the page
+    still never sees a capability tag.
+  - The terminal's own menu filters moved to `domain/core/dials.ts`
+    rather than being copied, so `keel new`'s questions and
+    `keel.dials`' answers are the same functions.
+
 - **The resolver's thrown refusal now says what the front door says.**
   `resolveVertical` reported only which dimension was empty, while
   `coverageGap` — added for the `--with` front door — could already
