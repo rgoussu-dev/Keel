@@ -231,8 +231,11 @@ assets/
                           # for the universal engineering conventions
   web/                    # the `keel ui` page: framework-free custom
                           # elements on @rgoussu.dev/planks, served
-                          # as-is (no bundler). Linted with src/tests,
-                          # unlike the ejs template trees above
+                          # as-is (no bundler). src/finder.js walks
+                          # the drill-down tree and src/steps.js says
+                          # which steps the rail has — both pure, both
+                          # unit-tested without a browser. Linted with
+                          # src/tests, unlike the ejs template trees
 tests/                    # vitest; mirrors src/ (domain/, e2e/,
   support/factory.ts      # infrastructure/); the shared test Factory.
   support/ui-e2e.ts       # support/ also holds the browser harness
@@ -265,6 +268,16 @@ to be offered under the flat layout and then rejected. The menu
 filters live in `core/dials.ts` and both front ends call them; a
 copy in a page is the same defect one layer out. See
 `docs/composition.md` → Conflicts and `docs/ui.md`.
+
+Drill-down note: the stack finder is **shape → language → framework
+→ user-side adapters**, widest first, and both front ends walk the
+same tree — `core/stack-wizard.ts` derives it, the terminal wizard
+asks it as questions and `keel ui` as steps, and a step whose answer
+is already settled is skipped in both. A shape is not a fourth tag to
+keep in step: it is which end each registered entrypoint is driven
+from (`ENTRYPOINTS[].side`), counted. That is what put the composite
+products on the guided path — they carry no `lang.*` tag, but their
+services do. See `docs/cli.md` → Finding a stack.
 
 Data note: the stack presets are **data**, in
 `src/domain/core/stack-presets.json`, because nothing in a `Stack` is
@@ -398,11 +411,12 @@ would ship as separate packages implementing the same port.
   Playwright — the only suite here that scaffolds no project and runs
   no build. It rides the `web` shard, which already declares
   `browser` in `tools:`. What it covers is the seam nothing else can:
-  the facets' narrowing is pure and unit-tested, but the element
-  rebuilds its subtree on every change and `<keel-app>` replaces the
-  element itself, so keeping a choice is a claim about surviving a
-  DOM replacement. A page-level suite is the only thing that sees a
-  `pageerror` too — a throw inside a listener leaves the form looking
+  the narrowing is pure and unit-tested (`finder.js`) and so is which
+  steps the rail has (`steps.js`), but the element rebuilds its
+  subtree on every change and `<keel-app>` replaces the element
+  itself, so keeping a choice across a step is a claim about surviving
+  a DOM replacement. A page-level suite is the only thing that sees a
+  `pageerror` too — a throw inside a listener leaves the page looking
   right and aborts the rest of that handler.
 - **The modulith grid is 24 cells and one file is one cell.**
   12 stacks × 2 build systems, named

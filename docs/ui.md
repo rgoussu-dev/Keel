@@ -21,11 +21,13 @@ your machine exactly as they do from the CLI.
 
 `keel new` is already a guided wizard: it asks one question at a time,
 then shows the staged plan and lets you jump back and change an answer
-before committing. What it cannot do is show you the plan _while you
-are still choosing_. The page can — flip Gradle to Maven, or `basic`
-to `modulith`, and the file tree redraws before anything is written,
-without a round trip through the review step. On a stack you have not
-used before, that tree is the documentation.
+before committing. The page asks **the same questions in the same
+order** — it is a stepper, not a form — and adds the one thing a
+terminal cannot: it shows you the plan _while you are still choosing_.
+Flip Gradle to Maven, or `basic` to `modulith`, and the file tree
+redraws before anything is written, without a round trip through the
+review step. On a stack you have not used before, that tree is the
+documentation.
 
 The two share everything below the transport: the same stacks, the
 same adapters, the same questions in the same order, and the same
@@ -40,55 +42,90 @@ install, and "add a bounded context" appears only where
 
 ## The page
 
-| Region                | What it does                                                                                                                                                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Project directory** | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                           |
-| **Find a stack**      | Three facets — language, user-side adapters, framework — narrowing to a preset. The browser half of the `keel new` drill-down.                                                                             |
-| **Stack + dials**     | The stack, its build system, its module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
-| **Questions**         | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.                                                                          |
-| **Plan**              | The file tree the install would write (`+` new, `~` modified, `-` removed), the deferred actions, and the Generate button.                                                                                 |
+A rail of steps across the top, the open step on the left, and the
+plan on the right — live, from the first step to the last.
+
+| Step              | What it asks                                                                                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                           |
+| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                           |
+| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                   |
+| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                      |
+| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                            |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
+| **What to add**   | _(brownfield only)_ A vertical to layer on, or a bounded context. Verticals already installed are offered for re-render rather than a second install.                                                      |
+| **Questions**     | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.                                                                          |
+| **Review**        | Every choice the run will make, each with a _change_ link back to its step, and the Generate button. Nothing is written before you press it.                                                               |
+
+Two things sit outside the rail because they are true at every step:
+the **Preset** picker under it, which names the id the answers so far
+have landed on — and is also the flat list of every preset, the
+browser half of the terminal's "Other — pick a preset by id" — and the
+**Plan**, which is the whole reason this page beats a flag.
+
+**Every step on the rail is clickable, not just the ones behind you.**
+There is nothing for a locked rail to protect: every dial has a
+default, and `keel.dials` snaps an illegal combination back, so the
+run is never in a state that cannot be generated. The rail is a map,
+not a gate — "just show me the plan" is one click, not four screens.
+
+**A step with one answer is not a step.** A language reaching one
+framework has no framework step; a fullstack product has no adapters
+step; the frontend shape reaches one preset, so it has neither. That
+is the same rule the terminal wizard skips a question under, run over
+the same tree.
 
 After a successful generate the page re-reads the directory and turns
-into the brownfield one, so layering `ci` onto what you just scaffolded
-is the next click.
+into the brownfield one, so layering `ci` onto what you just
+scaffolded is the next click.
 
-## Finding a stack: the same drill-down, laid flat
+## Finding a stack: the same drill-down, step for step
 
-`keel new` asks for the stack as three narrowing questions —
-[language → user-side adapters → framework](cli.md#finding-a-stack-the-drill-down).
-The page asks the same three, as **facets**: all visible at once,
-each re-filtering the others, resolving to a preset as they move.
+`keel new` asks for the stack as up to four narrowing questions —
+[what you are building → language → framework → user-side
+adapters](cli.md#finding-a-stack-the-drill-down). The page asks the
+same four, in the same order, one per step. They were three facets
+side by side until this release; the drill-down is a tree, and a grid
+of three dependent controls is a shape you have to already understand
+to use.
 
-- **Language** — Java, Kotlin, Go, Rust, TypeScript (Node),
-  TypeScript (browser).
-- **User-side adapters** — a checkbox group. Ticking both gives the
-  **composed** preset (`quarkus-cli-rest`, `go-cli-http`): one
-  project, one domain, both entrypoints, never two services. Emptying
-  it is refused rather than resolved — the control snaps back, since
-  no preset has no way in. Absent where the language reaches one
-  combination, as the browser target does.
+- **What to build** — fullstack, backend, frontend. Read off the
+  presets' own entrypoints: which end each is driven from decides
+  where a preset lands. This is what put the [fullstack
+  products](stacks/README.md) on the guided path at all — a
+  two-service product names no single language, so before there was a
+  shape axis it appeared on no facet and was reachable only by id.
+- **Language** — Java, Kotlin, Go, Rust, TypeScript. On the fullstack
+  shape, the backend's.
 - **Framework** — Quarkus, Spring or Micronaut. Absent where the
-  language and adapters chosen leave only one, which is everywhere
+  shape and language chosen leave only one, which is everywhere
   outside the JVM.
+- **Adapters** — a checkbox group. Ticking both gives the **composed**
+  preset (`quarkus-cli-rest`, `go-cli-http`): one project, one domain,
+  both entrypoints, never two services. Emptying it is refused rather
+  than resolved — the control snaps back, since no preset has no way
+  in.
 
-Moving one facet keeps the others where the new choice still offers
-them: switching Java → Kotlin with CLI + HTTP on Spring lands on
-`spring-cli-rest-kotlin`, not back at square one.
+**Stepping back keeps what still fits.** Move the shape from backend
+to fullstack with Java + Spring chosen and you land on
+`fullstack-spring`, not back at square one; come out of a product into
+a backend and the half of its entrypoints a backend can still take —
+`server-http` of `server-http + spa` — comes with you.
 
-The **Stack** select below them stays, and it is not redundant. It is
-the result of the facets, it is the way to pick a preset by name, and
-it is the only way to reach a [fullstack product](stacks/README.md) —
-two services name no single language, so no facet can offer one. Pick
-one there and the facets show `— a fullstack product (two services)`;
-choosing a language from that is how you come back out.
+The **Preset** picker under the rail stays, and it is not redundant.
+It is the result of the four steps, it is the way to pick a preset by
+name, and it is the only thing that can name a preset the finder could
+not place — a plugin's, most likely.
 
-The facets are rendered from `Catalog.finder`, which the engine builds
+The steps are rendered from `Catalog.finder`, which the engine builds
 by reading the same stack tags the terminal wizard reads. The page
-never sees a tag: it walks a tree of language → combination →
-framework and sends back the preset it lands on. That is deliberate —
-a page deriving the grid from `stacks[].tags` would be a second
+never sees a tag: it walks a tree of shape → language → framework →
+combination and sends back the preset it lands on. That is deliberate
+— a page deriving the tree from `stacks[].tags` would be a second
 implementation of a vocabulary that is not its to know, and it would
-drift from the terminal's the first time a tag moved.
+drift from the terminal's the first time a tag moved. Which steps
+exist is derived the same way, in `assets/web/src/steps.js`, from the
+same tree.
 
 ## The dials are narrowed by the same rules
 
@@ -98,10 +135,12 @@ settles one dial before offering the next: each menu is filtered
 against the tags the earlier answers left behind
 ([Conflicts](composition.md#conflicts)).
 
-A form has no such order. Every dial is on screen at once, and the
-catalog it renders from describes a preset's dials without knowing
-which combination you are on — so left to itself the page would offer
-a combination, post it, and get `keel.incompatible` back.
+The Options step has no such order — every dial of the preset is on it
+at once, and it is one step precisely because they are not a
+drill-down. The catalog it renders from describes a preset's dials
+without knowing which combination you are on, so left to itself the
+page would offer a combination, post it, and get `keel.incompatible`
+back.
 
 `POST /api/dials` closes that. The page sends the target it holds and
 gets back one menu per dial, plus **the target snapped to those
@@ -140,17 +179,17 @@ The page therefore runs a loop rather than rendering a schema: it asks
 the server to preview the install, renders the questions that came
 back, folds a changed answer into the request, and previews again.
 Each pass runs the **real** engine as a dry run
-(`keel.preview`), so the form can never offer a question the install
-does not ask, or hide one it does. It is the same trick the CLI
+(`keel.preview`), so the Questions step can never offer a question the
+install does not ask, or hide one it does. It is the same trick the CLI
 wizard's own back-and-forth plays, from the other side: the wizard
 replays recorded answers until one of them stops matching, the page
 re-resolves from scratch each time.
 
-One question is deliberately absent from the form: the wizard's
-proceed / change / cancel review step. That is flow control rather
-than part of the plan — the page's Generate button is the same
-decision — so it is marked as such at the port and dropped from the
-reported set.
+One question is deliberately absent from the reported set: the
+wizard's proceed / change / cancel review step. That is flow control
+rather than part of the plan — the page has its own last step for it,
+with its own Generate button and its own jump-back links — so it is
+marked as such at the port and dropped.
 
 Two consequences worth knowing:
 
@@ -159,7 +198,7 @@ Two consequences worth knowing:
   one the install uses.
 - **A brownfield answer already recorded is not asked again.** On
   `keel add`, sticky answers in the manifest win, exactly as they do on
-  the command line. Those questions are absent from the form because
+  the command line. Those questions are absent from the step because
   they are absent from the run — changing one is what `--reapply` is
   deliberately conservative about.
 

@@ -176,19 +176,20 @@ describe('keel.preview', () => {
     );
     // A front end with a stack picker sends `stack` and never gets
     // here — `keel ui` does exactly that. One that does not gets the
-    // wizard's own three steps, each an ordinary answer it can send
+    // wizard's own four steps, each an ordinary answer it can send
     // back, and the defaults compose to the same preset an omitted
     // `--stack` has always meant.
-    expect(preview.questions.slice(0, 3).map((q) => q.id)).toEqual([
+    expect(preview.questions.slice(0, 4).map((q) => q.id)).toEqual([
+      'shape',
       'language',
-      'entrypoints',
       'framework',
+      'entrypoints',
     ]);
-    expect(preview.questions[1]).toMatchObject({ kind: 'multi-select' });
+    expect(preview.questions[3]).toMatchObject({ kind: 'multi-select' });
     expect(preview.questions[0]?.binding).toEqual({
       kind: 'answer',
       adapter: 'keel.new-project',
-      question: 'language',
+      question: 'shape',
     });
     expect(preview.subject).toBe('quarkus-cli');
   });
@@ -199,7 +200,13 @@ describe('keel.preview', () => {
         previewQuery({
           cwd,
           target: { kind: 'new-project' },
-          answers: { 'keel.new-project': { language: 'go', entrypoints: 'cli,server-http' } },
+          answers: {
+            'keel.new-project': {
+              shape: 'backend',
+              language: 'go',
+              entrypoints: 'cli,server-http',
+            },
+          },
         }),
       ),
     );

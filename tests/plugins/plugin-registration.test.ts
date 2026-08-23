@@ -439,10 +439,17 @@ describe('keel.catalog', () => {
     expect(verticalIds).toContain(VERTICAL);
     expect(verticalIds).toContain('persistence');
 
-    // The drill-down is derived, so the plugin's language node is
-    // there without `keel ui` knowing a plugin exists.
-    const acme = catalog.finder.languages.find((language) => language.id === 'acme');
-    expect(acme?.combinations.flatMap((c) => c.frameworks.map((f) => f.stack))).toContain(STACK);
+    // The drill-down is derived, so the plugin's stack is placed on
+    // it — under the shape its own entrypoints spell, in a language
+    // node nobody labelled — without `keel ui` knowing a plugin
+    // exists.
+    const backend = catalog.finder.shapes.find((shape) => shape.id === 'backend');
+    const acme = backend?.languages.find((language) => language.id === 'acme');
+    expect(
+      acme?.frameworks.flatMap((framework) =>
+        framework.combinations.map((combination) => combination.stack),
+      ),
+    ).toContain(STACK);
   });
 
   it('reports exactly the shipped pieces when no plugin is present', async () => {

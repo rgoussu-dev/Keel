@@ -39,11 +39,14 @@ prompts at all. Sixty seconds later you have:
 npx @rgoussu.dev/keel new
 ```
 
-and keel asks for it in three narrowing questions instead —
-**language → user-side adapters → framework**. Pick both `CLI` and
+and keel narrows to it one question at a time, widest first —
+**what you are building → language → framework → user-side
+adapters**. Answer _fullstack_ and you get a backend and a browser
+front end wired together; answer _backend_ and pick both `CLI` and
 `HTTP server` and you get the composed preset: one project, one
 domain, both entrypoints. Every menu is derived from the presets
-still reachable, so it can't walk you into a combination that doesn't
+still reachable, a step whose answer is already settled is skipped
+outright, and no menu can walk you into a combination that doesn't
 exist ([details](docs/cli.md#finding-a-stack-the-drill-down)).
 
 keel is **project-scoped only**: it writes into your project directory
@@ -79,8 +82,8 @@ and the **exact tree generated** — start at the
 [stack catalog](docs/stacks/README.md).
 
 Prefer to see the tree before you commit to it?
-`npx @rgoussu.dev/keel ui` serves the same engine as a form on
-loopback, with the file tree redrawing as you change a dial — see
+`npx @rgoussu.dev/keel ui` serves the same engine as a guided stepper
+on loopback, with the file tree redrawing as you change a dial — see
 [**How to scaffold from a browser**](#how-to-scaffold-from-a-browser).
 
 ---
@@ -257,11 +260,14 @@ npx @rgoussu.dev/keel ui        # prints http://127.0.0.1:7420/?token=… and bl
 
 A Spring-Initializr-shaped page for the same engine, served from your
 own machine — nothing is uploaded, and the files land wherever you
-point it. `keel new` is already a guided wizard; what the page adds is
-the **plan while you are still choosing**: flip Gradle to Maven, or
-`basic` to `modulith`, and the file tree redraws before anything is
-written, without a round trip through the review step. On a stack you
-have not used before, that tree is the documentation.
+point it. It walks the **same questions in the same order** as
+`keel new` — what you are building, then the language, the framework,
+the way in, the dials — one step at a time, with a rail across the top
+you can jump around in and a review at the end. What it adds over the
+terminal is the **plan while you are still choosing**: the file tree
+sits beside every step, so flipping Gradle to Maven, or `basic` to
+`modulith`, redraws it before anything is written. On a stack you have
+not used before, that tree is the documentation.
 
 It also reads what your project already is. Point it at a directory
 holding a keel manifest and it becomes the brownfield page — verticals

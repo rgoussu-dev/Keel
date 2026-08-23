@@ -1,15 +1,20 @@
 /**
  * `<keel-plan>` — the right-hand column: what this install would
- * write, what it would run afterwards, and the button that commits
- * it.
+ * write and what it would run afterwards.
  *
  * The plan is the whole reason a form beats a flag here. `keel new`
  * tells you the tree after it has written it (or under `--dry-run`,
  * in a scroll of paths); this shows it while the choices are still
  * moving, so a build-system flip is a visible diff rather than an act
- * of faith.
+ * of faith. It stays on screen through **every** step of the wizard
+ * for that reason: the tree redrawing as you answer is what makes the
+ * answer mean something, and a stepper that hid it until the end
+ * would have thrown that away.
  *
- * Preview/report/state in as properties, `install-requested` out.
+ * The Generate button is not here. It belongs to the review step —
+ * `<keel-review>` — which is the one place the run is committed from.
+ *
+ * Preview/report/state in as properties; nothing out.
  */
 
 import { countKinds } from '../tree.js';
@@ -17,9 +22,7 @@ import { countKinds } from '../tree.js';
 export class KeelPlan extends HTMLElement {
   #preview = null;
   #report = null;
-  #busy = false;
   #stale = false;
-  #ready = false;
   #hint = '';
 
   /** @param {object|null} value the last successful preview */
@@ -34,21 +37,9 @@ export class KeelPlan extends HTMLElement {
     this.#render();
   }
 
-  /** @param {boolean} value whether a request is in flight */
-  set busy(value) {
-    this.#busy = value;
-    this.#render();
-  }
-
   /** @param {boolean} value whether the shown preview predates the current answers */
   set stale(value) {
     this.#stale = value;
-    this.#render();
-  }
-
-  /** @param {boolean} value whether the form is complete enough to install */
-  set ready(value) {
-    this.#ready = value;
     this.#render();
   }
 
@@ -71,7 +62,6 @@ export class KeelPlan extends HTMLElement {
     stack.append(this.#tree());
     const actions = this.#actions();
     if (actions) stack.append(actions);
-    stack.append(this.#commit());
     this.replaceChildren(stack);
   }
 
@@ -130,18 +120,6 @@ export class KeelPlan extends HTMLElement {
     }
     stack.append(title, list);
     return stack;
-  }
-
-  #commit() {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'primary';
-    button.disabled = this.#busy || !this.#ready || this.#preview === null;
-    button.textContent = this.#busy ? 'Working…' : 'Generate';
-    button.addEventListener('click', () =>
-      this.dispatchEvent(new CustomEvent('install-requested', { bubbles: true })),
-    );
-    return button;
   }
 
   #reportPanel() {
