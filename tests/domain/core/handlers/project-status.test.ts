@@ -93,7 +93,7 @@ describe('keel.project-status', () => {
           }),
         ),
       ).code,
-    ).toBe('keel.invalid-module');
+    ).toBe('keel.incompatible');
   });
 
   it('allows a context on the modulith, and names the ones already taken', async () => {

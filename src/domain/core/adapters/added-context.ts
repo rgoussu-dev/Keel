@@ -26,7 +26,8 @@
 
 import type { ManifestV2 } from '../../contract/manifest.js';
 import type { PresetAnswers } from '../../contract/commands.js';
-import type { Tag } from '../../contract/composition.js';
+import type { Conflict, Tag } from '../../contract/composition.js';
+import { MODULITH_LAYOUT_TAG } from './module-layout.js';
 
 /**
  * The well-known key the add-module inputs are recorded under.
@@ -46,6 +47,35 @@ export const ADD_MODULE_INPUT_ID = 'keel.add-module';
  * the same {@link emitsFor} the `--with-peer-context` gate uses.
  */
 export const CONTEXT_TAG: Tag = 'modules.context';
+
+/**
+ * The rule that a bounded context needs the layout that gives it a
+ * seam to meet its peers at.
+ *
+ * The same sentence as `PEER_CONTEXT_NEEDS_MODULITH` about the other
+ * door: `keel new --with-peer-context` seeds a second context at
+ * scaffold time, `keel add module` seeds one later, and neither has
+ * anywhere to put it under the flat layout. Two rules rather than one
+ * because they are owned by different pieces — the walking skeleton
+ * constrains its own peer-context capability, this vertical
+ * constrains the context it emits — and a rule belongs to its
+ * declarer, never to a central table.
+ *
+ * Declared rather than checked for the reason the peer rule was: it
+ * is read twice. `keel add module` refuses an assembly that violates
+ * it, and `ProjectStatusHandler`'s `canAddModule` — what a graphical
+ * front end greys the control out by — filters on the same sentence.
+ * Those were two hand-written copies of one rule sitting in two
+ * handlers, which is the arrangement that lets a refusal and a menu
+ * drift apart.
+ */
+export const CONTEXT_NEEDS_MODULITH: Conflict = {
+  id: 'bounded-context/context-needs-modulith',
+  when: [CONTEXT_TAG],
+  unless: [MODULITH_LAYOUT_TAG],
+  reason:
+    'a bounded context needs the modulith layout: contexts meet only at the peer-facing seam the modulith puts between them, and the flat layout is one hexagon for the whole service with no seam for a second context to meet the first at. "keel add module" needs a project scaffolded with --module-layout=modulith',
+};
 
 /** The context an add-module run is emitting, as its adapters see it. */
 export interface AddedContext {

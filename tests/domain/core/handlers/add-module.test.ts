@@ -86,11 +86,21 @@ describe('keel add module front door', () => {
     expect(error.message).toMatch(/--module-layout=modulith/);
   });
 
-  it('rejects the flat layout, which has no seam to cross', async () => {
+  /**
+   * The one refusal here that is a declaration rather than a branch,
+   * so it is asserted the way every other violated rule is: the
+   * shared code, the rule's own sentence, and the evidence naming the
+   * tag that matched. `canAddModule` filters on the same declaration
+   * — see the project-status suite.
+   */
+  it('rejects the flat layout, naming the rule that says so', async () => {
     await scaffold({ moduleLayout: 'basic' });
     const error = expectErr(await addModule('ordering'));
-    expect(error.code).toBe('keel.invalid-module');
-    expect(error.message).toMatch(/flat module layout/);
+    expect(error.code).toBe('keel.incompatible');
+    expect(error.message).toMatch(/needs the modulith layout/);
+    expect(error.message).toMatch(/--module-layout=modulith/);
+    expect(error.message).toMatch(/bounded-context\/context-needs-modulith/);
+    expect(error.message).toMatch(/modules\.context/);
   });
 
   it('rejects a composite product root, pointing at the service directory', async () => {

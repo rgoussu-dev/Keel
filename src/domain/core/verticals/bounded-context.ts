@@ -26,8 +26,18 @@
  * `context-support.ts` meaningful — an uncovered *dimension* would
  * hard-fail in the resolver, and a context contributes none, so the
  * front door has to ask the adapter set instead.
+ *
+ * **One conflict, and it is the only refusal around `keel add module`
+ * that is one.** A context has nowhere to live under the flat layout,
+ * which is a statement about two capability tags and so a declaration
+ * — read by the handler to refuse and by `canAddModule` to grey the
+ * control out. Everything else `add module` refuses (a composite
+ * product root, a name already taken, a `--consumes` target with no
+ * seam, a family with no adapter) is manifest state or a capability
+ * probe, and stays a check where it is.
  */
 
+import { CONTEXT_NEEDS_MODULITH } from '../adapters/added-context.js';
 import { goContextAdapter } from '../adapters/go-context.js';
 import {
   micronautContextAdapter,
@@ -56,4 +66,5 @@ export const boundedContextVertical: Vertical = {
     micronautContextAdapter,
     micronautContextKotlinAdapter,
   ],
+  conflicts: [CONTEXT_NEEDS_MODULITH],
 };

@@ -125,10 +125,71 @@ Concretely, the menus that narrow as answers land:
 | peer context               | offered only where switching it on stays legal                                      |
 | extra verticals (`--with`) | coverage (`coversFor`) **and** the vertical's own rules                             |
 | the stack drill-down       | presets no setting of their dials can build are absent from all three steps at once |
+| `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal  |
 
 A preset is hidden only when **every** setting of its dials is
 refused. Anything stricter would take away a preset reachable by
 moving a dial.
+
+The last row is brownfield rather than a menu, and the shape is the
+same: `ProjectStatusHandler` answers `canAddModule` for a project
+already on disk, and a form greys the control out by it. Two rules
+say the same sentence about two doors, because two different pieces
+own them — `walking-skeleton/peer-context-needs-modulith` for the
+second context `keel new --with-peer-context` scaffolds, and
+`bounded-context/context-needs-modulith` for the one `keel add module`
+adds later.
+
+#### Three kinds of refusal, and only one of them is a conflict
+
+A `Conflict` is about **tags**. That is the whole test, and it is
+narrower than "the command said no" — most of what keel refuses is
+not a capability sitting badly with another capability. The three
+kinds, so the next reader does not re-run the audit:
+
+| kind                 | reads as                                     | lives in                            |
+| -------------------- | -------------------------------------------- | ----------------------------------- |
+| **tag conflict**     | "capability X cannot sit with capability Y"  | a `Conflict` on the piece owning it |
+| **structural fact**  | "this preset/project is not shaped for that" | a check where the shape is known    |
+| **capability probe** | "no adapter here would emit anything"        | `coversFor` / `emitsFor`            |
+
+**Structural facts** are the ones that look like conflicts and are
+not, because the thing they turn on is not a tag:
+
+- `stack.services` being non-empty is what makes a preset composite,
+  and it is why `keel new` refuses `--module-layout`,
+  `--with-peer-context` and `--with` on one. Those are refusals about
+  _flags that do not apply at a product root_, not about capabilities
+  — a composite's services can perfectly well each be a modulith.
+- `manifest.services` being non-empty is the same fact brownfield, and
+  why `keel add module` sends the user into a service directory.
+- `manifest.modules` already holding the name, or holding a
+  `--consumes` target with no seam, is manifest **state**: it takes a
+  name to check, and a name is not a tag.
+- An unknown stack or vertical id, `--layout` that is neither
+  `monorepo` nor `polyrepo`, a build system the stack does not list,
+  `--with` naming the same vertical twice — input validation against
+  what the registry declares.
+
+**Capability probes** ask the adapter set a question no tag answers:
+would anything actually be emitted here? `coversFor` and
+`coverageGap` ask it of a vertical's dimensions
+(`keel.uncoverable-vertical`, `keel.extra-verticals-order`);
+`emitsFor` asks it where a dimension cannot speak, because a context
+adapter declares `covers: []` (`--with-peer-context` and
+`keel add module` both, see [context-support.ts](../src/domain/core/adapters/context-support.ts)).
+A probe is not a conflict even where it sits right beside one: after
+the layout rule refuses a context on the flat layout, the probe still
+has to ask whether this project's _language_ has a context adapter at
+all, and that answer changes when an adapter lands, not when a tag
+does.
+
+The rule to hold to: **do not invent a tag so a check can become a
+declaration.** A tag exists to select adapters and describe a
+project's capabilities; one minted to give a conflict something to
+match on describes nothing, and the declaration it enables buys no
+second reading — which is the only thing that makes moving a rule
+worth doing.
 
 ### Module layout
 
