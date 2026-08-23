@@ -145,3 +145,16 @@ export const MODULITH_LAYOUT: ModuleLayoutOption = {
  * adapters resolve to `basic`.
  */
 export const MODULE_LAYOUTS: readonly ModuleLayoutOption[] = [BASIC_LAYOUT, MODULITH_LAYOUT];
+
+/**
+ * Returns the module-layout option registered under `id`, or null if
+ * absent.
+ *
+ * The lookup a stack preset resolves `moduleLayouts: ["basic",
+ * "modulith"]` through. {@link MODULE_LAYOUTS} stays the ordered
+ * list — the order is the offer order, and the first entry is the
+ * default — while this is the name → option map over it.
+ */
+export function getModuleLayoutOption(id: string): ModuleLayoutOption | null {
+  return MODULE_LAYOUTS.find((option) => option.id === id) ?? null;
+}

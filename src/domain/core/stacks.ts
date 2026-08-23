@@ -86,6 +86,26 @@ export const PNPM_BUILD: BuildSystemOption = {
   doc: 'Symlinked strict node_modules (no phantom dependencies) and workspace: protocol.',
 };
 
+/**
+ * Every selectable build system, keyed by id — the lookup a stack
+ * preset resolves `buildSystems: ["gradle", "maven"]` through.
+ *
+ * Flat across families on purpose: nothing stops a preset naming
+ * `gradle` and `pnpm` together, and the thing that would make that
+ * assembly illegal is a {@link Conflict}, declared by the piece that
+ * owns the rule — never a partitioned table here.
+ */
+export const BUILD_SYSTEMS: Readonly<Record<string, BuildSystemOption>> = Object.freeze(
+  Object.fromEntries(
+    [GRADLE_BUILD, MAVEN_BUILD, NPM_BUILD, PNPM_BUILD].map((option) => [option.id, option]),
+  ),
+);
+
+/** Returns the build system registered under `id`, or null if absent. */
+export function getBuildSystem(id: string): BuildSystemOption | null {
+  return BUILD_SYSTEMS[id] ?? null;
+}
+
 /** One service of a composite stack. */
 export interface StackService {
   /** Directory the service is scaffolded into, relative to cwd. */
