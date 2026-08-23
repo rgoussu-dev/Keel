@@ -56,6 +56,20 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   and it gains the rule id and the tag that matched; the other six
   front-door refusals keep `keel.invalid-module`.
 
+- **`docs/composition.md` → Conflicts now distinguishes three kinds of
+  refusal**, so the audit behind the entry above does not get re-run:
+  a **tag conflict** ("capability X cannot sit with capability Y") is
+  a declaration; a **structural fact**
+  (`stack.services`/`manifest.services` non-empty on a composite, a
+  context name already taken, a `--consumes` target with no seam, an
+  unknown id, an invalid enum) stays a check where the shape is known;
+  a **capability probe** (`coversFor`, `emitsFor`) asks the adapter
+  set a question no tag answers. Of the dozen hand-written refusals in
+  the handlers, exactly one was the first kind. The rule stated there:
+  do not invent a tag so a check can become a declaration — it buys no
+  second reading, which is the only thing that makes moving a rule
+  worth doing.
+
 - **The resolver's thrown refusal now says what the front door says.**
   `resolveVertical` reported only which dimension was empty, while
   `coverageGap` — added for the `--with` front door — could already
