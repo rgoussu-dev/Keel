@@ -530,3 +530,13 @@ keel new --stack=quarkus-cli --yes \
 
 The key format is `adapterId:questionId`; `--dry-run` prints the
 questions a plan would ask.
+
+## Environment
+
+| Variable          | Effect                                                                                                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEEL_PLUGINS`    | Extra [plugin](plugins.md) paths (file or directory), `:`-separated, loaded after `<cwd>/.keel/plugins`.                                                                         |
+| `KEEL_NO_PLUGINS` | Set to anything: plugin discovery is skipped and only keel's own stacks and verticals are registered. Loading a plugin runs its code — see [Trust](plugins.md#trust--read-this). |
+
+Every plugin that loads prints one line naming it and the module it
+came from, before any command runs.
