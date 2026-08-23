@@ -9,6 +9,12 @@
   "bin": {
     "keel": "bin/keel.js"
   },
+  "exports": {
+    "./plugin": {
+      "types": "./dist/domain/contract/plugin.d.ts",
+      "default": "./dist/domain/contract/plugin.js"
+    }
+  },
   "engines": {
     "node": ">=22"
   },
