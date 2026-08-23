@@ -7,7 +7,8 @@
  * the user meant, that a refusal becomes a 422 carrying the domain's
  * own code, that a malformed body becomes a 400 rather than a stack
  * trace. The engine has its own suites; running it here would only
- * make these slow.
+ * make these slow. What `keel.dials` actually answers is
+ * `dials.test.ts`'s subject, over the real registry.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -110,6 +111,42 @@ describe('the keel ui API', () => {
       target: { kind: 'new-project', stack: 'ts-cli', buildSystem: 'npm' },
       answers: { 'vcs/git-init': { defaultBranch: 'trunk' } },
     });
+  });
+
+  it('turns the same body into a dials query, reading only the target', async () => {
+    // One body, three routes. `dials` needs no cwd and no answers, so
+    // its schema names neither — and the page still posts the
+    // identical object it will preview and install with, which is
+    // what stops the three from disagreeing about the target.
+    const mediator = new RecordingMediator();
+    await call(mediator, {
+      method: 'POST',
+      path: '/api/dials',
+      body: JSON.stringify(NEW_PROJECT),
+    });
+    expect(mediator.dispatched[0]).toEqual({
+      kind: 'keel.dials',
+      intent: 'query',
+      target: { kind: 'new-project', stack: 'ts-cli', buildSystem: 'npm' },
+    });
+  });
+
+  it('accepts a dials body carrying nothing but the target', async () => {
+    const mediator = new RecordingMediator();
+    const response = await call(mediator, {
+      method: 'POST',
+      path: '/api/dials',
+      body: JSON.stringify({ target: { kind: 'new-project', stack: 'ts-cli' } }),
+    });
+    expect(response.status).toBe(200);
+    expect(mediator.dispatched[0]).toMatchObject({ kind: 'keel.dials' });
+  });
+
+  it('rejects a dials body with no target at all', async () => {
+    const mediator = new RecordingMediator();
+    const response = await call(mediator, { method: 'POST', path: '/api/dials', body: '{}' });
+    expect(response.status).toBe(400);
+    expect(mediator.dispatched).toEqual([]);
   });
 
   it('turns the same body into the install command, non-interactive and committing', async () => {

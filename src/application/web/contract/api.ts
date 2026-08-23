@@ -7,23 +7,28 @@
  * same rule the CLI adapter lives under, enforced by
  * `.dependency-cruiser.cjs`.
  *
- * Five routes, and the shape of them follows from what a form needs
+ * Six routes, and the shape of them follows from what a form needs
  * that a terminal does not:
  *
  * | Route               | Dispatches            |
  * | ------------------- | --------------------- |
  * | `GET  /api/catalog` | `keel.catalog`        |
  * | `GET  /api/project` | `keel.project-status` |
+ * | `POST /api/dials`   | `keel.dials`          |
  * | `POST /api/preview` | `keel.preview`        |
  * | `POST /api/install` | the install command   |
  * | `GET  /api/browse`  | the directory reader  |
  *
- * `preview` and `install` take the *same* body: one
+ * `dials`, `preview` and `install` take the *same* body: one
  * {@link InstallTarget}, one answer map, one directory. That is the
- * point of the target type — the page previews with a body, the user
- * changes something, it previews again, and when they commit it
- * posts the identical body to the other route. Nothing is
- * re-derived, so nothing can disagree.
+ * point of the target type — the page narrows the body's dials to
+ * what the rules allow, previews it, the user changes something, it
+ * previews again, and when they commit it posts the identical body
+ * to the last route. Nothing is re-derived, so nothing can disagree.
+ *
+ * `dials` reads only the target, so its schema names only that; a
+ * caller sending the full body is parsed all the same, which is what
+ * lets the page keep one body for all three.
  *
  * Every request body is parsed through zod before it becomes a
  * command. The client is a page this server shipped, but it is still
@@ -41,6 +46,7 @@ import {
 } from '../../../domain/contract/commands.js';
 import {
   catalogQuery,
+  dialsQuery,
   previewQuery,
   projectStatusQuery,
 } from '../../../domain/contract/queries.js';
@@ -119,6 +125,8 @@ const installBodySchema = z.object({
   answers: answersSchema.default({}),
 });
 
+const dialsBodySchema = z.object({ target: targetSchema });
+
 /** Builds the API handler over the wired mediator. */
 export function buildApi(deps: ApiDeps): UiHandler {
   return async (request: UiRequest): Promise<UiResponse | null> => {
@@ -132,6 +140,8 @@ export function buildApi(deps: ApiDeps): UiHandler {
         return project(deps, request);
       case 'GET /api/browse':
         return browse(deps, request);
+      case 'POST /api/dials':
+        return dials(deps, request);
       case 'POST /api/preview':
         return preview(deps, request);
       case 'POST /api/install':
@@ -155,6 +165,12 @@ async function browse(deps: ApiDeps, request: UiRequest): Promise<UiResponse> {
   const target =
     requested === undefined || requested === '' ? deps.directories.defaultPath() : requested;
   return json(await deps.directories.list(target));
+}
+
+async function dials(deps: ApiDeps, request: UiRequest): Promise<UiResponse> {
+  const parsed = parseWith(request, dialsBodySchema);
+  if (!parsed.ok) return parsed.response;
+  return unwrap(await deps.mediator.dispatch(dialsQuery({ target: narrow(parsed.value.target) })));
 }
 
 async function preview(deps: ApiDeps, request: UiRequest): Promise<UiResponse> {
@@ -182,23 +198,30 @@ interface InstallBody {
   readonly answers: PresetAnswers;
 }
 
-type ParsedBody =
-  | { readonly ok: true; readonly value: InstallBody }
+type Parsed<T> =
+  | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly response: UiResponse };
 
-function parse(request: UiRequest): ParsedBody {
+function parse(request: UiRequest): Parsed<InstallBody> {
+  const parsed = parseWith(request, installBodySchema);
+  if (!parsed.ok) return parsed;
+  const { cwd, answers, target } = parsed.value;
+  return { ok: true, value: { cwd, answers, target: narrow(target) } };
+}
+
+/** Parses the JSON body against `schema`, or a 400 naming the field. */
+function parseWith<S extends z.ZodTypeAny>(request: UiRequest, schema: S): Parsed<z.infer<S>> {
   let raw: unknown;
   try {
     raw = JSON.parse(request.body === '' ? '{}' : request.body);
   } catch {
     return { ok: false, response: failure(400, BAD_REQUEST, 'body is not valid JSON') };
   }
-  const parsed = installBodySchema.safeParse(raw);
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, response: failure(400, BAD_REQUEST, describe(parsed.error)) };
   }
-  const { cwd, answers, target } = parsed.data;
-  return { ok: true, value: { cwd, answers, target: narrow(target) } };
+  return { ok: true, value: parsed.data };
 }
 
 /**

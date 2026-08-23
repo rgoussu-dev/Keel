@@ -15,6 +15,7 @@
 import { describe, expect, it } from 'vitest';
 import { catalogQuery } from '../../../../src/domain/contract/queries.js';
 import type { Catalog, StackDescriptor } from '../../../../src/domain/contract/queries.js';
+import { dialOptionsFor } from '../../../../src/domain/core/dials.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { listVerticalIds } from '../../../../src/domain/core/verticals/index.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
@@ -96,6 +97,55 @@ describe('keel.catalog', () => {
     const { stacks } = await catalog();
     for (const stack of stacks.filter((candidate) => candidate.services.length > 0)) {
       expect(stack.peerContext).toBe(false);
+    }
+  });
+
+  it('stays a flat description of a preset — legality is keel.dials’ answer', async () => {
+    // The line this suite holds. A catalog reporting which layouts a
+    // chosen build system still allows would have to grow a
+    // cross-product with every dial added, and would stop being a
+    // description of the preset. `peerContext` is the near miss worth
+    // naming: it reads like legality and is not — it is the
+    // capability probe ("does this family ship a peer-context adapter
+    // at all?"), asked against the modulith regardless of the layout
+    // the caller is on, so it stays true where `keel.dials` says the
+    // context may not be switched on.
+    const stack = find((await catalog()).stacks, 'quarkus-rest');
+    expect(Object.keys(stack).sort()).toEqual([
+      'buildSystems',
+      'description',
+      'id',
+      'moduleLayouts',
+      'peerContext',
+      'services',
+      'tags',
+    ]);
+    expect(stack.buildSystems.map((option) => option.id)).toEqual(['gradle', 'maven']);
+    expect(stack.peerContext).toBe(true);
+
+    const onBasic = dialOptionsFor({
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      moduleLayout: 'basic',
+    });
+    expect(onBasic.peerContext).toBe(false);
+  });
+
+  it('describes the same dials keel.dials offers when no rule narrows them', async () => {
+    // With the registry as it ships, the two agree everywhere — which
+    // is what makes the split cheap: the catalog is still the right
+    // thing to render a control *from*, and the dials query only ever
+    // takes values off it.
+    for (const stack of (await catalog()).stacks) {
+      const dials = dialOptionsFor({ kind: 'new-project', stack: stack.id });
+      expect({ id: stack.id, builds: dials.buildSystems }).toEqual({
+        id: stack.id,
+        builds: stack.buildSystems,
+      });
+      expect({ id: stack.id, layouts: dials.moduleLayouts }).toEqual({
+        id: stack.id,
+        layouts: stack.moduleLayouts,
+      });
     }
   });
 });
