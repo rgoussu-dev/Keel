@@ -398,3 +398,65 @@ describe('distribution container family — refusals', () => {
     expect(manifest.tags).not.toContain('dist.container-image');
   });
 });
+
+/**
+ * A composed `arch.cli + arch.server-http` stack reaches both shapes
+ * at once, and they disagreed: the CLI shape asked for native build
+ * targets on top of a `flavor: jvm` answer, then promoted
+ * `runtime.graalvm-native` — the tag `jvm-container` reads to decide
+ * whether its release pipeline builds a native artifact for the
+ * Dockerfile to copy. The `containerization` vertical now records the
+ * flavor either way, and the CLI shape stands down where the answer
+ * already said no.
+ */
+describe('distribution vertical — the GraalVM dial is one dial per project', () => {
+  const COMBO = [
+    'lang.java',
+    'runtime.jvm',
+    'pkg.gradle',
+    'framework.quarkus',
+    'arch.hexagonal',
+    'arch.cli',
+    'arch.server-http',
+    'deploy.container-image',
+  ];
+  const CLI_ANSWERS: AnswerMap = {
+    'walking-skeleton/quarkus-cli-bootstrap': {
+      basePackage: 'com.acme.cli',
+      projectName: 'shipper',
+    },
+  };
+
+  it('ships through the image alone when the recorded flavor is jvm', async () => {
+    const { read, manifest } = await installDistribution(
+      [...COMBO, 'runtime.jvm-image'],
+      CLI_ANSWERS,
+    );
+
+    expect(read(WORKFLOW)).toContain('docker push');
+    // The native-binaries workflow is not emitted, its sticky answer
+    // is not recorded, and the tag that contradicts the Dockerfile is
+    // not promoted.
+    expect(read('.github/workflows/release.yml')).toBe('');
+    expect(manifest.answers['distribution/quarkus-cli-native']).toBeUndefined();
+    expect(manifest.tags).not.toContain('runtime.graalvm-native');
+    // The jvm flavor keeps the JVM artifact in the release pipeline.
+    expect(read(WORKFLOW)).toContain('run: ./gradlew build');
+    expect(read(WORKFLOW)).not.toContain('quarkus.native.enabled');
+  });
+
+  it('still ships native binaries beside the image when the recorded flavor is native', async () => {
+    const { read, manifest } = await installDistribution(
+      [...COMBO, 'runtime.graalvm-native'],
+      CLI_ANSWERS,
+    );
+
+    expect(read('.github/workflows/release.yml')).toContain('name: release');
+    expect(read(WORKFLOW)).toContain('quarkus.native.enabled');
+    expect(manifest.answers['distribution/quarkus-cli-native']).toEqual({
+      targets: 'linux-amd64,linux-arm64,darwin-arm64',
+    });
+    expect(manifest.tags).toContain('runtime.graalvm-native');
+    expect(manifest.tags).toContain('dist.container-image');
+  });
+});

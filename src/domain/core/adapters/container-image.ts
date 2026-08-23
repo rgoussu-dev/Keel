@@ -21,6 +21,23 @@ export const CONTAINER_IMAGE_TAG: Tag = 'deploy.container-image';
 /** Promoted alongside {@link CONTAINER_IMAGE_TAG} by native images. */
 export const GRAALVM_NATIVE_TAG: Tag = 'runtime.graalvm-native';
 
+/**
+ * Promoted alongside {@link CONTAINER_IMAGE_TAG} by JVM-flavored
+ * images — the positive counterpart of {@link GRAALVM_NATIVE_TAG}.
+ *
+ * Recording the flavor either way is what makes the dial *readable*.
+ * While `jvm` promoted nothing, an absent `runtime.graalvm-native`
+ * meant either "this project declined GraalVM" or "this project has
+ * no image at all", and a predicate cannot tell those apart — which
+ * is how `distribution/quarkus-cli-native` came to ask a CLI+REST
+ * project for native build targets right after it had answered
+ * `flavor: jvm`, and then promote `runtime.graalvm-native` over the
+ * top of that answer. With both flavors on the manifest the GraalVM
+ * decision is one dial, asked once, and every later reader agrees
+ * with the Dockerfile that was actually rendered.
+ */
+export const JVM_IMAGE_TAG: Tag = 'runtime.jvm-image';
+
 /** A JVM build system keel scaffolds — decides the artifact root. */
 export type JvmBuildSystem = 'gradle' | 'maven';
 
@@ -81,7 +98,7 @@ export function imageFlavor(raw: string, requesterId: string): ImageFlavor {
 
 /** The tags an image contribution promotes for a given flavor. */
 export function imageTags(flavor: ImageFlavor): readonly Tag[] {
-  return flavor === 'native' ? [CONTAINER_IMAGE_TAG, GRAALVM_NATIVE_TAG] : [CONTAINER_IMAGE_TAG];
+  return [CONTAINER_IMAGE_TAG, flavor === 'native' ? GRAALVM_NATIVE_TAG : JVM_IMAGE_TAG];
 }
 
 /** A JVM framework keel scaffolds a REST service for. */
