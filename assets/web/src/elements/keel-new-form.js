@@ -1,14 +1,27 @@
 /**
  * `<keel-new-form>` — the greenfield half: the stack and its dials.
  *
- * These controls are rendered from the **catalog**, not from the
- * preview's question list, and the difference matters. A stack-level
- * dial is a field of the command, so once it is set the install stops
- * asking about it — a control driven by the preview would vanish the
- * moment it was used. The catalog describes them statically, which is
- * exactly what they are: `quarkus-rest` offers Gradle or Maven
- * whatever else you pick. Everything conditional comes back from the
- * preview and is rendered by `<keel-question-list>`.
+ * These controls are **not** rendered from the preview's question
+ * list, and the difference matters. A stack-level dial is a field of
+ * the command, so once it is set the install stops asking about it —
+ * a control driven by the preview would vanish the moment it was
+ * used. Everything conditional comes back from the preview instead
+ * and is rendered by `<keel-question-list>`.
+ *
+ * **Two sources, and each answers a different question.** Whether a
+ * dial exists at all is a property of the preset, so the catalog
+ * decides that: `quarkus-rest` has a build-system control because it
+ * offers Gradle or Maven, and `go-cli` has none. What that control
+ * may be *set to* is a property of the combination — a `Conflict` can
+ * name two dials at once — so `keel.dials` decides that, and the
+ * options come from there. Keeping the two apart is what stops a
+ * control disappearing under the user when a rule narrows it to one
+ * value: the choice is still shown, with only the legal value on it.
+ *
+ * Nothing here re-states a rule. The peer-context checkbox used to
+ * read `moduleLayout === 'modulith'`, which was a third copy of
+ * `peer-context-needs-modulith` living in the browser; it now asks
+ * `dials.peerContext`, which is the declaration itself.
  *
  * **Finding the stack.** Above those dials sit three facets —
  * language, user-side adapters, framework — the browser half of the
@@ -21,8 +34,8 @@
  * it is also the way to reach a fullstack product, which names no
  * language and so appears in no facet.
  *
- * Catalog + target in as properties, `target-changed` out with the
- * fields that moved.
+ * Catalog, dials and target in as properties, `target-changed` out
+ * with the fields that moved.
  */
 
 import {
@@ -35,11 +48,23 @@ import {
 
 export class KeelNewForm extends HTMLElement {
   #catalog = null;
+  #dials = null;
   #target = null;
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
     this.#catalog = value;
+    this.#render();
+  }
+
+  /**
+   * @param {object|null} value the `/api/dials` payload, or null
+   * before the first one lands — in which case the controls fall back
+   * to the catalog's unfiltered lists, which is what they describe
+   * with no rule in play.
+   */
+  set dials(value) {
+    this.#dials = value;
     this.#render();
   }
 
@@ -88,14 +113,18 @@ export class KeelNewForm extends HTMLElement {
     if (stack.services.length > 0) {
       form.append(this.#layoutField());
       for (const service of stack.services) {
-        if (service.buildSystems.length > 1) form.append(this.#serviceBuildField(service));
+        if (service.buildSystems.length > 1) {
+          form.append(this.#serviceBuildField(service, this.#serviceOptions(service)));
+        }
       }
     } else {
-      if (stack.buildSystems.length > 1) form.append(this.#buildField(stack));
-      if (stack.moduleLayouts.length > 1) form.append(this.#moduleLayoutField(stack));
-      if (stack.peerContext && this.#target.moduleLayout === 'modulith') {
-        form.append(this.#peerContextField());
+      // The catalog says whether the control exists; the dials say
+      // what may be on it.
+      if (stack.buildSystems.length > 1) form.append(this.#buildField(this.#buildSystems(stack)));
+      if (stack.moduleLayouts.length > 1) {
+        form.append(this.#moduleLayoutField(this.#moduleLayouts(stack)));
       }
+      if (this.#dials?.peerContext === true) form.append(this.#peerContextField());
     }
     this.replaceChildren(form);
   }
@@ -205,26 +234,50 @@ export class KeelNewForm extends HTMLElement {
     });
   }
 
-  #buildField(stack) {
+  /**
+   * Build systems still legal here, or the catalog's whole list until
+   * the first dials reply lands — which is what the list means with
+   * no rule in play, and the only honest thing to render before the
+   * engine has been asked.
+   */
+  #buildSystems(stack) {
+    const offered = this.#dials?.buildSystems ?? [];
+    return offered.length > 0 ? offered : stack.buildSystems;
+  }
+
+  /** Module layouts still legal here; same fallback. */
+  #moduleLayouts(stack) {
+    const offered = this.#dials?.moduleLayouts ?? [];
+    return offered.length > 0 ? offered : stack.moduleLayouts;
+  }
+
+  /** One service's build systems; same fallback. */
+  #serviceOptions(service) {
+    const offered = (this.#dials?.services ?? []).find(
+      (candidate) => candidate.path === service.path,
+    );
+    return offered && offered.buildSystems.length > 0 ? offered.buildSystems : service.buildSystems;
+  }
+
+  #buildField(options) {
     return field({
       id: 'buildSystem',
       label: 'Build system',
-      doc: docOf(stack.buildSystems, this.#target.buildSystem),
-      value: this.#target.buildSystem ?? stack.buildSystems[0].id,
-      choices: stack.buildSystems.map(asChoice),
+      doc: docOf(options, this.#target.buildSystem),
+      value: this.#target.buildSystem ?? options[0].id,
+      choices: options.map(asChoice),
       onChange: (value) => this.#change({ buildSystem: value }),
     });
   }
 
-  #serviceBuildField(service) {
-    const chosen =
-      serviceBuild(this.#target.buildSystem, service.path) ?? service.buildSystems[0].id;
+  #serviceBuildField(service, options) {
+    const chosen = serviceBuild(this.#target.buildSystem, service.path) ?? options[0].id;
     return field({
       id: `buildSystem-${service.path}`,
       label: `Build system — ${service.path} (${service.stack})`,
-      doc: docOf(service.buildSystems, chosen),
+      doc: docOf(options, chosen),
       value: chosen,
-      choices: service.buildSystems.map(asChoice),
+      choices: options.map(asChoice),
       onChange: (value) =>
         this.#change({
           buildSystem: withServiceBuild(this.#target.buildSystem, service.path, value),
@@ -232,13 +285,13 @@ export class KeelNewForm extends HTMLElement {
     });
   }
 
-  #moduleLayoutField(stack) {
+  #moduleLayoutField(options) {
     return field({
       id: 'moduleLayout',
       label: 'Module layout',
-      doc: docOf(stack.moduleLayouts, this.#target.moduleLayout),
-      value: this.#target.moduleLayout ?? stack.moduleLayouts[0].id,
-      choices: stack.moduleLayouts.map(asChoice),
+      doc: docOf(options, this.#target.moduleLayout),
+      value: this.#target.moduleLayout ?? options[0].id,
+      choices: options.map(asChoice),
       onChange: (value) => this.#change({ moduleLayout: value }),
     });
   }

@@ -8,12 +8,22 @@
  * **The loop.** keel's question set is a function of the answers
  * already given — an adapter is only asked once its predicate
  * matched, and a predicate reads tags an earlier answer folded in —
- * so there is no static form to render. Instead: preview, render what
- * came back, fold a changed answer into the state, preview again. It
- * converges because each pass resolves exactly the way the install
- * would. Requests are debounced and sequenced, and a late reply from
- * a superseded request is dropped rather than rendered over a newer
- * one.
+ * so there is no static form to render. Instead: settle the dials,
+ * preview, render what came back, fold a changed answer into the
+ * state, do it again. It converges because each pass resolves exactly
+ * the way the install would. Requests are debounced and sequenced,
+ * and a late reply from a superseded request is dropped rather than
+ * rendered over a newer one.
+ *
+ * **Dials before preview**, and in that order for a reason. A rule
+ * can name two dials at once (`Conflict` in the composition
+ * contract), so which build systems a stack offers is not a property
+ * of the stack — it is a property of the combination. `keel.dials`
+ * answers that, and it answers even where the combination is already
+ * illegal, which is what lets the page correct itself instead of
+ * previewing into a refusal it cannot navigate out of. Its reply is
+ * adopted whole: the target it hands back is the one the page renders
+ * from, previews and finally posts.
  *
  * **The mode.** Pointing at a directory decides everything. No
  * manifest there and only `keel new` applies; a manifest and the page
@@ -29,6 +39,7 @@ const DEBOUNCE_MS = 120;
 
 export class KeelApp extends HTMLElement {
   #catalog = null;
+  #dials = null;
   #listing = null;
   #status = null;
   #cwd = '';
@@ -78,6 +89,7 @@ export class KeelApp extends HTMLElement {
     this.#status = status.value;
     this.#answers = {};
     this.#target = this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget();
+    this.#dials = null;
     this.#preview = null;
     this.#render();
     this.#previewSoon();
@@ -89,50 +101,18 @@ export class KeelApp extends HTMLElement {
    * a terminal. Falling back to the first of `stacks` would open on a
    * fullstack product — alphabetically first, and a two-service
    * product is the last thing a blank form should presume.
+   *
+   * The dials are left off it. They still have to be *set* before the
+   * body is posted — an absent dial is one the install would ask
+   * about, and the answer would have nowhere to go but a control that
+   * had already disappeared — but which values are legal depends on
+   * the combination, so filling them here from the catalog is exactly
+   * the guess that produced a body `POST /api/install` refuses.
+   * `keel.dials` fills them instead, on the way to every preview.
    */
   #defaultNewTarget() {
     const stack = defaultStack(this.#catalog.finder) ?? this.#catalog.stacks[0]?.id;
-    return this.#withStackDefaults({ kind: 'new-project', stack });
-  }
-
-  /**
-   * Fills a new-project target's dials from the catalog.
-   *
-   * They are set rather than left absent on purpose: an absent dial is
-   * one the install would *ask* about, and the answer would then have
-   * nowhere to go but a control that had already disappeared. Pinning
-   * the defaults up front keeps every stack-level choice on a catalog
-   * control and every conditional one on a preview question.
-   */
-  #withStackDefaults(target) {
-    const stack = this.#catalog.stacks.find((candidate) => candidate.id === target.stack);
-    if (!stack) return target;
-    if (stack.services.length > 0) {
-      const pairs = stack.services
-        .filter((service) => service.buildSystems.length > 0)
-        .map((service) => `${service.path}=${service.buildSystems[0].id}`);
-      return {
-        kind: 'new-project',
-        stack: stack.id,
-        layout: target.layout ?? 'monorepo',
-        ...(pairs.length > 0 ? { buildSystem: target.buildSystem ?? pairs.join(',') } : {}),
-      };
-    }
-    const moduleLayout = target.moduleLayout ?? stack.moduleLayouts[0]?.id;
-    return {
-      kind: 'new-project',
-      stack: stack.id,
-      ...(stack.buildSystems.length > 0
-        ? { buildSystem: target.buildSystem ?? stack.buildSystems[0].id }
-        : {}),
-      ...(moduleLayout === undefined ? {} : { moduleLayout }),
-      // Always sent, never omitted. An absent `withPeerContext` is
-      // what makes the install *ask* — and the page has already
-      // offered the choice as a checkbox, so the question would
-      // arrive as a second control saying the same thing.
-      withPeerContext:
-        stack.peerContext && moduleLayout === 'modulith' && target.withPeerContext === true,
-    };
+    return { kind: 'new-project', stack };
   }
 
   #defaultAddTarget() {
@@ -150,15 +130,20 @@ export class KeelApp extends HTMLElement {
     if (patch.kind !== undefined && patch.kind !== this.#target.kind) {
       this.#target = patch;
       this.#answers = {};
+      this.#dials = null;
     } else if (this.#target.kind === 'new-project') {
       const changingStack = patch.stack !== undefined && patch.stack !== this.#target.stack;
       // A different stack means different adapters, so the answers
       // gathered for the old one are meaningless — and re-sending
       // them would pin a value the new stack never asked for.
       if (changingStack) this.#answers = {};
-      this.#target = this.#withStackDefaults(
-        changingStack ? { kind: 'new-project', stack: patch.stack } : { ...this.#target, ...patch },
-      );
+      this.#target = changingStack
+        ? { kind: 'new-project', stack: patch.stack }
+        : { ...this.#target, ...patch };
+      // The old stack's menus describe nothing about the new one, and
+      // a control rendered from them would offer a build system this
+      // preset has never heard of.
+      if (changingStack) this.#dials = null;
     } else {
       this.#target = { ...this.#target, ...patch };
     }
@@ -214,6 +199,7 @@ export class KeelApp extends HTMLElement {
     // in the middle of typing.
     if (!this.#complete()) {
       this.#generation += 1;
+      this.#dials = null;
       this.#preview = null;
       this.#error = null;
       this.#stale = false;
@@ -221,6 +207,18 @@ export class KeelApp extends HTMLElement {
       return;
     }
     const generation = ++this.#generation;
+    // Settle the dials first, and preview the target that came back.
+    // Previewing the unsettled one would ask the engine to resolve a
+    // combination the menus are about to rule out — a 422 rendered
+    // over a form whose controls have already moved on.
+    if (this.#target.kind === 'new-project') {
+      const dials = await api.dials(this.#body());
+      if (generation !== this.#generation) return;
+      if (!dials.ok) return this.#fail(dials.error);
+      this.#dials = dials.value;
+      this.#target = dials.value.target;
+      this.#render();
+    }
     const result = await api.preview(this.#body());
     if (generation !== this.#generation) return;
     if (result.ok) {
@@ -366,6 +364,7 @@ export class KeelApp extends HTMLElement {
     } else {
       const form = document.createElement('keel-new-form');
       form.catalog = this.#catalog;
+      form.dials = this.#dials;
       form.target = this.#target;
       stack.append(form);
     }
