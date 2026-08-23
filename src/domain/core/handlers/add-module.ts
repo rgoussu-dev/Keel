@@ -21,7 +21,14 @@
  *   2. **Not initialised** — no manifest under the project scope.
  *   3. **The flat layout** — `basic` is a single hexagon with no seam
  *      for contexts to meet at, so there is nothing to add a *second*
- *      one to.
+ *      one to. The only one of the seven that is not written here:
+ *      it is a combination of capability tags (`modules.context`
+ *      without `layout.modulith`), so the vertical declares it as
+ *      `CONTEXT_NEEDS_MODULITH` and this handler reads the
+ *      declaration. The other six are about a *name*, a manifest's
+ *      state, or an adapter set — none of them a tag conflict, and
+ *      inventing a tag to make one is how a declaration stops meaning
+ *      anything.
  *   4. **Composite stacks** — a product root holds services, each
  *      with its own manifest and its own layout; `add module` runs
  *      inside one service, not across a product.
@@ -54,13 +61,18 @@ import type { Tag } from '../../contract/composition.js';
 import { runActions } from '../actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { emitsFor } from '../adapters/context-support.js';
-import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
+import { assemblyRefusal } from '../compatibility.js';
 import { installVertical } from '../install.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import type { InstallDeps } from './deps.js';
 
-/** Error code every front-door refusal carries. */
+/**
+ * Error code the front door's own refusals carry. The declared
+ * incompatibility is the exception: it answers with `keel.incompatible`,
+ * the code every violated `Conflict` refuses under, wherever the
+ * assembly was put together.
+ */
 const INVALID = 'keel.invalid-module';
 
 /** Executes {@link AddModuleCommand}s. */
@@ -158,12 +170,15 @@ function admissible(
     );
   }
 
-  if (moduleLayoutOf(manifest.tags) !== 'modulith') {
+  // The layout rule, as the vertical declares it rather than as a
+  // branch here — `CONTEXT_NEEDS_MODULITH`, evaluated against the tag
+  // set this run would carry. The same declaration is what
+  // `canAddModule` greys the control out by, so the refusal and the
+  // front end cannot say different things about the flat layout.
+  const refusal = assemblyRefusal([boundedContextVertical], [...manifest.tags, CONTEXT_TAG]);
+  if (refusal !== null) {
     return err(
-      new DomainError(
-        `this project uses the flat module layout: one hexagon for the whole service, with no peer-facing seam for a second bounded context to meet the first at. 'keel add module' needs a project scaffolded with --module-layout=modulith`,
-        INVALID,
-      ),
+      new DomainError(`cannot add a bounded context here: ${refusal}`, 'keel.incompatible'),
     );
   }
 

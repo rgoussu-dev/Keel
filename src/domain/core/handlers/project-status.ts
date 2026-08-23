@@ -29,6 +29,7 @@ import type {
 import { emitsFor } from '../adapters/context-support.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { CONTEXT_TAG } from '../adapters/added-context.js';
+import { conflictsOf, legalWith } from '../compatibility.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import { listVerticalIds, VERTICALS } from '../verticals/index.js';
 
@@ -107,9 +108,22 @@ function describeVertical(id: string): readonly VerticalDescriptor[] {
  * offering an action already destined to be refused. The name checks
  * (taken, malformed, `--consumes` targets) stay at the front door,
  * where the input to check exists.
+ *
+ * Only one of the three is a rule the vertical *declares*, and it is
+ * the one asked here as a filter rather than re-derived: adding
+ * `modules.context` to this project's tags must stay legal, which is
+ * `CONTEXT_NEEDS_MODULITH` read from the menu end. It used to be
+ * `moduleLayoutOf(tags) !== 'modulith'` — a second hand-written copy
+ * of the handler's own branch, and the arrangement in which a control
+ * and a refusal come to disagree.
+ *
+ * The other two stay checks, because neither is about tags: a
+ * composite product root is `manifest.services` being non-empty, and
+ * "does this family have a context adapter at all?" is a capability
+ * probe. See `docs/composition.md` → Conflicts.
  */
 function canAddModule(manifest: ManifestV2): boolean {
-  if (moduleLayoutOf(manifest.tags) !== 'modulith') return false;
+  if (!legalWith(conflictsOf([boundedContextVertical]), manifest.tags, [CONTEXT_TAG])) return false;
   if (manifest.services.length > 0) return false;
   return emitsFor([boundedContextVertical], CONTEXT_TAG, manifest.tags);
 }

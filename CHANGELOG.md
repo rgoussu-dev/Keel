@@ -44,6 +44,18 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **`keel add module` refuses the flat layout by declaration now, and
+  the form greys the control out by the same sentence.** The rule that
+  a bounded context needs the modulith layout was a branch in the
+  handler _and_ a second hand-written copy in `canAddModule` — two
+  statements of one fact, in the arrangement where a refusal and a
+  control drift apart. It is now
+  `bounded-context/context-needs-modulith`, declared on the
+  `bounded-context` vertical and read from both ends. The refusal's
+  error code changes from `keel.invalid-module` to `keel.incompatible`
+  and it gains the rule id and the tag that matched; the other six
+  front-door refusals keep `keel.invalid-module`.
+
 - **The resolver's thrown refusal now says what the front door says.**
   `resolveVertical` reported only which dimension was empty, while
   `coverageGap` — added for the `--with` front door — could already
