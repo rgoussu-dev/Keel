@@ -27,6 +27,8 @@ The CLI discovers the composition one prompt at a time and prints the
 plan once at the end. A form has to show every field at once, before
 anything is committed, and re-show it as answers change — and keel's
 question set is a function of the answers already given, because an
-adapter is only asked once its predicate matched. That is what
-`keel.catalog`, `keel.preview` and `keel.project-status` exist for
+adapter is only asked once its predicate matched. It also has no
+question order to hang the dials' own narrowing on, where a terminal
+settles one before offering the next. That is what `keel.catalog`,
+`keel.dials`, `keel.preview` and `keel.project-status` exist for
 (`domain/contract/queries.ts`), and what this adapter puts on a wire.

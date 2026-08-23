@@ -40,13 +40,13 @@ install, and "add a bounded context" appears only where
 
 ## The page
 
-| Region                | What it does                                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Project directory** | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                            |
-| **Find a stack**      | Three facets — language, user-side adapters, framework — narrowing to a preset. The browser half of the `keel new` drill-down.              |
-| **Stack + dials**     | The stack, its build system, its module layout, the repository layout of a composite, and `--with-peer-context`. Rendered from the catalog. |
-| **Questions**         | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.           |
-| **Plan**              | The file tree the install would write (`+` new, `~` modified, `-` removed), the deferred actions, and the Generate button.                  |
+| Region                | What it does                                                                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Project directory** | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                           |
+| **Find a stack**      | Three facets — language, user-side adapters, framework — narrowing to a preset. The browser half of the `keel new` drill-down.                                                                             |
+| **Stack + dials**     | The stack, its build system, its module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
+| **Questions**         | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.                                                                          |
+| **Plan**              | The file tree the install would write (`+` new, `~` modified, `-` removed), the deferred actions, and the Generate button.                                                                                 |
 
 After a successful generate the page re-reads the directory and turns
 into the brownfield one, so layering `ci` onto what you just scaffolded
@@ -89,6 +89,44 @@ framework and sends back the preset it lands on. That is deliberate —
 a page deriving the grid from `stacks[].tags` would be a second
 implementation of a vocabulary that is not its to know, and it would
 drift from the terminal's the first time a tag moved.
+
+## The dials are narrowed by the same rules
+
+A `Conflict` can name two dials at once — "this build system cannot
+carry the modulith", say. `keel new` never trips over that, because it
+settles one dial before offering the next: each menu is filtered
+against the tags the earlier answers left behind
+([Conflicts](composition.md#conflicts)).
+
+A form has no such order. Every dial is on screen at once, and the
+catalog it renders from describes a preset's dials without knowing
+which combination you are on — so left to itself the page would offer
+a combination, post it, and get `keel.incompatible` back.
+
+`POST /api/dials` closes that. The page sends the target it holds and
+gets back one menu per dial, plus **the target snapped to those
+menus** — every dial left where you put it if the rules still allow it,
+moved to the first legal value if not. That snapped target is what the
+page renders from, previews with, and finally posts, so what a control
+can produce is exactly what `POST /api/install` accepts.
+
+Two consequences you can see:
+
+- **The build-system menu is deliberately optimistic** — it drops a
+  build system only where _no_ layout could complete it. Narrowing it
+  against the layout as it currently stands would make a legal
+  combination unreachable: with Maven illegal under the modulith, a
+  user on the modulith could never select Maven, and so could never
+  arrive at the perfectly legal Maven + flat. Selected, the layout
+  snaps instead — which is the order `keel new` would have asked in.
+- **A control never vanishes because a rule narrowed it.** Whether a
+  dial exists at all is a property of the preset, so the catalog
+  decides that; a dial the rules have narrowed to one value is still
+  shown, with that one value on it.
+
+With no rule declared anywhere — which is where the shipped registry
+stands for everything but the peer context — the menus are the
+catalog's own lists, unchanged.
 
 ## Why the questions are not one static form
 
@@ -174,8 +212,15 @@ CLI uses. Useful if you would rather script it than click it.
 | `GET  /api/catalog` | —                          | `keel.catalog` — stacks, verticals, dials, finder |
 | `GET  /api/project` | `?path=<abs>`              | `keel.project-status`                             |
 | `GET  /api/browse`  | `?path=<abs>`              | directory listing for the picker                  |
+| `POST /api/dials`   | `{ target }`               | `keel.dials` — legal menus + the settled target   |
 | `POST /api/preview` | `{ cwd, target, answers }` | `keel.preview` — writes nothing                   |
 | `POST /api/install` | the identical body         | `keel new` / `keel add` / `keel add module`       |
+
+`dials` reads only `target`, so the page posts the same object to all
+three routes and nothing is re-derived between them. It never refuses:
+an unknown stack, a half-filled target and a combination already
+illegal all get menus back, because a menu that will not answer where
+the target is broken is a menu that cannot be used to fix it.
 
 `target` is one of:
 

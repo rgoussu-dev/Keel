@@ -108,15 +108,30 @@ arriving from outside this repository bring its own rules with it, and
 it is why an assembly reads the declarations of every piece coming
 together: neither piece alone knows the whole of it.
 
-**Read twice, which is the point.** The engine refuses an assembly
-that violates a rule, naming the rule, its reason and the tags that
-matched — and it filters the same rule out of every menu, so the
-choice is never offered in the first place. A rule stated once cannot
-have those two answers disagree, which is exactly what a hand-written
-check kept failing at: `--with-peer-context` used to be offered
-against the flat layout and _then_ rejected.
+**Read three times, which is the point.** The engine refuses an
+assembly that violates a rule, naming the rule, its reason and the
+tags that matched; it filters the same rule out of every menu and
+control, so the choice is never offered in the first place; and it
+answers `keel.dials` with the values each dial may still take given
+the others, which is the same filtering for a front end that has no
+question order to hang it on. A rule stated once cannot have those
+answers disagree, which is exactly what a hand-written check kept
+failing at: `--with-peer-context` used to be offered against the flat
+layout and _then_ rejected.
 
-Concretely, the menus that narrow as answers land:
+The third reading exists because a form is not a wizard. `keel new`
+settles one dial before offering the next, so every menu it draws is
+filtered against a complete tag set. `keel ui` shows every dial at
+once from a catalog that describes a preset's dials without knowing
+which combination the user is on — so the moment a rule names two
+dials together, the page would offer a body the install refuses.
+`keel.dials` is what closes that: the page posts the target it holds,
+gets back one menu per dial plus the target snapped to them, and
+renders from that. See [`keel ui`](ui.md#the-dials-are-narrowed-by-the-same-rules).
+
+Concretely, the menus that narrow as answers land. The first five are
+the same functions behind both front ends, in `domain/core/dials.ts`;
+the last is brownfield and lives with the project status:
 
 | menu                       | filtered by                                                                         |
 | -------------------------- | ----------------------------------------------------------------------------------- |

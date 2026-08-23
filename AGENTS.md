@@ -178,8 +178,8 @@ src/
                           # ManifestStore, TemplateSource,
                           # ProcessRunner)
     core/                 # the engine (predicate, resolver,
-                          # compatibility, answers, apply, install,
-                          # actions), composition
+                          # compatibility, dials, answers, apply,
+                          # install, actions), composition
                           # adapters/ + verticals/ + stacks,
                           # handlers/ (new-project, add-vertical),
                           # RegistryMediator
@@ -234,11 +234,15 @@ bin/keel.js               # npm bin entry → dist/application/cli/executable
 
 Compatibility note: an incompatibility between capabilities is a
 **declaration**, never a hand-written check. A `Conflict` on the
-vertical or stack that owns the rule is read twice by the engine — to
-refuse an assembly, and to keep the choice off the menu — so the two
-answers cannot disagree. A branch in a handler gets only the first,
-which is how `--with-peer-context` came to be offered under the flat
-layout and then rejected. See `docs/composition.md` → Conflicts.
+vertical or stack that owns the rule is read three times by the
+engine — to refuse an assembly, to keep the choice off the terminal's
+menus, and to answer `keel.dials` for a front end that shows every
+dial at once — so the three answers cannot disagree. A branch in a
+handler gets only the first, which is how `--with-peer-context` came
+to be offered under the flat layout and then rejected. The menu
+filters live in `core/dials.ts` and both front ends call them; a
+copy in a page is the same defect one layer out. See
+`docs/composition.md` → Conflicts and `docs/ui.md`.
 
 Naming note: a _composition adapter_ (git-init, quarkus-cli-bootstrap,
 …) is keel **domain content** — a unit contributing files to a
