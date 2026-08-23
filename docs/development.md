@@ -245,6 +245,15 @@ files and splits by framework **and language** —
 `…-spring-java`, and so on, four cells each. `e2e (go)`,
 `e2e (rust)` and `e2e (web)` are unchanged.
 
+`e2e (dev-compose)` is the odd one out: it compiles nothing and
+probes for `docker` alone. Its single suite is the only place an
+emitted `dev/compose.yaml` is actually run — every other docker-using
+suite reaches its database through Testcontainers, which mounts no
+volume, so the whole grid stayed green over a dev database whose
+volume mount made PostgreSQL 18 refuse to start. A unit test reads
+the YAML; only `docker compose up --wait` reads it the way a user
+does.
+
 `keel add module` populates that same 24-cell grid a second time, and
 there the split goes all the way down: **one cell, one file, one
 shard**, named `e2e (jvm-add-module-<stack>-<build>)`. Typology is a
