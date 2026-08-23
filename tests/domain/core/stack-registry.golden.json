@@ -1,0 +1,674 @@
+{
+  "//": [
+    "The resolved stack registry, frozen. One entry per preset, in the",
+    "order `Object.values(STACKS)` yields them, with every reference",
+    "reduced to the id it resolved from — verticals in install order,",
+    "build systems and module layouts in offer order, a composite's",
+    "services by path + stack id + extra-vertical ids.",
+    "",
+    "This file was generated from the TypeScript object literals that",
+    "held the presets before they became data, and it is the acceptance",
+    "test for that move: `keel new --list`, `keel.catalog`, the",
+    "drill-down grid and every scaffolded tree read the registry through",
+    "these fields, so a registry that still projects onto this file is a",
+    "registry nothing observable changed about.",
+    "",
+    "It stays afterwards for the reason `tests/version-pins.test.ts`",
+    "stays: a preset edit that was not meant to be user-visible shows up",
+    "here as a diff of what users actually see, in the same review as",
+    "the change. Adding or changing a preset means changing this file",
+    "too — that is the cost, and it is the point."
+  ],
+  "stacks": [
+    {
+      "id": "quarkus-cli",
+      "description": "Quarkus 3 CLI (Java 25), hexagonal layout; Gradle or Maven.",
+      "tags": ["lang.java", "runtime.jvm", "framework.quarkus", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "quarkus-rest",
+      "description": "Quarkus 3 REST service (Java 25), hexagonal layout; Gradle or Maven.",
+      "tags": [
+        "lang.java",
+        "runtime.jvm",
+        "framework.quarkus",
+        "arch.hexagonal",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "quarkus-cli-kotlin",
+      "description": "Quarkus 3 CLI (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.",
+      "tags": ["lang.kotlin", "runtime.jvm", "framework.quarkus", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "quarkus-rest-kotlin",
+      "description": "Quarkus 3 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.",
+      "tags": [
+        "lang.kotlin",
+        "runtime.jvm",
+        "framework.quarkus",
+        "arch.hexagonal",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "quarkus-cli-rest",
+      "description": "Quarkus 3 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.",
+      "tags": [
+        "lang.java",
+        "runtime.jvm",
+        "framework.quarkus",
+        "arch.hexagonal",
+        "arch.cli",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "quarkus-cli-rest-kotlin",
+      "description": "Quarkus 3 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.",
+      "tags": [
+        "lang.kotlin",
+        "runtime.jvm",
+        "framework.quarkus",
+        "arch.hexagonal",
+        "arch.cli",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "spring-cli",
+      "description": "Spring Boot 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.",
+      "tags": ["lang.java", "runtime.jvm", "framework.spring", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "spring-rest",
+      "description": "Spring Boot 4 REST service (Java 25), hexagonal layout; Gradle or Maven.",
+      "tags": [
+        "lang.java",
+        "runtime.jvm",
+        "framework.spring",
+        "arch.hexagonal",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "spring-cli-kotlin",
+      "description": "Spring Boot 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.",
+      "tags": ["lang.kotlin", "runtime.jvm", "framework.spring", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "spring-rest-kotlin",
+      "description": "Spring Boot 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.",
+      "tags": [
+        "lang.kotlin",
+        "runtime.jvm",
+        "framework.spring",
+        "arch.hexagonal",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "spring-cli-rest",
+      "description": "Spring Boot 4 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.",
+      "tags": [
+        "lang.java",
+        "runtime.jvm",
+        "framework.spring",
+        "arch.hexagonal",
+        "arch.cli",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "spring-cli-rest-kotlin",
+      "description": "Spring Boot 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.",
+      "tags": [
+        "lang.kotlin",
+        "runtime.jvm",
+        "framework.spring",
+        "arch.hexagonal",
+        "arch.cli",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "micronaut-cli",
+      "description": "Micronaut 4 CLI (Java 25, picocli), hexagonal layout; Gradle or Maven.",
+      "tags": ["lang.java", "runtime.jvm", "framework.micronaut", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "micronaut-rest",
+      "description": "Micronaut 4 REST service (Java 25), hexagonal layout; Gradle or Maven.",
+      "tags": [
+        "lang.java",
+        "runtime.jvm",
+        "framework.micronaut",
+        "arch.hexagonal",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "micronaut-cli-kotlin",
+      "description": "Micronaut 4 CLI (Kotlin, JVM 25, picocli), hexagonal layout; Gradle or Maven.",
+      "tags": ["lang.kotlin", "runtime.jvm", "framework.micronaut", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "micronaut-rest-kotlin",
+      "description": "Micronaut 4 REST service (Kotlin, JVM 25), hexagonal layout; Gradle or Maven.",
+      "tags": [
+        "lang.kotlin",
+        "runtime.jvm",
+        "framework.micronaut",
+        "arch.hexagonal",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "micronaut-cli-rest",
+      "description": "Micronaut 4 CLI + REST service (Java 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.",
+      "tags": [
+        "lang.java",
+        "runtime.jvm",
+        "framework.micronaut",
+        "arch.hexagonal",
+        "arch.cli",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "micronaut-cli-rest-kotlin",
+      "description": "Micronaut 4 CLI + REST service (Kotlin, JVM 25), one hexagon with both entrypoints; Gradle or Maven; basic or modulith layout.",
+      "tags": [
+        "lang.kotlin",
+        "runtime.jvm",
+        "framework.micronaut",
+        "arch.hexagonal",
+        "arch.cli",
+        "arch.server-http"
+      ],
+      "buildSystems": ["gradle", "maven"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "go-cli",
+      "description": "Go CLI on the stdlib, hexagonal layout, no mediator object.",
+      "tags": ["lang.go", "pkg.go-modules", "arch.hexagonal", "arch.cli"],
+      "buildSystems": [],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "go-http",
+      "description": "Go HTTP service on stdlib net/http, hexagonal layout, no mediator object.",
+      "tags": ["lang.go", "pkg.go-modules", "arch.hexagonal", "arch.server-http"],
+      "buildSystems": [],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "go-cli-http",
+      "description": "Go CLI + HTTP service on the stdlib, one shared module with both entrypoints, hexagonal layout, no mediator object.",
+      "tags": ["lang.go", "pkg.go-modules", "arch.hexagonal", "arch.cli", "arch.server-http"],
+      "buildSystems": [],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "rust-cli",
+      "description": "Rust CLI on the stdlib, hexagonal layout, no mediator object.",
+      "tags": ["lang.rust", "pkg.cargo", "arch.hexagonal", "arch.cli"],
+      "buildSystems": [],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "rust-http",
+      "description": "Rust HTTP service on axum + tokio, hexagonal layout, no mediator object.",
+      "tags": ["lang.rust", "pkg.cargo", "arch.hexagonal", "arch.server-http"],
+      "buildSystems": [],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "rust-cli-http",
+      "description": "Rust CLI + HTTP service on axum + tokio, one shared package with both entrypoints, hexagonal layout, no mediator object.",
+      "tags": ["lang.rust", "pkg.cargo", "arch.hexagonal", "arch.cli", "arch.server-http"],
+      "buildSystems": [],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "ts-cli",
+      "description": "TypeScript CLI on Node (22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.",
+      "tags": ["lang.typescript", "runtime.node", "arch.hexagonal", "arch.cli"],
+      "buildSystems": ["npm", "pnpm"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": [],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "ts-http",
+      "description": "TypeScript HTTP service on node:http (Node 22.18+ runs the sources directly), hexagonal layout, registry mediator; npm or pnpm.",
+      "tags": ["lang.typescript", "runtime.node", "arch.hexagonal", "arch.server-http"],
+      "buildSystems": ["npm", "pnpm"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "ts-cli-http",
+      "description": "TypeScript CLI + HTTP service on Node (22.18+ runs the sources directly), one shared workspace with both entrypoints, registry mediator; npm or pnpm; basic or modulith layout.",
+      "tags": ["lang.typescript", "runtime.node", "arch.hexagonal", "arch.cli", "arch.server-http"],
+      "buildSystems": ["npm", "pnpm"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": [
+        "vcs",
+        "walking-skeleton",
+        "code-style",
+        "dev-env",
+        "observability",
+        "dev-container"
+      ],
+      "projects": ["peer.api.rest"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "web-components",
+      "description": "Framework-free web-components SPA on Vite (TypeScript workspaces), hexagonal layout; npm or pnpm.",
+      "tags": [
+        "lang.typescript",
+        "runtime.browser",
+        "framework.web-components",
+        "arch.hexagonal",
+        "arch.spa"
+      ],
+      "buildSystems": ["npm", "pnpm"],
+      "moduleLayouts": ["basic", "modulith"],
+      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "projects": ["peer.ui.spa"],
+      "services": [],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack",
+      "description": "Fullstack product: quarkus-rest backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "quarkus-rest",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-spring",
+      "description": "Fullstack product: spring-rest backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "spring-rest",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-micronaut",
+      "description": "Fullstack product: micronaut-rest backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "micronaut-rest",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-go",
+      "description": "Fullstack product: go-http backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "go-http",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-ts",
+      "description": "Fullstack product: ts-http backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "ts-http",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-rust",
+      "description": "Fullstack product: rust-http backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "rust-http",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    }
+  ]
+}
