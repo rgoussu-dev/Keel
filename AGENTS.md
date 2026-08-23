@@ -235,8 +235,10 @@ assets/
                           # unlike the ejs template trees above
 tests/                    # vitest; mirrors src/ (domain/, e2e/,
   support/factory.ts      # infrastructure/); the shared test Factory.
-  support/fixtures/       # plugins/ holds the fixture plugins the
-  plugins/                # plugins/ suite loads from disk
+  support/ui-e2e.ts       # support/ also holds the browser harness
+  support/fixtures/       # both `keel ui` suites drive. fixtures/
+  plugins/                # plugins/ holds the fixture plugins the
+                          # plugins/ suite loads from disk
 bin/keel.js               # npm bin entry → dist/application/cli/executable
 .dependency-cruiser.cjs   # the dependency rule, enforced in pnpm lint
 ```

@@ -41,6 +41,13 @@ assets }` and its pieces are written against the ordinary
     it and its module; `KEEL_NO_PLUGINS=1` skips discovery entirely;
     `KEEL_PLUGINS` names extra paths explicitly. See
     [docs/plugins.md](docs/plugins.md) → Trust.
+  - **Deferred actions too.** A plugin's adapter may emit `actions`
+    beside its files, and they run exactly like a shipped adapter's:
+    after `tree.commit()`, through the `ProcessRunner` port, in
+    resolution order, and not at all under `--dry-run` — where the
+    action's `description` in the plan is the only declaration of a
+    side effect the user gets before it happens. An action that
+    throws fails the run naming its id.
   - `@rgoussu.dev/keel/plugin` is a new package export carrying the
     plugin contract and its types, for TypeScript authors. A plugin
     has no runtime dependency on keel either way.

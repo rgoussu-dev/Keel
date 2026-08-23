@@ -143,6 +143,25 @@ string; the format is stable, so a dependency-free plugin may spell it
 directly. An id naming a plugin that declared no `assets` fails saying
 so — it never falls through to keel's own assets.
 
+### Deferred actions
+
+An adapter may emit `actions` beside its files — shell-outs and
+anything else that touches state outside the `Tree`. A plugin's are
+run exactly like a shipped adapter's:
+
+- **after `tree.commit()`**, so an action may rely on the files the
+  adapter wrote already being on disk;
+- **through the `ProcessRunner` port** it is handed, never by
+  spawning directly, so a dry run and a test can see what it would do;
+- **in adapter resolution order**, and within an adapter in
+  declaration order;
+- **not at all under `--dry-run`** — `keel new` stops before the
+  commit, so the action's `description` is all a user sees. Write that
+  description as the one line it will be: it is the only declaration
+  of a side effect the user gets before it happens.
+
+An action that throws fails the run, naming the action id.
+
 ### Conflicts
 
 A plugin's `Conflict` is read exactly as a shipped piece's:
@@ -179,8 +198,9 @@ What this step does about it:
 
 What it does **not** do: sandbox execution, prompt for permission,
 verify a signature, or restrict what a plugin's deferred actions may
-run. Treat a keel plugin exactly as you would treat a build script
-committed to the repository — because that is what it is.
+run — and a deferred action is a shell command, so that last one is
+not a small gap. Treat a keel plugin exactly as you would treat a
+build script committed to the repository, because that is what it is.
 
 ---
 
