@@ -25,9 +25,6 @@ import { chromium } from './web-e2e.js';
 /** The repository root, from this file's own location. */
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-/** Where the greenfield form lives; every selector is scoped to it. */
-export const FORM = 'keel-new-form';
-
 /** Long enough for a cold `tsc` plus a browser launch, short of a hang. */
 export const SETTLE_MS = 20_000;
 
@@ -175,20 +172,63 @@ export async function act(traffic: Traffic, interaction: () => Promise<unknown>)
 }
 
 /**
- * A control of the greenfield form, by the id its facet carries.
+ * A control of the page, by the id its step carries.
  *
- * Not always a `<select>`: the entrypoint facet is a checkbox group
- * whose `id` sits on the caption, which is exactly what makes
- * {@link rendered} the right way to ask whether a facet is on the
+ * Unscoped, unlike the version this replaced. The page is a stepper
+ * now: the preset picker lives above the rail, the dials inside the
+ * open step, and the questions in a third element — so "inside
+ * `keel-new-form`" stopped being a useful boundary. Ids are unique
+ * across the page, which is what makes that safe.
+ *
+ * Not always a `<select>`: the narrowing steps are groups of radio
+ * cards whose `id` sits on the group, which is exactly what makes
+ * {@link rendered} the right way to ask whether a control is on the
  * page at all.
  */
-export const control = (page: Page, id: string): Locator => page.locator(`${FORM} #${id}`);
+export const control = (page: Page, id: string): Locator => page.locator(`#${id}`);
+
+/** One choice of a narrowing step, by the value it carries. */
+export const choice = (page: Page, group: string, value: string): Locator =>
+  page.locator(`#${group} input[value="${value}"]`);
+
+/** Whether a choice of a narrowing step is currently picked. */
+export const picked = async (page: Page, group: string, value: string): Promise<boolean> => {
+  const found = choice(page, group, value);
+  return (await found.count()) === 0 ? false : found.isChecked();
+};
 
 /** An entrypoint checkbox, by the adapter id it carries. */
-export const adapter = (page: Page, id: string): Locator =>
-  page.locator(`${FORM} input[type="checkbox"][value="${id}"]`);
+export const adapter = (page: Page, id: string): Locator => choice(page, 'entrypoints', id);
 
-/** The value of a `<select>`, or null when the form does not render it. */
+/** One step's button on the rail. */
+export const railStep = (page: Page, id: string): Locator =>
+  page.locator(`keel-stepper button[data-step="${id}"]`);
+
+/** Whether the rail has a step at all — its absence is an assertion. */
+export const hasStep = async (page: Page, id: string): Promise<boolean> =>
+  (await railStep(page, id).count()) > 0;
+
+/** Every step on the rail, in order. */
+export const railSteps = (page: Page): Promise<string[]> =>
+  page
+    .locator('keel-stepper button')
+    .evaluateAll((nodes) => nodes.map((node) => (node as HTMLElement).dataset.step ?? ''));
+
+/** Opens a step from the rail and waits for the page to settle. */
+export const openStep = (traffic: Traffic, page: Page, id: string): Promise<void> =>
+  act(traffic, () => railStep(page, id).click());
+
+/** Waits until the rail has `id`, then opens it. */
+export async function goToStep(traffic: Traffic, page: Page, id: string): Promise<void> {
+  await until(() => hasStep(page, id), `the rail to offer the ${id} step`);
+  await openStep(traffic, page, id);
+  await until(
+    async () => (await page.locator('[data-role="step-title"]').count()) > 0,
+    'the step to render',
+  );
+}
+
+/** The value of a `<select>`, or null when the page does not render it. */
 export async function valueOf(page: Page, id: string): Promise<string | null> {
   try {
     const found = control(page, id);
@@ -199,13 +239,20 @@ export async function valueOf(page: Page, id: string): Promise<string | null> {
   }
 }
 
-/** Waits until the form reports `stack` as the chosen preset. */
+/**
+ * Waits until the page reports `stack` as the chosen preset.
+ *
+ * The preset picker sits above the rail and is on screen at every
+ * step, which is deliberate: four questions narrow to an id, and a
+ * wizard that hides its own answer until the end cannot be checked.
+ */
 export const stackIs = (page: Page, stack: string): Promise<void> =>
   until(async () => (await valueOf(page, 'stack')) === stack, `the stack to become ${stack}`);
 
 /**
- * Whether a facet is on the page at all. The narrowing controls drop
- * out where they have nothing to ask, so absence is an assertion.
+ * Whether a control is on the page at all. Controls drop out where
+ * they have nothing to ask, and steps drop out with them, so absence
+ * is an assertion.
  */
 export const rendered = async (page: Page, id: string): Promise<boolean> =>
   (await control(page, id).count()) > 0;

@@ -22,7 +22,7 @@ keel new --stack=<id> [options]
 
 | Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Omitted interactively, the wizard **drills down to it** — language → user-side adapters → framework (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                                              |
+| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Omitted interactively, the wizard **drills down to it** — what you are building → language → framework → user-side adapters (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                      |
 | `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise.                                                                                                                                                                                  |
 | `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                                                                                                                                                                                                     |
@@ -61,27 +61,48 @@ order they resolve.
 
 #### Finding a stack: the drill-down
 
-There are 33 presets. Knowing you want "Kotlin, a CLI and an HTTP
-endpoint, on Spring" is easy; knowing that is spelled
-`spring-cli-rest-kotlin` is not. So with no `--stack`, the wizard
-asks for the stack in **three narrowing questions** instead of one
-wide one:
+There are 34 presets. Knowing you want "a backend, in Kotlin, on
+Spring, with a CLI and an HTTP endpoint" is easy; knowing that is
+spelled `spring-cli-rest-kotlin` is not. So with no `--stack`, the
+wizard asks for the stack in **up to four narrowing questions**
+instead of one wide one, widest first, and it says so before it
+starts:
 
-1. **Language** — Java, Kotlin, Go, Rust, TypeScript (Node),
-   TypeScript (browser). Each choice names the presets it leads to.
-   The last entry, _Other — pick a preset by id_, falls through to
-   the flat list; that is where the [fullstack
-   products](stacks/README.md) live, since a two-service product
-   names no single language.
-2. **User-side adapters** — a **multi-select**: CLI, HTTP server,
-   or (in the browser) a SPA. Picking more than one resolves to the
+1. **What are you building?** — a **fullstack** product (a backend
+   and a browser front end, scaffolded side by side), a **backend**
+   service (no front end of its own), or a **frontend** app. This is
+   read off the presets themselves: which end each `arch.*`
+   entrypoint is driven from decides where a preset lands, so a stack
+   is never listed under a shape by hand. The last entry, _Other —
+   pick a preset by id_, falls through to the flat list for someone
+   who already knows the id they want.
+2. **Language** — Java, Kotlin, Go, Rust, TypeScript. Each choice
+   names the presets it leads to. On the fullstack shape this is the
+   **backend's** language: the front end is the browser either way.
+   Skipped where the shape reaches only one, as the frontend does.
+3. **Framework** — Quarkus, Spring or Micronaut. Asked only where the
+   shape and language chosen leave more than one open, which today
+   means the JVM: Go, Rust and TypeScript are never asked.
+4. **User-side adapters** — a **multi-select**: CLI, HTTP server, or
+   (in the browser) a SPA. Picking more than one resolves to the
    **composed** preset — one project, one domain, both entrypoints
    (`quarkus-cli-rest`, `go-cli-http`, `ts-cli-http`, …) — and never
-   to two services. Skipped where the language reaches only one
-   combination, as the browser target does.
-3. **Framework** — Quarkus, Spring or Micronaut. Asked only where
-   the language and adapters chosen leave more than one open, which
-   today means the JVM: Go, Rust and TypeScript are never asked.
+   to two services; two services is the fullstack shape, which was
+   the first question. Skipped where the answers above reach only one
+   combination, as a fullstack product does.
+
+**Why shape comes first, and why the adapters come last.** Shape is
+the widest cut there is and it is the one a newcomer already knows
+the answer to. The adapters are the one axis that narrows nothing
+else — a backend reaches the same ways in whichever language and
+framework it is on — so asking them last costs nothing and keeps the
+three questions that _do_ narrow next to each other. It also gave the
+[fullstack products](stacks/README.md) a branch to sit on: a
+two-service product carries no language tag of its own, so before
+there was a shape axis it was reachable only by typing its id. It
+places perfectly well through its services — the union of their
+entrypoints gives the shape, and its one back-side service gives the
+language and framework.
 
 Every menu is derived from the tags of the presets still reachable
 from the answers already given, so a combination no preset covers is
@@ -95,8 +116,17 @@ omitted `--stack` has always meant non-interactively. The run prints
 the preset it resolved to before staging it:
 
 ```
-keel new: Java + CLI + HTTP server + quarkus → quarkus-cli-rest
+keel new: no --stack, so let us find one — what you are building, then the language, the framework, and the way in. Each answer narrows the next, and a step with one answer is skipped.
+? Step 1 · What are you building? Backend — a service with no front end of its own
+? Step 2 · Language Java
+? Step 3 · Framework quarkus
+? Step 4 · User-side adapters (Java) CLI, HTTP server
+keel new: Backend · Java · quarkus · CLI + HTTP server → quarkus-cli-rest
 ```
+
+The step numbers count what is actually asked, not what the four axes
+are: pick the frontend shape and there is exactly one preset under
+it, so the run is one question long.
 
 Passing `--stack` skips all three questions; `--yes` skips every
 question there is.

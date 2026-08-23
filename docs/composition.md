@@ -146,14 +146,14 @@ Concretely, the menus that narrow as answers land. The first five are
 the same functions behind both front ends, in `domain/core/dials.ts`;
 the last is brownfield and lives with the project status:
 
-| menu                       | filtered by                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| build system               | some module layout must still complete it legally                                   |
-| module layout              | exact — the build system is already settled                                         |
-| peer context               | offered only where switching it on stays legal                                      |
-| extra verticals (`--with`) | coverage (`coversFor`) **and** the vertical's own rules                             |
-| the stack drill-down       | presets no setting of their dials can build are absent from all three steps at once |
-| `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal  |
+| menu                       | filtered by                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| build system               | some module layout must still complete it legally                                  |
+| module layout              | exact — the build system is already settled                                        |
+| peer context               | offered only where switching it on stays legal                                     |
+| extra verticals (`--with`) | coverage (`coversFor`) **and** the vertical's own rules                            |
+| the stack drill-down       | presets no setting of their dials can build are absent from all four steps at once |
+| `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal |
 
 A preset is hidden only when **every** setting of its dials is
 refused. Anything stricter would take away a preset reachable by

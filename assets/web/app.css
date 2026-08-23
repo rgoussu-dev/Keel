@@ -61,15 +61,40 @@
   ul,
   ol,
   li,
+  dl,
+  dt,
+  dd,
   keel-app,
   keel-target-picker,
   keel-new-form,
   keel-add-form,
   keel-question-list,
   keel-file-tree,
-  keel-plan
+  keel-plan,
+  keel-preset,
+  keel-review,
+  keel-stepper
 ) {
   max-inline-size: none;
+}
+
+/*
+ * The page's own elements are blocks. A custom element is inline by
+ * default, and an inline child takes no block margin — which is what
+ * silently collapsed the gap between a step's help text and the
+ * controls under it, planks' stack spacing having nothing to apply
+ * to.
+ */
+keel-add-form,
+keel-file-tree,
+keel-new-form,
+keel-plan,
+keel-preset,
+keel-question-list,
+keel-review,
+keel-stepper,
+keel-target-picker {
+  display: block;
 }
 
 body {
@@ -225,6 +250,161 @@ button.link {
 
 .checkbox input {
   margin-block-start: 0.3em;
+}
+
+/*
+ * The step panel sizes to its own content. `sidebar-pk` stretches its
+ * two columns to a common height, which is right for two columns of
+ * content and wrong here: the plan is a long tree and a step is three
+ * radio cards, so stretching draws half a screen of empty panel under
+ * them.
+ */
+[data-role='step'] {
+  align-self: start;
+}
+
+/* --- the stepper ------------------------------------------------ */
+
+/*
+ * The rail. It wraps rather than scrolls: eight steps at a narrow
+ * width is two rows of buttons, which stays readable, where a
+ * horizontal scroller hides the steps you have not reached — the
+ * exact half a map is for.
+ */
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: none;
+}
+
+.stepper .step button {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-1);
+  background: var(--keel-panel);
+  color: var(--keel-ink-soft);
+}
+
+.stepper .ordinal {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.6em;
+  block-size: 1.6em;
+  border-radius: 999px;
+  border: 1px solid var(--keel-line);
+  font-size: var(--s-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.stepper .label {
+  font-size: var(--s-1);
+}
+
+.stepper .done button {
+  color: var(--keel-ink);
+}
+
+.stepper .done .ordinal {
+  border-color: var(--keel-accent);
+  color: var(--keel-accent);
+}
+
+.stepper .current button {
+  border-color: var(--keel-accent);
+  color: var(--keel-ink);
+  font-weight: 600;
+}
+
+.stepper .current .ordinal {
+  background: var(--keel-accent);
+  border-color: var(--keel-accent);
+  color: var(--keel-accent-ink);
+}
+
+/* The preset line under the rail, and the step's own footer. */
+.preset select.compact {
+  inline-size: auto;
+  min-inline-size: 14rem;
+}
+
+.nav {
+  justify-content: space-between;
+  border-block-start: 1px solid var(--keel-line);
+  padding-block-start: var(--s0);
+}
+
+/* --- choice cards ----------------------------------------------- */
+
+/*
+ * The narrowing steps. A `<select>` hides every option but one behind
+ * a click, which is exactly wrong for "fullstack, backend or
+ * frontend?" — a question you answer by reading the three answers.
+ */
+.cards {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.cards .card {
+  display: flex;
+  gap: var(--s-1);
+  align-items: start;
+  padding: var(--s-1);
+  border: 1px solid var(--keel-line);
+  border-radius: var(--keel-radius);
+  background: var(--keel-panel);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.cards .card:hover {
+  border-color: var(--keel-accent);
+}
+
+.cards .card.chosen {
+  border-color: var(--keel-accent);
+  box-shadow: inset 0 0 0 1px var(--keel-accent);
+}
+
+.cards .card input {
+  margin-block-start: 0.35em;
+}
+
+.cards .card-body {
+  display: grid;
+  gap: var(--s-4, 0.15rem);
+}
+
+.cards .card-title {
+  font-weight: 600;
+}
+
+/* --- the review summary ----------------------------------------- */
+
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s-3) var(--s0);
+  margin: 0;
+}
+
+.summary dt {
+  font-size: var(--s-1);
+  font-weight: 600;
+  color: var(--keel-ink-soft);
+}
+
+.summary dd {
+  margin: 0;
+  display: flex;
+  gap: var(--s-1);
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 /* --- the target picker ------------------------------------------ */

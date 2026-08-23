@@ -4,17 +4,16 @@
  * The claim under test is a negative one, and it is the reason the
  * plugin work needed no change to `keel ui`: the page asks the
  * mediator for `keel.catalog` and renders whatever comes back, so a
- * stack keel never shipped has to appear on the finder's facets, be
- * selectable, and resolve — with nothing in the page, the server, or
- * the query aware that a plugin exists.
+ * stack keel never shipped has to appear on the wizard's own steps,
+ * be selectable, and resolve — with nothing in the page, the server,
+ * or the query aware that a plugin exists.
  *
  * A page-level suite is the only place that claim can be checked.
  * `tests/plugins/` proves the catalog *contains* the plugin's stack;
- * what it cannot see is a facet built from a language node keel has
- * no label for, a `<select>` whose option set the element rebuilds on
- * every change, or a `pageerror` thrown inside a listener — which
- * leaves the form looking right and silently aborts the rest of that
- * handler.
+ * what it cannot see is a step built from a language node keel has no
+ * label for, a control set the element rebuilds on every change, or a
+ * `pageerror` thrown inside a listener — which leaves the form
+ * looking right and silently aborts the rest of that handler.
  *
  * **The whole binary, in a directory with a plugin in it.** The
  * plugin is discovered by the CLI's composition root from its own
@@ -36,12 +35,15 @@ import { E2E_TIMEOUT_MS, mkTempDir, runStep, skipE2E } from '../support/web-e2e.
 import {
   act,
   browserBinary,
+  choice,
   control,
+  goToStep,
+  hasStep,
+  picked,
   rendered,
   repoRoot,
   stackIs,
   startUi,
-  valueOf,
   watchTraffic,
   type Traffic,
   type UiProcess,
@@ -117,13 +119,13 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
   });
 
   it(
-    "offers the plugin's language on the finder, beside the shipped ones",
+    "offers the plugin's language on the wizard, beside the shipped ones",
     async () => {
-      const languages = await control(page, 'language').locator('option').allTextContents();
+      await goToStep(traffic, page, 'language');
+      const languages = await control(page, 'language').locator('.card-title').allTextContents();
       // `lang.acme` is a language nobody labelled, so the node is
       // spelled from the tag itself — which is what "derived, not
-      // enumerated" has to mean for a plugin to reach the facet at
-      // all.
+      // enumerated" has to mean for a plugin to reach the step at all.
       expect(languages.join(' ')).toContain(LANGUAGE);
       // Still every shipped language too: registering a plugin adds,
       // it does not replace.
@@ -134,20 +136,40 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
   );
 
   it(
+    "sorts the plugin's preset under the shape its own tags spell",
+    async () => {
+      // `arch.cli` and nothing front-side: a backend, decided by
+      // counting entrypoint sides, not by a list of known stacks.
+      await goToStep(traffic, page, 'shape');
+      expect(await picked(page, 'shape', 'backend')).toBe(true);
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', LANGUAGE).check());
+      await stackIs(page, STACK);
+      await goToStep(traffic, page, 'shape');
+      expect(await picked(page, 'shape', 'backend')).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     "resolves the plugin's preset when its language is chosen",
     async () => {
-      await act(traffic, () => control(page, 'language').selectOption(LANGUAGE));
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', LANGUAGE).check());
       await stackIs(page, STACK);
 
       // The plugin's stack declares both dials, so the page has to
       // render them — from the descriptor, not from a list of stacks
       // it knows.
+      await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'moduleLayout')).toBe(true);
-      // One language, one framework: the framework facet answers its
-      // question by existing and drops out, exactly as it does for Go.
-      expect(await rendered(page, 'framework')).toBe(false);
       // A single project, not a product.
       expect(await rendered(page, 'layout')).toBe(false);
+      // One language, one framework, one entrypoint set: both those
+      // steps answer their question by existing and drop off the rail,
+      // exactly as the framework one does for Go.
+      expect(await hasStep(page, 'framework')).toBe(false);
+      expect(await hasStep(page, 'entrypoints')).toBe(false);
     },
     E2E_TIMEOUT_MS,
   );
@@ -157,13 +179,14 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
     async () => {
       await act(traffic, () => control(page, 'stack').selectOption(STACK));
       await stackIs(page, STACK);
-      expect(await valueOf(page, 'language')).toBe(LANGUAGE);
+      await goToStep(traffic, page, 'language');
+      expect(await picked(page, 'language', LANGUAGE)).toBe(true);
 
-      // Out again: a plugin's preset is not a trap the form cannot
+      // Out again: a plugin's preset is not a trap the wizard cannot
       // leave, which is the half a "does it appear?" test misses.
-      await act(traffic, () => control(page, 'language').selectOption('go'));
+      await act(traffic, () => choice(page, 'language', 'go').check());
       await stackIs(page, 'go-cli');
-      expect(await rendered(page, 'framework')).toBe(false);
+      expect(await hasStep(page, 'framework')).toBe(false);
     },
     E2E_TIMEOUT_MS,
   );

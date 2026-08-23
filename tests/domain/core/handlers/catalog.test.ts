@@ -24,13 +24,28 @@ async function catalog(): Promise<Catalog> {
   return expectOk(await installMediator().dispatch(catalogQuery()));
 }
 
-/** The language node under `id`, or a failure naming what is missing. */
-async function language(id: string): Promise<Catalog['finder']['languages'][number]> {
+type ShapeNode = Catalog['finder']['shapes'][number];
+type LanguageNode = ShapeNode['languages'][number];
+type FrameworkNode = LanguageNode['frameworks'][number];
+
+/** The shape node under `id`, or a failure naming what is missing. */
+async function shape(id: string): Promise<ShapeNode> {
   const { finder } = await catalog();
-  const node = finder.languages.find((candidate) => candidate.id === id);
-  if (!node) throw new Error(`finder has no language '${id}'`);
+  const node = finder.shapes.find((candidate) => candidate.id === id);
+  if (!node) throw new Error(`finder has no shape '${id}'`);
   return node;
 }
+
+/** The language node under a shape, or a failure naming what is missing. */
+async function language(shapeId: string, id: string): Promise<LanguageNode> {
+  const node = (await shape(shapeId)).languages.find((candidate) => candidate.id === id);
+  if (!node) throw new Error(`finder has no language '${id}' under '${shapeId}'`);
+  return node;
+}
+
+/** Every framework node of the tree, wherever it sits. */
+const everyFramework = (finder: Catalog['finder']): readonly FrameworkNode[] =>
+  finder.shapes.flatMap((node) => node.languages.flatMap((child) => child.frameworks));
 
 const find = (stacks: readonly StackDescriptor[], id: string): StackDescriptor => {
   const stack = stacks.find((candidate) => candidate.id === id);
@@ -152,7 +167,7 @@ describe('keel.catalog', () => {
 
 /**
  * The finder — the drill-down reported as a tree so a form can render
- * three dependent controls without reading a capability tag.
+ * four dependent controls without reading a capability tag.
  *
  * The invariants worth pinning here are the ones a front end would
  * otherwise have to trust: that every preset it can reach really
@@ -168,35 +183,37 @@ describe('keel.catalog — the stack finder', () => {
     expect(finder.defaultStack).toBe('quarkus-cli');
   });
 
-  it('reaches every single-project preset, and no product', async () => {
+  it('asks what is being built first, and offers all three answers', async () => {
+    const { finder } = await catalog();
+    expect(finder.shapes.map((node) => node.id)).toEqual(['fullstack', 'backend', 'frontend']);
+    for (const node of finder.shapes) {
+      expect(node.label).not.toBe('');
+      expect(node.languages.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('reaches every preset, the two-service products included', async () => {
     const { finder, stacks } = await catalog();
     const reachable = new Set(
-      finder.languages.flatMap((node) =>
-        node.combinations.flatMap((combination) =>
-          combination.frameworks.map((framework) => framework.stack),
-        ),
+      everyFramework(finder).flatMap((node) =>
+        node.combinations.map((combination) => combination.stack),
       ),
     );
-    const single = stacks.filter((stack) => stack.services.length === 0).map((s) => s.id);
-    const products = stacks.filter((stack) => stack.services.length > 0).map((s) => s.id);
-    expect(single.filter((id) => !reachable.has(id))).toEqual([]);
-    expect(products.filter((id) => reachable.has(id))).toEqual([]);
+    expect(stacks.map((stack) => stack.id).filter((id) => !reachable.has(id))).toEqual([]);
   });
 
   it('names a real stack at every leaf', async () => {
     const { finder, stacks } = await catalog();
     const known = new Set(stacks.map((stack) => stack.id));
-    for (const node of finder.languages) {
-      for (const combination of node.combinations) {
-        expect(combination.frameworks.length).toBeGreaterThan(0);
-        for (const framework of combination.frameworks) expect(known).toContain(framework.stack);
-      }
+    for (const node of everyFramework(finder)) {
+      expect(node.combinations.length).toBeGreaterThan(0);
+      for (const combination of node.combinations) expect(known).toContain(combination.stack);
     }
   });
 
   it('offers a checkbox only where every subset of it is a preset', async () => {
     const { finder } = await catalog();
-    for (const node of finder.languages) {
+    for (const node of everyFramework(finder)) {
       if (node.entrypointStep?.kind !== 'multi-select') continue;
       const reachable = new Set(
         node.combinations.map((combination) => [...combination.entrypoints].sort().join(',')),
@@ -210,31 +227,46 @@ describe('keel.catalog — the stack finder', () => {
     }
   });
 
-  it('drops the entrypoint step where the language reaches one combination', async () => {
-    const browser = await language('typescript@browser');
-    expect(browser.entrypointStep).toBeNull();
-    expect(browser.combinations).toHaveLength(1);
-    expect(browser.combinations[0]?.frameworks.map((f) => f.stack)).toEqual(['web-components']);
+  it('drops everything below the shape where the frontend reaches one preset', async () => {
+    const frontend = await shape('frontend');
+    expect(frontend.languages.map((node) => node.id)).toEqual(['typescript@browser']);
+    const [only] = frontend.languages[0]?.frameworks ?? [];
+    expect(frontend.languages[0]?.frameworks).toHaveLength(1);
+    expect(only?.entrypointStep).toBeNull();
+    expect(only?.combinations.map((combination) => combination.stack)).toEqual(['web-components']);
   });
 
   it('carries the framework menu only where the JVM has one', async () => {
-    const java = await language('java@jvm');
-    const combined = java.combinations.find((c) => c.entrypoints.length === 2);
-    expect(combined?.frameworks.map((framework) => framework.stack)).toEqual([
-      'micronaut-cli-rest',
+    const java = await language('backend', 'java@jvm');
+    expect(java.frameworks.map((node) => node.id)).toEqual(['micronaut', 'quarkus', 'spring']);
+    const quarkus = java.frameworks.find((node) => node.id === 'quarkus');
+    expect(quarkus?.combinations.map((combination) => combination.stack)).toEqual([
+      'quarkus-cli',
+      'quarkus-rest',
       'quarkus-cli-rest',
-      'spring-cli-rest',
     ]);
 
-    const go = await language('go');
-    for (const combination of go.combinations) {
-      expect(combination.frameworks).toHaveLength(1);
-      expect(combination.frameworks[0]?.id).toBe('');
-    }
+    const go = await language('backend', 'go');
+    expect(go.frameworks).toHaveLength(1);
+    expect(go.frameworks[0]?.id).toBe('');
   });
 
-  it('defaults each language’s entrypoints towards the default preset’s own', async () => {
-    const java = await language('java@jvm');
-    expect(java.entrypointStep?.default).toBe('cli');
+  it('puts a product’s framework choice under its backend’s language', async () => {
+    const java = await language('fullstack', 'java@jvm');
+    expect(java.frameworks.map((node) => node.id)).toEqual(['micronaut', 'quarkus', 'spring']);
+    expect(java.frameworks.flatMap((node) => node.combinations.map((c) => c.stack))).toEqual([
+      'fullstack-micronaut',
+      'fullstack',
+      'fullstack-spring',
+    ]);
+    // One combination each, so a product never asks for entrypoints.
+    for (const node of java.frameworks) expect(node.entrypointStep).toBeNull();
+  });
+
+  it('defaults the entrypoints towards the default preset’s own', async () => {
+    const java = await language('backend', 'java@jvm');
+    expect(java.frameworks.find((node) => node.id === 'quarkus')?.entrypointStep?.default).toBe(
+      'cli',
+    );
   });
 });

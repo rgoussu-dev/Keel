@@ -6,6 +6,65 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **The stack finder is a four-step drill-down now, and it starts with
+  what you are building.** Both front ends narrow the same way, widest
+  first: **shape → language → framework → user-side adapters**, where
+  shape is _fullstack_ (a backend and a browser front end together),
+  _backend_ (no front end of its own) or _frontend_. It replaces
+  **language → user-side adapters → framework**, which asked a
+  newcomer to know what a "user-side adapter" is before it asked
+  anything they already knew the answer to.
+  - **A shape is derived, never listed.** Each registered entrypoint
+    declares which end it is driven from (`arch.cli` and
+    `arch.server-http` from the back, `arch.spa` from the front) and a
+    preset's shape is those sides, counted — so a stack that gains an
+    `arch.spa` moves shape on its own.
+  - **The fullstack products are on the guided path at last.** A
+    two-service product carries no `lang.*` tag, so before there was a
+    shape axis it appeared in no menu and `keel new` could only reach
+    it through "pick a preset by id". It places perfectly well through
+    its services: the union of their entrypoints gives the shape, and
+    its one back-side service — its backend — gives the language and
+    framework, which is exactly the choice a fullstack product leaves
+    open. Every shipped preset is now reachable from some path.
+  - **`keel new` says where it is.** The drill-down prints what it is
+    about to ask, numbers each step it actually asks (a step whose
+    answer is already settled is still skipped, so the numbers never
+    claim a question that does not come), and names the preset it
+    landed on: `keel new: Backend · Java · quarkus · CLI + HTTP server
+→ quarkus-cli-rest`. The escape hatch moved with the first
+    question: _Other — pick a preset by id_ is now the last choice of
+    "What are you building?".
+- **`keel ui` is a stepper rather than one long form.** The page walks
+  the same questions in the same order as the terminal wizard — one
+  step at a time, with a rail across the top, Back/Next, and a review
+  at the end listing every choice with a link back to the step that
+  made it. The three side-by-side facets are gone; a drill-down is a
+  tree, and a grid of dependent controls was a shape you had to
+  already understand to use.
+  - **The plan stays on screen at every step**, which is the one thing
+    a stepper must not take away — flipping Gradle to Maven redrawing
+    the file tree in place is the whole reason the page exists.
+  - **Every step on the rail is clickable, not just the ones behind
+    you.** Nothing on the page can be in an invalid state — every dial
+    has a default and `keel.dials` snaps an illegal combination back —
+    so the rail is a map, not a gate, and "just show me the plan" is
+    one click rather than four screens.
+  - **A step with one answer is not a step.** Which steps exist is
+    derived from the same tree the terminal wizard skips a question
+    from: a language reaching one framework has no framework step, a
+    product has no adapters step, and the frontend shape has neither.
+  - **Stepping back keeps what still fits.** Moving the shape from
+    backend to fullstack with Java + Spring chosen lands on
+    `fullstack-spring`; coming out of a product into a backend carries
+    the half of its entrypoints a backend can still take.
+  - **The preset picker sits above the rail and is on screen
+    throughout** — it names the id the answers have landed on, it is
+    the flat list of every preset, and it is the only way to name one
+    the finder could not place (a plugin's, most likely).
+
 ### Added
 
 - **Plugins: a project can supply its own stacks and verticals.** keel

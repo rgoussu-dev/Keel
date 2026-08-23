@@ -2,8 +2,23 @@
  * `<keel-app>` — the page's one stateful element.
  *
  * Everything below it is a view: data in as properties, intent out as
- * a `CustomEvent`. This is where the state lives and where the
- * preview loop runs.
+ * a `CustomEvent`. This is where the state lives, where the preview
+ * loop runs, and where the stepper's position is kept.
+ *
+ * **The stepper.** The page asks one question at a time now, widest
+ * first — what you are building, then the language, the framework,
+ * the way in, the dials, the adapters' own questions, and finally the
+ * review that commits it. Which of those steps exist is derived, not
+ * fixed (`../steps.js`): a language reaching one framework has no
+ * framework step, exactly as the terminal wizard skips that question.
+ * Every step stays clickable, so the rail is a map rather than a
+ * gate — nothing here can be in an invalid state, since every dial
+ * has a default and `keel.dials` snaps an illegal combination back.
+ *
+ * **The plan stays visible throughout**, which is the one thing a
+ * stepper must not take away. `keel new` can only show you the tree
+ * after the fact; the whole reason this page exists is that flipping
+ * Gradle to Maven redraws it in place.
  *
  * **The loop.** keel's question set is a function of the answers
  * already given — an adapter is only asked once its predicate
@@ -33,6 +48,23 @@
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
+import {
+  DIRECTORY,
+  ENTRYPOINTS,
+  FRAMEWORK,
+  LANGUAGE,
+  OPTIONS,
+  QUESTIONS,
+  REVIEW,
+  SHAPE,
+  TARGET,
+  chosenStack,
+  located,
+  nextStep,
+  previousStep,
+  settleStep,
+  stepsFor,
+} from '../steps.js';
 
 /** How long to wait after a change before re-previewing. */
 const DEBOUNCE_MS = 120;
@@ -51,6 +83,7 @@ export class KeelApp extends HTMLElement {
   #busy = false;
   #stale = false;
   #timer = null;
+  #step = DIRECTORY;
   /** Monotonic request id; a reply older than this one is discarded. */
   #generation = 0;
 
@@ -59,6 +92,7 @@ export class KeelApp extends HTMLElement {
     this.addEventListener('target-chosen', (event) => void this.#goTo(event.detail.path));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
     this.addEventListener('question-answered', (event) => this.#answer(event.detail));
+    this.addEventListener('step-selected', (event) => this.#goToStep(event.detail.id));
     this.addEventListener('install-requested', () => void this.#install());
     void this.#boot();
   }
@@ -91,16 +125,17 @@ export class KeelApp extends HTMLElement {
     this.#target = this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget();
     this.#dials = null;
     this.#preview = null;
+    this.#step = DIRECTORY;
     this.#render();
     this.#previewSoon();
   }
 
   /**
-   * Where the greenfield form opens: the preset the finder's defaults
-   * compose to, which is the one an omitted `--stack` resolves to in
-   * a terminal. Falling back to the first of `stacks` would open on a
-   * fullstack product — alphabetically first, and a two-service
-   * product is the last thing a blank form should presume.
+   * Where the greenfield wizard opens: the preset the finder's
+   * defaults compose to, which is the one an omitted `--stack`
+   * resolves to in a terminal. Falling back to the first of `stacks`
+   * would open on a fullstack product — alphabetically first, and a
+   * two-service product is the last thing a blank form should presume.
    *
    * The dials are left off it. They still have to be *set* before the
    * body is posted — an absent dial is one the install would ask
@@ -125,6 +160,11 @@ export class KeelApp extends HTMLElement {
   }
 
   /* ---- intent -------------------------------------------------- */
+
+  #goToStep(id) {
+    this.#step = settleStep(this.#steps(), id);
+    this.#render();
+  }
 
   #retarget(patch) {
     if (patch.kind !== undefined && patch.kind !== this.#target.kind) {
@@ -260,6 +300,96 @@ export class KeelApp extends HTMLElement {
     this.#render();
   }
 
+  /* ---- the steps ----------------------------------------------- */
+
+  #state() {
+    return {
+      status: this.#status,
+      catalog: this.#catalog,
+      dials: this.#dials,
+      target: this.#target,
+      preview: this.#preview,
+    };
+  }
+
+  #steps() {
+    return stepsFor(this.#state());
+  }
+
+  /**
+   * Every choice this run will make, in the order the wizard asked
+   * them — the review step's rows, each naming the step to jump back
+   * to.
+   *
+   * Read off the same state the steps are derived from, so a choice
+   * that has no step here has no row either: nothing in this list can
+   * name a control the user cannot reach.
+   */
+  #summary() {
+    const rows = [{ step: DIRECTORY, label: 'Directory', value: this.#cwd || '—' }];
+    if (this.#status?.initialised) {
+      rows.push({
+        step: TARGET,
+        label: this.#target?.kind === 'add-module' ? 'Bounded context' : 'Vertical',
+        value:
+          (this.#target?.kind === 'add-module' ? this.#target.module : this.#target?.vertical) ||
+          '—',
+      });
+      if (this.#target?.kind === 'add-module' && this.#target.consumes) {
+        rows.push({ step: TARGET, label: 'Consumes', value: this.#target.consumes });
+      }
+      if (this.#target?.reapply === true) {
+        rows.push({ step: TARGET, label: 'Mode', value: 're-render (already installed)' });
+      }
+      return rows;
+    }
+    const here = located(this.#state());
+    const shown = new Set(this.#steps().map((step) => step.id));
+    if (here) {
+      rows.push({ step: SHAPE, label: 'Building', value: headline(here.shape.label) });
+      if (shown.has(LANGUAGE)) {
+        rows.push({ step: LANGUAGE, label: 'Language', value: here.language.label });
+      }
+      if (shown.has(FRAMEWORK)) {
+        rows.push({ step: FRAMEWORK, label: 'Framework', value: headline(here.framework.label) });
+      }
+      if (shown.has(ENTRYPOINTS)) {
+        rows.push({
+          step: ENTRYPOINTS,
+          label: 'Adapters',
+          value: spellEntrypoints(here),
+        });
+      }
+    }
+    // No jump: the preset picker is above the rail at every step, so a
+    // link back to a control already on screen would be noise.
+    rows.push({ label: 'Preset', value: this.#target?.stack ?? '—' });
+    const stack = chosenStack(this.#state());
+    if (stack && shown.has(OPTIONS)) {
+      if (stack.services.length > 0) {
+        rows.push({ step: OPTIONS, label: 'Repository', value: this.#target.layout ?? 'monorepo' });
+      }
+      if (this.#target.buildSystem) {
+        rows.push({ step: OPTIONS, label: 'Build system', value: this.#target.buildSystem });
+      }
+      if (this.#target.moduleLayout) {
+        rows.push({ step: OPTIONS, label: 'Module layout', value: this.#target.moduleLayout });
+      }
+      if (this.#target.withPeerContext === true) {
+        rows.push({ step: OPTIONS, label: 'Peer context', value: 'yes' });
+      }
+    }
+    const answered = this.#preview?.questions ?? [];
+    if (answered.length > 0) {
+      rows.push({
+        step: QUESTIONS,
+        label: 'Questions',
+        value: `${answered.length} answered`,
+      });
+    }
+    return rows;
+  }
+
   /* ---- rendering ----------------------------------------------- */
 
   #scaffold() {
@@ -275,15 +405,11 @@ export class KeelApp extends HTMLElement {
         </header>
         <center-pk maxwidth="72rem" gutters="var(--s0)">
           <stack-pk space="var(--s1)">
-            <section class="panel">
-              <stack-pk space="var(--s-1)">
-                <h2>Project directory</h2>
-                <keel-target-picker></keel-target-picker>
-              </stack-pk>
-            </section>
+            <keel-stepper></keel-stepper>
+            <keel-preset hidden></keel-preset>
             <div data-role="error" hidden></div>
             <sidebar-pk side="right" sidewidth="26rem" contentwidth="55%" space="var(--s1)">
-              <section data-role="form"></section>
+              <section class="panel" data-role="step"></section>
               <keel-plan></keel-plan>
             </sidebar-pk>
           </stack-pk>
@@ -293,25 +419,39 @@ export class KeelApp extends HTMLElement {
   }
 
   #render() {
-    const picker = this.querySelector('keel-target-picker');
-    if (picker) picker.listing = this.#listing;
+    const steps = this.#steps();
+    this.#step = settleStep(steps, this.#step);
+
+    const stepper = this.querySelector('keel-stepper');
+    if (stepper) {
+      stepper.steps = steps;
+      stepper.current = this.#step;
+    }
+
+    const preset = this.querySelector('keel-preset');
+    if (preset) {
+      const greenfield = this.#catalog !== null && this.#status?.initialised === false;
+      preset.hidden = !greenfield;
+      if (greenfield) {
+        preset.catalog = this.#catalog;
+        preset.target = this.#target;
+      }
+    }
 
     this.#renderError();
-    this.#renderForm();
+    this.#renderStep(steps);
 
     const plan = this.querySelector('keel-plan');
     if (plan) {
       plan.preview = this.#preview;
       plan.report = this.#report;
-      plan.busy = this.#busy;
       plan.stale = this.#stale;
-      plan.ready = this.#ready();
       plan.hint = this.#hint();
     }
   }
 
   #ready() {
-    return this.#complete() && this.#error === null;
+    return this.#complete() && this.#error === null && this.#preview !== null;
   }
 
   /** Whether the target carries every field its command requires. */
@@ -345,36 +485,113 @@ export class KeelApp extends HTMLElement {
     box.append(code, message);
   }
 
-  #renderForm() {
-    const host = this.querySelector('[data-role="form"]');
-    if (!host || this.#target === null) return;
+  /** Draws the open step: its heading, its controls, and the two arrows. */
+  #renderStep(steps) {
+    const host = this.querySelector('[data-role="step"]');
+    if (!host || this.#target === null || this.#catalog === null) return;
+    const current = steps.find((step) => step.id === this.#step);
 
     const stack = document.createElement('stack-pk');
-    stack.setAttribute('space', 'var(--s1)');
+    stack.setAttribute('space', 'var(--s0)');
 
     const heading = document.createElement('h2');
-    heading.textContent = this.#status?.initialised ? 'Add to this project' : 'New project';
+    heading.dataset.role = 'step-title';
+    heading.textContent = current?.label ?? '';
     stack.append(heading);
+    if (current?.doc) {
+      const doc = document.createElement('p');
+      doc.className = 'muted';
+      doc.textContent = current.doc;
+      stack.append(doc);
+    }
+    stack.append(this.#stepBody());
+    stack.append(this.#navigation(steps));
+    host.replaceChildren(stack);
+  }
 
-    if (this.#status?.initialised) {
+  #stepBody() {
+    if (this.#step === DIRECTORY) {
+      const picker = document.createElement('keel-target-picker');
+      picker.listing = this.#listing;
+      return picker;
+    }
+    if (this.#step === TARGET) {
       const form = document.createElement('keel-add-form');
       form.status = this.#status;
       form.target = this.#target;
-      stack.append(form);
-    } else {
-      const form = document.createElement('keel-new-form');
-      form.catalog = this.#catalog;
-      form.dials = this.#dials;
-      form.target = this.#target;
-      stack.append(form);
+      return form;
     }
-
-    const questions = document.createElement('keel-question-list');
-    questions.questions = this.#preview?.questions ?? [];
-    const questionsHeading = document.createElement('h2');
-    questionsHeading.textContent = 'Questions';
-    stack.append(questionsHeading, questions);
-
-    host.replaceChildren(stack);
+    if (this.#step === QUESTIONS) {
+      const questions = document.createElement('keel-question-list');
+      questions.questions = this.#preview?.questions ?? [];
+      return questions;
+    }
+    if (this.#step === REVIEW) {
+      const review = document.createElement('keel-review');
+      review.rows = this.#summary();
+      review.busy = this.#busy;
+      review.ready = this.#ready();
+      review.hint = this.#reviewHint();
+      return review;
+    }
+    const form = document.createElement('keel-new-form');
+    form.catalog = this.#catalog;
+    form.dials = this.#dials;
+    form.target = this.#target;
+    form.step = this.#step;
+    return form;
   }
+
+  /** Why Generate is disabled, when it is. */
+  #reviewHint() {
+    if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
+    if (this.#error !== null) return 'Fix the refusal above before generating.';
+    if (this.#preview === null) return 'Waiting for the plan…';
+    return '';
+  }
+
+  #navigation(steps) {
+    const row = document.createElement('cluster-pk');
+    row.className = 'nav';
+    row.setAttribute('space', 'var(--s-2)');
+    const at = steps.findIndex((step) => step.id === this.#step);
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.dataset.role = 'back';
+    back.textContent = '← Back';
+    back.disabled = at <= 0;
+    back.addEventListener('click', () => this.#goToStep(previousStep(steps, this.#step)));
+
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.dataset.role = 'next';
+    next.className = 'primary';
+    next.textContent = 'Next →';
+    next.disabled = at < 0 || at >= steps.length - 1;
+    next.addEventListener('click', () => this.#goToStep(nextStep(steps, this.#step)));
+
+    row.append(back, next);
+    return row;
+  }
+}
+
+/**
+ * The first clause of a label written as `name — what it is`. The
+ * menus spell a choice out because that is a menu's job; a summary
+ * row has a column of its own for the name and no room for the gloss.
+ */
+function headline(label) {
+  return (label ?? '').split(' — ')[0];
+}
+
+/** An entrypoint set, spelled the way its own menu spells it. */
+function spellEntrypoints(here) {
+  const named = new Map(
+    (here.framework.entrypointStep?.choices ?? []).map((choice) => [
+      choice.id,
+      headline(choice.label),
+    ]),
+  );
+  return here.combination.entrypoints.map((id) => named.get(id) ?? id).join(' + ');
 }
