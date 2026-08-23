@@ -684,6 +684,15 @@ describe('persistence install on quarkus-rest (Gradle)', () => {
     expect(compose).toContain('FLYWAY_URL: jdbc:postgresql://db:5432/walking_skeleton');
     expect(compose).toContain('condition: service_healthy');
     expect(compose).toMatch(/volumes:\n {2}db-data:/);
+    // The volume mounts the image's own VOLUME, which for PostgreSQL
+    // 18 is /var/lib/postgresql — PGDATA moved down into a
+    // version-scoped subdirectory and the entrypoint now *refuses to
+    // start* when it finds a volume still mounted at the old
+    // /var/lib/postgresql/data (docker-library/postgres#1259). The
+    // literal path is the assertion: nothing else in the suite boots
+    // this container.
+    expect(compose).toContain('- db-data:/var/lib/postgresql\n');
+    expect(compose).not.toContain('/var/lib/postgresql/data');
 
     // README sections and the REST slice.
     const readme = read(tree, 'README.md');
