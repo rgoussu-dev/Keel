@@ -462,8 +462,17 @@ export class KeelApp extends HTMLElement {
     return (this.#target.stack ?? '') !== '';
   }
 
-  /** What the plan shows instead of a tree while the form is incomplete. */
+  /**
+   * What the plan shows instead of a tree when it has no tree to
+   * show — a run still being filled in, or one the engine refused.
+   *
+   * An empty panel is the one thing it must not be. A refused run
+   * previews nothing, so the tree would render as a blank box beside
+   * a banner the eye has already skipped past; saying the plan is
+   * missing *because* the run was refused is what connects the two.
+   */
   #hint() {
+    if (this.#error !== null) return 'No plan — this run was refused. The reason is above.';
     if (this.#complete()) return '';
     if (this.#target?.kind === 'add-module') return 'Name the context to see its plan.';
     if (this.#target?.kind === 'add-vertical') return 'Pick a vertical to see its plan.';
@@ -542,10 +551,14 @@ export class KeelApp extends HTMLElement {
     return form;
   }
 
-  /** Why Generate is disabled, when it is. */
+  /**
+   * Why Generate is disabled, when it is — the refusal itself rather
+   * than a pointer to it, because the review step is the one place a
+   * user arrives at *intending* to commit.
+   */
   #reviewHint() {
+    if (this.#error !== null) return `Refused: ${this.#error.message}`;
     if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
-    if (this.#error !== null) return 'Fix the refusal above before generating.';
     if (this.#preview === null) return 'Waiting for the plan…';
     return '';
   }

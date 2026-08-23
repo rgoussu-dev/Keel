@@ -18,7 +18,12 @@ import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/co
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
-import { expectOk, installMediator, runActionsExcept } from '../../../support/factory.js';
+import {
+  expectErr,
+  expectOk,
+  installMediator,
+  runActionsExcept,
+} from '../../../support/factory.js';
 
 let cwd: string;
 
@@ -182,10 +187,10 @@ describe('keel.add-vertical (keel add persistence)', () => {
     expect(stored.answers['persistence/database-compose']?.['migrations']).toBe('liquibase');
   });
 
-  it('hard-fails on a CLI-shaped project with the uncovered dimensions', async () => {
+  it('refuses a CLI-shaped project with the uncovered dimensions, as an Err', async () => {
     await seed('quarkus-cli');
-    await expect(
-      installMediator().dispatch(
+    const error = expectErr(
+      await installMediator().dispatch(
         addVerticalCommand({
           cwd,
           vertical: 'persistence',
@@ -194,6 +199,8 @@ describe('keel.add-vertical (keel add persistence)', () => {
           dryRun: false,
         }),
       ),
-    ).rejects.toThrow(/no adapter covers dimension\(s\)/);
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toMatch(/no adapter covers dimension\(s\)/);
   });
 });

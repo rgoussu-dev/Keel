@@ -282,8 +282,21 @@ A refusal comes back as **422** with the domain's own error code:
 { "error": { "code": "keel.unknown-stack", "message": "unknown stack 'nope'; available: …" } }
 ```
 
+**Every refusal, including the ones raised at the bottom of the
+install.** Most are decided at a handler's front door and were always
+an `Err`; one was not. The resolver hard-fails when no adapter covers
+a dimension a vertical declares — `keel add containerization` on a CLI
+project, which has nothing to serve an image from — and it does so by
+throwing, from inside `installVertical`, past every menu. A throw is
+the one thing an HTTP layer can only read as a crash, so that answered
+**500 with a bare string**. It now carries a code
+(`keel.uncoverable-vertical`) and the mediator puts it back on the
+`Err` rail, so it arrives here as a 422 like any other and the page
+shows what is missing and which tag would close it.
+
 A malformed request is a **400**, a missing or wrong token a **401**,
-and a failed `Host`/`Origin` guard a **403**.
+and a failed `Host`/`Origin` guard a **403**. A **500** now means what
+it should: a bug, not a refusal.
 
 ```sh
 # scripted, against a running `keel ui`
