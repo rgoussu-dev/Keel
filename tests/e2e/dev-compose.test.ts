@@ -168,9 +168,12 @@ describe.skipIf(skip)('the emitted dev environment', () => {
       // `pg_isready` answers before initdb has necessarily created
       // the dialled role and database, and those live in the very
       // directory the mount point moved.
+      // `-T`, not its `--no-tty` long form: the long spelling is a
+      // recent addition and the runner's compose rejects it, where
+      // the short flag has meant this since compose v2.
       const query = compose(cwd, project, [
         'exec',
-        '--no-tty',
+        '-T',
         'db',
         'psql',
         '--username=app',
