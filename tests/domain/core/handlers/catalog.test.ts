@@ -60,6 +60,18 @@ describe('keel.catalog', () => {
     expect(verticals.map((vertical) => vertical.id)).toEqual([...listVerticalIds(shippedRegistry)]);
   });
 
+  it('names each vertical twice over: the id you type and the concept it bears', async () => {
+    // A front end offering `iac` and `vcs` as a list of ids is asking
+    // the user to already know keel's jargon. The title is what makes
+    // the card readable; the id is still there because it is what
+    // `keel add <id>` takes.
+    const { verticals } = await catalog();
+    const iac = verticals.find((vertical) => vertical.id === 'iac');
+    expect(iac?.title).toBe('Infrastructure as code');
+    expect(iac?.description).not.toBe('');
+    for (const vertical of verticals) expect(vertical.title).not.toBe('');
+  });
+
   it('reports a stack’s dials with the default first', async () => {
     const stack = find((await catalog()).stacks, 'quarkus-rest');
     expect(stack.buildSystems.map((option) => option.id)).toEqual(['gradle', 'maven']);

@@ -45,17 +45,17 @@ install, and "add a bounded context" appears only where
 A rail of steps across the top, the open step on the left, and the
 plan on the right — live, from the first step to the last.
 
-| Step              | What it asks                                                                                                                                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                           |
-| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                           |
-| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                   |
-| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                      |
-| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                            |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
-| **What to add**   | _(brownfield only)_ A vertical to layer on, or a bounded context. Verticals already installed are offered for re-render rather than a second install.                                                      |
-| **Questions**     | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.                                                                          |
-| **Review**        | Every choice the run will make, each with a _change_ link back to its step, and the Generate button. Nothing is written before you press it.                                                               |
+| Step              | What it asks                                                                                                                                                                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                         |
+| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                         |
+| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                 |
+| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                    |
+| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                          |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                               |
+| **What to add**   | _(brownfield only)_ A capability to layer on, or a bounded context — one card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys. Installed ones are badged and offered for re-render. |
+| **Questions**     | Everything the composition adapters ask. Conditional, so the list changes as you choose. Each field names the adapter that asked.                                                                                                        |
+| **Review**        | Every choice the run will make, each with a _change_ link back to its step, and the Generate button. Nothing is written before you press it.                                                                                             |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far

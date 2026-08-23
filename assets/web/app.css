@@ -380,6 +380,13 @@ button.link {
   gap: var(--s-4, 0.15rem);
 }
 
+.cards .card-heading {
+  display: flex;
+  gap: var(--s-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
 .cards .card-title {
   font-weight: 600;
 }

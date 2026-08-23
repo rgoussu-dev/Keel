@@ -184,6 +184,14 @@ export interface ServiceDescriptor {
 /** A vertical `keel add` can install. */
 export interface VerticalDescriptor {
   readonly id: string;
+  /**
+   * The concept it bears, as a person would name it — resolved, so
+   * never absent even where the vertical declared none. A front end
+   * offering verticals shows this and `description` together: the id
+   * is what you type on the command line, the title is what you
+   * recognise, and the description is what installing it buys.
+   */
+  readonly title: string;
   readonly description: string;
   readonly dimensions: readonly string[];
 }

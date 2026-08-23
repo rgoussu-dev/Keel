@@ -69,7 +69,7 @@ function brownfieldSteps() {
     {
       id: TARGET,
       label: 'What to add',
-      doc: 'A vertical to layer onto this project, or a new bounded context. Only what this project can actually take is offered.',
+      doc: 'A capability to layer onto this project, or a new bounded context. Every registered vertical is offered — one this project’s shape cannot carry says so when you pick it, rather than being hidden.',
     },
   ];
 }

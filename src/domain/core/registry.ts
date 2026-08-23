@@ -213,10 +213,30 @@ export interface StackSummary {
   readonly description: string;
 }
 
-/** One vertical's id + description, for `keel add --list`. */
+/** One vertical's id, title and description, for `keel add --list`. */
 export interface VerticalSummary {
   readonly id: string;
+  /** Resolved, never absent. @see verticalTitle */
+  readonly title: string;
   readonly description: string;
+}
+
+/**
+ * The name a front end shows for a vertical: its declared
+ * {@link Vertical.title}, or the id spelled out when it declares
+ * none.
+ *
+ * Resolved here rather than in each front end for the reason every
+ * other menu value is: two places deriving a label is two places to
+ * disagree, and the fallback is exactly the kind of small rule that
+ * drifts. A plugin declaring no title gets `acme-widget` → "Acme
+ * widget", which is a worse title than one it could have written and
+ * a better one than a raw id.
+ */
+export function verticalTitle(vertical: Vertical): string {
+  if (vertical.title !== undefined && vertical.title !== '') return vertical.title;
+  const spelled = vertical.id.replace(/[-_]+/g, ' ').trim();
+  return spelled.charAt(0).toUpperCase() + spelled.slice(1);
 }
 
 /** Registered stack ids in deterministic order. */
@@ -259,9 +279,11 @@ export function listVerticalIds(registry: Registry): readonly string[] {
 
 /** Every registered vertical's id + description, in deterministic order. */
 export function listVerticals(registry: Registry): readonly VerticalSummary[] {
-  return [...registry.verticals()]
-    .sort(byId)
-    .map((vertical) => ({ id: vertical.id, description: vertical.description }));
+  return [...registry.verticals()].sort(byId).map((vertical) => ({
+    id: vertical.id,
+    title: verticalTitle(vertical),
+    description: vertical.description,
+  }));
 }
 
 function byId(a: { readonly id: string }, b: { readonly id: string }): number {

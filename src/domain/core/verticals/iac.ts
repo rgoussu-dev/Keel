@@ -22,6 +22,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const iacVertical: Vertical = {
   id: 'iac',
+  title: 'Infrastructure as code',
   description: 'Where this project runs — the OpenTofu deploy target.',
   dimensions: ['deploy-target'],
   promotes: [OPENTOFU_TAG, ...IAC_CLOUDS.map(cloudTag)],

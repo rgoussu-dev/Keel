@@ -11,6 +11,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const fullstackVertical: Vertical = {
   id: 'fullstack',
+  title: 'Product root',
   description: 'Product-root glue for multi-service workspaces.',
   dimensions: ['product-docs', 'product-compose'],
   adapters: [productDocsAdapter, productComposeAdapter],

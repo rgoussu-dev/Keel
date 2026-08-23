@@ -24,6 +24,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const gatewayVertical: Vertical = {
   id: 'gateway',
+  title: 'Service gateway',
   description: 'Cross-service seam: client gateways and server accommodations from peer tags.',
   dimensions: [],
   adapters: [

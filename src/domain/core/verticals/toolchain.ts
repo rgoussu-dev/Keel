@@ -31,6 +31,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const toolchainVertical: Vertical = {
   id: 'toolchain',
+  title: 'Toolchain',
   description:
     "Records the project's toolchain needs in the manifest's toolchain block, versions from the pin registry.",
   dimensions: [TOOLCHAIN_DIMENSION],
