@@ -322,9 +322,22 @@ would ship as separate packages implementing the same port.
   40 `jvm-*` shards (JDK 25 + Gradle 9.7.0, plus Maven on every
   `jvm-modulith-*`, every `jvm-combo-*` and every
   `jvm-add-module-*-maven`), `go` (Go + Docker), `rust` (cargo), `web`
-  (npm/pnpm + Chrome) and `web-combo` (npm/pnpm). Each shard provisions
-  only what its suites probe for. Between the two jobs, nothing in the
-  suite is skipped for want of a tool.
+  (npm/pnpm + Chrome), `web-combo` (npm/pnpm) and `dev-compose`
+  (Docker alone). Each shard provisions only what its suites probe
+  for. Between the two jobs, nothing in the suite is skipped for want
+  of a tool.
+- **`dev-compose` is the only shard that runs an emitted
+  `dev/compose.yaml`, and it exists because nothing did.** Every other
+  docker-using suite reaches its database through Testcontainers,
+  which mounts no volume — so the whole grid stayed green over a dev
+  database whose volume mount made PostgreSQL 18 refuse to start
+  (docker-library/postgres#1259). A unit test reads the YAML; only
+  `docker compose up --wait` reads it the way a user does. The suite
+  fakes every deferred action, so it scaffolds the reporting stack
+  with no JDK and probes for `docker` alone, and it boots the database
+  only: the SELinux relabel the monitoring mounts carry is inert on a
+  GitHub runner, so starting those five containers would buy the shard
+  a gigabyte of pulls and no assertion.
 - **The JVM shards follow the grid, and the grid comes first.** The
   `basic` typology splits by framework — `jvm-basic-quarkus`,
   `-spring`, `-micronaut`, four stacks each (CLI and REST × Java and
