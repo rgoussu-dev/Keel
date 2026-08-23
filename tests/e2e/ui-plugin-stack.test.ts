@@ -31,9 +31,10 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { E2E_TIMEOUT_MS, mkTempDir, runStep, skipE2E } from '../support/web-e2e.js';
+import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
+  buildCli,
   browserBinary,
   choice,
   control,
@@ -64,15 +65,12 @@ let mishaps: string[];
 
 describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack on the page', () => {
   beforeAll(async () => {
-    // `bin/keel.js` loads `dist/`, and the e2e job installs without
-    // building. Compiling here is what makes this suite test the
-    // command rather than a stale artefact of whatever ran last.
-    runStep(
-      repoRoot,
-      'tsc -p tsconfig.build.json',
-      path.join(repoRoot, 'node_modules', '.bin', 'tsc'),
-      ['-p', 'tsconfig.build.json'],
-    );
+    // Compiled rather than assumed, so this suite tests the command
+    // and not a stale artefact of whatever ran last — and claimed
+    // rather than repeated, because three `keel ui` suites run in
+    // parallel and three `tsc` runs into one `dist/` is a torn read
+    // waiting to happen. See `buildCli`.
+    buildCli();
     // Empty but for the plugin, so the page opens on the greenfield
     // form and the CLI finds the plugin where a real project keeps
     // one.

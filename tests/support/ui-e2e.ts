@@ -16,11 +16,14 @@
  * there are two: they differ by what is on disk when the page opens.
  */
 
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { type Locator, type Page } from 'playwright';
-import { chromium } from './web-e2e.js';
+import { chromium, runStep } from './web-e2e.js';
 
 /** The repository root, from this file's own location. */
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -55,6 +58,94 @@ export const browserBinary = ((): string | null => {
   });
   return found.status === 0 ? (found.stdout.split('\n')[0]?.trim() ?? null) : null;
 })();
+
+/* ---- building the binary under test ---------------------------- */
+
+/**
+ * Compiles `dist/` **once** across every `keel ui` suite in a run,
+ * however many of them vitest is running at the same time.
+ *
+ * `bin/keel.js` loads `dist/`, and the e2e job installs without
+ * building, so each of these suites has to compile before it can
+ * spawn the command rather than a stale artefact of whatever ran
+ * last. Doing that per suite is what broke: vitest parallelises
+ * across files, so three workers ran `tsc` into the *same* `dist/`
+ * while a fourth process — a spawned `keel ui` — was importing out of
+ * it. What comes back from a module being rewritten underneath the
+ * reader is a torn one, and node reports that as
+ * `does not provide an export named 'CatalogHandler'` — a missing
+ * export that is not missing, on a file nobody touched.
+ *
+ * So the build is claimed rather than repeated. `mkdir` is atomic, so
+ * exactly one worker wins it and compiles; the rest wait for the
+ * marker it drops and then use what it built.
+ *
+ * **The claim is keyed by the sources**, not by the run, which is
+ * what keeps "compile, don't trust the last run's artefact" true. A
+ * changed file changes the key and buys a fresh build; an unchanged
+ * tree reuses one, because that build is byte-for-byte the one this
+ * suite would have produced. Nothing here can serve a stale `dist/`
+ * without `src/` being stale too.
+ */
+export function buildCli(): void {
+  const lock = path.join(os.tmpdir(), `keel-ui-e2e-build-${sourceKey()}`);
+  const marker = path.join(lock, 'done');
+  try {
+    fs.mkdirSync(lock, { recursive: false });
+  } catch {
+    // Someone else claimed it: either they are compiling now, or they
+    // finished in an earlier run over these same sources.
+    if (waitForBuild(marker)) return;
+    // They died mid-build. Compiling ourselves is the only way out,
+    // and it is safe: whatever they left behind is what we overwrite.
+  }
+  runStep(
+    repoRoot,
+    'tsc -p tsconfig.build.json',
+    path.join(repoRoot, 'node_modules', '.bin', 'tsc'),
+    ['-p', 'tsconfig.build.json'],
+  );
+  fs.writeFileSync(marker, 'built');
+}
+
+/** Whether the marker turned up before the deadline. */
+function waitForBuild(marker: string): boolean {
+  const deadline = Date.now() + BUILD_WAIT_MS;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(marker)) return true;
+    // Synchronous on purpose: `beforeAll` hooks in sibling workers are
+    // what we are waiting on, and there is nothing else for this one
+    // to do until they are done.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+  }
+  return false;
+}
+
+/** Long enough for a cold `tsc` on a loaded runner, short of a hang. */
+const BUILD_WAIT_MS = 120_000;
+
+/**
+ * A short digest of everything the build reads: the compiler's
+ * configuration and every source file's path and mtime. Two runs over
+ * an untouched tree agree; one file saved and they do not.
+ */
+function sourceKey(): string {
+  const hash = createHash('sha256');
+  const config = path.join(repoRoot, 'tsconfig.build.json');
+  hash.update(repoRoot).update(String(fs.statSync(config).mtimeMs));
+  const src = path.join(repoRoot, 'src');
+  for (const entry of fs.readdirSync(src, { recursive: true, withFileTypes: true }).sort(byName)) {
+    if (!entry.isFile()) continue;
+    const file = path.join(entry.parentPath ?? src, entry.name);
+    hash.update(file).update(String(fs.statSync(file).mtimeMs));
+  }
+  return hash.digest('hex').slice(0, 16);
+}
+
+/** `readdirSync` gives no order guarantee, and a digest needs one. */
+function byName(a: fs.Dirent, b: fs.Dirent): number {
+  return `${a.parentPath}/${a.name}`.localeCompare(`${b.parentPath}/${b.name}`);
+}
 
 /* ---- the server under test ------------------------------------- */
 
