@@ -86,8 +86,15 @@ import {
   SKELETON_MODULE,
   type ModuleLayoutOption,
 } from '../adapters/module-layout.js';
-import { emitsFor } from '../adapters/context-support.js';
-import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from '../compatibility.js';
+import { assemblyRefusal } from '../compatibility.js';
+import {
+  emitsPeerContext,
+  legalBuildSystems,
+  legalExtraVerticals,
+  legalModuleLayouts,
+  peerContextOffered,
+  promotedBy,
+} from '../dials.js';
 import { installVertical } from '../install.js';
 import {
   assemblableStacks,
@@ -113,7 +120,7 @@ import {
   type WizardPath,
 } from '../stack-wizard.js';
 import { coverageGap, coversFor, type CoverageGap } from '../resolver.js';
-import { getVertical, listVerticals, type VerticalSummary } from '../verticals/index.js';
+import { getVertical, type VerticalSummary } from '../verticals/index.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -887,11 +894,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       // sentence the gate refuses by. It used to be spelled out here
       // as `layoutTag === MODULITH_LAYOUT_TAG`, a second copy of a
       // rule declared elsewhere, which is exactly how a menu and a
-      // refusal come to disagree.
-      legalWith(conflictsOf(piecesOf(stack)), stackTagsFor(stack, buildTag, layoutTag), [
-        PEER_CONTEXT_TAG,
-      ]) &&
-      emitsPeerContext(stack, stackTagsFor(stack, buildTag, layoutTag))
+      // refusal come to disagree. `keel ui` reads the identical
+      // function through `keel.dials`, for the identical reason.
+      peerContextOffered(stack, buildTag, layoutTag)
     ) {
       const answer = (await prompt.ask(peerContextQuestion(), stackAsker(stack))).trim();
       want = answer === 'yes';
@@ -935,23 +940,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // `iac` legal here, and neither the menu nor the front door
     // should pretend otherwise.
     const seed = [...tags, ...promotedBy(stack.verticals)];
-    const candidates = listVerticals().filter((summary) => {
-      if (own.has(summary.id)) return false;
-      const vertical = getVertical(summary.id);
-      if (vertical === null) return false;
-      // Two ways a vertical is a dead end here, and both are asked
-      // ahead of the install rather than discovered inside it: no
-      // adapter covers one of its dimensions, or one of its own rules
-      // is broken by what the other dials have settled.
-      //
-      // Coverage reads `seed` and the rules read `tags`, because a
-      // promotable tag cuts opposite ways: it can only *help* an
-      // adapter match, and it can only *create* a conflict. Hiding a
-      // vertical over a tag that may never appear would take away a
-      // legal choice; the assembly gate still refuses it if the tag
-      // does appear.
-      return coversFor(vertical, seed) && assemblyRefusal([vertical], tags) === null;
-    });
+    // The same menu `keel.dials` reports, so a form's list and this
+    // question's choices cannot come apart — see `../dials.ts` for
+    // what makes an extra a dead end here.
+    const candidates = legalExtraVerticals(stack, tags);
     const requested =
       command.extraVerticals !== undefined
         ? command.extraVerticals
@@ -1026,58 +1018,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 }
 
 /**
- * The pieces whose rules govern an assembly of this stack: the preset
- * itself and every vertical it installs. @see assemblyRefusal
- */
-function piecesOf(stack: Stack): readonly ConflictSource[] {
-  return [stack, ...stack.verticals];
-}
-
-/**
- * The build systems worth offering: those some module layout can
- * still complete legally.
- *
- * "Some layout", because this dial settles first and the layout is
- * not chosen yet. Offering a build system that only works under one
- * of two layouts is right — the layout menu narrows next, with this
- * answer in hand. Dropping one that works under neither is what keeps
- * the user off a road with no legal end.
- */
-function legalBuildSystems(
-  stack: Stack,
-  options: readonly BuildSystemOption[],
-): readonly BuildSystemOption[] {
-  const layouts: readonly (Tag | null)[] = stack.moduleLayouts?.map((o) => o.tag) ?? [null];
-  const offered = options.filter((option) =>
-    layouts.some(
-      (layout) =>
-        assemblyRefusal(piecesOf(stack), stackTagsFor(stack, option.tag, layout)) === null,
-    ),
-  );
-  // Every option refused is not a menu, it is a refusal — and the
-  // assembly gate is the thing that says so, in the rule's own words.
-  // Handing the dial back unfiltered lets the run reach it.
-  return offered.length === 0 ? options : offered;
-}
-
-/**
- * The module layouts worth offering, given the build system already
- * settled — exact rather than optimistic, since this is the last dial
- * to put a tag on the assembly.
- */
-function legalModuleLayouts(
-  stack: Stack,
-  buildTag: Tag | null,
-  options: readonly ModuleLayoutOption[],
-): readonly ModuleLayoutOption[] {
-  const offered = options.filter(
-    (option) =>
-      assemblyRefusal(piecesOf(stack), stackTagsFor(stack, buildTag, option.tag)) === null,
-  );
-  return offered.length === 0 ? options : offered;
-}
-
-/**
  * Refuses an assembly a piece has declared illegal.
  *
  * The **loud** half of the compatibility declaration (`../compatibility.ts`).
@@ -1104,11 +1044,6 @@ function assemblyIsLegal(
   const refusal = assemblyRefusal([stack, ...stack.verticals, ...extras], tags);
   if (refusal === null) return ok(null);
   return err(new DomainError(`stack '${stack.id}': ${refusal}`, 'keel.incompatible'));
-}
-
-/** Every tag installing `verticals` may promote, in one flat list. */
-function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
-  return verticals.flatMap((vertical) => vertical.promotes ?? []);
 }
 
 /**
@@ -1596,19 +1531,6 @@ function scaffoldedModules(
 }
 
 /** The tag set a single-service install of `stack` would carry. */
-
-/**
- * Whether any adapter this stack would install actually emits the
- * second bounded context for `tags`.
- *
- * The `Stack`-shaped face of {@link emitsFor}, which `keel add module`
- * calls with the verticals of a project already on disk. Same probe,
- * because a second copy is exactly how the check this guard replaced
- * went stale.
- */
-function emitsPeerContext(stack: Stack, tags: readonly Tag[]): boolean {
-  return emitsFor(stack.verticals, PEER_CONTEXT_TAG, tags);
-}
 
 /**
  * Every single-service stack whose modulith carries a peer context,

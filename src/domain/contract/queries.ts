@@ -10,12 +10,13 @@
  * ask, answer, ask the next — and prints the plan once at the end.
  * A form has to show every field at once, before anything is
  * committed, and re-show it as answers change. That needs the
- * catalog up front ({@link CatalogQuery}), the question set a given
- * set of choices would produce ({@link PreviewQuery}), and, for the
- * brownfield half, what a project on disk already has
+ * catalog up front ({@link CatalogQuery}), the menus a *combination*
+ * of dials still leaves open ({@link DialsQuery}), the question set a
+ * given set of choices would produce ({@link PreviewQuery}), and, for
+ * the brownfield half, what a project on disk already has
  * ({@link ProjectStatusQuery}).
  *
- * All three are `Query` — they read the registries and the manifest
+ * All four are `Query` — they read the registries and the manifest
  * and write nothing, `keel.preview` included: it stages the install
  * against an in-memory Tree and reports the changes without
  * committing them.
@@ -174,6 +175,93 @@ export interface CatalogQuery extends Query<Catalog> {
 /** Constructs a {@link CatalogQuery}. */
 export function catalogQuery(): CatalogQuery {
   return { kind: 'keel.catalog', intent: 'query' };
+}
+
+/* ------------------------------------------------------------------ *
+ * Dials                                                               *
+ * ------------------------------------------------------------------ */
+
+/**
+ * What each stack-level dial may still be set to, given the others —
+ * and the target those settings settle at.
+ *
+ * The catalog describes a preset's dials; this describes a
+ * *combination*. The difference is the whole reason this query
+ * exists. `StackDescriptor.buildSystems` is the honest answer to
+ * "what does `quarkus-rest` offer?", and no answer at all to "…with
+ * the modulith already chosen?", because a {@link Conflict} can name
+ * two dials at once. A terminal never had to ask: it settles one dial
+ * before it offers the next, so each menu is filtered against the
+ * tags the earlier ones left behind. A form shows every dial at once
+ * and has nowhere to put that filtering — so it asks here.
+ *
+ * **Flat, not a cross-product.** One field per dial, each answering
+ * "given the rest of this target". Reporting legality *inside* the
+ * catalog would mean a shape that multiplies with every dial added,
+ * and a catalog that stopped being a flat description of a preset;
+ * this grows by one field instead, and it grows where the question is
+ * asked rather than where the preset is described.
+ *
+ * **The page never sees a tag**, exactly as it never does in
+ * {@link StackFinder}. It sends the target it holds and reads back
+ * ids it can put straight on a control — the tag vocabulary that
+ * decides the answer stays where it belongs.
+ */
+export interface DialOptions {
+  /**
+   * The caller's target, snapped to the menus below: every dial set
+   * to the value it asked for where that is still legal, and to the
+   * first legal one where it is not.
+   *
+   * Reported rather than left to the caller to recompute, for the
+   * reason `keel.preview` and the install command share a body — a
+   * front end that re-derived it would be a second implementation of
+   * the resolution order the handler already runs, and the two would
+   * disagree the first time a rule moved. A caller adopts this target
+   * and posts it back verbatim.
+   *
+   * Dials are **set** rather than left absent, which is what stops
+   * the install asking about them: a stack-level dial the install
+   * asks about arrives as a preview question, and a form that already
+   * renders it from here would show the same choice twice.
+   * `extraVerticals` is the exception — it is only ever pruned here,
+   * never pinned, because nothing but the preview question offers it.
+   */
+  readonly target: InstallTarget;
+  /** Build systems still legal; empty when the stack pins one. */
+  readonly buildSystems: readonly ChoiceDescriptor[];
+  /** Module layouts still legal under the settled build system. */
+  readonly moduleLayouts: readonly ChoiceDescriptor[];
+  /** Services of a composite, with their own build systems; empty otherwise. */
+  readonly services: readonly ServiceDescriptor[];
+  /**
+   * Whether the peer context may be switched on as the dials stand —
+   * the capability probe {@link StackDescriptor.peerContext} reports
+   * *and* the rules, which is the half a catalog cannot answer.
+   */
+  readonly peerContext: boolean;
+  /** Verticals that may still be layered on top; pruned as the dials move. */
+  readonly extraVerticals: readonly ChoiceDescriptor[];
+}
+
+/**
+ * Reports the dial menus legal for a target, and the target they
+ * settle at.
+ *
+ * Total: an unknown stack, a half-filled target, or one already in an
+ * illegal combination all get an answer rather than a refusal. A menu
+ * that refuses to answer where the assembly is broken is a menu that
+ * cannot be used to fix it — refusing is `keel.preview`'s job, and
+ * the install command's.
+ */
+export interface DialsQuery extends Query<DialOptions> {
+  readonly kind: 'keel.dials';
+  readonly target: InstallTarget;
+}
+
+/** Constructs a {@link DialsQuery}. */
+export function dialsQuery(input: Omit<DialsQuery, 'kind' | 'intent'>): DialsQuery {
+  return { kind: 'keel.dials', intent: 'query', ...input };
 }
 
 /* ------------------------------------------------------------------ *

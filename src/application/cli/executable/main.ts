@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { RegistryMediator } from '../../../domain/core/mediator.js';
 import { NewProjectHandler } from '../../../domain/core/handlers/new-project.js';
 import { CatalogHandler } from '../../../domain/core/handlers/catalog.js';
+import { DialsHandler } from '../../../domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../../domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../../domain/core/handlers/project-status.js';
 import { AddModuleHandler } from '../../../domain/core/handlers/add-module.js';
@@ -52,6 +53,7 @@ export async function main(argv: string[]): Promise<void> {
     new ToolchainInstallHandler(deps),
     new ToolchainCheckHandler(deps),
     new CatalogHandler(),
+    new DialsHandler(),
     new PreviewHandler(deps),
     new ProjectStatusHandler(deps),
   ]);

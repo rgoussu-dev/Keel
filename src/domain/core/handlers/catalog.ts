@@ -36,8 +36,8 @@ import type {
   StackFinder,
   VerticalDescriptor,
 } from '../../contract/queries.js';
-import { emitsFor } from '../adapters/context-support.js';
-import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from '../adapters/module-layout.js';
+import { MODULITH_LAYOUT_TAG } from '../adapters/module-layout.js';
+import { emitsPeerContext } from '../dials.js';
 import { assemblableStacks, getStack, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   entrypointCombinations,
@@ -191,5 +191,5 @@ function supportsPeerContext(stack: Stack): boolean {
     ...(stack.buildSystems?.[0] ? [stack.buildSystems[0].tag] : []),
     MODULITH_LAYOUT_TAG,
   ];
-  return emitsFor(stack.verticals, PEER_CONTEXT_TAG, tags);
+  return emitsPeerContext(stack, tags);
 }

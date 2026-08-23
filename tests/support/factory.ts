@@ -15,6 +15,7 @@ import { DomainError } from '../../src/domain/kernel/result.js';
 import { RegistryMediator } from '../../src/domain/core/mediator.js';
 import { NewProjectHandler } from '../../src/domain/core/handlers/new-project.js';
 import { CatalogHandler } from '../../src/domain/core/handlers/catalog.js';
+import { DialsHandler } from '../../src/domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../src/domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../src/domain/core/handlers/project-status.js';
 import { AddModuleHandler } from '../../src/domain/core/handlers/add-module.js';
@@ -56,6 +57,7 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     new ToolchainInstallHandler(deps),
     new ToolchainCheckHandler(deps),
     new CatalogHandler(),
+    new DialsHandler(),
     new PreviewHandler(deps),
     new ProjectStatusHandler(deps),
   ]);
