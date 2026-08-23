@@ -1959,6 +1959,18 @@ ci`/`containerization`/`distribution` on a service follow the same
 
 ### Fixed
 
+- **The CI provider was asked twice.** `ci` and `distribution` share
+  one question — where the repository is hosted — but sticky memory is
+  keyed per adapter, so a project taking both verticals was asked
+  "CI provider?" once by its `ci/*-pipeline` adapter and again by its
+  `distribution/*-container` one. The second answer was then thrown
+  away: `distributionProvider` prefers the `ci.*` tag precisely so the
+  two can never emit for different hosts. All nine adapters that
+  declare the question now name the others in `sharesAnswersWith`, so
+  whichever vertical is installed first asks, and the other borrows
+  the recorded answer — including in the reverse order, where
+  `distribution` runs first.
+
 - **A free-form interactive question's `doc` was invisible.** The
   inquirer adapter surfaced an adapter-written `Question.doc` as each
   choice's own description on a `select` question, but a free-form

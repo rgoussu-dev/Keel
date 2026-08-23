@@ -17,6 +17,7 @@ import {
   providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 import { loadToolchainPins } from './version-pins.js';
 
@@ -28,6 +29,7 @@ export const goPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['lang.go'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(GO_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), GO_PIPELINE_ID);
     const pins = await loadToolchainPins(ctx, GO_PIPELINE_ID);

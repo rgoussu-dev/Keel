@@ -14,6 +14,7 @@ import {
   providerTag,
   ciFormatCheck,
   ciLintCheck,
+  otherProviderAskers,
 } from './ci-pipeline.js';
 
 export const RUST_PIPELINE_ID = 'ci/rust-pipeline';
@@ -24,6 +25,7 @@ export const rustPipelineAdapter: Adapter = {
   covers: ['pipeline'],
   predicate: { requires: ['pkg.cargo'] },
   questions: [PROVIDER_QUESTION],
+  sharesAnswersWith: otherProviderAskers(RUST_PIPELINE_ID),
   async contribute(ctx) {
     const provider = ciProvider(ctx.answer('provider'), RUST_PIPELINE_ID);
     const files = await ctx.templates.render(ciTemplateId('rust-pipeline', provider), '', {

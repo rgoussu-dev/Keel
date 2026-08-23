@@ -54,6 +54,57 @@ export const PROVIDER_QUESTION: Question = {
   ],
 };
 
+/**
+ * Every adapter that declares {@link PROVIDER_QUESTION}, by id — the
+ * `ci` vertical's four pipeline adapters and the `distribution`
+ * vertical's five container adapters.
+ *
+ * The provider is one fact about a project (where the repository is
+ * hosted), and sticky memory is keyed per adapter — so on a project
+ * carrying both verticals the engine asked for it twice, and the
+ * second answer was then discarded by
+ * `distributionProvider`, which prefers the `ci.*` tag. Naming the
+ * whole set here lets each of them borrow the others' recorded
+ * answer via {@link Adapter.sharesAnswersWith}: the question is asked
+ * once, whichever vertical is installed first, and the two can never
+ * disagree.
+ *
+ * At most one entry ever resolves per vertical — the pipeline
+ * predicates are disjoint by stack family, and so are the container
+ * ones — so "the others" is a list of mutually exclusive candidates
+ * rather than a chain. Held as literals because both sides already
+ * import this module; `tests/domain/core/adapters/ci-pipeline.test.ts`
+ * checks the list against the adapters that actually declare the
+ * question.
+ */
+export const PROVIDER_ASKER_IDS: readonly string[] = [
+  'ci/jvm-pipeline',
+  'ci/go-pipeline',
+  'ci/rust-pipeline',
+  'ci/ts-pipeline',
+  'distribution/jvm-container',
+  'distribution/go-container',
+  'distribution/rust-container',
+  'distribution/ts-container',
+  'distribution/wc-container',
+];
+
+/**
+ * The {@link PROVIDER_ASKER_IDS} other than `self` — what an adapter
+ * declaring {@link PROVIDER_QUESTION} passes to
+ * `Adapter.sharesAnswersWith`. Throws on an id that is not in the
+ * list, so a rename surfaces at module load rather than as a
+ * silently re-asked question.
+ */
+export function otherProviderAskers(self: string): readonly string[] {
+  if (!PROVIDER_ASKER_IDS.includes(self)) {
+    throw new Error(
+      `'${self}' declares the CI provider question but is not in PROVIDER_ASKER_IDS; add it there so its siblings borrow its answer`,
+    );
+  }
+  return PROVIDER_ASKER_IDS.filter((id) => id !== self);
+}
+
 /** Validates a raw `provider` answer, failing loudly on anything else. */
 export function ciProvider(raw: string, requesterId: string): CiProvider {
   if (raw === 'github-actions' || raw === 'gitlab-ci') return raw;
