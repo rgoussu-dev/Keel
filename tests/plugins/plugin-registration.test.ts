@@ -21,6 +21,7 @@
 
 import path from 'node:path';
 import os from 'node:os';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -40,6 +41,7 @@ import {
 import { ejsTemplateSource } from '../../src/infrastructure/template/ejs-template-source.js';
 import { templateSourceFor } from '../../src/infrastructure/template/routing-template-source.js';
 import { FakePrompt } from '../../src/infrastructure/prompt/fake.js';
+import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
 import { expectErr, expectOk, installMediator } from '../support/factory.js';
 
 const fixtures = path.resolve(
@@ -49,6 +51,19 @@ const fixtures = path.resolve(
   'fixtures',
   'plugins',
 );
+
+/**
+ * Answers every shipped stack in the matrix below may ask for, so a
+ * non-interactive scaffold of any of them resolves without a prompt.
+ */
+const SHIPPED_ANSWERS = {
+  'walking-skeleton/quarkus-cli-bootstrap': { basePackage: 'com.acme.cli', projectName: 'demo' },
+  'walking-skeleton/spring-cli-rest-kotlin-bootstrap': {
+    basePackage: 'com.acme.app',
+    projectName: 'demo',
+  },
+  'vcs/git-init': { remote: '', defaultBranch: 'main' },
+};
 
 /** The fixture's own ids, spelled once. */
 const PLUGIN = 'acme';
@@ -89,12 +104,12 @@ function assetRootsOf(plugins: readonly LoadedPlugin[]): ReadonlyMap<string, str
 }
 
 /** The mediator `main` would have wired for this project directory. */
-async function mediatorFor(prompt?: FakePrompt) {
+async function mediatorFor(overrides: Partial<InstallDeps> = {}) {
   const plugins = await loadPlugins({ projectDir: cwd });
   return installMediator({
     registry: registryOf([shippedSource, ...plugins.map(sourceOf)]),
     templates: templateSourceFor(ejsTemplateSource, assetRootsOf(plugins)),
-    ...(prompt ? { prompt } : {}),
+    ...overrides,
   });
 }
 
@@ -184,7 +199,7 @@ describe('keel new, from a plugin stack', () => {
       who: 'menu',
       'keel.review': 'proceed',
     });
-    const mediator = await mediatorFor(prompt);
+    const mediator = await mediatorFor({ prompt });
 
     expectOk(
       await mediator.dispatch(
@@ -209,7 +224,7 @@ describe('keel new, from a plugin stack', () => {
       who: 'menu',
       'keel.review': 'proceed',
     });
-    const mediator = await mediatorFor(prompt);
+    const mediator = await mediatorFor({ prompt });
 
     expectOk(
       await mediator.dispatch(
@@ -231,6 +246,183 @@ describe('keel new, from a plugin stack', () => {
     expect(manifest['tags']).toContain('layout.modulith');
     expect(manifest['tags']).not.toContain('layout.basic');
   });
+});
+
+describe("a plugin's deferred action", () => {
+  it('runs after the tree is committed, through the ProcessRunner port', async () => {
+    await install(PLUGIN);
+    const mediator = await mediatorFor();
+
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: STACK,
+          answers: { 'acme-greeting/file': { who: 'deferred' } },
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+
+    // The stamp is written by a *subprocess* the action reached
+    // through the port it was handed, into the project's own cwd —
+    // so this asserts the plugin's action was wired to a real runner,
+    // not merely that a callback of its ran.
+    expect((await fs.readFile(path.join(cwd, 'acme-stamp.txt'), 'utf8')).trim()).toBe('deferred');
+    // And after the commit, not before: the action may rely on the
+    // files the Tree wrote already being on disk.
+    expect(await fs.pathExists(path.join(cwd, 'GREETING.md'))).toBe(true);
+  });
+
+  it('appears in the plan under --dry-run, and does not run', async () => {
+    await install(PLUGIN);
+    const mediator = await mediatorFor();
+
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, stack: STACK, answers: {}, interactive: false, dryRun: true }),
+      ),
+    );
+
+    // A dry run never reaches `runActions` at all — the handler
+    // stops before `commitScopes` — so the description in the report
+    // is the whole of what a user is shown, and the only place a
+    // plugin's side effect is declared before it happens.
+    expect(report.committed).toBe(false);
+    expect(report.actions).toContain('stamp the greeting for world');
+    expect(await fs.pathExists(path.join(cwd, 'acme-stamp.txt'))).toBe(false);
+    expect(await fs.pathExists(path.join(cwd, 'GREETING.md'))).toBe(false);
+  });
+
+  it('fails the run naming the action when it exits non-zero', async () => {
+    await install(PLUGIN);
+    // A runner that reports failure for everything, which is what a
+    // missing tool looks like to an action.
+    const mediator = await mediatorFor({
+      processes: {
+        run: () => ({ status: 1, stdout: '', stderr: 'no such thing' }),
+      },
+    });
+
+    const error = await mediator
+      .dispatch(
+        newProjectCommand({ cwd, stack: STACK, answers: {}, interactive: false, dryRun: false }),
+      )
+      .then(
+        () => null,
+        (thrown: unknown) => thrown as Error,
+      );
+
+    expect(error?.message).toContain('acme-greeting/stamp');
+    expect(error?.message).toContain('no such thing');
+  });
+});
+
+describe('a shipped stack, with a plugin registered', () => {
+  /** Every file under `root`, as path -> sha256, posix-separated. */
+  async function fingerprint(root: string): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const abs = path.join(dir, entry.name);
+        if (entry.isDirectory()) await walk(abs);
+        else if (entry.isFile()) {
+          const rel = path.relative(root, abs).split(path.sep).join('/');
+          out[rel] = createHash('sha256')
+            .update(await fs.readFile(abs))
+            .digest('hex');
+        }
+      }
+    };
+    await walk(root);
+    return out;
+  }
+
+  /**
+   * Scaffolds `stack` into a fresh directory and fingerprints the
+   * whole tree.
+   *
+   * **Every deferred action is skipped**, and that is the point
+   * rather than a shortcut: this asks what *keel* writes, and an
+   * action's output is written by `git`, `gradle` or `npm`. Letting
+   * them run would compare their determinism instead of keel's —
+   * `spotlessApply` in particular is best-effort, so a scaffolded
+   * Kotlin tree is not byte-stable across runs no matter which keel
+   * produced it. What an action does have is its own tests, above.
+   *
+   * The clock is the factory's pinned one, so even the manifest's
+   * timestamps are stable, which is what lets this be a byte
+   * comparison rather than a normalised one.
+   */
+  async function scaffold(
+    stack: string,
+    dials: Partial<Parameters<typeof newProjectCommand>[0]>,
+    withPlugin: boolean,
+  ): Promise<Record<string, string>> {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-shipped-'));
+    const plugins = withPlugin
+      ? await loadPlugins({ projectDir: cwd, extraPaths: [path.join(fixtures, PLUGIN)] })
+      : [];
+    const mediator = installMediator({
+      registry: registryOf([shippedSource, ...plugins.map(sourceOf)]),
+      templates: templateSourceFor(ejsTemplateSource, assetRootsOf(plugins)),
+      runDeferred: () => Promise.resolve(),
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd: root,
+          stack,
+          answers: SHIPPED_ANSWERS,
+          interactive: false,
+          dryRun: false,
+          ...dials,
+        }),
+      ),
+    );
+    try {
+      return await fingerprint(root);
+    } finally {
+      await fs.remove(root);
+    }
+  }
+
+  /**
+   * One case per shape the registry could plausibly be read
+   * differently for: both module layouts, both JVM build systems,
+   * a Kotlin binding, and a family whose stack declares no dials at
+   * all.
+   */
+  const SHAPES: readonly {
+    readonly stack: string;
+    readonly dials: Partial<Parameters<typeof newProjectCommand>[0]>;
+  }[] = [
+    { stack: 'quarkus-cli', dials: { buildSystem: 'gradle', moduleLayout: 'basic' } },
+    {
+      stack: 'spring-cli-rest-kotlin',
+      dials: { buildSystem: 'maven', moduleLayout: 'modulith', withPeerContext: true },
+    },
+    { stack: 'ts-http', dials: { buildSystem: 'npm' } },
+    { stack: 'go-cli', dials: {} },
+  ];
+
+  it.each(SHAPES)(
+    'scaffolds $stack byte-for-byte what it scaffolds with no plugin present',
+    async ({ stack, dials }) => {
+      const [without, withOne] = await Promise.all([
+        scaffold(stack, dials, false),
+        scaffold(stack, dials, true),
+      ]);
+
+      // Not `toEqual` on the digests alone: comparing the path sets
+      // first turns "the plugin added or dropped a file" into a
+      // readable diff instead of a wall of hashes.
+      expect(Object.keys(withOne).sort()).toEqual(Object.keys(without).sort());
+      expect(withOne).toEqual(without);
+      expect(Object.keys(without).length).toBeGreaterThan(10);
+    },
+  );
 });
 
 describe('keel.catalog', () => {
