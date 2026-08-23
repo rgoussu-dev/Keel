@@ -44,6 +44,37 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The stack registry is data.** The 34 presets moved out of the
+  TypeScript object literals in `src/domain/core/stacks.ts` and into
+  `src/domain/core/stack-presets.json`, resolved against the existing
+  registries at load. Nothing in a `Stack` was ever code — `tags` and
+  `projects` are strings, and every other field references something
+  registered under an id — so the presets are now written as those
+  ids, and `stacks.ts` keeps the zod schema they must satisfy, the
+  resolution, and the `Stack` type as the resolved in-memory shape.
+  Nothing observable changes: `keel new --list`, `keel.catalog`, the
+  drill-down grid and every scaffolded tree are identical, which
+  `tests/domain/core/stack-registry.golden.json` freezes preset for
+  preset and field for field.
+  - **A malformed document throws; a dangling reference does not.** A
+    shape violation is never a piece someone forgot to install, so the
+    schema throws as `parseManifest` does. A preset naming a vertical,
+    build system or module layout this build does not carry is dropped
+    instead, with a `PresetProblem` naming the preset, the field and
+    the id — the answer a plugin needs, where the missing piece may
+    legitimately be one the user chose not to install. keel's own load
+    refuses any problem loudly: a built-in preset vanishing from
+    `keel new --list` is worse than a crash naming the id.
+  - `Stack.conflicts` crosses unchanged — a `Conflict` is an id, two
+    tag-pattern lists and a sentence, so it is already pure data.
+  - Verticals gained a second registry beside the brownfield one:
+    `VERTICALS` stays the `keel add` menu, `DECLARED_VERTICALS` is the
+    wider id → vertical lookup a preset resolves through. Naming
+    `fullstack` in a preset does not make `keel add fullstack` a
+    thing.
+  - Groundwork for presets supplied from outside this repository
+    (#117).
+
 - **`keel add module` refuses the flat layout by declaration now, and
   the form greys the control out by the same sentence.** The rule that
   a bounded context needs the modulith layout was a branch in the
