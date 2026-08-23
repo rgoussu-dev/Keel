@@ -37,10 +37,10 @@ Nothing else is searched. Not `~`, not an ancestor directory, not
 
 ### Two environment switches
 
-| Variable          | Effect                                                                                    |
-| ----------------- | ----------------------------------------------------------------------------------------- |
-| `KEEL_PLUGINS`    | Extra plugin paths (file or directory), `:`-separated — for a plugin under development.   |
-| `KEEL_NO_PLUGINS` | Set to anything: discovery is skipped entirely and only keel's own pieces are registered. |
+| Variable          | Effect                                                                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEEL_PLUGINS`    | Extra plugin paths (file or directory), separated by the platform's path delimiter (`:` on POSIX, `;` on Windows) — for a plugin under development. |
+| `KEEL_NO_PLUGINS` | Set to anything: discovery is skipped entirely and only keel's own pieces are registered.                                                           |
 
 ### Why a directory and not an npm dependency
 
