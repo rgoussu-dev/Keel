@@ -21,15 +21,24 @@ import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { ok, type Result } from '../../kernel/result.js';
 import type { DialOptions, DialsQuery } from '../../contract/queries.js';
+import type { Registry } from '../../contract/ports/registry.js';
 import { dialOptionsFor } from '../dials.js';
+
+/** The one port this query needs. */
+export interface DialsDeps {
+  /** What this run may install — keel's own pieces plus any plugin's. */
+  readonly registry: Registry;
+}
 
 /** Executes {@link DialsQuery}s. */
 export class DialsHandler implements Handler<DialsQuery> {
+  constructor(private readonly deps: DialsDeps) {}
+
   supports(action: Action): action is DialsQuery {
     return action.kind === 'keel.dials';
   }
 
   handle(query: DialsQuery): Promise<Result<DialOptions>> {
-    return Promise.resolve(ok(dialOptionsFor(query.target)));
+    return Promise.resolve(ok(dialOptionsFor(this.deps.registry, query.target)));
   }
 }

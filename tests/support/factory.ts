@@ -25,6 +25,7 @@ import { ToolchainCheckHandler } from '../../src/domain/toolchain/core/check.js'
 import { ToolchainInstallHandler } from '../../src/domain/toolchain/core/install.js';
 import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
+import { shippedRegistry } from '../../src/domain/core/registry.js';
 import { FakeClock } from '../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -46,6 +47,7 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     logger: new FakeLogger(),
     templates: ejsTemplateSource,
     processes: spawnProcessRunner,
+    registry: shippedRegistry,
     keelVersion: '0.4.0-alpha',
     ...overrides,
   };
@@ -56,8 +58,8 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     new LinkPeerHandler(deps),
     new ToolchainInstallHandler(deps),
     new ToolchainCheckHandler(deps),
-    new CatalogHandler(),
-    new DialsHandler(),
+    new CatalogHandler(deps),
+    new DialsHandler(deps),
     new PreviewHandler(deps),
     new ProjectStatusHandler(deps),
   ]);

@@ -10,6 +10,7 @@ import type { Clock } from '../../contract/ports/clock.js';
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { ProcessRunner } from '../../contract/ports/process-runner.js';
+import type { Registry } from '../../contract/ports/registry.js';
 import type { Prompt } from '../../contract/ports/prompt.js';
 import type { TemplateSource } from '../../contract/ports/template-source.js';
 import type { TreeFactory } from '../../contract/ports/tree.js';
@@ -24,6 +25,12 @@ export interface InstallDeps {
   readonly logger: Logger;
   readonly templates: TemplateSource;
   readonly processes: ProcessRunner;
+  /**
+   * The stacks and verticals this run may compose from — keel's own,
+   * plus whatever a plugin registered. Injected rather than imported
+   * so the catalog is a property of the run; see the port's doc.
+   */
+  readonly registry: Registry;
   /** keel version recorded into new manifests. */
   readonly keelVersion: string;
   /**

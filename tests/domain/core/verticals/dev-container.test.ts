@@ -24,7 +24,7 @@ import { installVertical } from '../../../../src/domain/core/install.js';
 import { devContainerVertical } from '../../../../src/domain/core/verticals/dev-container.js';
 import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
 import { attachDevContainerToDevEnv } from '../../../../src/domain/core/adapters/dev-container.js';
-import { getVertical } from '../../../../src/domain/core/verticals/index.js';
+import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
@@ -73,7 +73,7 @@ function parseDevcontainer(tree: FsTree): Record<string, unknown> {
 
 describe('dev-container vertical', () => {
   it('is registered for brownfield installs', () => {
-    expect(getVertical('dev-container')?.id).toBe('dev-container');
+    expect(shippedRegistry.vertical('dev-container')?.id).toBe('dev-container');
   });
 
   it('renders the standalone image shape when dev-env is not installed (JVM, Gradle)', async () => {

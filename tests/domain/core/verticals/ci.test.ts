@@ -25,7 +25,7 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { ciVertical } from '../../../../src/domain/core/verticals/ci.js';
-import { getVertical } from '../../../../src/domain/core/verticals/index.js';
+import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -78,7 +78,7 @@ async function installCi(tags: string[], answers: AnswerMap = {}): Promise<Insta
 
 describe('ci vertical', () => {
   it('is registered for brownfield installs', () => {
-    expect(getVertical('ci')?.id).toBe('ci');
+    expect(shippedRegistry.vertical('ci')?.id).toBe('ci');
   });
 
   it('emits the Gradle workflow for a JVM project on pkg.gradle', async () => {

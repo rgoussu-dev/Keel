@@ -38,7 +38,9 @@ import type {
 } from '../../contract/queries.js';
 import { MODULITH_LAYOUT_TAG } from '../adapters/module-layout.js';
 import { emitsPeerContext } from '../dials.js';
-import { assemblableStacks, getStack, type BuildSystemOption, type Stack } from '../stacks.js';
+import type { BuildSystemOption, Stack } from '../stacks.js';
+import { assemblableStacks, listVerticals } from '../registry.js';
+import type { Registry } from '../../contract/ports/registry.js';
 import {
   entrypointCombinations,
   entrypointStep,
@@ -47,18 +49,37 @@ import {
   wizardPaths,
   type WizardPath,
 } from '../stack-wizard.js';
-import { listVerticalIds, VERTICALS } from '../verticals/index.js';
 import { DEFAULT_STACK_ID } from './new-project.js';
 
-/** Executes {@link CatalogQuery}s. */
+/** The one port this query needs. */
+export interface CatalogDeps {
+  /** What this run may install — keel's own pieces plus any plugin's. */
+  readonly registry: Registry;
+}
+
+/**
+ * Executes {@link CatalogQuery}s.
+ *
+ * Reading the registry through the port is what makes a plugin's
+ * stack render in `keel ui` with no change to `keel ui`: the page
+ * asks for the catalog and gets whatever the composition root
+ * registered, shipped or not.
+ */
 export class CatalogHandler implements Handler<CatalogQuery> {
+  constructor(private readonly deps: CatalogDeps) {}
+
   supports(action: Action): action is CatalogQuery {
     return action.kind === 'keel.catalog';
   }
 
   handle(): Promise<Result<Catalog>> {
+    const registry = this.deps.registry;
     return Promise.resolve(
-      ok({ stacks: describeStacks(), verticals: describeVerticals(), finder: describeFinder() }),
+      ok({
+        stacks: describeStacks(registry),
+        verticals: describeVerticals(registry),
+        finder: describeFinder(registry),
+      }),
     );
   }
 }
@@ -71,12 +92,12 @@ export class CatalogHandler implements Handler<CatalogQuery> {
  * cannot disagree about which combinations exist or what they
  * resolve to.
  */
-function describeFinder(): StackFinder {
+function describeFinder(registry: Registry): StackFinder {
   // The same filter the terminal drill-down walks, so the page's
   // facets and the wizard's questions offer the same presets. A grid
   // reported from an unfiltered registry would put a dead end on a
   // control that has no way to explain it.
-  const paths = wizardPaths(assemblableStacks());
+  const paths = wizardPaths(assemblableStacks(registry));
   return {
     languages: languageChoices(paths).map((language) => describeLanguage(paths, language)),
     defaultStack: DEFAULT_STACK_ID,
@@ -128,14 +149,14 @@ function asChoiceDescriptor(choice: ChoiceDescriptorLike): ChoiceDescriptor {
   return { id: choice.value, label: choice.label, doc: choice.doc };
 }
 
-function describeStacks(): readonly StackDescriptor[] {
+function describeStacks(registry: Registry): readonly StackDescriptor[] {
   // Assemblable only, for the same reason the finder is: a catalog is
   // what a front end renders as available, and a preset whose every
   // dial setting the rules refuse is not.
-  return assemblableStacks().map(describeStack);
+  return assemblableStacks(registry).map((stack) => describeStack(registry, stack));
 }
 
-function describeStack(stack: Stack): StackDescriptor {
+function describeStack(registry: Registry, stack: Stack): StackDescriptor {
   return {
     id: stack.id,
     description: stack.description,
@@ -146,14 +167,14 @@ function describeStack(stack: Stack): StackDescriptor {
       label: option.label,
       doc: option.doc,
     })),
-    services: describeServices(stack),
+    services: describeServices(registry, stack),
     peerContext: supportsPeerContext(stack),
   };
 }
 
-function describeServices(stack: Stack): readonly ServiceDescriptor[] {
+function describeServices(registry: Registry, stack: Stack): readonly ServiceDescriptor[] {
   return (stack.services ?? []).flatMap((service) => {
-    const serviceStack = getStack(service.stack);
+    const serviceStack = registry.stack(service.stack);
     return [
       {
         path: service.path,
@@ -168,11 +189,17 @@ function describeBuildSystem(option: BuildSystemOption): ChoiceDescriptor {
   return { id: option.id, label: option.label, doc: option.doc };
 }
 
-function describeVerticals(): readonly VerticalDescriptor[] {
-  return listVerticalIds().flatMap((id) => {
-    const vertical = VERTICALS[id];
+function describeVerticals(registry: Registry): readonly VerticalDescriptor[] {
+  return listVerticals(registry).flatMap((summary) => {
+    const vertical = registry.vertical(summary.id);
     return vertical
-      ? [{ id, description: vertical.description, dimensions: [...vertical.dimensions] }]
+      ? [
+          {
+            id: vertical.id,
+            description: vertical.description,
+            dimensions: [...vertical.dimensions],
+          },
+        ]
       : [];
   });
 }

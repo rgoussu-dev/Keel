@@ -28,6 +28,7 @@ import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/compo
 import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
 import { piecesOf, stackDials } from '../../../src/domain/core/dials.js';
+import { shippedRegistry } from '../../../src/domain/core/registry.js';
 import { stackTagsFor, type Stack } from '../../../src/domain/core/stacks.js';
 
 /* ---- Scenario ---------------------------------------------------- */
@@ -104,7 +105,7 @@ function reachable(stack: Stack): readonly NewProjectTarget[] {
   while (queue.length > 0) {
     const next = queue.shift();
     if (next === undefined) break;
-    const dials = stackDials(stack, next);
+    const dials = stackDials(shippedRegistry, stack, next);
     const settled = dials.target as NewProjectTarget;
     const key = JSON.stringify(settled);
     if (found.has(key)) continue;
@@ -184,26 +185,28 @@ describe('narrowing one dial against another', () => {
   const stack = stackWith([MAVEN_NEEDS_BASIC]);
 
   it('drops the layout the settled build system cannot carry', () => {
-    expect(ids(stackDials(stack, target({ buildSystem: 'maven' })).moduleLayouts)).toEqual([
-      'basic',
-    ]);
-    expect(ids(stackDials(stack, target({ buildSystem: 'gradle' })).moduleLayouts)).toEqual([
-      'basic',
-      'modulith',
-    ]);
+    expect(
+      ids(stackDials(shippedRegistry, stack, target({ buildSystem: 'maven' })).moduleLayouts),
+    ).toEqual(['basic']);
+    expect(
+      ids(stackDials(shippedRegistry, stack, target({ buildSystem: 'gradle' })).moduleLayouts),
+    ).toEqual(['basic', 'modulith']);
   });
 
   it('keeps both build systems on the menu under either layout', () => {
     // Optimism, and it is load-bearing: narrowing this dial against
     // the layout as it stands would make maven unreachable from the
     // modulith, and with it the perfectly legal maven + basic.
-    const onModulith = stackDials(stack, target({ moduleLayout: 'modulith' }));
+    const onModulith = stackDials(shippedRegistry, stack, target({ moduleLayout: 'modulith' }));
     expect(ids(onModulith.buildSystems)).toEqual(['gradle', 'maven']);
   });
 
   it('snaps the layout when a build system the rules refuse it with is chosen', () => {
-    const settled = stackDials(stack, target({ buildSystem: 'maven', moduleLayout: 'modulith' }))
-      .target as NewProjectTarget;
+    const settled = stackDials(
+      shippedRegistry,
+      stack,
+      target({ buildSystem: 'maven', moduleLayout: 'modulith' }),
+    ).target as NewProjectTarget;
     expect(settled).toMatchObject({ buildSystem: 'maven', moduleLayout: 'basic' });
   });
 
@@ -211,8 +214,14 @@ describe('narrowing one dial against another', () => {
     // Every option refused is not a menu, it is a refusal — and the
     // gate is what says so, in the rule's own words.
     const doomed = stackWith([{ id: 'demo/no-jvm', when: ['runtime.jvm'], reason: 'never' }]);
-    expect(ids(stackDials(doomed, target()).buildSystems)).toEqual(['gradle', 'maven']);
-    expect(ids(stackDials(doomed, target()).moduleLayouts)).toEqual(['basic', 'modulith']);
+    expect(ids(stackDials(shippedRegistry, doomed, target()).buildSystems)).toEqual([
+      'gradle',
+      'maven',
+    ]);
+    expect(ids(stackDials(shippedRegistry, doomed, target()).moduleLayouts)).toEqual([
+      'basic',
+      'modulith',
+    ]);
   });
 });
 
@@ -221,7 +230,7 @@ describe('the settled target', () => {
     // An absent dial is one the install would *ask* about, and the
     // answer would arrive at a form that already renders it as a
     // control of its own.
-    const settled = stackDials(stackWith([]), target()).target as NewProjectTarget;
+    const settled = stackDials(shippedRegistry, stackWith([]), target()).target as NewProjectTarget;
     expect(settled).toEqual({
       kind: 'new-project',
       stack: 'demo-stack',
@@ -235,19 +244,19 @@ describe('the settled target', () => {
     // The one dial that must stay unpinned: `extraVerticals` is only
     // ever offered as a preview question, and pinning it here would
     // stop the question being asked at all.
-    const settled = stackDials(stackWith([]), target()).target as NewProjectTarget;
+    const settled = stackDials(shippedRegistry, stackWith([]), target()).target as NewProjectTarget;
     expect(settled.extraVerticals).toBeUndefined();
   });
 
   it('keeps a dial the caller set where the rules still allow it', () => {
-    const settled = stackDials(stackWith([]), target({ moduleLayout: 'modulith' }))
+    const settled = stackDials(shippedRegistry, stackWith([]), target({ moduleLayout: 'modulith' }))
       .target as NewProjectTarget;
     expect(settled.moduleLayout).toBe('modulith');
   });
 
   it('pins nothing a stack with no dials does not have', () => {
     const pinned = stackWith([], { buildSystems: undefined, moduleLayouts: undefined });
-    expect(stackDials(pinned, target()).target).toEqual({
+    expect(stackDials(shippedRegistry, pinned, target()).target).toEqual({
       kind: 'new-project',
       stack: 'demo-stack',
       withPeerContext: false,
@@ -265,7 +274,9 @@ describe('the peer context, as a dial', () => {
 
   it('is off the menu where the rules refuse it', () => {
     const stack = stackWith([PEER_NEEDS_MODULITH]);
-    expect(stackDials(stack, target({ moduleLayout: 'basic' })).peerContext).toBe(false);
+    expect(stackDials(shippedRegistry, stack, target({ moduleLayout: 'basic' })).peerContext).toBe(
+      false,
+    );
   });
 
   it('is off the menu where the rules allow it but no adapter emits one', () => {
@@ -274,13 +285,18 @@ describe('the peer context, as a dial', () => {
     // uncovered-dimension hard-fail structurally cannot speak for it.
     // This fixture ships no adapters at all.
     const stack = stackWith([]);
-    expect(stackDials(stack, target({ moduleLayout: 'modulith' })).peerContext).toBe(false);
+    expect(
+      stackDials(shippedRegistry, stack, target({ moduleLayout: 'modulith' })).peerContext,
+    ).toBe(false);
   });
 
   it('is switched back off when the layout it needs is settled away', () => {
     const stack = stackWith([PEER_NEEDS_MODULITH]);
-    const settled = stackDials(stack, target({ moduleLayout: 'basic', withPeerContext: true }))
-      .target as NewProjectTarget;
+    const settled = stackDials(
+      shippedRegistry,
+      stack,
+      target({ moduleLayout: 'basic', withPeerContext: true }),
+    ).target as NewProjectTarget;
     expect(settled.withPeerContext).toBe(false);
   });
 });
@@ -296,7 +312,7 @@ describe('a composite product', () => {
       moduleLayouts: undefined,
       services: [{ path: 'backend', stack: 'quarkus-rest' }],
     });
-    const dials = stackDials(product, {
+    const dials = stackDials(shippedRegistry, product, {
       kind: 'new-project',
       stack: 'demo-product',
       moduleLayout: 'modulith',
@@ -320,7 +336,7 @@ describe('a composite product', () => {
       moduleLayouts: undefined,
       services: [{ path: 'backend', stack: 'quarkus-rest' }],
     });
-    const settled = stackDials(product, {
+    const settled = stackDials(shippedRegistry, product, {
       kind: 'new-project',
       stack: 'demo-product',
       buildSystem: 'backend=maven',
@@ -339,7 +355,7 @@ describe('a composite product', () => {
       moduleLayouts: undefined,
       services: [{ path: 'backend', stack: 'quarkus-rest' }],
     });
-    const settled = stackDials(product, {
+    const settled = stackDials(shippedRegistry, product, {
       kind: 'new-project',
       stack: 'demo-product',
       buildSystem: 'nonsense',

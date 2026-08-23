@@ -12,13 +12,16 @@
 import { describe, expect, it } from 'vitest';
 import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/composition.js';
 import {
-  assemblableStacks,
   assemblies,
   isAssemblable,
-  listStackIds,
   stackTagsFor,
   type Stack,
 } from '../../../src/domain/core/stacks.js';
+import {
+  assemblableStacks,
+  listStackIds,
+  shippedRegistry,
+} from '../../../src/domain/core/registry.js';
 import { wizardPaths } from '../../../src/domain/core/stack-wizard.js';
 
 const GRADLE = { id: 'gradle', tag: 'pkg.gradle' as Tag, label: 'Gradle', doc: '' };
@@ -114,7 +117,9 @@ describe('the guard over the shipped registry', () => {
     // rules the registry declares today, the guarded menus offer
     // exactly what the enumerated ones did. A preset disappearing
     // from here is a real regression, not a filter working.
-    expect(assemblableStacks().map((stack) => stack.id)).toEqual([...listStackIds()]);
+    expect(assemblableStacks(shippedRegistry).map((stack) => stack.id)).toEqual([
+      ...listStackIds(shippedRegistry),
+    ]);
   });
 
   it('hides an unbuildable preset from every step of the drill-down at once', () => {

@@ -16,7 +16,7 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
-import { getVertical } from '../../../../src/domain/core/verticals/index.js';
+import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import {
   addComposeService,
   addComposeVolumes,
@@ -36,7 +36,7 @@ afterEach(async () => {
 
 describe('dev-env vertical', () => {
   it('is registered for brownfield installs', () => {
-    expect(getVertical('dev-env')?.id).toBe('dev-env');
+    expect(shippedRegistry.vertical('dev-env')?.id).toBe('dev-env');
   });
 
   it('seeds dev/compose.yaml with the empty base and the README section', async () => {

@@ -33,9 +33,14 @@
  */
 
 import type { Conflict, Tag } from '../../contract/composition.js';
+import type { ModuleLayout, ModuleLayoutOption } from '../../contract/stack.js';
 
-/** Module layouts the template trees ship for. */
-export type ModuleLayout = 'basic' | 'modulith';
+/**
+ * The layout vocabulary itself lives in `domain/contract/stack.ts`,
+ * where `Stack.moduleLayouts` names it. Re-exported here so an
+ * adapter keeps reading the dial and its options from one module.
+ */
+export type { ModuleLayout, ModuleLayoutOption } from '../../contract/stack.js';
 
 /** Capability tag seeding the flat trisection. */
 export const BASIC_LAYOUT_TAG: Tag = 'layout.basic';
@@ -103,23 +108,6 @@ export const PEER_MODULE = 'guestbook';
 /** Resolves the module layout from a manifest tag set. */
 export function moduleLayoutOf(tags: readonly Tag[]): ModuleLayout {
   return tags.includes(MODULITH_LAYOUT_TAG) ? 'modulith' : 'basic';
-}
-
-/**
- * One selectable module layout of a stack. Like a build system, the
- * choice folds a capability tag into the manifest at install time;
- * every path decision downstream is ordinary machinery reading that
- * tag through the family's layout resolver.
- */
-export interface ModuleLayoutOption {
-  /** User-facing id, `basic` or `modulith`. */
-  readonly id: ModuleLayout;
-  /** The `layout.*` tag the choice contributes. */
-  readonly tag: Tag;
-  /** One-line label shown as the interactive choice. */
-  readonly label: string;
-  /** Longer help text for the interactive prompt. */
-  readonly doc: string;
 }
 
 /** The flat trisection — one hexagon for the whole service. */
