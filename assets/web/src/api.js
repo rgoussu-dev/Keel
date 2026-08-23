@@ -38,6 +38,12 @@ export const project = (path) => send('GET', `/api/project?path=${encodeURICompo
 export const browse = (path) =>
   send('GET', path ? `/api/browse?path=${encodeURIComponent(path)}` : '/api/browse');
 
+/**
+ * Which settings of the target's dials the rules still allow, and the
+ * target they settle at. Same body as `preview` and `install`.
+ */
+export const dials = (body) => send('POST', '/api/dials', body);
+
 /** What the install would ask and write — writes nothing. */
 export const preview = (body) => send('POST', '/api/preview', body);
 
