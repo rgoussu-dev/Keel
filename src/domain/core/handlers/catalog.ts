@@ -40,7 +40,7 @@ import type {
 import { MODULITH_LAYOUT_TAG } from '../adapters/module-layout.js';
 import { emitsPeerContext } from '../dials.js';
 import type { BuildSystemOption, Stack } from '../stacks.js';
-import { assemblableStacks, listVerticals } from '../registry.js';
+import { assemblableStacks, listVerticals, verticalTitle } from '../registry.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import {
   entrypointCombinations,
@@ -215,6 +215,7 @@ function describeVerticals(registry: Registry): readonly VerticalDescriptor[] {
       ? [
           {
             id: vertical.id,
+            title: verticalTitle(vertical),
             description: vertical.description,
             dimensions: [...vertical.dimensions],
           },

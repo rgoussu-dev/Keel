@@ -29,6 +29,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const devContainerVertical: Vertical = {
   id: 'dev-container',
+  title: 'Dev container',
   description:
     'Dev Container definition: a containerized dev environment that attaches to the dev env when present.',
   dimensions: ['definition'],

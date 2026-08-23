@@ -24,6 +24,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const devEnvVertical: Vertical = {
   id: 'dev-env',
+  title: 'Development environment',
   description: 'Local development environment: one Compose file for the infra the dev loop needs.',
   dimensions: ['compose-base'],
   adapters: [devEnvComposeAdapter],

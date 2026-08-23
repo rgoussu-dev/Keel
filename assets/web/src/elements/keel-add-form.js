@@ -11,8 +11,18 @@
  * up front turns an error message into a control that is simply not
  * there.
  *
+ * **A card per capability, not a line in a `<select>`.** Which
+ * vertical to add next is the one real question this half of the page
+ * asks, and an id in a dropdown is a poor way to ask it: `iac` and
+ * `dev-env` mean nothing until you have read what they buy you. Each
+ * card names the concept it bears, the id `keel add <id>` takes, and
+ * one line on what installing it gets you — all three from the
+ * catalog, so a plugin's vertical reads the same way keel's own do.
+ *
  * Status + target in as properties, `target-changed` out.
  */
+
+import { cards } from '../dom.js';
 
 export class KeelAddForm extends HTMLElement {
   #status = null;
@@ -52,7 +62,7 @@ export class KeelAddForm extends HTMLElement {
     row.setAttribute('space', 'var(--s-2)');
     row.append(
       this.#tab('Add a vertical', this.#target.kind === 'add-vertical', () =>
-        this.#change({ kind: 'add-vertical', vertical: this.#firstAvailable() }),
+        this.#change({ kind: 'add-vertical', vertical: '' }),
       ),
     );
     if (this.#status.canAddModule) {
@@ -88,27 +98,26 @@ export class KeelAddForm extends HTMLElement {
       return stack;
     }
 
-    const select = document.createElement('select');
-    select.id = 'vertical';
-    for (const vertical of available) {
-      select.append(option(vertical.id, `${vertical.id} — ${vertical.description}`));
-    }
-    for (const vertical of installed) {
-      select.append(option(vertical.id, `${vertical.id} — installed (re-render)`));
-    }
-    select.value = this.#target.vertical ?? available[0]?.id ?? installed[0]?.id ?? '';
-    select.addEventListener('change', () =>
-      this.#change({
-        kind: 'add-vertical',
-        vertical: select.value,
-        ...(this.#isInstalled(select.value) ? { reapply: true } : {}),
+    // Not yet installed first: those are the ones with something new
+    // to add. An installed vertical stays on the list because
+    // re-rendering it is a real action, and it says so on its badge
+    // rather than by being missing.
+    stack.append(
+      cards({
+        id: 'vertical',
+        chosen: this.#target.vertical ?? '',
+        choices: [
+          ...available.map((vertical) => this.#choice(vertical)),
+          ...installed.map((vertical) => this.#choice(vertical, 'installed')),
+        ],
+        onChange: (value) =>
+          this.#change({
+            kind: 'add-vertical',
+            vertical: value,
+            ...(this.#isInstalled(value) ? { reapply: true } : {}),
+          }),
       }),
     );
-
-    const label = document.createElement('label');
-    label.setAttribute('for', 'vertical');
-    label.textContent = 'Vertical';
-    stack.append(label, select);
 
     if (this.#target.reapply === true) {
       const note = document.createElement('p');
@@ -118,6 +127,22 @@ export class KeelAddForm extends HTMLElement {
       stack.append(note);
     }
     return stack;
+  }
+
+  /**
+   * One vertical as a card. The title is the concept, the id is what
+   * `keel add <id>` takes, and the description is what installing it
+   * buys — all three straight off the descriptor, so nothing here
+   * needs a table of keel's own capability names.
+   */
+  #choice(vertical, badge) {
+    return {
+      value: vertical.id,
+      label: vertical.title || vertical.id,
+      meta: `keel add ${vertical.id}`,
+      doc: vertical.description,
+      ...(badge === undefined ? {} : { badge }),
+    };
   }
 
   #moduleFields() {
@@ -167,10 +192,6 @@ export class KeelAddForm extends HTMLElement {
       stack.append(consumesLabel, select, consumesDoc);
     }
     return stack;
-  }
-
-  #firstAvailable() {
-    return this.#status.available[0]?.id ?? this.#status.installed[0]?.id ?? '';
   }
 
   #isInstalled(id) {

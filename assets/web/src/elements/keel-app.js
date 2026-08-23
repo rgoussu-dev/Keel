@@ -150,13 +150,19 @@ export class KeelApp extends HTMLElement {
     return { kind: 'new-project', stack };
   }
 
+  /**
+   * Where the brownfield wizard opens: on **no** vertical.
+   *
+   * Picking one for the user was defensible when the control was a
+   * `<select>`, which has to show something. A card group does not,
+   * and the pre-pick was never free: `available` is every registered
+   * vertical not yet installed, coverage not consulted, so whichever
+   * one sorted first could be one this project's shape cannot carry —
+   * and the page opened on a refusal nobody had asked for. An
+   * unanswered question is the honest state, and the plan says so.
+   */
   #defaultAddTarget() {
-    const first = this.#status.available[0] ?? this.#status.installed[0];
-    return {
-      kind: 'add-vertical',
-      vertical: first?.id ?? '',
-      ...(first && this.#status.available.length === 0 ? { reapply: true } : {}),
-    };
+    return { kind: 'add-vertical', vertical: '' };
   }
 
   /* ---- intent -------------------------------------------------- */

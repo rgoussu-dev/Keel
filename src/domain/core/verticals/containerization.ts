@@ -39,7 +39,9 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const containerizationVertical: Vertical = {
   id: 'containerization',
-  description: 'How this project runs as a container image.',
+  title: 'Container image',
+  description:
+    'A runtime image for the service: a thin Dockerfile that copies the artifact your build already produced, on a base picked for the stack.',
   dimensions: ['image'],
   promotes: [CONTAINER_IMAGE_TAG, GRAALVM_NATIVE_TAG, JVM_IMAGE_TAG],
   adapters: [

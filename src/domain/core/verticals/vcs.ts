@@ -9,7 +9,9 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const vcsVertical: Vertical = {
   id: 'vcs',
-  description: 'Version control bootstrap.',
+  title: 'Version control',
+  description:
+    'A git repository from the first commit: the ignore rules your stack needs, an initial branch you name, and an origin remote when you have one.',
   dimensions: ['vcs'],
   adapters: [gitInitAdapter],
 };

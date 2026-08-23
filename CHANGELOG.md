@@ -37,6 +37,29 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **A vertical is offered as a card now, not a line in a `<select>`.**
+  Which capability to add next is the one real question the brownfield
+  page asks, and `iac` or `dev-env` in a dropdown means nothing until
+  you have read what it buys you. Each card names the concept it
+  bears, the id `keel add <id>` takes, and one line on what installing
+  it gets you.
+  - `Vertical` gains an optional **`title`** — the concept, as a
+    person would name it ("Continuous integration", "Container
+    image", "Infrastructure as code"). Resolved rather than read:
+    `verticalTitle` spells a title out of the id where a vertical
+    declares none, so a plugin's renders as `Acme widget` rather than
+    a raw id. Reported on `VerticalDescriptor.title`, so a front end
+    never has to fall back for itself.
+  - The `distribution`, `containerization` and `vcs` descriptions said
+    what the vertical _was_ rather than what it gets you, which is
+    fine beside an id in `--list` and useless as the body of a card.
+    They now say what appears.
+  - **Nothing is pre-selected, and nothing is hidden.** Every
+    registered vertical is offered: one this project's shape cannot
+    carry says so when picked — with the tag that would carry it —
+    rather than being silently absent. Opening on a pre-picked
+    vertical meant opening on a refusal nobody had asked for.
+
 - **The stack finder is a four-step drill-down now, and it starts with
   what you are building.** Both front ends narrow the same way, widest
   first: **shape → language → framework → user-side adapters**, where

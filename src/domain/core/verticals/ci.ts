@@ -31,6 +31,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const ciVertical: Vertical = {
   id: 'ci',
+  title: 'Continuous integration',
   description:
     'The pipeline every push has to pass: build and test on GitHub Actions or GitLab CI.',
   dimensions: ['pipeline'],

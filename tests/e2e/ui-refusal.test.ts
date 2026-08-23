@@ -47,7 +47,7 @@ import {
   act,
   buildCli,
   browserBinary,
-  control,
+  choice,
   goToStep,
   startUi,
   until,
@@ -148,7 +148,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'shows the domain’s own refusal rather than a transport failure',
     async () => {
       await goToStep(traffic, page, 'target');
-      await act(traffic, () => control(page, 'vertical').selectOption(REFUSED));
+      await act(traffic, () => choice(page, 'vertical', REFUSED).check());
 
       const banner = page.locator('[data-role="error"]');
       await until(async () => (await banner.isVisible()) === true, 'the refusal banner');
@@ -169,7 +169,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'explains the empty plan instead of leaving a blank panel beside it',
     async () => {
       await goToStep(traffic, page, 'target');
-      await act(traffic, () => control(page, 'vertical').selectOption(REFUSED));
+      await act(traffic, () => choice(page, 'vertical', REFUSED).check());
 
       // A refused run previews nothing, so the tree would otherwise
       // render as an empty box the eye reads as "no changes".
@@ -187,7 +187,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'holds Generate shut on the review step, and names the refusal there',
     async () => {
       await goToStep(traffic, page, 'target');
-      await act(traffic, () => control(page, 'vertical').selectOption(REFUSED));
+      await act(traffic, () => choice(page, 'vertical', REFUSED).check());
       await goToStep(traffic, page, 'review');
 
       // The review step is the one place a user arrives at *intending*
@@ -204,7 +204,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'clears the refusal when a vertical this project can carry is chosen',
     async () => {
       await goToStep(traffic, page, 'target');
-      await act(traffic, () => control(page, 'vertical').selectOption(REFUSED));
+      await act(traffic, () => choice(page, 'vertical', REFUSED).check());
       await until(
         async () => (await page.locator('[data-role="error"]').isVisible()) === true,
         'the refusal banner',
@@ -212,7 +212,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
 
       // The half a "does it show the error?" test misses: a refusal
       // must not be a state the page cannot leave.
-      await act(traffic, () => control(page, 'vertical').selectOption('ci'));
+      await act(traffic, () => choice(page, 'vertical', 'ci').check());
       await until(
         async () => (await page.locator('[data-role="error"]').isVisible()) === false,
         'the refusal to clear',

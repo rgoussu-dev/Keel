@@ -53,6 +53,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const observabilityVertical: Vertical = {
   id: 'observability',
+  title: 'Observability',
   description: 'Health probes, correlated structured logging, and OpenTelemetry for HTTP services.',
   dimensions: ['health', 'request-context', 'telemetry', 'monitoring-stack'],
   adapters: [

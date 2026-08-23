@@ -44,6 +44,7 @@ import {
   pickLanguage,
   pickShape,
 } from '../finder.js';
+import { cards, checkboxCards, note } from '../dom.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
 export class KeelNewForm extends HTMLElement {
@@ -189,10 +190,14 @@ export class KeelNewForm extends HTMLElement {
         onChange: (value) => this.#moveTo(pickEntrypoints(here.framework, value)),
       });
     }
-    return checkboxes({
+    return checkboxCards({
       id: 'entrypoints',
-      chosen: decodeSelection(chosen),
-      choices: step.choices,
+      chosen: [...decodeSelection(chosen)],
+      choices: step.choices.map((choice) => ({
+        value: choice.id,
+        label: choice.label,
+        doc: choice.doc,
+      })),
       onChange: (values) => this.#moveTo(pickEntrypoints(here.framework, encodeSelection(values))),
     });
   }
@@ -322,95 +327,6 @@ export class KeelNewForm extends HTMLElement {
  */
 const UNPLACEABLE =
   'This preset is not on the guided path — the finder could not place it. Its dials still apply, and the Preset picker above is how to move off it.';
-
-function note(text) {
-  const paragraph = document.createElement('p');
-  paragraph.className = 'muted';
-  paragraph.textContent = text;
-  return paragraph;
-}
-
-/**
- * A radio group drawn as cards: label, description, whole card
- * clickable.
- *
- * A `<select>` would do the same job in a tenth of the markup, and it
- * is what these controls were. It also hides every option but one
- * behind a click, which is exactly wrong for the four questions that
- * decide what gets scaffolded — "Fullstack, backend or frontend?" is
- * a question you answer by reading the three answers.
- */
-function cards({ id, chosen, choices, onChange }) {
-  const group = document.createElement('div');
-  group.className = 'cards';
-  group.id = id;
-  group.setAttribute('role', 'radiogroup');
-  for (const choice of choices) {
-    const card = document.createElement('label');
-    card.className = choice.value === chosen ? 'card chosen' : 'card';
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = id;
-    radio.value = choice.value;
-    radio.checked = choice.value === chosen;
-    radio.addEventListener('change', () => onChange(radio.value));
-    const body = document.createElement('span');
-    body.className = 'card-body';
-    const title = document.createElement('span');
-    title.className = 'card-title';
-    title.textContent = choice.label;
-    body.append(title);
-    if (choice.doc) {
-      const doc = document.createElement('span');
-      doc.className = 'muted';
-      doc.textContent = choice.doc;
-      body.append(doc);
-    }
-    card.append(radio, body);
-    group.append(card);
-  }
-  return group;
-}
-
-/**
- * The same cards, checkable rather than exclusive — the entrypoint
- * step where every subset of what it shows is a preset.
- */
-function checkboxes({ id, chosen, choices, onChange }) {
-  const group = document.createElement('div');
-  group.className = 'cards';
-  group.id = id;
-  const picked = new Set(chosen);
-  for (const choice of choices) {
-    const card = document.createElement('label');
-    card.className = picked.has(choice.id) ? 'card chosen' : 'card';
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.value = choice.id;
-    box.checked = picked.has(choice.id);
-    box.addEventListener('change', () => {
-      const next = choices
-        .map((candidate) => candidate.id)
-        .filter((value) => (value === choice.id ? box.checked : picked.has(value)));
-      onChange(next);
-    });
-    const body = document.createElement('span');
-    body.className = 'card-body';
-    const title = document.createElement('span');
-    title.className = 'card-title';
-    title.textContent = choice.label;
-    body.append(title);
-    if (choice.doc) {
-      const doc = document.createElement('span');
-      doc.className = 'muted';
-      doc.textContent = choice.doc;
-      body.append(doc);
-    }
-    card.append(box, body);
-    group.append(card);
-  }
-  return group;
-}
 
 function field({ id, label, doc, value, choices, onChange }) {
   const wrapper = document.createElement('stack-pk');

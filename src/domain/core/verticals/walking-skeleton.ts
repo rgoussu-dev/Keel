@@ -78,6 +78,7 @@ import type { Vertical } from '../../contract/composition.js';
 
 export const walkingSkeletonVertical: Vertical = {
   id: 'walking-skeleton',
+  title: 'Walking skeleton',
   description: 'Greenfield project skeleton with a runnable end-to-end slice.',
   dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline', 'agentic-kit'],
   // The peer context is this vertical's capability, so the rule
