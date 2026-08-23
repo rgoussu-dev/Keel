@@ -338,7 +338,14 @@ composite stack records its siblings' **peer tags** (`peer.api.rest`,
 backend CORS patch — are ordinary predicate-selected adapters that fire
 on them, whatever the peer's language.
 
-→ [Composition model](docs/composition.md) in depth.
+A project can bring its own pieces: a stack or vertical dropped into
+`.keel/plugins/` is registered alongside keel's own and read through
+no special case — its rules refuse and filter exactly as a shipped
+piece's, and it shows up in `keel ui`. Loading one runs its code, so
+read [Trust](docs/plugins.md#trust--read-this) first.
+
+→ [Composition model](docs/composition.md) in depth ·
+[Plugins](docs/plugins.md).
 
 ---
 
@@ -379,6 +386,7 @@ be added later, is one table in the
 | Look up a command or flag                      | [CLI reference](docs/cli.md)                  |
 | Scaffold from a browser instead                | [The local scaffolder](docs/ui.md)            |
 | Understand tags, adapters, predicates, peers   | [Composition model](docs/composition.md)      |
+| Bring my own stack or vertical                 | [Plugins](docs/plugins.md)                    |
 | Know the conventions scaffolded projects carry | [Binding spec](assets/project/AGENTS.md)      |
 | Hack on keel itself                            | [Development guide](docs/development.md)      |
 | See what's next                                | [Roadmap](docs/roadmap.md)                    |

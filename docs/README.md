@@ -46,6 +46,8 @@ What `keel add <vertical>` layers onto an existing project:
 
 - [Composition model](composition.md) — tags, adapters, predicates,
   verticals, dimensions, stacks, peers, composite stacks, the manifest.
+- [Plugins](plugins.md) — bringing your own stack or vertical: where
+  they are found, how they are written, what running one means.
 - [Binding spec](../assets/project/AGENTS.md) — the engineering
   conventions every scaffolded project carries as its `AGENTS.md`.
 - [Roadmap](roadmap.md) — what's next.

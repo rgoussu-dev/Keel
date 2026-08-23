@@ -172,11 +172,12 @@ src/
     kernel/               # Action/Command/Query, Result, Handler,
                           # Mediator — depends on nothing
     contract/             # commands + InstallReport, composition
-                          # vocabulary (Adapter, Vertical, …),
-                          # manifest types + zod schemas, ports/
-                          # (Tree, Prompt, Logger, Clock,
-                          # ManifestStore, TemplateSource,
-                          # ProcessRunner)
+                          # vocabulary (Adapter, Vertical, …), the
+                          # Stack vocabulary (stack.ts) and the
+                          # plugin contract (plugin.ts), manifest
+                          # types + zod schemas, ports/ (Tree,
+                          # Prompt, Logger, Clock, ManifestStore,
+                          # TemplateSource, ProcessRunner, Registry)
     core/                 # the engine (predicate, resolver,
                           # compatibility, dials, answers, apply,
                           # install, actions), composition
@@ -185,7 +186,9 @@ src/
                           # + the schema and id resolution over
                           # them (stacks.ts),
                           # handlers/ (new-project, add-vertical),
-                          # RegistryMediator
+                          # registry.ts (registryOf + the shipped
+                          # source, and every refusal naming its
+                          # origin), RegistryMediator
     toolchain/            # the provisioning bounded context (own
       contract/ core/     # hexagon): provider records (mise, asdf,
                           # nvm, corepack, sdkman, rustup,
@@ -212,9 +215,10 @@ src/
                           # types-only contract/server.ts the CLI
                           # names to inject `keel ui`
   infrastructure/         # one directory per port, real adapter +
-    tree/ prompt/         # canonical fake side by side
-    manifest/ template/
-    process/ commons/
+    tree/ prompt/         # canonical fake side by side.
+    manifest/ template/   # registry/ finds and imports a project's
+    process/ commons/     # plugins; template/ also holds the router
+    registry/             # that sends `plugin:` ids to their assets
 assets/
   composition/            # adapter template trees (ejs), one
                           # directory per `<vertical>/<adapter>/`;
@@ -230,10 +234,23 @@ assets/
                           # as-is (no bundler). Linted with src/tests,
                           # unlike the ejs template trees above
 tests/                    # vitest; mirrors src/ (domain/, e2e/,
-  support/factory.ts      # infrastructure/); the shared test Factory
+  support/factory.ts      # infrastructure/); the shared test Factory.
+  support/fixtures/       # plugins/ holds the fixture plugins the
+  plugins/                # plugins/ suite loads from disk
 bin/keel.js               # npm bin entry → dist/application/cli/executable
 .dependency-cruiser.cjs   # the dependency rule, enforced in pnpm lint
 ```
+
+Registration note: **which** stacks and verticals a run may compose
+from is a value, not an import. `domain/contract/ports/registry.ts`
+is the port; `domain/core/registry.ts` builds one from sources and
+refuses a malformed piece _naming its origin_; the composition root
+is the only place that decides what goes in — keel's own pieces, plus
+whatever `infrastructure/registry/` loaded from
+`<cwd>/.keel/plugins`. A handler that imports `STACKS` or
+`SHIPPED_VERTICALS` directly has re-made the catalog a property of
+the build, which is what a plugin cannot extend. See
+`docs/plugins.md`.
 
 Compatibility note: an incompatibility between capabilities is a
 **declaration**, never a hand-written check. A `Conflict` on the
@@ -295,7 +312,8 @@ would ship as separate packages implementing the same port.
 - **docs/**: the comprehensive documentation — `docs/stacks/` (one
   page per stack family: prerequisites, questions, generated tree),
   `docs/verticals/` (one page per vertical + compatibility matrix),
-  `docs/cli.md`, `docs/composition.md`, `docs/development.md`,
+  `docs/cli.md`, `docs/composition.md`, `docs/plugins.md`,
+  `docs/development.md`,
   `docs/release.md`, `docs/roadmap.md`. New stacks, verticals, or
   CLI flags must update the matching page(s) and the README matrix
   in the same change. Contribution workflow (forks) lives in

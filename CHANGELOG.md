@@ -8,6 +8,43 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Plugins: a project can supply its own stacks and verticals.** keel
+  scans `<cwd>/.keel/plugins` — a directory the project owns — and
+  loads every entry it finds: a directory holding `keel-plugin.js`, or
+  a `.js`/`.mjs` module. A plugin exports `{ name, stacks, verticals,
+assets }` and its pieces are written against the ordinary
+  composition vocabulary, so the engine reads them through no special
+  case: a plugin's `Conflict` is refused and filtered exactly as a
+  shipped piece's, and `keel.catalog` reports its stacks and verticals
+  alongside keel's own — `keel ui` needed no change to render them.
+  - **Templates too.** A plugin declares an `assets` directory and its
+    adapters render from it through the same `TemplateSource` port,
+    with ids namespaced `plugin:<name>/<path>`
+    (`pluginTemplateId`). An id naming a plugin that declared no
+    assets fails saying so rather than falling through to keel's.
+  - **A directory, not an npm dependency.** `keel new` runs in an
+    empty directory with no `package.json` to resolve a name against,
+    and keel scaffolds JVM, Go and Rust repositories that have no
+    reason to carry one. So what a keel-scaffolded project can rely on
+    is: a plugin in `.keel/plugins/` of the invocation directory is
+    loaded, in every language family, greenfield and brownfield alike.
+  - **Every failure names the plugin, never the engine** — a module
+    that throws at load, a malformed `Conflict`, a dimension none of
+    its own adapters covers (checked statically at registration, which
+    is what separates a typo from a legitimate predicate miss), and an
+    id already claimed by keel or by another plugin, which is refused
+    rather than silently shadowing.
+  - **Trust is explicit, not implied.** Loading a plugin runs its
+    code and keel does not sandbox it. What it does instead: discovery
+    never leaves the project directory, never resolves a package by
+    name and never fetches; every loaded plugin prints one line naming
+    it and its module; `KEEL_NO_PLUGINS=1` skips discovery entirely;
+    `KEEL_PLUGINS` names extra paths explicitly. See
+    [docs/plugins.md](docs/plugins.md) → Trust.
+  - `@rgoussu.dev/keel/plugin` is a new package export carrying the
+    plugin contract and its types, for TypeScript authors. A plugin
+    has no runtime dependency on keel either way.
+
 - **Declared compatibility: one rule, read twice.** A `Conflict` names
   a combination of capability tags that must never be assembled, and
   why — `{ when: ['a', 'b'] }` for a mutual exclusion,
@@ -131,6 +168,29 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
   - The terminal's own menu filters moved to `domain/core/dials.ts`
     rather than being copied, so `keel new`'s questions and
     `keel.dials`' answers are the same functions.
+
+- **The stack and vertical registries are an injected port.**
+  `STACKS` and `VERTICALS` were module-level constants handlers
+  imported directly, which made the catalog a property of the build
+  rather than of the run — a piece keel did not ship had nowhere to
+  arrive from. They are now reached through a `Registry` port in
+  `domain/contract/ports/`, built once at the composition root and
+  immutable thereafter. A port rather than a mutable registry with a
+  load step: the mutable version is process-wide state with an
+  ordering requirement, where two runs in one process cannot see
+  different catalogs and a test's fixture piece leaks into whatever
+  runs next. It also puts plugin loading in `infrastructure/`, which
+  the dependency rule already keeps `domain/core` away from.
+  - The `Stack` vocabulary (`Stack`, `StackService`,
+    `BuildSystemOption`, `ModuleLayout`, `ModuleLayoutOption`) moved
+    to `domain/contract/stack.ts` beside `Vertical`'s, because the
+    port names it and a port may not reach into `domain/core`. Their
+    old modules re-export them, so no import changed.
+  - `keel.catalog` and `keel.dials` read the port too, so a plugin's
+    stack renders in `keel ui` — and gets its dials narrowed by its
+    own rules — with no change to `keel ui`.
+  - No user-visible behaviour changes with no plugin present: every
+    shipped stack and vertical resolves exactly as before.
 
 - **The resolver's thrown refusal now says what the front door says.**
   `resolveVertical` reported only which dimension was empty, while
