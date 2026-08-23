@@ -31,7 +31,7 @@ services:
       - '8081:80'
     volumes:
       - spa-assets:/usr/share/nginx/html:ro
-      - ./<%= frontend.path %>/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./<%= frontend.path %>/nginx.conf:/etc/nginx/templates/default.conf.template:ro,z
     environment:
       # The official nginx entrypoint substitutes this into the
       # mounted config template at start.

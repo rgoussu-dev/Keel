@@ -2806,6 +2806,19 @@ ci`/`containerization`/`distribution` on a service follow the same
 down -v` discards it (dev data, by doctrine), and the migrations
     one-shot repopulates the schema on the next `up`.
 
+- **The monitoring stack's config files are readable inside their
+  containers.** The four `dev/observability/` files the granular stack
+  bind-mounts now mount `:ro,z` and are written world-readable. On an
+  SELinux host (Fedora, RHEL) an unlabelled bind mount reads as a
+  permission denial, so `tempo`, `prometheus` and `otel-collector`
+  each exited on `open …: permission denied` while `loki` — the one
+  service with no mounted config — came up fine; the `z` relabels the
+  mount and is inert everywhere else. The explicit mode covers the
+  other half: a `keel new` run under a umask of 077 emitted 0600
+  configs, unreadable to the unprivileged users those images run as.
+  The `nginx.conf` mounts in the containerization, fullstack and
+  spa-deploy compose files carry the same label.
+
 ## [0.5.0-alpha] — 2026-08-09
 
 ### Changed
