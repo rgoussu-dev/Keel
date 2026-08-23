@@ -21,10 +21,10 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import {
+  ciPipelineContribution,
   ciTemplateId,
   PROVIDER_QUESTION,
   ciProvider,
-  providerTag,
   ciFormatCheck,
   ciLintCheck,
   otherProviderAskers,
@@ -50,6 +50,6 @@ export const tsPipelineAdapter: Adapter = {
       formatCheck: ciFormatCheck(ctx.manifest.tags),
       lintCheck: ciLintCheck(ctx.manifest.tags),
     });
-    return { files, tagsAdd: [providerTag(provider)] };
+    return ciPipelineContribution(provider, files);
   },
 };

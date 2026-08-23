@@ -69,10 +69,10 @@ class CountingPrompt implements Prompt {
 
 /**
  * Installs `vertical` interactively against `manifest`, into a tree
- * of its own. Each call gets a fresh tree deliberately: what is under
- * test is the answer travelling on the manifest, and the two
- * verticals' GitLab contributions meet in one `.gitlab-ci.yml` whose
- * upsert only composes in the documented order (`ci` first).
+ * of its own. A fresh tree per call keeps this file's subject to the
+ * answer travelling on the manifest; that the two verticals' GitLab
+ * contributions also compose in one tree, in either order, is
+ * `gitlab-pipeline-file.test.ts`.
  */
 async function install(
   vertical: Vertical,
