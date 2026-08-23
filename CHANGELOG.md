@@ -1971,6 +1971,27 @@ ci`/`containerization`/`distribution` on a service follow the same
   the recorded answer — including in the reverse order, where
   `distribution` runs first.
 
+- **A JVM-flavored image no longer leads to a GraalVM question.** On a
+  composed `arch.cli + arch.server-http` stack (`quarkus-cli-rest` and
+  its siblings) the `distribution` vertical resolves both
+  `quarkus-cli-native` and `jvm-container`, so a user who had just
+  answered "Container image flavor? JVM" was asked which native
+  targets to cross-compile — and `runtime.graalvm-native` was written
+  to the manifest over the top of that answer, which is the very tag
+  `jvm-container` reads to decide whether its release pipeline builds
+  a native artifact for the Dockerfile to copy. The `containerization`
+  vertical now records the flavor either way — `runtime.jvm-image`
+  beside `deploy.container-image` for the JVM flavor,
+  `runtime.graalvm-native` for native — and `quarkus-cli-native`
+  excludes `runtime.jvm-image`. The GraalVM decision is one dial per
+  project, asked once, where the flavor was actually chosen. A
+  CLI-only project ships native binaries exactly as before, and so
+  does a combo that chose the native flavor. A manifest written
+  before this release carries no flavor tag, so a brownfield
+  `keel add distribution` on one keeps the old behavior until
+  `keel add containerization` is re-run — re-record the dial, or add
+  `runtime.jvm-image` to the manifest's tags by hand.
+
 - **A free-form interactive question's `doc` was invisible.** The
   inquirer adapter surfaced an adapter-written `Question.doc` as each
   choice's own description on a `select` question, but a free-form

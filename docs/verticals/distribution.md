@@ -18,14 +18,14 @@ selected by predicate:
 
 ## Dimensions & adapters
 
-| Dimension                  | Adapter                           | Predicate                                               |
-| -------------------------- | --------------------------------- | ------------------------------------------------------- |
-| `build`, `release-channel` | `distribution/quarkus-cli-native` | `framework.quarkus` + `arch.cli` + `pkg.gradle`         |
-| `build`, `release-channel` | `distribution/jvm-container`      | `runtime.jvm` + `arch.server-http` (all 12 stacks)      |
-| `build`, `release-channel` | `distribution/go-container`       | `lang.go` + `arch.server-http`                          |
-| `build`, `release-channel` | `distribution/rust-container`     | `lang.rust` + `arch.server-http`                        |
-| `build`, `release-channel` | `distribution/ts-container`       | `lang.typescript` + `runtime.node` + `arch.server-http` |
-| `build`, `release-channel` | `distribution/wc-container`       | `framework.web-components` + `arch.spa`                 |
+| Dimension                  | Adapter                           | Predicate                                                                  |
+| -------------------------- | --------------------------------- | -------------------------------------------------------------------------- |
+| `build`, `release-channel` | `distribution/quarkus-cli-native` | `framework.quarkus` + `arch.cli` + `pkg.gradle`, minus `runtime.jvm-image` |
+| `build`, `release-channel` | `distribution/jvm-container`      | `runtime.jvm` + `arch.server-http` (all 12 stacks)                         |
+| `build`, `release-channel` | `distribution/go-container`       | `lang.go` + `arch.server-http`                                             |
+| `build`, `release-channel` | `distribution/rust-container`     | `lang.rust` + `arch.server-http`                                           |
+| `build`, `release-channel` | `distribution/ts-container`       | `lang.typescript` + `runtime.node` + `arch.server-http`                    |
+| `build`, `release-channel` | `distribution/wc-container`       | `framework.web-components` + `arch.spa`                                    |
 
 ## The container family
 
@@ -110,11 +110,20 @@ images run on.
 
 ## The CLI shape
 
-`distribution/quarkus-cli-native` is unchanged: GitHub Actions
-workflows that cross-compile the CLI to native binaries
-(`linux-amd64`, `linux-arm64`, `darwin-arm64`; a sticky question
-tunes the set) and attach them to a GitHub Release on tag push,
-promoting `runtime.graalvm-native`.
+`distribution/quarkus-cli-native`: GitHub Actions workflows that
+cross-compile the CLI to native binaries (`linux-amd64`,
+`linux-arm64`, `darwin-arm64`; a sticky question tunes the set) and
+attach them to a GitHub Release on tag push, promoting
+`runtime.graalvm-native`.
+
+**On a composed `arch.cli + arch.server-http` stack the GraalVM dial
+is one dial.** Both shapes resolve there, so this one follows the
+flavor [`containerization`](containerization.md) already recorded: it
+excludes `runtime.jvm-image`, the tag the JVM flavor promotes. A
+CLI-only project has no image and no flavor, so it ships native
+binaries as always; a combo that chose the native flavor does too; a
+combo that chose JVM ships through its image alone, and is never
+asked for native build targets it said no to.
 
 ## Prerequisites
 

@@ -7,9 +7,26 @@
  * Composition:
  *   - covers `build` and `release-channel` of the `distribution`
  *     vertical;
- *   - predicate: `framework.quarkus + arch.cli + pkg.gradle` — only
- *     fires for a Quarkus CLI on Gradle, the only stack we know how
- *     to package this way.
+ *   - predicate: `framework.quarkus + arch.cli + pkg.gradle`, minus
+ *     `runtime.jvm-image` — only fires for a Quarkus CLI on Gradle,
+ *     the only stack we know how to package this way, and only where
+ *     the project has not already declined GraalVM.
+ *
+ * **The GraalVM decision is one dial per project.** On a composed
+ * `arch.cli + arch.server-http` stack this adapter resolves beside
+ * `distribution/jvm-container`, and both cover the same two
+ * dimensions. While the `containerization` vertical's `jvm` flavor
+ * promoted no tag, that meant a user who had just answered
+ * "Container image flavor? JVM" was then asked which native targets
+ * to cross-compile — and the answer they never gave was written to
+ * the manifest anyway, because this adapter promotes
+ * `runtime.graalvm-native`: the very tag `jvm-container` reads to
+ * decide whether its release pipeline builds a native artifact for
+ * the Dockerfile to copy. Excluding `runtime.jvm-image` settles it
+ * where the flavor was actually chosen. A CLI-only project has no
+ * image and no flavor, so it ships native binaries exactly as
+ * before; a combo that chose the native flavor still does; a combo
+ * that chose JVM ships through its image alone, and is not asked.
  *
  * One sticky question — `targets` — captures which OS/arch
  * combinations the release matrix builds for. The defaults cover the
@@ -27,7 +44,7 @@
  */
 
 import type { Adapter } from '../../contract/composition.js';
-import { GRAALVM_NATIVE_TAG } from './container-image.js';
+import { GRAALVM_NATIVE_TAG, JVM_IMAGE_TAG } from './container-image.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
 
@@ -65,7 +82,10 @@ export const quarkusCliNativeAdapter: Adapter = {
   id: QUARKUS_CLI_NATIVE_ID,
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
-  predicate: { requires: ['framework.quarkus', 'arch.cli', 'pkg.gradle'] },
+  predicate: {
+    requires: ['framework.quarkus', 'arch.cli', 'pkg.gradle'],
+    excludes: [JVM_IMAGE_TAG],
+  },
   questions: [
     {
       id: 'targets',
