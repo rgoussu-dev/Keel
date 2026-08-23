@@ -32,7 +32,7 @@
  * in version control and is deliberately not a tag.
  */
 
-import type { Tag } from '../../contract/composition.js';
+import type { Conflict, Tag } from '../../contract/composition.js';
 
 /** Module layouts the template trees ship for. */
 export type ModuleLayout = 'basic' | 'modulith';
@@ -60,6 +60,31 @@ export const MODULITH_LAYOUT_TAG: Tag = 'layout.modulith';
  * but "there is a second context" is the same fact everywhere.
  */
 export const PEER_CONTEXT_TAG: Tag = 'modules.peer-context';
+
+/**
+ * The rule that a second bounded context needs the layout that gives
+ * it a seam to cross.
+ *
+ * Declared rather than checked, and that is the whole point of it
+ * being here. It used to be a hand-written branch in the `keel new`
+ * handler, which meant the refusal existed and the *menu* did not:
+ * `--with-peer-context` was offered against the flat layout and then
+ * rejected. One declaration is read both ways — the assembly gate
+ * refuses it, the dial menus filter by it — so the two cannot say
+ * different things.
+ *
+ * Attached to the `walking-skeleton` vertical, which is the piece
+ * whose capability is constrained. A rule belongs to its declarer,
+ * never to a central table: that is what lets a stack family arriving
+ * from a plugin bring its own.
+ */
+export const PEER_CONTEXT_NEEDS_MODULITH: Conflict = {
+  id: 'walking-skeleton/peer-context-needs-modulith',
+  when: [PEER_CONTEXT_TAG],
+  unless: [MODULITH_LAYOUT_TAG],
+  reason:
+    'a second bounded context needs the modulith layout: it reaches the first only through the peer-facing seam the modulith puts between them, and the flat layout is a single hexagon with no seam to cross. Add --module-layout=modulith',
+};
 
 /**
  * The bounded context the walking skeleton scaffolds under the

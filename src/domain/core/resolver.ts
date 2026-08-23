@@ -42,7 +42,17 @@ export class ResolutionError extends Error {
 }
 
 export type ResolutionErrorDetail =
-  | { kind: 'uncovered'; dimensions: readonly string[] }
+  | {
+      kind: 'uncovered';
+      dimensions: readonly string[];
+      /**
+       * The tags that would close the gap — {@link CoverageGap.enablers},
+       * carried here so the thrown refusal says as much as the
+       * answered one. The throw is the last line of defence, which
+       * makes it the worst place to report only the symptom.
+       */
+      enablers: readonly Tag[];
+    }
   | { kind: 'cycle'; adapters: readonly string[] };
 
 /**
@@ -57,13 +67,16 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
   const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
   const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
 
-  const uncovered = uncoveredDimensions(vertical, matched);
-  if (uncovered.length > 0) {
+  // Thrown from the same {@link coverageGap} a front door answers
+  // with, so the refusal a user runs into and the one they are shown
+  // ahead of time cannot say different things.
+  const gap = gapFrom(vertical, matched, tagSet);
+  if (gap !== null) {
     throw new ResolutionError(
-      `vertical '${vertical.id}': no adapter covers dimension(s): ${uncovered.join(', ')}`,
+      `vertical '${vertical.id}': no adapter covers dimension(s): ${gap.dimensions.join(', ')}${describeEnablers(gap.enablers)}`,
       vertical.id,
       'uncovered',
-      { kind: 'uncovered', dimensions: uncovered },
+      { kind: 'uncovered', dimensions: gap.dimensions, enablers: gap.enablers },
     );
   }
 
@@ -124,10 +137,27 @@ export function coversFor(vertical: Vertical, tags: Iterable<Tag>): boolean {
  */
 export function coverageGap(vertical: Vertical, tags: Iterable<Tag>): CoverageGap | null {
   const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
-  const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
+  return gapFrom(
+    vertical,
+    vertical.adapters.filter((a) => matches(a.predicate, tagSet)),
+    tagSet,
+  );
+}
+
+/** The gap, given the adapters the predicate filter already kept. */
+function gapFrom(
+  vertical: Vertical,
+  matched: readonly Adapter[],
+  tagSet: ReadonlySet<Tag>,
+): CoverageGap | null {
   const dimensions = uncoveredDimensions(vertical, matched);
   if (dimensions.length === 0) return null;
   return { verticalId: vertical.id, dimensions, enablers: enablers(vertical, dimensions, tagSet) };
+}
+
+/** The enablers as one clause, or nothing when there are none to name. */
+function describeEnablers(enabling: readonly Tag[]): string {
+  return enabling.length === 0 ? '' : ` — would need ${enabling.join(', ')}`;
 }
 
 function enablers(

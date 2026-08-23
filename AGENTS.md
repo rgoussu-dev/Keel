@@ -177,8 +177,9 @@ src/
                           # (Tree, Prompt, Logger, Clock,
                           # ManifestStore, TemplateSource,
                           # ProcessRunner)
-    core/                 # the engine (predicate, resolver, answers,
-                          # apply, install, actions), composition
+    core/                 # the engine (predicate, resolver,
+                          # compatibility, answers, apply, install,
+                          # actions), composition
                           # adapters/ + verticals/ + stacks,
                           # handlers/ (new-project, add-vertical),
                           # RegistryMediator
@@ -230,6 +231,14 @@ tests/                    # vitest; mirrors src/ (domain/, e2e/,
 bin/keel.js               # npm bin entry → dist/application/cli/executable
 .dependency-cruiser.cjs   # the dependency rule, enforced in pnpm lint
 ```
+
+Compatibility note: an incompatibility between capabilities is a
+**declaration**, never a hand-written check. A `Conflict` on the
+vertical or stack that owns the rule is read twice by the engine — to
+refuse an assembly, and to keep the choice off the menu — so the two
+answers cannot disagree. A branch in a handler gets only the first,
+which is how `--with-peer-context` came to be offered under the flat
+layout and then rejected. See `docs/composition.md` → Conflicts.
 
 Naming note: a _composition adapter_ (git-init, quarkus-cli-bootstrap,
 …) is keel **domain content** — a unit contributing files to a

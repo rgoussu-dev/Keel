@@ -34,7 +34,8 @@ import { gatewayVertical } from './verticals/gateway.js';
 import { vcsVertical } from './verticals/vcs.js';
 import { walkingSkeletonVertical } from './verticals/walking-skeleton.js';
 import { MODULE_LAYOUTS, type ModuleLayoutOption } from './adapters/module-layout.js';
-import type { Tag, Vertical } from '../contract/composition.js';
+import { assemblyRefusal } from './compatibility.js';
+import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 
 /**
  * One selectable build system of a stack. The choice folds a `pkg.*`
@@ -130,6 +131,17 @@ export interface Stack {
   readonly projects?: readonly Tag[];
   /** Present on composite stacks: the services to scaffold. */
   readonly services?: readonly StackService[];
+  /**
+   * Incompatibilities this preset's own combination of dials creates
+   * — a build system its module layout cannot take, a capability its
+   * framework will not carry.
+   *
+   * A stack's rules and a vertical's are read together, because an
+   * assembly is the pieces coming together and neither piece alone
+   * knows the whole of it. Declared here rather than centrally so a
+   * preset arriving from outside this file brings its own. @see Conflict
+   */
+  readonly conflicts?: readonly Conflict[];
 }
 
 export const STACKS: Readonly<Record<string, Stack>> = {
@@ -647,9 +659,73 @@ export interface StackSummary {
 }
 
 /** Lists every registered stack's id + description, in deterministic order. */
+/**
+ * The tag set a stack seeds, once its build-system and module-layout
+ * dials have settled.
+ *
+ * The one place the arithmetic lives, because three readers need the
+ * same answer: the install that stages from it, the compatibility
+ * probe below, and the menus that filter against it.
+ */
+export function stackTagsFor(
+  stack: Stack,
+  buildTag: Tag | null,
+  layoutTag: Tag | null,
+): readonly Tag[] {
+  return [...stack.tags, ...(buildTag ? [buildTag] : []), ...(layoutTag ? [layoutTag] : [])];
+}
+
+/**
+ * Every tag set this stack could seed — one per combination of the
+ * dials it offers, and exactly one when it offers none.
+ *
+ * The peer context is deliberately not an axis. It is opt-in and
+ * defaults to off, so a stack that can only be assembled *with* it is
+ * not a thing; whether it may be switched on is its own menu's
+ * question, filtered by the same rules at that point.
+ */
+export function assemblies(stack: Stack): readonly (readonly Tag[])[] {
+  const builds: readonly (Tag | null)[] = stack.buildSystems?.map((o) => o.tag) ?? [null];
+  const layouts: readonly (Tag | null)[] = stack.moduleLayouts?.map((o) => o.tag) ?? [null];
+  return builds.flatMap((build) => layouts.map((layout) => stackTagsFor(stack, build, layout)));
+}
+
+/**
+ * Whether this stack can be built at all — whether **some** setting of
+ * its dials satisfies the rules its own pieces declare.
+ *
+ * What it is for is menus, and the "some" is the whole of it. A stack
+ * is a dead end only when every way of assembling it is refused;
+ * hiding one whose default combination happens to be illegal would
+ * take away a preset the user could have reached by moving a dial. The
+ * dials' own menus then narrow within it, which is where a specific
+ * combination is ruled out.
+ *
+ * @see assemblyRefusal — the same declaration, read to refuse rather
+ * than to filter.
+ */
+export function isAssemblable(stack: Stack): boolean {
+  const pieces = [stack, ...stack.verticals];
+  return assemblies(stack).some((tags) => assemblyRefusal(pieces, tags) === null);
+}
+
+/** The stacks a menu may offer: every registered one that can be built. */
+export function assemblableStacks(): readonly Stack[] {
+  return listStackIds()
+    .map((id) => STACKS[id])
+    .filter((stack): stack is Stack => stack !== undefined && isAssemblable(stack));
+}
+
+/**
+ * Every stack a menu may offer, id-sorted.
+ *
+ * Filtered by {@link isAssemblable}: a preset no setting of its dials
+ * can build is not an option, and listing it as one is a promise the
+ * install would break. {@link listStackIds} stays unfiltered — an
+ * "unknown stack 'x'; available: …" message is about which ids exist,
+ * and hiding a real id there would send the reader looking for a typo
+ * they did not make.
+ */
 export function listStacks(): readonly StackSummary[] {
-  return listStackIds().map((id) => {
-    const stack = STACKS[id];
-    return { id, description: stack?.description ?? '' };
-  });
+  return assemblableStacks().map((stack) => ({ id: stack.id, description: stack.description }));
 }

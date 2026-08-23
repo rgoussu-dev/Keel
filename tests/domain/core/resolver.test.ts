@@ -63,7 +63,46 @@ describe('resolveVertical', () => {
     } catch (e) {
       const err = e as ResolutionError;
       expect(err.kind).toBe('uncovered');
-      expect(err.detail).toEqual({ kind: 'uncovered', dimensions: ['deploy-target'] });
+      // Nothing covers `deploy-target` at all, so there is nothing to
+      // name as an enabler — the dimension really is empty.
+      expect(err.detail).toEqual({
+        kind: 'uncovered',
+        dimensions: ['deploy-target'],
+        enablers: [],
+      });
+    }
+  });
+
+  it('throws what coverageGap answers, so the two refusals cannot differ', () => {
+    // The throw is the last line of defence, which makes it the worst
+    // place to report only a symptom — and the worst place to report
+    // a *different* symptom than the front door already showed.
+    const v: Vertical = {
+      id: 'persistence',
+      description: '',
+      dimensions: ['engine'],
+      adapters: [
+        stub({
+          id: 'quarkus-jdbc',
+          covers: ['engine'],
+          predicate: { requires: ['framework.quarkus', 'arch.server-http'] },
+        }),
+      ],
+    };
+    const gap = coverageGap(v, ['framework.quarkus']);
+    expect(gap?.enablers).toEqual(['arch.server-http']);
+
+    try {
+      resolveVertical(v, ['framework.quarkus']);
+      expect.fail('expected throw');
+    } catch (e) {
+      const err = e as ResolutionError;
+      expect(err.message).toContain('would need arch.server-http');
+      expect(err.detail).toEqual({
+        kind: 'uncovered',
+        dimensions: gap?.dimensions,
+        enablers: gap?.enablers,
+      });
     }
   });
 

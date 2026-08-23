@@ -38,6 +38,7 @@
 import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
+import { assemblyRefusal } from '../compatibility.js';
 import type {
   AddVerticalCommand,
   FileDiff,
@@ -107,6 +108,21 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         new DomainError(
           `--set cannot be combined with --reapply: reapply re-renders '${vertical.id}' from the answers recorded in the manifest, and changing one is not supported yet`,
           'keel.reapply-frozen-answers',
+        ),
+      );
+    }
+
+    // The same declaration `keel new` refuses an illegal assembly by,
+    // asked of a project already on disk: the vertical's own rules,
+    // read against the tags the manifest records. A capability that
+    // cannot sit with what is already here is refused before a file
+    // moves, naming the rule rather than failing somewhere downstream.
+    const refusal = assemblyRefusal([vertical], stored.tags);
+    if (refusal !== null) {
+      return err(
+        new DomainError(
+          `vertical '${vertical.id}' cannot be installed here: ${refusal}`,
+          'keel.incompatible',
         ),
       );
     }
