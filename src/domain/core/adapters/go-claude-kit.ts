@@ -16,7 +16,7 @@ import { moduleLayoutOf } from './module-layout.js';
 import {
   claudeKitAdapter,
   renderRunbook,
-  renderRunSkill,
+  runSkillSpec,
   type ClaudeKitFamily,
   type RunbookCommand,
 } from './claude-kit.js';
@@ -94,7 +94,7 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
     );
   }
 
-  const runSkill = renderRunSkill({
+  const runSkill = runSkillSpec({
     description:
       'Launch this Go app and check it end to end. Use when asked to run, start, or check the app.',
     body: `# Run ${projectName}\n\n${steps.join('\n\n')}`,

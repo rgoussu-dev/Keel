@@ -30,7 +30,11 @@ const HOOK = '.claude/hooks/pre-commit-format.sh';
 
 /** The hook as `walking-skeleton` leaves it: sentinels, no formatter. */
 const hookWithoutFormatter = (verify: string): string =>
-  renderPreCommitHook({ runbook: '', runSkill: '', verifyCommand: verify });
+  renderPreCommitHook({
+    runbook: '',
+    runSkill: { name: 'run', description: 'x', body: 'x' },
+    verifyCommand: verify,
+  });
 
 const GRADLE_ROOT = `plugins {
     java
