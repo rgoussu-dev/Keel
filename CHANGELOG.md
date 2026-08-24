@@ -6,6 +6,25 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Harness evals rig** (`evals/`, wave 1 of the agent-harness
+  redesign program): an agent-agnostic runner measuring how well
+  coding agents navigate what keel emits. Cases are data
+  (`evals/cases/<name>/case.yaml` — nothing agent-specific may appear
+  in one), drivers are adapters of an `AgentDriver` port with
+  per-mode capability manifests (`claude-code` reference driver in
+  scripted + attended modes, `codex` scripted, plus the canonical
+  fake), and the oracle judges final workspace state — never agent
+  output — alongside wall time and git diff as the universal floor.
+  Ships lane-A navigation probes over grown fixtures of five
+  representative stacks, a static context-budget audit, and a
+  `baseline` campaign the owner runs locally
+  (`KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline`) to pin
+  the pre-redesign "before". Live runs are opt-in and never a PR
+  gate; `verify` covers the rig through the fake driver and fixture
+  transcripts only. See `docs/development.md` → Harness evals.
+
 ### Fixed
 
 - **A refusal raised at the bottom of the install now reaches a front
