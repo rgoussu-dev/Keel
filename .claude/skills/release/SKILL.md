@@ -8,9 +8,9 @@ description: |
 
 # release
 
-Keel releases are cut by bumping `package.json`, updating `CHANGELOG.md`,
-committing, tagging, and pushing the tag. The GitHub Actions release
-workflow does the rest.
+Keel releases are cut by bumping `package.json`, cutting the changelog
+with `scripts/cut-changelog.mjs`, committing, tagging, and pushing the
+tag. The GitHub Actions release workflow does the rest.
 
 ## Dist-tag mapping
 
@@ -27,21 +27,22 @@ workflow does the rest.
 1. **`package.json`** — bump `version` to the target version (e.g.
    `0.2.0-alpha`).
 
-2. **`CHANGELOG.md`** — rename the `## [Unreleased]` heading to
-   `## [X.Y.Z] — YYYY-MM-DD` (today's date). Add a new empty
-   `## [Unreleased]` section above it. Update the three link references
-   at the bottom of the file:
+2. **Changelog** — run the cut script:
 
-   ```md
-   [Unreleased]: https://github.com/rgoussu-dev/Keel/compare/vX.Y.Z...HEAD
-   [X.Y.Z]: https://github.com/rgoussu-dev/Keel/compare/vPREV...vX.Y.Z
-   [PREV]: …
+   ```sh
+   node scripts/cut-changelog.mjs X.Y.Z
    ```
 
-   If any prior version is missing a link reference, add it now.
+   It moves the `[Unreleased]` body verbatim into
+   `docs/releases/CHANGELOG.X.Y.Z.md` with its own compare link
+   (against the previous release in the index), leaves a fresh empty
+   `## [Unreleased]`, prepends the release to the `## Releases` index,
+   and retargets the `[Unreleased]` compare ref. It refuses to cut the
+   same version twice. `tests/changelog.test.ts` verifies the
+   resulting shape in the fast gate.
 
-3. **Commit** — one commit containing only `package.json` +
-   `CHANGELOG.md`:
+3. **Commit** — one commit containing only `package.json`,
+   `CHANGELOG.md`, and `docs/releases/CHANGELOG.X.Y.Z.md`:
 
    ```
    chore(release): vX.Y.Z
@@ -49,7 +50,8 @@ workflow does the rest.
 
    Any other fixes that belong in the release (e.g. a missing schema
    file) must be committed **before** the release commit, as their own
-   logical unit, so the release commit is always a clean two-file change.
+   logical unit, so the release commit is always a clean three-file
+   change.
 
 4. **Tag** — `git tag vX.Y.Z` on the release commit.
 
@@ -61,19 +63,27 @@ workflow does the rest.
 `.github/workflows/release.yml` (triggered by the tag push):
 
 1. Verifies the tag name matches the `version` field in `package.json`.
-2. Reruns `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
-3. Publishes to npm with `--provenance --access public`.
-4. Creates a GitHub Release with auto-generated notes.
+2. Verifies `docs/releases/CHANGELOG.X.Y.Z.md` exists and is non-empty —
+   a tag pushed without the cut refuses to publish.
+3. Reruns `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+4. Publishes to npm with `--provenance --access public`.
+5. Creates a GitHub Release whose body is the release's changelog file,
+   with auto-generated notes appended.
 
 Required secret: `NPM_TOKEN`.
 
 ## Anti-patterns
 
 - Mixing a fix commit with the release commit. Keep them separate so
-  git history is clean and the tag points to an unambiguous two-file
+  git history is clean and the tag points to an unambiguous three-file
   diff.
-- Forgetting to add link references for intermediate versions in
-  `CHANGELOG.md` — check every `## [X.Y.Z]` heading has a corresponding
-  `[X.Y.Z]: …` line at the bottom.
+- Cutting the changelog by hand. `scripts/cut-changelog.mjs` is the
+  single implementation of the split — a hand-made release file drifts
+  from the shape `tests/changelog.test.ts` and the release workflow
+  expect.
+- Editing a release file after its version is tagged — cut files are
+  frozen; corrections go in `[Unreleased]`.
+- Essay-length changelog entries. Released entries should be
+  scannable — a bolded claim and a few lines, not essays.
 - Pushing the tag without confirming with the user — the workflow
   triggers immediately and publishes to npm.
