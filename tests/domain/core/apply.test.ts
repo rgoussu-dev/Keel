@@ -201,23 +201,122 @@ describe('applyContributions', () => {
     ]);
   });
 
-  it('records agentic bundles per adapter', async () => {
-    const tree = new FsTree(tmp);
-    const a = adapter('a', {
-      agentic: { skills: ['skills/debug.md'], slashCommands: ['commands/release.md'] },
+  describe('skill staging', () => {
+    const run = (adapters: readonly Adapter[], tree: FsTree) =>
+      applyContributions({
+        adapters,
+        answers: {},
+        manifest: emptyManifestV2('now', '0.4.0'),
+        tree,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+      });
+
+    it('stages SKILL.md and supporting files, returning provenance records', async () => {
+      const tree = new FsTree(tmp);
+      const a = adapter('a', {
+        skills: [
+          {
+            name: 'debug',
+            description: 'Debug the native build. Use when a native build fails.',
+            body: '# Debug\n\nsteps',
+            supporting: [{ path: 'reference.md', content: 'lookup table\n' }],
+          },
+        ],
+      });
+      const r = await run([a], tree);
+
+      expect(tree.read('.claude/skills/debug/SKILL.md')?.toString()).toBe(
+        '---\nname: debug\ndescription: Debug the native build. Use when a native build fails.\n---\n\n# Debug\n\nsteps\n',
+      );
+      expect(tree.read('.claude/skills/debug/reference.md')?.toString()).toBe('lookup table\n');
+      expect(r.skills).toEqual([
+        {
+          adapterId: 'a',
+          name: 'debug',
+          files: [
+            {
+              path: '.claude/skills/debug/SKILL.md',
+              sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+            },
+            {
+              path: '.claude/skills/debug/reference.md',
+              sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+            },
+          ],
+        },
+      ]);
     });
-    const r = await applyContributions({
-      adapters: [a],
-      answers: {},
-      manifest: emptyManifestV2('now', '0.4.0'),
-      tree,
-      logger: new FakeLogger(),
-      cwd: tmp,
-      templates: ejsTemplateSource,
-      processes: spawnProcessRunner,
+
+    it('refuses a skill name two adapters contribute, naming both origins', async () => {
+      const tree = new FsTree(tmp);
+      const skill = { name: 'run', description: 'd', body: 'b' };
+      const failure = await run(
+        [adapter('a', { skills: [skill] }), adapter('b', { skills: [skill] })],
+        tree,
+      ).then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(failure).toBeInstanceOf(ContributionConflictError);
+      expect((failure as ContributionConflictError).kind).toBe('skill-collision');
+      expect((failure as Error).message).toContain("adapter 'b'");
+      expect((failure as Error).message).toContain("adapter 'a'");
+      expect((failure as Error).message).toContain("skill 'run'");
     });
-    expect(r.agentic).toEqual({
-      a: { skills: ['skills/debug.md'], slashCommands: ['commands/release.md'] },
+
+    it('refuses a malformed spec naming the adapter that contributed it', async () => {
+      const tree = new FsTree(tmp);
+      const a = adapter('bad-plugin/skill', {
+        skills: [{ name: 'Not A Name', description: 'd', body: 'b' }],
+      });
+      await expect(run([a], tree)).rejects.toThrow(
+        /adapter 'bad-plugin\/skill' contributes a malformed skill/,
+      );
+    });
+
+    it('refuses a supporting path that escapes the skill directory', async () => {
+      const tree = new FsTree(tmp);
+      const a = adapter('a', {
+        skills: [
+          {
+            name: 'esc',
+            description: 'd',
+            body: 'b',
+            supporting: [{ path: '../../settings.json', content: '{}' }],
+          },
+        ],
+      });
+      await expect(run([a], tree)).rejects.toThrow(/malformed skill/);
+    });
+
+    it('reapply rewrites an edited skill file pristine', async () => {
+      const tree = new FsTree(tmp);
+      await fs.outputFile(path.join(tmp, '.claude/skills/run/SKILL.md'), 'edited by hand\n');
+      const a = adapter('a', { skills: [{ name: 'run', description: 'd', body: 'b' }] });
+      await applyContributions({
+        adapters: [a],
+        answers: {},
+        manifest: emptyManifestV2('now', '0.4.0'),
+        tree,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        mode: 'reapply',
+      });
+      expect(tree.read('.claude/skills/run/SKILL.md')?.toString()).toBe(
+        '---\nname: run\ndescription: d\n---\n\nb\n',
+      );
+    });
+
+    it('conflicts on install when the skill file already exists on disk', async () => {
+      const tree = new FsTree(tmp);
+      await fs.outputFile(path.join(tmp, '.claude/skills/run/SKILL.md'), 'already there\n');
+      const a = adapter('a', { skills: [{ name: 'run', description: 'd', body: 'b' }] });
+      await expect(run([a], tree)).rejects.toBeInstanceOf(ContributionConflictError);
     });
   });
 
