@@ -25,7 +25,7 @@ The single composable unit. Each adapter declares:
 - any user **choice points** (`questions`),
 - ordering hints (`after`),
 - a `contribute()` function returning files, patches, deferred
-  actions, agentic bundles, and tags to add.
+  actions, [skills](#harness-contributions), and tags to add.
 
 > Naming note: a _composition adapter_ (`git-init`,
 > `quarkus-cli-bootstrap`, …) is keel **domain content** — a unit
@@ -269,6 +269,84 @@ modules, and it is what turns "extract this context into its own
 service" into a wiring change. See
 [the JVM stack page](stacks/jvm.md#module-layout) for the generated
 tree.
+
+## Harness contributions
+
+How a piece ships **agent-harness elements** — the `.claude/` workflow
+kit and the agent-facing documents — with the code it contributes.
+These rules are normative for every harness seam; the skill seam below
+is the first one live, and the owned-region and settings seams follow
+the same model.
+
+**Harness elements ride typed, declarative contribution fields — never
+bare `files:` entries or ad-hoc patches.** The engine can only refuse,
+report, or gate an element it can identify; a skill hidden inside a
+`files:` entry is invisible to all three.
+
+Three ownership patterns, with different reapply semantics:
+
+1. **Adapter-owned whole files.** Exactly one adapter of the resolved
+   set owns each file; a second claim is a hard refusal naming both
+   origins, and `--reapply` rewrites the file pristine. Skills are
+   this class.
+2. **Owned regions in shared text.** A sentinel-delimited section of a
+   document several parties write — the stack runbook in `AGENTS.md`
+   is the standing example. Reapply replaces the owner's own region
+   and never touches the user's prose around it.
+3. **Key-addressed settings merges.** JSON settings composed key by
+   key, each key carrying its contributor — so a reapply refreshes a
+   contributor's keys in place. (Lands with the hook/settings seam.)
+
+Whatever the class, a contribution is **owned by exactly one adapter**
+(grouped under its vertical). Tags select and parameterize adapters;
+they never own content.
+
+### Skills
+
+An adapter ships a skill as a `SkillSpec` on its contribution —
+**content-carrying** (`name`, `description`, optional
+`userInvocable`, `body`, optional `supporting` files), a string
+literal or something read through `ctx.templates`, never a path for
+the engine to resolve later:
+
+```ts
+skills: [
+  {
+    name: 'run',
+    description: 'Launch this service in dev mode and probe it end to end. …',
+    body: '# Run the service\n\n…',
+  },
+];
+```
+
+The applier validates each spec against its zod schema (refusing a
+malformed one naming the adapter), renders it with the one shared
+`renderSkill` serializer, and stages it to
+`.claude/skills/<name>/SKILL.md` — plus its `supporting` files beside
+it — as an adapter-owned whole file. Each staged file gets a
+provenance record in the manifest's `entries`: the owning adapter as
+`source`, the target path, and the pristine content hashes.
+
+Two rules the seam enforces:
+
+- **The description is the whole trigger.** `renderSkill` emits
+  `name` and `description` frontmatter (and `user-invocable` only
+  when the spec sets it) and **never `paths:`** — upstream Claude
+  Code discovery mismatches path-scoped skills, so description
+  matching is what activates a skill. Write the description as the
+  trigger, in at most two sentences.
+- **`Vertical.skills` declares the complete set.** Every skill name a
+  vertical's adapters may stage, including the ones only some answers
+  or tag sets produce — the mirror of `promotes`, for the same
+  reason: a skill staged at install time is invisible to anything
+  reasoning before the install, and a front end reporting what an
+  assembly ships needs the static answer. The installer checks each
+  contribution's names against the declaration and refuses an
+  undeclared one.
+
+A plugin's verticals ship skills through exactly this seam — same
+schema, same serializer, same collision refusal and provenance, no
+special case. See [Plugins](plugins.md#skills).
 
 ## One install, end to end
 
