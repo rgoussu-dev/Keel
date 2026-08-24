@@ -166,6 +166,37 @@ describe('keel new, from a plugin stack', () => {
     expect(manifest['tags']).toContain('acme.greeting');
   });
 
+  it("stages the plugin's skill through the seam, with provenance in the manifest", async () => {
+    await install(PLUGIN);
+    const mediator = await mediatorFor();
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, stack: STACK, answers: {}, interactive: false, dryRun: false }),
+      ),
+    );
+
+    // The spec is rendered by the engine's own serializer — the
+    // plugin never spelled frontmatter or a `.claude/` path.
+    const skill = await fs.readFile(
+      path.join(cwd, '.claude', 'skills', 'greet', 'SKILL.md'),
+      'utf8',
+    );
+    expect(skill.startsWith('---\nname: greet\ndescription: ')).toBe(true);
+    expect(skill).toContain('Read GREETING.md');
+    expect(skill).not.toMatch(/^paths:/m);
+
+    // …and the staged file's provenance names the owning adapter.
+    const manifest = (await fs.readJson(path.join(cwd, '.claude', '.keel-manifest.json'))) as {
+      entries: { source: string; target: string }[];
+    };
+    expect(manifest.entries).toContainEqual(
+      expect.objectContaining({
+        source: 'acme-greeting/file',
+        target: '.claude/skills/greet/SKILL.md',
+      }),
+    );
+  });
+
   it('refuses the combination the plugin s own rule forbids, naming the rule', async () => {
     await install(PLUGIN);
     const mediator = await mediatorFor();
