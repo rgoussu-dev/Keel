@@ -25,7 +25,12 @@ describe('billing posture', () => {
 
   it('applies overrides after the base env', () => {
     expect(
-      (agentEnv({ CODEX_HOME: '/home/op/.codex' }, { CODEX_HOME: '/tmp/iso' }) as Record<string, string>)['CODEX_HOME'],
+      (
+        agentEnv({ CODEX_HOME: '/home/op/.codex' }, { CODEX_HOME: '/tmp/iso' }) as Record<
+          string,
+          string
+        >
+      )['CODEX_HOME'],
     ).toBe('/tmp/iso');
   });
 });
