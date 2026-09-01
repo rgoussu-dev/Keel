@@ -19,6 +19,11 @@
  * fixture would leave untested: an action runs after `tree.commit()`,
  * reaches an external tool through the `ProcessRunner` port, and is
  * skipped — printed, not run — under `--dry-run`.
+ *
+ * And it contributes a **skill** — a content-carrying `SkillSpec` the
+ * engine stages to `.claude/skills/greet/SKILL.md` with the same
+ * rendering, collision refusal and manifest provenance a shipped
+ * adapter's skills get, the vertical declaring the name in `skills`.
  */
 
 /** The plugin's name — its message attribution and its template namespace. */
@@ -89,6 +94,16 @@ const greetingAdapter = {
     const who = ctx.answer('who');
     return {
       files: await ctx.templates.render(templateId('greeting/templates'), '', { who }),
+      // A skill, through the same seam a shipped adapter uses: a
+      // content-carrying spec the engine renders and stages — never a
+      // path into the plugin's own tree.
+      skills: [
+        {
+          name: 'greet',
+          description: 'Read the acme greeting aloud. Use when asked to greet.',
+          body: `# Greet\n\nRead GREETING.md and greet ${who}.`,
+        },
+      ],
       tagsAdd: ['acme.greeting'],
       actions: [
         {
@@ -124,6 +139,7 @@ export const greetingVertical = {
   dimensions: ['greeting'],
   adapters: [greetingAdapter],
   promotes: ['acme.greeting'],
+  skills: ['greet'],
   conflicts: [
     {
       id: 'acme/fancy-needs-modulith',

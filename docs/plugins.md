@@ -162,6 +162,37 @@ run exactly like a shipped adapter's:
 
 An action that throws fails the run, naming the action id.
 
+### Skills
+
+An adapter may contribute Claude Code skills beside its files — as
+**content-carrying `SkillSpec`s**, never as paths for the engine to
+resolve:
+
+```js
+skills: [
+  {
+    name: 'greet',
+    description: 'Read the acme greeting aloud. Use when asked to greet.',
+    body: '# Greet\n\nRead GREETING.md and greet the user.',
+  },
+],
+```
+
+The engine validates the spec, renders the frontmatter with its own
+serializer, and stages `.claude/skills/greet/SKILL.md` with a
+provenance record in the manifest — exactly as it does for a shipped
+adapter's skills, no special case. Two things to hold to:
+
+- **Declare every name on the vertical**: `skills: ['greet']` beside
+  `promotes`. The installer refuses a staged skill the owning
+  vertical does not declare.
+- **One owner per name.** A skill name two adapters of a run both
+  contribute is a hard refusal naming both origins — same posture as
+  a registration collision.
+
+The full rules live in
+[Composition → Harness contributions](composition.md#harness-contributions).
+
 ### Conflicts
 
 A plugin's `Conflict` is read exactly as a shipped piece's:

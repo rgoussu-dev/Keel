@@ -14,7 +14,7 @@ import type { Adapter, Ctx, Tag } from '../../contract/composition.js';
 import {
   claudeKitAdapter,
   renderRunbook,
-  renderRunSkill,
+  runSkillSpec,
   type ClaudeKitFamily,
   type RunbookCommand,
 } from './claude-kit.js';
@@ -122,7 +122,7 @@ function jvmFamily(ctx: Ctx): ClaudeKitFamily {
     ],
   });
 
-  const runSkill = renderRunSkill({
+  const runSkill = runSkillSpec({
     description: rest
       ? 'Launch this service in dev mode and probe it end to end. Use when asked to run, start, or check the app.'
       : 'Run this CLI and check its output end to end. Use when asked to run, start, or check the app.',

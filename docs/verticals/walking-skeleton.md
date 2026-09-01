@@ -36,7 +36,10 @@ framework, entrypoint shape, module layout) — one adapter per stack
 - **A `run` skill** (`.claude/skills/run/SKILL.md`): the
   launch-and-probe loop for the scaffolded shape — dev mode + `curl`
   for the HTTP services, the sample invocation for the CLIs, the Vite
-  dev server for the SPA.
+  dev server for the SPA. Contributed as a `SkillSpec` through the
+  [skill seam](../composition.md#skills) — the vertical declares the
+  name in `skills: ['run']`, and the engine stages the file with its
+  provenance recorded in the manifest.
 
 ## What each stack's skeleton looks like
 

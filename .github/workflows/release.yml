@@ -41,6 +41,16 @@ jobs:
             exit 1
           fi
 
+      - name: Verify release changelog exists
+        id: changelog
+        run: |
+          file="docs/releases/CHANGELOG.${GITHUB_REF_NAME#v}.md"
+          if [ ! -s "$file" ]; then
+            echo "::error::missing or empty $file — run scripts/cut-changelog.mjs before tagging"
+            exit 1
+          fi
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+
       - name: Lint
         run: pnpm lint
 
@@ -82,5 +92,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
+          body_path: ${{ steps.changelog.outputs.file }}
           generate_release_notes: true
           prerelease: ${{ steps.dist_tag.outputs.tag != 'latest' }}

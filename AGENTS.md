@@ -333,12 +333,18 @@ would ship as separate packages implementing the same port.
   CLI flags must update the matching page(s) and the README matrix
   in the same change. Contribution workflow (forks) lives in
   `CONTRIBUTING.md`.
-- **CHANGELOG.md**: [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
-  Every user-visible change goes under `[Unreleased]` with the appropriate
-  category (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`,
-  `Security`). At release time, `[Unreleased]` is renamed to
-  `[x.y.z] — YYYY-MM-DD` and a new empty `[Unreleased]` is added. Link
-  references at the bottom compare against the previous tag.
+- **CHANGELOG.md**: [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/),
+  with one deliberate deviation — the split Kubernetes and Node.js
+  use: released sections live one file per release under
+  `docs/releases/CHANGELOG.<version>.md`, each carrying its own
+  compare link, and the root keeps `[Unreleased]` plus a newest-first
+  `## Releases` index. Every user-visible change goes under
+  `[Unreleased]` with the appropriate category (`Added`, `Changed`,
+  `Deprecated`, `Removed`, `Fixed`, `Security`). At release time
+  `scripts/cut-changelog.mjs` moves the `[Unreleased]` body verbatim
+  into the new release file and leaves a fresh empty `[Unreleased]`;
+  `tests/changelog.test.ts` guards the shape in `verify`. A cut file
+  is frozen once its version is tagged.
 - **AGENTS.md** (this file): conventions for contributors. Update when the
   workflow itself changes. `CLAUDE.md` is only the pointer stub —
   never put content there.
@@ -586,8 +592,11 @@ would ship as separate packages implementing the same port.
   under an always-save key; the HTML report is a run artifact. Moving
   onto PRs comes with the break threshold, once the baseline settles.
 - `.github/workflows/release.yml` runs on `v*` tag push — verifies the tag
-  matches `package.json`, reruns verification, publishes to npm with
-  provenance, creates a GitHub Release. Dist-tag is derived from the
+  matches `package.json`, verifies `docs/releases/CHANGELOG.<version>.md`
+  exists (a tag pushed without the changelog cut refuses to publish),
+  reruns verification, publishes to npm with provenance, creates a
+  GitHub Release whose body is that changelog file plus auto-generated
+  notes. Dist-tag is derived from the
   prerelease identifier: `alpha` → `alpha`, `beta` → `beta`, `rc` →
   `next`, none → `latest`; unknown identifiers are a hard error.
 - Third-party actions are pinned to full commit SHAs with a `# vX.Y.Z`
@@ -612,6 +621,7 @@ would ship as separate packages implementing the same port.
 - Secrets required: `NPM_TOKEN`. Provenance is enabled via the workflow's
   `id-token: write` permission.
 
-To cut a release: bump `package.json`, move `[Unreleased]` in
-`CHANGELOG.md` to a dated heading, commit as `chore(release): vX.Y.Z`, tag
-`vX.Y.Z`, push the tag. The workflow does the rest.
+To cut a release: bump `package.json`, run
+`node scripts/cut-changelog.mjs X.Y.Z`, commit the three files as
+`chore(release): vX.Y.Z`, tag `vX.Y.Z`, push the tag. The workflow does
+the rest.

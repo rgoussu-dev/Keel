@@ -12,6 +12,7 @@
  */
 
 import type { ContributionFile } from './files.js';
+import type { SkillSpec } from './skill.js';
 import type { Tag } from './tags.js';
 import type { Logger } from './ports/logger.js';
 import type { ProcessRunner } from './ports/process-runner.js';
@@ -191,8 +192,17 @@ export interface Contribution {
    * a pure function so the chain is reproducible.
    */
   readonly patches?: readonly ContributionPatch[];
-  /** Agentic affordances shipped alongside the code change. */
-  readonly agentic?: AgenticBundle;
+  /**
+   * Skills shipped alongside the code change — content-carrying
+   * {@link SkillSpec}s the applier stages to
+   * `.claude/skills/<name>/SKILL.md` as adapter-owned whole files.
+   * Every contributed name must appear in the parent
+   * {@link Vertical.skills} declaration — the installer checks it,
+   * the same bargain as {@link tagsAdd} against
+   * {@link Vertical.promotes} — and a name two adapters of the
+   * resolved set both contribute is a hard refusal naming both.
+   */
+  readonly skills?: readonly SkillSpec[];
   /**
    * Capability tags this adapter promotes into the manifest. Every
    * one of them must appear in the parent {@link Vertical.promotes}
@@ -264,19 +274,6 @@ export interface DeferredActionEnv {
   readonly logger: Logger;
   /** External tools are reached only through this port. */
   readonly processes: ProcessRunner;
-}
-
-/**
- * Agentic affordances bundled with an adapter — skills, hooks, slash
- * commands, sub-agents. These are paths *relative to the adapter's
- * own asset directory*; the applier resolves them and stages them
- * into `<project>/.claude/`.
- */
-export interface AgenticBundle {
-  readonly skills?: readonly string[];
-  readonly hooks?: readonly string[];
-  readonly slashCommands?: readonly string[];
-  readonly agents?: readonly string[];
 }
 
 /**
@@ -402,6 +399,21 @@ export interface Vertical {
    * Omit only when no adapter of the vertical promotes anything.
    */
   readonly promotes?: readonly Tag[];
+  /**
+   * Every skill name installing this vertical may stage — the union
+   * over its adapters' {@link Contribution.skills}, including the
+   * ones only some answers or tag sets produce.
+   *
+   * Mirrors {@link promotes}, for the same reason: a skill staged at
+   * install time is invisible to anything reasoning *before* the
+   * install, and a front end reporting what an assembly ships needs
+   * the static answer. Over-declaring is safe; under-declaring makes
+   * that report a lie, which is why each contribution's skill names
+   * are checked against this set at install time and a name outside
+   * it is a hard error. Omit only when no adapter of the vertical
+   * contributes a skill.
+   */
+  readonly skills?: readonly string[];
 }
 
 /**
@@ -411,5 +423,6 @@ export interface Vertical {
 export type { Tree };
 export type { Tag } from './tags.js';
 export type { ContributionFile } from './files.js';
+export type { SkillSpec, SkillSupportingFile } from './skill.js';
 export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';
 export type { ToolchainNeed, ToolchainTool, ToolchainBlock } from './toolchain.js';

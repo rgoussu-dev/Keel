@@ -17,9 +17,10 @@
  *     (`.claude/hooks/pre-commit-format.sh`), adapted to the
  *     family's own format/verify commands, wired via
  *     `.claude/settings.json`;
- *   - a **run skill** (`.claude/skills/run/SKILL.md`) so "launch the
- *     app and check it" works out of the box for an agent working
- *     inside the scaffolded project.
+ *   - a **run skill** (`.claude/skills/run/SKILL.md`, staged through
+ *     the `SkillSpec` seam) so "launch the app and check it" works
+ *     out of the box for an agent working inside the scaffolded
+ *     project.
  *
  * The rules carried over from the `ci` family: adapters are per
  * stack **family**, with the build system (and every other dial)
@@ -29,7 +30,7 @@
 
 import { eolAware } from '../util.js';
 import { CLAUDE_CORE_ID } from './claude-core.js';
-import type { Adapter, Contribution, Ctx, Tag } from '../../contract/composition.js';
+import type { Adapter, Contribution, Ctx, SkillSpec, Tag } from '../../contract/composition.js';
 
 /** The walking-skeleton dimension the family adapters cover. */
 export const CLAUDE_KIT_DIMENSION = 'agentic-kit';
@@ -44,16 +45,22 @@ export const RUNBOOK_BEGIN = '<!-- keel:stack-runbook:begin -->';
 export const RUNBOOK_END = '<!-- keel:stack-runbook:end -->';
 
 const AGENTS_TARGET = 'AGENTS.md';
-const SKILL_TARGET = '.claude/skills/run/SKILL.md';
 const SETTINGS_TARGET = '.claude/settings.json';
 const HOOK_TARGET = '.claude/hooks/pre-commit-format.sh';
+
+/**
+ * The one skill every family kit ships: launch the scaffolded app
+ * and check it end to end. Declared on the `walking-skeleton`
+ * vertical's `skills`, staged through the {@link SkillSpec} seam.
+ */
+export const RUN_SKILL_NAME = 'run';
 
 /** What a family adapter contributes on top of the shared shape. */
 export interface ClaudeKitFamily {
   /** Markdown body of the runbook section, without the sentinels. */
   readonly runbook: string;
-  /** Full content of the run skill, frontmatter included. */
-  readonly runSkill: string;
+  /** The family's run skill — `name` is {@link RUN_SKILL_NAME}. */
+  readonly runSkill: SkillSpec;
   /**
    * Auto-fix command the pre-commit hook runs before verifying —
    * `gofmt -w .`, `cargo fmt`. Absent where the scaffold ships no
@@ -127,25 +134,14 @@ export function renderRunbook(spec: RunbookSpec): string {
   ].join('\n');
 }
 
-/** Inputs to {@link renderRunSkill}. */
-export interface RunSkillSpec {
-  /** One-line trigger description for the skill frontmatter. */
-  readonly description: string;
-  /** Markdown body: the launch-and-probe steps. */
-  readonly body: string;
-}
-
-/** Renders `.claude/skills/run/SKILL.md` with the house frontmatter. */
-export function renderRunSkill(spec: RunSkillSpec): string {
-  return [
-    '---',
-    'name: run',
-    `description: ${spec.description}`,
-    '---',
-    '',
-    spec.body.trim(),
-    '',
-  ].join('\n');
+/**
+ * Builds the family's run skill as a {@link SkillSpec}. The name is
+ * fixed; the description and body are the family's launch-and-probe
+ * loop. Serialization is `renderSkill`'s, at staging time — the
+ * family never spells frontmatter.
+ */
+export function runSkillSpec(spec: { description: string; body: string }): SkillSpec {
+  return { name: RUN_SKILL_NAME, ...spec };
 }
 
 /**
@@ -286,8 +282,8 @@ export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
     files: [
       { path: SETTINGS_TARGET, content: SETTINGS_CONTENT },
       { path: HOOK_TARGET, content: renderPreCommitHook(family), mode: 0o755 },
-      { path: SKILL_TARGET, content: family.runSkill },
     ],
+    skills: [family.runSkill],
     patches: [
       {
         target: AGENTS_TARGET,

@@ -14,7 +14,7 @@ import { tsPm, tsVerifyCommand } from './ts-claude-kit.js';
 import {
   claudeKitAdapter,
   renderRunbook,
-  renderRunSkill,
+  runSkillSpec,
   type ClaudeKitFamily,
   type RunbookCommand,
 } from './claude-kit.js';
@@ -55,7 +55,7 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
     ],
   });
 
-  const runSkill = renderRunSkill({
+  const runSkill = runSkillSpec({
     description:
       'Launch this SPA in the Vite dev server and check it renders. Use when asked to run, start, or check the app.',
     body: `# Run ${projectName}
