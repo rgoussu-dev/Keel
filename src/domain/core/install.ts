@@ -13,9 +13,10 @@
  *           snapshot, so adapters can read upstream choices (e.g.
  *           `basePackage` from the bootstrap) without re-asking;
  *        c. invoke `adapter.contribute(ctx)` to get a Contribution;
- *        d. apply files/patches against the Tree; collect actions
- *           and agentic bundles for the caller; fold `tagsAdd` and
- *           declared `toolchain` needs into the running manifest.
+ *        d. apply files/patches against the Tree and stage declared
+ *           skills; collect actions for the caller; fold `tagsAdd`,
+ *           declared `toolchain` needs and staged-skill provenance
+ *           entries into the running manifest.
  *   3. Record the vertical as installed and bump `updatedAt`.
  *
  * Pure with respect to disk: mutates the supplied Tree in memory and
@@ -26,13 +27,19 @@ import { resolveAdapterAnswers } from './answers.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 import { effectiveTags } from '../contract/manifest.js';
 import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolchain.js';
-import { applyContribution, makeCtx, type ApplyMode, type ApplyResult } from './apply.js';
+import {
+  applyContribution,
+  makeCtx,
+  type ApplyMode,
+  type ApplyResult,
+  type StagedSkill,
+} from './apply.js';
 import { resolveVertical } from './resolver.js';
 import type {
   Adapter,
   DeferredAction,
-  AgenticBundle,
   InstalledVertical,
+  ManifestEntry,
   ManifestV2,
   Tag,
   Tree,
@@ -78,7 +85,8 @@ export async function installVertical(
 
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];
-  const collectedAgentic: Record<string, AgenticBundle> = {};
+  const collectedSkills: StagedSkill[] = [];
+  const skillOwners = new Map<string, string>();
   const allTagsAdded = new Set<Tag>();
 
   for (const adapter of ordered) {
@@ -95,7 +103,7 @@ export async function installVertical(
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    applyContribution(adapter, contribution, inputs.tree, inputs.apply);
+    const staged = applyContribution(adapter, contribution, inputs.tree, inputs.apply, skillOwners);
 
     if (contribution.tagsAdd && contribution.tagsAdd.length > 0) {
       assertDeclaredPromotions(inputs.vertical, adapter, contribution.tagsAdd);
@@ -105,8 +113,12 @@ export async function installVertical(
     if (contribution.toolchain && contribution.toolchain.length > 0) {
       running = foldToolchain(running, contribution.toolchain);
     }
+    if (staged.length > 0) {
+      assertDeclaredSkills(inputs.vertical, adapter, staged);
+      running = foldSkillEntries(running, staged, inputs.now());
+      collectedSkills.push(...staged);
+    }
     for (const a of contribution.actions ?? []) collectedActions.push(a);
-    if (contribution.agentic) collectedAgentic[adapter.id] = contribution.agentic;
   }
 
   const final = recordVertical(running, inputs.vertical, inputs.now());
@@ -115,7 +127,7 @@ export async function installVertical(
     manifest: final,
     applyResult: {
       tagsAdded: [...allTagsAdded],
-      agentic: collectedAgentic,
+      skills: collectedSkills,
       actions: collectedActions,
     },
   };
@@ -143,6 +155,53 @@ function assertDeclaredPromotions(
   throw new Error(
     `adapter '${adapter.id}' promotes ${undeclared.join(', ')}, which vertical '${vertical.id}' does not declare in 'promotes' — add it there, or the front-door coverage check will refuse compositions this tag enables`,
   );
+}
+
+/**
+ * Holds `Vertical.skills` to its meaning, exactly as
+ * {@link assertDeclaredPromotions} holds `promotes`: the complete set
+ * of skill names installing the vertical may stage. An undeclared
+ * name is a keel (or plugin) bug, not a user error, so it throws.
+ */
+function assertDeclaredSkills(
+  vertical: Vertical,
+  adapter: Adapter,
+  staged: readonly StagedSkill[],
+): void {
+  const declared = new Set(vertical.skills ?? []);
+  const undeclared = staged.map((skill) => skill.name).filter((name) => !declared.has(name));
+  if (undeclared.length === 0) return;
+  throw new Error(
+    `adapter '${adapter.id}' contributes skill '${undeclared.join("', '")}', which vertical '${vertical.id}' does not declare in 'skills' — add it there, so what an assembly ships can be reported before applying`,
+  );
+}
+
+/**
+ * Upserts one provenance record per staged skill file into the
+ * manifest's `entries`, keyed by target path: `source` names the
+ * owning adapter, the hashes pin the pristine content, and a reapply
+ * refreshes hashes in place — keeping the original `installedAt` —
+ * instead of duplicating the entry.
+ */
+function foldSkillEntries(
+  manifest: ManifestV2,
+  staged: readonly StagedSkill[],
+  now: string,
+): ManifestV2 {
+  const byTarget = new Map<string, ManifestEntry>(manifest.entries.map((e) => [e.target, e]));
+  for (const skill of staged) {
+    for (const file of skill.files) {
+      const prior = byTarget.get(file.path);
+      byTarget.set(file.path, {
+        source: skill.adapterId,
+        target: file.path,
+        sha256Shipped: file.sha256,
+        sha256Current: file.sha256,
+        installedAt: prior?.installedAt ?? now,
+      });
+    }
+  }
+  return { ...manifest, entries: [...byTarget.values()] };
 }
 
 /**

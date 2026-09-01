@@ -15,13 +15,14 @@ import {
   claudeKitContribution,
   renderPreCommitHook,
   renderRunbook,
-  renderRunSkill,
+  runSkillSpec,
   upsertFormatStep,
   upsertRunbook,
   FORMAT_STEP_BEGIN,
   FORMAT_STEP_END,
   RUNBOOK_BEGIN,
   RUNBOOK_END,
+  RUN_SKILL_NAME,
   type ClaudeKitFamily,
 } from '../../../../src/domain/core/adapters/claude-kit.js';
 
@@ -38,7 +39,7 @@ const withoutFormatter = (base: ClaudeKitFamily): ClaudeKitFamily => {
 
 const family: ClaudeKitFamily = {
   runbook: '## Stack runbook — Test\n\ncontent',
-  runSkill: '---\nname: run\n---\n\nbody\n',
+  runSkill: runSkillSpec({ description: 'Launch the app.', body: '# Run\n\nsteps' }),
   formatCommand: 'toolfmt -w .',
   verifyCommand: 'tool build && tool test',
 };
@@ -169,14 +170,18 @@ describe('upsertFormatStep', () => {
 });
 
 describe('claudeKitContribution', () => {
-  it('emits settings, an executable hook, and the run skill', () => {
+  it('emits settings, an executable hook, and the run skill through the seam', () => {
     const contribution = claudeKitContribution(family);
     const byPath = new Map((contribution.files ?? []).map((f) => [f.path, f]));
     expect([...byPath.keys()].sort()).toEqual([
       '.claude/hooks/pre-commit-format.sh',
       '.claude/settings.json',
-      '.claude/skills/run/SKILL.md',
     ]);
+    // The run skill rides the SkillSpec seam, never a bare files: entry
+    // — that is what lets the applier own its path, provenance and
+    // collision rules.
+    expect(contribution.skills).toEqual([family.runSkill]);
+    expect(contribution.skills?.[0]?.name).toBe(RUN_SKILL_NAME);
     expect(byPath.get('.claude/hooks/pre-commit-format.sh')?.mode).toBe(0o755);
     const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.content)) as {
       hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
@@ -198,7 +203,7 @@ describe('claudeKitContribution', () => {
   });
 });
 
-describe('renderRunbook / renderRunSkill', () => {
+describe('renderRunbook / runSkillSpec', () => {
   it('renders the shared runbook shape', () => {
     const body = renderRunbook({
       title: 'Test Stack',
@@ -210,9 +215,12 @@ describe('renderRunbook / renderRunSkill', () => {
     expect(body).toContain('- a note');
   });
 
-  it('renders the run skill with the house frontmatter', () => {
-    const skill = renderRunSkill({ description: 'Launch the app.', body: '# Run\n\nsteps' });
-    expect(skill.startsWith('---\nname: run\ndescription: Launch the app.\n---\n')).toBe(true);
-    expect(skill).toContain('# Run');
+  it('builds the run skill spec under the fixed name', () => {
+    const spec = runSkillSpec({ description: 'Launch the app.', body: '# Run\n\nsteps' });
+    expect(spec).toEqual({
+      name: RUN_SKILL_NAME,
+      description: 'Launch the app.',
+      body: '# Run\n\nsteps',
+    });
   });
 });

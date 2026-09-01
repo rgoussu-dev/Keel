@@ -73,7 +73,7 @@ import { springRestKotlinBootstrapAdapter } from '../adapters/spring-rest-kotlin
 import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
-import { CLAUDE_KIT_TAG } from '../adapters/claude-kit.js';
+import { CLAUDE_KIT_TAG, RUN_SKILL_NAME } from '../adapters/claude-kit.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const walkingSkeletonVertical: Vertical = {
@@ -85,6 +85,9 @@ export const walkingSkeletonVertical: Vertical = {
   // constraining it is this vertical's to declare. @see Conflict
   conflicts: [PEER_CONTEXT_NEEDS_MODULITH],
   promotes: [CLAUDE_KIT_TAG],
+  // Every family kit stages the same one skill; the declaration is
+  // what lets a front end report it before applying. @see Vertical.skills
+  skills: [RUN_SKILL_NAME],
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,

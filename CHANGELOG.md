@@ -12,6 +12,44 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ## [Unreleased]
 
+### Added
+
+- **The skill seam: adapters ship Claude Code skills as content, and
+  the engine stages them.** A contribution may carry
+  `skills: [SkillSpec]` — `{ name, description, userInvocable?, body,
+supporting? }`, zod-schema'd in `domain/contract/skill.ts` — and the
+  applier renders each spec with the one shared `renderSkill`
+  serializer and stages it to `.claude/skills/<name>/SKILL.md` as an
+  **adapter-owned whole file**: a name two adapters of the resolved
+  set both contribute is a hard refusal naming both origins, each
+  staged file gets a provenance record in the manifest's `entries`
+  (owning adapter, target, pristine hashes), and `--reapply` rewrites
+  the file pristine. No emitted skill carries `paths:` frontmatter —
+  upstream Claude Code discovery mismatches path-scoped skills, so
+  the description is the whole trigger.
+  - `Vertical.skills` declares every skill name the vertical's
+    adapters may stage — the mirror of `promotes`, checked at install
+    the same way, so a front end can report what an assembly ships
+    before applying.
+  - The five family kits' `run` skill now rides the seam instead of a
+    bare `files:` entry — **byte-identically**, pinned per family by
+    `tests/domain/core/verticals/run-skill.golden.test.ts`.
+  - Plugins ship skills through their own verticals with no special
+    case; the skill types are re-exported from
+    `@rgoussu.dev/keel/plugin`. The harness contribution model these
+    rules belong to is documented in
+    `docs/composition.md` → Harness contributions.
+
+### Removed
+
+- **The dormant `Contribution.agentic` / `AgenticBundle` vocabulary.**
+  It promised path-based staging of skills/hooks/slash-commands/agents
+  into `.claude/`, but the applier only collected the records: nothing
+  consumed them, no adapter declared one, and the type was absent from
+  the plugin export surface. The skill seam above replaces it
+  outright; the hook and doc seams follow as their own typed
+  contributions.
+
 ### Fixed
 
 - **A refusal raised at the bottom of the install now reaches a front

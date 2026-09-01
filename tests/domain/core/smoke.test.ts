@@ -38,6 +38,8 @@ const distribution: Vertical = {
   // holds `promotes` to being the whole set, so anything reasoning
   // about promotions ahead of an install reads a complete list.
   promotes: ['runtime.graalvm-native'],
+  // Same bargain for the skill an adapter below contributes.
+  skills: ['native-build-debug'],
   adapters: [
     // Quarkus CLI native build, only when the matching tags are present.
     {
@@ -69,7 +71,13 @@ const distribution: Vertical = {
         patches: [
           { target: 'pom.xml', apply: (s) => s.replace('</project>', '<native/></project>') },
         ],
-        agentic: { skills: ['skills/native-build-debug.md'] },
+        skills: [
+          {
+            name: 'native-build-debug',
+            description: 'Debug a failing native build. Use when the native image build breaks.',
+            body: '# Native build\n\nRead the build log bottom-up.',
+          },
+        ],
         tagsAdd: ['runtime.graalvm-native'],
       }),
     },
@@ -133,6 +141,28 @@ describe('installVertical end-to-end', () => {
       'distribution/quarkus-cli-native': { targets: 'darwin-arm64' },
     });
     expect(result.manifest.updatedAt).toBe('2026-04-26T12:00:00Z');
+
+    // The declared skill is staged through the seam, and its
+    // provenance — owning adapter, target, pristine hash — lands in
+    // the manifest's entries.
+    expect(tree.read('.claude/skills/native-build-debug/SKILL.md')?.toString()).toContain(
+      'name: native-build-debug',
+    );
+    expect(result.manifest.entries).toEqual([
+      {
+        source: 'distribution/quarkus-cli-native',
+        target: '.claude/skills/native-build-debug/SKILL.md',
+        sha256Shipped: expect.stringMatching(/^[0-9a-f]{64}$/) as unknown as string,
+        sha256Current: expect.stringMatching(/^[0-9a-f]{64}$/) as unknown as string,
+        installedAt: '2026-04-26T12:00:00Z',
+      },
+    ]);
+    expect(result.applyResult.skills).toEqual([
+      expect.objectContaining({
+        adapterId: 'distribution/quarkus-cli-native',
+        name: 'native-build-debug',
+      }),
+    ]);
   });
 
   it('reuses sticky answers from the manifest without prompting', async () => {
@@ -209,5 +239,30 @@ describe('installVertical end-to-end', () => {
         now: () => '2026-04-26T12:00:00Z',
       }),
     ).rejects.toThrow(/runtime\.graalvm-native.*does not declare/);
+  });
+
+  it('refuses a skill the vertical does not declare in `skills`', async () => {
+    const tree = new FsTree(tmp);
+    const manifest = {
+      ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
+      tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+    };
+    // Mirrors the `promotes` check: `skills` is what a front end
+    // reporting an assembly's contents reads ahead of the install,
+    // and it is only sound while it is exhaustive.
+    await expect(
+      installVertical({
+        vertical: { ...distribution, skills: [] },
+        manifest,
+        tree,
+        mode: 'non-interactive',
+        prompt: scripted('linux-amd64'),
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        now: () => '2026-04-26T12:00:00Z',
+      }),
+    ).rejects.toThrow(/skill 'native-build-debug'.*does not declare/);
   });
 });

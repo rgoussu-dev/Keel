@@ -108,6 +108,8 @@ export type {
   Predicate,
   Question,
   QuestionChoice,
+  SkillSpec,
+  SkillSupportingFile,
   Tag,
   Tree,
   Vertical,
