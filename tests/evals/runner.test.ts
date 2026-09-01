@@ -123,6 +123,13 @@ describe('runCampaign against the fake driver', () => {
     expect(benchmark.cases[0]!.runs[0]!.completed).toBe(false);
   });
 
+  it('an agent that failed to spawn is not completed despite its null exit', async () => {
+    const benchmark = await runCampaign(baseDeps(fakeDriver({ solve, spawnError: true })));
+    const run = benchmark.cases[0]!.runs[0]!;
+    expect(run.exitCode).toBeNull();
+    expect(run.completed).toBe(false);
+  });
+
   it('the campaign runs count overrides the case default', async () => {
     const driver = fakeDriver({ solve });
     const deps = { ...baseDeps(driver), campaign: campaignOf({ runs: 1 }) };

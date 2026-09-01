@@ -59,7 +59,9 @@ export async function runCampaign(deps) {
         run: i,
         workspace,
         completed:
-          outcome.timedOut !== true && (outcome.exitCode === 0 || outcome.exitCode === null),
+          outcome.timedOut !== true &&
+          outcome.spawnError !== true &&
+          (outcome.exitCode === 0 || outcome.exitCode === null),
         exitCode: outcome.exitCode,
         timedOut: outcome.timedOut === true,
         wallMs,

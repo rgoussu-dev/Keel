@@ -69,10 +69,13 @@ export function isSearchCommand(command) {
 }
 
 /**
- * Spawns the agent process for a scripted run: captures stdout/stderr
- * to `stdoutFile`/collected strings, kills the whole process group at
- * `timeoutMs`, never throws on non-zero exit — a crashed agent is a
- * measurement, not a rig failure.
+ * Spawns the agent process for a scripted run: collects stdout/stderr
+ * as strings, starts the child in its own process group and kills the
+ * whole group at `timeoutMs` (agent CLIs spawn subprocesses; killing
+ * only the direct child would leak them), never throws — a crashed
+ * agent is a measurement, not a rig failure. A process that could not
+ * be spawned at all resolves with `spawnError: true` and
+ * `exitCode: null`, distinct from an agent that ran and exited.
  */
 export function spawnScripted({ command, args, cwd, env, timeoutMs, stdin }) {
   return new Promise((resolve) => {
@@ -80,24 +83,36 @@ export function spawnScripted({ command, args, cwd, env, timeoutMs, stdin }) {
       cwd,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
+      detached: true,
     });
     let stdout = '';
     let stderr = '';
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill('SIGKILL');
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        child.kill('SIGKILL');
+      }
     }, timeoutMs);
     child.stdout.on('data', (d) => (stdout += d));
     child.stderr.on('data', (d) => (stderr += d));
     child.on('error', (err) => {
       clearTimeout(timer);
-      resolve({ exitCode: null, stdout, stderr: `${stderr}${err.message}`, timedOut });
+      resolve({
+        exitCode: null,
+        spawnError: true,
+        stdout,
+        stderr: `${stderr}${err.message}`,
+        timedOut,
+      });
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      resolve({ exitCode: code, stdout, stderr, timedOut });
+      resolve({ exitCode: code, spawnError: false, stdout, stderr, timedOut });
     });
+    child.stdin.on('error', () => {});
     if (stdin !== undefined) child.stdin.write(stdin);
     child.stdin.end();
   });

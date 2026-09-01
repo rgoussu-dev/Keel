@@ -61,6 +61,12 @@ describe('answers grading', () => {
     expect(verdict.failures[0]).toMatch(/was not written/);
   });
 
+  it('fails clearly when answers is set without answers_file, instead of throwing', () => {
+    const verdict = judge(workspace, probeCase({ answers: oracle.answers }));
+    expect(verdict.pass).toBe(false);
+    expect(verdict.failures[0]).toMatch(/answers_file/);
+  });
+
   it('names every wrong or missing answer, not just the first', async () => {
     await writeAnswers('wiring=wrong/path.ts\n');
     const verdict = judge(

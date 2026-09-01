@@ -22,6 +22,8 @@ import { emptyMetrics } from './driver.mjs';
  *   all-null shape.
  * @param options.exitCode  scripted exit code (default 0).
  * @param options.timedOut  report the run as killed at the budget.
+ * @param options.spawnError  report the agent as failed to spawn
+ *   (forces `exitCode: null`, matching `spawnScripted`'s shape).
  * @param options.available  what `probe` reports (default true).
  */
 export function fakeDriver(options = {}) {
@@ -54,7 +56,8 @@ export function fakeDriver(options = {}) {
       if (options.solve) await options.solve(workspace, caseSpec, mode);
       return {
         mode,
-        exitCode: options.exitCode ?? 0,
+        exitCode: options.spawnError === true ? null : (options.exitCode ?? 0),
+        spawnError: options.spawnError ?? false,
         timedOut: options.timedOut ?? false,
         stdout: '',
         stderr: '',

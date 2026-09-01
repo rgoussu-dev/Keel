@@ -31,16 +31,20 @@ export function judge(workspace, caseSpec) {
   const oracle = caseSpec.oracle;
 
   if (oracle.answers !== undefined) {
-    const file = path.join(workspace, oracle.answers_file);
-    if (!fs.existsSync(file)) {
-      failures.push(`answers file '${oracle.answers_file}' was not written`);
+    if (typeof oracle.answers_file !== 'string' || oracle.answers_file === '') {
+      failures.push("oracle.answers requires 'answers_file' naming the file to judge");
     } else {
-      const got = parseAnswers(fs.readFileSync(file, 'utf8'));
-      for (const [key, expected] of Object.entries(oracle.answers)) {
-        const actual = got[key];
-        if (actual === undefined) failures.push(`answer '${key}' missing`);
-        else if (actual !== expected)
-          failures.push(`answer '${key}': expected '${expected}', got '${actual}'`);
+      const file = path.join(workspace, oracle.answers_file);
+      if (!fs.existsSync(file)) {
+        failures.push(`answers file '${oracle.answers_file}' was not written`);
+      } else {
+        const got = parseAnswers(fs.readFileSync(file, 'utf8'));
+        for (const [key, expected] of Object.entries(oracle.answers)) {
+          const actual = got[key];
+          if (actual === undefined) failures.push(`answer '${key}' missing`);
+          else if (actual !== expected)
+            failures.push(`answer '${key}': expected '${expected}', got '${actual}'`);
+        }
       }
     }
   }
