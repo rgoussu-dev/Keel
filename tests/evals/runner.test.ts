@@ -130,6 +130,17 @@ describe('runCampaign against the fake driver', () => {
     expect(run.completed).toBe(false);
   });
 
+  it('a scripted agent killed by a signal (null exit) is not completed', async () => {
+    const benchmark = await runCampaign(baseDeps(fakeDriver({ solve, exitCode: null })));
+    expect(benchmark.cases[0]!.runs[0]!.completed).toBe(false);
+  });
+
+  it('an attended run has no exit code, and its null exit stays completed', async () => {
+    const deps = { ...baseDeps(fakeDriver({ solve, exitCode: null })), mode: 'attended' };
+    const benchmark = await runCampaign(deps);
+    expect(benchmark.cases[0]!.runs[0]!.completed).toBe(true);
+  });
+
   it('the campaign runs count overrides the case default', async () => {
     const driver = fakeDriver({ solve });
     const deps = { ...baseDeps(driver), campaign: campaignOf({ runs: 1 }) };

@@ -192,6 +192,7 @@ export const claudeCodeDriver = {
       return {
         mode,
         exitCode: r.exitCode,
+        spawnError: r.spawnError,
         timedOut: r.timedOut,
         stdout: r.stdout,
         stderr: r.stderr,
@@ -209,7 +210,15 @@ export const claudeCodeDriver = {
     io.print('');
     await io.waitForOperator('When the agent is done, press Enter to judge the workspace… ');
     const transcript = findSessionTranscript(workspace, startedAtMs);
-    return { mode, exitCode: null, timedOut: false, stdout: '', stderr: '', transcript };
+    return {
+      mode,
+      exitCode: null,
+      spawnError: false,
+      timedOut: false,
+      stdout: '',
+      stderr: '',
+      transcript,
+    };
   },
 
   harvest(outcome) {

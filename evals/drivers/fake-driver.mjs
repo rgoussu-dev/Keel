@@ -20,7 +20,8 @@ import { emptyMetrics } from './driver.mjs';
  *   fake's "agent work" on the workspace; defaults to doing nothing.
  * @param options.metrics  what `harvest` reports; merged over the
  *   all-null shape.
- * @param options.exitCode  scripted exit code (default 0).
+ * @param options.exitCode  scripted exit code (default 0; an explicit
+ *   null models a signal-killed agent, as Node reports it).
  * @param options.timedOut  report the run as killed at the budget.
  * @param options.spawnError  report the agent as failed to spawn
  *   (forces `exitCode: null`, matching `spawnScripted`'s shape).
@@ -56,7 +57,12 @@ export function fakeDriver(options = {}) {
       if (options.solve) await options.solve(workspace, caseSpec, mode);
       return {
         mode,
-        exitCode: options.spawnError === true ? null : (options.exitCode ?? 0),
+        exitCode:
+          options.spawnError === true
+            ? null
+            : options.exitCode !== undefined
+              ? options.exitCode
+              : 0,
         spawnError: options.spawnError ?? false,
         timedOut: options.timedOut ?? false,
         stdout: '',

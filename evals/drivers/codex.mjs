@@ -112,7 +112,14 @@ export const codexDriver = {
       env: agentEnv(process.env, overrides),
       timeoutMs: caseSpec.budgets.timeout_seconds * 1000,
     });
-    return { mode, exitCode: r.exitCode, timedOut: r.timedOut, stdout: r.stdout, stderr: r.stderr };
+    return {
+      mode,
+      exitCode: r.exitCode,
+      spawnError: r.spawnError,
+      timedOut: r.timedOut,
+      stdout: r.stdout,
+      stderr: r.stderr,
+    };
   },
 
   harvest(outcome) {
