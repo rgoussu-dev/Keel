@@ -25,30 +25,33 @@ describe('spawnScripted', () => {
     expect(r.timedOut).toBe(false);
   });
 
-  it.runIf(hasBash)('kills the whole process group at the budget, grandchildren included', async () => {
-    const r = await spawnScripted({
-      command: 'bash',
-      args: ['-c', 'sleep 30 & echo $!; wait'],
-      cwd: process.cwd(),
-      env: process.env,
-      timeoutMs: 300,
-    });
-    expect(r.timedOut).toBe(true);
-    expect(r.spawnError).toBe(false);
-    const grandchild = Number.parseInt(r.stdout.trim(), 10);
-    expect(Number.isInteger(grandchild)).toBe(true);
-    await expect
-      .poll(
-        () => {
-          try {
-            process.kill(grandchild, 0);
-            return false;
-          } catch {
-            return true;
-          }
-        },
-        { timeout: 2_000 },
-      )
-      .toBe(true);
-  });
+  it.runIf(hasBash)(
+    'kills the whole process group at the budget, grandchildren included',
+    async () => {
+      const r = await spawnScripted({
+        command: 'bash',
+        args: ['-c', 'sleep 30 & echo $!; wait'],
+        cwd: process.cwd(),
+        env: process.env,
+        timeoutMs: 300,
+      });
+      expect(r.timedOut).toBe(true);
+      expect(r.spawnError).toBe(false);
+      const grandchild = Number.parseInt(r.stdout.trim(), 10);
+      expect(Number.isInteger(grandchild)).toBe(true);
+      await expect
+        .poll(
+          () => {
+            try {
+              process.kill(grandchild, 0);
+              return false;
+            } catch {
+              return true;
+            }
+          },
+          { timeout: 2_000 },
+        )
+        .toBe(true);
+    },
+  );
 });

@@ -77,7 +77,7 @@ export function isSearchCommand(command) {
  * be spawned at all resolves with `spawnError: true` and
  * `exitCode: null`, distinct from an agent that ran and exited.
  */
-export function spawnScripted({ command, args, cwd, env, timeoutMs, stdin }) {
+export function spawnScripted({ command, args, cwd, env, timeoutMs, stdin = undefined }) {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd,
