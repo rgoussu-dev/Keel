@@ -67,4 +67,24 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  {
+    /**
+     * The evals rig is operator tooling, plain ESM JavaScript so
+     * `node evals/run.mjs` needs no build step; the terminal is its
+     * UI, so `console` is the point.
+     */
+    files: ['evals/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'no-console': 'off',
+    },
+  },
 );

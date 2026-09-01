@@ -1,0 +1,6 @@
+{"type":"summary","summary":"navigation probe","leafUuid":"x"}
+{"type":"user","message":{"role":"user","content":"Answer three orientation questions..."},"uuid":"u1"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"grep -rn wiring ."}}],"usage":{"input_tokens":1000,"output_tokens":300,"cache_read_input_tokens":20000,"cache_creation_input_tokens":500}},"uuid":"a1"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"..."}]},"uuid":"u2"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Write","input":{"file_path":".keel-eval/answers.txt","content":"wiring=..."}}],"usage":{"input_tokens":1100,"output_tokens":200,"cache_read_input_tokens":21000,"cache_creation_input_tokens":0}},"uuid":"a2"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Answers written."}],"usage":{"input_tokens":1150,"output_tokens":20,"cache_read_input_tokens":21500,"cache_creation_input_tokens":0}},"uuid":"a3"}

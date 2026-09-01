@@ -1,0 +1,56 @@
+# Lane A navigation probe — agent-neutral: nothing agent-specific
+# appears here; drivers map budgets/autonomy to their own CLI.
+id: navigation/ts-http
+tags:
+  - navigation
+  - ts
+scaffold:
+  stack: ts-http
+  build_system: npm
+  module_layout: modulith
+  answers:
+    walking-skeleton/ts-http-bootstrap:
+      npmScope: acme
+      projectName: nav-eval
+  grow:
+    # persistence first: the added contexts rewrite main.ts and
+    # would move the wiring anchors the ts-persistence adapter needs
+    - vertical: persistence
+    - module: ordering
+      consumes: greeting
+    - module: shipping
+      consumes: ordering
+    - module: billing
+prompt: |
+  You are in a keel-scaffolded project. Answer three orientation
+  questions about THIS repository. Do not modify any project file.
+
+  1. wiring — which single file wires the `shipping` bounded context's
+     handler into the application's composition root (the file that
+     registers it with the application entrypoint's mediator)?
+  2. gateway — which single file implements the gateway through which
+     the `shipping` context reaches the `ordering` context's service
+     seam?
+  3. migration — which single SQL migration file creates the greeting
+     table?
+
+  Write your answers to the file `.keel-eval/answers.txt` (create the
+  directory if it does not exist), one per line, exactly as:
+
+  wiring=<repository-relative path>
+  gateway=<repository-relative path>
+  migration=<repository-relative path>
+
+  Use forward slashes and paths relative to the repository root. Write
+  nothing else anywhere in the repository.
+oracle:
+  answers_file: .keel-eval/answers.txt
+  answers:
+    wiring: application/rest/src/shipping.ts
+    gateway: modules/shipping/src/infra/ordering-gateway/index.ts
+    migration: migrations/sql/V1__create_greeting.sql
+  clean_worktree: true
+budgets:
+  timeout_seconds: 600
+  max_turns: 30
+runs: 3

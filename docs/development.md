@@ -508,6 +508,103 @@ Extending the real-install suite to a second manager means a second
 tool on the runner and a second mutated state, so it waits for a
 reason beyond symmetry.
 
+## Harness evals
+
+`evals/` measures how well coding agents navigate what keel emits —
+the harness redesign program (#147) is judged on its before/after
+numbers. The rig is deliberately **agent-agnostic**: the emitted
+harness serves every AGENTS.md-reading agent, so a rig tied to one
+CLI would validate one consumer.
+
+- **Cases are data** — `evals/cases/<name>/case.yaml`: id, tags, a
+  `scaffold` block (stack, growth steps, sticky answers), prompt,
+  oracle, budgets (wall-clock seconds + max turns — never USD), runs.
+  Nothing agent-specific may appear in a case; the strict schema
+  (`evals/lib/case-schema.mjs`) refuses unknown keys. Each case ships
+  a reference `solve.sh` proving it solvable.
+- **Drivers are adapters** of the `AgentDriver` port
+  (`evals/drivers/driver.mjs`): `probe()` (installed? version?),
+  `run()` (maps case concepts — autonomy, config isolation, budgets —
+  to that agent's CLI flags), `harvest()` (normalized metrics). Each
+  driver declares a **capability manifest** per mode; a metric it
+  cannot measure is `null`, never a guess. Shipped: `claude-code`
+  (reference, both modes) and `codex` (`codex exec --json`, scripted)
+  — the second driver exists because one driver would make the seam
+  fiction. The canonical fake (`fake-driver.mjs`) sits beside them.
+- **The oracle judges workspace state**, never agent output: the
+  universal floor every agent shares is oracle verdict + wall time +
+  git diff stats against a pinned baseline. Navigation probes have
+  the agent write `key=value` lines to `.keel-eval/answers.txt`
+  (excluded from the diff), graded by exact match, with
+  `clean_worktree` asserting the probe stayed read-only.
+- **A static context-budget audit** (`evals/lib/context-audit.mjs`)
+  rides along in every benchmark: sizes of every `AGENTS.md` /
+  `CLAUDE.md` / skill body the emitted harness asks an agent to
+  carry.
+
+### Two drive modes
+
+- **Scripted** — the automation default where the CLI supports it:
+  the driver spawns the agent headlessly (`claude -p --output-format
+stream-json --setting-sources project`, `codex exec --json
+--sandbox workspace-write --ignore-user-config`) and parses its
+  structured stream. Config isolation keeps the operator's home-dir
+  settings, skills and MCP servers out of the run; `--bare` is never
+  passed — it would also drop the project layer under measurement.
+- **Attended** — for agents without headless structured output, or
+  to measure exactly what an interactive subscription session does:
+  the rig prepares the workspace and prints the prompt; the operator
+  pastes it into a normal interactive session of their agent, and
+  presses Enter when it finishes. The rig then runs the oracle, wall
+  clock and git diff as usual, and harvests the session transcript
+  where the agent leaves one (Claude Code:
+  `~/.claude/projects/<cwd-slug>/<session>.jsonl`).
+
+### Billing posture
+
+Headless ≠ API billing: `claude -p` uses whatever auth the CLI
+holds, and subscription OAuth (`/login`) works headlessly. The rig
+strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from every agent
+environment so a stray key cannot silently re-bill a campaign;
+`KEEL_EVALS_API_BILLING=1` is the explicit opt-in. `total_cost_usd`
+is a client-side estimate — notional on Pro/Max — so it is recorded
+as an estimate and **budgets are wall-clock + max-turns + case
+count, never USD**. Subscription runs draw from the operator's
+normal session allowance: campaigns stay small (5 representative
+stacks, a handful of probes, N=3) and run locally.
+
+### Running
+
+```sh
+node evals/run.mjs --list                    # campaigns and cases, no gate
+node evals/run.mjs --check [--driver codex]  # agent installed + authenticated?
+KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline
+```
+
+Live runs are gated on `KEEL_RUN_EVALS=1` (plus per-driver auth:
+`claude /login` or an authenticated `codex`) and need `pnpm build`
+first — workspaces are scaffolded through the packaged CLI, the very
+commands the verify suites dispatch in process, so the two trees
+cannot drift. Results land in
+`evals/results/<campaign>-<driver>-<mode>.json`.
+
+**The baseline is the owner's local step.** The `baseline` campaign
+captures the current emitted harness _before_ the redesign lands:
+run the command above on a machine with Claude Code authenticated
+and commit the resulting `evals/results/baseline-*.json`. It draws
+on the owner's Claude subscription, so no CI job and no cloud
+session can capture it — and it must exist before #134 merges, or
+the "before" is unrepeatable.
+
+**`verify` never makes an agent call.** The rig's unit tests
+(`tests/evals/`) drive the whole runner through the fake driver and
+fixture transcripts, and prove every shipped probe solvable by
+growing its fixture in process
+(`tests/support/evals-fixture.ts`) and running the reference
+`solve.sh` against the real oracle. An adapter that moves a wiring
+file breaks `verify`, not the owner's live campaign. Evals are never
+a PR gate.
+
 ## Adding surface
 
 - **A stack** is an entry in

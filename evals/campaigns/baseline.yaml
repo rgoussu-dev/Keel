@@ -1,0 +1,12 @@
+# The Wave-1 "before" campaign: navigation probes over grown fixtures
+# of five representative stacks, N=3 — small on purpose, since
+# subscription runs draw from the operator's normal session allowance.
+name: baseline
+description: Navigation probes over the current emitted harness (pre-#134 baseline)
+cases:
+  - navigation/quarkus-rest
+  - navigation/spring-rest-kotlin
+  - navigation/go-http
+  - navigation/rust-http
+  - navigation/ts-http
+runs: 3
