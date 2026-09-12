@@ -35,7 +35,13 @@ use to keep a long-lived changelog scannable — and the root keeps
   layout × entrypoints), naming where a context's wiring, its peer
   gateway, its seam and the migrations live. Measured with the
   harness evals' navigation probes, that is what turns "grep for
-  the wiring file" into "read the map". A guard test
+  the wiring file" into "read the map": against the committed
+  baseline (same five stacks, same ten Sonnet sessions,
+  `evals/results/after-wave2-claude-code-scripted.json`), the
+  context every emitted harness asks an agent to carry fell 55 %
+  (~3.7k → ~1.6k tokens), turns 20 % and embedded searches 43 % on
+  average, with the JVM probes down 31–43 % in turns and 26–32 % in
+  wall clock; the Go, Rust and TypeScript probes moved less. A guard test
   (`tests/domain/core/verticals/harness-budget.test.ts`) holds every
   non-composite stack on every layout under the line and byte budget
   and refuses a stance leaking across families.
