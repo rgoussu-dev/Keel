@@ -20,7 +20,7 @@ describe('shipped cases and campaigns', () => {
       path.join(EVALS, 'cases'),
     );
     expect(campaign.name).toBe('baseline');
-    expect(campaign.runs).toBe(3);
+    expect(campaign.runs).toBe(2);
     expect(campaign.resolved.map((c: { id: string }) => c.id)).toEqual([
       'navigation/quarkus-rest',
       'navigation/spring-rest-kotlin',

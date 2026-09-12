@@ -26,6 +26,12 @@ describe('scripted flag mapping', () => {
     expect(args.join(' ')).toContain('--sandbox workspace-write');
     expect(args.at(-1)).toBe('which file?');
   });
+
+  it('maps an explicit model onto -m and passes none otherwise', () => {
+    expect(scriptedArgs(CASE, { model: 'gpt-5' }).join(' ')).toContain('-m gpt-5');
+    expect(scriptedArgs(CASE)).not.toContain('-m');
+    expect(codexDriver.defaultModel).toBeUndefined();
+  });
 });
 
 describe('mode and manifest honesty', () => {
@@ -40,7 +46,7 @@ describe('mode and manifest honesty', () => {
   it('refuses attended mode outright', async () => {
     expect(() => codexDriver.capabilities('attended')).toThrow(/scripted mode only/);
     await expect(
-      codexDriver.run({ caseSpec: CASE, workspace: '/tmp/ws', mode: 'attended' }),
+      codexDriver.run({ caseSpec: CASE, workspace: '/tmp/ws', mode: 'attended', model: undefined }),
     ).rejects.toThrow(/scripted mode only/);
   });
 });

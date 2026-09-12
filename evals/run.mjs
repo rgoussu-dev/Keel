@@ -7,6 +7,8 @@
  *   node evals/run.mjs --check [--driver codex]
  *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline
  *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --driver claude-code --mode attended
+ *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --model opus
+ *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --only navigation/ts-http
  *
  * Live runs are gated on `KEEL_RUN_EVALS=1` and are never a PR gate:
  * they spawn a real agent on the operator's own auth (see
@@ -21,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { loadCampaign } from './lib/case-schema.mjs';
-import { runCampaign } from './lib/runner.mjs';
+import { mergeBenchmark, runCampaign } from './lib/runner.mjs';
 import { prepareWorkspace, diffStats } from './lib/workspace.mjs';
 import { claudeCodeDriver } from './drivers/claude-code.mjs';
 import { codexDriver } from './drivers/codex.mjs';
@@ -35,6 +37,8 @@ const { values } = parseArgs({
     campaign: { type: 'string' },
     driver: { type: 'string', default: 'claude-code' },
     mode: { type: 'string', default: 'scripted' },
+    model: { type: 'string' },
+    only: { type: 'string', multiple: true, default: [] },
     out: { type: 'string' },
     list: { type: 'boolean', default: false },
     check: { type: 'boolean', default: false },
@@ -73,7 +77,7 @@ if (values.check) {
 
 if (values.campaign === undefined) {
   console.error(
-    'usage: node evals/run.mjs --campaign <name> [--driver claude-code|codex] [--mode scripted|attended] [--out file] | --list | --check',
+    'usage: node evals/run.mjs --campaign <name> [--driver claude-code|codex] [--mode scripted|attended] [--model id] [--only case-id]... [--out file] | --list | --check',
   );
   process.exit(2);
 }
@@ -88,10 +92,22 @@ if (process.env.KEEL_RUN_EVALS !== '1') {
   process.exit(2);
 }
 
-const campaign = loadCampaign(
+const whole = loadCampaign(
   path.join(EVALS_ROOT, 'campaigns', `${values.campaign}.yaml`),
   path.join(EVALS_ROOT, 'cases'),
 );
+// `--only` re-runs a subset — the cases a first sitting left
+// unprepared, say — and folds the result into the existing benchmark
+// rather than replacing it (see `mergeBenchmark`).
+const unknown = values.only.filter((id) => !whole.resolved.some((c) => c.id === id));
+if (unknown.length > 0) {
+  console.error(`--only names no case of '${whole.name}': ${unknown.join(', ')}`);
+  process.exit(2);
+}
+const campaign =
+  values.only.length === 0
+    ? whole
+    : { ...whole, resolved: whole.resolved.filter((c) => values.only.includes(c.id)) };
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const io = {
@@ -106,27 +122,61 @@ const commit = (() => {
     return null;
   }
 })();
+// A benchmark taken on uncommitted changes says so: `commit` alone
+// would name a tree the run did not actually measure.
+const dirty = (() => {
+  try {
+    return (
+      execFileSync('git', ['status', '--porcelain', '--', ':!evals/results'], {
+        cwd: KEEL_ROOT,
+        encoding: 'utf8',
+      }).trim() !== ''
+    );
+  } catch {
+    return null;
+  }
+})();
 const version = JSON.parse(fs.readFileSync(path.join(KEEL_ROOT, 'package.json'), 'utf8')).version;
+
+const out =
+  values.out ??
+  path.join(EVALS_ROOT, 'results', `${campaign.name}-${driver.id}-${values.mode}.json`);
+fs.mkdirSync(path.dirname(out), { recursive: true });
+const previous =
+  values.only.length > 0 && fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : null;
+if (values.only.length > 0 && previous === null) {
+  console.error(`--only needs an existing benchmark to fold into; none at ${out}`);
+  process.exit(2);
+}
+// Written after every run, not once at the end: each run is a paid
+// agent session, and a crash in the ninth must not discard the eight.
+const order = whole.resolved.map((c) => c.id);
+const write = (benchmark) =>
+  fs.writeFileSync(
+    out,
+    `${JSON.stringify(previous === null ? benchmark : mergeBenchmark(previous, benchmark, order), null, 2)}\n`,
+  );
 
 try {
   const benchmark = await runCampaign({
     campaign,
     driver,
     mode: values.mode,
+    model: values.model,
     prepareWorkspace: (caseSpec) => Promise.resolve(prepareWorkspace(caseSpec, KEEL_ROOT)),
     diffStats,
-    keel: { version, commit },
+    keel: { version, commit, dirty },
     now: () => Date.now(),
     log: (line) => console.log(line),
     io,
+    checkpoint: write,
   });
-  const out =
-    values.out ??
-    path.join(EVALS_ROOT, 'results', `${campaign.name}-${driver.id}-${values.mode}.json`);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, `${JSON.stringify(benchmark, null, 2)}\n`);
+  write(benchmark);
   console.log(`\nbenchmark written to ${out}`);
   console.log(`overall success rate: ${benchmark.summary.successRate}`);
+  if (benchmark.summary.unprepared > 0) {
+    console.log(`WARNING ${benchmark.summary.unprepared} run(s) had no workspace and no agent ran`);
+  }
 } finally {
   rl.close();
 }

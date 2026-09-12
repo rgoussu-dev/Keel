@@ -568,7 +568,20 @@ is a client-side estimate — notional on Pro/Max — so it is recorded
 as an estimate and **budgets are wall-clock + max-turns + case
 count, never USD**. Subscription runs draw from the operator's
 normal session allowance: campaigns stay small (5 representative
-stacks, a handful of probes, N=3) and run locally.
+stacks, a handful of probes, N=2 — ten sessions, and
+`tests/evals/probes.test.ts` holds the baseline at that ceiling) and
+run locally.
+
+The model is pinned too, never inherited. `claude -p` would otherwise
+run whatever the operator last picked interactively, so two baselines
+captured on two machines could measure two models. The `claude-code`
+driver passes `--model sonnet` unless `--model <id>` says otherwise
+(`opus` is the other reasonable choice; a campaign is a claim about
+the harness, not the model, so keep it at one of those). The `codex`
+driver maps `--model` onto `-m` and otherwise leaves Codex's own
+default, declaring none. The benchmark records the effective model
+under `driver.model` — `null` when neither the flag nor the driver
+named one.
 
 ### Running
 
@@ -576,6 +589,7 @@ stacks, a handful of probes, N=3) and run locally.
 node evals/run.mjs --list                    # campaigns and cases, no gate
 node evals/run.mjs --check [--driver codex]  # agent installed + authenticated?
 KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline
+KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --model opus
 ```
 
 Live runs are gated on `KEEL_RUN_EVALS=1` (plus per-driver auth:
@@ -583,7 +597,22 @@ Live runs are gated on `KEEL_RUN_EVALS=1` (plus per-driver auth:
 first — workspaces are scaffolded through the packaged CLI, the very
 commands the verify suites dispatch in process, so the two trees
 cannot drift. Results land in
-`evals/results/<campaign>-<driver>-<mode>.json`.
+`evals/results/<campaign>-<driver>-<mode>.json`, **written after
+every run**, not once at the end: each run is a paid agent session,
+and a crash in the ninth must not discard the eight. The file carries
+`complete: false` until the campaign finishes.
+
+A scaffold that fails is retried once — it runs real package managers
+and real wrappers, and the first baseline attempt lost eight sessions
+to an npm internal error that did not recur — and a second failure is
+recorded as an `unprepared` run: no agent ran, so nothing was
+measured, and the run is kept out of every rate rather than counted
+as a failure. The campaign goes on; the summary carries the count.
+Once the cause is fixed, `--only <case-id>` (repeatable) re-runs just
+those cases and folds them into the existing benchmark — same
+campaign, driver and model, or it refuses — and the file records the
+merge under `merged`, naming the cases and the keel commit they were
+re-run at, so a baseline finished in two sittings says so.
 
 **The baseline is the owner's local step.** The `baseline` campaign
 captures the current emitted harness _before_ the redesign lands:

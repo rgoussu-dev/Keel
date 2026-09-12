@@ -6,3 +6,6 @@ assets/schematics/**/templates/
 assets/global/agents/
 # Helm templates carry {{ }} actions that are not YAML until rendered.
 assets/composition/distribution/*/helm/deploy/chart/templates/
+
+# Machine-written benchmarks: the runner writes them, prettier does not own them.
+evals/results/

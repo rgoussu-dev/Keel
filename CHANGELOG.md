@@ -41,9 +41,16 @@ read properties of null (reading 'edgesOut')` before a single package
   representative stacks, a static context-budget audit, and a
   `baseline` campaign the owner runs locally
   (`KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline`) to pin
-  the pre-redesign "before". Live runs are opt-in and never a PR
-  gate; `verify` covers the rig through the fake driver and fixture
-  transcripts only. See `docs/development.md` → Harness evals.
+  the pre-redesign "before" — five stacks × two runs, ten sessions,
+  a ceiling `verify` holds. The model is pinned rather than
+  inherited from the operator's CLI: `--model <id>` on the runner,
+  Sonnet by default on `claude-code`, recorded in the benchmark as
+  `driver.model`. The benchmark is checkpointed after every run, a
+  failing scaffold is retried once and then recorded as `unprepared`
+  rather than aborting the campaign or counting as a failure. Live
+  runs are opt-in and never a PR gate; `verify`
+  covers the rig through the fake driver and fixture transcripts
+  only. See `docs/development.md` → Harness evals.
 - **The skill seam: adapters ship Claude Code skills as content, and
   the engine stages them.** A contribution may carry
   `skills: [SkillSpec]` — `{ name, description, userInvocable?, body,

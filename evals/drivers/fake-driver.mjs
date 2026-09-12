@@ -26,12 +26,16 @@ import { emptyMetrics } from './driver.mjs';
  * @param options.spawnError  report the agent as failed to spawn
  *   (forces `exitCode: null`, matching `spawnScripted`'s shape).
  * @param options.available  what `probe` reports (default true).
+ * @param options.defaultModel  what the fake declares as its model
+ *   when the campaign names none (default: none declared).
  */
 export function fakeDriver(options = {}) {
+  /** @type {{ probe: number, runs: { id: string, workspace: string, mode: string, model?: string }[] }} */
   const calls = { probe: 0, runs: [] };
   return {
     id: options.id ?? 'fake',
     modes: ['scripted', 'attended'],
+    ...(options.defaultModel !== undefined ? { defaultModel: options.defaultModel } : {}),
     calls,
 
     capabilities() {
@@ -52,8 +56,8 @@ export function fakeDriver(options = {}) {
         : { available: true, version: 'fake 1.0.0' };
     },
 
-    async run({ caseSpec, workspace, mode }) {
-      calls.runs.push({ id: caseSpec.id, workspace, mode });
+    async run({ caseSpec, workspace, mode, model }) {
+      calls.runs.push({ id: caseSpec.id, workspace, mode, model });
       if (options.solve) await options.solve(workspace, caseSpec, mode);
       return {
         mode,

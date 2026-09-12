@@ -1,6 +1,8 @@
 # The Wave-1 "before" campaign: navigation probes over grown fixtures
-# of five representative stacks, N=3 — small on purpose, since
-# subscription runs draw from the operator's normal session allowance.
+# of five representative stacks, N=2 — ten sessions in all, small on
+# purpose, since subscription runs draw from the operator's normal
+# session allowance. `tests/evals/probes.test.ts` holds the total at
+# ten or fewer.
 name: baseline
 description: Navigation probes over the current emitted harness (pre-#134 baseline)
 cases:
@@ -9,4 +11,4 @@ cases:
   - navigation/go-http
   - navigation/rust-http
   - navigation/ts-http
-runs: 3
+runs: 2
