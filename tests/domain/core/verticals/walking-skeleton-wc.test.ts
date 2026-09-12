@@ -269,6 +269,23 @@ describe('walking-skeleton vertical (web-components SPA)', () => {
   });
 });
 
+describe('walking-skeleton vertical (web-components, npm root override)', () => {
+  it('pins vitest through a root override on npm, on the range the packages declare', async () => {
+    // Same reason as the TypeScript stacks: npm 10's peer resolution
+    // crashes on vitest once a newer major is `latest`; the override
+    // keeps every vitest edge on the emitted range.
+    const { tree, cwd } = await installWith(baseTags('arch.spa'));
+    cwds.push(cwd);
+    const root = JSON.parse(tree.read('package.json')?.toString() ?? '{}') as {
+      overrides?: Record<string, string>;
+    };
+    const core = JSON.parse(tree.read('domain/domain-core/package.json')?.toString() ?? '{}') as {
+      devDependencies: Record<string, string>;
+    };
+    expect(root.overrides).toEqual({ vitest: core.devDependencies['vitest'] });
+  });
+});
+
 describe('walking-skeleton vertical (web-components, pnpm)', () => {
   const pnpmTags = [
     'lang.typescript',
@@ -290,6 +307,7 @@ describe('walking-skeleton vertical (web-components, pnpm)', () => {
     const root = tree.read('package.json')?.toString() ?? '';
     expect(root).toContain('"packageManager": "pnpm@');
     expect(root).not.toContain('"workspaces"');
+    expect(root).not.toContain('"overrides"');
 
     const webApp = tree.read('application/web-app/package.json')?.toString() ?? '';
     expect(webApp).toContain('"@acme/domain-core": "workspace:*"');

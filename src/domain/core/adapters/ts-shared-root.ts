@@ -53,6 +53,20 @@ export interface TsRootInputs {
 const DEPENDENCY_CRUISER = '^18.1.1';
 
 /**
+ * The vitest range every emitted package declares, repeated at the
+ * root as an npm `overrides` entry. npm 10 — the npm Node 22 bundles
+ * — resolves vitest's optional `@vitest/*` peers by walking to
+ * whatever vitest is `latest`, and once a newer major is published
+ * that walk dies inside npm (`Cannot read properties of null (reading
+ * 'edgesOut')`) before anything is installed; vitest 5 did exactly
+ * that to every npm-based TypeScript stack. The override keeps every
+ * vitest edge on the packages' own range, which is also why it is
+ * the range and not an exact version: one pin, one value. pnpm
+ * resolves the same tree without it, so the pnpm root carries none.
+ */
+const VITEST = '^4.1.0';
+
+/**
  * Assembles one TS entrypoint bootstrap's contribution from its
  * shared shell and its own deployment-unit tree, under either module
  * layout.
@@ -174,6 +188,7 @@ function packageJsonSeed(inputs: TsRootInputs): string {
     pkg.packageManager = 'pnpm@10.33.0';
   } else {
     pkg.workspaces = inputs.layout.workspaceGlobs;
+    pkg.overrides = { vitest: VITEST };
   }
   pkg.scripts = modulith
     ? { lint: lintScript(inputs.layout), ...SHARED_SCRIPTS[inputs.pm] }

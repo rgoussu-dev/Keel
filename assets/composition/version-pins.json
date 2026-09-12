@@ -831,6 +831,10 @@
         {
           "glob": "src/domain/core/adapters/*.ts",
           "pattern": "\"vitest\": \"([^\"]+)\""
+        },
+        {
+          "glob": "src/domain/core/adapters/ts-shared-root.ts",
+          "pattern": "VITEST = '([^']+)'"
         }
       ],
       "check": {

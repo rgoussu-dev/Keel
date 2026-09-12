@@ -17,6 +17,9 @@
   },
 <% } else { -%>
   "workspaces": [<%- workspaceGlobs %>],
+  "overrides": {
+    "vitest": "^4.1.0"
+  },
   "scripts": {
     "dev": "npm run build --workspace design-system && npm run dev --workspace application/web-app",
     "build": "npm run build --workspaces --if-present",

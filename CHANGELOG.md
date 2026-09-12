@@ -12,6 +12,20 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ## [Unreleased]
 
+### Fixed
+
+- **`npm install` no longer dies inside npm on every npm-based
+  TypeScript stack.** npm 10 — the npm Node 22 bundles — resolves
+  vitest's optional `@vitest/*` peers by walking to whatever vitest is
+  `latest`, and once vitest 5 shipped that walk crashed with `Cannot
+read properties of null (reading 'edgesOut')` before a single package
+  was installed, on `ts-cli`, `ts-http` and `web-components` alike
+  (pnpm was unaffected). The emitted root `package.json` now carries an
+  npm `overrides` entry pinning vitest to the range the packages
+  already declare; the pnpm root carries none. Found by the harness
+  evals' baseline campaign, whose TypeScript scaffold was the first
+  thing to run against the new `latest`.
+
 ### Added
 
 - **Harness evals rig** (`evals/`, wave 1 of the agent-harness
