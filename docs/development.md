@@ -6,64 +6,61 @@ side.
 
 ## Requirements
 
-- Node 22+
-- pnpm 10+
-- For the JVM e2e suites: **JDK 25** on `JAVA_HOME`, **Gradle 9.7.0**
-  on PATH, and Maven. Those three are coupled and none of them is
-  arbitrary — see [End-to-end tests](#end-to-end-tests).
+The toolchain is one file, [`mise.toml`](../mise.toml), and one
+command:
+
+```sh
+mise install
+```
+
+That is Node 22 and pnpm 10 for the package itself, plus what the e2e
+suites scaffold and build with: **JDK 25** (`temurin-25`, the spelling
+keel's own toolchain vertical emits), **Gradle 9.7.0**, Maven, Go and
+Rust. The JVM three are coupled and none of them is arbitrary — see
+[End-to-end tests](#end-to-end-tests). The same file provisions every
+CI shard (`jdx/mise-action`, installing the subset the shard probes
+for) and a Claude Code web session, so a workstation, a runner and a
+web session cannot drift from one another; `tests/mise-toolchain.test.ts`
+holds the file's Gradle to the wrapper's own version and its tool list
+to what the CI matrix can ask for. Without mise, the same versions by
+any other manager work too — the suites probe binaries, not mise.
 
 ### Claude Code on the web
 
 `.claude/hooks/session-start.sh` provisions the above on session start,
 so a web session's toolchain matches CI's rather than the image's. It
 runs only when `CLAUDE_CODE_REMOTE=true`, so it never touches a
-developer's own `/opt`, and it is idempotent — a warm container
-re-runs it in about a second.
+developer's own home, and it is idempotent — a warm container re-runs
+it in seconds.
 
-It fixes two things the image gets wrong for this repo:
+It does what a CI shard does, with the same file: installs mise if the
+image lacks it, runs `mise install` over `mise.toml` (the whole file,
+since a web session may run any shard and the container is snapshotted
+after the hook), and writes `mise env` to `$CLAUDE_ENV_FILE` so every
+later command in the session sees the tools' PATH entries and
+`JAVA_HOME`. Then `pnpm install`, and a version line proving the JDK,
+Gradle and Maven the session will actually build with.
 
-- **Gradle 8.14.3 ships on the image and cannot start on JDK 25.**
-  `/opt/gradle` is a symlink already on PATH, so the hook downloads the
-  version keel pins and repoints it. That version is read from
-  `GRADLE_VERSION` in `src/domain/core/adapters/gradle-wrapper.ts` —
-  the constant every generated wrapper gets — rather than being a
-  third copy of the number to keep in sync.
-- **`JAVA_HOME` lands on 21**, because the image's shell profile
-  exports it and beats the `env` block in `.claude/settings.json`. That
-  one is quietly expensive: the Maven e2e suites skip themselves below
-  JDK 25, so a stale `JAVA_HOME` does not fail the Maven half of the
-  modulith grid, it runs none of it — and a skipped suite reads exactly
-  like a passing one. The hook writes `JAVA_HOME` to
-  `$CLAUDE_ENV_FILE`, which does apply.
+Two things the image gets wrong are why the hook exists at all. Its
+Gradle cannot start on JDK 25, and its shell profile exports a JDK 21
+`JAVA_HOME` — quietly expensive, because the Maven e2e suites skip
+themselves below JDK 25, so a stale `JAVA_HOME` does not fail the
+Maven half of the modulith grid, it runs none of it, and a skipped
+suite reads exactly like a passing one. `mise env` is what wins over
+the profile, per session, through the env file.
 
-**On the pinned Gradle checksum.** `GRADLE_SHA256` in the hook is
-checked against Gradle's published SHA-256, and the install aborts on
-a mismatch rather than proceeding with unknown bytes.
+The hook is the only place the session's `JAVA_HOME` is set, on
+purpose. It once sat in `.claude/settings.json`'s `env` block as well,
+as a distro path, and a settings `env` block cannot be conditional: on
+a developer machine, where the JDK comes from mise, sdkman or the
+distro, it overrode a correct `JAVA_HOME` with a directory that does
+not exist, and `gradle wrapper` failed in every JVM suite of a local
+Claude session. Do not put a machine-specific path back there.
 
-Adding an entry takes one manual step, because the sandbox cannot do
-it alone: the published checksums
-(`https://services.gradle.org/distributions/gradle-<version>-bin.zip.sha256`,
-or <https://gradle.org/release-checksums/>) are proxy-blocked from a
-web session — 403 on the CONNECT tunnel — while the distribution URL
-beside them is not, since it redirects to an allowlisted host. So the
-published value has to be fetched from an unrestricted network and
-compared there. A hash computed from our own download proves only that
-a later download matches the earlier one; it says nothing about
-whether either is the release Gradle shipped, and the two claims
-should not be confused.
-
-What the sandbox _can_ do is the other half of that comparison, and it
-is worth doing: once the published value arrives from an unrestricted
-network, download the distribution here and check that the two agree.
-Two independent paths reaching the same digest is a real cross-check —
-what it rules out is one of them having been tampered with in transit.
-It is not a substitute for the published value; it is a confirmation
-of it, and it fails loudly when the paths disagree. The 9.7.0 entry
-was added exactly this way.
-
-Bumping `GRADLE_VERSION` without adding a matching entry warns loudly
-and continues, rather than bricking every session over a routine
-version bump.
+Distribution integrity is mise's: the core `java` tool checks the
+JDK against the vendor's published checksum, and the `aqua` registry
+entries Gradle and Maven resolve through carry theirs. That retired
+the hand-maintained `GRADLE_SHA256` table the hook used to carry.
 
 ## The dev loop
 

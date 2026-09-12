@@ -1,0 +1,29 @@
+# The toolchain keel's own development and CI run on — one file for
+# the workstation (`mise install`), every CI shard (jdx/mise-action,
+# installing the subset the shard probes for) and a Claude Code web
+# session (`.claude/hooks/session-start.sh`), so none of the three
+# can drift from the others. `tests/mise-toolchain.test.ts` holds the
+# pins below to what the code assumes.
+#
+# The JVM entries are coupled and none of them is arbitrary: the
+# emitted projects target release 25, Maven compiles with whatever JDK
+# runs it, and Gradle 8.x cannot start on JDK 25 — so the host Gradle
+# is the wrapper's own version (GRADLE_VERSION in
+# src/domain/core/adapters/gradle-wrapper.ts). Change one, check the
+# other. `temurin-25` is the spelling keel's toolchain vertical emits.
+#
+# Go is `latest` rather than the 1.24 the emitted go.mod declares: the
+# OpenTelemetry modules the observability vertical pulls in require
+# Go >= 1.25, so the bootstrap's own `go mod tidy` rewrites that line.
+#
+# Node is the engines floor; CI's verify matrix overrides it per cell
+# through MISE_NODE_VERSION.
+
+[tools]
+node = "22"
+pnpm = "10"
+java = "temurin-25"
+gradle = "9.7.0"
+maven = "3"
+go = "latest"
+rust = "stable"

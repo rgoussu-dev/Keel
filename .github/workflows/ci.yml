@@ -19,17 +19,41 @@ jobs:
       matrix:
         node: ['22', '24']
 
+    # The Node matrix overrides mise.toml's pin per cell. Set at the job
+    # level rather than on the install step alone, so anything that
+    # asks mise later (`mise x`, `mise env`) agrees with what was
+    # installed.
+    env:
+      MISE_NODE_VERSION: ${{ matrix.node }}
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
-      - name: Setup Node.js ${{ matrix.node }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      # mise provisions every tool this workflow needs, from the one
+      # mise.toml a workstation runs `mise install` against and a web
+      # session's start hook installs — the same file, so a runner and
+      # a developer's machine cannot drift. Only the tools named here
+      # are installed; the JVM, Go and Rust entries are the e2e job's.
+      #
+      # mise itself is not pinned: the action's cache key carries its
+      # version, and the reproducible part is what mise.toml resolves,
+      # not the resolver.
+      - name: Setup toolchain (node ${{ matrix.node }}, pnpm)
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          node-version: ${{ matrix.node }}
-          cache: pnpm
+          install_args: node pnpm
+
+      # setup-node used to cache the pnpm store; mise-action caches
+      # only the tools it installs, so the store gets its own cache.
+      - name: Locate the pnpm store
+        run: echo "PNPM_STORE=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.PNPM_STORE }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -560,58 +584,69 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-          cache: pnpm
-
-      # JDK 25 because the emitted JVM projects target release 25 and
-      # Maven compiles with whatever JDK runs it — on anything older the
-      # Maven suites skip themselves rather than fail. Gradle would not
-      # care (its foojay resolver provisions a toolchain), which is why
-      # this is the JDK the *Maven* half dictates.
+      # Which of mise.toml's tools this shard installs, derived from
+      # the binaries it probes for below so the two lists cannot
+      # disagree: a shard is provisioned by what it claims to need,
+      # and a probe name this mapping does not know fails here rather
+      # than skipping every suite the shard was given.
+      # `tests/mise-toolchain.test.ts` mirrors this table in `verify`.
       #
-      # Every `jvm-*` shard gets it, not only the one holding the Maven
-      # suite: the prefix is the whole condition, so a new JVM shard is
-      # provisioned by being named, and one that is not named simply
-      # skips every suite it was given.
-      - name: Setup JDK 25
-        if: startsWith(matrix.shard.id, 'jvm')
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
-        with:
-          distribution: temurin
-          java-version: '25'
+      # `docker` and `browser` are the runner's own; `npm` ships with
+      # node. Every shard gets node and pnpm — that is what runs vitest.
+      #
+      # Versions are the file's. JDK 25 because the emitted JVM
+      # projects target release 25 and Maven compiles with whatever
+      # JDK runs it — on anything older the Maven suites skip
+      # themselves rather than fail; Gradle would not care (its foojay
+      # resolver provisions a toolchain), which is why this is the JDK
+      # the *Maven* half dictates. And that JDK is exactly why the host
+      # Gradle is pinned to the wrapper's own version: `gradle wrapper`
+      # is the only thing it runs, but Gradle 8.x cannot start on JDK
+      # 25 — it fails with the version string as the whole error
+      # message. Go is `latest`, not the 1.24 the emitted go.mod
+      # declares: the OpenTelemetry modules the observability vertical
+      # pulls in require Go >= 1.25, so the bootstrap's own
+      # `go mod tidy` rewrites the line, and a runner pinned to 1.24
+      # would fail the scaffold outright.
+      - name: Name the toolchain this shard installs
+        id: toolchain
+        run: |
+          set -euo pipefail
+          tools="node pnpm"
+          for tool in ${{ matrix.shard.tools }}; do
+            case "$tool" in
+              java|javac)     tools="$tools java" ;;
+              gradle)         tools="$tools gradle" ;;
+              mvn)            tools="$tools maven" ;;
+              go)             tools="$tools go" ;;
+              cargo)          tools="$tools rust" ;;
+              npm|pnpm|docker|browser) ;;
+              *) echo "::error::no mise tool known for probe '$tool'"; exit 1 ;;
+            esac
+          done
+          list="$(printf '%s\n' $tools | awk '!seen[$0]++' | tr '\n' ' ')"
+          echo "list=${list% }" >> "$GITHUB_OUTPUT"
+          echo "installing: ${list% }"
 
-      # …and that JDK is exactly why the host Gradle has to be pinned.
-      # `gradle wrapper` is the only thing it runs (the wrapper it writes
-      # is 9.7.0 and provisions its own toolchain), but Gradle 8.x cannot
-      # start on JDK 25 — it fails with the version string as the whole
-      # error message. Pinning the host to the same 9.7.0 keeps one JDK
-      # serving both build systems.
-      - name: Setup Gradle 9.7.0
-        if: startsWith(matrix.shard.id, 'jvm')
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      # `env: true` (the default) exports what `mise env` reports for
+      # the installed tools, which is where JAVA_HOME comes from on
+      # the JVM shards; `export_path: true` puts their bin dirs on
+      # PATH for every later step. Nothing here is pinned to a
+      # distro path — the same file provisions a workstation.
+      - name: Setup toolchain (${{ steps.toolchain.outputs.list }})
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          gradle-version: '9.7.0'
+          install_args: ${{ steps.toolchain.outputs.list }}
 
-      # `stable`, not the `go 1.24` the emitted go.mod declares — that
-      # directive does not survive first contact. The OpenTelemetry
-      # modules the observability vertical pulls in require Go >= 1.25,
-      # so the bootstrap's own `go mod tidy` rewrites the line to
-      # `go 1.25.0`. On a developer's machine that is invisible
-      # (GOTOOLCHAIN defaults to `auto` and Go fetches the newer
-      # toolchain); setup-go pins GOTOOLCHAIN=local, so a runner on 1.24
-      # cannot upgrade and the scaffold fails outright.
-      - name: Setup Go
-        if: matrix.shard.id == 'go'
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - name: Locate the pnpm store
+        run: echo "PNPM_STORE=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          go-version: stable
-          cache: false
+          path: ${{ env.PNPM_STORE }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       # Every suite skips itself when its toolchain is absent, so a
       # missing tool reads as a pass. Print what this shard actually has

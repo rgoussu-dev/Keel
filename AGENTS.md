@@ -582,6 +582,11 @@ would ship as separate packages implementing the same port.
   _start_ on JDK 25, and the host `gradle` is what generates the
   wrapper. Pinning the host to 9.7.0 (the wrapper's own version) lets
   one JDK serve both build systems. Change one, check the other.
+  Both pins live in `mise.toml`, the one file a workstation, every CI
+  shard and a Claude web session provision from — `ci.yml` derives
+  each shard's `mise install` list from the binaries the shard probes
+  for, and `tests/mise-toolchain.test.ts` holds the file's Gradle to
+  `GRADLE_VERSION` and its tool list to that mapping.
 - `.github/workflows/mutation.yml` runs the `src/domain` mutation
   suite (`pnpm test:mutation`) on every push to `main` — incremental,
   so only mutants whose code or covering tests changed are retested —
