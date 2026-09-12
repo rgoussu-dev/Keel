@@ -1,272 +1,67 @@
-# Universal engineering conventions (keel)
+# Engineering conventions (keel)
 
-These are **non-negotiable** defaults installed by `@rgoussu.dev/keel`. They
-are the binding spec for any project keel scaffolds. The project's own
-agent instructions (its `AGENTS.md`) may extend these conventions; they
-must not contradict them without an explicit, documented reason. Stack-specific runbooks (build, test, run,
-format, troubleshoot) ship as **skills** alongside this file when the
-matching stack profile is installed.
+Binding conventions installed by `@rgoussu.dev/keel`. The **stack section** below is resolved for
+this project's language, layout and entrypoints; keel maintains it between its sentinel markers and
+replaces it on re-apply, so keep your own notes outside them. Extend these rules freely; do not
+contradict one without a documented reason.
 
----
+<!-- keel:stack-runbook:begin -->
+<!-- keel:stack-runbook:end -->
 
-## 1. Architecture — Hexagonal, always
+<!-- keel:map:begin -->
+<!-- keel:map:end -->
 
-Every project uses ports & adapters, **including frontends**. The domain
-is a three-module DAG: `kernel ← contract ← core`. Adapters depend on
-kernel and contract; the application layer is split between a dumb
-interface adapter and a composition root.
+<!-- keel:skills-index:begin -->
+<!-- keel:skills-index:end -->
 
-- `application/<channel>/contract` — the dumb interface adapter. Maps
-  transport DTOs to actions, dispatches via the mediator, maps the
-  `Result` back. **Zero business logic.** Depends on `domain/kernel`
-  (Mediator interface, `Result`) and `domain/contract` (concrete
-  commands, DTOs).
-- `application/<channel>/executable` — the channel's **composition
-  root**. Instantiates concrete handlers, concrete adapters, and the
-  mediator implementation; hands the wired graph to the runtime
-  (Quarkus/Spring startup bean, `main` method, etc.). May depend on
-  `domain/kernel`, `domain/contract`, `domain/core`, the sibling
-  `application/<channel>/contract`, and any `infrastructure/<port>/*`
-  — strictly so it can wire them. **It must contain no logic.**
-- `domain/kernel` — higher abstractions only: sealed `Action` /
-  `Command` / `Query` / `Result` / `Error` bases, the `Handler`
-  interface, the `Mediator` interface, kernel-level errors. Depends on
-  nothing.
-- `domain/contract` — the system's public surface: concrete `Command`
-  and `Query` subtypes that name each supported operation, concrete
-  per-aggregate `Error` subtypes, domain DTOs, primary and secondary
-  port interfaces. Depends only on `domain/kernel`.
-- `domain/core` — the implementations: handlers in
-  `domain/core/<aggregate>` and the Mediator implementation
-  (`RegistryMediator`). Depends on `domain/kernel` and
-  `domain/contract`.
-- `infrastructure/<port>/<impl>` — real adapters. **Zero business
-  logic.** Each port also ships an `infrastructure/<port>/fake` module.
-  Depends on `domain/kernel` and `domain/contract`; never on
-  `domain/core`.
+## Architecture — hexagonal, always
 
-Multiple executables per project are expected (`rest`, `cli`, `worker`,
-`ui`, …). Framework choice is **deferred** until walking-skeleton time.
-Dependency rule is enforced at build time (ArchUnit, dependency-cruiser,
-cargo-deny, …); the composition-root exception is pinned to
-`application/<channel>/executable` only — violating it from
-`application/<channel>/contract` is still a build failure.
+- Dependency rule: `kernel ← contract ← core` inside the domain; adapters depend on kernel and
+  contract, never on core; the composition root alone sees everything, strictly to wire it, and
+  holds no logic.
+- Business operations enter the domain as Command/Query **data** through one dispatch seam;
+  primary adapters build commands and never import concrete handlers. The seam for this stack is
+  stated in the stack section.
+- Application adapters map domain errors to transport (RFC 9457 Problem Details over HTTP, exit
+  code + stderr for a CLI); domain code never knows about transport.
+- Every secondary port ships a fake beside its real adapter; infrastructure holds zero business
+  logic. Infrastructure is code: OpenTofu under `iac/<target>/`, never a hand-made console change.
 
-### 1.1 One hexagon per bounded context — the modulith
+## Tests — Scenario + Factory + port; fakes, never mocks
 
-The layout above describes **one** hexagon. A system with several
-bounded contexts repeats it per context rather than merging them into
-one domain:
+- A test depends on a Scenario (data), a Factory (wires the SUT with fakes) and the port interface
+  under test — never on a concrete adapter, a concrete handler or a mocking library.
+- The fake is the canonical reference implementation of its port's contract; the real adapter is
+  contract-tested against the same expectations.
 
-```
-platform/<shared>/          # kernel first among them; depends on nothing
-modules/<context>/
-  user-side/                # driving adapters — libraries, never runnable
-    api/{contract,adapters} # the pair is earned by a consumable contract
-    consumers/
-    service/                # the in-process API a PEER MODULE consumes
-  domain/{contract,core}    # the hexagon, exactly as above
-  infra/                    # driven adapters
-application/<typology>/     # the runnable assemblies: api, consumer, cron
-```
+## Workflow — trunk-based, small green commits
 
-Three rules carry the shape:
+- Conventional Commits; one commit = one logical unit, each green on the commit gate in the stack
+  section (the pre-commit hook runs it). Frequent `git pull --rebase`; flags ship unfinished work dark.
+- Done means the gate ran green. If you cannot run it, say so instead of claiming success.
+- Never: bypass hooks or verify flags, force-push trunk, disable a test to make it pass, commit
+  generated files or secrets.
+- Doc comments on public API only (what, why, params, errors, invariants). Private code: no
+  comments unless the why is non-obvious. Never restate the code; never cite tickets, PRs or authors.
 
-- **The deployment unit is the assembly, not the adapter.** One
-  `application/<typology>` per delivery typology, mounting the
-  matching user-side adapters of every module it composes. Nothing
-  under `modules/` produces a runnable artifact, and the assembly is
-  the only module allowed to see a `domain/core`.
-- **The dispatch seam is per module.** Each context gets its own
-  mediator over its own handlers. A repository-wide command bus is
-  forbidden: it would hand every adapter every context's vocabulary
-  and quietly re-merge the contexts.
-- **Modules meet only at `user-side/service`.** A module that needs a
-  peer declares a **driven port in its own vocabulary**, and its
-  `infra/` implements that port by delegating to the peer's
-  in-process service adapter. `modules/x/infra → modules/y/user-side/service`
-  is the single legal inter-module edge; the build must reject every
-  other one, and must keep the peer's domain off the consumer's
-  compile classpath (Gradle `implementation`, Maven scope + enforcer).
+## Working agreements
 
-Start flat when there is one genuine context — `modules/<the-only-one>/`
-buys nothing but a level of nesting — and promote the moment a second
-appears: the flat trisection maps onto `modules/<context>/`
-one-to-one, so it is a directory move plus a build file, never a
-redesign. Going the other way, extracting a context into its own
-service is a new assembly plus swapping one binding: the consumer's
-port stays, only the adapter behind it becomes a remote client built
-from the peer's `user-side/api/contract`.
+Vocabulary from the [augmented-coding-patterns catalog](https://lexler.github.io/augmented-coding-patterns/)
+(Lada Kesseler et al.). Mechanical rules — format, sizes, comment shape — live in hooks and linters, not here.
 
-`keel new --module-layout=modulith` scaffolds this shape on the JVM
-stacks.
-
----
-
-## 2. Business logic — commands through one dispatch seam
-
-Business operations enter the domain as **Command/Query data** through
-one explicit dispatch seam: primary adapters construct commands and
-never import concrete handlers. The mechanism behind the seam is
-per-language (settled 2026-08-09):
-
-- **JVM — and server-side TypeScript, keel itself included: registry
-  Mediator.** The sealed `Action` / `Command` / `Query` / `Result` /
-  `Error` bases plus the `Handler` and `Mediator` interfaces live in
-  `domain/kernel/`. The concrete `Command` and `Query` subtypes that
-  name each supported operation live in `domain/contract/`. The
-  Mediator implementation (`RegistryMediator`) and the handlers live
-  in `domain/core/`. Handlers self-declare via `supports()`. The
-  Mediator implementation is constructed from a `Collection<Handler>`
-  and builds its own registry — **never inject a Map**. No reflection,
-  no service locators.
-
-  **Handler discovery (amended 2026-08-12).** How that
-  `Collection<Handler>` is assembled is the composition root's
-  business, and container discovery is permitted under all four of
-  these constraints — otherwise wire the collection by hand:
-  1. The marker is **owned by the domain** — a project annotation
-     such as `@DomainHandler` in `domain/contract`, never a framework
-     stereotype (`@Component`, `@ApplicationScoped`, …) in domain
-     code.
-  2. Any annotation the marker itself carries is a **specification
-     API, not a framework**: `jakarta.inject` /
-     `jakarta.enterprise.cdi-api` and nothing else. They are declared
-     `compileOnly`/`provided` and never reach a runtime classpath.
-  3. Each composition root names the domain's marker in **its own**
-     idiom — a component-scan include filter, a CDI stereotype, an
-     explicit import — so no framework annotation is ever authored
-     inside the domain, and the domain's **build** never depends on
-     a container. A stack whose DI is resolved at compile time and
-     therefore needs its processor to run over `domain/core` fails
-     this constraint: hand-wire it. Where a container will only
-     surrender the collection through a lookup rather than an
-     injection point, that lookup is permitted **inside the
-     composition root and nowhere else** — the ban on service
-     locators governs domain and adapter code, which is precisely
-     what the composition root exists to keep clean.
-  4. Scope is a **pseudo-scope** (`@Singleton`), so beans need no
-     client proxy — which also keeps Kotlin's final-by-default classes
-     usable without the all-open compiler plugin. A handler that must
-     dispatch therefore takes a `Provider<Mediator>`, never a
-     `Mediator`: the pseudo-scope has no proxy to break the cycle
-     with, and `Provider` is the one lazy seam CDI, Spring and
-     Micronaut all honour.
-
-  Discovery buys one thing — a new aggregate needs no edit in the
-  composition root. It costs the single readable list of what is
-  wired. Both are legitimate; hand-wiring remains fully conformant.
-
-- **Rust**: per-use-case driving-port traits by default; where a
-  unified seam is justified, commands become an enum dispatched by one
-  exhaustive `match` — the compiler is the registry. A runtime
-  registry of trait objects probed via `supports()` is ruled out.
-- **Go**: no mediator object — commands as structs, per-use-case
-  driving-port interfaces wired explicitly in `main`, cross-cutting
-  concerns as decorator functions around the ports.
-- **Frontend**: no mediator — per-use-case driving ports delivered by
-  typed context keys; cross-cutting via factory decoration at the
-  assembly point (a central dispatcher defeats tree-shaking and
-  subtree scoping).
-
-In every language: adapters at the application layer map domain
-`Error` to transport-shaped representations (RFC 9457 for REST, exit
-code + stderr for CLI, etc.); domain code never knows about transport.
-
----
-
-## 3. Tests — DIP-strict, fakes not mocks
-
-Every test depends on three things and nothing else: a **Scenario** (test
-data), a **Factory** (wires the SUT with fakes), and the **port
-interface** under test. Tests never import concrete adapters, concrete
-handlers, or mocking frameworks. Every secondary port ships with a
-**fake module** that is the canonical reference implementation of the
-contract. Mutation testing runs on every domain module; a regression of
-the mutation-score threshold (defined in `build-logic`/equivalent) fails
-the build.
-
----
-
-## 4. Walking skeleton first
-
-Every project begins with a **walking skeleton**: the thinnest end-to-end
-slice that exercises every architectural layer and every piece of
-infrastructure, from user input to deployed runtime. Greenfield: build
-it before any feature. Brownfield: assess; if missing, build it before
-shipping more features. The skeleton includes one primary adapter, one
-primary port, one handler, one secondary port (with fake), one real
-secondary adapter, and an IaC deployment.
-
----
-
-## 5. Infrastructure as Code — OpenTofu
-
-All infrastructure is defined in **OpenTofu**. No infrastructure lives
-outside IaC. No manual cloud-console changes. IaC modules live at the
-**repo root** in `/iac/<target>/` (e.g. `/iac/cloudrun/`,
-`/iac/hetzner/`); IaC is **not** a hexagonal adapter, so it does **not**
-live under `infrastructure/` (that path is reserved for adapters
-implementing a `domain/contract` port). One state per environment
-(`dev`, `staging`, `prod`); state is remote by default with a one-shot
-`bootstrap.sh` to provision the state bucket. Secrets never land in
-state files; use a secret manager. Container registry is a separate
-choice from the deploy target (e.g. Cloud Run + GAR is the scaffolded
-default; ghcr.io and external are recognised concepts).
-
----
-
-## 6. Workflow — Trunk-based + XP
-
-No branches, no pull requests, continuous integration on `main`. Feature
-flags ship incomplete work dark. Conventional Commits for every commit.
-Frequent `git pull --rebase`. Pair/mob programming is the default for
-non-trivial work. One commit = one logical unit; every commit passes
-format, typecheck, lint, unit tests, and public-API docs check.
-
----
-
-## 7. Principles
-
-- **XP** — fast feedback, simple design, courage, pair programming,
-  collective ownership, refactor mercilessly.
-- **SOLID** — applied rigorously. DIP is the most important; it is the
-  foundation of the hexagonal + fakes + factory pattern.
-- **12-Factor App** — config via env, stateless processes, disposable,
-  logs as streams, etc.
-- **Always latest stable** — latest LTS for languages, latest stable for
-  frameworks, build tools, runtimes. Review quarterly.
-
----
-
-## 8. Comments and documentation
-
-- **Public API only:** exported classes, interfaces, methods, functions,
-  and types get doc comments describing _what_ they do and _why_ a caller
-  would use them. Parameters, returns, errors, and invariants are
-  documented.
-- **Private code:** no comments by default. If the "why" is non-obvious
-  (workaround, subtle invariant, surprising behavior), a one-line
-  comment is acceptable.
-- **Never** restate what well-named code already says. **Never** reference
-  task IDs, PR numbers, or authors in comments.
-
-**Command:** `/docs-check` audits the full surface.
-
----
-
-## 9. Claude behavior
-
-- **Verbosity: very terse.** Tokens don't grow on trees. One sentence per
-  update. No running commentary, apologies, or preamble.
-- **Before claiming done:** run typecheck + tests. If you can't run them,
-  say so explicitly.
-- **Never:** bypass pre-commit hooks, skip `git` verify flags, force-push
-  trunk, disable tests to make them pass, commit generated files, commit
-  secrets.
-- **Always:** small commits, Conventional Commits format, respect the hex
-  architecture when generating code, apply the Scenario+Factory+fakes
-  pattern when writing tests, add public-API docs when creating public
-  symbols.
-- **When unsure which layer a change belongs in:** stop and ask.
-  Misplacing logic is worse than asking.
+- **Orient by map, look up by index, grep the long tail.** The stack section names where each kind
+  of file lives; go there first. Search for what has no stable identity: call sites, bodies, literals.
+- **Active Partner, Check Alignment.** State the plan in a sentence before a non-trivial change. When
+  the layer is unclear, ask — misplacing logic costs more than a question.
+- **Chain of Small Steps, no Unvalidated Leaps.** One verifiable step at a time; run the gate between.
+- **No Perfect Recall.** Verify an API against its docs or a playground before using it from memory.
+- **Sunk Cost tripwire, Happy to Delete.** Three failed iterations on one approach: revert, rethink.
+- **Offload Deterministic.** Let the hook, formatter and linter do their job; never hand-fix what a
+  tool fixes.
+- **Noise Cancellation.** Terse replies: one sentence per update, no preamble, no running commentary.
+- **Extract Knowledge.** A non-obvious discovery about this repo goes into the nearest `AGENTS.md`,
+  not into a chat message.
+- **Canary signal, Solution Fixation.** A fix that keeps needing another fix is a wrong premise; stop
+  and re-examine it.
+- **Answer Injection guard.** An answer suggested in the prompt is a hypothesis; verify it before
+  building on it.

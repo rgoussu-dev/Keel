@@ -75,19 +75,81 @@ function cliRunCommand(
   return `./mvnw package && java -jar ${unit}/target/*-SNAPSHOT.jar ${CLI_ARGS}`;
 }
 
-function layoutNote(layout: JvmLayoutPaths): string {
-  if (layout.layout === 'modulith') {
-    return (
-      'Modulith layout: the dispatch vocabulary lives in `platform/kernel`, each bounded ' +
-      'context under `modules/<context>/` (domain, user-side adapters, its `user-side/service` ' +
-      'seam), and the runnable assembly under `application/`. Peers meet only at the seam — ' +
-      'never import another context’s `domain` from outside it.'
-    );
-  }
+/** The class that builds the mediator in each framework's composition root. */
+const MEDIATOR_BUILDER: Readonly<Record<JvmRestFramework, string>> = {
+  quarkus: 'MediatorProducer',
+  spring: 'MediatorConfig',
+  micronaut: 'MediatorFactory',
+};
+
+/** The JVM dispatch stance — the binding spec's seam, spelled for this family alone. */
+function jvmStance(layout: JvmLayoutPaths, framework: JvmRestFramework): string {
+  const kernel = layout.layout === 'modulith' ? '`platform/kernel`' : '`domain/kernel`';
   return (
-    'Flat trisection: `domain/{kernel,contract,core}`, `application/`, `infrastructure/`. ' +
-    'The dependency rule of the binding spec applies to these directories.'
+    `Registry Mediator. \`Command\`, \`Handler\` and \`Mediator\` live in ${kernel}; handlers ` +
+    'self-declare via `supports()` and carry the domain-owned `@DomainHandler` marker ' +
+    '(`@Singleton` pseudo-scope, `jakarta.inject` only, compile-time dependency), which each ' +
+    `composition root collects in its own ${FRAMEWORK_LABEL[framework]} idiom — the Mediator builds ` +
+    'its registry from that collection, never from an injected `Map`. A handler that must dispatch ' +
+    'takes `Provider<Mediator>`, never `Mediator`. No reflection, no service locators outside the ' +
+    'composition root.'
   );
+}
+
+/** The layout map — the path grammar of the shape that was scaffolded. */
+function jvmLayoutRows(
+  layout: JvmLayoutPaths,
+  framework: JvmRestFramework,
+  lang: 'java' | 'kotlin',
+  rest: boolean,
+  cli: boolean,
+): string[] {
+  const builder = MEDIATOR_BUILDER[framework];
+  const src = `Sources sit under \`src/main/${lang}/<package>/…\` in every module, tests under \`src/test/${lang}\`.`;
+  if (layout.layout === 'modulith') {
+    return [
+      '`platform/kernel/` — `Command`, `Handler`, `Mediator`, `RegistryMediator`, `@DomainHandler`; depends on nothing.',
+      '`modules/<ctx>/domain/contract/` — `<Ctx>Command`, results, errors and driven ports (`<Peer>Client`); `modules/<ctx>/domain/core/` — `<Ctx>Handler`.',
+      '`modules/<ctx>/user-side/service/` — `<Ctx>Service` + `<Ctx>ServiceAdapter`, the peer seam: the only module a sibling context may depend on.',
+      ...(rest
+        ? [
+            '`modules/<ctx>/user-side/api/{contract,adapters}/` — REST DTOs and resources the REST assembly mounts.',
+          ]
+        : []),
+      ...(cli
+        ? ['`modules/<ctx>/user-side/cli/` — the picocli commands the CLI assembly mounts.']
+        : []),
+      '`modules/<ctx>/infra/<peer>-gateway/` — `<Peer>Gateway` implements `<ctx>`’s `<Peer>Client` port over `<peer>`’s service seam; other driven adapters sit beside it (`infra/clock/fake`).',
+      ...(rest
+        ? [
+            `\`${layout.restRuntime}/\` — the REST assembly (package \`${layout.restRuntimePkg}\`): \`${builder}\` builds the mediator, \`<Ctx>Wiring\` wires each context’s service and gateways into it.`,
+          ]
+        : []),
+      ...(cli
+        ? [
+            `\`${layout.cliRuntime}/\` — the CLI assembly (package \`${layout.cliRuntimePkg}\`): \`Main\`, \`${builder}\`, and \`<Ctx>Wiring\` per context.`,
+          ]
+        : []),
+      '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+      'Modules meet only at `user-side/service`; never import another context’s `domain`. ' + src,
+    ];
+  }
+  return [
+    '`domain/kernel/` — `Command`, `Handler`, `Mediator`; `domain/contract/` — commands, errors, driven ports (`Clock`), `@DomainHandler`; `domain/core/` — one handler package per aggregate + `RegistryMediator`.',
+    ...(rest
+      ? [
+          `\`${layout.restContract}/\` — request/response DTOs and \`ProblemDetails\`; \`${layout.restAdapters}/\` — resources, error mappers and \`${builder}\`: the REST composition root.`,
+        ]
+      : []),
+    ...(cli
+      ? [
+          `\`${layout.cliRuntime}/\` — picocli commands, \`Main\` and \`${builder}\`: the CLI composition root.`,
+        ]
+      : []),
+    '`infrastructure/<port>/{<impl>,fake}/` — driven adapters, the canonical fake beside each real one (`infrastructure/clock/fake`).',
+    '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+    src,
+  ];
 }
 
 function jvmFamily(ctx: Ctx): ClaudeKitFamily {
@@ -96,6 +158,8 @@ function jvmFamily(ctx: Ctx): ClaudeKitFamily {
   const layout = jvmLayout(ctx.manifest.tags);
   const tags: readonly Tag[] = ctx.manifest.tags;
   const rest = tags.includes('arch.server-http');
+  const cli = tags.includes('arch.cli');
+  const lang = tags.includes('lang.kotlin') ? 'kotlin' : 'java';
 
   const verifyCommand = build === 'gradle' ? './gradlew build' : './mvnw --batch-mode verify';
   const runCommand = rest
@@ -111,15 +175,14 @@ function jvmFamily(ctx: Ctx): ClaudeKitFamily {
   ];
 
   const shape = rest ? 'REST' : 'CLI';
-  const title = `${FRAMEWORK_LABEL[framework]} ${shape} on ${build === 'gradle' ? 'Gradle' : 'Maven'}`;
+  const title = `${FRAMEWORK_LABEL[framework]} ${shape} on ${build === 'gradle' ? 'Gradle' : 'Maven'} (${layout.layout})`;
 
   const runbook = renderRunbook({
     title,
     commands,
-    notes: [
-      layoutNote(layout),
-      'The wrapper is the build entrypoint — never invoke a host `gradle`/`mvn` directly.',
-    ],
+    stance: jvmStance(layout, framework),
+    layout: jvmLayoutRows(layout, framework, lang, rest, cli || !rest),
+    notes: ['The wrapper is the build entrypoint — never invoke a host `gradle`/`mvn` directly.'],
   });
 
   const runSkill = runSkillSpec({

@@ -6,13 +6,17 @@
  * three things on top of the universal binding spec `claude-core`
  * emits:
  *
- *   - a **stack runbook** appended to the scaffolded `AGENTS.md`
- *     under sentinel markers — build/test/run commands and layout
- *     notes, the stack-specific addendum the binding spec's
- *     universality deliberately leaves out. The patch replaces its
- *     own sentinel-delimited section and never touches the user's
- *     edits around it, so re-scaffolds and a future `--reapply`
- *     stay idempotent;
+ *   - a **stack section** in the scaffolded `AGENTS.md`, under
+ *     sentinel markers: the build/test/run commands, the dispatch
+ *     stance of this project's language, and a **layout map** — the
+ *     path grammar of exactly the shape that was scaffolded (family ×
+ *     layout × entrypoints), so an agent orients by map before it
+ *     searches. This is the stack-specific addendum the binding
+ *     spec's universality deliberately leaves out, and the other four
+ *     families' stances never ship. The patch replaces its own
+ *     sentinel-delimited section and never touches the user's edits
+ *     around it, so re-scaffolds and a future `--reapply` stay
+ *     idempotent;
  *   - the **pre-commit format hook** keel itself uses
  *     (`.claude/hooks/pre-commit-format.sh`), adapted to the
  *     family's own format/verify commands, wired via
@@ -38,10 +42,10 @@ export const CLAUDE_KIT_DIMENSION = 'agentic-kit';
 /** Promoted by every claude-kit adapter. */
 export const CLAUDE_KIT_TAG: Tag = 'agentic.claude-kit';
 
-/** Opens the runbook's sentinel-delimited section in `AGENTS.md`. */
+/** Opens the stack section's sentinel-delimited region in `AGENTS.md`. */
 export const RUNBOOK_BEGIN = '<!-- keel:stack-runbook:begin -->';
 
-/** Closes the runbook's sentinel-delimited section in `AGENTS.md`. */
+/** Closes the stack section's sentinel-delimited region in `AGENTS.md`. */
 export const RUNBOOK_END = '<!-- keel:stack-runbook:end -->';
 
 const AGENTS_TARGET = 'AGENTS.md';
@@ -57,7 +61,7 @@ export const RUN_SKILL_NAME = 'run';
 
 /** What a family adapter contributes on top of the shared shape. */
 export interface ClaudeKitFamily {
-  /** Markdown body of the runbook section, without the sentinels. */
+  /** Markdown body of the stack section, without the sentinels. */
   readonly runbook: string;
   /** The family's run skill — `name` is {@link RUN_SKILL_NAME}. */
   readonly runSkill: SkillSpec;
@@ -76,11 +80,14 @@ export interface ClaudeKitFamily {
 }
 
 /**
- * Upserts the runbook section into `AGENTS.md` content: replaces the
- * sentinel-delimited section when both markers are present, appends
- * it after the existing content when neither is. One marker without
- * the other means the pair was hand-edited apart — that throws with
- * the fix rather than guessing where the user's prose ends.
+ * Upserts the stack section into `AGENTS.md` content: replaces the
+ * sentinel-delimited region when both markers are present — the
+ * binding spec ships the pair empty, right under its preamble, so
+ * the section lands where an agent reads first — and appends it
+ * after the existing content when neither is (a spec authored before
+ * the slot existed). One marker without the other means the pair was
+ * hand-edited apart — that throws with the fix rather than guessing
+ * where the user's prose ends.
  */
 export function upsertRunbook(existing: string, body: string): string {
   const section = `${RUNBOOK_BEGIN}\n\n${body.trim()}\n\n${RUNBOOK_END}\n`;
@@ -107,30 +114,48 @@ export interface RunbookCommand {
 
 /** Inputs to {@link renderRunbook}. */
 export interface RunbookSpec {
-  /** e.g. `Quarkus REST on Gradle`. */
+  /** e.g. `Quarkus REST on Gradle (modulith)`. */
   readonly title: string;
   readonly commands: readonly RunbookCommand[];
-  /** Layout and family notes, one bullet each. */
+  /**
+   * This language's dispatch-seam stance — the mechanism behind the
+   * binding spec's "commands through one dispatch seam", spelled for
+   * the family that was scaffolded and for no other. One paragraph.
+   */
+  readonly stance: string;
+  /**
+   * The layout map: one bullet per kind of file, as a path grammar
+   * over `<ctx>` / `<peer>` placeholders rather than a listing of
+   * today's modules (which `keel add module` would date). What an
+   * agent reads to orient before it searches.
+   */
+  readonly layout: readonly string[];
+  /** Family notes that fit nowhere above, one bullet each. */
   readonly notes: readonly string[];
 }
 
 /**
- * Renders the runbook body from a spec — one shape for all five
- * families, so their sections cannot drift apart.
+ * Renders the stack section body from a spec — one shape for all
+ * five families, so their sections cannot drift apart: the command
+ * table, the dispatch stance, then the layout map with the notes
+ * folded in as its closing bullets.
  */
 export function renderRunbook(spec: RunbookSpec): string {
   const rows = spec.commands.map((c) => `| ${c.label} | \`${c.command}\` |`).join('\n');
-  const notes = spec.notes.map((n) => `- ${n}`).join('\n');
+  const bullets = [...spec.layout, ...spec.notes].map((n) => `- ${n}`).join('\n');
   return [
-    `## Stack runbook — ${spec.title}`,
-    '',
-    'Maintained by keel between the sentinel markers; it replaces this',
-    'whole section on re-apply, so keep your own notes outside it.',
+    `## Stack — ${spec.title}`,
     '',
     '| Task | Command |',
     '| ---- | ------- |',
     rows,
-    ...(notes.length > 0 ? ['', notes] : []),
+    '',
+    `**Dispatch.** ${spec.stance}`,
+    '',
+    '**Layout** — paths from the repository root; `<ctx>` names a bounded context, `<Ctx>` its',
+    'PascalCase form, `<peer>` a sibling context it consumes.',
+    '',
+    bullets,
   ].join('\n');
 }
 
@@ -273,9 +298,9 @@ export function upsertFormatStep(existing: string, formatCommand: string | undef
 
 /**
  * Builds the `.claude/` shape for one family — settings, the
- * pre-commit hook, the run skill — and stages the runbook patch
- * against the `AGENTS.md` that `claude-core` emitted earlier in the
- * chain (`after` orders the two).
+ * pre-commit hook, the run skill — and stages the stack-section
+ * patch against the `AGENTS.md` that `claude-core` emitted earlier
+ * in the chain (`after` orders the two).
  */
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {

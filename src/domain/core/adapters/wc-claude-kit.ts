@@ -38,21 +38,36 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
     { label: 'Build', command: `${pm} run build` },
   ];
 
+  const stance =
+    'No mediator: per-use-case driving ports delivered by typed context keys (' +
+    (modulith ? '`@<scope>/platform-context`' : '`src/context-keys.ts`') +
+    '); cross-cutting via factory decoration at the assembly point — a central dispatcher would defeat ' +
+    'tree-shaking and subtree scoping. The design system stays **external** to app bundles, ' +
+    'deduplicated by the import map in `index.html`: inlining an element-defining package twice throws ' +
+    '`NotSupportedError` and silently kills that bundle’s registrations.';
+
+  const layout = modulith
+    ? [
+        '`platform/context/` — `@<scope>/platform-context`: the typed context-key protocol.',
+        '`design-system/` — `@<scope>/design-system`: planks-based atoms and molecules, `tokens.css`.',
+        '`modules/<ctx>/` — package `@<scope>/<ctx>`: `src/domain/contract/` (use cases, ports), `src/domain/core/internal/` (services, stores), `src/context-keys.ts`, `src/user-side/elements/` (its custom elements), `src/elements.ts` + `src/element-tags.ts` (registers the `<scope>-<ctx>-*` tags; `tests/element-tags.test.ts` pins the prefix).',
+        '`modules/<ctx>/src/service.ts` — the peer seam (`./service` export); `./elements` is the only other public entry.',
+        '`modules/<ctx>/src/infra/<peer>-gateway/index.ts` — implements `<ctx>`’s driven port over `<peer>`’s `./service`; other driven adapters sit beside it (`src/infra/commons/`).',
+        '`application/web-app/` — the SPA assembly: `src/main.ts` assembles, `src/<ctx>.ts` wires one context, `index.html` carries the import map, `dist/` the built bundle.',
+      ]
+    : [
+        '`domain/domain-api/src/` — use cases and `ports/`; `domain/domain-core/src/internal/` — services and stores; both DOM-less.',
+        '`infrastructure/commons/src/` — driven adapters, the fake beside the real one (`fake-clock.ts`, `system-clock.ts`).',
+        '`design-system/src/` — atoms, molecules, `tokens.css`; its own package, external to app bundles.',
+        '`application/web-app/src/` — `main.ts` assembles, `context-keys.ts` + `context.ts` deliver the ports, `components/` holds the app’s elements; `index.html` carries the import map.',
+      ];
+
   const runbook = renderRunbook({
-    title: `web-components SPA on Vite (${pm})`,
+    title: `web-components SPA on Vite (${pm}, ${modulith ? 'modulith' : 'basic'})`,
     commands,
-    notes: [
-      'The design system stays **external** to app bundles, deduplicated via the import map ' +
-        'in `index.html` — inlining an element-defining package a second time throws ' +
-        '`NotSupportedError` at runtime and silently kills that bundle’s registrations.',
-      modulith
-        ? 'Modulith layout: one workspace package per bounded context, publishing the facade, ' +
-          '`./service` (the peer seam) and `./elements` (its `define…Elements()` registration). ' +
-          'Element tags are `<scope>-<context>-<element>`; `tests/element-tags.test.ts` pins ' +
-          'the prefix.'
-        : 'Flat layout: DOM-less domain packages, ports over the Context protocol, the ' +
-          'planks-based design system as its own package.',
-    ],
+    stance,
+    layout,
+    notes: [],
   });
 
   const runSkill = runSkillSpec({

@@ -50,16 +50,45 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
     ...(cli ? [{ label: 'Run (cli)', command: cliRun }] : []),
   ];
 
+  const stance =
+    'No mediator object: commands are structs, driving ports are per-use-case interfaces, and ' +
+    'each `cmd/<unit>/main.go` wires them by hand; cross-cutting concerns are decorator functions ' +
+    'around the ports, applied at that assembly point.';
+
+  const layout = modulith
+    ? [
+        '`internal/platform/` — what no context owns: the `clock` port with `clockfake`/`clocksys`, `observability`.',
+        '`internal/modules/<ctx>/<ctx>.go` — the facade (factories only, no type aliases); `internal/modules/<ctx>/internal/domain/` — commands, ports, factories; its `internal/` — the compiler-hidden core.',
+        '`internal/modules/<ctx>/userside/service/` — the peer seam (`package service`), the only package a sibling context imports; ' +
+          [...(http ? ['`userside/resthttp/`'] : []), ...(cli ? ['`userside/cli/`'] : [])].join(
+            ' and ',
+          ) +
+          ' — the driving adapters the assembly mounts.',
+        '`internal/modules/<ctx>/infra/<peer>gateway/gateway.go` — implements `<ctx>`’s driven port over `<peer>`’s seam; other driven adapters sit beside it (`infra/postgres`).',
+        '`cmd/<unit>/main.go` — the assembly of one deployment unit (' +
+          [...(http ? ['`http`'] : []), ...(cli ? ['`cli`'] : [])].join(', ') +
+          '); `cmd/<unit>/<ctx>.go` wires one context’s service and gateways into it.',
+        '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+        'The `internal/` wall is the seam rule: a peer importing `modules/<ctx>/internal/…` fails to build. Two contexts may share a package name — alias on import.',
+      ]
+    : [
+        '`internal/domain/` — the contract face: commands, ports, factories; `internal/domain/internal/<aggregate>/` — the compiler-hidden core.',
+        '`internal/app/<channel>/` — driving adapters (' +
+          [...(http ? ['`resthttp`'] : []), ...(cli ? ['`cli`'] : [])].join(', ') +
+          '): transport → command → port → transport, zero business logic.',
+        '`internal/infra/<adapter>/` — driven adapters, the fake beside the real one (`clockfake`, `clocksys`, `postgres`).',
+        '`cmd/<unit>/main.go` — the assembly; one directory per deployment unit (' +
+          [...(http ? ['`http`'] : []), ...(cli ? ['`cli`'] : [])].join(', ') +
+          ').',
+        '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+      ];
+
   const runbook = renderRunbook({
-    title: `Go ${http && cli ? 'CLI + HTTP' : http ? 'HTTP' : 'CLI'}`,
+    title: `Go ${http && cli ? 'CLI + HTTP' : http ? 'HTTP' : 'CLI'} (${modulith ? 'modulith' : 'basic'})`,
     commands,
+    stance,
+    layout,
     notes: [
-      modulith
-        ? 'Modulith layout: contexts under `internal/modules/<context>/`; `cmd/` reaches a ' +
-          'context only through its facade — the compiler enforces the `internal/` wall, and ' +
-          'peers meet at the context’s `userside/service` seam.'
-        : 'Flat layout: `internal/domain` (contract face over a compiler-hidden core), ' +
-          '`internal/infra`, one deployment unit per `cmd/` directory.',
       `Binaries build to \`bin/\`: \`go build -o bin/${projectName}${http ? '-http' : ''} ./cmd/${http ? 'http' : 'cli'}\`.`,
     ],
   });

@@ -61,6 +61,14 @@ describe('upsertRunbook', () => {
     expect(next.match(new RegExp(RUNBOOK_BEGIN, 'g'))).toHaveLength(1);
   });
 
+  it('fills an empty sentinel pair in place — the slot the binding spec ships', () => {
+    const spec = `# Spec\n\nPreamble.\n\n${RUNBOOK_BEGIN}\n${RUNBOOK_END}\n\n## Architecture\n`;
+    const next = upsertRunbook(spec, 'stack body');
+    expect(next).toBe(
+      `# Spec\n\nPreamble.\n\n${RUNBOOK_BEGIN}\n\nstack body\n\n${RUNBOOK_END}\n\n## Architecture\n`,
+    );
+  });
+
   it('is idempotent — re-applying the same body changes nothing', () => {
     const once = upsertRunbook('# Spec\n', 'stable body');
     expect(upsertRunbook(once, 'stable body')).toBe(once);
@@ -204,15 +212,22 @@ describe('claudeKitContribution', () => {
 });
 
 describe('renderRunbook / runSkillSpec', () => {
-  it('renders the shared runbook shape', () => {
+  it('renders the shared stack-section shape: commands, stance, layout map, notes', () => {
     const body = renderRunbook({
-      title: 'Test Stack',
+      title: 'Test Stack (basic)',
       commands: [{ label: 'Build', command: 'tool build' }],
+      stance: 'One seam, spelled for this family.',
+      layout: ['`src/` — the code.'],
       notes: ['a note'],
     });
-    expect(body).toContain('## Stack runbook — Test Stack');
+    expect(body).toContain('## Stack — Test Stack (basic)');
     expect(body).toContain('| Build | `tool build` |');
+    expect(body).toContain('**Dispatch.** One seam, spelled for this family.');
+    expect(body).toContain('**Layout**');
+    expect(body).toContain('- `src/` — the code.');
     expect(body).toContain('- a note');
+    // The map precedes the notes: orientation first, caveats last.
+    expect(body.indexOf('- `src/`')).toBeLessThan(body.indexOf('- a note'));
   });
 
   it('builds the run skill spec under the fixed name', () => {

@@ -162,7 +162,7 @@ describe('walking-skeleton vertical (Go)', () => {
     const { tree, cwd } = await installWith(baseTags('arch.cli'));
     cwds.push(cwd);
     const agentsMd = tree.read('AGENTS.md')?.toString() ?? '';
-    expect(agentsMd).toContain('Universal engineering conventions (keel)');
+    expect(agentsMd).toContain('Engineering conventions (keel)');
     expect(tree.read('CLAUDE.md')?.toString()).toBe('@AGENTS.md\n');
   });
 

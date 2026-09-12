@@ -12,6 +12,41 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ## [Unreleased]
 
+### Changed
+
+- **The emitted `AGENTS.md` is a terse root** (wave 2 of the
+  agent-harness redesign, #134): ≤ 120 lines including keel's
+  regions, down from ~290. The universal body keeps the dependency
+  rule, the dispatch-seam opening rule, the error→transport line,
+  tests, workflow, comments and a **working-agreements** block in
+  the vocabulary of the augmented-coding-patterns catalog (Lada
+  Kesseler et al., credited in the file); mechanical rules stay in
+  hooks. Gone: the four dispatch stances of languages the project
+  does not use, the six directory bullets, the modulith essay,
+  "walking skeleton first", the principles list, `/docs-check`
+  (which never existed), decision dates and the CLI plug. The root
+  ships empty `keel:map` and `keel:skills-index` slots for the
+  index issues to fill.
+- **The family stack section carries the layout map.** The
+  sentinel region the family kits own (`keel:stack-runbook`) now
+  sits right under the preamble and holds, beside the command
+  table, **only this project's** dispatch stance and a layout map —
+  the path grammar of the shape that was scaffolded (family ×
+  layout × entrypoints), naming where a context's wiring, its peer
+  gateway, its seam and the migrations live. Measured with the
+  harness evals' navigation probes, that is what turns "grep for
+  the wiring file" into "read the map". A guard test
+  (`tests/domain/core/verticals/harness-budget.test.ts`) holds every
+  non-composite stack on every layout under the line and byte budget
+  and refuses a stance leaking across families.
+
+### Added
+
+- **Cross-tool loading shims** beside `CLAUDE.md`: `.gemini/settings.json`
+  (Gemini CLI reads `AGENTS.md` through `context.fileName`) and
+  `.aider.conf.yml` (`read: [AGENTS.md]`). Zero-maintenance: they carry
+  no rules of their own.
+
 ### Fixed
 
 - **`npm install` no longer dies inside npm on every npm-based

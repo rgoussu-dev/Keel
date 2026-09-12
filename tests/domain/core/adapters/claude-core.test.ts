@@ -1,18 +1,23 @@
 /**
  * Test for the `claude-core` adapter — verifies the contribution
- * shape (the root `AGENTS.md` spec plus the `CLAUDE.md` pointer, no
- * patches or actions) and that the emitted content matches the canonical
- * binding spec on disk byte-for-byte. End-to-end placement under a
- * vertical is covered by the walking-skeleton smoke test.
+ * shape (the root `AGENTS.md` spec plus the three loading shims, no
+ * patches or actions), that the emitted spec matches the canonical
+ * binding spec on disk byte-for-byte, and that each shim parses in
+ * its own format — which is all a test can honestly assert for a
+ * file another tool reads. End-to-end placement under a vertical is
+ * covered by the walking-skeleton smoke test.
  */
 
 import path from 'node:path';
 import fs from 'fs-extra';
 import { describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import {
+  AIDER_CONF_TARGET,
   claudeCoreAdapter,
   CLAUDE_CORE_ID,
+  GEMINI_SETTINGS_TARGET,
 } from '../../../../src/domain/core/adapters/claude-core.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { makeCtx } from '../../../../src/domain/core/apply.js';
@@ -31,7 +36,7 @@ describe('claude-core adapter', () => {
     expect(claudeCoreAdapter.questions ?? []).toEqual([]);
   });
 
-  it('emits the binding spec as AGENTS.md plus a CLAUDE.md pointer', async () => {
+  it('emits the binding spec as AGENTS.md plus the loading shims', async () => {
     const ctx = makeCtx(
       claudeCoreAdapter,
       {},
@@ -46,8 +51,8 @@ describe('claude-core adapter', () => {
     const contribution = await claudeCoreAdapter.contribute(ctx);
     expect(contribution.patches ?? []).toEqual([]);
     expect(contribution.actions ?? []).toEqual([]);
-    expect(contribution.files).toHaveLength(2);
-    const [spec, pointer] = contribution.files ?? [];
+    expect(contribution.files).toHaveLength(4);
+    const [spec, pointer, gemini, aider] = contribution.files ?? [];
     expect(spec?.path).toBe('AGENTS.md');
     const expected = await fs.readFile(
       path.join(path.join(packagedAssetsRoot, 'project'), 'AGENTS.md'),
@@ -57,5 +62,30 @@ describe('claude-core adapter', () => {
 
     expect(pointer?.path).toBe('CLAUDE.md');
     expect(pointer?.content).toBe('@AGENTS.md\n');
+
+    // Gemini CLI reads `context.fileName`; AGENTS.md must come first.
+    expect(gemini?.path).toBe(GEMINI_SETTINGS_TARGET);
+    const settings = JSON.parse(String(gemini?.content ?? '')) as {
+      context: { fileName: string[] };
+    };
+    expect(settings.context.fileName[0]).toBe('AGENTS.md');
+
+    // aider loads `read:` entries read-only on start.
+    expect(aider?.path).toBe(AIDER_CONF_TARGET);
+    const conf = parseYaml(String(aider?.content ?? '')) as { read: string[] };
+    expect(conf.read).toEqual(['AGENTS.md']);
+  });
+
+  it("ships a spec under the redesign budget, with its slots and no other tool's import syntax", async () => {
+    const spec = await fs.readFile(path.join(packagedAssetsRoot, 'project', 'AGENTS.md'), 'utf8');
+    const lines = spec.split('\n');
+    // Leaves room for the family's stack section inside the 120-line root.
+    expect(lines.length).toBeLessThanOrEqual(75);
+    for (const slot of ['stack-runbook', 'map', 'skills-index']) {
+      expect(spec).toContain(`<!-- keel:${slot}:begin -->\n<!-- keel:${slot}:end -->`);
+    }
+    // The universal body carries no `@`-import: only CLAUDE.md speaks that.
+    expect(lines.some((l) => /^@/.test(l))).toBe(false);
+    expect(spec).toContain('augmented-coding-patterns');
   });
 });
