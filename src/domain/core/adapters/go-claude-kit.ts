@@ -89,7 +89,10 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
     stance,
     layout,
     notes: [
-      `Binaries build to \`bin/\`: \`go build -o bin/${projectName}${http ? '-http' : ''} ./cmd/${http ? 'http' : 'cli'}\`.`,
+      `Binaries build to \`bin/\`: ${[
+        ...(http ? [`\`go build -o bin/${projectName}-http ./cmd/http\``] : []),
+        ...(cli ? [`\`go build -o bin/${projectName} ./cmd/cli\``] : []),
+      ].join(' and ')}.`,
     ],
   });
 

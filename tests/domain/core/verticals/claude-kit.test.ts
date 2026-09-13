@@ -200,6 +200,23 @@ describe('claude-kit on the other families', () => {
     expect(agents).not.toContain('internal/modules');
   });
 
+  it('names one build per Go entrypoint on a combo', async () => {
+    const tree = await install(
+      ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
+      {
+        'walking-skeleton/go-bootstrap': {
+          projectName: 'shipper',
+          modulePath: 'example.com/shipper',
+        },
+      },
+    );
+    const agents = read(tree, 'AGENTS.md');
+    expect(agents).toContain('## Stack — Go CLI + HTTP (basic)');
+    expect(agents).toContain(
+      'Binaries build to `bin/`: `go build -o bin/shipper-http ./cmd/http` and `go build -o bin/shipper ./cmd/cli`.',
+    );
+  });
+
   it('names the Rust bins and carries the seam rule under the modulith', async () => {
     const tree = await install(
       [
