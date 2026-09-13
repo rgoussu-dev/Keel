@@ -77,7 +77,7 @@ describe('FsTree.changes()', () => {
     expect(tree.changes()).toEqual([]);
   });
 
-  it('reports a create for a path disk does not hold, and a delete only for one it does', () => {
+  it('reports a create for a path absent from disk, and a delete only for one disk holds', () => {
     const tree = new FsTree(root);
     tree.write('new.md', 'x\n');
     tree.delete('AGENTS.md');
