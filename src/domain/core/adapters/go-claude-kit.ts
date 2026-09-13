@@ -69,7 +69,7 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
           [...(http ? ['`http`'] : []), ...(cli ? ['`cli`'] : [])].join(', ') +
           '); `cmd/<unit>/<ctx>.go` wires one context’s service and gateways into it.',
         '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
-        'The `internal/` wall is the seam rule: a peer importing `modules/<ctx>/internal/…` fails to build. Two contexts may share a package name — alias on import.',
+        'The `internal/` wall is the seam rule: a peer importing `internal/modules/<ctx>/internal/…` fails to build. Two contexts may share a package name — alias on import.',
       ]
     : [
         '`internal/domain/` — the contract face: commands, ports, factories; `internal/domain/internal/<aggregate>/` — the compiler-hidden core.',
