@@ -64,10 +64,17 @@ function cliRunCommand(
   const unit = layout.cliRuntime;
   if (build === 'gradle') {
     const project = layout.gradleProject(unit);
+    // Quarkus applies no `application` plugin, so there is no `run`
+    // task: dev mode takes the arguments through `--quarkus-args`.
+    if (framework === 'quarkus') {
+      return `./gradlew ${project}:quarkusDev --quarkus-args="${CLI_ARGS}"`;
+    }
     const task = framework === 'spring' ? 'bootRun' : 'run';
     return `./gradlew ${project}:${task} --args="${CLI_ARGS}"`;
   }
-  if (framework === 'quarkus') return `./mvnw -am -pl ${unit} quarkus:dev`;
+  if (framework === 'quarkus') {
+    return `./mvnw -am -pl ${unit} quarkus:dev -Dquarkus.args="${CLI_ARGS}"`;
+  }
   if (framework === 'spring') {
     return `./mvnw -am -pl ${unit} spring-boot:run -Dspring-boot.run.arguments="${CLI_ARGS}"`;
   }

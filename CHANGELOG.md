@@ -71,6 +71,12 @@ use to keep a long-lived changelog scannable — and the root keeps
   shared file two adapters write in turn is reported as changed only
   when it ends up different from disk, and a staged executable bit
   survives a later content-only write.
+- **The Quarkus CLI run command works.** The stack section, the run
+  skill and the README named a Gradle `run` task the Quarkus CLI
+  module does not have (no `application` plugin) and a Maven
+  `quarkus:dev` with no arguments; both now pass the sample command
+  through dev mode's own channel (`--quarkus-args` / `-Dquarkus.args`),
+  and the README's "once built" line runs the packaged jar.
 - **Harness evals:** the benchmark checkpoint is written atomically
   (a temp file renamed over the benchmark, so a kill mid-write keeps
   the previous checkpoint); `--only` refuses to fold a run from a
