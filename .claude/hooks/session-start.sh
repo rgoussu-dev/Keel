@@ -31,12 +31,40 @@ cd "$repo"
 # mise
 # ---------------------------------------------------------------------
 
-# The installer lands mise in ~/.local/bin, which the image's PATH may
-# or may not carry; put it there explicitly rather than assume.
+# mise itself is pinned, and its tarball is checked against a checksum
+# this file carries, because this runs with shell privileges before
+# anything in the project is trusted: piping the project's installer
+# endpoint into a shell would execute whatever it served on the day.
+# The release tarball is fetched straight from the tagged GitHub
+# release, and the sums below are the two lines of that release's
+# SHASUMS256.txt this hook can land on. Bumping mise is a three-line
+# edit here, with the new sums copied from the new release — never
+# re-derived from the download itself. `tests/mise-toolchain.test.ts`
+# holds the shape.
+MISE_VERSION="v2026.9.6"
+MISE_SHA256_X64="afa8079a2c75a48d8d39bbb6ca5566c652bda8ae49ce8ca1f41a72e80184140f"
+MISE_SHA256_ARM64="9d5d4c3187ccc2c5a9659be427231208eba689c8adcc0203004c4c2ef75caf8d"
+
+# mise lands in ~/.local/bin, which the image's PATH may or may not
+# carry; put it there explicitly rather than assume.
 export PATH="${HOME}/.local/bin:${PATH}"
 if ! command -v mise >/dev/null 2>&1; then
-  echo "session-start: installing mise"
-  curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors https://mise.run | sh
+  echo "session-start: installing mise ${MISE_VERSION}"
+  case "$(uname -m)" in
+    x86_64 | amd64) arch="x64"; sum="${MISE_SHA256_X64}" ;;
+    aarch64 | arm64) arch="arm64"; sum="${MISE_SHA256_ARM64}" ;;
+    *) echo "session-start: no pinned mise build for $(uname -m)" >&2; exit 1 ;;
+  esac
+  tarball="mise-${MISE_VERSION}-linux-${arch}.tar.gz"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+    -o "${tmp}/${tarball}" \
+    "https://github.com/jdx/mise/releases/download/${MISE_VERSION}/${tarball}"
+  echo "${sum}  ${tmp}/${tarball}" | sha256sum -c --quiet - \
+    || { echo "session-start: ${tarball} does not match its pinned checksum" >&2; exit 1; }
+  tar -xzf "${tmp}/${tarball}" -C "$tmp"
+  install -D -m 0755 "${tmp}/mise/bin/mise" "${HOME}/.local/bin/mise"
 fi
 command -v mise >/dev/null || { echo "session-start: mise did not install" >&2; exit 1; }
 

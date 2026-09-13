@@ -96,3 +96,23 @@ describe('the mise toolchain file', () => {
     expect(Object.keys(miseTools())).toEqual(expect.arrayContaining(['node', 'pnpm']));
   });
 });
+
+describe('the web session hook', () => {
+  const hook = read('.claude/hooks/session-start.sh');
+
+  it('installs a pinned mise release, checked against checksums the hook carries', () => {
+    // This runs with shell privileges before the project is trusted,
+    // so it never executes what an installer endpoint serves that day.
+    expect(hook).not.toContain('mise.run');
+    expect(hook).not.toMatch(/curl[^\n]*\|\s*(ba)?sh/);
+    const version = /^MISE_VERSION="(v\d{4}\.\d{1,2}\.\d{1,2})"$/m.exec(hook)?.[1];
+    expect(version).toBeDefined();
+    for (const arch of ['X64', 'ARM64']) {
+      expect(hook).toMatch(new RegExp(`^MISE_SHA256_${arch}="[0-9a-f]{64}"$`, 'm'));
+    }
+    expect(hook).toContain(
+      'https://github.com/jdx/mise/releases/download/${MISE_VERSION}/${tarball}',
+    );
+    expect(hook).toContain('sha256sum -c');
+  });
+});
