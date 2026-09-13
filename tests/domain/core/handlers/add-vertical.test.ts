@@ -197,6 +197,49 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await fs.readFile(workflow(), 'utf8')).toBe(`${pristine}# local tweak\n`);
     });
 
+    it('re-renders the walking skeleton, stack section of AGENTS.md included', async () => {
+      await seedQuarkusCli();
+      const agents = path.join(cwd, 'AGENTS.md');
+      const pristine = await fs.readFile(agents, 'utf8');
+      expect(pristine).toContain('<!-- keel:stack-runbook:begin -->\n\n## Stack');
+      const reapplySkeleton = () =>
+        installMediator({
+          clock: new FakeClock('2026-04-28T09:00:00Z'),
+          runDeferred: () => Promise.resolve(),
+        }).dispatch(
+          addVerticalCommand({
+            cwd,
+            vertical: 'walking-skeleton',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            reapply: true,
+          }),
+        );
+
+      // Nothing edited: claude-core's pristine rewrite and the kit's
+      // section land the root back on what disk holds, so it is not
+      // reported as a change. (The pre-commit hook is: code-style wired
+      // the formatter into it after the scaffold, and the kit's
+      // whole-file rewrite is pristine — reapplying that vertical next
+      // puts it back.)
+      const untouched = expectOk(await reapplySkeleton());
+      expect(untouched.changes.map((c) => c.path)).not.toContain('AGENTS.md');
+
+      // Edited inside the section and outside it: the root is a
+      // template-owned file, rewritten pristine with its diff reported,
+      // and the section is rendered back into the fresh slot rather
+      // than refused as a divergence.
+      await fs.writeFile(
+        agents,
+        `${pristine.replace('## Stack', '## Stack (hand-edited)')}\n<!-- local note -->\n`,
+      );
+      const report = expectOk(await reapplySkeleton());
+      expect(report.changes).toContainEqual({ kind: 'modify', path: 'AGENTS.md' });
+      expect(report.diffs!.map((d) => d.path)).toContain('AGENTS.md');
+      expect(await fs.readFile(agents, 'utf8')).toBe(pristine);
+    });
+
     it('refuses to reapply a vertical that is not installed', async () => {
       await seedQuarkusCli();
       const error = expectErr(

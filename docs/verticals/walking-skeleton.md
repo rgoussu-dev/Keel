@@ -89,7 +89,11 @@ framework, entrypoint shape, module layout) — one adapter per stack
     evals probe resolve from it without a search.
 
   The patch replaces its own region and never touches edits around
-  it, so re-applying stays idempotent.
+  it, so re-scaffolding stays idempotent. On
+  `keel add walking-skeleton --reapply`, the root is a template-owned
+  file like every other the vertical emits — rewritten pristine, the
+  diff reported — and the section is rendered back into its fresh
+  slot rather than refused as a divergence.
 
 - **The pre-commit format hook** keel itself uses
   (`.claude/hooks/pre-commit-format.sh`, wired via

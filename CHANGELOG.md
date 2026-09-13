@@ -55,6 +55,15 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel add walking-skeleton --reapply` no longer refuses its own
+  stack section.** Re-rendering the vertical rewrote `AGENTS.md`
+  pristine and then met the family kit's patch filling the sentinel
+  region back in, which the reapply guard read as a divergence. A
+  patch that owns a region — its transform is its own fixed point —
+  now re-renders it on reapply and reports the diff, as a whole-file
+  rewrite does; one that would compound still refuses. A shared file
+  two adapters write in turn is reported as changed only when it
+  ends up different from disk.
 - **`npm install` no longer dies inside npm on every npm-based
   TypeScript stack.** npm 10 — the npm Node 22 bundles — resolves
   vitest's optional `@vitest/*` peers by walking to whatever vitest is

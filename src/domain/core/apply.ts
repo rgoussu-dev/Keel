@@ -64,10 +64,14 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
  * `reapply` is the day-2 contract for re-rendering an installed
  * vertical: whole-file writes **overwrite** their target (skipped when
  * the content is byte-identical, so the staged changes are an honest
- * diff), while a patch against an existing file must be a no-op —
- * a patch whose transform would change an already-patched file is
- * indistinguishable from a double application and conflicts instead
- * of writing.
+ * diff), while a patch against an existing file may change it only
+ * when its transform is its own fixed point — applying it again to
+ * the result changes nothing — which is what a patch that owns a
+ * region (a sentinel-delimited section, a guarded insert) looks
+ * like: re-rendering it is the same operation as the pristine
+ * rewrite. A transform that would keep changing its own result is
+ * an append about to append again — indistinguishable from a double
+ * application — and conflicts instead of writing.
  */
 export type ApplyMode = 'install' | 'reapply';
 
@@ -237,12 +241,21 @@ export function applyContribution(
     const next = p.apply(base);
     if (mode === 'reapply' && current !== null) {
       if (next === base) continue;
-      throw new ContributionConflictError(
-        `adapter '${adapter.id}': reapplying its patch would change '${p.target}' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand`,
-        adapter.id,
-        p.target,
-        'reapply-divergence',
-      );
+      // A transform at its own fixed point re-rendered a region it
+      // owns — the walking skeleton's stack section of AGENTS.md
+      // after `claude-core` rewrote the root pristine, a guarded
+      // insert someone removed by hand — and the diff reports it,
+      // as a whole-file rewrite would. One that is not would
+      // compound on the next run, and that is the double
+      // application this refuses.
+      if (p.apply(next) !== next) {
+        throw new ContributionConflictError(
+          `adapter '${adapter.id}': reapplying its patch would change '${p.target}' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand`,
+          adapter.id,
+          p.target,
+          'reapply-divergence',
+        );
+      }
     }
     tree.write(p.target, next);
   }

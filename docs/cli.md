@@ -245,12 +245,16 @@ deliberately conservative:
   unified diff against your working tree. `--dry-run` shows the same
   diff without writing anything.
 - **Patched files** (shared files like build files, which you own) are
-  never rewritten. A patch whose re-application changes nothing — the
-  guarded style keel's adapters use — passes silently; one that
-  _would_ change the file refuses the whole run with
-  `keel.reapply-conflict` before anything is committed, because
-  without a recorded base a changed result cannot be told apart from a
-  double application. Resolve that file by hand, then re-run.
+  never rewritten whole. A patch whose re-application changes nothing —
+  the guarded style keel's adapters use — passes silently. One that
+  owns a region of the file — a sentinel-delimited section, a guarded
+  insert: applying it to its own result changes nothing more — re-renders
+  that region and reports the diff, the way a template-owned file is
+  rewritten; the rest of the file is untouched. One that _would_ keep
+  changing the file refuses the whole run with `keel.reapply-conflict`
+  before anything is committed, because without a recorded base a
+  changed result cannot be told apart from a double application.
+  Resolve that file by hand, then re-run.
 - **Answers are frozen.** Resolution is non-interactive from the
   manifest; combining `--set` with `--reapply` errors with
   `keel.reapply-frozen-answers`. A question the vertical grew since

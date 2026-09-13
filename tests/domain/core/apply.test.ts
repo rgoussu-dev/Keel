@@ -395,6 +395,31 @@ describe('applyContributions', () => {
       expect(tree.changes()).toEqual([]);
     });
 
+    it('re-renders a region an idempotent patch owns, and reports the write', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(
+        path.join(tmp, 'AGENTS.md'),
+        '# prose\n<!-- begin -->\nedited by hand\n<!-- end -->\nmore prose\n',
+      );
+      const owned = adapter('a', {
+        patches: [
+          {
+            target: 'AGENTS.md',
+            apply: (s) =>
+              s.replace(
+                /<!-- begin -->[\s\S]*<!-- end -->/,
+                '<!-- begin -->\nrendered\n<!-- end -->',
+              ),
+          },
+        ],
+      });
+      await reapply([owned], tree);
+      expect(tree.read('AGENTS.md')?.toString()).toBe(
+        '# prose\n<!-- begin -->\nrendered\n<!-- end -->\nmore prose\n',
+      );
+      expect(tree.changes()).toEqual([{ kind: 'modify', path: 'AGENTS.md' }]);
+    });
+
     it('conflicts when a patch would change an already-patched file', async () => {
       const tree = new FsTree(tmp);
       await fs.writeFile(path.join(tmp, 'build.gradle'), 'dependencies {\n}\n');

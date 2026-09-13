@@ -20,8 +20,10 @@ type Entry =
       mode: number | null;
       dirty: boolean;
       wasOnDisk: boolean;
+      /** What the file held on disk when first touched — the base a write is measured against. */
+      onDisk: Buffer | null;
     }
-  | { kind: 'deleted'; wasOnDisk: boolean };
+  | { kind: 'deleted'; wasOnDisk: boolean; onDisk: Buffer | null };
 
 /** The default Tree adapter, staging over the real filesystem. */
 export class FsTree implements Tree {
@@ -35,7 +37,7 @@ export class FsTree implements Tree {
     if (entry) return entry.kind === 'present' ? entry.content : null;
     const abs = path.join(this.root, key);
     if (!fs.pathExistsSync(abs)) {
-      this.entries.set(key, { kind: 'deleted', wasOnDisk: false });
+      this.entries.set(key, { kind: 'deleted', wasOnDisk: false, onDisk: null });
       return null;
     }
     const content = fs.readFileSync(abs);
@@ -45,33 +47,47 @@ export class FsTree implements Tree {
       mode: null,
       dirty: false,
       wasOnDisk: true,
+      onDisk: content,
     });
     return content;
   }
 
+  /**
+   * Stages content. A write that lands the file back on what disk
+   * holds is not a change: two adapters may write a shared file in
+   * turn — one pristine, the next filling its own region — and what
+   * `changes()` reports is the net against disk, not the number of
+   * writes. An explicit mode always stages, since a mode is not
+   * something the content comparison sees.
+   */
   write(filePath: string, content: Buffer | string, options?: { mode?: number }): void {
     const key = this.key(filePath);
-    const prior = this.entries.get(key);
-    const wasOnDisk =
-      prior?.kind === 'present' ? prior.wasOnDisk : fs.pathExistsSync(path.join(this.root, key));
+    const prior = this.entries.get(key) ?? this.touch(key);
     const explicitMode = options?.mode;
-    const priorMode = prior?.kind === 'present' ? prior.mode : null;
+    const priorMode = prior.kind === 'present' ? prior.mode : null;
+    const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
     this.entries.set(key, {
       kind: 'present',
-      content: Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8'),
+      content: next,
       mode: explicitMode ?? priorMode ?? null,
-      dirty: true,
-      wasOnDisk,
+      dirty: explicitMode !== undefined || prior.onDisk === null || !prior.onDisk.equals(next),
+      wasOnDisk: prior.wasOnDisk,
+      onDisk: prior.onDisk,
     });
   }
 
   delete(filePath: string): void {
     const key = this.key(filePath);
-    const wasOnDisk =
-      this.entries.get(key)?.kind === 'present'
-        ? (this.entries.get(key) as { wasOnDisk: boolean }).wasOnDisk
-        : fs.pathExistsSync(path.join(this.root, key));
-    this.entries.set(key, { kind: 'deleted', wasOnDisk });
+    const prior = this.entries.get(key) ?? this.touch(key);
+    this.entries.set(key, { kind: 'deleted', wasOnDisk: prior.wasOnDisk, onDisk: prior.onDisk });
+  }
+
+  /** The entry for a path not yet touched: what disk holds, untouched. */
+  private touch(key: string): Entry {
+    const abs = path.join(this.root, key);
+    if (!fs.pathExistsSync(abs)) return { kind: 'deleted', wasOnDisk: false, onDisk: null };
+    const content = fs.readFileSync(abs);
+    return { kind: 'present', content, mode: null, dirty: false, wasOnDisk: true, onDisk: content };
   }
 
   exists(filePath: string): boolean {
