@@ -52,9 +52,11 @@ export class FsTree implements Tree {
    * holds is not a change: two adapters may write a shared file in
    * turn — one pristine, the next filling its own region — and what
    * `changes()` reports is the net against disk, not the number of
-   * writes. A mode is tracked on its own terms: one that differs from
-   * disk stays staged through later content-only writes, and one
-   * disk already carries is no change either.
+   * writes. A mode is tracked on its own terms: an explicit mode is
+   * measured against disk each time it is given — so one that differs
+   * stays staged through later content-only writes, and one that puts
+   * the file back on its disk bits clears it — and one disk already
+   * carries is no change either.
    */
   write(filePath: string, content: Buffer | string, options?: { mode?: number }): void {
     const key = this.key(filePath);
@@ -63,8 +65,9 @@ export class FsTree implements Tree {
     const priorMode = prior.kind === 'present' ? prior.mode : null;
     const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
     const modeDirty =
-      (prior.kind === 'present' && prior.modeDirty) ||
-      (explicitMode !== undefined && explicitMode !== prior.onDisk?.mode);
+      explicitMode !== undefined
+        ? explicitMode !== prior.onDisk?.mode
+        : prior.kind === 'present' && prior.modeDirty;
     const contentDirty = prior.onDisk === null || !prior.onDisk.content.equals(next);
     this.entries.set(key, {
       kind: 'present',

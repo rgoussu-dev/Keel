@@ -240,15 +240,17 @@ export function applyContribution(
     const base = current === null ? (p.seed as string) : current.toString('utf8');
     const next = p.apply(base);
     if (mode === 'reapply' && current !== null) {
-      if (next === base) continue;
+      // Unchanged content still goes through the tree when the patch
+      // declares a mode: a script that lost its executable bit gets
+      // it back, and the tree stages nothing when disk already has it.
+      if (next === base && p.mode === undefined) continue;
       // A transform at its own fixed point re-rendered a region it
-      // owns — the walking skeleton's stack section of AGENTS.md
-      // after `claude-core` rewrote the root pristine, a guarded
-      // insert someone removed by hand — and the diff reports it,
-      // as a whole-file rewrite would. One that is not would
-      // compound on the next run, and that is the double
+      // owns — the walking skeleton's stack section of AGENTS.md, a
+      // guarded insert someone removed by hand — and the diff
+      // reports it, as a whole-file rewrite would. One that is not
+      // would compound on the next run, and that is the double
       // application this refuses.
-      if (p.apply(next) !== next) {
+      if (next !== base && p.apply(next) !== next) {
         throw new ContributionConflictError(
           `adapter '${adapter.id}': reapplying its patch would change '${p.target}' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand`,
           adapter.id,

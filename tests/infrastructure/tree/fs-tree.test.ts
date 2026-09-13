@@ -63,6 +63,13 @@ describe('FsTree.changes()', () => {
     expect((await fs.stat(path.join(root, 'AGENTS.md'))).mode & 0o111).not.toBe(0);
   });
 
+  it('clears a staged mode that a later explicit mode puts back on the disk bits', () => {
+    const tree = new FsTree(root);
+    tree.write('AGENTS.md', 'prose\nsection\n', { mode: 0o755 });
+    tree.write('AGENTS.md', 'prose\nsection\n', { mode: 0o644 });
+    expect(tree.changes()).toEqual([]);
+  });
+
   it('does not report a mode disk already carries', async () => {
     await fs.chmod(path.join(root, 'AGENTS.md'), 0o755);
     const tree = new FsTree(root);
