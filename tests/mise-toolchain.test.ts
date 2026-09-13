@@ -43,10 +43,13 @@ const miseTools = (): Record<string, string> => {
 };
 
 /**
- * What each probe name in the e2e matrix asks mise for. Mirrors the
- * `case` in the workflow's "Name the toolchain this shard installs"
- * step; a probe absent from both lists is the failure this guards.
- * `docker` and `browser` are the runner's own, `npm` ships with node.
+ * What each probe name in the e2e matrix must ask mise for — the
+ * relationship itself, not a copy of the workflow's table: the
+ * workflow's `case` is parsed below and held to this, so a shard
+ * whose probe quietly mapped onto the wrong tool (`mvn` installing
+ * gradle, say) fails here rather than skipping every Maven suite on
+ * the runner. `docker` and `browser` are the runner's own, `npm`
+ * ships with node.
  */
 const MISE_TOOL_FOR_PROBE: Record<string, string | null> = {
   java: 'java',
@@ -55,19 +58,40 @@ const MISE_TOOL_FOR_PROBE: Record<string, string | null> = {
   mvn: 'maven',
   go: 'go',
   cargo: 'rust',
-  npm: 'node',
-  pnpm: 'pnpm',
+  // node and pnpm are what runs vitest, so every shard seeds them
+  // (`tools="node pnpm"`, asserted below) and the arms add nothing.
+  npm: null,
+  pnpm: null,
   docker: null,
   browser: null,
 };
 
-const probeNames = (): string[] => {
-  const workflow = parse(read('.github/workflows/ci.yml')) as {
-    jobs: { e2e: { strategy: { matrix: { shard: { tools: string }[] } } } };
-  };
-  return [
-    ...new Set(workflow.jobs.e2e.strategy.matrix.shard.flatMap((s) => s.tools.trim().split(/\s+/))),
-  ];
+interface E2eJob {
+  strategy: { matrix: { shard: { tools: string }[] } };
+  steps: { name?: string; run?: string }[];
+}
+
+const e2eJob = (): E2eJob =>
+  (parse(read('.github/workflows/ci.yml')) as { jobs: { e2e: E2eJob } }).jobs.e2e;
+
+const probeNames = (): string[] => [
+  ...new Set(e2eJob().strategy.matrix.shard.flatMap((s) => s.tools.trim().split(/\s+/))),
+];
+
+/**
+ * The workflow's own probe → tool table, read out of the shell `case`
+ * in its "Name the toolchain this shard installs" step: one arm per
+ * `pattern) tools="$tools <tool>" ;;` line, `null` for the arms that
+ * install nothing. The default arm (`*)`) exits and is not a mapping.
+ */
+const workflowToolForProbe = (): Record<string, string | null> => {
+  const step = e2eJob().steps.find((s) => s.name === 'Name the toolchain this shard installs');
+  expect(step?.run, 'the toolchain-naming step').toBeDefined();
+  const mapping: Record<string, string | null> = {};
+  for (const arm of step!.run!.matchAll(/^\s*([\w|-]+)\)\s*(?:tools="\$tools (\w+)")?\s*;;/gm)) {
+    for (const probe of arm[1]!.split('|')) mapping[probe] = arm[2] ?? null;
+  }
+  return mapping;
 };
 
 describe('the mise toolchain file', () => {
@@ -82,11 +106,18 @@ describe('the mise toolchain file', () => {
     expect(miseTools()['java']).toBe('temurin-25');
   });
 
+  it('maps every probe the workflow knows onto the tool it must install', () => {
+    expect(workflowToolForProbe()).toEqual(MISE_TOOL_FOR_PROBE);
+    const step = e2eJob().steps.find((s) => s.name === 'Name the toolchain this shard installs');
+    expect(step?.run).toContain('tools="node pnpm"');
+  });
+
   it('declares every tool the e2e matrix can ask mise for', () => {
     const declared = Object.keys(miseTools());
+    const mapping = workflowToolForProbe();
     for (const probe of probeNames()) {
-      expect(probe in MISE_TOOL_FOR_PROBE, `probe '${probe}' has no mise mapping`).toBe(true);
-      const tool = MISE_TOOL_FOR_PROBE[probe];
+      expect(probe in mapping, `probe '${probe}' has no mise mapping`).toBe(true);
+      const tool = mapping[probe];
       if (tool !== null)
         expect(declared, `mise.toml lacks '${tool}' for '${probe}'`).toContain(tool);
     }
