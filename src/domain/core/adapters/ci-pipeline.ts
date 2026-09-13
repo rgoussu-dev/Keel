@@ -25,6 +25,7 @@ import type {
   Question,
   Tag,
 } from '../../contract/composition.js';
+import { regionPatch, upsertRegion, type Region } from '../../contract/region.js';
 
 /** A CI provider keel can emit a pipeline for. */
 export type CiProvider = 'github-actions' | 'gitlab-ci';
@@ -151,7 +152,7 @@ export function ciTemplateId(adapter: string, provider: CiProvider): string {
  * it runs first — `keel add` takes them in either order — so each
  * owns a region rather than the file.
  */
-export interface PipelineSection {
+export interface PipelineSection extends Region {
   /** Opens the region. A YAML comment, so it survives every parser. */
   readonly begin: string;
   /** Closes the region. */
@@ -186,10 +187,9 @@ export const DISTRIBUTION_PIPELINE_SECTION: PipelineSection = {
  * Upserts one vertical's region into a pipeline file's content:
  * replaces the sentinel-delimited region when both markers are
  * present, inserts it at the section's own end of the file when
- * neither is. Mirrors `upsertStyleSection` in `code-style.ts`,
- * including the reason for it — this is what makes `--reapply`
- * idempotent, and here it is also what lets the two verticals be
- * installed in either order.
+ * neither is. {@link upsertRegion} with the placement the section
+ * declares — this is what makes `--reapply` idempotent, and here it
+ * is also what lets the two verticals be installed in either order.
  *
  * One marker without the other means the pair was hand-edited apart;
  * that throws with the fix rather than guessing where the user's own
@@ -200,40 +200,32 @@ export function upsertPipelineSection(
   body: string,
   section: PipelineSection,
 ): string {
-  const region = `${section.begin}\n${body.trim()}\n${section.end}\n`;
-  const begin = existing.indexOf(section.begin);
-  const end = existing.indexOf(section.end);
-  if (begin === -1 && end === -1) {
-    if (existing.trim() === '') return region;
-    return section.position === 'head'
-      ? `${region}\n${existing.trimStart()}`
-      : `${existing.trimEnd()}\n\n${region}`;
-  }
-  if (begin === -1 || end === -1 || end < begin) {
-    throw new Error(
-      `${section.owner}: the sentinels are broken — expected '${section.begin}' followed by '${section.end}'. Restore the pair (or delete both) and re-run.`,
-    );
-  }
-  const tail = existing.slice(end + section.end.length).replace(/^\n/, '');
-  return `${existing.slice(0, begin)}${region}${tail}`;
+  return upsertRegion(existing, section, body, {
+    whenAbsent: section.position === 'head' ? 'prepend' : 'append',
+    where: section.owner,
+  });
 }
 
 /**
  * A rendered GitLab fragment as the seeded upsert of its owner's
  * region — the composition contract's answer to a file two
  * independent adapters contribute to, with no install-order
- * dependency between them.
+ * dependency between them — the region declared, so the engine
+ * holds each vertical to its own.
  */
 export function gitlabSectionPatch(
   file: ContributionFile,
   section: PipelineSection,
 ): ContributionPatch {
   const body = typeof file.content === 'string' ? file.content : file.content.toString('utf8');
-  return {
+  return regionPatch({
     target: file.path,
     seed: '',
-    apply: (existing) => upsertPipelineSection(existing, body, section),
-  };
+    region: section,
+    body,
+    whenAbsent: section.position === 'head' ? 'prepend' : 'append',
+    where: section.owner,
+  });
 }
 
 /**

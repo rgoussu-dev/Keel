@@ -40,6 +40,14 @@
 import { eolAware } from '../util.js';
 import { CLAUDE_CORE_ID } from './claude-core.js';
 import type { Adapter, Contribution, Ctx, SkillSpec, Tag } from '../../contract/composition.js';
+import {
+  hashRegion,
+  locateRegion,
+  markdownRegion,
+  regionPatch,
+  upsertRegion,
+  type Region,
+} from '../../contract/region.js';
 
 /** The walking-skeleton dimension the family adapters cover. */
 export const CLAUDE_KIT_DIMENSION = 'agentic-kit';
@@ -47,11 +55,19 @@ export const CLAUDE_KIT_DIMENSION = 'agentic-kit';
 /** Promoted by every claude-kit adapter. */
 export const CLAUDE_KIT_TAG: Tag = 'agentic.claude-kit';
 
+/**
+ * The stack section's region in `AGENTS.md` —
+ * `<!-- keel:stack-runbook:begin -->` … `<!-- keel:stack-runbook:end -->`
+ * — declared on the family kit's patch, so the engine holds the
+ * section to its markers.
+ */
+export const RUNBOOK_REGION: Region = markdownRegion('stack-runbook');
+
 /** Opens the stack section's sentinel-delimited region in `AGENTS.md`. */
-export const RUNBOOK_BEGIN = '<!-- keel:stack-runbook:begin -->';
+export const RUNBOOK_BEGIN = RUNBOOK_REGION.begin;
 
 /** Closes the stack section's sentinel-delimited region in `AGENTS.md`. */
-export const RUNBOOK_END = '<!-- keel:stack-runbook:end -->';
+export const RUNBOOK_END = RUNBOOK_REGION.end;
 
 const AGENTS_TARGET = 'AGENTS.md';
 const SETTINGS_TARGET = '.claude/settings.json';
@@ -92,23 +108,12 @@ export interface ClaudeKitFamily {
  * after the existing content when neither is (a spec authored before
  * the slot existed). One marker without the other means the pair was
  * hand-edited apart — that throws with the fix rather than guessing
- * where the user's prose ends.
+ * where the user's prose ends. {@link upsertRegion} in the Markdown
+ * shape, and the transform of the region patch the contribution
+ * declares.
  */
 export function upsertRunbook(existing: string, body: string): string {
-  const section = `${RUNBOOK_BEGIN}\n\n${body.trim()}\n\n${RUNBOOK_END}\n`;
-  const begin = existing.indexOf(RUNBOOK_BEGIN);
-  const end = existing.indexOf(RUNBOOK_END);
-  if (begin === -1 && end === -1) {
-    return `${existing.trimEnd()}\n\n${section}`;
-  }
-  if (begin === -1 || end === -1 || end < begin) {
-    throw new Error(
-      `AGENTS.md: the stack-runbook sentinels are broken — expected '${RUNBOOK_BEGIN}' followed by '${RUNBOOK_END}'. Restore the pair (or delete both) and re-run.`,
-    );
-  }
-  const afterEnd = end + RUNBOOK_END.length;
-  const tail = existing.slice(afterEnd).replace(/^\n/, '');
-  return `${existing.slice(0, begin)}${section}${tail}`;
+  return upsertRegion(existing, RUNBOOK_REGION, body, { padding: 'blank', where: AGENTS_TARGET });
 }
 
 /** One row of the runbook's command table. */
@@ -300,11 +305,19 @@ fi
 `;
 }
 
+/**
+ * The hook's format-step region — `# keel:format-step:begin/end` —
+ * owned by the `code-style` vertical once it wires a formatter in,
+ * and declared on its patch so the engine holds the step to its
+ * markers.
+ */
+export const FORMAT_STEP_REGION: Region = hashRegion('format-step');
+
 /** Opens the hook's keel-managed format step. */
-export const FORMAT_STEP_BEGIN = '# keel:format-step:begin';
+export const FORMAT_STEP_BEGIN = FORMAT_STEP_REGION.begin;
 
 /** Closes the hook's keel-managed format step. */
-export const FORMAT_STEP_END = '# keel:format-step:end';
+export const FORMAT_STEP_END = FORMAT_STEP_REGION.end;
 
 /**
  * Renders the hook's auto-format step, sentinel-delimited.
@@ -321,15 +334,15 @@ export const FORMAT_STEP_END = '# keel:format-step:end';
  * commit to unrelated dirty files.
  */
 export function renderFormatStep(formatCommand: string | undefined): string {
+  return [FORMAT_STEP_BEGIN, formatStepBody(formatCommand), FORMAT_STEP_END].join('\n');
+}
+
+/** The format step between its markers: the lines the region owns. */
+export function formatStepBody(formatCommand: string | undefined): string {
   if (formatCommand === undefined) {
-    return [
-      FORMAT_STEP_BEGIN,
-      '# No formatter configured for this stack — `keel add code-style` wires one.',
-      FORMAT_STEP_END,
-    ].join('\n');
+    return '# No formatter configured for this stack — `keel add code-style` wires one.';
   }
   return [
-    FORMAT_STEP_BEGIN,
     'staged=$(git diff --name-only --cached || true)',
     '',
     `${formatCommand} >/dev/null`,
@@ -337,7 +350,6 @@ export function renderFormatStep(formatCommand: string | undefined): string {
     'if [ -n "$staged" ]; then',
     '  printf \'%s\\n\' "$staged" | xargs git add --',
     'fi',
-    FORMAT_STEP_END,
   ].join('\n');
 }
 
@@ -351,16 +363,25 @@ export function renderFormatStep(formatCommand: string | undefined): string {
  * format step after the verify gate would run it too late to matter.
  */
 export function upsertFormatStep(existing: string, formatCommand: string | undefined): string {
-  const begin = existing.indexOf(FORMAT_STEP_BEGIN);
-  const end = existing.indexOf(FORMAT_STEP_END);
-  if (begin === -1 && end === -1) return existing;
-  if (begin === -1 || end === -1 || end < begin) {
-    throw new Error(
-      `.claude/hooks/pre-commit-format.sh: the format-step sentinels are broken — expected '${FORMAT_STEP_BEGIN}' followed by '${FORMAT_STEP_END}'. Restore the pair (or delete both) and re-run.`,
-    );
-  }
-  const tail = existing.slice(end + FORMAT_STEP_END.length);
-  return `${existing.slice(0, begin)}${renderFormatStep(formatCommand)}${tail}`;
+  return upsertRegion(existing, FORMAT_STEP_REGION, formatStepBody(formatCommand), {
+    whenAbsent: 'keep',
+    where: HOOK_TARGET,
+  });
+}
+
+/**
+ * The `code-style` vertical's patch on the hook: the format step as
+ * an owned region, so a formatter wired in after the scaffold lands
+ * inside the step and nowhere else — and the engine refuses it if
+ * it did.
+ */
+export function formatStepPatch(formatCommand: string | undefined) {
+  return regionPatch({
+    target: HOOK_TARGET,
+    region: FORMAT_STEP_REGION,
+    body: formatStepBody(formatCommand),
+    whenAbsent: 'keep',
+  });
 }
 
 /**
@@ -375,15 +396,9 @@ export function upsertFormatStep(existing: string, formatCommand: string | undef
  */
 export function refreshPreCommitHook(existing: string, family: ClaudeKitFamily): string {
   const fresh = renderPreCommitHook(family);
-  const begin = existing.indexOf(FORMAT_STEP_BEGIN);
-  const end = existing.indexOf(FORMAT_STEP_END);
-  if (begin === -1 && end === -1) return fresh;
-  if (begin === -1 || end === -1 || end < begin) {
-    throw new Error(
-      `${HOOK_TARGET}: the format-step sentinels are broken — expected '${FORMAT_STEP_BEGIN}' followed by '${FORMAT_STEP_END}'. Restore the pair (or delete both) and re-run.`,
-    );
-  }
-  const step = existing.slice(begin, end + FORMAT_STEP_END.length);
+  const span = locateRegion(existing, FORMAT_STEP_REGION, HOOK_TARGET);
+  if (span === null) return fresh;
+  const step = existing.slice(span.begin, span.end);
   const freshBegin = fresh.indexOf(FORMAT_STEP_BEGIN);
   const freshEnd = fresh.indexOf(FORMAT_STEP_END) + FORMAT_STEP_END.length;
   return `${fresh.slice(0, freshBegin)}${step}${fresh.slice(freshEnd)}`;
@@ -393,7 +408,8 @@ export function refreshPreCommitHook(existing: string, family: ClaudeKitFamily):
  * Builds the `.claude/` shape for one family — settings, the
  * pre-commit hook, the run skill — and stages the stack-section
  * patch against the `AGENTS.md` that `claude-core` seeded earlier
- * in the chain (`after` orders the two). The hook and the settings
+ * in the chain (`after` orders the two) — a region patch, so the
+ * engine holds the section to its markers. The hook and the settings
  * are seeded upserts too: the hook executable and refreshed around
  * its format step, the settings merged around keel's one entry.
  */
@@ -406,10 +422,12 @@ export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
         seed: SETTINGS_CONTENT,
         apply: eolAware(upsertClaudeHook),
       },
-      {
+      regionPatch({
         target: AGENTS_TARGET,
-        apply: eolAware((existing) => upsertRunbook(existing, family.runbook)),
-      },
+        region: RUNBOOK_REGION,
+        body: family.runbook,
+        padding: 'blank',
+      }),
       {
         target: HOOK_TARGET,
         seed: renderPreCommitHook(family),

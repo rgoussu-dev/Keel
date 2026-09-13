@@ -31,8 +31,8 @@
  * nothing.
  */
 
-import { eolAware } from '../util.js';
-import { upsertFormatStep } from './claude-kit.js';
+import { formatStepPatch } from './claude-kit.js';
+import { hashRegion, upsertRegion, type Region } from '../../contract/region.js';
 import type {
   Adapter,
   Contribution,
@@ -118,11 +118,18 @@ export const EDITORCONFIG_TARGET = '.editorconfig';
 /** Target path of the emitted git attributes file. */
 export const GITATTRIBUTES_TARGET = '.gitattributes';
 
+/**
+ * The keel-managed region of a `#`-commented config file —
+ * `# keel:code-style:begin/end` — declared on every patch that
+ * writes one, so the engine holds the section to its markers.
+ */
+export const STYLE_REGION: Region = hashRegion('code-style');
+
 /** Opens the keel-managed section of a generated config file. */
-export const STYLE_BEGIN = '# keel:code-style:begin';
+export const STYLE_BEGIN = STYLE_REGION.begin;
 
 /** Closes the keel-managed section of a generated config file. */
-export const STYLE_END = '# keel:code-style:end';
+export const STYLE_END = STYLE_REGION.end;
 
 /**
  * Upserts the keel-managed section into a config file's content:
@@ -137,22 +144,11 @@ export const STYLE_END = '# keel:code-style:end';
  *
  * One marker without the other means the pair was hand-edited apart;
  * that throws with the fix rather than guessing where the user's own
- * rules end. Mirrors `upsertRunbook` in `claude-kit.ts`.
+ * rules end. {@link upsertRegion} in the tight shape, as
+ * `upsertRunbook` in `claude-kit.ts` is in the Markdown one.
  */
 export function upsertStyleSection(existing: string, body: string): string {
-  const section = `${STYLE_BEGIN}\n${body.trim()}\n${STYLE_END}\n`;
-  const begin = existing.indexOf(STYLE_BEGIN);
-  const end = existing.indexOf(STYLE_END);
-  if (begin === -1 && end === -1) {
-    return existing.trim() === '' ? section : `${existing.trimEnd()}\n\n${section}`;
-  }
-  if (begin === -1 || end === -1 || end < begin) {
-    throw new Error(
-      `code-style: the sentinels are broken — expected '${STYLE_BEGIN}' followed by '${STYLE_END}'. Restore the pair (or delete both) and re-run.`,
-    );
-  }
-  const tail = existing.slice(end + STYLE_END.length).replace(/^\n/, '');
-  return `${existing.slice(0, begin)}${section}${tail}`;
+  return upsertRegion(existing, STYLE_REGION, body, { where: 'code-style' });
 }
 
 /** Renders one `[glob]` section from a language's layout facts. */
@@ -405,13 +401,7 @@ export function formatterAdapter(
       const { files, patches } = spec(ctx);
       return {
         files: files ?? [],
-        patches: [
-          ...(patches ?? []),
-          {
-            target: HOOK_TARGET,
-            apply: eolAware((existing) => upsertFormatStep(existing, commands.format)),
-          },
-        ],
+        patches: [...(patches ?? []), formatStepPatch(commands.format)],
         tagsAdd: [STYLE_MANAGED_TAG],
       };
     },

@@ -30,6 +30,7 @@ import { distributionVertical } from '../../../../src/domain/core/verticals/dist
 import {
   CI_PIPELINE_SECTION,
   DISTRIBUTION_PIPELINE_SECTION,
+  gitlabSectionPatch,
   upsertPipelineSection,
 } from '../../../../src/domain/core/adapters/ci-pipeline.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
@@ -154,6 +155,14 @@ describe('the shared `.gitlab-ci.yml`', () => {
     expect(upsertPipelineSection(both, 'build:\n  script:\n    - a', CI_PIPELINE_SECTION)).toBe(
       both,
     );
+  });
+
+  it('declares each vertical’s region on its patch, so the engine holds it to its own jobs', () => {
+    const file = { path: PIPELINE, content: 'build:\n  script:\n    - a\n' };
+    expect(gitlabSectionPatch(file, CI_PIPELINE_SECTION).regions).toEqual([CI_PIPELINE_SECTION]);
+    expect(gitlabSectionPatch(file, DISTRIBUTION_PIPELINE_SECTION).regions).toEqual([
+      DISTRIBUTION_PIPELINE_SECTION,
+    ]);
   });
 
   it('refuses a half-deleted sentinel pair rather than guessing', () => {

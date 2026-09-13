@@ -14,10 +14,13 @@ import { describe, expect, it } from 'vitest';
 import {
   FORMAT_STEP_BEGIN,
   FORMAT_STEP_END,
+  FORMAT_STEP_REGION,
   RUNBOOK_BEGIN,
   RUNBOOK_END,
+  RUNBOOK_REGION,
   RUN_SKILL_NAME,
   claudeKitContribution,
+  formatStepPatch,
   refreshPreCommitHook,
   renderPreCommitHook,
   renderRunbook,
@@ -141,6 +144,18 @@ describe('renderPreCommitHook', () => {
     } finally {
       fs.removeSync(dir);
     }
+  });
+});
+
+describe('formatStepPatch', () => {
+  it('declares the format-step region on the hook and never lands one where the slot is missing', () => {
+    const patch = formatStepPatch('toolfmt -w .');
+    expect(patch.target).toBe('.claude/hooks/pre-commit-format.sh');
+    expect(patch.regions).toEqual([FORMAT_STEP_REGION]);
+    expect(patch.apply('#!/bin/sh\nno slot\n')).toBe('#!/bin/sh\nno slot\n');
+    expect(patch.apply(renderPreCommitHook(withoutFormatter(family)))).toBe(
+      renderPreCommitHook(family),
+    );
   });
 });
 
@@ -276,6 +291,11 @@ describe('claudeKitContribution', () => {
     expect(hook?.mode).toBe(0o755);
     expect(hook?.seed).toBe(renderPreCommitHook(family));
     expect(hook?.apply(hook.seed!)).toBe(hook?.seed);
+    // The stack section is an owned region, declared so the engine
+    // holds it to its markers; the hook re-renders around the format
+    // step and so owns the complement, which declares nothing.
+    expect(byPath.get('AGENTS.md')?.regions).toEqual([RUNBOOK_REGION]);
+    expect(hook?.regions).toBeUndefined();
     const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.seed)) as {
       hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
     };

@@ -16,6 +16,7 @@ import {
   STYLE_BEGIN,
   STYLE_END,
   STYLE_MANAGED_TAG,
+  STYLE_REGION,
   editorConfigSeed,
   linterAdapter,
   linterCommandsFor,
@@ -146,6 +147,7 @@ describe('editor-baseline adapter', () => {
     expect(targets).toEqual([EDITORCONFIG_TARGET, GITATTRIBUTES_TARGET]);
     for (const patch of contribution.patches ?? []) {
       expect(patch.seed, `${patch.target} must seed`).toBeDefined();
+      expect(patch.regions, `${patch.target} must declare its region`).toEqual([STYLE_REGION]);
     }
   });
 
