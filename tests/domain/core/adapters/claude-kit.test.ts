@@ -12,18 +12,20 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { describe, expect, it } from 'vitest';
 import {
-  claudeKitContribution,
-  renderPreCommitHook,
-  renderRunbook,
-  runSkillSpec,
-  upsertFormatStep,
-  upsertRunbook,
   FORMAT_STEP_BEGIN,
   FORMAT_STEP_END,
   RUNBOOK_BEGIN,
   RUNBOOK_END,
   RUN_SKILL_NAME,
+  claudeKitContribution,
+  refreshPreCommitHook,
+  renderPreCommitHook,
+  renderRunbook,
+  runSkillSpec,
   type ClaudeKitFamily,
+  upsertClaudeHook,
+  upsertFormatStep,
+  upsertRunbook,
 } from '../../../../src/domain/core/adapters/claude-kit.js';
 
 /**
@@ -59,6 +61,14 @@ describe('upsertRunbook', () => {
     expect(next).toContain('# Spec\n\nBody.');
     expect(next).toContain('User notes below the section.');
     expect(next.match(new RegExp(RUNBOOK_BEGIN, 'g'))).toHaveLength(1);
+  });
+
+  it('fills an empty sentinel pair in place — the slot the binding spec ships', () => {
+    const spec = `# Spec\n\nPreamble.\n\n${RUNBOOK_BEGIN}\n${RUNBOOK_END}\n\n## Architecture\n`;
+    const next = upsertRunbook(spec, 'stack body');
+    expect(next).toBe(
+      `# Spec\n\nPreamble.\n\n${RUNBOOK_BEGIN}\n\nstack body\n\n${RUNBOOK_END}\n\n## Architecture\n`,
+    );
   });
 
   it('is idempotent — re-applying the same body changes nothing', () => {
@@ -169,21 +179,99 @@ describe('upsertFormatStep', () => {
   });
 });
 
+describe('upsertClaudeHook', () => {
+  const HOOK = 'bash .claude/hooks/pre-commit-format.sh';
+  const parse = (s: string) =>
+    JSON.parse(s) as {
+      hooks: {
+        PreToolUse: { matcher: string; hooks: { command: string }[] }[];
+        PostToolUse?: unknown[];
+      };
+      [k: string]: unknown;
+    };
+
+  it('adds keel’s entry to a project’s settings and keeps everything else', () => {
+    const own = JSON.stringify(
+      {
+        permissions: { allow: ['Bash(pnpm test)'] },
+        env: { FOO: 'bar' },
+        hooks: {
+          PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'echo edit' }] }],
+          PostToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo done' }] }],
+        },
+      },
+      null,
+      2,
+    );
+    const merged = parse(upsertClaudeHook(own));
+    expect(merged['permissions']).toEqual({ allow: ['Bash(pnpm test)'] });
+    expect(merged['env']).toEqual({ FOO: 'bar' });
+    expect(merged.hooks.PostToolUse).toHaveLength(1);
+    expect(merged.hooks.PreToolUse.map((e) => e.hooks[0]!.command)).toEqual(['echo edit', HOOK]);
+  });
+
+  it('is its own fixed point, on the seed and on a merged file alike', () => {
+    const seeded = upsertClaudeHook('{}');
+    expect(parse(seeded).hooks.PreToolUse[0]!.hooks[0]!.command).toBe(HOOK);
+    expect(upsertClaudeHook(seeded)).toBe(seeded);
+    const once = upsertClaudeHook('{"env":{"A":"1"}}');
+    expect(upsertClaudeHook(once)).toBe(once);
+  });
+
+  it('refuses a file it cannot read as settings, naming the fix', () => {
+    expect(() => upsertClaudeHook('{ not json')).toThrow(/not valid JSON/);
+    expect(() => upsertClaudeHook('[]')).toThrow(/JSON object/);
+    expect(() => upsertClaudeHook('{"hooks":{"PreToolUse":{}}}')).toThrow(/to be a list/);
+  });
+});
+
+describe('refreshPreCommitHook', () => {
+  it('re-renders the hook around the format step code-style wired in', () => {
+    const wired = upsertFormatStep(renderPreCommitHook(family), 'toolfmt -w .');
+    const edited = wired.replace('set -euo pipefail', 'set -eu # hand-edited');
+    const refreshed = refreshPreCommitHook(edited, family);
+    expect(refreshed).toContain('toolfmt -w .');
+    expect(refreshed).toContain('set -euo pipefail');
+    expect(refreshed).not.toContain('hand-edited');
+    expect(refreshed).toBe(wired);
+    expect(refreshPreCommitHook(refreshed, family)).toBe(refreshed);
+  });
+
+  it('re-renders a hook from before the sentinels whole', () => {
+    expect(refreshPreCommitHook('#!/bin/sh\nold hook\n', family)).toBe(renderPreCommitHook(family));
+  });
+
+  it('throws with the fix when the sentinels were hand-edited apart', () => {
+    expect(() => refreshPreCommitHook(`x\n${FORMAT_STEP_END}\ny\n`, family)).toThrow(
+      /sentinels are broken/,
+    );
+  });
+});
+
 describe('claudeKitContribution', () => {
-  it('emits settings, an executable hook, and the run skill through the seam', () => {
+  it('emits settings and hook upserts, and the run skill through the seam', () => {
     const contribution = claudeKitContribution(family);
-    const byPath = new Map((contribution.files ?? []).map((f) => [f.path, f]));
-    expect([...byPath.keys()].sort()).toEqual([
-      '.claude/hooks/pre-commit-format.sh',
+    expect(contribution.files ?? []).toEqual([]);
+    const byPath = new Map((contribution.patches ?? []).map((p) => [p.target, p]));
+    expect([...byPath.keys()]).toEqual([
       '.claude/settings.json',
+      'AGENTS.md',
+      '.claude/hooks/pre-commit-format.sh',
     ]);
     // The run skill rides the SkillSpec seam, never a bare files: entry
     // — that is what lets the applier own its path, provenance and
     // collision rules.
     expect(contribution.skills).toEqual([family.runSkill]);
     expect(contribution.skills?.[0]?.name).toBe(RUN_SKILL_NAME);
-    expect(byPath.get('.claude/hooks/pre-commit-format.sh')?.mode).toBe(0o755);
-    const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.content)) as {
+    // The hook is seeded, executable, and its own fixed point — so a
+    // reapply refreshes it around the format step it finds.
+    const hook = contribution.patches?.find(
+      (p) => p.target === '.claude/hooks/pre-commit-format.sh',
+    );
+    expect(hook?.mode).toBe(0o755);
+    expect(hook?.seed).toBe(renderPreCommitHook(family));
+    expect(hook?.apply(hook.seed!)).toBe(hook?.seed);
+    const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.seed)) as {
       hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
     };
     expect(settings.hooks.PreToolUse[0]?.matcher).toBe('Bash');
@@ -195,7 +283,7 @@ describe('claudeKitContribution', () => {
 
   it('round-trips CRLF specs through the runbook patch', () => {
     const contribution = claudeKitContribution(family);
-    const patch = contribution.patches?.[0];
+    const patch = contribution.patches?.find((p) => p.target === 'AGENTS.md');
     expect(patch?.target).toBe('AGENTS.md');
     const next = patch!.apply('# Spec\r\n\r\nBody.\r\n');
     expect(next).toContain(`${RUNBOOK_BEGIN}\r\n`);
@@ -204,15 +292,22 @@ describe('claudeKitContribution', () => {
 });
 
 describe('renderRunbook / runSkillSpec', () => {
-  it('renders the shared runbook shape', () => {
+  it('renders the shared stack-section shape: commands, stance, layout map, notes', () => {
     const body = renderRunbook({
-      title: 'Test Stack',
+      title: 'Test Stack (basic)',
       commands: [{ label: 'Build', command: 'tool build' }],
+      stance: 'One seam, spelled for this family.',
+      layout: ['`src/` — the code.'],
       notes: ['a note'],
     });
-    expect(body).toContain('## Stack runbook — Test Stack');
+    expect(body).toContain('## Stack — Test Stack (basic)');
     expect(body).toContain('| Build | `tool build` |');
+    expect(body).toContain('**Dispatch.** One seam, spelled for this family.');
+    expect(body).toContain('**Layout**');
+    expect(body).toContain('- `src/` — the code.');
     expect(body).toContain('- a note');
+    // The map precedes the notes: orientation first, caveats last.
+    expect(body.indexOf('- `src/`')).toBeLessThan(body.indexOf('- a note'));
   });
 
   it('builds the run skill spec under the fixed name', () => {

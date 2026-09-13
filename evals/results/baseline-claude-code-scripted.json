@@ -1,0 +1,941 @@
+{
+  "schema": "keel-evals/benchmark@1",
+  "complete": true,
+  "campaign": "baseline",
+  "startedAt": "2026-09-12T22:05:34.092Z",
+  "finishedAt": "2026-09-12T22:21:15.158Z",
+  "keel": {
+    "version": "0.5.0-alpha",
+    "commit": "73bf83b9c97a2e85787a61d69d61bf54fd38303d",
+    "dirty": true
+  },
+  "driver": {
+    "id": "claude-code",
+    "version": "2.1.270 (Claude Code)",
+    "mode": "scripted",
+    "model": "sonnet",
+    "capabilities": {
+      "structuredOutput": true,
+      "tokens": true,
+      "cost": true,
+      "turns": true,
+      "toolCalls": true,
+      "transcript": true
+    }
+  },
+  "cases": [
+    {
+      "id": "navigation/quarkus-rest",
+      "tags": [
+        "navigation",
+        "jvm"
+      ],
+      "contextAudit": {
+        "files": [
+          {
+            "path": ".claude/skills/run/SKILL.md",
+            "lines": 24,
+            "bytes": 538,
+            "approxTokens": 135
+          },
+          {
+            "path": "AGENTS.md",
+            "lines": 293,
+            "bytes": 14149,
+            "approxTokens": 3538
+          },
+          {
+            "path": "CLAUDE.md",
+            "lines": 2,
+            "bytes": 11,
+            "approxTokens": 3
+          }
+        ],
+        "totalLines": 319,
+        "totalBytes": 14698,
+        "approxTokens": 3676
+      },
+      "runs": [
+        {
+          "run": 1,
+          "workspace": "/tmp/keel-eval-navigation-quarkus-rest-FuhLF8",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 24969,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 12,
+            "tokensOut": 1025,
+            "cacheRead": 243802,
+            "cacheWrite": 30308,
+            "costUsd": 0.18145139999999998,
+            "turns": 6,
+            "toolCalls": {
+              "Bash": 3,
+              "Read": 1,
+              "Write": 1
+            },
+            "bashSearches": 2
+          }
+        },
+        {
+          "run": 2,
+          "workspace": "/tmp/keel-eval-navigation-quarkus-rest-iITYrs",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 22241,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 12,
+            "tokensOut": 1282,
+            "cacheRead": 219363,
+            "cacheWrite": 24646,
+            "costUsd": 0.1564856,
+            "turns": 7,
+            "toolCalls": {
+              "Bash": 3,
+              "Read": 2,
+              "Write": 1
+            },
+            "bashSearches": 2
+          }
+        }
+      ],
+      "aggregate": {
+        "unprepared": 0,
+        "successRate": 1,
+        "completedRate": 1,
+        "wallMs": {
+          "n": 2,
+          "mean": 23605,
+          "stddev": 1364,
+          "min": 22241,
+          "max": 24969
+        },
+        "filesChanged": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "insertions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deletions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "tokensIn": {
+          "n": 2,
+          "mean": 12,
+          "stddev": 0,
+          "min": 12,
+          "max": 12
+        },
+        "tokensOut": {
+          "n": 2,
+          "mean": 1153.5,
+          "stddev": 128.5,
+          "min": 1025,
+          "max": 1282
+        },
+        "cacheRead": {
+          "n": 2,
+          "mean": 231582.5,
+          "stddev": 12219.5,
+          "min": 219363,
+          "max": 243802
+        },
+        "costUsd": {
+          "n": 2,
+          "mean": 0.169,
+          "stddev": 0.012,
+          "min": 0.1564856,
+          "max": 0.18145139999999998
+        },
+        "turns": {
+          "n": 2,
+          "mean": 6.5,
+          "stddev": 0.5,
+          "min": 6,
+          "max": 7
+        },
+        "toolCallsTotal": {
+          "n": 2,
+          "mean": 5.5,
+          "stddev": 0.5,
+          "min": 5,
+          "max": 6
+        },
+        "bashSearches": {
+          "n": 2,
+          "mean": 2,
+          "stddev": 0,
+          "min": 2,
+          "max": 2
+        }
+      }
+    },
+    {
+      "id": "navigation/spring-rest-kotlin",
+      "tags": [
+        "navigation",
+        "jvm"
+      ],
+      "contextAudit": {
+        "files": [
+          {
+            "path": ".claude/skills/run/SKILL.md",
+            "lines": 24,
+            "bytes": 547,
+            "approxTokens": 137
+          },
+          {
+            "path": "AGENTS.md",
+            "lines": 293,
+            "bytes": 14168,
+            "approxTokens": 3542
+          },
+          {
+            "path": "CLAUDE.md",
+            "lines": 2,
+            "bytes": 11,
+            "approxTokens": 3
+          }
+        ],
+        "totalLines": 319,
+        "totalBytes": 14726,
+        "approxTokens": 3682
+      },
+      "runs": [
+        {
+          "run": 1,
+          "workspace": "/tmp/keel-eval-navigation-spring-rest-kotlin-Kw8Yy2",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 22883,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 12,
+            "tokensOut": 1623,
+            "cacheRead": 245392,
+            "cacheWrite": 31218,
+            "costUsd": 0.19138940000000002,
+            "turns": 9,
+            "toolCalls": {
+              "Bash": 6,
+              "Read": 1,
+              "Write": 1
+            },
+            "bashSearches": 6
+          }
+        },
+        {
+          "run": 2,
+          "workspace": "/tmp/keel-eval-navigation-spring-rest-kotlin-K2ieKB",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 19922,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 10,
+            "tokensOut": 890,
+            "cacheRead": 190356,
+            "cacheWrite": 27989,
+            "costUsd": 0.16013220000000003,
+            "turns": 5,
+            "toolCalls": {
+              "Bash": 2,
+              "Read": 1,
+              "Write": 1
+            },
+            "bashSearches": 1
+          }
+        }
+      ],
+      "aggregate": {
+        "unprepared": 0,
+        "successRate": 1,
+        "completedRate": 1,
+        "wallMs": {
+          "n": 2,
+          "mean": 21402.5,
+          "stddev": 1480.5,
+          "min": 19922,
+          "max": 22883
+        },
+        "filesChanged": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "insertions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deletions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "tokensIn": {
+          "n": 2,
+          "mean": 11,
+          "stddev": 1,
+          "min": 10,
+          "max": 12
+        },
+        "tokensOut": {
+          "n": 2,
+          "mean": 1256.5,
+          "stddev": 366.5,
+          "min": 890,
+          "max": 1623
+        },
+        "cacheRead": {
+          "n": 2,
+          "mean": 217874,
+          "stddev": 27518,
+          "min": 190356,
+          "max": 245392
+        },
+        "costUsd": {
+          "n": 2,
+          "mean": 0.176,
+          "stddev": 0.016,
+          "min": 0.16013220000000003,
+          "max": 0.19138940000000002
+        },
+        "turns": {
+          "n": 2,
+          "mean": 7,
+          "stddev": 2,
+          "min": 5,
+          "max": 9
+        },
+        "toolCallsTotal": {
+          "n": 2,
+          "mean": 6,
+          "stddev": 2,
+          "min": 4,
+          "max": 8
+        },
+        "bashSearches": {
+          "n": 2,
+          "mean": 3.5,
+          "stddev": 2.5,
+          "min": 1,
+          "max": 6
+        }
+      }
+    },
+    {
+      "id": "navigation/go-http",
+      "tags": [
+        "navigation",
+        "go"
+      ],
+      "contextAudit": {
+        "files": [
+          {
+            "path": ".claude/skills/run/SKILL.md",
+            "lines": 21,
+            "bytes": 418,
+            "approxTokens": 105
+          },
+          {
+            "path": "AGENTS.md",
+            "lines": 294,
+            "bytes": 14053,
+            "approxTokens": 3514
+          },
+          {
+            "path": "CLAUDE.md",
+            "lines": 2,
+            "bytes": 11,
+            "approxTokens": 3
+          }
+        ],
+        "totalLines": 317,
+        "totalBytes": 14482,
+        "approxTokens": 3622
+      },
+      "runs": [
+        {
+          "run": 1,
+          "workspace": "/tmp/keel-eval-navigation-go-http-6sl36y",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 18639,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 12,
+            "tokensOut": 801,
+            "cacheRead": 207634,
+            "cacheWrite": 21150,
+            "costUsd": 0.13534580000000002,
+            "turns": 6,
+            "toolCalls": {
+              "Bash": 4,
+              "Write": 1
+            },
+            "bashSearches": 2
+          }
+        },
+        {
+          "run": 2,
+          "workspace": "/tmp/keel-eval-navigation-go-http-rOIiKv",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 22223,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 12,
+            "tokensOut": 916,
+            "cacheRead": 207278,
+            "cacheWrite": 21007,
+            "costUsd": 0.1358526,
+            "turns": 7,
+            "toolCalls": {
+              "Bash": 3,
+              "Read": 2,
+              "Write": 1
+            },
+            "bashSearches": 1
+          }
+        }
+      ],
+      "aggregate": {
+        "unprepared": 0,
+        "successRate": 1,
+        "completedRate": 1,
+        "wallMs": {
+          "n": 2,
+          "mean": 20431,
+          "stddev": 1792,
+          "min": 18639,
+          "max": 22223
+        },
+        "filesChanged": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "insertions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deletions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "tokensIn": {
+          "n": 2,
+          "mean": 12,
+          "stddev": 0,
+          "min": 12,
+          "max": 12
+        },
+        "tokensOut": {
+          "n": 2,
+          "mean": 858.5,
+          "stddev": 57.5,
+          "min": 801,
+          "max": 916
+        },
+        "cacheRead": {
+          "n": 2,
+          "mean": 207456,
+          "stddev": 178,
+          "min": 207278,
+          "max": 207634
+        },
+        "costUsd": {
+          "n": 2,
+          "mean": 0.136,
+          "stddev": 0,
+          "min": 0.13534580000000002,
+          "max": 0.1358526
+        },
+        "turns": {
+          "n": 2,
+          "mean": 6.5,
+          "stddev": 0.5,
+          "min": 6,
+          "max": 7
+        },
+        "toolCallsTotal": {
+          "n": 2,
+          "mean": 5.5,
+          "stddev": 0.5,
+          "min": 5,
+          "max": 6
+        },
+        "bashSearches": {
+          "n": 2,
+          "mean": 1.5,
+          "stddev": 0.5,
+          "min": 1,
+          "max": 2
+        }
+      }
+    },
+    {
+      "id": "navigation/rust-http",
+      "tags": [
+        "navigation",
+        "rust"
+      ],
+      "contextAudit": {
+        "files": [
+          {
+            "path": ".claude/skills/run/SKILL.md",
+            "lines": 21,
+            "bytes": 432,
+            "approxTokens": 108
+          },
+          {
+            "path": "AGENTS.md",
+            "lines": 294,
+            "bytes": 14385,
+            "approxTokens": 3597
+          },
+          {
+            "path": "CLAUDE.md",
+            "lines": 2,
+            "bytes": 11,
+            "approxTokens": 3
+          }
+        ],
+        "totalLines": 317,
+        "totalBytes": 14828,
+        "approxTokens": 3708
+      },
+      "runs": [
+        {
+          "run": 1,
+          "workspace": "/tmp/keel-eval-navigation-rust-http-IxVkW3",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 17477,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 10,
+            "tokensOut": 899,
+            "cacheRead": 184781,
+            "cacheWrite": 26510,
+            "costUsd": 0.15319120000000003,
+            "turns": 7,
+            "toolCalls": {
+              "Bash": 3,
+              "Read": 2,
+              "Write": 1
+            },
+            "bashSearches": 1
+          }
+        },
+        {
+          "run": 2,
+          "workspace": "/tmp/keel-eval-navigation-rust-http-b7RkE8",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 17850,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 12,
+            "tokensOut": 901,
+            "cacheRead": 220405,
+            "cacheWrite": 26589,
+            "costUsd": 0.160656,
+            "turns": 7,
+            "toolCalls": {
+              "Bash": 3,
+              "Read": 2,
+              "Write": 1
+            },
+            "bashSearches": 2
+          }
+        }
+      ],
+      "aggregate": {
+        "unprepared": 0,
+        "successRate": 1,
+        "completedRate": 1,
+        "wallMs": {
+          "n": 2,
+          "mean": 17663.5,
+          "stddev": 186.5,
+          "min": 17477,
+          "max": 17850
+        },
+        "filesChanged": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "insertions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deletions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "tokensIn": {
+          "n": 2,
+          "mean": 11,
+          "stddev": 1,
+          "min": 10,
+          "max": 12
+        },
+        "tokensOut": {
+          "n": 2,
+          "mean": 900,
+          "stddev": 1,
+          "min": 899,
+          "max": 901
+        },
+        "cacheRead": {
+          "n": 2,
+          "mean": 202593,
+          "stddev": 17812,
+          "min": 184781,
+          "max": 220405
+        },
+        "costUsd": {
+          "n": 2,
+          "mean": 0.157,
+          "stddev": 0.004,
+          "min": 0.15319120000000003,
+          "max": 0.160656
+        },
+        "turns": {
+          "n": 2,
+          "mean": 7,
+          "stddev": 0,
+          "min": 7,
+          "max": 7
+        },
+        "toolCallsTotal": {
+          "n": 2,
+          "mean": 6,
+          "stddev": 0,
+          "min": 6,
+          "max": 6
+        },
+        "bashSearches": {
+          "n": 2,
+          "mean": 1.5,
+          "stddev": 0.5,
+          "min": 1,
+          "max": 2
+        }
+      }
+    },
+    {
+      "id": "navigation/ts-http",
+      "tags": [
+        "navigation",
+        "ts"
+      ],
+      "contextAudit": {
+        "files": [
+          {
+            "path": ".claude/skills/run/SKILL.md",
+            "lines": 25,
+            "bytes": 574,
+            "approxTokens": 144
+          },
+          {
+            "path": "AGENTS.md",
+            "lines": 294,
+            "bytes": 14271,
+            "approxTokens": 3568
+          },
+          {
+            "path": "CLAUDE.md",
+            "lines": 2,
+            "bytes": 11,
+            "approxTokens": 3
+          }
+        ],
+        "totalLines": 321,
+        "totalBytes": 14856,
+        "approxTokens": 3715
+      },
+      "runs": [
+        {
+          "run": 1,
+          "workspace": "/tmp/keel-eval-navigation-ts-http-KI7zhN",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 19303,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 14,
+            "tokensOut": 1382,
+            "cacheRead": 247957,
+            "cacheWrite": 22480,
+            "costUsd": 0.1545394,
+            "turns": 9,
+            "toolCalls": {
+              "Bash": 4,
+              "Read": 3,
+              "Write": 1
+            },
+            "bashSearches": 3
+          }
+        },
+        {
+          "run": 2,
+          "workspace": "/tmp/keel-eval-navigation-ts-http-sr0iKg",
+          "prepared": true,
+          "completed": true,
+          "exitCode": 0,
+          "timedOut": false,
+          "wallMs": 18481,
+          "diff": {
+            "filesChanged": 0,
+            "insertions": 0,
+            "deletions": 0
+          },
+          "oracle": {
+            "pass": true,
+            "failures": []
+          },
+          "metrics": {
+            "tokensIn": 10,
+            "tokensOut": 905,
+            "cacheRead": 169667,
+            "cacheWrite": 21382,
+            "costUsd": 0.12971640000000004,
+            "turns": 8,
+            "toolCalls": {
+              "Bash": 3,
+              "Read": 3,
+              "Write": 1
+            },
+            "bashSearches": 1
+          }
+        }
+      ],
+      "aggregate": {
+        "unprepared": 0,
+        "successRate": 1,
+        "completedRate": 1,
+        "wallMs": {
+          "n": 2,
+          "mean": 18892,
+          "stddev": 411,
+          "min": 18481,
+          "max": 19303
+        },
+        "filesChanged": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "insertions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deletions": {
+          "n": 2,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0
+        },
+        "tokensIn": {
+          "n": 2,
+          "mean": 12,
+          "stddev": 2,
+          "min": 10,
+          "max": 14
+        },
+        "tokensOut": {
+          "n": 2,
+          "mean": 1143.5,
+          "stddev": 238.5,
+          "min": 905,
+          "max": 1382
+        },
+        "cacheRead": {
+          "n": 2,
+          "mean": 208812,
+          "stddev": 39145,
+          "min": 169667,
+          "max": 247957
+        },
+        "costUsd": {
+          "n": 2,
+          "mean": 0.142,
+          "stddev": 0.012,
+          "min": 0.12971640000000004,
+          "max": 0.1545394
+        },
+        "turns": {
+          "n": 2,
+          "mean": 8.5,
+          "stddev": 0.5,
+          "min": 8,
+          "max": 9
+        },
+        "toolCallsTotal": {
+          "n": 2,
+          "mean": 7.5,
+          "stddev": 0.5,
+          "min": 7,
+          "max": 8
+        },
+        "bashSearches": {
+          "n": 2,
+          "mean": 2,
+          "stddev": 1,
+          "min": 1,
+          "max": 3
+        }
+      }
+    }
+  ],
+  "summary": {
+    "cases": 5,
+    "successRate": 1,
+    "unprepared": 0
+  },
+  "merged": [
+    {
+      "cases": [
+        "navigation/ts-http"
+      ],
+      "commit": "73bf83b9c97a2e85787a61d69d61bf54fd38303d",
+      "finishedAt": "2026-09-12T22:21:15.158Z"
+    }
+  ]
+}

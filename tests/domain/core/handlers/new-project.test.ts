@@ -84,7 +84,7 @@ describe('keel.new-project (keel new)', () => {
 
     // Binding spec landed at the project root, with its pointer.
     const agentsMd = await fs.readFile(path.join(cwd, 'AGENTS.md'), 'utf8');
-    expect(agentsMd).toContain('Universal engineering conventions (keel)');
+    expect(agentsMd).toContain('Engineering conventions (keel)');
     expect(await fs.readFile(path.join(cwd, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
 
     // Action ran: git repo exists, branch is main.

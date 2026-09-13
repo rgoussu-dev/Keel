@@ -53,6 +53,20 @@ export interface TsRootInputs {
 const DEPENDENCY_CRUISER = '^18.1.1';
 
 /**
+ * The vitest range every emitted package declares, repeated at the
+ * root as an npm `overrides` entry. npm 10 — the npm Node 22 bundles
+ * — resolves vitest's optional `@vitest/*` peers by walking to
+ * whatever vitest is `latest`, and once a newer major is published
+ * that walk dies inside npm (`Cannot read properties of null (reading
+ * 'edgesOut')`) before anything is installed; vitest 5 did exactly
+ * that to every npm-based TypeScript stack. The override keeps every
+ * vitest edge on the packages' own range, which is also why it is
+ * the range and not an exact version: one pin, one value. pnpm
+ * resolves the same tree without it, so the pnpm root carries none.
+ */
+const VITEST = '^4.1.0';
+
+/**
  * Assembles one TS entrypoint bootstrap's contribution from its
  * shared shell and its own deployment-unit tree, under either module
  * layout.
@@ -111,7 +125,7 @@ export function tsSharedRootPatches(inputs: TsRootInputs): readonly Contribution
     {
       target: 'package.json',
       seed: packageJsonSeed(inputs),
-      apply: (existing) => mergeScripts(existing, inputs.arch),
+      apply: (existing) => mergeRoot(existing, inputs),
     },
     {
       target: 'README.md',
@@ -174,6 +188,7 @@ function packageJsonSeed(inputs: TsRootInputs): string {
     pkg.packageManager = 'pnpm@10.33.0';
   } else {
     pkg.workspaces = inputs.layout.workspaceGlobs;
+    pkg.overrides = { vitest: VITEST };
   }
   pkg.scripts = modulith
     ? { lint: lintScript(inputs.layout), ...SHARED_SCRIPTS[inputs.pm] }
@@ -185,14 +200,24 @@ function packageJsonSeed(inputs: TsRootInputs): string {
 }
 
 /**
- * Merges one entrypoint's own scripts into the root `package.json`.
- * A real JSON round-trip rather than text splicing, since `existing`
- * may already carry the sibling entrypoint's scripts in any order.
+ * Merges one entrypoint's own scripts into the root `package.json` —
+ * and, on npm, the vitest override the seed carries, so a root that
+ * predates it (a brownfield root, or one seeded before the override
+ * existed) gets the same protection from npm's peer walk without its
+ * other overrides being touched. A real JSON round-trip rather than
+ * text splicing, since `existing` may already carry the sibling
+ * entrypoint's scripts in any order.
  */
-function mergeScripts(existing: string, arch: TsRootArch): string {
-  const pkg = JSON.parse(existing) as { scripts?: Record<string, string> };
-  const scripts = { ...(pkg.scripts ?? {}), ...ownScripts(arch) };
-  const merged = { ...pkg, scripts };
+function mergeRoot(existing: string, inputs: TsRootInputs): string {
+  const pkg = JSON.parse(existing) as {
+    scripts?: Record<string, string>;
+    overrides?: Record<string, string>;
+  };
+  const scripts = { ...(pkg.scripts ?? {}), ...ownScripts(inputs.arch) };
+  const merged =
+    inputs.pm === 'npm'
+      ? { ...pkg, scripts, overrides: { ...(pkg.overrides ?? {}), vitest: VITEST } }
+      : { ...pkg, scripts };
   const eol = eolOf(existing);
   return withEol(`${JSON.stringify(merged, null, 2)}\n`, eol);
 }

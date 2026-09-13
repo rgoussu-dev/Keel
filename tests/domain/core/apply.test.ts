@@ -395,6 +395,31 @@ describe('applyContributions', () => {
       expect(tree.changes()).toEqual([]);
     });
 
+    it('re-renders a region an idempotent patch owns, and reports the write', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(
+        path.join(tmp, 'AGENTS.md'),
+        '# prose\n<!-- begin -->\nedited by hand\n<!-- end -->\nmore prose\n',
+      );
+      const owned = adapter('a', {
+        patches: [
+          {
+            target: 'AGENTS.md',
+            apply: (s) =>
+              s.replace(
+                /<!-- begin -->[\s\S]*<!-- end -->/,
+                '<!-- begin -->\nrendered\n<!-- end -->',
+              ),
+          },
+        ],
+      });
+      await reapply([owned], tree);
+      expect(tree.read('AGENTS.md')?.toString()).toBe(
+        '# prose\n<!-- begin -->\nrendered\n<!-- end -->\nmore prose\n',
+      );
+      expect(tree.changes()).toEqual([{ kind: 'modify', path: 'AGENTS.md' }]);
+    });
+
     it('conflicts when a patch would change an already-patched file', async () => {
       const tree = new FsTree(tmp);
       await fs.writeFile(path.join(tmp, 'build.gradle'), 'dependencies {\n}\n');
@@ -408,6 +433,47 @@ describe('applyContributions', () => {
       expect(failure).toBeInstanceOf(ContributionConflictError);
       expect((failure as ContributionConflictError).kind).toBe('reapply-divergence');
       expect(tree.changes()).toEqual([]);
+    });
+
+    it('gives a byte-identical whole file its declared mode back on reapply', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'run.sh'), '#!/bin/sh\n', { mode: 0o644 });
+      const a = adapter('a', { files: [{ path: 'run.sh', content: '#!/bin/sh\n', mode: 0o755 }] });
+      await reapply([a], tree);
+      expect(tree.changes()).toEqual([{ kind: 'modify', path: 'run.sh' }]);
+      await tree.commit();
+      expect((await fs.stat(path.join(tmp, 'run.sh'))).mode & 0o111).not.toBe(0);
+
+      const again = new FsTree(tmp);
+      await reapply([a], again);
+      expect(again.changes()).toEqual([]);
+    });
+
+    it('gives a byte-identical script its declared mode back on reapply', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'hook.sh'), '#!/bin/sh\n', { mode: 0o644 });
+      const a = adapter('a', {
+        patches: [{ target: 'hook.sh', seed: '#!/bin/sh\n', mode: 0o755, apply: (s) => s }],
+      });
+      await reapply([a], tree);
+      expect(tree.changes()).toEqual([{ kind: 'modify', path: 'hook.sh' }]);
+      await tree.commit();
+      expect((await fs.stat(path.join(tmp, 'hook.sh'))).mode & 0o111).not.toBe(0);
+
+      // And nothing at all once disk carries it.
+      const again = new FsTree(tmp);
+      await reapply([a], again);
+      expect(again.changes()).toEqual([]);
+    });
+
+    it('seeds a patch target with the mode the patch declares', async () => {
+      const tree = new FsTree(tmp);
+      const a = adapter('a', {
+        patches: [{ target: 'hook.sh', seed: '#!/bin/sh\n', mode: 0o755, apply: (s) => s }],
+      });
+      await reapply([a], tree);
+      await tree.commit();
+      expect((await fs.stat(path.join(tmp, 'hook.sh'))).mode & 0o111).not.toBe(0);
     });
 
     it('still seeds a patch target the working tree lost', async () => {

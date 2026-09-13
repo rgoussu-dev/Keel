@@ -22,8 +22,13 @@
 import { agentEnv } from '../lib/env.mjs';
 import { emptyMetrics, isSearchCommand, probeBinary, spawnScripted } from './driver.mjs';
 
-/** Flags for one scripted invocation; exported for the verify suite. */
-export function scriptedArgs(caseSpec) {
+/**
+ * Flags for one scripted invocation; exported for the verify suite.
+ * An explicit model maps onto `-m`; none means Codex's own default —
+ * the driver declares no `defaultModel`, so the benchmark records
+ * `null` rather than a guess.
+ */
+export function scriptedArgs(caseSpec, { model } = {}) {
   return [
     'exec',
     '--json',
@@ -31,6 +36,7 @@ export function scriptedArgs(caseSpec) {
     'workspace-write',
     '--skip-git-repo-check',
     '--ignore-user-config',
+    ...(model !== undefined ? ['-m', model] : []),
     caseSpec.prompt,
   ];
 }
@@ -82,6 +88,8 @@ export function harvestExecJson(stdout) {
 export const codexDriver = {
   id: 'codex',
   modes: ['scripted'],
+  /** None declared: an unnamed model is Codex's own default, recorded as null. */
+  defaultModel: undefined,
 
   capabilities(mode) {
     if (mode !== 'scripted') throw new Error('codex driver: scripted mode only');
@@ -92,6 +100,7 @@ export const codexDriver = {
       turns: true,
       toolCalls: true,
       transcript: false,
+      model: true,
     };
   },
 
@@ -99,7 +108,7 @@ export const codexDriver = {
     return probeBinary('codex');
   },
 
-  async run({ caseSpec, workspace, mode }) {
+  async run({ caseSpec, workspace, mode, model }) {
     if (mode !== 'scripted') throw new Error('codex driver: scripted mode only');
     const overrides =
       process.env['KEEL_EVALS_CODEX_HOME'] !== undefined
@@ -107,7 +116,7 @@ export const codexDriver = {
         : {};
     const r = await spawnScripted({
       command: 'codex',
-      args: scriptedArgs(caseSpec),
+      args: scriptedArgs(caseSpec, { model }),
       cwd: workspace,
       env: agentEnv(process.env, overrides),
       timeoutMs: caseSpec.budgets.timeout_seconds * 1000,

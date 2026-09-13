@@ -6,64 +6,67 @@ side.
 
 ## Requirements
 
-- Node 22+
-- pnpm 10+
-- For the JVM e2e suites: **JDK 25** on `JAVA_HOME`, **Gradle 9.7.0**
-  on PATH, and Maven. Those three are coupled and none of them is
-  arbitrary — see [End-to-end tests](#end-to-end-tests).
+The toolchain is one file, [`mise.toml`](../mise.toml), and one
+command:
+
+```sh
+mise install
+```
+
+That is Node 22 and pnpm 10 for the package itself, plus what the e2e
+suites scaffold and build with: **JDK 25** (`temurin-25`, the spelling
+keel's own toolchain vertical emits), **Gradle 9.7.0**, Maven, Go and
+Rust. The JVM three are coupled and none of them is arbitrary — see
+[End-to-end tests](#end-to-end-tests). The same file provisions every
+CI shard (`jdx/mise-action`, installing the subset the shard probes
+for) and a Claude Code web session, so a workstation, a runner and a
+web session cannot drift from one another; `tests/mise-toolchain.test.ts`
+holds the file's Gradle to the wrapper's own version and its tool list
+to what the CI matrix can ask for. Without mise, the same versions by
+any other manager work too — the suites probe binaries, not mise.
 
 ### Claude Code on the web
 
 `.claude/hooks/session-start.sh` provisions the above on session start,
 so a web session's toolchain matches CI's rather than the image's. It
 runs only when `CLAUDE_CODE_REMOTE=true`, so it never touches a
-developer's own `/opt`, and it is idempotent — a warm container
-re-runs it in about a second.
+developer's own home, and it is idempotent — a warm container re-runs
+it in seconds.
 
-It fixes two things the image gets wrong for this repo:
+It does what a CI shard does, with the same file: installs mise if the
+image lacks it or carries another version — a pinned release tarball
+from GitHub, checked against the checksums the hook carries, never an
+installer script piped into a shell, since this runs with shell
+privileges before anything in the project is trusted; bumping mise is
+the version and the two sums, copied from the release's
+`SHASUMS256.txt` — runs `mise install` over
+`mise.toml` (the whole file,
+since a web session may run any shard and the container is snapshotted
+after the hook), and writes `mise env` to `$CLAUDE_ENV_FILE` so every
+later command in the session sees the tools' PATH entries and
+`JAVA_HOME`. Then `pnpm install`, and a version line proving the JDK,
+Gradle and Maven the session will actually build with.
 
-- **Gradle 8.14.3 ships on the image and cannot start on JDK 25.**
-  `/opt/gradle` is a symlink already on PATH, so the hook downloads the
-  version keel pins and repoints it. That version is read from
-  `GRADLE_VERSION` in `src/domain/core/adapters/gradle-wrapper.ts` —
-  the constant every generated wrapper gets — rather than being a
-  third copy of the number to keep in sync.
-- **`JAVA_HOME` lands on 21**, because the image's shell profile
-  exports it and beats the `env` block in `.claude/settings.json`. That
-  one is quietly expensive: the Maven e2e suites skip themselves below
-  JDK 25, so a stale `JAVA_HOME` does not fail the Maven half of the
-  modulith grid, it runs none of it — and a skipped suite reads exactly
-  like a passing one. The hook writes `JAVA_HOME` to
-  `$CLAUDE_ENV_FILE`, which does apply.
+Two things the image gets wrong are why the hook exists at all. Its
+Gradle cannot start on JDK 25, and its shell profile exports a JDK 21
+`JAVA_HOME` — quietly expensive, because the Maven e2e suites skip
+themselves below JDK 25, so a stale `JAVA_HOME` does not fail the
+Maven half of the modulith grid, it runs none of it, and a skipped
+suite reads exactly like a passing one. `mise env` is what wins over
+the profile, per session, through the env file.
 
-**On the pinned Gradle checksum.** `GRADLE_SHA256` in the hook is
-checked against Gradle's published SHA-256, and the install aborts on
-a mismatch rather than proceeding with unknown bytes.
+The hook is the only place the session's `JAVA_HOME` is set, on
+purpose. It once sat in `.claude/settings.json`'s `env` block as well,
+as a distro path, and a settings `env` block cannot be conditional: on
+a developer machine, where the JDK comes from mise, sdkman or the
+distro, it overrode a correct `JAVA_HOME` with a directory that does
+not exist, and `gradle wrapper` failed in every JVM suite of a local
+Claude session. Do not put a machine-specific path back there.
 
-Adding an entry takes one manual step, because the sandbox cannot do
-it alone: the published checksums
-(`https://services.gradle.org/distributions/gradle-<version>-bin.zip.sha256`,
-or <https://gradle.org/release-checksums/>) are proxy-blocked from a
-web session — 403 on the CONNECT tunnel — while the distribution URL
-beside them is not, since it redirects to an allowlisted host. So the
-published value has to be fetched from an unrestricted network and
-compared there. A hash computed from our own download proves only that
-a later download matches the earlier one; it says nothing about
-whether either is the release Gradle shipped, and the two claims
-should not be confused.
-
-What the sandbox _can_ do is the other half of that comparison, and it
-is worth doing: once the published value arrives from an unrestricted
-network, download the distribution here and check that the two agree.
-Two independent paths reaching the same digest is a real cross-check —
-what it rules out is one of them having been tampered with in transit.
-It is not a substitute for the published value; it is a confirmation
-of it, and it fails loudly when the paths disagree. The 9.7.0 entry
-was added exactly this way.
-
-Bumping `GRADLE_VERSION` without adding a matching entry warns loudly
-and continues, rather than bricking every session over a routine
-version bump.
+Distribution integrity is mise's: the core `java` tool checks the
+JDK against the vendor's published checksum, and the `aqua` registry
+entries Gradle and Maven resolve through carry theirs. That retired
+the hand-maintained `GRADLE_SHA256` table the hook used to carry.
 
 ## The dev loop
 
@@ -558,7 +561,11 @@ stream-json --setting-sources project`, `codex exec --json
   presses Enter when it finishes. The rig then runs the oracle, wall
   clock and git diff as usual, and harvests the session transcript
   where the agent leaves one (Claude Code:
-  `~/.claude/projects/<cwd-slug>/<session>.jsonl`).
+  `~/.claude/projects/<cwd-slug>/<session>.jsonl`). The model is the
+  operator's to pick in that session, and the rig cannot verify it, so
+  an attended benchmark records `driver.model` as `null` — the
+  driver's manifest says so (`model: false`), the same way it declares
+  a metric it cannot measure.
 
 ### Billing posture
 
@@ -571,7 +578,20 @@ is a client-side estimate — notional on Pro/Max — so it is recorded
 as an estimate and **budgets are wall-clock + max-turns + case
 count, never USD**. Subscription runs draw from the operator's
 normal session allowance: campaigns stay small (5 representative
-stacks, a handful of probes, N=3) and run locally.
+stacks, a handful of probes, N=2 — ten sessions, and
+`tests/evals/probes.test.ts` holds the baseline at that ceiling) and
+run locally.
+
+The model is pinned too, never inherited. `claude -p` would otherwise
+run whatever the operator last picked interactively, so two baselines
+captured on two machines could measure two models. The `claude-code`
+driver passes `--model sonnet` unless `--model <id>` says otherwise
+(`opus` is the other reasonable choice; a campaign is a claim about
+the harness, not the model, so keep it at one of those). The `codex`
+driver maps `--model` onto `-m` and otherwise leaves Codex's own
+default, declaring none. The benchmark records the effective model
+under `driver.model` — `null` when neither the flag nor the driver
+named one.
 
 ### Running
 
@@ -579,6 +599,7 @@ stacks, a handful of probes, N=3) and run locally.
 node evals/run.mjs --list                    # campaigns and cases, no gate
 node evals/run.mjs --check [--driver codex]  # agent installed + authenticated?
 KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline
+KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --model opus
 ```
 
 Live runs are gated on `KEEL_RUN_EVALS=1` (plus per-driver auth:
@@ -586,7 +607,43 @@ Live runs are gated on `KEEL_RUN_EVALS=1` (plus per-driver auth:
 first — workspaces are scaffolded through the packaged CLI, the very
 commands the verify suites dispatch in process, so the two trees
 cannot drift. Results land in
-`evals/results/<campaign>-<driver>-<mode>.json`.
+`evals/results/<campaign>-<driver>-<mode>.json` — with `-<model>`
+appended when `--model` names one, since the model is part of a
+benchmark's identity and an Opus run must not overwrite the Sonnet
+one — **written after every run**, not once at the end: each run is a paid agent session,
+and a crash in the ninth must not discard the eight. Each write is a
+sibling temp file renamed over the benchmark, so a kill mid-write
+leaves the previous checkpoint rather than a truncated one. Every
+prepared workspace is kept under the OS temp directory
+(`keel-eval-<case>-*`), and the benchmark names it per run: it is
+what you open to see what the agent did with the tree, and the diff
+and transcript are read from it after the fact. Nothing removes them
+but the OS's own temp cleanup — a campaign is ten of them, each with
+its installs, so clear `keel-eval-*` by hand when you are done with a
+benchmark. A scaffold that fails removes its own directory before the
+retry. The file
+carries `complete: false` until the campaign finishes.
+
+A scaffold that fails is retried once — it runs real package managers
+and real wrappers, and the first baseline attempt lost eight sessions
+to an npm internal error that did not recur — and a second failure is
+recorded as an `unprepared` run: no agent ran, so nothing was
+measured, and the run is kept out of every rate rather than counted
+as a failure. The campaign goes on; the summary carries the count.
+Once the cause is fixed, `--only <case-id>` (repeatable) re-runs just
+those cases and folds them into the existing benchmark — same
+campaign, and the same driver down to its version and model, or it
+refuses before a workspace is built or a session is spent (an agent
+upgraded between sittings is a different measurement) — and the file
+records the merge under `merged`, naming the cases and the keel
+commit they were re-run at, so a baseline finished in two sittings
+says so. While a re-run case is still in progress (its entry says
+`complete: false`) its earlier entry stays in the file: a kill
+mid-case loses the partial re-run, never the measurement it was
+replacing. And the merged file is `complete` only once every case of
+the campaign has a settled entry from one sitting or the other — a
+one-case `--only` over an interrupted campaign does not call it
+finished.
 
 **The baseline is the owner's local step.** The `baseline` campaign
 captures the current emitted harness _before_ the redesign lands:
@@ -595,6 +652,21 @@ and commit the resulting `evals/results/baseline-*.json`. It draws
 on the owner's Claude subscription, so no CI job and no cloud
 session can capture it — and it must exist before #134 merges, or
 the "before" is unrepeatable.
+
+The benchmark records the keel commit it ran at and whether the
+working tree was dirty (`keel.dirty`), because the commit alone would
+name a tree the run did not measure. The committed baseline
+(`baseline-claude-code-scripted.json`) says `73bf83b`, dirty: both
+sittings ran on the working tree that became the rig commits landed
+just after it (the npm override for the TypeScript scaffold, the mise
+toolchain, the runner's retry and merge), none of which touches the
+emitted harness. What the attribution rests on is the audit the
+benchmark carries: the `contextAudit` of every baseline case — the
+`AGENTS.md`, `CLAUDE.md` and skill bytes the agent was handed — is
+byte-for-byte what a clean checkout of `73bf83b` grows for that case
+(`tests/support/evals-fixture.ts` over the same scaffold blocks), so
+the harness measured is that commit's. The "after"
+(`after-wave2-claude-code-scripted.json`) ran clean.
 
 **`verify` never makes an agent call.** The rig's unit tests
 (`tests/evals/`) drive the whole runner through the fake driver and

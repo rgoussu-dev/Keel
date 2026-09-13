@@ -21,9 +21,10 @@ prompt: |
   You are in a keel-scaffolded project. Answer three orientation
   questions about THIS repository. Do not modify any project file.
 
-  1. wiring — which single file wires the `shipping` bounded context's
-     handler into the application's composition root (the file that
-     registers it with the application entrypoint's mediator)?
+  1. wiring — which single file is the composition root's wiring for
+     the `shipping` bounded context: the one that builds that context's
+     service and its gateway for the application entrypoint (as opposed
+     to the file that builds the mediator itself)?
   2. gateway — which single file implements the gateway through which
      the `shipping` context reaches the `ordering` context's service
      seam?

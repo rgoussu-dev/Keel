@@ -13,15 +13,26 @@ import { randomBytes } from 'node:crypto';
 import fs from 'fs-extra';
 import type { Tree, TreeChange, TreeFactory } from '../../domain/contract/ports/tree.js';
 
+/** What disk held when a path was first touched — the base every write is measured against. */
+interface OnDisk {
+  readonly content: Buffer;
+  /** Permission bits, so an explicit mode that matches disk is not a change either. */
+  readonly mode: number;
+}
+
 type Entry =
   | {
       kind: 'present';
       content: Buffer;
       mode: number | null;
+      /** Content differs from disk, or a mode was set that disk does not carry. */
       dirty: boolean;
+      /** A mode was staged that differs from disk; survives later content-only writes. */
+      modeDirty: boolean;
       wasOnDisk: boolean;
+      onDisk: OnDisk | null;
     }
-  | { kind: 'deleted'; wasOnDisk: boolean };
+  | { kind: 'deleted'; wasOnDisk: boolean; onDisk: OnDisk | null };
 
 /** The default Tree adapter, staging over the real filesystem. */
 export class FsTree implements Tree {
@@ -31,47 +42,64 @@ export class FsTree implements Tree {
 
   read(filePath: string): Buffer | null {
     const key = this.key(filePath);
-    const entry = this.entries.get(key);
-    if (entry) return entry.kind === 'present' ? entry.content : null;
-    const abs = path.join(this.root, key);
-    if (!fs.pathExistsSync(abs)) {
-      this.entries.set(key, { kind: 'deleted', wasOnDisk: false });
-      return null;
-    }
-    const content = fs.readFileSync(abs);
-    this.entries.set(key, {
-      kind: 'present',
-      content,
-      mode: null,
-      dirty: false,
-      wasOnDisk: true,
-    });
-    return content;
+    const entry = this.entries.get(key) ?? this.touch(key);
+    this.entries.set(key, entry);
+    return entry.kind === 'present' ? entry.content : null;
   }
 
+  /**
+   * Stages content. A write that lands the file back on what disk
+   * holds is not a change: two adapters may write a shared file in
+   * turn — one pristine, the next filling its own region — and what
+   * `changes()` reports is the net against disk, not the number of
+   * writes. A mode is tracked on its own terms: an explicit mode is
+   * measured against disk each time it is given — so one that differs
+   * stays staged through later content-only writes, and one that puts
+   * the file back on its disk bits clears it — and one disk already
+   * carries is no change either.
+   */
   write(filePath: string, content: Buffer | string, options?: { mode?: number }): void {
     const key = this.key(filePath);
-    const prior = this.entries.get(key);
-    const wasOnDisk =
-      prior?.kind === 'present' ? prior.wasOnDisk : fs.pathExistsSync(path.join(this.root, key));
+    const prior = this.entries.get(key) ?? this.touch(key);
     const explicitMode = options?.mode;
-    const priorMode = prior?.kind === 'present' ? prior.mode : null;
+    const priorMode = prior.kind === 'present' ? prior.mode : null;
+    const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
+    const modeDirty =
+      explicitMode !== undefined
+        ? explicitMode !== prior.onDisk?.mode
+        : prior.kind === 'present' && prior.modeDirty;
+    const contentDirty = prior.onDisk === null || !prior.onDisk.content.equals(next);
     this.entries.set(key, {
       kind: 'present',
-      content: Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8'),
+      content: next,
       mode: explicitMode ?? priorMode ?? null,
-      dirty: true,
-      wasOnDisk,
+      dirty: modeDirty || contentDirty,
+      modeDirty,
+      wasOnDisk: prior.wasOnDisk,
+      onDisk: prior.onDisk,
     });
   }
 
   delete(filePath: string): void {
     const key = this.key(filePath);
-    const wasOnDisk =
-      this.entries.get(key)?.kind === 'present'
-        ? (this.entries.get(key) as { wasOnDisk: boolean }).wasOnDisk
-        : fs.pathExistsSync(path.join(this.root, key));
-    this.entries.set(key, { kind: 'deleted', wasOnDisk });
+    const prior = this.entries.get(key) ?? this.touch(key);
+    this.entries.set(key, { kind: 'deleted', wasOnDisk: prior.wasOnDisk, onDisk: prior.onDisk });
+  }
+
+  /** The entry for a path not yet touched: what disk holds, untouched. */
+  private touch(key: string): Entry {
+    const abs = path.join(this.root, key);
+    if (!fs.pathExistsSync(abs)) return { kind: 'deleted', wasOnDisk: false, onDisk: null };
+    const onDisk = { content: fs.readFileSync(abs), mode: fs.statSync(abs).mode & 0o777 };
+    return {
+      kind: 'present',
+      content: onDisk.content,
+      mode: null,
+      dirty: false,
+      modeDirty: false,
+      wasOnDisk: true,
+      onDisk,
+    };
   }
 
   exists(filePath: string): boolean {

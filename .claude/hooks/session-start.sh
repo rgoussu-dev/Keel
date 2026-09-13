@@ -1,28 +1,25 @@
 #!/bin/bash
 #
 # Brings a Claude Code on the web session's toolchain up to what this
-# repo's e2e suites actually need, so the first JVM suite of a session
+# repo's suites actually need, so the first JVM suite of a session
 # does not fail on the box rather than on the code.
 #
-# Two things are wrong out of the box:
+# The image's own toolchain does not match CI — it ships a Gradle that
+# cannot start on JDK 25, and its shell profile exports a JDK 21
+# JAVA_HOME — so rather than patching each tool by hand, the session
+# is provisioned the way CI is: mise, from the repo's `mise.toml`.
+# One file, three consumers (workstation, CI shard, this hook), none
+# of which can drift from the others.
 #
-#   - The image ships Gradle 8.14.3, and Gradle 8.x **cannot start** on
-#     JDK 25 — it fails with the version string as the whole error
-#     message. The emitted projects target release 25 and `JAVA_HOME`
-#     is pinned to 25 in `.claude/settings.json`, so the host Gradle
-#     has to move rather than the JDK. That is the same coupling
-#     `.github/workflows/ci.yml` documents, and this hook is what keeps
-#     the box matching CI instead of drifting from it.
-#   - `node_modules` is absent, so `pnpm lint` fails with a missing
-#     `@eslint/js` before it lints anything.
-#
-# Idempotent: a warm container re-runs this in well under a second,
-# because the version check is a filesystem test and pnpm no-ops.
+# Idempotent: a warm container re-runs this in seconds, because
+# `mise install` no-ops on what is already there and pnpm does too.
 #
 set -euo pipefail
 
-# Local sessions have their own toolchains; only the remote image needs
-# fixing, and this must never reach into a developer's /opt.
+# Local sessions have their own toolchains (a developer's own mise,
+# sdkman, distro packages — whatever they chose); only the remote
+# image needs fixing, and this must never reach into a developer's
+# home.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
@@ -30,109 +27,82 @@ fi
 repo="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 cd "$repo"
 
-# JDK 25, and this is load bearing rather than tidy. The Maven e2e
-# suites skip themselves when `JAVA_HOME` is older — Maven compiles
-# with whatever JDK runs it, and the emitted projects target release
-# 25 — so a stale JAVA_HOME does not fail the Maven half of the
-# modulith grid, it silently runs none of it. A skipped suite reads
-# exactly like a passing one.
-#
-# `.claude/settings.json` sets this too, and on its own that is not
-# enough: the image's shell profile exports JAVA_HOME=21 and wins, so
-# a session lands on 21 despite the setting. `$CLAUDE_ENV_FILE` is the
-# mechanism that applies per session, so write it there as well and
-# keep the setting as a second line of defence.
-if [ -d /usr/lib/jvm/java-25-openjdk-amd64 ]; then
-  export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
-  export PATH="${JAVA_HOME}/bin:${PATH}"
-  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    echo 'export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64' >> "$CLAUDE_ENV_FILE"
-    echo 'export PATH="${JAVA_HOME}/bin:${PATH}"' >> "$CLAUDE_ENV_FILE"
-  fi
-else
-  echo "session-start: WARNING no JDK 25 at /usr/lib/jvm/java-25-openjdk-amd64;" >&2
-  echo "  every Maven e2e suite will skip itself, which looks like passing." >&2
-fi
-
 # ---------------------------------------------------------------------
-# Gradle
+# mise
 # ---------------------------------------------------------------------
 
-# The version keel tells every generated wrapper to use is the one the
-# host must run, so read it from there rather than adding a third copy
-# of the number to keep in sync (ci.yml's pin is the second, and it
-# exists to match this same constant).
-wrapper_src='src/domain/core/adapters/gradle-wrapper.ts'
-version="$(sed -n "s/^const GRADLE_VERSION = '\([^']*\)';/\1/p" "$wrapper_src" | head -1)"
-if [ -z "$version" ]; then
-  echo "session-start: could not read GRADLE_VERSION from $wrapper_src" >&2
-  exit 1
-fi
+# mise itself is pinned, and its tarball is checked against a checksum
+# this file carries, because this runs with shell privileges before
+# anything in the project is trusted: piping the project's installer
+# endpoint into a shell would execute whatever it served on the day.
+# The release tarball is fetched straight from the tagged GitHub
+# release, and the sums below are the two lines of that release's
+# SHASUMS256.txt this hook can land on. Bumping mise is a three-line
+# edit here, with the new sums copied from the new release — never
+# re-derived from the download itself. `tests/mise-toolchain.test.ts`
+# holds the shape.
+MISE_VERSION="v2026.9.6"
+MISE_SHA256_X64="afa8079a2c75a48d8d39bbb6ca5566c652bda8ae49ce8ca1f41a72e80184140f"
+MISE_SHA256_ARM64="9d5d4c3187ccc2c5a9659be427231208eba689c8adcc0203004c4c2ef75caf8d"
 
-# Distribution hashes, keyed by version, each checked against Gradle's
-# published SHA-256 before being added — see `docs/development.md` for
-# how, since the sandbox cannot fetch them itself.
-declare -A GRADLE_SHA256=(
-  [9.4.1]='2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb'
-  [9.7.0]='84fbba45c7f4c64abc77460e1c00f541e9f960e3c7ed2538f1ede19eacd873ae'
-)
-
-target="/opt/gradle-${version}"
-
-if [ ! -x "${target}/bin/gradle" ]; then
-  echo "session-start: installing Gradle ${version}"
-  zip="$(mktemp -t "gradle-${version}-XXXXXX.zip")"
-  trap 'rm -f "$zip"' EXIT
-
-  # services.gradle.org, not downloads.gradle.org: the latter is not on
-  # the proxy allowlist, while this URL redirects to a host that is.
+# mise lands in ~/.local/bin, which the image's PATH may or may not
+# carry; put it there explicitly rather than assume.
+export PATH="${HOME}/.local/bin:${PATH}"
+# Not "is there a mise" but "is it the pinned one": an older binary the
+# image or a warm container carries would otherwise provision the
+# toolchain with an unpinned resolver, and the pin above would be a
+# claim about a download that never happened.
+# The version field, wherever it sits: releases have printed both
+# `2026.9.6 linux-x64 (…)` and `mise 2026.9.6`.
+installed="$(mise --version 2>/dev/null | grep -oE '[0-9]{4}\.[0-9]+\.[0-9]+' | head -n1 || true)"
+if [ "${installed}" != "${MISE_VERSION#v}" ]; then
+  echo "session-start: installing mise ${MISE_VERSION}${installed:+ (replacing ${installed})}"
+  case "$(uname -m)" in
+    x86_64 | amd64) arch="x64"; sum="${MISE_SHA256_X64}" ;;
+    aarch64 | arm64) arch="arm64"; sum="${MISE_SHA256_ARM64}" ;;
+    *) echo "session-start: no pinned mise build for $(uname -m)" >&2; exit 1 ;;
+  esac
+  tarball="mise-${MISE_VERSION}-linux-${arch}.tar.gz"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
   curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
-    -o "$zip" \
-    "https://services.gradle.org/distributions/gradle-${version}-bin.zip"
-
-  expected="${GRADLE_SHA256[$version]:-}"
-  if [ -n "$expected" ]; then
-    actual="$(sha256sum "$zip" | cut -d' ' -f1)"
-    if [ "$actual" != "$expected" ]; then
-      echo "session-start: checksum mismatch for gradle-${version}-bin.zip" >&2
-      echo "  expected ${expected}" >&2
-      echo "  actual   ${actual}" >&2
-      exit 1
-    fi
-  else
-    # Loud rather than fatal: bumping GRADLE_VERSION should not brick
-    # every web session, but it must not install unpinned bytes
-    # quietly either.
-    echo "session-start: WARNING no pinned checksum for Gradle ${version}." >&2
-    echo "  Verify against https://gradle.org/release-checksums/ and add it" >&2
-    echo "  to GRADLE_SHA256 in $(basename "${BASH_SOURCE[0]}")." >&2
-  fi
-
-  rm -rf "$target"
-  unzip -q "$zip" -d /opt/
+    -o "${tmp}/${tarball}" \
+    "https://github.com/jdx/mise/releases/download/${MISE_VERSION}/${tarball}"
+  echo "${sum}  ${tmp}/${tarball}" | sha256sum -c --quiet - \
+    || { echo "session-start: ${tarball} does not match its pinned checksum" >&2; exit 1; }
+  tar -xzf "${tmp}/${tarball}" -C "$tmp"
+  install -D -m 0755 "${tmp}/mise/bin/mise" "${HOME}/.local/bin/mise"
 fi
+command -v mise >/dev/null || { echo "session-start: mise did not install" >&2; exit 1; }
 
-# `/opt/gradle/bin` is already on PATH in this image and `/opt/gradle`
-# is a symlink, so repointing it is the whole switch — no PATH edit,
-# and `gradle` resolves to the new version immediately.
-ln -sfn "$target" /opt/gradle
+# The repo config is what a fresh checkout trusts by default: it is
+# the toolchain, not an env file with secrets.
+mise trust --quiet "${repo}/mise.toml"
 
-# …unless a future image drops that from PATH, in which case say so and
-# put it back, rather than leaving the wrong `gradle` winning silently.
-if [ "$(command -v gradle || true)" != '/opt/gradle/bin/gradle' ]; then
-  echo "session-start: /opt/gradle/bin is not first on PATH; prepending it"
-  export PATH="/opt/gradle/bin:${PATH}"
-  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-    echo 'export PATH="/opt/gradle/bin:${PATH}"' >> "$CLAUDE_ENV_FILE"
-  fi
+# Everything in the file, not a subset: a web session may run any
+# shard, and the container is snapshotted after this hook, so a warm
+# start pays nothing for what a cold one installed.
+#
+# Two attempts, not one: mise installs the tools in parallel and a
+# cold rustup bootstrap has been seen to fail its first run and
+# succeed its second with nothing changed in between. A second miss
+# is a real error and stops the session loudly.
+echo "session-start: mise install"
+mise install --yes || { echo "session-start: retrying mise install once" >&2; mise install --yes; }
+
+# The hook's own process env dies with it. `$CLAUDE_ENV_FILE` is the
+# mechanism that applies to every later command in the session — it
+# gets what `mise env` reports: the tools' bin dirs on PATH, and
+# JAVA_HOME, which the JVM suites treat as the authority for the JDK.
+#
+# This is the one place the session's JAVA_HOME is set, on purpose. A
+# `.claude/settings.json` `env` block cannot be conditional, and a
+# distro path pinned there once overrode a developer's correct
+# JAVA_HOME with a directory that did not exist.
+if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  mise env -s bash >> "$CLAUDE_ENV_FILE"
 fi
-
-# A wrong Gradle here costs a JVM build to discover, so prove it now.
-if ! gradle --version 2>/dev/null | grep -qx "Gradle ${version}"; then
-  echo "session-start: expected Gradle ${version}, got:" >&2
-  gradle --version >&2 || true
-  exit 1
-fi
+eval "$(mise env -s bash)"
 
 # ---------------------------------------------------------------------
 # Node
@@ -144,8 +114,12 @@ fi
 # where that is enforced.
 pnpm install
 
-# `grep -o` rather than a field cut: JAVA_TOOL_OPTIONS makes the JVM
-# print a "Picked up …" line first, which shifts every column.
+# A wrong toolchain here costs a JVM build to discover, so prove it
+# now — the same three facts CI's probe step prints. `grep -o` rather
+# than a field cut: JAVA_TOOL_OPTIONS makes the JVM print a "Picked
+# up …" line first, which shifts every column.
+[ -n "${JAVA_HOME:-}" ] || { echo "session-start: mise env set no JAVA_HOME" >&2; exit 1; }
 jdk="$("${JAVA_HOME}/bin/javac" -version 2>&1 | grep -om1 'javac [0-9][^ ]*' | cut -d' ' -f2)"
+gradle_version="$(gradle --version 2>/dev/null | grep -om1 'Gradle [0-9][^ ]*' | cut -d' ' -f2)"
 mvn_version="$(mvn --version 2>/dev/null | grep -om1 'Apache Maven [0-9][^ ]*' || echo 'Maven absent')"
-echo "session-start: ready — JDK ${jdk}, Gradle ${version}, ${mvn_version}"
+echo "session-start: ready — JDK ${jdk}, Gradle ${gradle_version}, ${mvn_version}, node $(node --version), go $(go version | cut -d' ' -f3), $(cargo --version)"

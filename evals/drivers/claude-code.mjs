@@ -7,7 +7,10 @@
  * `--bare` is never passed (it would also drop the project layer the
  * harness under measurement lives in). Autonomy is
  * `--permission-mode bypassPermissions`; budgets map to `--max-turns`
- * plus the rig's own wall-clock kill.
+ * plus the rig's own wall-clock kill. The model is always pinned
+ * (`--model`, Sonnet unless the operator passes one): the CLI's own
+ * default is whatever the operator last picked, which would make two
+ * baselines captured on two machines measure two models.
  *
  * Attended: the rig prepares the workspace and prints the prompt for
  * the operator to paste into a normal interactive session (their
@@ -22,8 +25,16 @@ import path from 'node:path';
 import { agentEnv } from '../lib/env.mjs';
 import { emptyMetrics, isSearchCommand, probeBinary, spawnScripted } from './driver.mjs';
 
+/**
+ * The model a run uses when the operator names none. A campaign is
+ * a claim about the harness, not the model, so the rig fixes the
+ * model rather than inheriting the CLI's per-user default; Sonnet is
+ * the reasonable floor for a navigation probe on a subscription.
+ */
+export const DEFAULT_MODEL = 'sonnet';
+
 /** Flags for one scripted invocation; exported for the verify suite. */
-export function scriptedArgs(caseSpec) {
+export function scriptedArgs(caseSpec, { model = DEFAULT_MODEL } = {}) {
   return [
     '-p',
     caseSpec.prompt,
@@ -34,6 +45,8 @@ export function scriptedArgs(caseSpec) {
     'project',
     '--permission-mode',
     'bypassPermissions',
+    '--model',
+    model,
     ...(caseSpec.budgets.max_turns !== undefined
       ? ['--max-turns', String(caseSpec.budgets.max_turns)]
       : []),
@@ -155,6 +168,7 @@ export function harvestSessionTranscript(jsonl) {
 export const claudeCodeDriver = {
   id: 'claude-code',
   modes: ['scripted', 'attended'],
+  defaultModel: DEFAULT_MODEL,
 
   capabilities(mode) {
     return mode === 'scripted'
@@ -165,6 +179,7 @@ export const claudeCodeDriver = {
           turns: true,
           toolCalls: true,
           transcript: true,
+          model: true,
         }
       : {
           structuredOutput: false,
@@ -173,6 +188,10 @@ export const claudeCodeDriver = {
           turns: true,
           toolCalls: true,
           transcript: true,
+          // The operator opens the session; `/model` below is a request
+          // the rig cannot enforce or verify, so the benchmark records
+          // no model for attended runs.
+          model: false,
         };
   },
 
@@ -180,11 +199,11 @@ export const claudeCodeDriver = {
     return probeBinary('claude');
   },
 
-  async run({ caseSpec, workspace, mode, io }) {
+  async run({ caseSpec, workspace, mode, io, model }) {
     if (mode === 'scripted') {
       const r = await spawnScripted({
         command: 'claude',
-        args: scriptedArgs(caseSpec),
+        args: scriptedArgs(caseSpec, { model }),
         cwd: workspace,
         env: agentEnv(),
         timeoutMs: caseSpec.budgets.timeout_seconds * 1000,
@@ -204,6 +223,9 @@ export const claudeCodeDriver = {
     io.print(`Workspace: ${workspace}`);
     io.print(
       'Open a normal interactive Claude Code session IN THAT DIRECTORY and paste the prompt below.',
+    );
+    io.print(
+      `Model: ${model ?? DEFAULT_MODEL} (\`/model ${model ?? DEFAULT_MODEL}\` in the session — the rig cannot verify this; the benchmark records no model for attended runs).`,
     );
     io.print('');
     io.print(caseSpec.prompt);

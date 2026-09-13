@@ -67,21 +67,41 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
     ...(cli ? [{ label: 'Run (cli)', command: cliRun }] : []),
   ];
 
+  const kernel = modulith ? '`@<scope>/platform-kernel` (`platform/kernel/`)' : '`domain/kernel/`';
+  const stance =
+    `Registry Mediator. ${kernel} holds the \`Command\`/\`Query\`/\`Handler\`/\`Mediator\` bases; ` +
+    'handlers self-declare via `supports()` and the `RegistryMediator` is built from an array of ' +
+    'handlers in the assembly — never an injected map, no reflection. No build step: Node runs the ' +
+    'sources, so no parameter properties and no enums (`erasableSyntaxOnly`) — `readonly` fields and ' +
+    'union types instead.';
+
+  const units = [...(http ? ['`rest`'] : []), ...(cli ? ['`cli`'] : [])].join(', ');
+  const transport = [
+    ...(http ? ['`server.ts` + route files'] : []),
+    ...(cli ? ['`cli.ts`'] : []),
+  ].join(', ');
+  const layout = modulith
+    ? [
+        '`platform/kernel/` — `@<scope>/platform-kernel`: `Command`, `Query`, `Handler`, `Mediator`, `RegistryMediator`.',
+        '`modules/<ctx>/` — package `@<scope>/<ctx>`: `src/domain/contract/` — commands, results, errors, driven ports (`<Peer>Client`); `src/domain/core/internal/` — handlers; `src/index.ts` — the facade.',
+        '`modules/<ctx>/src/service.ts` — the peer seam (`./service` export), the only entry a sibling context may import; dependency-cruiser holds the rule, a violating import typechecks clean.',
+        '`modules/<ctx>/src/infra/<peer>-gateway/index.ts` — implements `<ctx>`’s `<Peer>Client` over `<peer>`’s `./service`; other driven adapters sit beside it (`src/infra/clock/`).',
+        `\`application/<unit>/src/main.ts\` — the assembly (${units}); \`src/<ctx>.ts\` wires one context’s service and gateways into it; transport beside it (${transport}).`,
+        '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+      ]
+    : [
+        '`domain/kernel/`, `domain/contract/`, `domain/core/` — workspace packages `@<scope>/domain-*`: contract holds commands, errors and ports; core holds `src/internal/` handlers and `registry-mediator.ts`.',
+        `\`application/<unit>/src/main.ts\` — the composition root (${units}), transport beside it (${transport}).`,
+        '`infrastructure/<port>/src/` — driven adapters, the fake beside the real one (`fake-clock.ts`, `system-clock.ts`, `pg-greeting-log.ts`).',
+        '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+      ];
+
   const runbook = renderRunbook({
-    title: `TypeScript ${http && cli ? 'CLI + HTTP' : http ? 'HTTP on node:http' : 'CLI on Node'} (${pm})`,
+    title: `TypeScript ${http && cli ? 'CLI + HTTP' : http ? 'HTTP on node:http' : 'CLI on Node'} (${pm}, ${modulith ? 'modulith' : 'basic'})`,
     commands,
-    notes: [
-      'No build step: Node runs the sources directly. That also means no parameter ' +
-        'properties and no enums (`erasableSyntaxOnly`) — write `readonly` fields and ' +
-        'union types instead.',
-      modulith
-        ? 'Modulith layout: one workspace package per bounded context (`@<scope>/<context>`), ' +
-          'its `exports` map publishing only the facade and `./service` seam. The peer rule ' +
-          '(`peers-meet-at-the-service-seam`) is held by dependency-cruiser — a violating ' +
-          'import typechecks clean, so run the lint.'
-        : `Flat layout: workspace packages \`domain/{kernel,contract,core}\` and ` +
-          `\`application/${http ? 'rest' : 'cli'}\` — the \`exports\` maps are the module walls.`,
-    ],
+    stance,
+    layout,
+    notes: [],
   });
 
   const steps: string[] = [];

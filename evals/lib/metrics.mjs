@@ -23,11 +23,21 @@ function round(n) {
   return Math.round(n * 1000) / 1000;
 }
 
-/** The per-case aggregate block of a benchmark. */
-export function aggregateCase(runs) {
+/**
+ * The per-case aggregate block of a benchmark, over the runs an agent
+ * actually got: a run whose workspace could not be prepared is no
+ * measurement of the agent, so it is counted under `unprepared` and
+ * kept out of every rate — and a case with no prepared run at all
+ * reports null rates, never zero.
+ */
+export function aggregateCase(allRuns) {
+  const runs = allRuns.filter((r) => r.prepared !== false);
+  const rate = (predicate) =>
+    runs.length === 0 ? null : round(runs.filter(predicate).length / runs.length);
   return {
-    successRate: round(runs.filter((r) => r.oracle.pass).length / runs.length),
-    completedRate: round(runs.filter((r) => r.completed).length / runs.length),
+    unprepared: allRuns.length - runs.length,
+    successRate: rate((r) => r.oracle.pass),
+    completedRate: rate((r) => r.completed),
     wallMs: aggregate(runs.map((r) => r.wallMs)),
     filesChanged: aggregate(runs.map((r) => r.diff.filesChanged)),
     insertions: aggregate(runs.map((r) => r.diff.insertions)),

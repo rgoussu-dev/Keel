@@ -59,7 +59,7 @@ async function install(
 const read = (tree: FsTree, p: string): string => tree.read(p)?.toString() ?? '';
 
 describe('claude-kit on the JVM family', () => {
-  it('appends the Gradle runbook under sentinels and wires the hook (Quarkus REST, basic)', async () => {
+  it('fills the stack section under the preamble and wires the hook (Quarkus REST, basic)', async () => {
     const tree = await install(
       [
         'lang.java',
@@ -74,9 +74,22 @@ describe('claude-kit on the JVM family', () => {
 
     const agents = read(tree, 'AGENTS.md');
     expect(agents).toContain('<!-- keel:stack-runbook:begin -->');
-    expect(agents).toContain('## Stack runbook — Quarkus REST on Gradle');
+    expect(agents).toContain('## Stack — Quarkus REST on Gradle (basic)');
     expect(agents).toContain('`./gradlew :application:rest:executable:quarkusDev`');
     expect(agents).toContain('<!-- keel:stack-runbook:end -->');
+    // The section lands in the slot under the preamble, not appended
+    // after the conventions: an agent orients before it reads rules.
+    expect(agents.indexOf('<!-- keel:stack-runbook:begin -->')).toBeLessThan(
+      agents.indexOf('## Architecture'),
+    );
+    // Only this language's stance and this layout's map ship.
+    expect(agents).toContain('**Dispatch.** Registry Mediator.');
+    expect(agents).toContain('`@DomainHandler`');
+    expect(agents).toContain(
+      '`application/rest/executable/` — resources, error mappers and `MediatorProducer`',
+    );
+    expect(agents).toContain('`infrastructure/<port>/{<impl>,fake}/`');
+    expect(agents).not.toContain('modules/<ctx>');
 
     const hook = read(tree, '.claude/hooks/pre-commit-format.sh');
     expect(hook).toContain('./gradlew build');
@@ -102,12 +115,48 @@ describe('claude-kit on the JVM family', () => {
     );
 
     const agents = read(tree, 'AGENTS.md');
-    expect(agents).toContain('## Stack runbook — Spring Boot REST on Maven');
+    expect(agents).toContain('## Stack — Spring Boot REST on Maven (modulith)');
     expect(agents).toContain('`./mvnw -am -pl application/api spring-boot:run`');
-    expect(agents).toContain('Modulith layout');
+    expect(agents).toContain('`platform/kernel/`');
+    expect(agents).toContain(
+      '`application/api/` — the REST assembly (package `application.api`): `MediatorConfig` builds the mediator, `<Ctx>Wiring` wires each context’s service and gateways into it.',
+    );
+    expect(agents).toContain('`modules/<ctx>/infra/<peer>-gateway/` — `<Peer>Gateway`');
+    expect(agents).toContain('`migrations/sql/V<n>__<name>.sql`');
+    expect(agents).not.toContain('`modules/<ctx>/user-side/cli/`');
     expect(read(tree, '.claude/hooks/pre-commit-format.sh')).toContain(
       './mvnw --batch-mode verify',
     );
+  });
+
+  it('gives a combo stack a command and a check for both entrypoints (Quarkus CLI + REST, Maven)', async () => {
+    const tree = await install(
+      [
+        'lang.java',
+        'runtime.jvm',
+        'framework.quarkus',
+        'arch.hexagonal',
+        'arch.cli',
+        'arch.server-http',
+        'pkg.maven',
+      ],
+      {
+        'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'demo', basePackage: 'x.y' },
+        'walking-skeleton/quarkus-cli-bootstrap': { projectName: 'demo', basePackage: 'x.y' },
+      },
+    );
+    const agents = read(tree, 'AGENTS.md');
+    expect(agents).toContain('## Stack — Quarkus REST + CLI on Maven (basic)');
+    expect(agents).toContain(
+      '| Run (dev) | `./mvnw -am -pl application/rest/executable quarkus:dev` |',
+    );
+    expect(agents).toContain('| Probe |');
+    expect(agents).toContain(
+      '| Run (cli) | `./mvnw -am -pl application/cli quarkus:dev -Dquarkus.args="hello --name World"` |',
+    );
+    const skill = read(tree, '.claude/skills/run/SKILL.md');
+    expect(skill).toContain('application/rest/executable quarkus:dev');
+    expect(skill).toContain('4. Run the CLI and read its output');
   });
 
   it('documents the CLI run per framework (Micronaut CLI, Gradle)', async () => {
@@ -122,9 +171,10 @@ describe('claude-kit on the JVM family', () => {
       ],
       { 'walking-skeleton/micronaut-cli-bootstrap': { projectName: 'tool', basePackage: 'x.y' } },
     );
-    expect(read(tree, 'AGENTS.md')).toContain(
-      '`./gradlew :application:cli:run --args="hello --name World"`',
-    );
+    const agents = read(tree, 'AGENTS.md');
+    expect(agents).toContain('`./gradlew :application:cli:run --args="hello --name World"`');
+    expect(agents).toContain('`application/cli/` — picocli commands, `Main` and `MediatorFactory`');
+    expect(agents).not.toContain('application/rest');
   });
 });
 
@@ -144,6 +194,27 @@ describe('claude-kit on the other families', () => {
     expect(hook).toContain('go build ./... && go test ./...');
     expect(hook).toContain('git add');
     expect(read(tree, '.claude/skills/run/SKILL.md')).toContain('go run ./cmd/http');
+    const agents = read(tree, 'AGENTS.md');
+    expect(agents).toContain('**Dispatch.** No mediator object');
+    expect(agents).toContain('`internal/app/<channel>/` — driving adapters (`resthttp`)');
+    expect(agents).not.toContain('internal/modules');
+  });
+
+  it('names one build per Go entrypoint on a combo', async () => {
+    const tree = await install(
+      ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
+      {
+        'walking-skeleton/go-bootstrap': {
+          projectName: 'shipper',
+          modulePath: 'example.com/shipper',
+        },
+      },
+    );
+    const agents = read(tree, 'AGENTS.md');
+    expect(agents).toContain('## Stack — Go CLI + HTTP (basic)');
+    expect(agents).toContain(
+      'Binaries build to `bin/`: `go build -o bin/shipper-http ./cmd/http` and `go build -o bin/shipper ./cmd/cli`.',
+    );
   });
 
   it('names the Rust bins and carries the seam rule under the modulith', async () => {
@@ -162,6 +233,10 @@ describe('claude-kit on the other families', () => {
     const agents = read(tree, 'AGENTS.md');
     expect(agents).toContain('only its own DTOs');
     expect(agents).toContain('exported_private_dependencies');
+    expect(agents).toContain('**Dispatch.** Per-use-case driving-port traits');
+    expect(agents).toContain(
+      '`application/<unit>/` — the bin crates (`http`; bins `ledger-http`): `src/main.rs` assembles, `src/<ctx>.rs` wires one context’s service and gateways into it.',
+    );
     expect(read(tree, '.claude/hooks/pre-commit-format.sh')).toContain('cargo fmt');
   });
 
@@ -190,8 +265,15 @@ describe('claude-kit on the other families', () => {
       'npm run lint --if-present && npm run typecheck && npm test',
     );
     const agents = read(wc, 'AGENTS.md');
-    expect(agents).toContain('web-components SPA on Vite (npm)');
-    expect(agents).toContain('import map');
+    expect(agents).toContain('web-components SPA on Vite (npm, basic)');
+    // The basic template bundles the design system; only the modulith
+    // one externalises it behind an import map.
+    expect(agents).toContain('bundled into the app');
+    expect(agents).not.toContain('import map');
+    expect(agents).toContain(
+      '**Dispatch.** No mediator: per-use-case driving ports delivered by typed context keys',
+    );
+    expect(agents).toContain('`domain/domain-api/src/`');
   });
 
   it('swaps the runbook to the CLI shape on ts-cli', async () => {
@@ -200,8 +282,12 @@ describe('claude-kit on the other families', () => {
       { 'walking-skeleton/ts-cli-bootstrap': { projectName: 'tool' } },
     );
     const agents = read(ts, 'AGENTS.md');
-    expect(agents).toContain('TypeScript CLI on Node (npm)');
+    expect(agents).toContain('TypeScript CLI on Node (npm, basic)');
     expect(agents).toContain('node application/cli/src/main.ts --name World');
+    expect(agents).toContain(
+      '`application/<unit>/src/main.ts` — the composition root (`cli`), transport beside it (`cli.ts`).',
+    );
+    expect(agents).toContain('erasableSyntaxOnly');
     // The HTTP twin's commands must not leak in: the CLI scaffold has
     // no dev script and no server to probe.
     expect(agents).not.toContain('npm run dev');

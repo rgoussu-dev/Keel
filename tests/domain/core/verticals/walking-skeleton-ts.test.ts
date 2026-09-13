@@ -122,6 +122,24 @@ describe('walking-skeleton vertical (TypeScript node:http)', () => {
     expect(core).toContain('"@acme/domain-contract": "*"');
   });
 
+  it('pins vitest through a root override on npm, on the range the packages declare', async () => {
+    // npm 10's peer resolution (the npm Node 22 bundles) walks from
+    // vitest's optional `@vitest/*` peers to whatever vitest is
+    // `latest`, and crashes on the mismatch once a newer major exists
+    // (`Cannot read properties of null (reading 'edgesOut')`). A root
+    // override keeps every vitest edge on the emitted range; pnpm
+    // resolves the same tree without it.
+    const { tree, cwd } = await installWith(baseTags('arch.server-http'));
+    cwds.push(cwd);
+    const root = JSON.parse(tree.read('package.json')?.toString() ?? '{}') as {
+      overrides?: Record<string, string>;
+    };
+    const core = JSON.parse(tree.read('domain/core/package.json')?.toString() ?? '{}') as {
+      devDependencies: Record<string, string>;
+    };
+    expect(root.overrides).toEqual({ vitest: core.devDependencies['vitest'] });
+  });
+
   it('patches the contract index to re-export the Clock port', async () => {
     const { tree, cwd } = await installWith(baseTags('arch.server-http'));
     cwds.push(cwd);
@@ -160,7 +178,7 @@ describe('walking-skeleton vertical (TypeScript node:http)', () => {
     const { tree, cwd } = await installWith(baseTags('arch.server-http'));
     cwds.push(cwd);
     const agentsMd = tree.read('AGENTS.md')?.toString() ?? '';
-    expect(agentsMd).toContain('Universal engineering conventions (keel)');
+    expect(agentsMd).toContain('Engineering conventions (keel)');
     expect(tree.read('CLAUDE.md')?.toString()).toBe('@AGENTS.md\n');
   });
 
@@ -203,6 +221,7 @@ describe('walking-skeleton vertical (TypeScript node:http, pnpm)', () => {
     const root = tree.read('package.json')?.toString() ?? '';
     expect(root).toContain('"packageManager": "pnpm@');
     expect(root).not.toContain('"workspaces"');
+    expect(root).not.toContain('"overrides"');
     expect(root).toContain('pnpm -r --if-present run test');
 
     const core = tree.read('domain/core/package.json')?.toString() ?? '';

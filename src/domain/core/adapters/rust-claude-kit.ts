@@ -51,27 +51,40 @@ function rustFamily(ctx: Ctx): ClaudeKitFamily {
     ...(cli ? [{ label: 'Run (cli)', command: cliRun }] : []),
   ];
 
-  const notes = [
-    modulith
-      ? 'Modulith layout: one workspace, four crates per context under `modules/<context>/`. ' +
-        'Port traits return the kernel’s `BoxFuture` — never a bare `async fn` in a trait, ' +
-        'which is not dyn-compatible.'
-      : 'Flat layout: a single crate — `src/domain.rs` is the contract face over a private core.',
-    ...(modulith
-      ? [
-          'The peer seam (`<context>-user-side-service`) publishes **only its own DTOs**. Rust ' +
-            'does not enforce this (inference lets a domain type flow through the seam), so it ' +
-            'holds by review: never add a domain type to that crate’s public signatures. When ' +
-            '`public-dependency` stabilises, add `public = false` on the seam crate’s ' +
-            '`domain-contract` dependency and `#![deny(exported_private_dependencies)]`.',
-        ]
-      : []),
-  ];
+  const stance =
+    'Per-use-case driving-port traits; where one seam is justified, commands are an enum ' +
+    'dispatched by one exhaustive `match` — the compiler is the registry, so no runtime registry ' +
+    'of trait objects probed via `supports()`. Port traits return the kernel’s `BoxFuture`, never a ' +
+    'bare `async fn` in a trait (not dyn-compatible).';
+
+  const units = [...(http ? ['`http`'] : []), ...(cli ? ['`cli`'] : [])].join(', ');
+  const bins = [
+    ...(http ? [`\`${projectName}-http\``] : []),
+    ...(cli ? [`\`${projectName}\``] : []),
+  ].join(', ');
+  const layout = modulith
+    ? [
+        '`platform/kernel/` — crate `platform-kernel`: `BoxFuture`, the `Clock` port with its fake and system adapters.',
+        '`modules/<ctx>/domain/contract/` — crate `<ctx>-domain-contract`: commands, results, errors, driven port traits (`<Peer>Client`); `modules/<ctx>/domain/core/` — the handlers.',
+        '`modules/<ctx>/user-side/service/` — crate `<ctx>-user-side-service`, the peer seam: the only crate a sibling context depends on.',
+        '`modules/<ctx>/infra/<peer>-gateway/src/lib.rs` — implements `<ctx>`’s `<Peer>Client` over `<peer>`’s seam crate; other driven adapters sit beside it.',
+        `\`application/<unit>/\` — the bin crates (${units}; bins ${bins}): \`src/main.rs\` assembles, \`src/<ctx>.rs\` wires one context’s service and gateways into it.`,
+        '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+        'The seam publishes **only its own DTOs**. Rust does not enforce this (inference lets a domain type flow through), so it holds by review: never add a domain type to a seam crate’s public signatures. When `public-dependency` stabilises, add `public = false` on the seam crate’s `domain-contract` dependency and `#![deny(exported_private_dependencies)]`.',
+      ]
+    : [
+        '`src/domain.rs` + `src/domain/` — the contract face: commands, ports (`clock`, …) and the use cases; the core stays private to it.',
+        '`src/infra.rs` + `src/infra/` — driven adapters, the fake beside the real one (`clock_fake`, `clock_sys`, `postgres`).',
+        `\`src/bin/<unit>/main.rs\` — the assembly per deployment unit (${units}; bins ${bins}), transport handlers beside it; \`tests/\` — port-level tests.`,
+        '`migrations/sql/V<n>__<name>.sql` — schema migrations, once `keel add persistence` installs them.',
+      ];
 
   const runbook = renderRunbook({
-    title: `Rust ${http && cli ? 'CLI + HTTP' : http ? 'HTTP' : 'CLI'}`,
+    title: `Rust ${http && cli ? 'CLI + HTTP' : http ? 'HTTP' : 'CLI'} (${modulith ? 'modulith' : 'basic'})`,
     commands,
-    notes,
+    stance,
+    layout,
+    notes: [],
   });
 
   const steps: string[] = [];

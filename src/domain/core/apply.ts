@@ -64,10 +64,14 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
  * `reapply` is the day-2 contract for re-rendering an installed
  * vertical: whole-file writes **overwrite** their target (skipped when
  * the content is byte-identical, so the staged changes are an honest
- * diff), while a patch against an existing file must be a no-op —
- * a patch whose transform would change an already-patched file is
- * indistinguishable from a double application and conflicts instead
- * of writing.
+ * diff), while a patch against an existing file may change it only
+ * when its transform is its own fixed point — applying it again to
+ * the result changes nothing — which is what a patch that owns a
+ * region (a sentinel-delimited section, a guarded insert) looks
+ * like: re-rendering it is the same operation as the pristine
+ * rewrite. A transform that would keep changing its own result is
+ * an append about to append again — indistinguishable from a double
+ * application — and conflicts instead of writing.
  */
 export type ApplyMode = 'install' | 'reapply';
 
@@ -236,15 +240,26 @@ export function applyContribution(
     const base = current === null ? (p.seed as string) : current.toString('utf8');
     const next = p.apply(base);
     if (mode === 'reapply' && current !== null) {
-      if (next === base) continue;
-      throw new ContributionConflictError(
-        `adapter '${adapter.id}': reapplying its patch would change '${p.target}' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand`,
-        adapter.id,
-        p.target,
-        'reapply-divergence',
-      );
+      // Unchanged content still goes through the tree when the patch
+      // declares a mode: a script that lost its executable bit gets
+      // it back, and the tree stages nothing when disk already has it.
+      if (next === base && p.mode === undefined) continue;
+      // A transform at its own fixed point re-rendered a region it
+      // owns — the walking skeleton's stack section of AGENTS.md, a
+      // guarded insert someone removed by hand — and the diff
+      // reports it, as a whole-file rewrite would. One that is not
+      // would compound on the next run, and that is the double
+      // application this refuses.
+      if (next !== base && p.apply(next) !== next) {
+        throw new ContributionConflictError(
+          `adapter '${adapter.id}': reapplying its patch would change '${p.target}' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand`,
+          adapter.id,
+          p.target,
+          'reapply-divergence',
+        );
+      }
     }
-    tree.write(p.target, next);
+    tree.write(p.target, next, p.mode !== undefined ? { mode: p.mode } : undefined);
   }
   const staged: StagedSkill[] = [];
   for (const raw of contribution.skills ?? []) {
@@ -306,7 +321,9 @@ function stageSkill(
  * The whole-file write contract, shared by `files` and staged skills:
  * an existing path is a hard conflict on install, and on reapply an
  * overwrite back to pristine — skipped when byte-identical, so the
- * staged changes stay an honest diff.
+ * staged changes stay an honest diff, unless the contribution
+ * declares a mode: then the write goes through so a lost executable
+ * bit comes back, and the tree stages nothing when disk has it.
  */
 function writeWholeFile(
   adapter: Adapter,
@@ -327,7 +344,7 @@ function writeWholeFile(
     }
     const current = tree.read(filePath);
     const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
-    if (current !== null && current.equals(next)) return;
+    if (current !== null && current.equals(next) && fileMode === undefined) return;
   }
   tree.write(filePath, content, fileMode !== undefined ? { mode: fileMode } : undefined);
 }

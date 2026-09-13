@@ -12,6 +12,102 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ## [Unreleased]
 
+### Changed
+
+- **The emitted `AGENTS.md` is a terse root** (wave 2 of the
+  agent-harness redesign, #134): ≤ 120 lines including keel's
+  regions, down from ~290. The universal body keeps the dependency
+  rule, the dispatch-seam opening rule, the error→transport line,
+  tests, workflow, comments and a **working-agreements** block in
+  the vocabulary of the augmented-coding-patterns catalog (Lada
+  Kesseler et al., credited in the file); mechanical rules stay in
+  hooks. Gone: the four dispatch stances of languages the project
+  does not use, the six directory bullets, the modulith essay,
+  "walking skeleton first", the principles list, `/docs-check`
+  (which never existed), decision dates and the CLI plug. The root
+  ships empty `keel:map` and `keel:skills-index` slots for the
+  index issues to fill.
+- **The family stack section carries the layout map.** The
+  sentinel region the family kits own (`keel:stack-runbook`) now
+  sits right under the preamble and holds, beside the command
+  table, **only this project's** dispatch stance and a layout map —
+  the path grammar of the shape that was scaffolded (family ×
+  layout × entrypoints), naming where a context's wiring, its peer
+  gateway, its seam and the migrations live. Measured with the
+  harness evals' navigation probes, that is what turns "grep for
+  the wiring file" into "read the map": against the committed
+  baseline (same five stacks, same ten Sonnet sessions,
+  `evals/results/after-wave2-claude-code-scripted.json`), the
+  context every emitted harness asks an agent to carry fell 55 %
+  (~3.7k → ~1.6k tokens), turns 20 % and embedded searches 43 % on
+  average, with the JVM probes down 31–43 % in turns and 26–32 % in
+  wall clock; the Go, Rust and TypeScript probes moved less. A guard test
+  (`tests/domain/core/verticals/harness-budget.test.ts`) holds every
+  non-composite stack on every layout under the line and byte budget
+  and refuses a stance leaking across families.
+
+### Added
+
+- **Cross-tool loading shims** beside `CLAUDE.md`: `.gemini/settings.json`
+  (Gemini CLI reads `AGENTS.md` through `context.fileName`) and
+  `.aider.conf.yml` (`read: [AGENTS.md]`). Zero-maintenance: they carry
+  no rules of their own.
+
+### Fixed
+
+- **`keel add walking-skeleton --reapply` no longer refuses its own
+  stack section, and no longer resets what it does not own.**
+  Re-rendering the vertical rewrote `AGENTS.md` pristine and then met
+  the family kit's patch filling the sentinel region back in, which
+  the reapply guard read as a divergence. A patch that owns a region
+  — its transform is its own fixed point — now re-renders it on
+  reapply and reports the diff; one that would compound still
+  refuses. `AGENTS.md` itself is now the project's document, as the
+  spec says: keel seeds it and maintains its sentinel regions, so a
+  reapply keeps the notes kept outside them (and a project that
+  already has an `AGENTS.md` keeps it and gains the stack section).
+  The pre-commit hook likewise comes back re-rendered around the
+  format step `code-style` wired in, rather than without it, and
+  `.claude/settings.json` keeps the project's own permissions, env
+  and hooks beside keel's entry. A
+  shared file two adapters write in turn is reported as changed only
+  when it ends up different from disk, and a staged executable bit
+  survives a later content-only write.
+- **The Quarkus CLI run command works.** The stack section, the run
+  skill and the README named a Gradle `run` task the Quarkus CLI
+  module does not have (no `application` plugin) and a Maven
+  `quarkus:dev` with no arguments; both now pass the sample command
+  through dev mode's own channel (`--quarkus-args` / `-Dquarkus.args`),
+  and the README's "once built" line runs the packaged jar.
+- **Harness evals:** the benchmark checkpoint is written atomically
+  (a temp file renamed over the benchmark, so a kill mid-write keeps
+  the previous checkpoint); `--only` refuses to fold a run from a
+  different agent version into an existing benchmark — before the
+  first session is spent — reads a benchmark written before
+  `unprepared` was counted as having none, prints the summary of the
+  merged file it wrote, keeps a case's last complete measurement in
+  the file until its re-run has finished, and calls a merged
+  benchmark complete only when every case of the campaign is; a
+  scaffold that fails
+  removes its half-built workspace before the retry. An explicit
+  `--model` gets its own results file, and an attended run records
+  no model, since the rig cannot verify the one the operator picked.
+- **The JVM combo stacks' stack section covers both entrypoints.**
+  A `*-cli-rest` scaffold documented the REST command and probe
+  alone; the section, its title and the run skill now carry the CLI
+  command too.
+- **`npm install` no longer dies inside npm on every npm-based
+  TypeScript stack.** npm 10 — the npm Node 22 bundles — resolves
+  vitest's optional `@vitest/*` peers by walking to whatever vitest is
+  `latest`, and once vitest 5 shipped that walk crashed with `Cannot
+read properties of null (reading 'edgesOut')` before a single package
+  was installed, on `ts-cli`, `ts-http` and `web-components` alike
+  (pnpm was unaffected). The emitted root `package.json` now carries an
+  npm `overrides` entry pinning vitest to the range the packages
+  already declare; the pnpm root carries none. Found by the harness
+  evals' baseline campaign, whose TypeScript scaffold was the first
+  thing to run against the new `latest`.
+
 ### Added
 
 - **Harness evals rig** (`evals/`, wave 1 of the agent-harness
@@ -27,9 +123,16 @@ use to keep a long-lived changelog scannable — and the root keeps
   representative stacks, a static context-budget audit, and a
   `baseline` campaign the owner runs locally
   (`KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline`) to pin
-  the pre-redesign "before". Live runs are opt-in and never a PR
-  gate; `verify` covers the rig through the fake driver and fixture
-  transcripts only. See `docs/development.md` → Harness evals.
+  the pre-redesign "before" — five stacks × two runs, ten sessions,
+  a ceiling `verify` holds. The model is pinned rather than
+  inherited from the operator's CLI: `--model <id>` on the runner,
+  Sonnet by default on `claude-code`, recorded in the benchmark as
+  `driver.model`. The benchmark is checkpointed after every run, a
+  failing scaffold is retried once and then recorded as `unprepared`
+  rather than aborting the campaign or counting as a failure. Live
+  runs are opt-in and never a PR gate; `verify`
+  covers the rig through the fake driver and fixture transcripts
+  only. See `docs/development.md` → Harness evals.
 - **The skill seam: adapters ship Claude Code skills as content, and
   the engine stages them.** A contribution may carry
   `skills: [SkillSpec]` — `{ name, description, userInvocable?, body,

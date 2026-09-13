@@ -245,6 +245,13 @@ export interface ContributionPatch {
    * target stays a hard error.
    */
   readonly seed?: string;
+  /**
+   * POSIX permission bits for the file, as {@link ContributionFile.mode}
+   * — for a seeded upsert that creates a script and must leave it
+   * executable. Applied on every write of the patch; absent, a created
+   * file takes the platform default and an existing one keeps its own.
+   */
+  readonly mode?: number;
   readonly apply: (existing: string) => string;
 }
 

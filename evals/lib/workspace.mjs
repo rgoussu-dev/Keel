@@ -66,7 +66,11 @@ function run(command, args, cwd, env = process.env) {
 /**
  * Builds the case's workspace in a fresh temp directory and returns
  * its path. Deferred actions run for real — an agent-facing
- * workspace needs its installs and its git repo.
+ * workspace needs its installs and its git repo. A scaffold that
+ * fails part-way takes its directory with it: the runner retries,
+ * and a half-built tree with a `node_modules` in it, left behind
+ * per failed attempt across a campaign, is how a runner's disk
+ * fills.
  */
 export function prepareWorkspace(caseSpec, keelRoot) {
   const keelBin = path.join(keelRoot, 'bin', 'keel.js');
@@ -76,14 +80,19 @@ export function prepareWorkspace(caseSpec, keelRoot) {
   const workspace = fs.mkdtempSync(
     path.join(os.tmpdir(), `keel-eval-${caseSpec.id.replace(/[^a-z0-9]/g, '-')}-`),
   );
-  run(process.execPath, [keelBin, ...newArgs(caseSpec.scaffold)], workspace);
-  for (const step of caseSpec.scaffold.grow ?? []) {
-    run(process.execPath, [keelBin, ...addArgs(step)], workspace);
+  try {
+    run(process.execPath, [keelBin, ...newArgs(caseSpec.scaffold)], workspace);
+    for (const step of caseSpec.scaffold.grow ?? []) {
+      run(process.execPath, [keelBin, ...addArgs(step)], workspace);
+    }
+    if (caseSpec.setup_script !== undefined) {
+      run('bash', [path.join(caseSpec.dir, caseSpec.setup_script)], workspace);
+    }
+    pinGitBaseline(workspace);
+  } catch (err) {
+    fs.rmSync(workspace, { recursive: true, force: true });
+    throw err;
   }
-  if (caseSpec.setup_script !== undefined) {
-    run('bash', [path.join(caseSpec.dir, caseSpec.setup_script)], workspace);
-  }
-  pinGitBaseline(workspace);
   return workspace;
 }
 

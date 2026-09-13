@@ -197,6 +197,65 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await fs.readFile(workflow(), 'utf8')).toBe(`${pristine}# local tweak\n`);
     });
 
+    it('re-renders what it owns of AGENTS.md and the hook, and nothing else', async () => {
+      await seedQuarkusCli();
+      const agents = path.join(cwd, 'AGENTS.md');
+      const hook = path.join(cwd, '.claude/hooks/pre-commit-format.sh');
+      const settings = path.join(cwd, '.claude/settings.json');
+      const pristine = await fs.readFile(agents, 'utf8');
+      const hookWired = await fs.readFile(hook, 'utf8');
+      expect(pristine).toContain('<!-- keel:stack-runbook:begin -->\n\n## Stack');
+      // code-style wired the formatter into the hook's owned step at scaffold time.
+      expect(hookWired).toContain('spotlessApply');
+      const reapplySkeleton = () =>
+        installMediator({
+          clock: new FakeClock('2026-04-28T09:00:00Z'),
+          runDeferred: () => Promise.resolve(),
+        }).dispatch(
+          addVerticalCommand({
+            cwd,
+            vertical: 'walking-skeleton',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            reapply: true,
+          }),
+        );
+
+      // Nothing edited: nothing to report — the section is already
+      // rendered and the hook keeps the formatter code-style wired in.
+      const untouched = expectOk(await reapplySkeleton());
+      expect(untouched.changes).toEqual([]);
+      expect(await fs.readFile(hook, 'utf8')).toBe(hookWired);
+
+      // Edited inside the section and outside it: keel re-renders its
+      // region (reported, diffed) and leaves the project's note where
+      // the spec told it to keep one. Same for the hook: the skeleton
+      // is keel's, the format step stays as code-style left it.
+      await fs.writeFile(
+        agents,
+        `${pristine.replace('## Stack', '## Stack (hand-edited)')}\n<!-- local note -->\n`,
+      );
+      await fs.writeFile(hook, hookWired.replace('set -euo pipefail', 'set -eu # hand-edited'));
+      // And the project's own settings beside keel's hook entry.
+      const own = JSON.parse(await fs.readFile(settings, 'utf8')) as Record<string, unknown>;
+      await fs.writeFile(
+        settings,
+        `${JSON.stringify({ ...own, permissions: { allow: ['Bash(pnpm test)'] } }, null, 2)}\n`,
+      );
+      const report = expectOk(await reapplySkeleton());
+      expect(report.changes.map((c) => c.path)).toEqual([
+        '.claude/hooks/pre-commit-format.sh',
+        'AGENTS.md',
+      ]);
+      expect(JSON.parse(await fs.readFile(settings, 'utf8'))).toMatchObject({
+        permissions: { allow: ['Bash(pnpm test)'] },
+      });
+      expect(report.diffs!.map((d) => d.path)).toContain('AGENTS.md');
+      expect(await fs.readFile(agents, 'utf8')).toBe(`${pristine}\n<!-- local note -->\n`);
+      expect(await fs.readFile(hook, 'utf8')).toBe(hookWired);
+    });
+
     it('refuses to reapply a vertical that is not installed', async () => {
       await seedQuarkusCli();
       const error = expectErr(

@@ -24,13 +24,17 @@ prompts at all. Sixty seconds later you have:
 - a **sample port with its canonical fake** to pattern-match from,
 - **git initialised** and the toolchain wired (wrapper generated,
   dependencies resolved),
-- the **binding spec emitted as `AGENTS.md`** (plus a `CLAUDE.md`
-  pointer), so Claude Code — or any AGENTS.md-aware agent — keeps
-  working inside the shape the bootstrap laid down,
-- the **Claude kit**: your stack's runbook (build/test/run commands,
-  layout notes) appended to `AGENTS.md`, a pre-commit hook that keeps
-  every Claude-issued commit green against the stack's own gate, and
-  a `run` skill so "launch the app and check it" works out of the box
+- the **binding spec emitted as a terse `AGENTS.md`** (≤ 120 lines)
+  plus zero-maintenance loading shims — a `CLAUDE.md` pointer,
+  `.gemini/settings.json`, `.aider.conf.yml` — so Claude Code, Codex,
+  Gemini CLI, aider or any AGENTS.md-aware agent reads one file and
+  keeps working inside the shape the bootstrap laid down,
+- the **Claude kit**: your stack's section in that file — build/test/
+  run commands, the dispatch stance of _this_ language only, and a
+  layout map of exactly the shape that was scaffolded so an agent
+  orients by map before it greps — a pre-commit hook that keeps every
+  Claude-issued commit green against the stack's own gate, and a
+  `run` skill so "launch the app and check it" works out of the box
   ([docs](docs/verticals/walking-skeleton.md#the-claude-kit)).
 
 **Don't know the stack id?** Leave `--stack` off:

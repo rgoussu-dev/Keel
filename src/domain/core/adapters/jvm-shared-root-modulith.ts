@@ -317,7 +317,7 @@ function gradleReadmeSection(inputs: JvmRootInputs): { arch: JvmRootArch; body: 
         ? `./gradlew :application:cli:bootRun --args="hello --name World"`
         : inputs.framework === 'micronaut'
           ? `./gradlew :application:cli:run --args="hello --name World"`
-          : `./gradlew :application:cli:quarkusDev\n# or once built:\n./gradlew :application:cli:run --args="hello --name World"`;
+          : `./gradlew :application:cli:quarkusDev --quarkus-args="hello --name World"\n# or once built:\njava -jar application/cli/build/quarkus-app/quarkus-run.jar hello --name World`;
     const build =
       inputs.framework === 'quarkus'
         ? `./gradlew :application:cli:build -Dquarkus.package.type=native`
@@ -354,7 +354,7 @@ function mavenReadmeSection(inputs: JvmRootInputs): { arch: JvmRootArch; body: s
         ? `./mvnw -am -pl application/cli spring-boot:run -Dspring-boot.run.arguments="hello --name World"`
         : inputs.framework === 'micronaut'
           ? `./mvnw package\n${jar}`
-          : `./mvnw -am -pl application/cli quarkus:dev\n# or once built:\njava -jar application/cli/target/quarkus-app/quarkus-run.jar hello --name World`;
+          : `./mvnw -am -pl application/cli quarkus:dev -Dquarkus.args="hello --name World"\n# or once built:\njava -jar application/cli/target/quarkus-app/quarkus-run.jar hello --name World`;
     const build =
       inputs.framework === 'quarkus'
         ? `./mvnw -am -pl application/cli package -Dnative`
