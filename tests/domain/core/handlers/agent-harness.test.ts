@@ -8,6 +8,7 @@ import type { Vertical } from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { hashRegion, regionPatch } from '../../../../src/domain/contract/region.js';
 import { registryOf } from '../../../../src/domain/core/registry.js';
+import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
@@ -66,8 +67,10 @@ afterEach(async () => {
 });
 function scenario(verticals: readonly Vertical[], registered: readonly Vertical[] = verticals) {
   const logger = new FakeLogger();
+  const clock = new FakeClock('2026-04-26T12:00:00Z');
   const mediator = installMediator({
     logger,
+    clock,
     registry: registryOf([
       {
         origin: 'harness-test',
@@ -77,7 +80,7 @@ function scenario(verticals: readonly Vertical[], registered: readonly Vertical[
     ]),
     runDeferred: () => Promise.resolve(),
   });
-  return { mediator, logger };
+  return { mediator, logger, clock };
 }
 async function scaffold(mediator: ReturnType<typeof installMediator>, agentHarness?: boolean) {
   return expectOk(
@@ -186,5 +189,74 @@ describe('harness realization at the end of the run', () => {
     expect(
       entries.every((entry) => entry.sha256Current === hash && entry.sha256Shipped === hash),
     ).toBe(true);
+  });
+  it('refreshes earlier current hashes on later installs and reapply while preserving their baselines', async () => {
+    let body = 'echo second';
+    const second: Vertical = {
+      id: 'second',
+      description: 'A later region contributor',
+      dimensions: [],
+      adapters: [
+        {
+          id: 'second/patch',
+          vertical: 'second',
+          covers: [],
+          predicate: {},
+          contribute: () => ({
+            harnessPatches: [
+              regionPatch({
+                target: '.claude/hook.sh',
+                region: hashRegion('second'),
+                body,
+              }),
+            ],
+          }),
+        },
+      ],
+    };
+    const { mediator, clock } = scenario([producer, harness], [producer, harness, second]);
+    await scaffold(mediator);
+    const before = (await fsManifestStore.read(projectScopeRoot(cwd)))!;
+    const original = before.entries.find((entry) => entry.target === '.claude/hook.sh')!;
+    const untouched = before.entries.find((entry) => entry.target.endsWith('/SKILL.md'))!;
+    expect(original).toBeDefined();
+    expect(untouched).toBeDefined();
+    let previousHash = original.sha256Current;
+    const secondInstalledAt = '2026-04-27T12:00:00Z';
+
+    for (const reapply of [false, true]) {
+      clock.set(reapply ? '2026-04-28T12:00:00Z' : secondInstalledAt);
+      body = reapply ? 'echo updated second' : 'echo second';
+      expectOk(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            vertical: 'second',
+            reapply,
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      const hash = createHash('sha256')
+        .update(await fs.readFile(path.join(cwd, '.claude/hook.sh')))
+        .digest('hex');
+      expect(hash).not.toBe(previousHash);
+      previousHash = hash;
+      const after = (await fsManifestStore.read(projectScopeRoot(cwd)))!;
+      const entries = after.entries.filter((entry) => entry.target === '.claude/hook.sh');
+      expect(entries).toEqual([
+        { ...original, sha256Current: hash },
+        {
+          source: 'second/patch',
+          target: '.claude/hook.sh',
+          sha256Shipped: hash,
+          sha256Current: hash,
+          installedAt: secondInstalledAt,
+        },
+      ]);
+      expect(after.entries.find((entry) => entry.target === untouched.target)).toEqual(untouched);
+    }
   });
 });

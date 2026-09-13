@@ -243,8 +243,15 @@ function foldHarnessEntries(
   now: string,
 ): ManifestV2 {
   const key = (source: string, target: string) => `${source} ${target}`;
+  const currentHashes = new Map(files.map((file) => [file.path, file.sha256]));
   const byTarget = new Map<string, ManifestEntry>(
-    manifest.entries.map((e) => [key(e.source, e.target), e]),
+    manifest.entries.map((entry) => [
+      key(entry.source, entry.target),
+      {
+        ...entry,
+        sha256Current: currentHashes.get(entry.target) ?? entry.sha256Current,
+      },
+    ]),
   );
   for (const file of files) {
     const id = key(file.adapterId, file.path);
