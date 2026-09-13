@@ -211,8 +211,9 @@ interface ClaudeSettings {
  * runs it yet, and everything else the file holds — permissions,
  * env, the project's own hooks — stays as it is. Its own fixed
  * point, so `--reapply` refreshes nothing it does not own. A file
- * that is not JSON, or whose `hooks.PreToolUse` is not a list, is
- * refused with the fix rather than rewritten.
+ * that is not JSON, whose `hooks` is not an object, or whose
+ * `hooks.PreToolUse` is not a list, is refused with the fix rather
+ * than rewritten into a shape Claude Code would not load.
  */
 export function upsertClaudeHook(existing: string): string {
   let settings: ClaudeSettings;
@@ -228,8 +229,13 @@ export function upsertClaudeHook(existing: string): string {
       `${SETTINGS_TARGET}: expected a JSON object at the top level. Fix the file and re-run.`,
     );
   }
-  const hooks = settings.hooks ?? {};
-  const preToolUse = hooks.PreToolUse ?? [];
+  // Absent is fine and defaults; present-but-null is a value the
+  // file holds, and one that fails the check below.
+  const hooks = settings.hooks === undefined ? {} : settings.hooks;
+  if (hooks === null || typeof hooks !== 'object' || Array.isArray(hooks)) {
+    throw new Error(`${SETTINGS_TARGET}: expected hooks to be an object. Fix the file and re-run.`);
+  }
+  const preToolUse = hooks.PreToolUse === undefined ? [] : hooks.PreToolUse;
   if (!Array.isArray(preToolUse)) {
     throw new Error(
       `${SETTINGS_TARGET}: expected hooks.PreToolUse to be a list. Fix the file and re-run.`,
