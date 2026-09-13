@@ -64,6 +64,23 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **The hook seam** (#136, wave 3 of the agent-harness redesign): an
+  adapter ships a Claude Code hook as a `HookSpec` on
+  `Contribution.hooks` — the script, its event and matcher, the
+  reminders it may inject, and the slots other contributors own inside
+  it — declared on `Vertical.hooks`. The engine stages the script to
+  `.claude/hooks/<name>.sh` as an executable adapter-owned whole file
+  (a name two adapters claim is refused naming both), wires one
+  `.claude/settings.json` entry per hook into whatever the project's
+  file holds, records provenance, and re-renders the script around
+  its slots on `--reapply`. A hook is a `sh`/`bash` script invoking no
+  Node, `jq` or Python; a project realizes at most five reminders
+  across its hooks, and keel's own leave two for plugins. Listing a
+  hook under `env.KEEL_DISABLED_HOOKS` turns it off. The five family
+  kits' `pre-commit-format.sh` and `settings.json` moved onto the seam
+  byte for byte. `HookSpec`, `HookEvent`, `hookTarget`,
+  `HOOK_REMINDER_BUDGET` and `DISABLED_HOOKS_ENV` ship on the plugin
+  surface. See `docs/composition.md` → Hooks.
 - **The `agent-harness` vertical** owns root agent documents, cross-tool
   shims and the five family Claude kits. All 28 single-service presets
   install it by default after `walking-skeleton`, preserving project

@@ -274,9 +274,8 @@ tree.
 
 How a piece ships **agent-harness elements** — the `.claude/` workflow
 kit and the agent-facing documents — with the code it contributes.
-These rules are normative for every harness seam; the skill and
-owned-region seams below are live, and the settings seam follows the
-same model.
+These rules are normative for every harness seam; the skill, hook and
+owned-region seams below are live.
 
 **Harness elements ride typed, declarative contribution fields — never
 bare `files:` entries or ad-hoc patches.** The engine can only refuse,
@@ -295,9 +294,11 @@ Three ownership patterns, with different reapply semantics:
    and never touches the user's prose around it. The patch
    _declares_ the region and the engine verifies the claim — see
    [Owned regions](#owned-regions).
-3. **Key-addressed settings merges.** JSON settings composed key by
-   key, each key carrying its contributor — so a reapply refreshes a
-   contributor's keys in place. (Lands with the hook/settings seam.)
+3. **Key-addressed settings merges.** JSON settings composed entry by
+   entry, each addressed by what it runs — so a reapply finds keel's
+   entries where it left them, adds only what is missing, and never
+   rewrites the project's own keys. `.claude/settings.json` is this
+   class, and the engine writes it for every hook contributor alike.
 
 Whatever the class, a contribution is **owned by exactly one adapter**
 (grouped under its vertical). Tags select and parameterize adapters;
@@ -311,7 +312,7 @@ promotes `agentic.harness`. Every single-service preset installs it after
 An opted-out assembly refuses plugin stack tags or other verticals that
 would activate `agentic.harness`, before staging files.
 
-Every adapter's `skills` and interim `harnessPatches` are collected across
+Every adapter's `skills`, `hooks` and interim `harnessPatches` are collected across
 the whole install run. Only the final, local tag set decides whether they
 are realized; a peer's tag never activates this project's harness. Without
 the tag, one diagnostic reports the total skipped elements, also carried
@@ -320,9 +321,13 @@ patches and formatter configurations still install.
 
 `Contribution.harnessPatches` is the interim region-confined patch seam for
 code-style's hook format step. Each patch must declare nonempty `regions`,
-verified through the same ownership and confinement rules below. Skills
-and patches retain contributor provenance when realized. Hook/settings
-and document declaration classes extend this final pass when their seams land.
+verified through the same ownership and confinement rules below. Skills,
+hooks and patches retain contributor provenance when realized. The pass
+stages every whole file first — skills and hook scripts, across all
+contributors — then merges the settings, then runs harness patches, so
+code-style's format step lands in the family kit's hook whichever
+resolved first. The document declaration class extends this final
+pass when its seam lands.
 
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
@@ -383,6 +388,62 @@ Two rules the seam enforces:
 A plugin's verticals ship skills through exactly this seam — same
 schema, same serializer, same collision refusal and provenance, no
 special case. See [Plugins](plugins.md#skills).
+
+### Hooks
+
+An adapter ships a Claude Code hook as a `HookSpec` on its
+contribution — content-carrying like a skill: the script, the event it
+runs on, the reminders it may feed back into the agent's context, and
+the **slots** other contributors own inside it:
+
+```ts
+hooks: [
+  {
+    name: 'pre-commit-format',
+    event: 'PreToolUse',
+    matcher: 'Bash',
+    script: renderPreCommitHook(family),
+    reminders: [`pre-commit-format: '${verify}' failed. Fix it before committing.`],
+    slots: [FORMAT_STEP_REGION],
+  },
+];
+```
+
+The engine validates the spec (`HookSpecSchema`, refusing a malformed
+one naming the adapter), stages the script to
+`.claude/hooks/<name>.sh` as an executable adapter-owned whole file,
+and wires it into `.claude/settings.json` itself — one entry per hook,
+running `<shell> .claude/hooks/<name>.sh`. The rules the seam enforces:
+
+- **One owner per name, declared on the vertical.** A hook name two
+  adapters of a run contribute is refused (`hook-collision`) naming
+  both; `Vertical.hooks` lists every name the vertical may stage and
+  the installer refuses an undeclared one — the mirror of `skills`.
+- **A hook is a shell script and assumes no runtime.** The script's
+  first line is a `sh` or `bash` shebang, and it invokes no Node,
+  `npx`, `jq`, Python, Deno or Bun: a scaffolded Go, Rust or JVM
+  project cannot count on any of them. keel's own hooks parse as
+  POSIX `sh` too.
+- **Reminders are a budget.** A project realizes at most five across
+  all of its hooks (`HOOK_REMINDER_BUDGET`); a run over it is refused
+  (`reminder-budget`) before anything is staged, naming each
+  contributor's share. keel's own hooks spend at most three, leaving
+  two for plugins — a guard test holds every stack to it.
+- **Slots survive a reapply.** `--reapply` rewrites the script
+  pristine around what each declared slot holds on disk, so the
+  format step `code-style` wired in stays; a harness patch declaring
+  that region is what writes it.
+- **The settings file is the project's.** The engine merges keel's
+  entries into whatever the file holds, returns it byte for byte when
+  nothing is missing, and attributes the file's provenance to
+  `keel:engine`. Each hook is its own entry, so it can be turned off
+  on its own: list its name under `env.KEEL_DISABLED_HOOKS`
+  (comma-separated) and every later apply leaves it unwired and
+  removes keel's entry for it. The script itself stays staged, so the
+  slots other verticals patch keep a target.
+
+A plugin's verticals ship hooks through exactly this seam. See
+[Plugins](plugins.md#hooks).
 
 ### Owned regions
 

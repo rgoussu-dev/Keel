@@ -9,9 +9,14 @@ import {
   ContributionConflictError,
   ENGINE_REGIONS,
   applyContributions,
+  collectHarness,
+  newOwnership,
+  realizeHarness,
   regionKey,
   type ApplyMode,
+  type HarnessContribution,
 } from '../../../src/domain/core/apply.js';
+import type { HookSpec } from '../../../src/domain/contract/hook.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { hashRegion, regionPatch } from '../../../src/domain/contract/region.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
@@ -328,6 +333,171 @@ describe('applyContributions', () => {
       await fs.outputFile(path.join(tmp, '.claude/skills/run/SKILL.md'), 'already there\n');
       const a = adapter('a', { skills: [{ name: 'run', description: 'd', body: 'b' }] });
       await expect(run([a], tree)).rejects.toBeInstanceOf(ContributionConflictError);
+    });
+  });
+
+  describe('hook staging', () => {
+    const run = (
+      adapters: readonly Adapter[],
+      tree: FsTree,
+      mode: ApplyMode = 'install',
+      tags: readonly string[] = ['agentic.harness'],
+    ) =>
+      applyContributions({
+        adapters,
+        answers: {},
+        manifest: { ...emptyManifestV2('now', '0.4.0'), tags: [...tags] },
+        tree,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        mode,
+      });
+    const failure = (promise: Promise<unknown>) =>
+      promise.then(
+        () => null,
+        (e: unknown) => e as ContributionConflictError,
+      );
+    const step = hashRegion('format-step');
+    const gate = (over: Partial<HookSpec> = {}): HookSpec => ({
+      name: 'gate',
+      event: 'PreToolUse',
+      matcher: 'Bash',
+      script: `#!/usr/bin/env bash\nset -eu\n${step.begin}\n# none\n${step.end}\nexit 0\n`,
+      reminders: ['gate: failed.'],
+      slots: [step],
+      ...over,
+    });
+    const SCRIPT = '.claude/hooks/gate.sh';
+    const SETTINGS = '.claude/settings.json';
+
+    it('stages the script executable and wires it into a seeded settings file', async () => {
+      const tree = new FsTree(tmp);
+      await run([adapter('kit', { hooks: [gate()] })], tree);
+      await tree.commit();
+      expect(tree.read(SCRIPT)?.toString()).toBe(gate().script);
+      expect((await fs.stat(path.join(tmp, SCRIPT))).mode & 0o111).not.toBe(0);
+      expect(JSON.parse(tree.read(SETTINGS)!.toString())).toEqual({
+        $schema: 'https://json.schemastore.org/claude-code-settings.json',
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [{ type: 'command', command: 'bash .claude/hooks/gate.sh' }],
+            },
+          ],
+        },
+      });
+    });
+
+    it('records the script under its adapter and the settings under the engine', () => {
+      const tree = new FsTree(tmp);
+      const pending: HarnessContribution[] = [];
+      const kit = adapter('kit', { hooks: [gate()] });
+      collectHarness(kit, { hooks: [gate()] }, pending);
+      const realized = realizeHarness(
+        pending,
+        tree,
+        ['agentic.harness'],
+        new FakeLogger(),
+        newOwnership(),
+      );
+      expect(realized.files).toEqual([
+        { adapterId: 'kit', path: SCRIPT, sha256: expect.stringMatching(/^[0-9a-f]{64}$/) },
+        {
+          adapterId: ENGINE_CONTRIBUTOR_ID,
+          path: SETTINGS,
+          sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
+      ]);
+    });
+
+    it('refuses a hook name two adapters contribute, naming both origins', async () => {
+      const error = await failure(
+        run(
+          [adapter('a', { hooks: [gate()] }), adapter('b', { hooks: [gate()] })],
+          new FsTree(tmp),
+        ),
+      );
+      expect(error).toBeInstanceOf(ContributionConflictError);
+      expect(error?.kind).toBe('hook-collision');
+      expect(error?.message).toContain("adapter 'b' contributes hook 'gate', which adapter 'a'");
+      const twice = await failure(
+        run([adapter('a', { hooks: [gate(), gate()] })], new FsTree(tmp)),
+      );
+      expect(twice?.message).toContain("contributes hook 'gate' twice");
+    });
+
+    it('refuses a malformed hook naming the adapter, before anything is staged', async () => {
+      const tree = new FsTree(tmp);
+      const plugin = adapter('bad-plugin/hook', {
+        hooks: [gate({ script: '#!/usr/bin/env node\nprocess.exit(0)\n', slots: [] })],
+      });
+      await expect(run([plugin], tree)).rejects.toThrow(
+        /adapter 'bad-plugin\/hook' contributes a malformed hook — script: must start with a sh or bash shebang/,
+      );
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('conflicts on install over an existing script, and reapplies pristine around its slot', async () => {
+      const onDisk = gate()
+        .script.replace('# none', 'fmt --all')
+        .replace('set -eu', 'set -eu # hand-edited');
+      await fs.outputFile(path.join(tmp, SCRIPT), onDisk);
+      const kit = adapter('kit', { hooks: [gate()] });
+      expect((await failure(run([kit], new FsTree(tmp))))?.kind).toBe('overwrite');
+      const tree = new FsTree(tmp);
+      await run([kit], tree, 'reapply');
+      expect(tree.read(SCRIPT)?.toString()).toBe(gate().script.replace('# none', 'fmt --all'));
+    });
+
+    it('lands a harness patch in a hook an adapter resolving after it stages', async () => {
+      const tree = new FsTree(tmp);
+      const styler = adapter('style', {
+        harnessPatches: [
+          regionPatch({ target: SCRIPT, region: step, body: 'fmt --all', whenAbsent: 'keep' }),
+        ],
+      });
+      await run([styler, adapter('kit', { hooks: [gate()] })], tree);
+      expect(tree.read(SCRIPT)?.toString()).toBe(gate().script.replace('# none', 'fmt --all'));
+    });
+
+    it('refuses a run whose hooks may inject more than five reminders, naming each share', async () => {
+      const tree = new FsTree(tmp);
+      const three = ['one.', 'two.', 'three.'];
+      const error = await failure(
+        run(
+          [
+            adapter('a', { hooks: [gate({ name: 'first', reminders: three })] }),
+            adapter('b', { hooks: [gate({ name: 'second', reminders: three })] }),
+          ],
+          tree,
+        ),
+      );
+      expect(error?.kind).toBe('reminder-budget');
+      expect(error?.message).toContain("may inject 6 reminders ('a' 3, 'b' 3) — at most 5");
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('suppresses hooks without the harness tag, counting them', async () => {
+      const tree = new FsTree(tmp);
+      const result = await run([adapter('kit', { hooks: [gate()] })], tree, 'install', []);
+      expect(result.skippedHarnessElements).toBe(1);
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('leaves the project’s settings as they are, and a hook it disabled unwired', async () => {
+      const own = `${JSON.stringify(
+        { permissions: { allow: ['Bash(ls)'] }, env: { KEEL_DISABLED_HOOKS: 'gate' } },
+        null,
+        2,
+      )}\n`;
+      await fs.outputFile(path.join(tmp, SETTINGS), own);
+      const tree = new FsTree(tmp);
+      await run([adapter('kit', { hooks: [gate()] })], tree);
+      expect(tree.read(SETTINGS)?.toString()).toBe(own);
+      expect(tree.changes()).toEqual([{ kind: 'create', path: SCRIPT }]);
     });
   });
 

@@ -136,12 +136,16 @@ framework, entrypoint shape, module layout) — one adapter per stack
   auto-formats where the toolchain ships a formatter (`gofmt -w .`,
   `cargo fmt`) and runs the family's fast gate — the same commands
   the `ci` vertical's pipeline runs — so every commit lands green.
-  The format step sits between sentinels the `code-style` vertical
-  fills when it wires a formatter in; a reapply of the agent
+  It ships through the [hook seam](../composition.md#hooks): a
+  `HookSpec` whose format step is a slot the `code-style` vertical
+  fills when it wires a formatter in, so a reapply of the agent
   harness re-renders the hook around that step, never over it. The
-  `.claude/settings.json` that wires the hook is the project's file:
-  keel adds its one `PreToolUse` entry and leaves permissions, env
-  and any other hooks as they are, on scaffold and on reapply alike.
+  engine wires it into `.claude/settings.json`, which stays the
+  project's file: keel adds its one `PreToolUse` entry and leaves
+  permissions, env and any other hooks as they are, on scaffold and on
+  reapply alike. Its one reminder is the gate's refusal. To turn it
+  off, list `pre-commit-format` under `env.KEEL_DISABLED_HOOKS`; later
+  applies leave it unwired.
 - **A `run` skill** (`.claude/skills/run/SKILL.md`): the
   launch-and-probe loop for the scaffolded shape — dev mode + `curl`
   for the HTTP services, the sample invocation for the CLIs, the Vite
@@ -157,9 +161,9 @@ cross-tool shims, stack runbook, `run` skill, pre-commit hook and its
 settings wiring described above are shipped. The final-pass gate and
 brownfield replay are shipped here. All other elements below are
 planned work under their named issues; catalog membership does not mean
-those files or commands are emitted today. In particular, the declarative
-per-directory document and hook/settings seams remain pending #135 and
-#136, and engine projections remain pending #138.
+those files or commands are emitted today. The hook seam is shipped
+(#136); the declarative per-directory document seam remains pending
+#135, and engine projections remain pending #138.
 
 Each row is grounded in the contributor's own artifacts. Prefer skills,
 then nested documents, then root doctrine. Root doctrine admits only
@@ -179,11 +183,11 @@ it remains unconditional when #137 lands, and its remediation is
 
 **agent-harness (the vertical itself: claude-core + family kits' shared surface)**
 
-- Root `AGENTS.md` ≤120 lines + `CLAUDE.md` pointer + `.gemini`/`.aider` shims (#134); empty `keel:map` / `keel:skills-index` slots (#134); base `.claude/settings.json` incl. per-hook disables (#136); root sentinel-discipline line — _never edit inside `keel:_` markers; user content goes outside; a broken pair is refused with the fix named* — the one genuinely cross-contributor doctrine, homed once in the root doc *(decided here, for #134)\*.
+- Root `AGENTS.md` ≤120 lines + `CLAUDE.md` pointer + `.gemini`/`.aider` shims (#134); empty `keel:map` / `keel:skills-index` slots (#134); base `.claude/settings.json` incl. per-hook disables (shipped: engine-merged, one entry per hook, `env.KEEL_DISABLED_HOOKS`); root sentinel-discipline line — _never edit inside `keel:_` markers; user content goes outside; a broken pair is refused with the fix named* — the one genuinely cross-contributor doctrine, homed once in the root doc *(decided here, for #134)\*.
 
 **Family claude-kits (jvm/go/rust/ts/wc — inside agent-harness; parameterized by framework × build system × language × layout × shape)**
 
-- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped; typed hook/settings seam pending #136), optionally carrying #138's guarded `keel docs check` step (hook content via #136, sourced from #138); per-layer docs `domain/ application/ infrastructure/ tests/` + pointers (#135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (#139) — single owner; the skill body _covers_ `keel add module`'s assembly-patch/registration behavior, bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
+- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs `domain/ application/ infrastructure/ tests/` + pointers (#135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (#139) — single owner; the skill body _covers_ `keel add module`'s assembly-patch/registration behavior, bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
 - **→ #150 (owner: walking-skeleton, below):** the family kits do _not_ own `new-port` — the port exemplars are walking-skeleton files.
 
 **walking-skeleton (after extraction: bootstraps, port examples, peer contexts, build tools)**
@@ -198,7 +202,7 @@ it remains unconditional when #137 lands, and its remediation is
 
 **code-style**
 
-- The format-step patch is shipped through the owned-region seam and gated as a harness element. Its typed hook contribution remains pending #136.
+- The format-step patch is shipped through the owned-region seam and gated as a harness element; it fills the family kit hook's declared slot in the same final pass that stages the hook.
 - **→ #150:** `fix-lint` skill (reproduce the CI-only lint gate locally: the exact per-family commands, the scope, why there is deliberately no autofix — the single home for those invocations); root co-render doctrine line (`.editorconfig` is live formatter input on Kotlin/web, a co-render on Java/Go/Rust — editing it alone silently changes nothing; re-sync with `keel add code-style --reapply`).
 
 **ci**

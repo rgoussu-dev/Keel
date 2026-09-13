@@ -229,10 +229,12 @@ EditorConfig resolution lets win — rather than clobbering them. A
 re-apply rewrites only the managed section. An existing `format`
 script in `package.json` is never overwritten.
 
-One caveat: `keel add code-style` patches the pre-commit hook in
-place, so the project must still have it (every keel project does —
-`walking-skeleton` makes it a required dimension). A project whose
-hook was deleted fails loudly naming the file.
+One caveat: `keel add code-style` fills the format step of the
+pre-commit hook — a slot the `agent-harness` family kit declares on the
+hook it stages through the [hook seam](../composition.md#hooks) — so
+the project must still have it. A project that opted out of the
+harness keeps its formatter configuration and gets no hook step; one
+whose hook was deleted fails loudly naming the file.
 
 ## Prerequisites
 
@@ -247,7 +249,7 @@ with the toolchain the project already requires.
 
 - [Verticals catalog](README.md) · [Composition model](../composition.md)
 - [`ci`](ci.md) — where the format check and the lint check both run
-- [`walking-skeleton`](walking-skeleton.md) — emits the hook this
+- [`agent-harness`](agent-harness.md) — stages the hook this
   vertical wires a formatter into
 - [Roadmap item O](../roadmap.md#o--code-style-the-layout-contract-m)
   — the design history, including why `linter` is CI-only and why the

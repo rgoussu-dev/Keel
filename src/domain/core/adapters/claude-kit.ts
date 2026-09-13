@@ -18,14 +18,11 @@
  *     around it, so re-scaffolds and `--reapply` stay idempotent;
  *   - the **pre-commit format hook** keel itself uses
  *     (`.claude/hooks/pre-commit-format.sh`), adapted to the
- *     family's own format/verify commands, wired via
- *     `.claude/settings.json`. Also a seeded upsert, not a whole
- *     file: the `code-style` vertical owns the hook's format step
- *     once it wires a formatter in, so a reapply re-renders the
- *     hook around the step it finds rather than resetting it. And
- *     `.claude/settings.json` is the project's: keel merges its one
- *     `PreToolUse` entry into whatever the file holds and leaves the
- *     rest — permissions, env, other hooks — as it found it;
+ *     family's own format/verify commands — a `HookSpec`, staged and
+ *     wired into `.claude/settings.json` by the engine. Its format
+ *     step is a slot: the `code-style` vertical owns it once it wires
+ *     a formatter in, so a reapply re-renders the hook around the
+ *     step it finds rather than resetting it;
  *   - a **run skill** (`.claude/skills/run/SKILL.md`, staged through
  *     the `SkillSpec` seam) so "launch the app and check it" works
  *     out of the box for an agent working inside the scaffolded
@@ -37,12 +34,18 @@
  * `pkg.*` tag.
  */
 
-import { eolAware } from '../util.js';
 import { CLAUDE_CORE_ID } from './claude-core.js';
-import type { Adapter, Contribution, Ctx, SkillSpec, Tag } from '../../contract/composition.js';
+import type {
+  Adapter,
+  Contribution,
+  Ctx,
+  HookSpec,
+  SkillSpec,
+  Tag,
+} from '../../contract/composition.js';
+import { hookTarget } from '../../contract/hook.js';
 import {
   hashRegion,
-  locateRegion,
   markdownRegion,
   regionPatch,
   upsertRegion,
@@ -70,8 +73,11 @@ export const RUNBOOK_BEGIN = RUNBOOK_REGION.begin;
 export const RUNBOOK_END = RUNBOOK_REGION.end;
 
 const AGENTS_TARGET = 'AGENTS.md';
-const SETTINGS_TARGET = '.claude/settings.json';
-const HOOK_TARGET = '.claude/hooks/pre-commit-format.sh';
+
+/** The one hook every family kit ships: format, then gate, before a Claude-issued `git commit`. */
+export const PRE_COMMIT_HOOK_NAME = 'pre-commit-format';
+
+const HOOK_TARGET = hookTarget(PRE_COMMIT_HOOK_NAME);
 
 /**
  * The one skill every family kit ships: launch the scaffolded app
@@ -177,90 +183,6 @@ export function renderRunbook(spec: RunbookSpec): string {
  */
 export function runSkillSpec(spec: { description: string; body: string }): SkillSpec {
   return { name: RUN_SKILL_NAME, ...spec };
-}
-
-/** The hook entry keel owns in `.claude/settings.json`, keyed by its command. */
-const HOOK_COMMAND = `bash ${HOOK_TARGET}`;
-
-/**
- * `.claude/settings.json` as a fresh project starts from: the
- * pre-commit hook wired, nothing else. Identical for every family —
- * the family variance lives inside the hook script.
- */
-const SETTINGS_CONTENT = `{
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/pre-commit-format.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-`;
-
-interface ClaudeSettings {
-  hooks?: { PreToolUse?: { matcher?: string; hooks?: { type?: string; command?: string }[] }[] };
-  [key: string]: unknown;
-}
-
-/**
- * Merges keel's pre-commit hook into an existing `.claude/settings.json`:
- * the one `PreToolUse` entry running the hook is added when no entry
- * runs it yet, and everything else the file holds — permissions,
- * env, the project's own hooks — stays as it is. Its own fixed
- * point, so `--reapply` refreshes nothing it does not own. A file
- * that is not JSON, whose `hooks` is not an object, or whose
- * `hooks.PreToolUse` is not a list, is refused with the fix rather
- * than rewritten into a shape Claude Code would not load.
- */
-export function upsertClaudeHook(existing: string): string {
-  let settings: ClaudeSettings;
-  try {
-    settings = JSON.parse(existing) as ClaudeSettings;
-  } catch (err) {
-    throw new Error(
-      `${SETTINGS_TARGET}: not valid JSON (${err instanceof Error ? err.message : String(err)}). Fix the file (or delete it) and re-run.`,
-    );
-  }
-  if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) {
-    throw new Error(
-      `${SETTINGS_TARGET}: expected a JSON object at the top level. Fix the file and re-run.`,
-    );
-  }
-  // Absent is fine and defaults; present-but-null is a value the
-  // file holds, and one that fails the check below.
-  const hooks = settings.hooks === undefined ? {} : settings.hooks;
-  if (hooks === null || typeof hooks !== 'object' || Array.isArray(hooks)) {
-    throw new Error(`${SETTINGS_TARGET}: expected hooks to be an object. Fix the file and re-run.`);
-  }
-  const preToolUse = hooks.PreToolUse === undefined ? [] : hooks.PreToolUse;
-  if (!Array.isArray(preToolUse)) {
-    throw new Error(
-      `${SETTINGS_TARGET}: expected hooks.PreToolUse to be a list. Fix the file and re-run.`,
-    );
-  }
-  const wired = preToolUse.some((entry) =>
-    (entry.hooks ?? []).some((h) => h.command === HOOK_COMMAND),
-  );
-  if (wired) return existing;
-  const merged: ClaudeSettings = {
-    ...settings,
-    hooks: {
-      ...hooks,
-      PreToolUse: [
-        ...preToolUse,
-        { matcher: 'Bash', hooks: [{ type: 'command', command: HOOK_COMMAND }] },
-      ],
-    },
-  };
-  return `${JSON.stringify(merged, null, 2)}\n`;
 }
 
 /**
@@ -385,55 +307,41 @@ export function formatStepPatch(formatCommand: string | undefined) {
 }
 
 /**
- * Re-renders the hook for the family around the format step the
- * existing hook carries: everything outside the step's sentinels is
- * keel's and comes back pristine, the step itself is whatever the
- * file holds — the family's default, or the formatter `code-style`
- * wired in since. A hook without the pair predates the sentinels and
- * is re-rendered whole. Its own fixed point, so `--reapply` refreshes
- * it rather than refusing it. Hand-edited-apart sentinels throw with
- * the fix, as {@link upsertFormatStep} does.
+ * The family's pre-commit hook as a {@link HookSpec}: a `PreToolUse`
+ * hook on `Bash`, whose one reminder is the gate's refusal, and whose
+ * format step is a slot — `code-style` owns what lies inside it once
+ * it wires a formatter in, so a reapply re-renders the hook around
+ * the step it finds.
  */
-export function refreshPreCommitHook(existing: string, family: ClaudeKitFamily): string {
-  const fresh = renderPreCommitHook(family);
-  const span = locateRegion(existing, FORMAT_STEP_REGION, HOOK_TARGET);
-  if (span === null) return fresh;
-  const step = existing.slice(span.begin, span.end);
-  const freshBegin = fresh.indexOf(FORMAT_STEP_BEGIN);
-  const freshEnd = fresh.indexOf(FORMAT_STEP_END) + FORMAT_STEP_END.length;
-  return `${fresh.slice(0, freshBegin)}${step}${fresh.slice(freshEnd)}`;
+export function preCommitHookSpec(family: ClaudeKitFamily): HookSpec {
+  return {
+    name: PRE_COMMIT_HOOK_NAME,
+    event: 'PreToolUse',
+    matcher: 'Bash',
+    script: renderPreCommitHook(family),
+    reminders: [`pre-commit-format: '${family.verifyCommand}' failed. Fix it before committing.`],
+    slots: [FORMAT_STEP_REGION],
+  };
 }
 
 /**
- * Builds the `.claude/` shape for one family — settings, the
- * pre-commit hook, the run skill — and stages the stack-section
- * patch against the `AGENTS.md` that `claude-core` seeded earlier
- * in the chain (`after` orders the two) — a region patch, so the
- * engine holds the section to its markers. The hook and the settings
- * are seeded upserts too: the hook executable and refreshed around
- * its format step, the settings merged around keel's one entry.
+ * Builds the `.claude/` shape for one family — the pre-commit hook
+ * and the run skill, both through their seams — and stages the
+ * stack-section patch against the `AGENTS.md` that `claude-core`
+ * seeded earlier in the chain (`after` orders the two) — a region
+ * patch, so the engine holds the section to its markers.
  */
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
     skills: [family.runSkill],
+    hooks: [preCommitHookSpec(family)],
     patches: [
-      {
-        target: SETTINGS_TARGET,
-        seed: SETTINGS_CONTENT,
-        apply: eolAware(upsertClaudeHook),
-      },
       regionPatch({
         target: AGENTS_TARGET,
         region: RUNBOOK_REGION,
         body: family.runbook,
         padding: 'blank',
       }),
-      {
-        target: HOOK_TARGET,
-        seed: renderPreCommitHook(family),
-        mode: 0o755,
-        apply: eolAware((existing) => refreshPreCommitHook(existing, family)),
-      },
     ],
     tagsAdd: [CLAUDE_KIT_TAG],
   };

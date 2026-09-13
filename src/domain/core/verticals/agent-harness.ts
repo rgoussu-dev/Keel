@@ -7,7 +7,7 @@
 
 import { AGENT_HARNESS_TAG, type Vertical } from '../../contract/composition.js';
 import { claudeCoreAdapter } from '../adapters/claude-core.js';
-import { CLAUDE_KIT_TAG, RUN_SKILL_NAME } from '../adapters/claude-kit.js';
+import { CLAUDE_KIT_TAG, PRE_COMMIT_HOOK_NAME, RUN_SKILL_NAME } from '../adapters/claude-kit.js';
 import { goClaudeKitAdapter } from '../adapters/go-claude-kit.js';
 import { jvmClaudeKitAdapter } from '../adapters/jvm-claude-kit.js';
 import { rustClaudeKitAdapter } from '../adapters/rust-claude-kit.js';
@@ -22,6 +22,7 @@ export const agentHarnessVertical: Vertical = {
   dimensions: ['agentic-baseline', 'agentic-kit'],
   promotes: [AGENT_HARNESS_TAG, CLAUDE_KIT_TAG],
   skills: [RUN_SKILL_NAME],
+  hooks: [PRE_COMMIT_HOOK_NAME],
   adapters: [
     claudeCoreAdapter,
     jvmClaudeKitAdapter,

@@ -106,6 +106,8 @@ export type {
   ContributionFile,
   ContributionPatch,
   Ctx,
+  HookEvent,
+  HookSpec,
   Predicate,
   Question,
   QuestionChoice,
@@ -116,6 +118,7 @@ export type {
   Tree,
   Vertical,
 } from './composition.js';
+export { DISABLED_HOOKS_ENV, HOOK_REMINDER_BUDGET, hookTarget } from './hook.js';
 export {
   hashRegion,
   markdownRegion,
