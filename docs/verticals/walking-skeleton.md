@@ -89,11 +89,12 @@ framework, entrypoint shape, module layout) — one adapter per stack
     evals probe resolve from it without a search.
 
   The patch replaces its own region and never touches edits around
-  it, so re-scaffolding stays idempotent. On
-  `keel add walking-skeleton --reapply`, the root is a template-owned
-  file like every other the vertical emits — rewritten pristine, the
-  diff reported — and the section is rendered back into its fresh
-  slot rather than refused as a divergence.
+  it. That is the ownership rule the spec states — keel maintains its
+  sentinel regions, the project keeps its notes outside them — and
+  `keel add walking-skeleton --reapply` honours it: the section is
+  re-rendered in place, the rest of `AGENTS.md` is left as the
+  project has it, and the shims come back pristine. The pre-commit
+  hook below follows the same rule around its format step.
 
 - **The pre-commit format hook** keel itself uses
   (`.claude/hooks/pre-commit-format.sh`, wired via
@@ -101,6 +102,9 @@ framework, entrypoint shape, module layout) — one adapter per stack
   auto-formats where the toolchain ships a formatter (`gofmt -w .`,
   `cargo fmt`) and runs the family's fast gate — the same commands
   the `ci` vertical's pipeline runs — so every commit lands green.
+  The format step sits between sentinels the `code-style` vertical
+  fills when it wires a formatter in; a reapply of the walking
+  skeleton re-renders the hook around that step, never over it.
 - **A `run` skill** (`.claude/skills/run/SKILL.md`): the
   launch-and-probe loop for the scaffolded shape — dev mode + `curl`
   for the HTTP services, the sample invocation for the CLIs, the Vite

@@ -1,11 +1,12 @@
 /**
  * Test for the `claude-core` adapter — verifies the contribution
- * shape (the root `AGENTS.md` spec plus the three loading shims, no
- * patches or actions), that the emitted spec matches the canonical
- * binding spec on disk byte-for-byte, and that each shim parses in
- * its own format — which is all a test can honestly assert for a
- * file another tool reads. End-to-end placement under a vertical is
- * covered by the walking-skeleton smoke test.
+ * shape (the three loading shims as whole files, the root `AGENTS.md`
+ * as a seeded upsert the project then owns, no actions), that the
+ * seeded spec matches the canonical binding spec on disk
+ * byte-for-byte, and that each shim parses in its own format — which
+ * is all a test can honestly assert for a file another tool reads.
+ * End-to-end placement under a vertical is covered by the
+ * walking-skeleton smoke test.
  */
 
 import path from 'node:path';
@@ -49,16 +50,21 @@ describe('claude-core adapter', () => {
       },
     );
     const contribution = await claudeCoreAdapter.contribute(ctx);
-    expect(contribution.patches ?? []).toEqual([]);
     expect(contribution.actions ?? []).toEqual([]);
-    expect(contribution.files).toHaveLength(4);
-    const [spec, pointer, gemini, aider] = contribution.files ?? [];
-    expect(spec?.path).toBe('AGENTS.md');
+    expect(contribution.files).toHaveLength(3);
+    const [pointer, gemini, aider] = contribution.files ?? [];
+
+    // The spec seeds AGENTS.md and never rewrites one that exists:
+    // keel owns the sentinel regions, the project owns the document.
+    expect(contribution.patches).toHaveLength(1);
+    const spec = contribution.patches?.[0];
+    expect(spec?.target).toBe('AGENTS.md');
     const expected = await fs.readFile(
       path.join(path.join(packagedAssetsRoot, 'project'), 'AGENTS.md'),
       'utf8',
     );
-    expect(spec?.content).toBe(expected);
+    expect(spec?.seed).toBe(expected);
+    expect(spec?.apply('# the project’s own\n')).toBe('# the project’s own\n');
 
     expect(pointer?.path).toBe('CLAUDE.md');
     expect(pointer?.content).toBe('@AGENTS.md\n');

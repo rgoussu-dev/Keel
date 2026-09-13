@@ -257,7 +257,7 @@ export function applyContribution(
         );
       }
     }
-    tree.write(p.target, next);
+    tree.write(p.target, next, p.mode !== undefined ? { mode: p.mode } : undefined);
   }
   const staged: StagedSkill[] = [];
   for (const raw of contribution.skills ?? []) {

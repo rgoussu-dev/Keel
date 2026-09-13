@@ -197,11 +197,15 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await fs.readFile(workflow(), 'utf8')).toBe(`${pristine}# local tweak\n`);
     });
 
-    it('re-renders the walking skeleton, stack section of AGENTS.md included', async () => {
+    it('re-renders what it owns of AGENTS.md and the hook, and nothing else', async () => {
       await seedQuarkusCli();
       const agents = path.join(cwd, 'AGENTS.md');
+      const hook = path.join(cwd, '.claude/hooks/pre-commit-format.sh');
       const pristine = await fs.readFile(agents, 'utf8');
+      const hookWired = await fs.readFile(hook, 'utf8');
       expect(pristine).toContain('<!-- keel:stack-runbook:begin -->\n\n## Stack');
+      // code-style wired the formatter into the hook's owned step at scaffold time.
+      expect(hookWired).toContain('spotlessApply');
       const reapplySkeleton = () =>
         installMediator({
           clock: new FakeClock('2026-04-28T09:00:00Z'),
@@ -217,27 +221,29 @@ describe('keel.add-vertical (keel add)', () => {
           }),
         );
 
-      // Nothing edited: claude-core's pristine rewrite and the kit's
-      // section land the root back on what disk holds, so it is not
-      // reported as a change. (The pre-commit hook is: code-style wired
-      // the formatter into it after the scaffold, and the kit's
-      // whole-file rewrite is pristine — reapplying that vertical next
-      // puts it back.)
+      // Nothing edited: nothing to report — the section is already
+      // rendered and the hook keeps the formatter code-style wired in.
       const untouched = expectOk(await reapplySkeleton());
-      expect(untouched.changes.map((c) => c.path)).not.toContain('AGENTS.md');
+      expect(untouched.changes).toEqual([]);
+      expect(await fs.readFile(hook, 'utf8')).toBe(hookWired);
 
-      // Edited inside the section and outside it: the root is a
-      // template-owned file, rewritten pristine with its diff reported,
-      // and the section is rendered back into the fresh slot rather
-      // than refused as a divergence.
+      // Edited inside the section and outside it: keel re-renders its
+      // region (reported, diffed) and leaves the project's note where
+      // the spec told it to keep one. Same for the hook: the skeleton
+      // is keel's, the format step stays as code-style left it.
       await fs.writeFile(
         agents,
         `${pristine.replace('## Stack', '## Stack (hand-edited)')}\n<!-- local note -->\n`,
       );
+      await fs.writeFile(hook, hookWired.replace('set -euo pipefail', 'set -eu # hand-edited'));
       const report = expectOk(await reapplySkeleton());
-      expect(report.changes).toContainEqual({ kind: 'modify', path: 'AGENTS.md' });
+      expect(report.changes.map((c) => c.path)).toEqual([
+        '.claude/hooks/pre-commit-format.sh',
+        'AGENTS.md',
+      ]);
       expect(report.diffs!.map((d) => d.path)).toContain('AGENTS.md');
-      expect(await fs.readFile(agents, 'utf8')).toBe(pristine);
+      expect(await fs.readFile(agents, 'utf8')).toBe(`${pristine}\n<!-- local note -->\n`);
+      expect(await fs.readFile(hook, 'utf8')).toBe(hookWired);
     });
 
     it('refuses to reapply a vertical that is not installed', async () => {

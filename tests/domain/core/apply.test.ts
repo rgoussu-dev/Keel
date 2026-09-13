@@ -435,6 +435,16 @@ describe('applyContributions', () => {
       expect(tree.changes()).toEqual([]);
     });
 
+    it('seeds a patch target with the mode the patch declares', async () => {
+      const tree = new FsTree(tmp);
+      const a = adapter('a', {
+        patches: [{ target: 'hook.sh', seed: '#!/bin/sh\n', mode: 0o755, apply: (s) => s }],
+      });
+      await reapply([a], tree);
+      await tree.commit();
+      expect((await fs.stat(path.join(tmp, 'hook.sh'))).mode & 0o111).not.toBe(0);
+    });
+
     it('still seeds a patch target the working tree lost', async () => {
       const tree = new FsTree(tmp);
       const a = adapter('a', {

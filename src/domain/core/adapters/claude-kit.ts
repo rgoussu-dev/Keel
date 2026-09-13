@@ -15,12 +15,14 @@
  *     spec's universality deliberately leaves out, and the other four
  *     families' stances never ship. The patch replaces its own
  *     sentinel-delimited section and never touches the user's edits
- *     around it, so re-scaffolds and a future `--reapply` stay
- *     idempotent;
+ *     around it, so re-scaffolds and `--reapply` stay idempotent;
  *   - the **pre-commit format hook** keel itself uses
  *     (`.claude/hooks/pre-commit-format.sh`), adapted to the
  *     family's own format/verify commands, wired via
- *     `.claude/settings.json`;
+ *     `.claude/settings.json`. Also a seeded upsert, not a whole
+ *     file: the `code-style` vertical owns the hook's format step
+ *     once it wires a formatter in, so a reapply re-renders the
+ *     hook around the step it finds rather than resetting it;
  *   - a **run skill** (`.claude/skills/run/SKILL.md`, staged through
  *     the `SkillSpec` seam) so "launch the app and check it" works
  *     out of the box for an agent working inside the scaffolded
@@ -297,22 +299,52 @@ export function upsertFormatStep(existing: string, formatCommand: string | undef
 }
 
 /**
+ * Re-renders the hook for the family around the format step the
+ * existing hook carries: everything outside the step's sentinels is
+ * keel's and comes back pristine, the step itself is whatever the
+ * file holds — the family's default, or the formatter `code-style`
+ * wired in since. A hook without the pair predates the sentinels and
+ * is re-rendered whole. Its own fixed point, so `--reapply` refreshes
+ * it rather than refusing it. Hand-edited-apart sentinels throw with
+ * the fix, as {@link upsertFormatStep} does.
+ */
+export function refreshPreCommitHook(existing: string, family: ClaudeKitFamily): string {
+  const fresh = renderPreCommitHook(family);
+  const begin = existing.indexOf(FORMAT_STEP_BEGIN);
+  const end = existing.indexOf(FORMAT_STEP_END);
+  if (begin === -1 && end === -1) return fresh;
+  if (begin === -1 || end === -1 || end < begin) {
+    throw new Error(
+      `${HOOK_TARGET}: the format-step sentinels are broken — expected '${FORMAT_STEP_BEGIN}' followed by '${FORMAT_STEP_END}'. Restore the pair (or delete both) and re-run.`,
+    );
+  }
+  const step = existing.slice(begin, end + FORMAT_STEP_END.length);
+  const freshBegin = fresh.indexOf(FORMAT_STEP_BEGIN);
+  const freshEnd = fresh.indexOf(FORMAT_STEP_END) + FORMAT_STEP_END.length;
+  return `${fresh.slice(0, freshBegin)}${step}${fresh.slice(freshEnd)}`;
+}
+
+/**
  * Builds the `.claude/` shape for one family — settings, the
  * pre-commit hook, the run skill — and stages the stack-section
- * patch against the `AGENTS.md` that `claude-core` emitted earlier
- * in the chain (`after` orders the two).
+ * patch against the `AGENTS.md` that `claude-core` seeded earlier
+ * in the chain (`after` orders the two). The hook is a seeded upsert
+ * too, executable, refreshed around its format step.
  */
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
-    files: [
-      { path: SETTINGS_TARGET, content: SETTINGS_CONTENT },
-      { path: HOOK_TARGET, content: renderPreCommitHook(family), mode: 0o755 },
-    ],
+    files: [{ path: SETTINGS_TARGET, content: SETTINGS_CONTENT }],
     skills: [family.runSkill],
     patches: [
       {
         target: AGENTS_TARGET,
         apply: eolAware((existing) => upsertRunbook(existing, family.runbook)),
+      },
+      {
+        target: HOOK_TARGET,
+        seed: renderPreCommitHook(family),
+        mode: 0o755,
+        apply: eolAware((existing) => refreshPreCommitHook(existing, family)),
       },
     ],
     tagsAdd: [CLAUDE_KIT_TAG],

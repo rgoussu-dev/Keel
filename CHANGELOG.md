@@ -56,14 +56,21 @@ use to keep a long-lived changelog scannable — and the root keeps
 ### Fixed
 
 - **`keel add walking-skeleton --reapply` no longer refuses its own
-  stack section.** Re-rendering the vertical rewrote `AGENTS.md`
-  pristine and then met the family kit's patch filling the sentinel
-  region back in, which the reapply guard read as a divergence. A
-  patch that owns a region — its transform is its own fixed point —
-  now re-renders it on reapply and reports the diff, as a whole-file
-  rewrite does; one that would compound still refuses. A shared file
-  two adapters write in turn is reported as changed only when it
-  ends up different from disk.
+  stack section, and no longer resets what it does not own.**
+  Re-rendering the vertical rewrote `AGENTS.md` pristine and then met
+  the family kit's patch filling the sentinel region back in, which
+  the reapply guard read as a divergence. A patch that owns a region
+  — its transform is its own fixed point — now re-renders it on
+  reapply and reports the diff; one that would compound still
+  refuses. `AGENTS.md` itself is now the project's document, as the
+  spec says: keel seeds it and maintains its sentinel regions, so a
+  reapply keeps the notes kept outside them (and a project that
+  already has an `AGENTS.md` keeps it and gains the stack section).
+  The pre-commit hook likewise comes back re-rendered around the
+  format step `code-style` wired in, rather than without it. A
+  shared file two adapters write in turn is reported as changed only
+  when it ends up different from disk, and a staged executable bit
+  survives a later content-only write.
 - **Harness evals:** the benchmark checkpoint is written atomically
   (a temp file renamed over the benchmark, so a kill mid-write keeps
   the previous checkpoint); `--only` refuses to fold a run from a

@@ -15,6 +15,16 @@
  * of their own and never need editing when the spec changes. Every
  * keel-scaffolded project ships the four.
  *
+ * The shims are whole files — keel's, rewritten pristine on
+ * `--reapply`. `AGENTS.md` is not: the spec tells the project to keep
+ * its own notes outside keel's sentinel regions, so once scaffolded
+ * the document belongs to the project and keel owns only those
+ * regions. It is contributed as a seeded upsert — the spec is the
+ * seed a new project starts from, and an existing file is left as it
+ * is — so a reapply re-renders the family kit's section and touches
+ * nothing else, and a project that already has an `AGENTS.md` keeps
+ * it and gains the section.
+ *
  * Composition:
  *   - covers `agentic-baseline` of the `walking-skeleton` vertical;
  *   - predicate: empty — fires unconditionally, since every keel
@@ -63,11 +73,11 @@ export const claudeCoreAdapter: Adapter = {
     const content = await ctx.templates.readText('project/AGENTS.md');
     return {
       files: [
-        { path: SPEC_TARGET, content },
         { path: POINTER_TARGET, content: POINTER_CONTENT },
         { path: GEMINI_SETTINGS_TARGET, content: GEMINI_SETTINGS_CONTENT },
         { path: AIDER_CONF_TARGET, content: AIDER_CONF_CONTENT },
       ],
+      patches: [{ target: SPEC_TARGET, seed: content, apply: (existing) => existing }],
     };
   },
 };
