@@ -67,7 +67,9 @@ use to keep a long-lived changelog scannable — and the root keeps
   reapply keeps the notes kept outside them (and a project that
   already has an `AGENTS.md` keeps it and gains the stack section).
   The pre-commit hook likewise comes back re-rendered around the
-  format step `code-style` wired in, rather than without it. A
+  format step `code-style` wired in, rather than without it, and
+  `.claude/settings.json` keeps the project's own permissions, env
+  and hooks beside keel's entry. A
   shared file two adapters write in turn is reported as changed only
   when it ends up different from disk, and a staged executable bit
   survives a later content-only write.

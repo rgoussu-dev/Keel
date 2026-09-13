@@ -201,6 +201,7 @@ describe('keel.add-vertical (keel add)', () => {
       await seedQuarkusCli();
       const agents = path.join(cwd, 'AGENTS.md');
       const hook = path.join(cwd, '.claude/hooks/pre-commit-format.sh');
+      const settings = path.join(cwd, '.claude/settings.json');
       const pristine = await fs.readFile(agents, 'utf8');
       const hookWired = await fs.readFile(hook, 'utf8');
       expect(pristine).toContain('<!-- keel:stack-runbook:begin -->\n\n## Stack');
@@ -236,11 +237,20 @@ describe('keel.add-vertical (keel add)', () => {
         `${pristine.replace('## Stack', '## Stack (hand-edited)')}\n<!-- local note -->\n`,
       );
       await fs.writeFile(hook, hookWired.replace('set -euo pipefail', 'set -eu # hand-edited'));
+      // And the project's own settings beside keel's hook entry.
+      const own = JSON.parse(await fs.readFile(settings, 'utf8')) as Record<string, unknown>;
+      await fs.writeFile(
+        settings,
+        `${JSON.stringify({ ...own, permissions: { allow: ['Bash(pnpm test)'] } }, null, 2)}\n`,
+      );
       const report = expectOk(await reapplySkeleton());
       expect(report.changes.map((c) => c.path)).toEqual([
         '.claude/hooks/pre-commit-format.sh',
         'AGENTS.md',
       ]);
+      expect(JSON.parse(await fs.readFile(settings, 'utf8'))).toMatchObject({
+        permissions: { allow: ['Bash(pnpm test)'] },
+      });
       expect(report.diffs!.map((d) => d.path)).toContain('AGENTS.md');
       expect(await fs.readFile(agents, 'utf8')).toBe(`${pristine}\n<!-- local note -->\n`);
       expect(await fs.readFile(hook, 'utf8')).toBe(hookWired);

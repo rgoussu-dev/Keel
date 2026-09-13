@@ -23,6 +23,7 @@ import {
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
+  upsertClaudeHook,
   upsertFormatStep,
   upsertRunbook,
 } from '../../../../src/domain/core/adapters/claude-kit.js';
@@ -178,6 +179,52 @@ describe('upsertFormatStep', () => {
   });
 });
 
+describe('upsertClaudeHook', () => {
+  const HOOK = 'bash .claude/hooks/pre-commit-format.sh';
+  const parse = (s: string) =>
+    JSON.parse(s) as {
+      hooks: {
+        PreToolUse: { matcher: string; hooks: { command: string }[] }[];
+        PostToolUse?: unknown[];
+      };
+      [k: string]: unknown;
+    };
+
+  it('adds keel’s entry to a project’s settings and keeps everything else', () => {
+    const own = JSON.stringify(
+      {
+        permissions: { allow: ['Bash(pnpm test)'] },
+        env: { FOO: 'bar' },
+        hooks: {
+          PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'echo edit' }] }],
+          PostToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo done' }] }],
+        },
+      },
+      null,
+      2,
+    );
+    const merged = parse(upsertClaudeHook(own));
+    expect(merged['permissions']).toEqual({ allow: ['Bash(pnpm test)'] });
+    expect(merged['env']).toEqual({ FOO: 'bar' });
+    expect(merged.hooks.PostToolUse).toHaveLength(1);
+    expect(merged.hooks.PreToolUse.map((e) => e.hooks[0]!.command)).toEqual(['echo edit', HOOK]);
+  });
+
+  it('is its own fixed point, on the seed and on a merged file alike', () => {
+    const seeded = upsertClaudeHook('{}');
+    expect(parse(seeded).hooks.PreToolUse[0]!.hooks[0]!.command).toBe(HOOK);
+    expect(upsertClaudeHook(seeded)).toBe(seeded);
+    const once = upsertClaudeHook('{"env":{"A":"1"}}');
+    expect(upsertClaudeHook(once)).toBe(once);
+  });
+
+  it('refuses a file it cannot read as settings, naming the fix', () => {
+    expect(() => upsertClaudeHook('{ not json')).toThrow(/not valid JSON/);
+    expect(() => upsertClaudeHook('[]')).toThrow(/JSON object/);
+    expect(() => upsertClaudeHook('{"hooks":{"PreToolUse":{}}}')).toThrow(/to be a list/);
+  });
+});
+
 describe('refreshPreCommitHook', () => {
   it('re-renders the hook around the format step code-style wired in', () => {
     const wired = upsertFormatStep(renderPreCommitHook(family), 'toolfmt -w .');
@@ -202,10 +249,15 @@ describe('refreshPreCommitHook', () => {
 });
 
 describe('claudeKitContribution', () => {
-  it('emits settings, an executable hook upsert, and the run skill through the seam', () => {
+  it('emits settings and hook upserts, and the run skill through the seam', () => {
     const contribution = claudeKitContribution(family);
-    const byPath = new Map((contribution.files ?? []).map((f) => [f.path, f]));
-    expect([...byPath.keys()]).toEqual(['.claude/settings.json']);
+    expect(contribution.files ?? []).toEqual([]);
+    const byPath = new Map((contribution.patches ?? []).map((p) => [p.target, p]));
+    expect([...byPath.keys()]).toEqual([
+      '.claude/settings.json',
+      'AGENTS.md',
+      '.claude/hooks/pre-commit-format.sh',
+    ]);
     // The run skill rides the SkillSpec seam, never a bare files: entry
     // — that is what lets the applier own its path, provenance and
     // collision rules.
@@ -219,7 +271,7 @@ describe('claudeKitContribution', () => {
     expect(hook?.mode).toBe(0o755);
     expect(hook?.seed).toBe(renderPreCommitHook(family));
     expect(hook?.apply(hook.seed!)).toBe(hook?.seed);
-    const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.content)) as {
+    const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.seed)) as {
       hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
     };
     expect(settings.hooks.PreToolUse[0]?.matcher).toBe('Bash');
@@ -231,7 +283,7 @@ describe('claudeKitContribution', () => {
 
   it('round-trips CRLF specs through the runbook patch', () => {
     const contribution = claudeKitContribution(family);
-    const patch = contribution.patches?.[0];
+    const patch = contribution.patches?.find((p) => p.target === 'AGENTS.md');
     expect(patch?.target).toBe('AGENTS.md');
     const next = patch!.apply('# Spec\r\n\r\nBody.\r\n');
     expect(next).toContain(`${RUNBOOK_BEGIN}\r\n`);

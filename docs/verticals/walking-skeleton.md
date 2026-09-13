@@ -104,7 +104,10 @@ framework, entrypoint shape, module layout) — one adapter per stack
   the `ci` vertical's pipeline runs — so every commit lands green.
   The format step sits between sentinels the `code-style` vertical
   fills when it wires a formatter in; a reapply of the walking
-  skeleton re-renders the hook around that step, never over it.
+  skeleton re-renders the hook around that step, never over it. The
+  `.claude/settings.json` that wires the hook is the project's file:
+  keel adds its one `PreToolUse` entry and leaves permissions, env
+  and any other hooks as they are, on scaffold and on reapply alike.
 - **A `run` skill** (`.claude/skills/run/SKILL.md`): the
   launch-and-probe loop for the scaffolded shape — dev mode + `curl`
   for the HTTP services, the sample invocation for the CLIs, the Vite

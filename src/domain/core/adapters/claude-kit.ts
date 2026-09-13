@@ -22,7 +22,10 @@
  *     `.claude/settings.json`. Also a seeded upsert, not a whole
  *     file: the `code-style` vertical owns the hook's format step
  *     once it wires a formatter in, so a reapply re-renders the
- *     hook around the step it finds rather than resetting it;
+ *     hook around the step it finds rather than resetting it. And
+ *     `.claude/settings.json` is the project's: keel merges its one
+ *     `PreToolUse` entry into whatever the file holds and leaves the
+ *     rest — permissions, env, other hooks — as it found it;
  *   - a **run skill** (`.claude/skills/run/SKILL.md`, staged through
  *     the `SkillSpec` seam) so "launch the app and check it" works
  *     out of the box for an agent working inside the scaffolded
@@ -171,9 +174,13 @@ export function runSkillSpec(spec: { description: string; body: string }): Skill
   return { name: RUN_SKILL_NAME, ...spec };
 }
 
+/** The hook entry keel owns in `.claude/settings.json`, keyed by its command. */
+const HOOK_COMMAND = `bash ${HOOK_TARGET}`;
+
 /**
- * `.claude/settings.json` wiring the pre-commit hook. Identical for
- * every family — the family variance lives inside the hook script.
+ * `.claude/settings.json` as a fresh project starts from: the
+ * pre-commit hook wired, nothing else. Identical for every family —
+ * the family variance lives inside the hook script.
  */
 const SETTINGS_CONTENT = `{
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
@@ -192,6 +199,58 @@ const SETTINGS_CONTENT = `{
   }
 }
 `;
+
+interface ClaudeSettings {
+  hooks?: { PreToolUse?: { matcher?: string; hooks?: { type?: string; command?: string }[] }[] };
+  [key: string]: unknown;
+}
+
+/**
+ * Merges keel's pre-commit hook into an existing `.claude/settings.json`:
+ * the one `PreToolUse` entry running the hook is added when no entry
+ * runs it yet, and everything else the file holds — permissions,
+ * env, the project's own hooks — stays as it is. Its own fixed
+ * point, so `--reapply` refreshes nothing it does not own. A file
+ * that is not JSON, or whose `hooks.PreToolUse` is not a list, is
+ * refused with the fix rather than rewritten.
+ */
+export function upsertClaudeHook(existing: string): string {
+  let settings: ClaudeSettings;
+  try {
+    settings = JSON.parse(existing) as ClaudeSettings;
+  } catch (err) {
+    throw new Error(
+      `${SETTINGS_TARGET}: not valid JSON (${err instanceof Error ? err.message : String(err)}). Fix the file (or delete it) and re-run.`,
+    );
+  }
+  if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) {
+    throw new Error(
+      `${SETTINGS_TARGET}: expected a JSON object at the top level. Fix the file and re-run.`,
+    );
+  }
+  const hooks = settings.hooks ?? {};
+  const preToolUse = hooks.PreToolUse ?? [];
+  if (!Array.isArray(preToolUse)) {
+    throw new Error(
+      `${SETTINGS_TARGET}: expected hooks.PreToolUse to be a list. Fix the file and re-run.`,
+    );
+  }
+  const wired = preToolUse.some((entry) =>
+    (entry.hooks ?? []).some((h) => h.command === HOOK_COMMAND),
+  );
+  if (wired) return existing;
+  const merged: ClaudeSettings = {
+    ...settings,
+    hooks: {
+      ...hooks,
+      PreToolUse: [
+        ...preToolUse,
+        { matcher: 'Bash', hooks: [{ type: 'command', command: HOOK_COMMAND }] },
+      ],
+    },
+  };
+  return `${JSON.stringify(merged, null, 2)}\n`;
+}
 
 /**
  * The pre-commit hook, keel's own
@@ -328,14 +387,19 @@ export function refreshPreCommitHook(existing: string, family: ClaudeKitFamily):
  * Builds the `.claude/` shape for one family — settings, the
  * pre-commit hook, the run skill — and stages the stack-section
  * patch against the `AGENTS.md` that `claude-core` seeded earlier
- * in the chain (`after` orders the two). The hook is a seeded upsert
- * too, executable, refreshed around its format step.
+ * in the chain (`after` orders the two). The hook and the settings
+ * are seeded upserts too: the hook executable and refreshed around
+ * its format step, the settings merged around keel's one entry.
  */
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
-    files: [{ path: SETTINGS_TARGET, content: SETTINGS_CONTENT }],
     skills: [family.runSkill],
     patches: [
+      {
+        target: SETTINGS_TARGET,
+        seed: SETTINGS_CONTENT,
+        apply: eolAware(upsertClaudeHook),
+      },
       {
         target: AGENTS_TARGET,
         apply: eolAware((existing) => upsertRunbook(existing, family.runbook)),
