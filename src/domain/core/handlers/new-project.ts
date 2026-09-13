@@ -98,6 +98,7 @@ import {
   promotedBy,
 } from '../dials.js';
 import { installVertical } from '../install.js';
+import { newOwnership } from '../apply.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
@@ -720,12 +721,17 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       ? inputs.stack.verticals.filter((v) => v.id !== vcsVertical.id)
       : inputs.stack.verticals;
     const verticals = [...own, ...(inputs.extraVerticals ?? [])];
+    // One ownership scope for the whole scaffold: a skill name or a
+    // region two verticals both claim collides here, not only when
+    // both come from one vertical.
+    const owners = newOwnership();
 
     for (const vertical of verticals) {
       const result = await installVertical({
         vertical,
         manifest,
         tree,
+        owners,
         mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
         prompt: inputs.prompt,
         logger: this.deps.logger,

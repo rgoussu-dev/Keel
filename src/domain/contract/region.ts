@@ -123,7 +123,8 @@ export interface UpsertRegionOptions {
  * says when neither is. Its own fixed point — re-applying the same
  * body changes nothing — which is what lets `--reapply` re-render
  * it. CRLF text is normalized for the splice and restored after, so
- * a Windows checkout round-trips with one line ending.
+ * a Windows checkout round-trips with one line ending — the file's,
+ * whatever the body was authored with.
  */
 export function upsertRegion(
   existing: string,
@@ -138,7 +139,9 @@ export function upsertRegion(
     );
   }
   const gap = options.padding === 'blank' ? '\n\n' : '\n';
-  const section = `${region.begin}${gap}${body.trim()}${gap}${region.end}`;
+  // The body is authored, so it may arrive CRLF too (a template read
+  // on Windows); it takes the file's line ending, never its own.
+  const section = `${region.begin}${gap}${body.replace(/\r\n/g, '\n').trim()}${gap}${region.end}`;
   const span = locateRegion(existing, region, options.where ?? region.begin);
   if (span === null) {
     if (options.whenAbsent === 'keep') return existing;

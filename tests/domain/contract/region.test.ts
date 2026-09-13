@@ -98,6 +98,16 @@ describe('upsertRegion', () => {
     expect(out).not.toMatch(/[^\r]\n/);
   });
 
+  it('gives a CRLF-authored body the file’s line ending, never a doubled one', () => {
+    const crlfBody = 'a\r\nb';
+    expect(upsertRegion('# Spec\r\n', md, crlfBody, { padding: 'blank' })).toBe(
+      `# Spec\r\n\r\n${md.begin}\r\n\r\na\r\nb\r\n\r\n${md.end}\r\n`,
+    );
+    expect(upsertRegion('# Spec\n', md, crlfBody, { padding: 'blank' })).toBe(
+      `# Spec\n\n${md.begin}\n\na\nb\n\n${md.end}\n`,
+    );
+  });
+
   it('names the caller’s location in the broken-pair message', () => {
     expect(() => upsertRegion(`${sh.begin}\n`, sh, 'x', { where: 'code-style' })).toThrow(
       /^code-style: the sentinels are broken/,
