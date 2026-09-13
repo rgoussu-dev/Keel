@@ -4,14 +4,14 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand, addVerticalCommand } from '../../../../src/domain/contract/commands.js';
-import type { Vertical } from '../../../../src/domain/contract/composition.js';
+import type { Tag, Vertical } from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { hashRegion, regionPatch } from '../../../../src/domain/contract/region.js';
 import { registryOf } from '../../../../src/domain/core/registry.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
-import { expectOk, installMediator } from '../../../support/factory.js';
+import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 
 const producer: Vertical = {
   id: 'producer',
@@ -65,7 +65,11 @@ beforeEach(async () => {
 afterEach(async () => {
   await fs.remove(cwd);
 });
-function scenario(verticals: readonly Vertical[], registered: readonly Vertical[] = verticals) {
+function scenario(
+  verticals: readonly Vertical[],
+  registered: readonly Vertical[] = verticals,
+  tags: readonly Tag[] = [],
+) {
   const logger = new FakeLogger();
   const clock = new FakeClock('2026-04-26T12:00:00Z');
   const mediator = installMediator({
@@ -75,7 +79,7 @@ function scenario(verticals: readonly Vertical[], registered: readonly Vertical[
       {
         origin: 'harness-test',
         verticals: registered,
-        stacks: [{ id: 'fixture', description: 'Harness ordering fixture', tags: [], verticals }],
+        stacks: [{ id: 'fixture', description: 'Harness ordering fixture', tags, verticals }],
       },
     ]),
     runDeferred: () => Promise.resolve(),
@@ -135,6 +139,41 @@ describe('harness realization at the end of the run', () => {
     expect(manifest?.tags).not.toContain('agentic.harness');
     expect(manifest?.verticals.map((v) => v.id)).toEqual(['producer']);
   });
+  it.each(['stack-tag', 'preset-vertical', 'extra-vertical'] as const)(
+    'refuses an opt-out assembly reactivated by a plugin %s before writing files',
+    async (source) => {
+      const plugin: Vertical = {
+        ...harness,
+        id: 'plugin-harness',
+        adapters: harness.adapters.map((adapter) => ({
+          ...adapter,
+          id: 'plugin-harness/core',
+          vertical: 'plugin-harness',
+        })),
+      };
+      const { mediator } = scenario(
+        source === 'preset-vertical' ? [producer, plugin] : [producer],
+        [producer, plugin],
+        source === 'stack-tag' ? ['agentic.harness'] : [],
+      );
+      const error = expectErr(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fixture',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            agentHarness: false,
+            ...(source === 'extra-vertical' ? { extraVerticals: ['plugin-harness'] } : {}),
+          }),
+        ),
+      );
+      expect(error.code).toBe('keel.invalid-agent-harness');
+      expect(error.message).toContain('--no-agent-harness');
+      expect(await fs.readdir(cwd)).toEqual([]);
+    },
+  );
   it('adopts a harness later without rewriting existing domain files', async () => {
     const { mediator } = scenario([producer], [producer, harness]);
     await scaffold(mediator);

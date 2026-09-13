@@ -112,7 +112,13 @@ export async function installVertical(
 
   for (const adapter of ordered) {
     const stored = { ...sharedAnswers(running, adapter), ...(running.answers[adapter.id] ?? {}) };
-    const resolution = await resolveAdapterAnswers(adapter, stored, inputs.mode, inputs.prompt);
+    const resolution = await resolveAdapterAnswers(
+      adapter,
+      stored,
+      inputs.mode,
+      inputs.prompt,
+      inputs.harnessOnly === true,
+    );
 
     running = foldAnswers(running, adapter.id, resolution.answers, resolution.updates);
 

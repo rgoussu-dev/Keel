@@ -58,12 +58,17 @@ export async function resolveAnswer(
   return { value, persist: question.memory === 'sticky' };
 }
 
-/** Resolves every question of an adapter in declaration order. */
+/**
+ * Resolves every question of an adapter in declaration order.
+ * Harness replay reuses recorded values even for repeat questions;
+ * questions absent from the snapshot still resolve through their defaults.
+ */
 export async function resolveAdapterAnswers(
   adapter: Adapter,
   storedForAdapter: Readonly<Record<string, string>>,
   mode: AnswerMode,
   prompt: Prompt,
+  replayRecorded = false,
 ): Promise<{
   answers: Record<string, string>;
   updates: Record<string, string>;
@@ -76,10 +81,14 @@ export async function resolveAdapterAnswers(
       throw new Error(`adapter '${adapter.id}' declares duplicate question id '${q.id}'`);
     }
     seen.add(q.id);
-    const r = await resolveAnswer(q, storedForAdapter, mode, prompt, {
-      kind: 'adapter',
-      id: adapter.id,
-    });
+    const recorded = replayRecorded ? storedForAdapter[q.id] : undefined;
+    const r =
+      recorded === undefined
+        ? await resolveAnswer(q, storedForAdapter, mode, prompt, {
+            kind: 'adapter',
+            id: adapter.id,
+          })
+        : { value: recorded, persist: false };
     answers[q.id] = r.value;
     if (r.persist) updates[q.id] = r.value;
   }

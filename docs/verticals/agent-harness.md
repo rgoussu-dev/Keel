@@ -19,7 +19,10 @@ hooks. The project manifest under `.claude/` remains machinery, and
 later re-renders installed contributors from their recorded answers,
 non-interactively, realizing only their declared harness elements.
 Every recorded bounded context is replayed with its transient module
-selector so a grown project gains its per-module declarations too.
+selector and recorded `consumes` peer so a grown project gains its
+per-module declarations too. Repeated-question answers reuse their recorded
+values during adoption; ordinary installs retain their repeat behavior.
+Older module records without a `consumes` field replay without a consumer.
 
 ## Dimensions and activation
 

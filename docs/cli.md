@@ -50,7 +50,7 @@ keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a R
 keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in the same run
 ```
 
-`--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness`. Composite product-root harness selection is outside this flag.
+`--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness` or a plugin stack/vertical that activates `agentic.harness`. Composite product-root harness selection is outside this flag; run `keel add agent-harness` inside an individual service.
 
 ### The interactive wizard
 

@@ -140,7 +140,15 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     await tree.commit();
     await this.deps.manifests.write(scopeRoot, {
       ...withoutAddModuleInputs(result.manifest),
-      modules: [...stored.modules, { name: name.value, installedAt: now, seam: true }],
+      modules: [
+        ...stored.modules,
+        {
+          name: name.value,
+          installedAt: now,
+          seam: true,
+          ...(gate.value === null ? {} : { consumes: gate.value.name }),
+        },
+      ],
     });
     const runDeferred = this.deps.runDeferred ?? runActions;
     await runDeferred({

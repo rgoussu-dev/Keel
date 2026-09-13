@@ -308,6 +308,8 @@ they never own content.
 `agent-harness` owns the root document, shims and family kit; its baseline
 promotes `agentic.harness`. Every single-service preset installs it after
 `walking-skeleton`. `keel new --no-agent-harness` removes that membership.
+An opted-out assembly refuses plugin stack tags or other verticals that
+would activate `agentic.harness`, before staging files.
 
 Every adapter's `skills` and interim `harnessPatches` are collected across
 the whole install run. Only the final, local tag set decides whether they
@@ -323,10 +325,13 @@ and patches retain contributor provenance when realized. Hook/settings
 and document declaration classes extend this final pass when their seams land.
 
 Brownfield `keel add agent-harness` re-renders recorded contributors
-non-interactively, collecting only their harness declarations. Domain files
+non-interactively, including the recorded values of repeat questions,
+collecting only their harness declarations. Domain files
 and deferred actions are untouched. The transient `bounded-context`
 vertical is replayed once per manifest module with synthetic add-module
-inputs, which are never persisted. An unavailable plugin contributor
+inputs, which are never persisted. The module record retains its `consumes`
+peer so replay preserves the context's dependency; older records without
+that optional field replay without a consumer. An unavailable plugin contributor
 refuses the adoption before anything is committed.
 
 See the [per-contributor catalog](verticals/agent-harness.md#per-contributor-catalog)

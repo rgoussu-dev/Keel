@@ -86,6 +86,15 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       );
     }
 
+    if (vertical.id === 'agent-harness' && stored.services.length > 0) {
+      return err(
+        new DomainError(
+          "agent-harness applies to single-service projects; run 'keel add agent-harness' inside a service, not at the composite product root",
+          'keel.invalid-agent-harness',
+        ),
+      );
+    }
+
     const installed = stored.verticals.some((v) => v.id === vertical.id);
     const reapply = command.reapply === true;
     if (!reapply && installed) {

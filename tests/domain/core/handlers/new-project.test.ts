@@ -828,6 +828,7 @@ describe('keel new records its bounded contexts', () => {
       ['greeting', true],
       ['guestbook', false],
     ]);
+    expect(modules.find((module) => module.name === 'guestbook')?.consumes).toBe('greeting');
   });
 });
 

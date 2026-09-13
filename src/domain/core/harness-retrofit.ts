@@ -47,7 +47,7 @@ export async function retrofitHarness(
       tags: [...new Set([...inputs.manifest.tags, CONTEXT_TAG])],
       answers: {
         ...inputs.manifest.answers,
-        ...addModuleInputs({ name: module.name, consumes: null }),
+        ...addModuleInputs({ name: module.name, consumes: module.consumes ?? null }),
       },
     });
   }

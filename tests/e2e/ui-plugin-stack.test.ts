@@ -117,6 +117,58 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
   });
 
   it(
+    'renders harness suppression once and replaces preview notices with the final report',
+    async () => {
+      const plan = page.locator('keel-plan');
+      const notice = plan.locator('[data-role="harness-suppression"]');
+      const preview = { subject: 'acme-widget', questions: [], changes: [], actions: [] };
+      const report = { subject: 'acme-widget', changes: [], actions: [], committed: true };
+
+      // Exercise the real element's public properties after the page
+      // settles: the API tests already cover how these DTOs arrive.
+      await plan.evaluate((element, value) => Object.assign(element, { preview: value }), {
+        ...preview,
+        skippedHarnessElements: 3,
+      });
+      expect(await notice.count()).toBe(1);
+      expect(await notice.isVisible()).toBe(true);
+      expect(await notice.textContent()).toBe(
+        'skipped 3 harness elements — no agent-harness in this project',
+      );
+
+      for (const value of [{ ...preview, skippedHarnessElements: 0 }, preview]) {
+        await plan.evaluate((element, next) => Object.assign(element, { preview: next }), value);
+        expect(await notice.isVisible()).toBe(false);
+        expect(await notice.textContent()).toBe('');
+      }
+
+      await plan.evaluate((element, values) => Object.assign(element, values), {
+        preview: { ...preview, skippedHarnessElements: 2 },
+        report: { ...report, skippedHarnessElements: 5 },
+      });
+      expect(await notice.count()).toBe(1);
+      expect(await notice.isVisible()).toBe(true);
+      expect(await notice.textContent()).toBe(
+        'skipped 5 harness elements — no agent-harness in this project',
+      );
+
+      // A successful run with no suppressed elements must clear a
+      // previous preview notice, including when the field is absent.
+      for (const value of [{ ...report, skippedHarnessElements: 0 }, report]) {
+        await plan.evaluate((element, next) => Object.assign(element, { report: next }), value);
+        expect(await notice.isVisible()).toBe(false);
+        expect(await notice.textContent()).toBe('');
+      }
+      await plan.evaluate((element) => Object.assign(element, { report: null }));
+      expect(await notice.isVisible()).toBe(true);
+      expect(await notice.textContent()).toBe(
+        'skipped 2 harness elements — no agent-harness in this project',
+      );
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     "offers the plugin's language on the wizard, beside the shipped ones",
     async () => {
       await goToStep(traffic, page, 'language');

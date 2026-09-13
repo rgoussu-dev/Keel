@@ -65,6 +65,7 @@ import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { InstallReport, NewProjectCommand, RepoLayout } from '../../contract/commands.js';
 import {
+  AGENT_HARNESS_TAG,
   decodeSelection,
   type DeferredAction,
   type Question,
@@ -323,6 +324,17 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       command.agentHarness === false
         ? { ...registered, verticals: registered.verticals.filter((v) => v.id !== 'agent-harness') }
         : registered;
+    if (
+      command.agentHarness === false &&
+      [...stack.tags, ...promotedBy(stack.verticals)].includes(AGENT_HARNESS_TAG)
+    ) {
+      return err(
+        new DomainError(
+          `--no-agent-harness cannot be used with stack '${stack.id}': its tags or remaining verticals activate ${AGENT_HARNESS_TAG}`,
+          'keel.invalid-agent-harness',
+        ),
+      );
+    }
     return stack.services
       ? this.stageComposite(command, stack, prompt)
       : this.stageSingle(command, stack, prompt);
@@ -1026,7 +1038,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // question's choices cannot come apart — see `../dials.ts` for
     // what makes an extra a dead end here.
     const candidates = legalExtraVerticals(this.deps.registry, stack, tags).filter(
-      (v) => command.agentHarness !== false || v.id !== 'agent-harness',
+      (v) =>
+        command.agentHarness !== false ||
+        (v.id !== 'agent-harness' &&
+          !this.deps.registry.vertical(v.id)?.promotes?.includes(AGENT_HARNESS_TAG)),
     );
     const requested =
       command.extraVerticals !== undefined
@@ -1055,6 +1070,14 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
               .map((v) => v.id)
               .join(', ')}`,
             'keel.unknown-vertical',
+          ),
+        );
+      }
+      if (command.agentHarness === false && vertical.promotes?.includes(AGENT_HARNESS_TAG)) {
+        return err(
+          new DomainError(
+            `--no-agent-harness cannot be combined with --with ${id}: it activates ${AGENT_HARNESS_TAG}`,
+            'keel.invalid-agent-harness',
           ),
         );
       }
@@ -1639,7 +1662,15 @@ function scaffoldedModules(
   if (layoutTag !== MODULITH_LAYOUT_TAG) return [];
   const skeleton = { name: SKELETON_MODULE, installedAt: now, seam: true };
   if (peerTag !== PEER_CONTEXT_TAG) return [skeleton];
-  return [skeleton, { name: PEER_MODULE, installedAt: now, seam: false }];
+  return [
+    skeleton,
+    {
+      name: PEER_MODULE,
+      installedAt: now,
+      seam: false,
+      consumes: SKELETON_MODULE,
+    },
+  ];
 }
 
 /** The tag set a single-service install of `stack` would carry. */

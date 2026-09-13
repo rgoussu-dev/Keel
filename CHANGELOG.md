@@ -12,6 +12,13 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ## [Unreleased]
 
+### Fixed
+
+- **Harness adoption preserves recorded inputs:** repeated-question answers
+  and module consumer relationships are replayed without changing ordinary
+  question behavior. Harness opt-out refuses plugin activation, and adoption
+  refuses composite product roots before staging files.
+
 ### Changed
 
 - **The emitted `AGENTS.md` is a terse root** (wave 2 of the

@@ -105,14 +105,14 @@ function retrofitRegistry(): Registry {
       ...adapter,
       contribute: async (ctx): Promise<Contribution> => {
         const contribution = await adapter.contribute(ctx);
-        const { name } = addedContext(ctx.manifest, adapter.id);
+        const { name, consumes } = addedContext(ctx.manifest, adapter.id);
         return {
           ...contribution,
           skills: [
             {
               name: `inspect-${name}`,
               description: `Inspect the ${name} context.`,
-              body: `Read modules/${name}/domain/core. Package: ${ctx.manifest.answers['walking-skeleton/quarkus-rest-bootstrap']?.basePackage}.`,
+              body: `Read modules/${name}/domain/core. Package: ${ctx.manifest.answers['walking-skeleton/quarkus-rest-bootstrap']?.basePackage}. Consumes: ${consumes ?? 'none'}.`,
             },
           ],
           harnessPatches: [
@@ -234,9 +234,18 @@ describe('harness adoption on a grown project', () => {
       ),
     );
     for (const module of moduleNames.slice(1)) {
+      const consumes =
+        module === 'ordering' ? 'greeting' : module === 'shipping' ? 'ordering' : null;
       expectOk(
         await mediator.dispatch(
-          addModuleCommand({ cwd, module, answers: {}, interactive: false, dryRun: false }),
+          addModuleCommand({
+            cwd,
+            module,
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            ...(consumes === null ? {} : { consumes }),
+          }),
         ),
       );
     }
@@ -272,9 +281,12 @@ describe('harness adoption on a grown project', () => {
       await fs.readFile(path.join(cwd, '.claude/skills/inspect-persistence/SKILL.md'), 'utf8'),
     ).toContain('Engine: mariadb. Migrations: flyway. Project: warehouse.');
     for (const name of moduleNames) {
+      const consumes = name === 'ordering' ? 'greeting' : name === 'shipping' ? 'ordering' : 'none';
       expect(
         await fs.readFile(path.join(cwd, `.claude/skills/inspect-${name}/SKILL.md`), 'utf8'),
-      ).toContain(`Read modules/${name}/domain/core. Package: com.acme.warehouse.`);
+      ).toContain(
+        `Read modules/${name}/domain/core. Package: com.acme.warehouse. Consumes: ${consumes}.`,
+      );
       expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toContain(`Context: ${name}`);
     }
     expect(report.actions).toEqual([]);
