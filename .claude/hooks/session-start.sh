@@ -52,7 +52,9 @@ export PATH="${HOME}/.local/bin:${PATH}"
 # image or a warm container carries would otherwise provision the
 # toolchain with an unpinned resolver, and the pin above would be a
 # claim about a download that never happened.
-installed="$(mise --version 2>/dev/null | cut -d' ' -f1 || true)"
+# The version field, wherever it sits: releases have printed both
+# `2026.9.6 linux-x64 (…)` and `mise 2026.9.6`.
+installed="$(mise --version 2>/dev/null | grep -oE '[0-9]{4}\.[0-9]+\.[0-9]+' | head -n1 || true)"
 if [ "${installed}" != "${MISE_VERSION#v}" ]; then
   echo "session-start: installing mise ${MISE_VERSION}${installed:+ (replacing ${installed})}"
   case "$(uname -m)" in
