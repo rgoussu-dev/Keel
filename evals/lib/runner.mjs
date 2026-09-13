@@ -57,14 +57,15 @@ export function assertMergeable(previous, identity) {
  * What the benchmark records under `driver`, and what `--only` has to
  * match. The model is the one the driver was asked to run — the
  * flag, else the driver's default — but only where the driver's
- * manifest for that mode says it can pin one (`model: true`); an
- * attended session is opened by the operator with whatever model the
- * CLI last had, so the benchmark records `null` rather than a request
- * nothing verified.
+ * manifest for that mode says it can pin one (`model: true`; a
+ * manifest that says nothing has not claimed it either). An attended
+ * session is opened by the operator with whatever model the CLI last
+ * had, so the benchmark records `null` rather than a request nothing
+ * verified.
  */
 export function driverIdentity(driver, mode, model, version) {
   const capabilities = driver.capabilities(mode);
-  const pinned = capabilities.model !== false;
+  const pinned = capabilities.model === true;
   return {
     id: driver.id,
     version,
@@ -179,7 +180,7 @@ export async function runCampaign(deps) {
   }
   const identity = driverIdentity(driver, mode, model, probe.version);
   log(
-    `driver ${driver.id} (${probe.version}), mode ${mode}, model ${identity.model ?? (identity.capabilities.model === false ? 'not pinned in this mode' : 'agent default')}`,
+    `driver ${driver.id} (${probe.version}), mode ${mode}, model ${identity.model ?? (identity.capabilities.model === true ? 'agent default' : 'not pinned in this mode')}`,
   );
 
   const startedAt = now();

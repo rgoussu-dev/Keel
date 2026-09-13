@@ -169,6 +169,9 @@ describe('runCampaign against the fake driver', () => {
     expect(unpinned.calls.runs[0]!.model).toBe('opus');
     expect(driverIdentity(unpinned, 'scripted', 'opus', 'v').model).toBeNull();
     expect(driverIdentity(fakeDriver({ solve }), 'scripted', 'opus', 'v').model).toBe('opus');
+    // A manifest that says nothing about the model has not claimed to pin it.
+    const silent = { ...fakeDriver({ solve }), capabilities: () => ({}) };
+    expect(driverIdentity(silent, 'scripted', 'opus', 'v').model).toBeNull();
   });
 
   it('falls back to the driver default model, and to null when it has none', async () => {
