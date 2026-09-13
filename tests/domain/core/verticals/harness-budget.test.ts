@@ -100,17 +100,21 @@ async function emit(
   };
 }
 
+// Every build system a stack offers, not its first: Maven and pnpm
+// change the command table, so they are cells of their own.
 const cells = Object.values(STACKS)
   .filter((stack) => !stack.services)
   .flatMap((stack) =>
-    (stack.moduleLayouts ?? [{ tag: null }]).map((layout) => ({
-      id: `${stack.id} (${layout.tag ?? 'default'})`,
-      tags: [
-        ...stack.tags,
-        ...(stack.buildSystems?.[0] ? [stack.buildSystems[0].tag] : []),
-        ...(layout.tag ? [layout.tag] : []),
-      ],
-    })),
+    (stack.buildSystems ?? [{ tag: null }]).flatMap((build) =>
+      (stack.moduleLayouts ?? [{ tag: null }]).map((layout) => ({
+        id: `${stack.id} (${build.tag ?? 'default'}, ${layout.tag ?? 'default'})`,
+        tags: [
+          ...stack.tags,
+          ...(build.tag ? [build.tag] : []),
+          ...(layout.tag ? [layout.tag] : []),
+        ],
+      })),
+    ),
   );
 
 describe('emitted harness context budget', () => {
