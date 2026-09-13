@@ -196,8 +196,8 @@ The full rules live in
 ### Owned regions
 
 A patch on a file the project (or another vertical) also writes owns
-**one region** of it, and declares that region so the engine can hold
-the patch to it:
+**one or more regions** of it — usually one — and declares them so the
+engine can hold the patch to them:
 
 ```js
 patches: [

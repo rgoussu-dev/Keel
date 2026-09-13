@@ -352,12 +352,13 @@ special case. See [Plugins](plugins.md#skills).
 
 ### Owned regions
 
-A patch on a file several parties write owns one **region** of it —
-a sentinel pair, `keel:<owner>` between the comment delimiters of the
-file's syntax — and says so on `ContributionPatch.regions`. Build it
-with `regionPatch`, which takes the region, the body that goes between
-the markers and, for a shared file no one may have created yet, the
-`seed`:
+A patch on a file several parties write owns one or more **regions**
+of it — each a sentinel pair, `keel:<owner>` between the comment
+delimiters of the file's syntax — and says so on
+`ContributionPatch.regions`. The usual patch owns exactly one; build
+it with `regionPatch`, which takes the region, the body that goes
+between the markers and, for a shared file no one may have created
+yet, the `seed`:
 
 ```ts
 import { hashRegion, regionPatch } from '@rgoussu.dev/keel/plugin';
@@ -393,14 +394,19 @@ apply** rather than trusting the adapter:
 - **One owner per region of a file.** A region two adapters of the
   run both declare on the same target is refused (`region-collision`)
   naming both; the same markers on two different files are two
-  regions. An adapter declaring one twice is refused too.
+  regions, and two spellings of one path (`AGENTS.md`, `./AGENTS.md`)
+  are one file, as the Tree takes them. An adapter declaring one twice
+  is refused too, and a transform that leaves one of its own markers
+  missing is an escape as well.
 - **The engine's own regions are claimed first.** The `keel:map` and
   `keel:skills-index` slots the binding spec ships empty belong to the
   engine — attributed to the reserved contributor identity
   `keel:engine` (`ENGINE_CONTRIBUTOR_ID`), which no adapter may
   register under and which manifest `entries` name as `source` for
   content the engine writes without an adapter. An adapter claiming
-  one is refused naming the engine.
+  one is refused naming the engine; the engine itself, contributing
+  under that identity, re-renders its own slots through the same
+  seam.
 
 A patch declaring no region is an ordinary chained transform with no
 ownership claim; on `--reapply` it may still change its file only

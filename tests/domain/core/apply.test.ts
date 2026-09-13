@@ -609,6 +609,63 @@ describe('applyContributions', () => {
       await apply([seeded('one'), elsewhere], new FsTree(tmp));
     });
 
+    it('takes two spellings of one path as one file, as the Tree does', async () => {
+      const tree = new FsTree(tmp);
+      const one = adapter('one', {
+        patches: [regionPatch({ target: 'shared.ini', seed: '', region: step, body: 'one' })],
+      });
+      const alias = adapter('two', {
+        patches: [regionPatch({ target: './shared.ini', seed: '', region: step, body: 'two' })],
+      });
+      const error = await failure(apply([one, alias], tree));
+      expect(error?.kind).toBe('region-collision');
+      expect(error?.message).toContain("adapter 'one' already owns");
+      const slashed = adapter('three', {
+        patches: [regionPatch({ target: '/shared.ini', seed: '', region: step, body: 'three' })],
+      });
+      expect((await failure(apply([one, slashed], new FsTree(tmp))))?.kind).toBe(
+        'region-collision',
+      );
+    });
+
+    it('treats a transform that breaks its own sentinel pair as an escape, not an unclassified error', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'hook.sh'), `set -e\n${step.begin}\nold\n${step.end}\n`);
+      const breaking = adapter('kit', {
+        patches: [{ target: 'hook.sh', regions: [step], apply: (s) => s.replace(step.end, '') }],
+      });
+      const error = await failure(apply([breaking], tree));
+      expect(error).toBeInstanceOf(ContributionConflictError);
+      expect(error?.kind).toBe('region-escape');
+      expect(error?.message).toContain("adapter 'kit': its patch on 'hook.sh' left the sentinels");
+      // A pair already broken on disk is the file's fault, reported as the fix-it message.
+      await fs.writeFile(path.join(tmp, 'hook.sh'), `set -e\n${step.begin}\norphan\n`);
+      const honest = adapter('kit', {
+        patches: [regionPatch({ target: 'hook.sh', region: step, body: 'x' })],
+      });
+      await expect(apply([honest], new FsTree(tmp))).rejects.toThrow(/sentinels are broken/);
+    });
+
+    it('lets the engine, under its own identity, re-render a slot it pre-owns', async () => {
+      const tree = new FsTree(tmp);
+      const slot = ENGINE_REGIONS[0]!;
+      await fs.writeFile(path.join(tmp, slot.target), `${slot.region.begin}\n${slot.region.end}\n`);
+      const projection = adapter(ENGINE_CONTRIBUTOR_ID, {
+        patches: [
+          regionPatch({
+            target: slot.target,
+            region: slot.region,
+            body: '- map',
+            padding: 'blank',
+          }),
+        ],
+      });
+      await apply([projection], tree);
+      expect(tree.read(slot.target)?.toString()).toBe(
+        `${slot.region.begin}\n\n- map\n\n${slot.region.end}\n`,
+      );
+    });
+
     it('refuses an adapter declaring a region twice — one patch owns a region', async () => {
       const tree = new FsTree(tmp);
       const twice = adapter('a', {
