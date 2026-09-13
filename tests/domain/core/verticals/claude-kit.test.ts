@@ -266,7 +266,10 @@ describe('claude-kit on the other families', () => {
     );
     const agents = read(wc, 'AGENTS.md');
     expect(agents).toContain('web-components SPA on Vite (npm, basic)');
-    expect(agents).toContain('import map');
+    // The basic template bundles the design system; only the modulith
+    // one externalises it behind an import map.
+    expect(agents).toContain('bundled into the app');
+    expect(agents).not.toContain('import map');
     expect(agents).toContain(
       '**Dispatch.** No mediator: per-use-case driving ports delivered by typed context keys',
     );

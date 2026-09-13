@@ -42,9 +42,14 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
     'No mediator: per-use-case driving ports delivered by typed context keys (' +
     (modulith ? '`@<scope>/platform-context`' : '`src/context-keys.ts`') +
     '); cross-cutting via factory decoration at the assembly point — a central dispatcher would defeat ' +
-    'tree-shaking and subtree scoping. The design system stays **external** to app bundles, ' +
-    'deduplicated by the import map in `index.html`: inlining an element-defining package twice throws ' +
-    '`NotSupportedError` and silently kills that bundle’s registrations.';
+    'tree-shaking and subtree scoping. ' +
+    (modulith
+      ? 'The design system stays **external** to app bundles, deduplicated by the import map in ' +
+        '`index.html`: inlining an element-defining package twice throws `NotSupportedError` and ' +
+        'silently kills that bundle’s registrations.'
+      : 'The design system is bundled into the app once, imported from `main.ts` and nowhere else: ' +
+        'an element-defining package inlined twice throws `NotSupportedError` and silently kills ' +
+        'the second bundle’s registrations.');
 
   const layout = modulith
     ? [
@@ -58,8 +63,8 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
     : [
         '`domain/domain-api/src/` — use cases and `ports/`; `domain/domain-core/src/internal/` — services and stores; both DOM-less.',
         '`infrastructure/commons/src/` — driven adapters, the fake beside the real one (`fake-clock.ts`, `system-clock.ts`).',
-        '`design-system/src/` — atoms, molecules, `tokens.css`; its own package, external to app bundles.',
-        '`application/web-app/src/` — `main.ts` assembles, `context-keys.ts` + `context.ts` deliver the ports, `components/` holds the app’s elements; `index.html` carries the import map.',
+        '`design-system/src/` — atoms, molecules, `tokens.css`; its own package, bundled into the app by Vite.',
+        '`application/web-app/src/` — `main.ts` assembles and imports the design system, `context-keys.ts` + `context.ts` deliver the ports, `components/` holds the app’s elements.',
       ];
 
   const runbook = renderRunbook({
