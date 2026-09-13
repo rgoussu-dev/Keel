@@ -384,9 +384,10 @@ describe('mergeBenchmark — re-running a subset of cases into an existing bench
       { cases: [], commit: 'bbbb', finishedAt: fresh.finishedAt },
     ]);
     expect(mergeBenchmark(previous, fresh, order).merged).toHaveLength(1);
-    // A two-case sitting checkpoints from the same base as the runner
-    // does — the file as loaded at start — so the record is rewritten,
-    // not appended: one entry, its cases the settled ones so far.
+    // Every checkpoint of a two-case sitting is merged from the same
+    // base — the file as the runner loaded it at start — so the record
+    // is rewritten, not appended: one entry, naming the cases settled
+    // so far.
     const sequence = [
       [caseResult('b', 1, 0, false)],
       [caseResult('b', 1), caseResult('c', 1, 0, false)],
