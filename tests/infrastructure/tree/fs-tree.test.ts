@@ -47,10 +47,27 @@ describe('FsTree.changes()', () => {
     expect(tree.changes()).toEqual([{ kind: 'modify', path: 'AGENTS.md' }]);
   });
 
-  it('reports a mode change even over identical content', () => {
+  it('reports a mode change even over identical content, and keeps it through a later content-only write', () => {
     const tree = new FsTree(root);
     tree.write('AGENTS.md', 'prose\nsection\n', { mode: 0o755 });
     expect(tree.changes()).toEqual([{ kind: 'modify', path: 'AGENTS.md' }]);
+    tree.write('AGENTS.md', 'prose\nsection\n');
+    expect(tree.changes()).toEqual([{ kind: 'modify', path: 'AGENTS.md' }]);
+  });
+
+  it('commits a staged mode that a later content-only write did not clear', async () => {
+    const tree = new FsTree(root);
+    tree.write('AGENTS.md', 'prose\nsection\n', { mode: 0o755 });
+    tree.write('AGENTS.md', 'prose\nsection\n');
+    await tree.commit();
+    expect((await fs.stat(path.join(root, 'AGENTS.md'))).mode & 0o111).not.toBe(0);
+  });
+
+  it('does not report a mode disk already carries', async () => {
+    await fs.chmod(path.join(root, 'AGENTS.md'), 0o755);
+    const tree = new FsTree(root);
+    tree.write('AGENTS.md', 'prose\nsection\n', { mode: 0o755 });
+    expect(tree.changes()).toEqual([]);
   });
 
   it('reports a create for a path disk does not hold, and a delete only for one it does', () => {

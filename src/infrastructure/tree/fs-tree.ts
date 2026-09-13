@@ -13,17 +13,26 @@ import { randomBytes } from 'node:crypto';
 import fs from 'fs-extra';
 import type { Tree, TreeChange, TreeFactory } from '../../domain/contract/ports/tree.js';
 
+/** What disk held when a path was first touched — the base every write is measured against. */
+interface OnDisk {
+  readonly content: Buffer;
+  /** Permission bits, so an explicit mode that matches disk is not a change either. */
+  readonly mode: number;
+}
+
 type Entry =
   | {
       kind: 'present';
       content: Buffer;
       mode: number | null;
+      /** Content differs from disk, or a mode was set that disk does not carry. */
       dirty: boolean;
+      /** A mode was staged that differs from disk; survives later content-only writes. */
+      modeDirty: boolean;
       wasOnDisk: boolean;
-      /** What the file held on disk when first touched — the base a write is measured against. */
-      onDisk: Buffer | null;
+      onDisk: OnDisk | null;
     }
-  | { kind: 'deleted'; wasOnDisk: boolean; onDisk: Buffer | null };
+  | { kind: 'deleted'; wasOnDisk: boolean; onDisk: OnDisk | null };
 
 /** The default Tree adapter, staging over the real filesystem. */
 export class FsTree implements Tree {
@@ -33,23 +42,9 @@ export class FsTree implements Tree {
 
   read(filePath: string): Buffer | null {
     const key = this.key(filePath);
-    const entry = this.entries.get(key);
-    if (entry) return entry.kind === 'present' ? entry.content : null;
-    const abs = path.join(this.root, key);
-    if (!fs.pathExistsSync(abs)) {
-      this.entries.set(key, { kind: 'deleted', wasOnDisk: false, onDisk: null });
-      return null;
-    }
-    const content = fs.readFileSync(abs);
-    this.entries.set(key, {
-      kind: 'present',
-      content,
-      mode: null,
-      dirty: false,
-      wasOnDisk: true,
-      onDisk: content,
-    });
-    return content;
+    const entry = this.entries.get(key) ?? this.touch(key);
+    this.entries.set(key, entry);
+    return entry.kind === 'present' ? entry.content : null;
   }
 
   /**
@@ -57,8 +52,9 @@ export class FsTree implements Tree {
    * holds is not a change: two adapters may write a shared file in
    * turn — one pristine, the next filling its own region — and what
    * `changes()` reports is the net against disk, not the number of
-   * writes. An explicit mode always stages, since a mode is not
-   * something the content comparison sees.
+   * writes. A mode is tracked on its own terms: one that differs from
+   * disk stays staged through later content-only writes, and one
+   * disk already carries is no change either.
    */
   write(filePath: string, content: Buffer | string, options?: { mode?: number }): void {
     const key = this.key(filePath);
@@ -66,11 +62,16 @@ export class FsTree implements Tree {
     const explicitMode = options?.mode;
     const priorMode = prior.kind === 'present' ? prior.mode : null;
     const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
+    const modeDirty =
+      (prior.kind === 'present' && prior.modeDirty) ||
+      (explicitMode !== undefined && explicitMode !== prior.onDisk?.mode);
+    const contentDirty = prior.onDisk === null || !prior.onDisk.content.equals(next);
     this.entries.set(key, {
       kind: 'present',
       content: next,
       mode: explicitMode ?? priorMode ?? null,
-      dirty: explicitMode !== undefined || prior.onDisk === null || !prior.onDisk.equals(next),
+      dirty: modeDirty || contentDirty,
+      modeDirty,
       wasOnDisk: prior.wasOnDisk,
       onDisk: prior.onDisk,
     });
@@ -86,8 +87,16 @@ export class FsTree implements Tree {
   private touch(key: string): Entry {
     const abs = path.join(this.root, key);
     if (!fs.pathExistsSync(abs)) return { kind: 'deleted', wasOnDisk: false, onDisk: null };
-    const content = fs.readFileSync(abs);
-    return { kind: 'present', content, mode: null, dirty: false, wasOnDisk: true, onDisk: content };
+    const onDisk = { content: fs.readFileSync(abs), mode: fs.statSync(abs).mode & 0o777 };
+    return {
+      kind: 'present',
+      content: onDisk.content,
+      mode: null,
+      dirty: false,
+      modeDirty: false,
+      wasOnDisk: true,
+      onDisk,
+    };
   }
 
   exists(filePath: string): boolean {
