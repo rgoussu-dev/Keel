@@ -17,7 +17,10 @@
  * must not load), prompt delivery, budgets. `harvest` turns whatever
  * the agent left behind (stdout stream, session transcript on disk)
  * into the normalized metrics; every field a manifest declares false
- * is `null` in the harvest, never a guess.
+ * is `null` in the harvest, never a guess. The manifest's `model`
+ * says whether the driver can pin the model in that mode; where it
+ * cannot (an attended session the operator opens), the benchmark
+ * records the model as `null` rather than the one it asked for.
  *
  * The universal floor — oracle verdict, wall time, git diff — is
  * measured by the runner from the workspace, agent-independent, and

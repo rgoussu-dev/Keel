@@ -33,30 +33,71 @@ function summarize(cases) {
 }
 
 /**
+ * The part of a benchmark's identity a re-run has to share with it
+ * before it may fold in: the campaign, and the driver down to its
+ * version and model. An agent upgraded between sittings, or a model
+ * changed, is a different measurement, not a re-run — so this is
+ * checked twice, by {@link mergeBenchmark} on every write and by the
+ * runner before the first paid session, so a mismatch costs nothing.
+ */
+export function assertMergeable(previous, identity) {
+  if (previous.campaign !== identity.campaign) {
+    throw new Error(`cannot merge campaign '${identity.campaign}' into '${previous.campaign}'`);
+  }
+  for (const key of ['id', 'version', 'mode', 'model']) {
+    if (previous.driver[key] !== identity.driver[key]) {
+      throw new Error(
+        `cannot merge: driver ${key} '${identity.driver[key]}' differs from '${previous.driver[key]}'`,
+      );
+    }
+  }
+}
+
+/**
+ * What the benchmark records under `driver`, and what `--only` has to
+ * match. The model is the one the driver was asked to run — the
+ * flag, else the driver's default — but only where the driver's
+ * manifest for that mode says it can pin one (`model: true`); an
+ * attended session is opened by the operator with whatever model the
+ * CLI last had, so the benchmark records `null` rather than a request
+ * nothing verified.
+ */
+export function driverIdentity(driver, mode, model, version) {
+  const capabilities = driver.capabilities(mode);
+  const pinned = capabilities.model !== false;
+  return {
+    id: driver.id,
+    version,
+    mode,
+    model: pinned ? (model ?? driver.defaultModel ?? null) : null,
+    capabilities,
+  };
+}
+
+/**
  * Folds a benchmark over a subset of cases (`--only`) into an earlier
  * benchmark of the same campaign, driver and model: the re-run cases
  * replace their earlier entries, every other case is kept, and the
  * result is ordered as the campaign lists them. The file records
  * that it is a merge — which cases, at which keel commit — so a
  * baseline finished in two sittings says so rather than passing for
- * one. Refuses to fold across campaigns or drivers — the driver's
- * id, version, mode and model all have to agree, an agent upgraded
- * between sittings included: those are different measurements, not
- * a re-run.
+ * one. Refuses to fold across campaigns or drivers (see
+ * {@link assertMergeable}).
+ *
+ * Called on every checkpoint, not only at the end, so a fresh
+ * benchmark that is not yet complete carries one case still in
+ * progress — its last. That case does not replace its earlier entry:
+ * the last complete measurement stays in the file until the re-run
+ * has finished, so a kill mid-case loses the partial re-run, never
+ * the measurement it was replacing.
  */
 export function mergeBenchmark(previous, fresh, order) {
-  if (previous.campaign !== fresh.campaign) {
-    throw new Error(`cannot merge campaign '${fresh.campaign}' into '${previous.campaign}'`);
-  }
-  for (const key of ['id', 'version', 'mode', 'model']) {
-    if (previous.driver[key] !== fresh.driver[key]) {
-      throw new Error(
-        `cannot merge: driver ${key} '${fresh.driver[key]}' differs from '${previous.driver[key]}'`,
-      );
-    }
-  }
+  assertMergeable(previous, fresh);
   const byId = new Map(previous.cases.map((c) => [c.id, c]));
-  for (const c of fresh.cases) byId.set(c.id, c);
+  const settled = fresh.complete ? fresh.cases : fresh.cases.slice(0, -1);
+  const inProgress = fresh.complete ? [] : fresh.cases.slice(-1);
+  for (const c of settled) byId.set(c.id, c);
+  for (const c of inProgress) if (!byId.has(c.id)) byId.set(c.id, c);
   const cases = [
     ...order.filter((id) => byId.has(id)).map((id) => byId.get(id)),
     ...[...byId.keys()].filter((id) => !order.includes(id)).map((id) => byId.get(id)),
@@ -121,9 +162,9 @@ export async function runCampaign(deps) {
   if (!probe.available) {
     throw new Error(`driver '${driver.id}' unavailable: ${probe.detail ?? 'probe failed'}`);
   }
-  const effectiveModel = model ?? driver.defaultModel ?? null;
+  const identity = driverIdentity(driver, mode, model, probe.version);
   log(
-    `driver ${driver.id} (${probe.version}), mode ${mode}, model ${effectiveModel ?? 'agent default'}`,
+    `driver ${driver.id} (${probe.version}), mode ${mode}, model ${identity.model ?? (identity.capabilities.model === false ? 'not pinned in this mode' : 'agent default')}`,
   );
 
   const startedAt = now();
@@ -144,13 +185,7 @@ export async function runCampaign(deps) {
       startedAt: new Date(startedAt).toISOString(),
       finishedAt: done ? new Date(now()).toISOString() : null,
       keel,
-      driver: {
-        id: driver.id,
-        version: probe.version,
-        mode,
-        model: effectiveModel,
-        capabilities: driver.capabilities(mode),
-      },
+      driver: identity,
       cases: all,
       summary: summarize(all),
     };

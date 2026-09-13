@@ -80,10 +80,14 @@ use to keep a long-lived changelog scannable — and the root keeps
 - **Harness evals:** the benchmark checkpoint is written atomically
   (a temp file renamed over the benchmark, so a kill mid-write keeps
   the previous checkpoint); `--only` refuses to fold a run from a
-  different agent version into an existing benchmark, reads a
-  benchmark written before `unprepared` was counted as having none,
-  and prints the summary of the merged file it wrote; a scaffold that
-  fails removes its half-built workspace before the retry.
+  different agent version into an existing benchmark — before the
+  first session is spent — reads a benchmark written before
+  `unprepared` was counted as having none, prints the summary of the
+  merged file it wrote, and keeps a case's last complete measurement
+  in the file until its re-run has finished; a scaffold that fails
+  removes its half-built workspace before the retry. An explicit
+  `--model` gets its own results file, and an attended run records
+  no model, since the rig cannot verify the one the operator picked.
 - **`npm install` no longer dies inside npm on every npm-based
   TypeScript stack.** npm 10 — the npm Node 22 bundles — resolves
   vitest's optional `@vitest/*` peers by walking to whatever vitest is

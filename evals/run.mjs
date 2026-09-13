@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { loadCampaign } from './lib/case-schema.mjs';
-import { mergeBenchmark, runCampaign } from './lib/runner.mjs';
+import { assertMergeable, driverIdentity, mergeBenchmark, runCampaign } from './lib/runner.mjs';
 import { prepareWorkspace, diffStats } from './lib/workspace.mjs';
 import { claudeCodeDriver } from './drivers/claude-code.mjs';
 import { codexDriver } from './drivers/codex.mjs';
@@ -138,15 +138,43 @@ const dirty = (() => {
 })();
 const version = JSON.parse(fs.readFileSync(path.join(KEEL_ROOT, 'package.json'), 'utf8')).version;
 
+// The model is part of a benchmark's identity, so an explicit
+// `--model` gets its own file rather than overwriting the driver
+// default's; the default keeps the plain name the docs give.
+const modelSuffix =
+  values.model === undefined ? '' : `-${values.model.replace(/[^a-z0-9.]+/gi, '_')}`;
 const out =
   values.out ??
-  path.join(EVALS_ROOT, 'results', `${campaign.name}-${driver.id}-${values.mode}.json`);
+  path.join(
+    EVALS_ROOT,
+    'results',
+    `${campaign.name}-${driver.id}-${values.mode}${modelSuffix}.json`,
+  );
 fs.mkdirSync(path.dirname(out), { recursive: true });
 const previous =
   values.only.length > 0 && fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : null;
 if (values.only.length > 0 && previous === null) {
   console.error(`--only needs an existing benchmark to fold into; none at ${out}`);
   process.exit(2);
+}
+// Refused here, before a workspace is built or a session is spent —
+// the same check every checkpoint repeats, but a mismatch found on
+// the first write has already paid for one agent run.
+if (previous !== null) {
+  const probe = await driver.probe();
+  if (!probe.available) {
+    console.error(`${driver.id}: NOT available — ${probe.detail}`);
+    process.exit(1);
+  }
+  try {
+    assertMergeable(previous, {
+      campaign: whole.name,
+      driver: driverIdentity(driver, values.mode, values.model, probe.version),
+    });
+  } catch (err) {
+    console.error(`${err instanceof Error ? err.message : String(err)} (${out})`);
+    process.exit(2);
+  }
 }
 // Written after every run, not once at the end: each run is a paid
 // agent session, and a crash in the ninth must not discard the eight.

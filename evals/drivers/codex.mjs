@@ -100,6 +100,7 @@ export const codexDriver = {
       turns: true,
       toolCalls: true,
       transcript: false,
+      model: true,
     };
   },
 

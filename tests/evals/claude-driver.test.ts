@@ -63,6 +63,9 @@ describe('capability manifests', () => {
     expect(claudeCodeDriver.modes).toEqual(['scripted', 'attended']);
     expect(claudeCodeDriver.capabilities('scripted').cost).toBe(true);
     expect(claudeCodeDriver.capabilities('attended').cost).toBe(false);
+    // `--model` is a flag in scripted mode and a request to the operator in attended mode.
+    expect(claudeCodeDriver.capabilities('scripted').model).toBe(true);
+    expect(claudeCodeDriver.capabilities('attended').model).toBe(false);
   });
 });
 

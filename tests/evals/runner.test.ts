@@ -10,7 +10,12 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fakeDriver } from '../../evals/drivers/fake-driver.mjs';
-import { BENCHMARK_SCHEMA, mergeBenchmark, runCampaign } from '../../evals/lib/runner.mjs';
+import {
+  BENCHMARK_SCHEMA,
+  driverIdentity,
+  mergeBenchmark,
+  runCampaign,
+} from '../../evals/lib/runner.mjs';
 
 let workspaces: string[];
 
@@ -155,6 +160,17 @@ describe('runCampaign against the fake driver', () => {
     expect(benchmark.driver.model).toBe('opus');
   });
 
+  it('records no model where the driver cannot pin one in that mode', async () => {
+    const unpinned = fakeDriver({ solve, defaultModel: 'sonnet', pinsModel: false });
+    const benchmark = await runCampaign({ ...baseDeps(unpinned), model: 'opus' });
+    expect(benchmark.driver.model).toBeNull();
+    expect(benchmark.driver.capabilities.model).toBe(false);
+    // The request still reaches the driver — it is what the operator is told to pick.
+    expect(unpinned.calls.runs[0]!.model).toBe('opus');
+    expect(driverIdentity(unpinned, 'scripted', 'opus', 'v').model).toBeNull();
+    expect(driverIdentity(fakeDriver({ solve }), 'scripted', 'opus', 'v').model).toBe('opus');
+  });
+
   it('falls back to the driver default model, and to null when it has none', async () => {
     const withDefault = fakeDriver({ solve, defaultModel: 'sonnet' });
     expect((await runCampaign(baseDeps(withDefault))).driver.model).toBe('sonnet');
@@ -287,6 +303,33 @@ describe('mergeBenchmark — re-running a subset of cases into an existing bench
     expect(merged.startedAt).toBe(previous.startedAt);
     expect(merged.finishedAt).toBe(fresh.finishedAt);
     expect(merged.complete).toBe(true);
+  });
+
+  it('keeps the last complete measurement of a case while its re-run is still in progress', () => {
+    const partial = { ...fresh, complete: false, finishedAt: null };
+    const merged = mergeBenchmark(previous, partial, order);
+    expect(merged.complete).toBe(false);
+    expect(merged.cases.map((c: { id: string }) => c.id)).toEqual(['a', 'b', 'c']);
+    expect(merged.cases[2]!.aggregate).toEqual({ successRate: null, unprepared: 2 });
+
+    // Settled cases of an incomplete re-run do replace theirs; only the
+    // last, still running, waits — and a case new to the file lands at once.
+    const twoCases = {
+      ...partial,
+      cases: [caseResult('c', 1), caseResult('d', 0.5)],
+    };
+    const settled = mergeBenchmark(previous, twoCases, [...order, 'd']);
+    expect(
+      settled.cases.map((c: { id: string; aggregate: { successRate: number | null } }) => [
+        c.id,
+        c.aggregate.successRate,
+      ]),
+    ).toEqual([
+      ['a', 1],
+      ['b', 0.5],
+      ['c', 1],
+      ['d', 0.5],
+    ]);
   });
 
   it('records that the benchmark is a merge, naming the re-run cases and both commits', () => {

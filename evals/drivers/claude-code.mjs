@@ -179,6 +179,7 @@ export const claudeCodeDriver = {
           turns: true,
           toolCalls: true,
           transcript: true,
+          model: true,
         }
       : {
           structuredOutput: false,
@@ -187,6 +188,10 @@ export const claudeCodeDriver = {
           turns: true,
           toolCalls: true,
           transcript: true,
+          // The operator opens the session; `/model` below is a request
+          // the rig cannot enforce or verify, so the benchmark records
+          // no model for attended runs.
+          model: false,
         };
   },
 
@@ -220,7 +225,7 @@ export const claudeCodeDriver = {
       'Open a normal interactive Claude Code session IN THAT DIRECTORY and paste the prompt below.',
     );
     io.print(
-      `Model: ${model ?? DEFAULT_MODEL} (\`/model ${model ?? DEFAULT_MODEL}\` in the session).`,
+      `Model: ${model ?? DEFAULT_MODEL} (\`/model ${model ?? DEFAULT_MODEL}\` in the session — the rig cannot verify this; the benchmark records no model for attended runs).`,
     );
     io.print('');
     io.print(caseSpec.prompt);

@@ -46,6 +46,7 @@ export function fakeDriver(options = {}) {
         turns: options.metrics?.turns !== undefined,
         toolCalls: options.metrics?.toolCalls !== undefined,
         transcript: false,
+        model: options.pinsModel !== false,
       };
     },
 
