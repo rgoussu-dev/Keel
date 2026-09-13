@@ -631,6 +631,20 @@ on the owner's Claude subscription, so no CI job and no cloud
 session can capture it — and it must exist before #134 merges, or
 the "before" is unrepeatable.
 
+The benchmark records the keel commit it ran at and whether the
+working tree was dirty (`keel.dirty`), because the commit alone would
+name a tree the run did not measure. The committed baseline
+(`baseline-claude-code-scripted.json`) says `73bf83b`, dirty: both
+sittings ran on the working tree that became the rig commits landed
+just after it (the npm override for the TypeScript scaffold, the mise
+toolchain, the runner's retry and merge), none of which touches the
+emitted harness. What the attribution rests on is the audit the
+benchmark carries: the `contextAudit` of every baseline case — the
+`AGENTS.md`, `CLAUDE.md` and skill bytes the agent was handed — is
+byte-for-byte what a clean checkout of `73bf83b` grows for that case
+(`tests/support/evals-fixture.ts` over the same scaffold blocks), so
+the harness measured is that commit's. The "after"
+(`after-wave2-claude-code-scripted.json`) ran clean.
 
 **`verify` never makes an agent call.** The rig's unit tests
 (`tests/evals/`) drive the whole runner through the fake driver and
