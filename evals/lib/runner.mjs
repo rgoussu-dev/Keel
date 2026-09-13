@@ -185,8 +185,10 @@ export async function runCampaign(deps) {
   const startedAt = now();
   const cases = [];
   // `complete` is the case's own: false on the entry a checkpoint
-  // carries while its runs are still going, so a merge can tell a
-  // settled measurement from a partial one wherever it sits.
+  // carries while its runs are still going, true from the last run's
+  // checkpoint on, so a merge can tell a settled measurement from a
+  // partial one wherever it sits — and a kill between that last
+  // checkpoint and the campaign's next step loses nothing.
   const caseEntry = (caseSpec, results, contextAudit, complete) => ({
     id: caseSpec.id,
     tags: caseSpec.tags,
@@ -249,7 +251,7 @@ export async function runCampaign(deps) {
           metrics: emptyMetrics(),
         });
         log(`${caseSpec.id}: run ${i} UNPREPARED — no agent ran`);
-        checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit, false)));
+        checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit, i === runs)));
         continue;
       }
       if (contextAudit === null) contextAudit = auditContext(workspace);
@@ -277,7 +279,7 @@ export async function runCampaign(deps) {
       log(
         `${caseSpec.id}: run ${i} ${oracle.pass ? 'PASS' : `FAIL (${oracle.failures.join('; ')})`}`,
       );
-      checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit, false)));
+      checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit, i === runs)));
     }
     cases.push(caseEntry(caseSpec, results, contextAudit, true));
   }

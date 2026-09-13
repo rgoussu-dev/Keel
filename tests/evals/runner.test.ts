@@ -246,7 +246,7 @@ describe('runCampaign against the fake driver', () => {
     const benchmark = await runCampaign({ ...baseDeps(fakeDriver({ solve })), checkpoint });
     expect(seen).toEqual([
       { complete: false, runs: 1, caseComplete: false },
-      { complete: false, runs: 2, caseComplete: false },
+      { complete: false, runs: 2, caseComplete: true },
     ]);
     expect(benchmark.complete).toBe(true);
     expect(benchmark.cases[0]!.complete).toBe(true);
