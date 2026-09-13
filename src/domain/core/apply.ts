@@ -321,7 +321,9 @@ function stageSkill(
  * The whole-file write contract, shared by `files` and staged skills:
  * an existing path is a hard conflict on install, and on reapply an
  * overwrite back to pristine — skipped when byte-identical, so the
- * staged changes stay an honest diff.
+ * staged changes stay an honest diff, unless the contribution
+ * declares a mode: then the write goes through so a lost executable
+ * bit comes back, and the tree stages nothing when disk has it.
  */
 function writeWholeFile(
   adapter: Adapter,
@@ -342,7 +344,7 @@ function writeWholeFile(
     }
     const current = tree.read(filePath);
     const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
-    if (current !== null && current.equals(next)) return;
+    if (current !== null && current.equals(next) && fileMode === undefined) return;
   }
   tree.write(filePath, content, fileMode !== undefined ? { mode: fileMode } : undefined);
 }

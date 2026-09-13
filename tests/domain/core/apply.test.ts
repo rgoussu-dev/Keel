@@ -435,6 +435,20 @@ describe('applyContributions', () => {
       expect(tree.changes()).toEqual([]);
     });
 
+    it('gives a byte-identical whole file its declared mode back on reapply', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'run.sh'), '#!/bin/sh\n', { mode: 0o644 });
+      const a = adapter('a', { files: [{ path: 'run.sh', content: '#!/bin/sh\n', mode: 0o755 }] });
+      await reapply([a], tree);
+      expect(tree.changes()).toEqual([{ kind: 'modify', path: 'run.sh' }]);
+      await tree.commit();
+      expect((await fs.stat(path.join(tmp, 'run.sh'))).mode & 0o111).not.toBe(0);
+
+      const again = new FsTree(tmp);
+      await reapply([a], again);
+      expect(again.changes()).toEqual([]);
+    });
+
     it('gives a byte-identical script its declared mode back on reapply', async () => {
       const tree = new FsTree(tmp);
       await fs.writeFile(path.join(tmp, 'hook.sh'), '#!/bin/sh\n', { mode: 0o644 });
