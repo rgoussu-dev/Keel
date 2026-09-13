@@ -599,8 +599,10 @@ commands the verify suites dispatch in process, so the two trees
 cannot drift. Results land in
 `evals/results/<campaign>-<driver>-<mode>.json`, **written after
 every run**, not once at the end: each run is a paid agent session,
-and a crash in the ninth must not discard the eight. The file carries
-`complete: false` until the campaign finishes.
+and a crash in the ninth must not discard the eight. Each write is a
+sibling temp file renamed over the benchmark, so a kill mid-write
+leaves the previous checkpoint rather than a truncated one. The file
+carries `complete: false` until the campaign finishes.
 
 A scaffold that fails is retried once — it runs real package managers
 and real wrappers, and the first baseline attempt lost eight sessions
@@ -610,9 +612,11 @@ measured, and the run is kept out of every rate rather than counted
 as a failure. The campaign goes on; the summary carries the count.
 Once the cause is fixed, `--only <case-id>` (repeatable) re-runs just
 those cases and folds them into the existing benchmark — same
-campaign, driver and model, or it refuses — and the file records the
-merge under `merged`, naming the cases and the keel commit they were
-re-run at, so a baseline finished in two sittings says so.
+campaign, and the same driver down to its version and model, or it
+refuses (an agent upgraded between sittings is a different
+measurement) — and the file records the merge under `merged`, naming
+the cases and the keel commit they were re-run at, so a baseline
+finished in two sittings says so.
 
 **The baseline is the owner's local step.** The `baseline` campaign
 captures the current emitted harness _before_ the redesign lands:
@@ -621,6 +625,7 @@ and commit the resulting `evals/results/baseline-*.json`. It draws
 on the owner's Claude subscription, so no CI job and no cloud
 session can capture it — and it must exist before #134 merges, or
 the "before" is unrepeatable.
+
 
 **`verify` never makes an agent call.** The rig's unit tests
 (`tests/evals/`) drive the whole runner through the fake driver and

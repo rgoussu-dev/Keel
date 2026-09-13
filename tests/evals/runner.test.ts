@@ -302,6 +302,29 @@ describe('mergeBenchmark — re-running a subset of cases into an existing bench
     );
     expect(() =>
       mergeBenchmark(previous, { ...fresh, driver: { ...fresh.driver, model: 'opus' } }, order),
-    ).toThrow(/driver/);
+    ).toThrow(/driver model/);
+  });
+
+  it('refuses an agent upgraded between sittings — a version is part of the driver identity', () => {
+    expect(() =>
+      mergeBenchmark(
+        previous,
+        { ...fresh, driver: { ...fresh.driver, version: '2.1.271' } },
+        order,
+      ),
+    ).toThrow(/driver version '2.1.271' differs from '2.1.270'/);
+  });
+
+  it('reads a benchmark written before unprepared runs were counted as having none', () => {
+    const legacy = {
+      ...previous,
+      cases: previous.cases.map(({ aggregate, ...c }) => ({
+        ...c,
+        aggregate: { successRate: aggregate.successRate },
+      })),
+      summary: { cases: 3, successRate: 0.75 },
+    };
+    const merged = mergeBenchmark(legacy, fresh, order);
+    expect(merged.summary).toEqual({ cases: 3, successRate: 0.833, unprepared: 0 });
   });
 });

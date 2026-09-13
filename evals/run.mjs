@@ -150,12 +150,21 @@ if (values.only.length > 0 && previous === null) {
 }
 // Written after every run, not once at the end: each run is a paid
 // agent session, and a crash in the ninth must not discard the eight.
+// Written atomically, too — a sibling temp file renamed over the
+// benchmark — because the file being replaced is the very checkpoint
+// this exists to keep: a kill between truncating it and finishing
+// the new JSON would lose every run so far, or leave a half-written
+// artifact. `rename` replaces in place on POSIX and on Windows alike.
+// Returns what was written, merged where `--only` folds into an
+// earlier benchmark, so the summary printed is the summary on disk.
 const order = whole.resolved.map((c) => c.id);
-const write = (benchmark) =>
-  fs.writeFileSync(
-    out,
-    `${JSON.stringify(previous === null ? benchmark : mergeBenchmark(previous, benchmark, order), null, 2)}\n`,
-  );
+const write = (benchmark) => {
+  const written = previous === null ? benchmark : mergeBenchmark(previous, benchmark, order);
+  const tmp = `${out}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(written, null, 2)}\n`);
+  fs.renameSync(tmp, out);
+  return written;
+};
 
 try {
   const benchmark = await runCampaign({
@@ -171,11 +180,11 @@ try {
     io,
     checkpoint: write,
   });
-  write(benchmark);
+  const written = write(benchmark);
   console.log(`\nbenchmark written to ${out}`);
-  console.log(`overall success rate: ${benchmark.summary.successRate}`);
-  if (benchmark.summary.unprepared > 0) {
-    console.log(`WARNING ${benchmark.summary.unprepared} run(s) had no workspace and no agent ran`);
+  console.log(`overall success rate: ${written.summary.successRate}`);
+  if (written.summary.unprepared > 0) {
+    console.log(`WARNING ${written.summary.unprepared} run(s) had no workspace and no agent ran`);
   }
 } finally {
   rl.close();

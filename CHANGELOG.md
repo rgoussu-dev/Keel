@@ -64,6 +64,13 @@ use to keep a long-lived changelog scannable — and the root keeps
   rewrite does; one that would compound still refuses. A shared file
   two adapters write in turn is reported as changed only when it
   ends up different from disk.
+- **Harness evals:** the benchmark checkpoint is written atomically
+  (a temp file renamed over the benchmark, so a kill mid-write keeps
+  the previous checkpoint); `--only` refuses to fold a run from a
+  different agent version into an existing benchmark, reads a
+  benchmark written before `unprepared` was counted as having none,
+  and prints the summary of the merged file it wrote; a scaffold that
+  fails removes its half-built workspace before the retry.
 - **`npm install` no longer dies inside npm on every npm-based
   TypeScript stack.** npm 10 — the npm Node 22 bundles — resolves
   vitest's optional `@vitest/*` peers by walking to whatever vitest is

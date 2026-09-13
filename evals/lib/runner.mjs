@@ -26,7 +26,9 @@ function summarize(cases) {
         : Math.round(
             (rated.reduce((a, c) => a + c.aggregate.successRate, 0) / rated.length) * 1000,
           ) / 1000,
-    unprepared: cases.reduce((a, c) => a + c.aggregate.unprepared, 0),
+    // A benchmark written before the count existed carries none;
+    // that is zero unprepared runs, not NaN in the merged summary.
+    unprepared: cases.reduce((a, c) => a + (c.aggregate.unprepared ?? 0), 0),
   };
 }
 
@@ -37,14 +39,16 @@ function summarize(cases) {
  * result is ordered as the campaign lists them. The file records
  * that it is a merge — which cases, at which keel commit — so a
  * baseline finished in two sittings says so rather than passing for
- * one. Refuses to fold across campaigns or drivers: those are
- * different measurements, not a re-run.
+ * one. Refuses to fold across campaigns or drivers — the driver's
+ * id, version, mode and model all have to agree, an agent upgraded
+ * between sittings included: those are different measurements, not
+ * a re-run.
  */
 export function mergeBenchmark(previous, fresh, order) {
   if (previous.campaign !== fresh.campaign) {
     throw new Error(`cannot merge campaign '${fresh.campaign}' into '${previous.campaign}'`);
   }
-  for (const key of ['id', 'mode', 'model']) {
+  for (const key of ['id', 'version', 'mode', 'model']) {
     if (previous.driver[key] !== fresh.driver[key]) {
       throw new Error(
         `cannot merge: driver ${key} '${fresh.driver[key]}' differs from '${previous.driver[key]}'`,
