@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertRegion,
+  confinementOf,
   escapesRegions,
   hashRegion,
   locateRegion,
@@ -142,7 +143,36 @@ describe('outsideRegions / escapesRegions', () => {
     // Indentation is content too — only the file's own edges are forgiven.
     const inner = `a\nz\n${sh.begin}\nx\n${sh.end}\nb\n`;
     expect(escapesRegions(inner, inner.replace('z\n', '  z\n'), [sh], 'f')).toBe(true);
-    expect(escapesRegions(inner, `\n${inner}\n`, [sh], 'f')).toBe(false);
+    // The file's edges are forgiven only for a region the transform landed.
+    expect(escapesRegions('a\nb', `\n${upsertRegion('a\nb', sh, 'new')}\n`, [sh], 'f')).toBe(false);
+    expect(confinementOf(inner, `\n${inner}\n`, [sh], 'f')).toBe('outside');
+  });
+
+  it('holds whitespace beside a region at the file edge as content when the region was already there', () => {
+    const atEnd = `user\n${sh.begin}\nx\n${sh.end}\n`;
+    expect(confinementOf(atEnd, atEnd.replace('user\n', 'user \n'), [sh], 'f')).toBe('outside');
+    expect(confinementOf(atEnd, `${atEnd}\n`, [sh], 'f')).toBe('outside');
+    const atStart = `${sh.begin}\nx\n${sh.end}\nuser\n`;
+    expect(confinementOf(atStart, atStart.replace('\nuser', '\n user'), [sh], 'f')).toBe('outside');
+    expect(confinementOf(atStart, `\n${atStart}`, [sh], 'f')).toBe('outside');
+    expect(confinementOf(atEnd, upsertRegion(atEnd, sh, 'y'), [sh], 'f')).toBeNull();
+  });
+
+  it('a region the file carried that the transform removed escapes; a markerless file kept markerless does not', () => {
+    const base = `a\n${sh.begin}\nx\n${sh.end}\nb\n`;
+    expect(confinementOf(base, 'a\nb\n', [sh], 'f')).toBe('removed');
+    expect(confinementOf(`${sh.begin}\nx\n${sh.end}\n`, '', [sh], 'f')).toBe('removed');
+    const markerless = 'set -e\n';
+    const kept = upsertRegion(markerless, sh, 'fmt', { whenAbsent: 'keep' });
+    expect(confinementOf(markerless, kept, [sh], 'f')).toBeNull();
+  });
+
+  it('a pair the transform broke is its escape; a pair broken in the base is the file’s fix-it', () => {
+    const base = `a\n${sh.begin}\nx\n${sh.end}\n`;
+    expect(confinementOf(base, base.replace(sh.end, ''), [sh], 'f')).toBe('broken');
+    expect(() => confinementOf(`a\n${sh.begin}\n`, 'a\n', [sh], 'f')).toThrow(
+      /sentinels are broken/,
+    );
   });
 
   it('a second region on the same file is its own boundary', () => {

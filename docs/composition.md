@@ -423,8 +423,13 @@ apply** rather than trusting the adapter:
 
 - **Confinement.** The transform may change nothing outside its
   declared regions. One that did is refused (`region-escape`) naming
-  the adapter, the file and the region — whitespace at the file's own
-  edges excepted, since landing a fresh region moves the last newline.
+  the adapter, the file and the region. A region the file already
+  carries is compared in place, so whitespace beside it is content
+  like any other; the file's own edges are forgiven only when the
+  transform landed a fresh region, since that moves the last newline.
+  A region the file carried must survive: a transform that removes
+  it is an escape, while a `whenAbsent: 'keep'` patch leaving a
+  markerless file markerless is not.
 - **One owner per region of a file.** A region two adapters of the
   run both declare on the same target is refused (`region-collision`)
   naming both; the same markers on two different files are two
@@ -439,8 +444,8 @@ apply** rather than trusting the adapter:
   register under and which manifest `entries` name as `source` for
   content the engine writes without an adapter. An adapter claiming
   one is refused naming the engine; the engine itself, contributing
-  under that identity, re-renders its own slots through the same
-  seam.
+  under that identity, re-renders each of its own slots through the
+  same seam once a run — a second claim is a region declared twice.
 
 A patch declaring no region is an ordinary chained transform with no
 ownership claim; on `--reapply` it may still change its file only

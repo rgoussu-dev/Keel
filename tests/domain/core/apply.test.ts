@@ -9,6 +9,7 @@ import {
   ContributionConflictError,
   ENGINE_REGIONS,
   applyContributions,
+  regionKey,
   type ApplyMode,
 } from '../../../src/domain/core/apply.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
@@ -664,6 +665,95 @@ describe('applyContributions', () => {
       expect(tree.read(slot.target)?.toString()).toBe(
         `${slot.region.begin}\n\n- map\n\n${slot.region.end}\n`,
       );
+    });
+
+    it('lets the engine re-render a pre-owned slot once a run, and refuses its second claim', async () => {
+      const tree = new FsTree(tmp);
+      const slot = ENGINE_REGIONS[0]!;
+      await fs.writeFile(path.join(tmp, slot.target), `${slot.region.begin}\n${slot.region.end}\n`);
+      const projection = (body: string) =>
+        adapter(ENGINE_CONTRIBUTOR_ID, {
+          patches: [regionPatch({ target: slot.target, region: slot.region, body })],
+        });
+      const error = await failure(apply([projection('- one'), projection('- two')], tree));
+      expect(error?.kind).toBe('region-collision');
+      expect(error?.adapterId).toBe(ENGINE_CONTRIBUTOR_ID);
+      expect(error?.message).toContain('twice');
+      const inOnePatchList = adapter(ENGINE_CONTRIBUTOR_ID, {
+        patches: [
+          regionPatch({ target: slot.target, region: slot.region, body: '- one' }),
+          regionPatch({ target: `./${slot.target}`, region: slot.region, body: '- two' }),
+        ],
+      });
+      expect((await failure(apply([inOnePatchList], new FsTree(tmp))))?.kind).toBe(
+        'region-collision',
+      );
+    });
+
+    it('holds whitespace beside an existing region at the file edge as content', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'hook.sh'), `user\n${step.begin}\nold\n${step.end}\n`);
+      const padding = adapter('kit', {
+        patches: [
+          {
+            target: 'hook.sh',
+            regions: [step],
+            apply: (s) => s.replace('old', 'new').replace('user\n', 'user \n'),
+          },
+        ],
+      });
+      const error = await failure(apply([padding], tree));
+      expect(error?.kind).toBe('region-escape');
+      expect(error?.message).toContain('changed content outside the region');
+    });
+
+    it('refuses a transform that removed a region the file carried, and keeps a markerless slot legal', async () => {
+      const tree = new FsTree(tmp);
+      await fs.writeFile(path.join(tmp, 'hook.sh'), `set -e\n${step.begin}\nfmt\n${step.end}\n`);
+      const deleting = adapter('kit', {
+        patches: [
+          {
+            target: 'hook.sh',
+            regions: [step],
+            apply: (s) => s.replace(`${step.begin}\nfmt\n${step.end}\n`, ''),
+          },
+        ],
+      });
+      const error = await failure(apply([deleting], tree));
+      expect(error?.kind).toBe('region-escape');
+      expect(error?.adapterId).toBe('kit');
+      expect(error?.message).toContain(`removed a region it declares ('${step.begin}')`);
+      expect(tree.changes()).toEqual([]);
+
+      await fs.writeFile(path.join(tmp, 'hook.sh'), 'set -e\n');
+      const keep = adapter('kit', {
+        patches: [
+          regionPatch({ target: 'hook.sh', region: step, body: 'fmt', whenAbsent: 'keep' }),
+        ],
+      });
+      const kept = new FsTree(tmp);
+      await apply([keep], kept);
+      expect(kept.read('hook.sh')?.toString()).toBe('set -e\n');
+    });
+
+    it('keys ownership by target and marker as a tuple, so a space in either cannot alias another pair', async () => {
+      expect(regionKey('a', { begin: 'b c', end: 'e' })).not.toBe(
+        regionKey('a b', { begin: 'c', end: 'e' }),
+      );
+      const tree = new FsTree(tmp);
+      const one = adapter('one', {
+        patches: [
+          regionPatch({ target: 'a', seed: '', region: { begin: '# b c', end: '# e' }, body: '1' }),
+        ],
+      });
+      const two = adapter('two', {
+        patches: [
+          regionPatch({ target: 'a b', seed: '', region: { begin: '# c', end: '# e' }, body: '2' }),
+        ],
+      });
+      await apply([one, two], tree);
+      expect(tree.read('a')?.toString()).toContain('1');
+      expect(tree.read('a b')?.toString()).toContain('2');
     });
 
     it('refuses an adapter declaring a region twice — one patch owns a region', async () => {

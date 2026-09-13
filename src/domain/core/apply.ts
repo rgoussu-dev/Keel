@@ -45,7 +45,7 @@ import {
   SkillSpecSchema,
   type SkillSpec,
 } from '../contract/skill.js';
-import { assertRegion, markdownRegion, outsideRegions, type Region } from '../contract/region.js';
+import { assertRegion, confinementOf, markdownRegion, type Region } from '../contract/region.js';
 import {
   ENGINE_CONTRIBUTOR_ID,
   AGENT_HARNESS_TAG,
@@ -155,6 +155,12 @@ export interface Ownership {
   readonly skills: Map<string, string>;
   /** {@link regionKey} → owning contributor id. */
   readonly regions: Map<string, string>;
+  /**
+   * The engine's pre-owned region keys it has not yet re-rendered
+   * this run: its one claim on each goes through, a second is a
+   * region declared twice like any adapter's.
+   */
+  readonly engineSlots: Set<string>;
 }
 
 /**
@@ -174,7 +180,7 @@ export function newOwnership(): Ownership {
   for (const owned of ENGINE_REGIONS) {
     regions.set(regionKey(owned.target, owned.region), ENGINE_CONTRIBUTOR_ID);
   }
-  return { skills: new Map(), regions };
+  return { skills: new Map(), regions, engineSlots: new Set(regions.keys()) };
 }
 
 /**
@@ -182,10 +188,12 @@ export function newOwnership(): Ownership {
  * is the region's identity, and the target is taken as the Tree
  * takes it — forward slashes, no leading `./` or `/` — so `AGENTS.md`
  * and `./AGENTS.md` are one file here as they are on disk, and an
- * alias spelling is not a way around the one-owner rule.
+ * alias spelling is not a way around the one-owner rule. Encoded as
+ * a tuple, since either half may contain the separator a
+ * concatenation would need.
  */
 export function regionKey(target: string, region: Region): string {
-  return `${canonicalTarget(target)} ${region.begin}`;
+  return JSON.stringify([canonicalTarget(target), region.begin]);
 }
 
 /** The Tree's own path canonicalization, mirrored for ownership keys. */
@@ -404,7 +412,7 @@ export function applyContribution(
     writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
   }
   for (const p of contribution.patches ?? []) {
-    const regions = claimRegions(adapter, p, owners.regions);
+    const regions = claimRegions(adapter, p, owners);
     const current = tree.read(p.target);
     if (current === null && p.seed === undefined) {
       throw new ContributionConflictError(
@@ -447,13 +455,12 @@ export function applyContribution(
 }
 
 /**
- * Holds a region-owning transform to its declaration: what lies
- * outside the declared regions must come back as it was (the file's
- * own edges excepted — landing a fresh region moves the last
- * newline). A `base` whose sentinels are already broken is the
+ * Holds a region-owning transform to its declaration through
+ * {@link confinementOf}: what lies outside the declared regions must
+ * come back as it was, and every region the file carried must
+ * survive whole. A `base` whose sentinels are already broken is the
  * file's fault and throws the fix-it message as the transform itself
- * would; a `next` whose sentinels the transform broke is the
- * transform's, and an escape like any other.
+ * would; anything the transform did is its own, and an escape.
  */
 function assertConfined(
   adapter: Adapter,
@@ -462,31 +469,21 @@ function assertConfined(
   base: string,
   next: string,
 ): void {
+  const escape = confinementOf(base, next, regions, patch.target);
+  if (escape === null) return;
   const named = regions.map((r) => `'${r.begin}'`).join(', ');
   const plural = regions.length > 1 ? 's' : '';
-  const before = outsideRegions(base, regions, patch.target);
-  let after: string | null;
-  try {
-    after = outsideRegions(next, regions, patch.target);
-  } catch {
-    after = null;
-  }
-  if (after === null) {
-    throw new ContributionConflictError(
-      `adapter '${adapter.id}': its patch on '${patch.target}' left the sentinels of the region${plural} it declares (${named}) broken — a region-owning patch keeps both markers of every region it owns`,
-      adapter.id,
-      patch.target,
-      'region-escape',
-    );
-  }
-  if (before.trim() !== after.trim()) {
-    throw new ContributionConflictError(
-      `adapter '${adapter.id}': its patch on '${patch.target}' changed content outside the region${plural} it declares (${named}) — a region-owning patch may re-render only what lies between its own markers`,
-      adapter.id,
-      patch.target,
-      'region-escape',
-    );
-  }
+  const what = {
+    broken: `left the sentinels of the region${plural} it declares (${named}) broken — a region-owning patch keeps both markers of every region it owns`,
+    removed: `removed a region it declares (${named}) that the file carried — a region-owning patch keeps both markers of every region it owns`,
+    outside: `changed content outside the region${plural} it declares (${named}) — a region-owning patch may re-render only what lies between its own markers`,
+  }[escape];
+  throw new ContributionConflictError(
+    `adapter '${adapter.id}': its patch on '${patch.target}' ${what}`,
+    adapter.id,
+    patch.target,
+    'region-escape',
+  );
 }
 
 /**
@@ -494,22 +491,23 @@ function assertConfined(
  * adapter: a region already owned on that target — by another
  * adapter of the run, by this one twice, or by the engine — is a
  * refusal naming both. The one claim that goes through is the
- * engine's on a region it pre-owns: that is the projection commands'
- * write path into the `AGENTS.md` slots. Returns the validated
- * regions, empty for a patch declaring none.
+ * engine's first on a region it pre-owns: that is the projection
+ * commands' write path into the `AGENTS.md` slots, once a run.
+ * Returns the validated regions, empty for a patch declaring none.
  */
 function claimRegions(
   adapter: Adapter,
   patch: ContributionPatch,
-  regionOwners: Map<string, string>,
+  owners: Ownership,
 ): readonly Region[] {
   const regions = (patch.regions ?? []).map((raw) =>
     assertRegion(raw, `adapter '${adapter.id}', patch on '${patch.target}'`),
   );
+  const regionOwners = owners.regions;
   for (const region of regions) {
     const key = regionKey(patch.target, region);
     const owner = regionOwners.get(key);
-    if (owner === ENGINE_CONTRIBUTOR_ID && adapter.id === ENGINE_CONTRIBUTOR_ID) continue;
+    if (adapter.id === ENGINE_CONTRIBUTOR_ID && owners.engineSlots.delete(key)) continue;
     if (owner !== undefined) {
       throw new ContributionConflictError(
         owner === adapter.id

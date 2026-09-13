@@ -220,8 +220,9 @@ checks is the declaration, not how the transform was written.
 Two things to hold to:
 
 - **Stay inside.** A transform that changed anything outside its
-  declared regions is refused naming the adapter — on install and on
-  `--reapply` alike.
+  declared regions — whitespace beside a region included — or removed
+  a region the file already carried is refused naming the adapter, on
+  install and on `--reapply` alike.
 - **One owner per region of a file.** The same region declared by two
   adapters of a run on one target is a hard refusal naming both, and
   the `keel:map` / `keel:skills-index` slots of `AGENTS.md` are the

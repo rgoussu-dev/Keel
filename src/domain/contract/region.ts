@@ -169,21 +169,65 @@ export function outsideRegions(text: string, regions: readonly Region[], where: 
 }
 
 /**
- * Whether a transform from `base` to `next` changed anything outside
- * `regions` — the check the engine runs on every patch that declares
- * them. Whitespace at either end of the file is forgiven: landing a
- * fresh region moves the file's last newline, and that is the seam
- * of the region, not prose outside it.
+ * How a transform broke out of the regions it declares: it changed
+ * text `outside` them, `removed` a region the file carried, or left
+ * one `broken` — a marker without its partner.
  */
+export type RegionEscape = 'outside' | 'removed' | 'broken';
+
+/**
+ * Holds a transform from `base` to `next` to `regions` — the check
+ * the engine runs on every patch that declares them — and says how
+ * it escaped, or `null` when it did not. A region both texts carry
+ * is compared as a placeholder in its place, so whitespace beside it
+ * is content like any other. The file's own edges are forgiven only
+ * when the transform landed a region `base` did not carry — that
+ * moves the last newline, and it is the seam of the fresh region,
+ * not prose outside it. A region `base` carried must survive: a
+ * markerless `base` left markerless (`whenAbsent: 'keep'`) is
+ * confined, a pair that disappears is not. A `base` whose pair is
+ * already broken is the file's fault and throws as
+ * {@link locateRegion} does.
+ */
+export function confinementOf(
+  base: string,
+  next: string,
+  regions: readonly Region[],
+  where: string,
+): RegionEscape | null {
+  let before = base;
+  let after = next;
+  let landed = false;
+  for (const [i, region] of regions.entries()) {
+    const was = locateRegion(before, region, where);
+    let now: RegionSpan | null;
+    try {
+      now = locateRegion(after, region, where);
+    } catch {
+      return 'broken';
+    }
+    if (was !== null && now === null) return 'removed';
+    const placeholder = ` keel-region:${i} `;
+    if (was !== null) before = splice(before, was, placeholder);
+    if (now !== null) after = splice(after, now, was === null ? '' : placeholder);
+    if (was === null && now !== null) landed = true;
+  }
+  const confined = landed ? before.trim() === after.trim() : before === after;
+  return confined ? null : 'outside';
+}
+
+/** Whether a transform from `base` to `next` escaped `regions` in any way {@link confinementOf} names. */
 export function escapesRegions(
   base: string,
   next: string,
   regions: readonly Region[],
   where: string,
 ): boolean {
-  return (
-    outsideRegions(base, regions, where).trim() !== outsideRegions(next, regions, where).trim()
-  );
+  return confinementOf(base, next, regions, where) !== null;
+}
+
+function splice(text: string, span: RegionSpan, replacement: string): string {
+  return `${text.slice(0, span.begin)}${replacement}${text.slice(span.end)}`;
 }
 
 /** Inputs to {@link regionPatch}. */

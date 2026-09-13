@@ -18,6 +18,15 @@ use to keep a long-lived changelog scannable — and the root keeps
   and module consumer relationships are replayed without changing ordinary
   question behavior. Harness opt-out refuses plugin activation, and adoption
   refuses composite product roots before staging files.
+- **Owned regions hold their boundary tighter.** A transform that
+  removes a region the file carried is now a `region-escape` (a
+  markerless file left markerless by `whenAbsent: 'keep'` stays
+  legal); whitespace beside an existing region at the file's edge is
+  no longer forgiven — only a freshly landed region moves the edges;
+  the engine re-renders each of its pre-owned `AGENTS.md` slots once
+  a run, a second claim being a region declared twice; and the
+  ownership key encodes target and marker as a tuple, so a space in
+  either can no longer alias two distinct regions into a collision.
 
 ### Changed
 
