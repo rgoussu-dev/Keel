@@ -88,6 +88,10 @@ use to keep a long-lived changelog scannable — and the root keeps
   removes its half-built workspace before the retry. An explicit
   `--model` gets its own results file, and an attended run records
   no model, since the rig cannot verify the one the operator picked.
+- **The JVM combo stacks' stack section covers both entrypoints.**
+  A `*-cli-rest` scaffold documented the REST command and probe
+  alone; the section, its title and the run skill now carry the CLI
+  command too.
 - **`npm install` no longer dies inside npm on every npm-based
   TypeScript stack.** npm 10 — the npm Node 22 bundles — resolves
   vitest's optional `@vitest/*` peers by walking to whatever vitest is

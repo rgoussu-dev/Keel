@@ -169,19 +169,27 @@ function jvmFamily(ctx: Ctx): ClaudeKitFamily {
   const lang = tags.includes('lang.kotlin') ? 'kotlin' : 'java';
 
   const verifyCommand = build === 'gradle' ? './gradlew build' : './mvnw --batch-mode verify';
-  const runCommand = rest
-    ? restRunCommand(framework, build, layout)
-    : cliRunCommand(framework, build, layout);
+  // A combo stack ships both deployment units off one hexagon, and an
+  // agent gets a command and a check for each — not the REST half alone.
+  const restRun = rest ? restRunCommand(framework, build, layout) : null;
+  const cliRun = cli || !rest ? cliRunCommand(framework, build, layout) : null;
 
   const commands: RunbookCommand[] = [
     { label: 'Build', command: build === 'gradle' ? './gradlew build' : './mvnw package' },
     { label: 'Test', command: build === 'gradle' ? './gradlew test' : './mvnw test' },
     { label: 'Verify (commit gate)', command: verifyCommand },
-    { label: rest ? 'Run (dev)' : 'Run', command: runCommand },
-    ...(rest ? [{ label: 'Probe', command: PROBE }] : []),
+    ...(restRun !== null
+      ? [
+          { label: 'Run (dev)', command: restRun },
+          { label: 'Probe', command: PROBE },
+        ]
+      : []),
+    ...(cliRun !== null
+      ? [{ label: restRun !== null ? 'Run (cli)' : 'Run', command: cliRun }]
+      : []),
   ];
 
-  const shape = rest ? 'REST' : 'CLI';
+  const shape = restRun !== null && cliRun !== null ? 'REST + CLI' : rest ? 'REST' : 'CLI';
   const title = `${FRAMEWORK_LABEL[framework]} ${shape} on ${build === 'gradle' ? 'Gradle' : 'Maven'} (${layout.layout})`;
 
   const runbook = renderRunbook({
@@ -192,17 +200,13 @@ function jvmFamily(ctx: Ctx): ClaudeKitFamily {
     notes: ['The wrapper is the build entrypoint — never invoke a host `gradle`/`mvn` directly.'],
   });
 
-  const runSkill = runSkillSpec({
-    description: rest
-      ? 'Launch this service in dev mode and probe it end to end. Use when asked to run, start, or check the app.'
-      : 'Run this CLI and check its output end to end. Use when asked to run, start, or check the app.',
-    body: rest
-      ? `# Run the service
-
-1. Start dev mode (long-running — run it in the background):
+  const steps: string[] = [];
+  if (restRun !== null) {
+    steps.push(
+      `1. Start dev mode (long-running — run it in the background):
 
    \`\`\`sh
-   ${runCommand}
+   ${restRun}
    \`\`\`
 
 2. Wait for the port, then probe the walking skeleton:
@@ -214,17 +218,38 @@ function jvmFamily(ctx: Ctx): ClaudeKitFamily {
    Expect a JSON greeting for \`World\`; a blank \`name\` yields an
    RFC 9457 Problem Details response.
 
-3. Stop the dev process when done.`
-      : `# Run the CLI
+3. Stop the dev process when done.`,
+    );
+  }
+  if (cliRun !== null) {
+    steps.push(
+      restRun !== null
+        ? `4. Run the CLI and read its output:
 
-Run the walking-skeleton command and read its output:
+   \`\`\`sh
+   ${cliRun}
+   \`\`\`
+
+   Expect the greeting for \`World\` on stdout; a blank \`--name\` exits
+   non-zero with the domain error.`
+        : `Run the walking-skeleton command and read its output:
 
 \`\`\`sh
-${runCommand}
+${cliRun}
 \`\`\`
 
 Expect the greeting for \`World\` on stdout; a blank \`--name\` exits
 non-zero with the domain error.`,
+    );
+  }
+  const runSkill = runSkillSpec({
+    description:
+      restRun !== null && cliRun !== null
+        ? 'Launch this service in dev mode, probe it, and run its CLI end to end. Use when asked to run, start, or check the app.'
+        : restRun !== null
+          ? 'Launch this service in dev mode and probe it end to end. Use when asked to run, start, or check the app.'
+          : 'Run this CLI and check its output end to end. Use when asked to run, start, or check the app.',
+    body: `# Run the ${restRun !== null && cliRun !== null ? 'service and the CLI' : restRun !== null ? 'service' : 'CLI'}\n\n${steps.join('\n\n')}`,
   });
 
   return { runbook, runSkill, verifyCommand };

@@ -129,6 +129,36 @@ describe('claude-kit on the JVM family', () => {
     );
   });
 
+  it('gives a combo stack a command and a check for both entrypoints (Quarkus CLI + REST, Maven)', async () => {
+    const tree = await install(
+      [
+        'lang.java',
+        'runtime.jvm',
+        'framework.quarkus',
+        'arch.hexagonal',
+        'arch.cli',
+        'arch.server-http',
+        'pkg.maven',
+      ],
+      {
+        'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'demo', basePackage: 'x.y' },
+        'walking-skeleton/quarkus-cli-bootstrap': { projectName: 'demo', basePackage: 'x.y' },
+      },
+    );
+    const agents = read(tree, 'AGENTS.md');
+    expect(agents).toContain('## Stack — Quarkus REST + CLI on Maven (basic)');
+    expect(agents).toContain(
+      '| Run (dev) | `./mvnw -am -pl application/rest/executable quarkus:dev` |',
+    );
+    expect(agents).toContain('| Probe |');
+    expect(agents).toContain(
+      '| Run (cli) | `./mvnw -am -pl application/cli quarkus:dev -Dquarkus.args="hello --name World"` |',
+    );
+    const skill = read(tree, '.claude/skills/run/SKILL.md');
+    expect(skill).toContain('application/rest/executable quarkus:dev');
+    expect(skill).toContain('4. Run the CLI and read its output');
+  });
+
   it('documents the CLI run per framework (Micronaut CLI, Gradle)', async () => {
     const tree = await install(
       [
