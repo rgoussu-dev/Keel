@@ -374,6 +374,13 @@ describe('mergeBenchmark — re-running a subset of cases into an existing bench
   it('records that the benchmark is a merge, naming the re-run cases and both commits', () => {
     const merged = mergeBenchmark(previous, fresh, order);
     expect(merged.merged).toEqual([{ cases: ['c'], commit: 'bbbb', finishedAt: fresh.finishedAt }]);
+    // A checkpoint names only what has settled, and merging twice from
+    // the same base — what every checkpoint does — leaves one record.
+    const partial = { ...fresh, complete: false, cases: [caseResult('c', 1, 0, false)] };
+    expect(mergeBenchmark(previous, partial, order).merged).toEqual([
+      { cases: [], commit: 'bbbb', finishedAt: fresh.finishedAt },
+    ]);
+    expect(mergeBenchmark(previous, fresh, order).merged).toHaveLength(1);
     expect(merged.keel).toEqual(previous.keel);
   });
 

@@ -96,6 +96,12 @@ export function driverIdentity(driver, mode, model, version) {
  * and every case the campaign lists has a settled entry from one
  * sitting or the other — a one-case `--only` over an interrupted
  * campaign does not turn it into a finished one.
+ *
+ * The `merged` record names the sitting's settled cases and is one
+ * entry per sitting, not per checkpoint: `run.mjs` merges every
+ * write from the benchmark as it was loaded at start, so each
+ * checkpoint replaces the record the previous one wrote rather than
+ * adding to it, and the final write leaves the finished one.
  */
 export function mergeBenchmark(previous, fresh, order) {
   assertMergeable(previous, fresh);
@@ -120,7 +126,7 @@ export function mergeBenchmark(previous, fresh, order) {
     merged: [
       ...(previous.merged ?? []),
       {
-        cases: fresh.cases.map((c) => c.id),
+        cases: fresh.cases.filter(isSettled).map((c) => c.id),
         commit: fresh.keel.commit,
         finishedAt: fresh.finishedAt,
       },
