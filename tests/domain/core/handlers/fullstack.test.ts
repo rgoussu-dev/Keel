@@ -118,6 +118,7 @@ describe('fullstack composite install (monorepo)', () => {
     expect(backend?.peers).toEqual([{ ref: '../frontend', tags: ['peer.ui.spa'] }]);
     expect(backend?.verticals.map((v) => v.id)).toEqual([
       'walking-skeleton',
+      'agent-harness',
       'code-style',
       'dev-env',
       'observability',
@@ -268,6 +269,7 @@ describe('fullstack composite install (polyrepo)', () => {
     expect(backend?.verticals.map((v) => v.id)).toEqual([
       'vcs',
       'walking-skeleton',
+      'agent-harness',
       'code-style',
       'dev-env',
       'observability',

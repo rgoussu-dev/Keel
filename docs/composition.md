@@ -303,6 +303,35 @@ Whatever the class, a contribution is **owned by exactly one adapter**
 (grouped under its vertical). Tags select and parameterize adapters;
 they never own content.
 
+### Activation and final realization
+
+`agent-harness` owns the root document, shims and family kit; its baseline
+promotes `agentic.harness`. Every single-service preset installs it after
+`walking-skeleton`. `keel new --no-agent-harness` removes that membership.
+
+Every adapter's `skills` and interim `harnessPatches` are collected across
+the whole install run. Only the final, local tag set decides whether they
+are realized; a peer's tag never activates this project's harness. Without
+the tag, one diagnostic reports the total skipped elements, also carried
+by install/preview reports for the graphical plan. Domain files,
+patches and formatter configurations still install.
+
+`Contribution.harnessPatches` is the interim region-confined patch seam for
+code-style's hook format step. Each patch must declare nonempty `regions`,
+verified through the same ownership and confinement rules below. Skills
+and patches retain contributor provenance when realized. Hook/settings
+and document declaration classes extend this final pass when their seams land.
+
+Brownfield `keel add agent-harness` re-renders recorded contributors
+non-interactively, collecting only their harness declarations. Domain files
+and deferred actions are untouched. The transient `bounded-context`
+vertical is replayed once per manifest module with synthetic add-module
+inputs, which are never persisted. An unavailable plugin contributor
+refuses the adoption before anything is committed.
+
+See the [per-contributor catalog](verticals/agent-harness.md#per-contributor-catalog)
+for ownership, currently shipped elements and planned seams.
+
 ### Skills
 
 An adapter ships a skill as a `SkillSpec` on its contribution —

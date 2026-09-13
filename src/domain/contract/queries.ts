@@ -364,6 +364,8 @@ export interface InstallPreview {
   readonly changes: readonly TreeChange[];
   /** Human-readable descriptions of the deferred actions, in run order. */
   readonly actions: readonly string[];
+  /** Harness elements omitted because the project has no agent-harness; absent when none. */
+  readonly skippedHarnessElements?: number;
 }
 
 /**

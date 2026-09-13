@@ -29,6 +29,7 @@ keel new --stack=<id> [options]
 | `--with-peer-context`     | Every stack offering `--module-layout=modulith`, which is every single-service stack: also scaffold a second bounded context reaching the first only through its peer seam. On a stack composing both entrypoints the peer is wired into **both** assemblies. Rejected, with the stack named, on a stack whose modulith has no peer context. Prompted, interactively, the moment `--module-layout` resolves to `modulith` on a stack that actually has a peer-context adapter — passing the flag on the command line always suppresses that question. |
 | `--with <ids>`            | Verticals to install on top of the stack's own, comma-separated (`--with distribution,ci`) — the greenfield equivalent of running `keel add` once per vertical straight after `keel new`, except they resolve against one another's tags in the same run and the review step shows one plan. Prompted when interactive and omitted; none otherwise. Single-service stacks only — a composite's services declare their own extras, and `--with` names no service.                                                                                      |
 | `-y, --yes`               | Non-interactive — use defaults for unanswered questions. Skips the wizard and the review step entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `--no-agent-harness`      | Single-service stacks: omit agent documents, cross-tool shims, skills and hooks; retain the project manifest and formatter configuration. Adopt later with `keel add agent-harness`.                                                                                                                                                                                                                                                                                                                                                                  |
 | `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                          |
 | `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -49,9 +50,11 @@ keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a R
 keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in the same run
 ```
 
+`--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness`. Composite product-root harness selection is outside this flag.
+
 ### The interactive wizard
 
-Every flag above doubles as a question: pass it and its question is
+The structural selection flags double as questions: pass it and its question is
 skipped, omit it interactively and the wizard asks. The order is
 designed rather than incidental — the stack first (the most
 consequential choice), then the repository layout or build system,
@@ -201,6 +204,12 @@ question resolves to its default and the plan commits immediately,
 which is what scripts and the e2e harness rely on.
 
 ## `keel add`
+
+`keel add agent-harness` adopts the agent kit in a harness-free scaffold.
+It also reconstructs declared harness elements from every installed vertical
+and recorded module, using stored answers without prompting or re-running
+domain writes and deferred actions. `--reapply` refreshes this same set.
+See the [harness catalog](verticals/agent-harness.md).
 
 Install a [vertical](verticals/README.md) onto an existing keel
 project (one that carries a keel manifest — i.e. was scaffolded by

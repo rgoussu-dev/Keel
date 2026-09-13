@@ -13,11 +13,12 @@
  *           snapshot, so adapters can read upstream choices (e.g.
  *           `basePackage` from the bootstrap) without re-asking;
  *        c. invoke `adapter.contribute(ctx)` to get a Contribution;
- *        d. apply files/patches against the Tree and stage declared
- *           skills; collect actions for the caller; fold `tagsAdd`,
- *           declared `toolchain` needs and staged-skill provenance
- *           entries into the running manifest.
+ *        d. apply domain files/patches; collect declared harness
+ *           elements and deferred actions; fold `tagsAdd` and
+ *           declared `toolchain` needs into the running manifest.
  *   3. Record the vertical as installed and bump `updatedAt`.
+ *   4. Realize harness declarations against the final local tags,
+ *      or leave the shared buffer for the enclosing run to finalize.
  *
  * Pure with respect to disk: mutates the supplied Tree in memory and
  * returns the next manifest. The caller commits both.
@@ -29,6 +30,10 @@ import { effectiveTags } from '../contract/manifest.js';
 import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolchain.js';
 import {
   applyContribution,
+  collectHarness,
+  realizeHarness,
+  type HarnessContribution,
+  type HarnessFile,
   makeCtx,
   newOwnership,
   type Ownership,
@@ -78,6 +83,10 @@ export interface InstallVerticalInputs {
    * every call; absent, the call is its own run.
    */
   readonly owners?: Ownership;
+  /** Shared run buffer. Absent, this install finalizes its own declarations. */
+  readonly harness?: HarnessContribution[];
+  /** Replay recorded answers for harness declarations only; never apply domain changes or actions. */
+  readonly harnessOnly?: boolean;
 }
 
 /** Result of installing a vertical. */
@@ -98,6 +107,8 @@ export async function installVertical(
   const collectedSkills: StagedSkill[] = [];
   const owners = inputs.owners ?? newOwnership();
   const allTagsAdded = new Set<Tag>();
+  const harness = inputs.harness ?? [];
+  let skipped = 0;
 
   for (const adapter of ordered) {
     const stored = { ...sharedAnswers(running, adapter), ...(running.answers[adapter.id] ?? {}) };
@@ -113,7 +124,16 @@ export async function installVertical(
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    const staged = applyContribution(adapter, contribution, inputs.tree, inputs.apply, owners);
+    assertDeclaredSkills(inputs.vertical, adapter, contribution.skills ?? []);
+    collectHarness(adapter, contribution, harness, inputs.apply);
+    if (inputs.harnessOnly) continue;
+    applyContribution(
+      adapter,
+      { files: contribution.files ?? [], patches: contribution.patches ?? [] },
+      inputs.tree,
+      inputs.apply,
+      owners,
+    );
 
     if (contribution.tagsAdd && contribution.tagsAdd.length > 0) {
       assertDeclaredPromotions(inputs.vertical, adapter, contribution.tagsAdd);
@@ -123,15 +143,18 @@ export async function installVertical(
     if (contribution.toolchain && contribution.toolchain.length > 0) {
       running = foldToolchain(running, contribution.toolchain);
     }
-    if (staged.length > 0) {
-      assertDeclaredSkills(inputs.vertical, adapter, staged);
-      running = foldSkillEntries(running, staged, inputs.now());
-      collectedSkills.push(...staged);
-    }
     for (const a of contribution.actions ?? []) collectedActions.push(a);
   }
 
-  const final = recordVertical(running, inputs.vertical, inputs.now());
+  if (inputs.harness === undefined) {
+    const finalized = finalizeHarness({ ...inputs, manifest: running, harness, owners });
+    running = finalized.manifest;
+    skipped = finalized.skipped;
+    collectedSkills.push(...finalized.skills);
+  }
+  const final = inputs.harnessOnly
+    ? running
+    : recordVertical(running, inputs.vertical, inputs.now());
 
   return {
     manifest: final,
@@ -139,6 +162,7 @@ export async function installVertical(
       tagsAdded: [...allTagsAdded],
       skills: collectedSkills,
       actions: collectedActions,
+      ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     },
   };
 }
@@ -176,7 +200,7 @@ function assertDeclaredPromotions(
 function assertDeclaredSkills(
   vertical: Vertical,
   adapter: Adapter,
-  staged: readonly StagedSkill[],
+  staged: readonly { readonly name: string }[],
 ): void {
   const declared = new Set(vertical.skills ?? []);
   const undeclared = staged.map((skill) => skill.name).filter((name) => !declared.has(name));
@@ -186,30 +210,52 @@ function assertDeclaredSkills(
   );
 }
 
-/**
- * Upserts one provenance record per staged skill file into the
- * manifest's `entries`, keyed by target path: `source` names the
- * owning adapter, the hashes pin the pristine content, and a reapply
- * refreshes hashes in place — keeping the original `installedAt` —
- * instead of duplicating the entry.
- */
-function foldSkillEntries(
+/** Finalizes a shared install run and records every realized harness file's provenance. */
+export function finalizeHarness(inputs: {
+  readonly manifest: ManifestV2;
+  readonly harness: HarnessContribution[];
+  readonly tree: Tree;
+  readonly logger: Logger;
+  readonly owners: Ownership;
+  readonly now: () => string;
+}): {
+  readonly manifest: ManifestV2;
+  readonly skills: readonly StagedSkill[];
+  readonly skipped: number;
+} {
+  const realized = realizeHarness(
+    inputs.harness,
+    inputs.tree,
+    inputs.manifest.tags,
+    inputs.logger,
+    inputs.owners,
+  );
+  return {
+    manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.now()),
+    skills: realized.skills,
+    skipped: realized.skipped,
+  };
+}
+
+function foldHarnessEntries(
   manifest: ManifestV2,
-  staged: readonly StagedSkill[],
+  files: readonly HarnessFile[],
   now: string,
 ): ManifestV2 {
-  const byTarget = new Map<string, ManifestEntry>(manifest.entries.map((e) => [e.target, e]));
-  for (const skill of staged) {
-    for (const file of skill.files) {
-      const prior = byTarget.get(file.path);
-      byTarget.set(file.path, {
-        source: skill.adapterId,
-        target: file.path,
-        sha256Shipped: file.sha256,
-        sha256Current: file.sha256,
-        installedAt: prior?.installedAt ?? now,
-      });
-    }
+  const key = (source: string, target: string) => `${source} ${target}`;
+  const byTarget = new Map<string, ManifestEntry>(
+    manifest.entries.map((e) => [key(e.source, e.target), e]),
+  );
+  for (const file of files) {
+    const id = key(file.adapterId, file.path);
+    const prior = byTarget.get(id);
+    byTarget.set(id, {
+      source: file.adapterId,
+      target: file.path,
+      sha256Shipped: file.sha256,
+      sha256Current: file.sha256,
+      installedAt: prior?.installedAt ?? now,
+    });
   }
   return { ...manifest, entries: [...byTarget.values()] };
 }

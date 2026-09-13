@@ -1,5 +1,5 @@
 /**
- * `walking-skeleton/claude-core` adapter — emits the universal
+ * `agent-harness/claude-core` adapter — emits the universal
  * binding spec as `AGENTS.md` at the project root (the open
  * agent-instructions convention) plus the zero-maintenance loading
  * shims that make every major agent read that one file:
@@ -13,7 +13,7 @@
  *
  * `AGENTS.md` is the single content file; the shims carry no rules
  * of their own and never need editing when the spec changes. Every
- * keel-scaffolded project ships the four.
+ * project that installs the harness ships the four.
  *
  * The shims are whole files — keel's, rewritten pristine on
  * `--reapply`. `AGENTS.md` is not: the spec tells the project to keep
@@ -26,9 +26,9 @@
  * it and gains the section.
  *
  * Composition:
- *   - covers `agentic-baseline` of the `walking-skeleton` vertical;
- *   - predicate: empty — fires unconditionally, since every keel
- *     project wants the binding spec;
+ *   - covers `agentic-baseline` of the `agent-harness` vertical;
+ *   - predicate: empty — fires whenever the agent-harness
+ *     vertical installs;
  *   - no `after` ordering: the files are independent of the build /
  *     entrypoint adapters.
  *
@@ -41,9 +41,9 @@
  * dispatch stance and layout map, ordered `after` this adapter.
  */
 
-import type { Adapter } from '../../contract/composition.js';
+import { AGENT_HARNESS_TAG, type Adapter } from '../../contract/composition.js';
 
-export const CLAUDE_CORE_ID = 'walking-skeleton/claude-core';
+export const CLAUDE_CORE_ID = 'agent-harness/claude-core';
 
 const SPEC_TARGET = 'AGENTS.md';
 const POINTER_TARGET = 'CLAUDE.md';
@@ -66,12 +66,13 @@ read: [AGENTS.md]
 
 export const claudeCoreAdapter: Adapter = {
   id: CLAUDE_CORE_ID,
-  vertical: 'walking-skeleton',
+  vertical: 'agent-harness',
   covers: ['agentic-baseline'],
   predicate: {},
   async contribute(ctx) {
     const content = await ctx.templates.readText('project/AGENTS.md');
     return {
+      tagsAdd: [AGENT_HARNESS_TAG],
       files: [
         { path: POINTER_TARGET, content: POINTER_CONTENT },
         { path: GEMINI_SETTINGS_TARGET, content: GEMINI_SETTINGS_CONTENT },

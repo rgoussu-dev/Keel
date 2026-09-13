@@ -1,5 +1,5 @@
 /**
- * Shared machinery of the walking-skeleton's Claude-kit adapters —
+ * Shared machinery of the agent-harness's Claude-kit adapters —
  * the "Claude Code workflow kit" half of keel's identity. One family
  * adapter per stack family (`jvm-claude-kit`, `go-claude-kit`,
  * `rust-claude-kit`, `ts-claude-kit`, `wc-claude-kit`) contributes
@@ -49,7 +49,7 @@ import {
   type Region,
 } from '../../contract/region.js';
 
-/** The walking-skeleton dimension the family adapters cover. */
+/** The agent-harness dimension the family adapters cover. */
 export const CLAUDE_KIT_DIMENSION = 'agentic-kit';
 
 /** Promoted by every claude-kit adapter. */
@@ -75,7 +75,7 @@ const HOOK_TARGET = '.claude/hooks/pre-commit-format.sh';
 
 /**
  * The one skill every family kit ships: launch the scaffolded app
- * and check it end to end. Declared on the `walking-skeleton`
+ * and check it end to end. Declared on the `agent-harness`
  * vertical's `skills`, staged through the {@link SkillSpec} seam.
  */
 export const RUN_SKILL_NAME = 'run';
@@ -447,7 +447,7 @@ export function claudeKitAdapter(
 ): Adapter {
   return {
     id,
-    vertical: 'walking-skeleton',
+    vertical: 'agent-harness',
     covers: [CLAUDE_KIT_DIMENSION],
     predicate: { requires },
     after: [CLAUDE_CORE_ID],

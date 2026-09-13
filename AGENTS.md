@@ -19,13 +19,13 @@ project — the user's home directory (`~/.claude`) is never touched.
 The universal engineering conventions are defined in
 [`assets/project/AGENTS.md`](assets/project/AGENTS.md). That file is
 the source of truth for the conventions every keel-scaffolded project
-should follow, and the `walking-skeleton/claude-core` adapter emits
+should follow, and the `agent-harness/claude-core` adapter emits
 it verbatim as `<project>/AGENTS.md` (plus a one-line `CLAUDE.md`
-pointer importing it) whenever a project is scaffolded.
+pointer importing it) when the default `agent-harness` vertical installs.
 Stack-specific addenda are appended by the family claude-kit
 adapters under sentinel markers (`<!-- keel:stack-runbook:… -->`),
 together with the emitted `.claude/` workflow kit — see
-`docs/verticals/walking-skeleton.md`.
+`docs/verticals/agent-harness.md`.
 
 **keel dogfoods those conventions.** Any change to this repo must conform to
 that document:

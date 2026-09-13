@@ -130,6 +130,9 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       changes: tree.changes(),
       actions: result.applyResult.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(result.applyResult.skippedHarnessElements
+        ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
+        : {}),
     };
 
     if (command.dryRun) return ok(report);

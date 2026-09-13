@@ -1,5 +1,5 @@
 /**
- * `walking-skeleton/ts-claude-kit` adapter — the Claude kit for the
+ * `agent-harness/ts-claude-kit` adapter — the Claude kit for the
  * TypeScript backend stacks (`ts-http` and `ts-cli`). The package
  * manager is read from the manifest tag set (`pkg.npm` / `pkg.pnpm`),
  * and the entrypoint shapes from the `arch.*` tags, exactly as the Go
@@ -23,7 +23,7 @@ import {
   type RunbookCommand,
 } from './claude-kit.js';
 
-export const TS_CLAUDE_KIT_ID = 'walking-skeleton/ts-claude-kit';
+export const TS_CLAUDE_KIT_ID = 'agent-harness/ts-claude-kit';
 
 const PROBE = "curl 'http://localhost:8080/greet?name=World'";
 

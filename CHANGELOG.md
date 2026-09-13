@@ -48,6 +48,17 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **The `agent-harness` vertical** owns root agent documents, cross-tool
+  shims and the five family Claude kits. All 28 single-service presets
+  install it by default after `walking-skeleton`, preserving project
+  file bytes; `keel new --no-agent-harness` opts out and
+  `keel add agent-harness` adopts it later. Declared harness elements
+  are realized after the run settles, gated by `agentic.harness`,
+  including contributors installed earlier and existing bounded
+  contexts replayed from the manifest. Formatter configuration still
+  installs without the harness. The contributor catalog lives in
+  `docs/verticals/agent-harness.md`.
+
 - **Owned regions are a declared, verified seam** (#133, wave 2 of
   the agent-harness redesign): a patch on a shared file names the
   sentinel pair it owns on `ContributionPatch.regions`, and the

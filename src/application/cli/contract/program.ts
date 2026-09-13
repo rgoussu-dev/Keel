@@ -93,6 +93,10 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
+    .option(
+      '--no-agent-harness',
+      'omit agent instructions, skills, and hooks (single-service stacks only)',
+    )
     .option('--list', 'list available stacks with their descriptions, then exit', false)
     .option(
       '--layout <layout>',
@@ -130,6 +134,7 @@ export function buildProgram(deps: CliDeps): Command {
         buildSystem?: string;
         moduleLayout?: string;
         withPeerContext: boolean;
+        agentHarness: boolean;
         with?: string;
         set: string[];
       }): Promise<void> => {
@@ -144,6 +149,7 @@ export function buildProgram(deps: CliDeps): Command {
             answers: parseSetAnswers(opts.set),
             interactive: !opts.yes,
             dryRun: opts.dryRun,
+            ...(opts.agentHarness === false ? { agentHarness: false } : {}),
             ...(opts.stack !== undefined ? { stack: opts.stack } : {}),
             ...(opts.layout !== undefined ? { layout: opts.layout as RepoLayout } : {}),
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),

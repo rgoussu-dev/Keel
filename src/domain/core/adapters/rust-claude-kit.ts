@@ -1,5 +1,5 @@
 /**
- * `walking-skeleton/rust-claude-kit` adapter — the Claude kit for the
+ * `agent-harness/rust-claude-kit` adapter — the Claude kit for the
  * Rust stacks. Bin names come from `rustLayout` (`<project>` for the
  * CLI, `<project>-http` for the HTTP shape) and deliberately do not
  * move with the module layout, so the commands hold under `basic`
@@ -22,7 +22,7 @@ import {
   type RunbookCommand,
 } from './claude-kit.js';
 
-export const RUST_CLAUDE_KIT_ID = 'walking-skeleton/rust-claude-kit';
+export const RUST_CLAUDE_KIT_ID = 'agent-harness/rust-claude-kit';
 
 const PROBE = "curl 'http://localhost:8080/greet?name=World'";
 

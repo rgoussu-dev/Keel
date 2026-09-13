@@ -20,6 +20,7 @@
  * registered.
  */
 
+import { agentHarnessVertical } from './agent-harness.js';
 import { boundedContextVertical } from './bounded-context.js';
 import { ciVertical } from './ci.js';
 import { codeStyleVertical } from './code-style.js';
@@ -41,6 +42,7 @@ import type { Vertical } from '../../contract/composition.js';
 export const SHIPPED_VERTICALS: readonly Vertical[] = [
   vcsVertical,
   walkingSkeletonVertical,
+  agentHarnessVertical,
   codeStyleVertical,
   distributionVertical,
   iacVertical,

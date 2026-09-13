@@ -19,7 +19,9 @@
  *      and a region two adapters of the run both declare on one
  *      target is refused naming both — the engine's own regions
  *      (the `AGENTS.md` map and skills-index slots) included.
- *   5. Stage `skills` — each spec validated against its schema,
+ *   5. Collect `skills` and region-confined `harnessPatches`; after
+ *      the entire chain, realize them only when the settled local
+ *      tags carry `agentic.harness`. Each skill is schema-validated,
  *      rendered with `renderSkill`, and written to
  *      `.claude/skills/<name>/SKILL.md` (plus supporting files) with
  *      the same whole-file conflict rules as `files`. A skill name
@@ -46,6 +48,7 @@ import {
 import { assertRegion, markdownRegion, outsideRegions, type Region } from '../contract/region.js';
 import {
   ENGINE_CONTRIBUTOR_ID,
+  AGENT_HARNESS_TAG,
   type DeferredAction,
   type Adapter,
   type Contribution,
@@ -104,6 +107,8 @@ export interface StagedSkill {
 
 /** Result of applying a chain of contributions. */
 export interface ApplyResult {
+  /** Number of harness elements suppressed by this completed run; absent when zero. */
+  readonly skippedHarnessElements?: number;
   /** Every tag any adapter promoted via `tagsAdd`, deduplicated. */
   readonly tagsAdded: readonly Tag[];
   /** Every skill staged, in the order the owning adapters resolved. */
@@ -207,7 +212,7 @@ export interface ApplyInputs {
 
 export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResult> {
   const tagsAdded = new Set<Tag>();
-  const skills: StagedSkill[] = [];
+  const harness: HarnessContribution[] = [];
   const owners = newOwnership();
   const actions: DeferredAction[] = [];
 
@@ -220,12 +225,120 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    skills.push(...applyContribution(adapter, contribution, inputs.tree, inputs.mode, owners));
+    collectHarness(adapter, contribution, harness, inputs.mode);
+    applyContribution(
+      adapter,
+      { files: contribution.files ?? [], patches: contribution.patches ?? [] },
+      inputs.tree,
+      inputs.mode,
+      owners,
+    );
     for (const t of contribution.tagsAdd ?? []) tagsAdded.add(t);
     for (const a of contribution.actions ?? []) actions.push(a);
   }
 
-  return { tagsAdded: [...tagsAdded], skills, actions };
+  const { skills, skipped } = realizeHarness(
+    harness,
+    inputs.tree,
+    [...inputs.manifest.tags, ...tagsAdded],
+    inputs.logger,
+    owners,
+  );
+  return {
+    tagsAdded: [...tagsAdded],
+    skills,
+    actions,
+    ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
+  };
+}
+
+/** One adapter's deferred, content-carrying harness declarations. */
+export interface HarnessContribution {
+  readonly adapter: Adapter;
+  readonly skills: readonly SkillSpec[];
+  readonly patches: readonly ContributionPatch[];
+  readonly mode: ApplyMode;
+}
+
+/** A realized harness file and its contributor, ready for manifest provenance. */
+export interface HarnessFile extends StagedSkillFile {
+  readonly adapterId: string;
+}
+
+/** Validates and collects harness elements without writing them or testing the gate early. */
+export function collectHarness(
+  adapter: Adapter,
+  contribution: Contribution,
+  pending: HarnessContribution[],
+  mode: ApplyMode = 'install',
+): void {
+  const skills = contribution.skills ?? [];
+  const patches = contribution.harnessPatches ?? [];
+  for (const patch of patches) {
+    if (!patch.regions?.length) {
+      throw new Error(
+        `adapter '${adapter.id}': harness patch on '${patch.target}' must declare owned regions`,
+      );
+    }
+  }
+  for (const skill of skills) {
+    const parsed = SkillSpecSchema.safeParse(skill);
+    if (!parsed.success)
+      throw new Error(
+        `adapter '${adapter.id}' contributes a malformed skill — ${parsed.error.message}`,
+      );
+  }
+  if (skills.length + patches.length > 0) pending.push({ adapter, skills, patches, mode });
+}
+
+/**
+ * Realizes one run's declarations against the settled local tags. Peers
+ * never activate this project's harness. Suppressed elements produce one
+ * diagnostic; realized elements retain ordinary collision and region checks.
+ */
+export function realizeHarness(
+  pending: HarnessContribution[],
+  tree: Tree,
+  tags: readonly Tag[],
+  logger: Logger,
+  owners: Ownership,
+): {
+  readonly skills: readonly StagedSkill[];
+  readonly files: readonly HarnessFile[];
+  readonly skipped: number;
+} {
+  const contributions = pending.splice(0);
+  const count = contributions.reduce((total, c) => total + c.skills.length + c.patches.length, 0);
+  if (!tags.includes(AGENT_HARNESS_TAG)) {
+    if (count > 0)
+      logger.info(`skipped ${String(count)} harness elements — no agent-harness in this project`);
+    return { skills: [], files: [], skipped: count };
+  }
+  const skills: StagedSkill[] = [];
+  const files: HarnessFile[] = [];
+  for (const contribution of contributions) {
+    const staged = applyContribution(
+      contribution.adapter,
+      contribution,
+      tree,
+      contribution.mode,
+      owners,
+    );
+    skills.push(...staged);
+    for (const skill of staged) {
+      files.push(...skill.files.map((file) => ({ ...file, adapterId: skill.adapterId })));
+    }
+  }
+  for (const contribution of contributions) {
+    for (const patch of contribution.patches) {
+      files.push({
+        adapterId: contribution.adapter.id,
+        path: canonicalTarget(patch.target),
+        sha256: createHash('sha256').update(tree.read(patch.target)!).digest('hex'),
+      });
+    }
+  }
+  return { skills, files, skipped: 0 };
 }
 
 /** Inputs for {@link makeCtx}. */

@@ -30,9 +30,10 @@ import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.j
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
+import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
-import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import { auditContext } from '../../../../evals/lib/context-audit.mjs';
 
@@ -80,18 +81,25 @@ async function emit(
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-harness-budget-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);
-  await installVertical({
-    vertical: walkingSkeletonVertical,
-    manifest: { ...emptyManifestV2('2026-09-13T00:00:00Z', '0.5.0-alpha'), tags: [...tags] },
-    tree,
-    mode: 'non-interactive',
-    prompt: rejectingPrompt,
-    logger: new FakeLogger(),
-    cwd,
-    templates: ejsTemplateSource,
-    processes: spawnProcessRunner,
-    now: () => '2026-09-13T00:00:00Z',
-  });
+  let manifest: ManifestV2 = {
+    ...emptyManifestV2('2026-09-13T00:00:00Z', '0.5.0-alpha'),
+    tags: [...tags],
+  };
+  for (const vertical of [walkingSkeletonVertical, agentHarnessVertical]) {
+    const result = await installVertical({
+      vertical,
+      manifest,
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-09-13T00:00:00Z',
+    });
+    manifest = result.manifest;
+  }
   await tree.commit();
   return {
     agents: tree.read('AGENTS.md')?.toString() ?? '',

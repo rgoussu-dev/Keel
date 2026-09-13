@@ -1,5 +1,5 @@
 /**
- * Tests for the walking-skeleton's claude-kit family adapters. The
+ * Tests for the agent-harness's claude-kit family adapters. The
  * install blocks prove the emitted `.claude/` shape and the runbook
  * addendum against representative tag sets — commands resolved from
  * the build-system and layout tags, never minted per `pkg.*` tag —
@@ -17,11 +17,12 @@ import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.j
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
+import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { CLAUDE_KIT_DIMENSION } from '../../../../src/domain/core/adapters/claude-kit.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
-import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 
 let cwds: string[] = [];
@@ -41,18 +42,26 @@ async function install(
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-claude-kit-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);
-  await installVertical({
-    vertical: walkingSkeletonVertical,
-    manifest: { ...emptyManifestV2('2026-08-18T00:00:00Z', '0.5.0-alpha'), tags, answers },
-    tree,
-    mode: 'non-interactive',
-    prompt: rejectingPrompt,
-    logger: new FakeLogger(),
-    cwd,
-    templates: ejsTemplateSource,
-    processes: spawnProcessRunner,
-    now: () => '2026-08-18T12:00:00Z',
-  });
+  let manifest: ManifestV2 = {
+    ...emptyManifestV2('2026-08-18T00:00:00Z', '0.5.0-alpha'),
+    tags,
+    answers,
+  };
+  for (const vertical of [walkingSkeletonVertical, agentHarnessVertical]) {
+    const result = await installVertical({
+      vertical,
+      manifest,
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-08-18T12:00:00Z',
+    });
+    manifest = result.manifest;
+  }
   return tree;
 }
 
@@ -309,7 +318,7 @@ describe('claude-kit coverage across the stack registry', () => {
           ...(stack.buildSystems?.[0] ? [stack.buildSystems[0].tag] : []),
           ...(layout.tag ? [layout.tag] : []),
         ];
-        const kit = resolveVertical(walkingSkeletonVertical, tags).filter((a) =>
+        const kit = resolveVertical(agentHarnessVertical, tags).filter((a) =>
           a.covers.includes(CLAUDE_KIT_DIMENSION),
         );
         expect(kit, `${stack.id} (${layout.tag ?? 'default'})`).toHaveLength(1);

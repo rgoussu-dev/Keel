@@ -21,7 +21,7 @@ import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.j
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
-import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
+import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import golden from './run-skill.golden.json' with { type: 'json' };
@@ -95,7 +95,7 @@ describe('the run skill, staged through the seam', () => {
       cwds.push(cwd);
       const tree = new FsTree(cwd);
       await installVertical({
-        vertical: walkingSkeletonVertical,
+        vertical: agentHarnessVertical,
         manifest: {
           ...emptyManifestV2('2026-08-18T00:00:00Z', '0.5.0-alpha'),
           tags: [...shape.tags],

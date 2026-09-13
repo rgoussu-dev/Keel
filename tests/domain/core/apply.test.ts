@@ -216,7 +216,7 @@ describe('applyContributions', () => {
       applyContributions({
         adapters,
         answers: {},
-        manifest: emptyManifestV2('now', '0.4.0'),
+        manifest: { ...emptyManifestV2('now', '0.4.0'), tags: ['agentic.harness'] },
         tree,
         logger: new FakeLogger(),
         cwd: tmp,
@@ -309,7 +309,7 @@ describe('applyContributions', () => {
       await applyContributions({
         adapters: [a],
         answers: {},
-        manifest: emptyManifestV2('now', '0.4.0'),
+        manifest: { ...emptyManifestV2('now', '0.4.0'), tags: ['agentic.harness'] },
         tree,
         logger: new FakeLogger(),
         cwd: tmp,

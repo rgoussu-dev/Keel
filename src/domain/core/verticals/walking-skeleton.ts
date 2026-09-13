@@ -18,13 +18,7 @@
  * one shared bootstrap shell.
  */
 
-import { claudeCoreAdapter } from '../adapters/claude-core.js';
 import { PEER_CONTEXT_NEEDS_MODULITH } from '../adapters/module-layout.js';
-import { goClaudeKitAdapter } from '../adapters/go-claude-kit.js';
-import { jvmClaudeKitAdapter } from '../adapters/jvm-claude-kit.js';
-import { rustClaudeKitAdapter } from '../adapters/rust-claude-kit.js';
-import { tsClaudeKitAdapter } from '../adapters/ts-claude-kit.js';
-import { wcClaudeKitAdapter } from '../adapters/wc-claude-kit.js';
 import { goBootstrapAdapter } from '../adapters/go-bootstrap.js';
 import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
@@ -73,21 +67,16 @@ import { springRestKotlinBootstrapAdapter } from '../adapters/spring-rest-kotlin
 import { wcDesignSystemAdapter } from '../adapters/wc-design-system.js';
 import { wcSamplePortFakeAdapter } from '../adapters/wc-sample-port-fake.js';
 import { wcSpaBootstrapAdapter } from '../adapters/wc-spa-bootstrap.js';
-import { CLAUDE_KIT_TAG, RUN_SKILL_NAME } from '../adapters/claude-kit.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const walkingSkeletonVertical: Vertical = {
   id: 'walking-skeleton',
   title: 'Walking skeleton',
   description: 'Greenfield project skeleton with a runnable end-to-end slice.',
-  dimensions: ['entrypoint', 'port-example', 'build-tool', 'agentic-baseline', 'agentic-kit'],
+  dimensions: ['entrypoint', 'port-example', 'build-tool'],
   // The peer context is this vertical's capability, so the rule
   // constraining it is this vertical's to declare. @see Conflict
   conflicts: [PEER_CONTEXT_NEEDS_MODULITH],
-  promotes: [CLAUDE_KIT_TAG],
-  // Every family kit stages the same one skill; the declaration is
-  // what lets a front end report it before applying. @see Vertical.skills
-  skills: [RUN_SKILL_NAME],
   adapters: [
     quarkusCliBootstrapAdapter,
     quarkusRestBootstrapAdapter,
@@ -131,11 +120,5 @@ export const walkingSkeletonVertical: Vertical = {
     wcDesignSystemAdapter,
     npmInstallAdapter,
     pnpmInstallAdapter,
-    claudeCoreAdapter,
-    jvmClaudeKitAdapter,
-    goClaudeKitAdapter,
-    rustClaudeKitAdapter,
-    tsClaudeKitAdapter,
-    wcClaudeKitAdapter,
   ],
 };

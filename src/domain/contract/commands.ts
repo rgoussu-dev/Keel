@@ -11,6 +11,8 @@ import type { TreeChange } from './ports/tree.js';
 
 /** Result DTO of an install-shaped command (`new` / `add`). */
 export interface InstallReport {
+  /** Declared harness elements suppressed because this project has no harness; absent when zero. */
+  readonly skippedHarnessElements?: number;
   /** What was installed: the stack id for `new`, the vertical id for `add`. */
   readonly subject: string;
   /** Every file the install staged, in deterministic path order. */
@@ -48,6 +50,8 @@ export type RepoLayout = 'monorepo' | 'polyrepo';
 /** Bootstrap a greenfield project from a stack preset. */
 export interface NewProjectCommand extends Command<InstallReport> {
   readonly kind: 'keel.new-project';
+  /** False omits agent-harness membership and suppresses declared harness elements. Defaults to true. */
+  readonly agentHarness?: boolean;
   readonly cwd: string;
   /**
    * Stack preset id, e.g. `quarkus-cli`. When absent, interactive

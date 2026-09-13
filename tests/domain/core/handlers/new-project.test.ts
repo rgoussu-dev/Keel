@@ -101,6 +101,7 @@ describe('keel.new-project (keel new)', () => {
     expect(manifest!.tags).toEqual(
       [
         'agentic.claude-kit',
+        'agentic.harness',
         'arch.cli',
         'arch.hexagonal',
         'dev.container',
@@ -114,6 +115,7 @@ describe('keel.new-project (keel new)', () => {
       ].sort(),
     );
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'agent-harness',
       'code-style',
       'dev-container',
       'vcs',
@@ -174,6 +176,7 @@ describe('keel.new-project (keel new)', () => {
       // `keel add` resolves the same shape the project was built on.
       [
         'agentic.claude-kit',
+        'agentic.harness',
         'arch.cli',
         'arch.hexagonal',
         'dev.container',
@@ -236,6 +239,7 @@ describe('keel.new-project (keel new)', () => {
       // `keel add` resolves the same shape the project was built on.
       [
         'agentic.claude-kit',
+        'agentic.harness',
         'arch.cli',
         'arch.hexagonal',
         'dev.container',

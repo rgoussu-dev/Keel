@@ -97,8 +97,8 @@ import {
   peerContextOffered,
   promotedBy,
 } from '../dials.js';
-import { installVertical } from '../install.js';
-import { newOwnership } from '../apply.js';
+import { finalizeHarness, installVertical } from '../install.js';
+import { newOwnership, type HarnessContribution } from '../apply.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
@@ -255,6 +255,7 @@ interface ResolvedService {
 interface StagedScope {
   /** Path prefix for report changes; '' for the product root. */
   readonly prefix: string;
+  readonly skippedHarnessElements: number;
   readonly cwd: string;
   readonly tree: Tree;
   readonly manifest: ManifestV2;
@@ -300,8 +301,28 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
-    const stack = this.deps.registry.stack(resolved.value);
-    if (!stack) return err(unknownStackError(this.deps.registry, resolved.value));
+    const registered = this.deps.registry.stack(resolved.value);
+    if (!registered) return err(unknownStackError(this.deps.registry, resolved.value));
+    if (command.agentHarness === false && registered.services) {
+      return err(
+        new DomainError(
+          '--no-agent-harness applies to single-service stacks; composite product-root harness selection is not supported',
+          'keel.invalid-agent-harness',
+        ),
+      );
+    }
+    if (command.agentHarness === false && command.extraVerticals?.includes('agent-harness')) {
+      return err(
+        new DomainError(
+          '--no-agent-harness cannot be combined with --with agent-harness',
+          'keel.invalid-agent-harness',
+        ),
+      );
+    }
+    const stack =
+      command.agentHarness === false
+        ? { ...registered, verticals: registered.verticals.filter((v) => v.id !== 'agent-harness') }
+        : registered;
     return stack.services
       ? this.stageComposite(command, stack, prompt)
       : this.stageSingle(command, stack, prompt);
@@ -529,6 +550,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       changes: staged.tree.changes(),
       actions: staged.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(staged.skippedHarnessElements > 0
+        ? { skippedHarnessElements: staged.skippedHarnessElements }
+        : {}),
     };
 
     return ok({ report, scopes: [staged] });
@@ -667,11 +691,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         scope.prefix === '' ? a.description : `${scope.prefix}: ${a.description}`,
       ),
     );
+    const skipped = scopes.reduce((total, scope) => total + scope.skippedHarnessElements, 0);
     const report: InstallReport = {
       subject: stack.id,
       changes,
       actions,
       committed: !command.dryRun,
+      ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     };
 
     return ok({ report, scopes });
@@ -725,6 +751,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // region two verticals both claim collides here, not only when
     // both come from one vertical.
     const owners = newOwnership();
+    const harness: HarnessContribution[] = [];
 
     for (const vertical of verticals) {
       const result = await installVertical({
@@ -732,6 +759,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         manifest,
         tree,
         owners,
+        harness,
         mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
         prompt: inputs.prompt,
         logger: this.deps.logger,
@@ -744,7 +772,22 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       collected.push(...result.applyResult.actions);
     }
 
-    return { prefix: inputs.prefix, cwd: inputs.cwd, tree, manifest, actions: collected };
+    const finalized = finalizeHarness({
+      manifest,
+      harness,
+      tree,
+      owners,
+      logger: this.deps.logger,
+      now: () => inputs.now,
+    });
+    return {
+      prefix: inputs.prefix,
+      cwd: inputs.cwd,
+      tree,
+      manifest: finalized.manifest,
+      actions: collected,
+      skippedHarnessElements: finalized.skipped,
+    };
   }
 
   /**
@@ -982,7 +1025,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // The same menu `keel.dials` reports, so a form's list and this
     // question's choices cannot come apart — see `../dials.ts` for
     // what makes an extra a dead end here.
-    const candidates = legalExtraVerticals(this.deps.registry, stack, tags);
+    const candidates = legalExtraVerticals(this.deps.registry, stack, tags).filter(
+      (v) => command.agentHarness !== false || v.id !== 'agent-harness',
+    );
     const requested =
       command.extraVerticals !== undefined
         ? command.extraVerticals
