@@ -30,6 +30,7 @@ import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolch
 import {
   applyContribution,
   makeCtx,
+  newOwnership,
   type ApplyMode,
   type ApplyResult,
   type StagedSkill,
@@ -86,7 +87,7 @@ export async function installVertical(
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];
   const collectedSkills: StagedSkill[] = [];
-  const skillOwners = new Map<string, string>();
+  const owners = newOwnership();
   const allTagsAdded = new Set<Tag>();
 
   for (const adapter of ordered) {
@@ -103,7 +104,7 @@ export async function installVertical(
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    const staged = applyContribution(adapter, contribution, inputs.tree, inputs.apply, skillOwners);
+    const staged = applyContribution(adapter, contribution, inputs.tree, inputs.apply, owners);
 
     if (contribution.tagsAdd && contribution.tagsAdd.length > 0) {
       assertDeclaredPromotions(inputs.vertical, adapter, contribution.tagsAdd);

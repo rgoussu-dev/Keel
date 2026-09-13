@@ -26,7 +26,7 @@
  */
 
 import { DomainError } from '../kernel/result.js';
-import type { Conflict, Vertical } from '../contract/composition.js';
+import { ENGINE_CONTRIBUTOR_ID, type Conflict, type Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { Stack } from '../contract/stack.js';
 import { validateConflict } from './compatibility.js';
@@ -163,6 +163,14 @@ function validateStack(origin: string, stack: Stack): void {
 function validateVertical(origin: string, vertical: Vertical): void {
   if (vertical.id.length === 0) throw refuse(origin, 'registers a vertical with no id');
   validateConflicts(origin, `vertical '${vertical.id}'`, vertical);
+  for (const adapter of vertical.adapters) {
+    if (adapter.id === ENGINE_CONTRIBUTOR_ID) {
+      throw refuse(
+        origin,
+        `vertical '${vertical.id}' registers an adapter as '${ENGINE_CONTRIBUTOR_ID}', the engine's own contributor identity — a region or a file attributed to it would read as keel's`,
+      );
+    }
+  }
   const covered = new Set(vertical.adapters.flatMap((adapter) => adapter.covers));
   for (const dimension of vertical.dimensions) {
     if (!covered.has(dimension)) {

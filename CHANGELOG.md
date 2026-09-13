@@ -48,6 +48,22 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **Owned regions are a declared, verified seam** (#133, wave 2 of
+  the agent-harness redesign): a patch on a shared file names the
+  sentinel pair it owns on `ContributionPatch.regions`, and the
+  engine holds it to that on every apply — a transform that changed
+  anything outside its regions is refused naming the adapter, a
+  region two adapters declare on one file is refused naming both,
+  and the `keel:map` / `keel:skills-index` slots of `AGENTS.md`
+  belong to the engine under the reserved contributor identity
+  `keel:engine`, which no adapter may register under. One transform
+  (`upsertRegion`) now backs every sentinel idiom keel had grown —
+  the stack section of `AGENTS.md`, the hook's format step, the
+  `code-style` blocks and the GitLab pipeline regions — and
+  `regionPatch` builds such a patch, seed included, for keel's own
+  adapters and a plugin's alike; both ship on the plugin surface.
+  Emitted files are byte-identical. See `docs/composition.md` →
+  Owned regions.
 - **Cross-tool loading shims** beside `CLAUDE.md`: `.gemini/settings.json`
   (Gemini CLI reads `AGENTS.md` through `context.fileName`) and
   `.aider.conf.yml` (`read: [AGENTS.md]`). Zero-maintenance: they carry

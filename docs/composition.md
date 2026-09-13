@@ -274,9 +274,9 @@ tree.
 
 How a piece ships **agent-harness elements** — the `.claude/` workflow
 kit and the agent-facing documents — with the code it contributes.
-These rules are normative for every harness seam; the skill seam below
-is the first one live, and the owned-region and settings seams follow
-the same model.
+These rules are normative for every harness seam; the skill and
+owned-region seams below are live, and the settings seam follows the
+same model.
 
 **Harness elements ride typed, declarative contribution fields — never
 bare `files:` entries or ad-hoc patches.** The engine can only refuse,
@@ -290,9 +290,11 @@ Three ownership patterns, with different reapply semantics:
    origins, and `--reapply` rewrites the file pristine. Skills are
    this class.
 2. **Owned regions in shared text.** A sentinel-delimited section of a
-   document several parties write — the stack runbook in `AGENTS.md`
+   document several parties write — the stack section in `AGENTS.md`
    is the standing example. Reapply replaces the owner's own region
-   and never touches the user's prose around it.
+   and never touches the user's prose around it. The patch
+   _declares_ the region and the engine verifies the claim — see
+   [Owned regions](#owned-regions).
 3. **Key-addressed settings merges.** JSON settings composed key by
    key, each key carrying its contributor — so a reapply refreshes a
    contributor's keys in place. (Lands with the hook/settings seam.)
@@ -347,6 +349,63 @@ Two rules the seam enforces:
 A plugin's verticals ship skills through exactly this seam — same
 schema, same serializer, same collision refusal and provenance, no
 special case. See [Plugins](plugins.md#skills).
+
+### Owned regions
+
+A patch on a file several parties write owns one **region** of it —
+a sentinel pair, `keel:<owner>` between the comment delimiters of the
+file's syntax — and says so on `ContributionPatch.regions`. Build it
+with `regionPatch`, which takes the region, the body that goes between
+the markers and, for a shared file no one may have created yet, the
+`seed`:
+
+```ts
+import { hashRegion, regionPatch } from '@rgoussu.dev/keel/plugin';
+
+patches: [
+  regionPatch({
+    target: '.editorconfig',
+    seed: 'root = true\n',
+    region: hashRegion('code-style'),
+    body: '[*.acme]\nindent_size = 2',
+  }),
+];
+```
+
+`upsertRegion` is the transform behind it — replace the section
+between the markers when both are present, land a fresh one (after
+the content by default, `prepend` for a block that reads first,
+`keep` for a slot that must already exist) when neither is, and
+refuse with the fix when one marker survives without the other. It is
+its own fixed point, which is what lets `--reapply` re-render a region
+in place. The stack section of `AGENTS.md`, the format step of the
+pre-commit hook, the `code-style` blocks of `.editorconfig` and
+`.gitattributes` and the two verticals' regions of `.gitlab-ci.yml`
+all run through it.
+
+Declaring a region is a claim, and **the engine verifies it on every
+apply** rather than trusting the adapter:
+
+- **Confinement.** The transform may change nothing outside its
+  declared regions. One that did is refused (`region-escape`) naming
+  the adapter, the file and the region — whitespace at the file's own
+  edges excepted, since landing a fresh region moves the last newline.
+- **One owner per region of a file.** A region two adapters of the
+  run both declare on the same target is refused (`region-collision`)
+  naming both; the same markers on two different files are two
+  regions. An adapter declaring one twice is refused too.
+- **The engine's own regions are claimed first.** The `keel:map` and
+  `keel:skills-index` slots the binding spec ships empty belong to the
+  engine — attributed to the reserved contributor identity
+  `keel:engine` (`ENGINE_CONTRIBUTOR_ID`), which no adapter may
+  register under and which manifest `entries` name as `source` for
+  content the engine writes without an adapter. An adapter claiming
+  one is refused naming the engine.
+
+A patch declaring no region is an ordinary chained transform with no
+ownership claim; on `--reapply` it may still change its file only
+when it is its own fixed point, as before. A region-owning patch
+satisfies that by construction.
 
 ## One install, end to end
 

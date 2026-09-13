@@ -193,6 +193,40 @@ adapter's skills, no special case. Two things to hold to:
 The full rules live in
 [Composition → Harness contributions](composition.md#harness-contributions).
 
+### Owned regions
+
+A patch on a file the project (or another vertical) also writes owns
+**one region** of it, and declares that region so the engine can hold
+the patch to it:
+
+```js
+patches: [
+  {
+    target: 'AGENTS.md',
+    regions: [{ begin: '<!-- keel:acme-notes:begin -->', end: '<!-- keel:acme-notes:end -->' }],
+    apply: (existing) => /* replace what lies between the markers, nothing else */,
+  },
+],
+```
+
+TypeScript authors write the same thing as
+`regionPatch({ target, region: markdownRegion('acme-notes'), body })`
+from `@rgoussu.dev/keel/plugin`, which also supplies the transform
+(`upsertRegion`) — replace between the markers, land a fresh region
+when there are none, refuse a broken pair. A plain-JavaScript plugin
+spells the two marker strings and its own replace; what the engine
+checks is the declaration, not how the transform was written.
+
+Two things to hold to:
+
+- **Stay inside.** A transform that changed anything outside its
+  declared regions is refused naming the adapter — on install and on
+  `--reapply` alike.
+- **One owner per region of a file.** The same region declared by two
+  adapters of a run on one target is a hard refusal naming both, and
+  the `keel:map` / `keel:skills-index` slots of `AGENTS.md` are the
+  engine's — declaring one is refused naming the engine.
+
 ### Conflicts
 
 A plugin's `Conflict` is read exactly as a shipped piece's:

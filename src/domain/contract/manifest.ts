@@ -144,6 +144,11 @@ export interface InstalledVertical {
  * write. Divergence indicates a user edit.
  */
 export interface ManifestEntry {
+  /**
+   * The contributor that shipped the file: the owning adapter's id,
+   * or `ENGINE_CONTRIBUTOR_ID` (`composition.ts`) for content the
+   * engine writes without any adapter.
+   */
   readonly source: string;
   readonly target: string;
   readonly sha256Shipped: string;
