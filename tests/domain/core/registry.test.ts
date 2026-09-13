@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Vertical } from '../../../src/domain/contract/composition.js';
+import { ENGINE_CONTRIBUTOR_ID, type Vertical } from '../../../src/domain/contract/composition.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
 import {
   verticalTitle,
@@ -107,6 +107,26 @@ describe('registryOf', () => {
       registryOf([{ origin: ACME, verticals: [wellFormed('twice'), wellFormed('twice')] }]),
     );
     expect(error.message).toContain(`${ACME} registers vertical 'twice' twice`);
+  });
+
+  it('refuses an adapter registered under the engine’s own contributor identity', () => {
+    const squatting: Vertical = {
+      ...wellFormed('acme'),
+      adapters: [
+        {
+          id: ENGINE_CONTRIBUTOR_ID,
+          vertical: 'acme',
+          covers: ['only'],
+          predicate: {},
+          contribute: () => ({}),
+        },
+      ],
+    };
+    const error = refusal(() => registryOf([{ origin: ACME, verticals: [squatting] }]));
+    expect(error.message).toContain(
+      `${ACME} vertical 'acme' registers an adapter as 'keel:engine', the engine's own contributor identity`,
+    );
+    expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
   });
 
   it('carries the registry error code, and refuses a piece with no id at all', () => {

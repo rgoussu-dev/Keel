@@ -61,8 +61,7 @@ import {
   styleFor,
 } from './code-style.js';
 import { eolAware } from '../util.js';
-import { upsertFormatStep } from './claude-kit.js';
-import { HOOK_TARGET } from './code-style.js';
+import { formatStepPatch } from './claude-kit.js';
 import type {
   Adapter,
   Contribution,
@@ -349,10 +348,7 @@ export const jvmFormatAdapter: Adapter = {
         maven
           ? { target: MAVEN_TARGET, apply: eolAware((e) => addSpotlessToPom(e, tags)) }
           : { target: GRADLE_TARGET, apply: eolAware((e) => addSpotlessToGradle(e, tags)) },
-        {
-          target: HOOK_TARGET,
-          apply: eolAware((existing) => upsertFormatStep(existing, commands.format)),
-        },
+        formatStepPatch(commands.format),
       ],
       actions: [formatAction(ctx.manifest)],
       tagsAdd: [STYLE_MANAGED_TAG],

@@ -19,6 +19,7 @@ import type { ProcessRunner } from './ports/process-runner.js';
 import type { TemplateSource } from './ports/template-source.js';
 import type { Tree } from './ports/tree.js';
 import type { ManifestV2 } from './manifest.js';
+import type { Region } from './region.js';
 import type { ToolchainNeed } from './toolchain.js';
 
 /**
@@ -252,8 +253,29 @@ export interface ContributionPatch {
    * file takes the platform default and an existing one keeps its own.
    */
   readonly mode?: number;
+  /**
+   * The sentinel-delimited regions of `target` this patch owns —
+   * see {@link Region}. Declaring them is a claim the engine
+   * verifies on every apply: the transform may change nothing
+   * outside them (refused naming this adapter), no other adapter of
+   * the run may declare the same region of the same target (refused
+   * naming both), and `--reapply` re-renders what lies inside. Build
+   * such a patch with `regionPatch` rather than by hand. Absent, the
+   * patch is an ordinary chained transform with no ownership claim.
+   */
+  readonly regions?: readonly Region[];
   readonly apply: (existing: string) => string;
 }
+
+/**
+ * The reserved contributor identity of the engine itself — what a
+ * region keel writes without any adapter (the root map and the
+ * skills index slots of `AGENTS.md`, filled by the projection
+ * commands) is attributed to in a conflict and in the manifest's
+ * provenance `entries`. No adapter may register under it: the
+ * registry refuses one, naming its origin.
+ */
+export const ENGINE_CONTRIBUTOR_ID = 'keel:engine';
 
 /**
  * A deferred side effect emitted by an adapter — typically a shell
@@ -431,5 +453,6 @@ export type { Tree };
 export type { Tag } from './tags.js';
 export type { ContributionFile } from './files.js';
 export type { SkillSpec, SkillSupportingFile } from './skill.js';
+export type { Region } from './region.js';
 export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';
 export type { ToolchainNeed, ToolchainTool, ToolchainBlock } from './toolchain.js';

@@ -23,16 +23,16 @@
  */
 
 import type { Adapter, Contribution } from '../../contract/composition.js';
-import { eolAware } from '../util.js';
+import { regionPatch } from '../../contract/region.js';
 import {
   EDITORCONFIG_TARGET,
   GITATTRIBUTES_TARGET,
   STYLE_MANAGED_TAG,
+  STYLE_REGION,
   editorConfigSeed,
   gitAttributesSeed,
   renderEditorConfig,
   renderGitAttributes,
-  upsertStyleSection,
 } from './code-style.js';
 
 export const EDITOR_BASELINE_ID = 'code-style/editor-baseline';
@@ -45,16 +45,20 @@ export const editorBaselineAdapter: Adapter = {
   contribute(): Contribution {
     return {
       patches: [
-        {
+        regionPatch({
           target: EDITORCONFIG_TARGET,
           seed: editorConfigSeed(),
-          apply: eolAware((existing) => upsertStyleSection(existing, renderEditorConfig())),
-        },
-        {
+          region: STYLE_REGION,
+          body: renderEditorConfig(),
+          where: 'code-style',
+        }),
+        regionPatch({
           target: GITATTRIBUTES_TARGET,
           seed: gitAttributesSeed(),
-          apply: eolAware((existing) => upsertStyleSection(existing, renderGitAttributes())),
-        },
+          region: STYLE_REGION,
+          body: renderGitAttributes(),
+          where: 'code-style',
+        }),
       ],
       tagsAdd: [STYLE_MANAGED_TAG],
     };

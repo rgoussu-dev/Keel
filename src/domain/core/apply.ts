@@ -13,7 +13,12 @@
  *   4. Apply `patches` (read–transform–write); a patch whose target
  *      doesn't exist is an error, unless the patch supplies a `seed`
  *      — then the transform runs against the seed and the result is
- *      written as a new file (the shared-file upsert).
+ *      written as a new file (the shared-file upsert). A patch that
+ *      declares `regions` is held to them: a transform that changed
+ *      anything outside its regions is refused naming the adapter,
+ *      and a region two adapters of the run both declare on one
+ *      target is refused naming both — the engine's own regions
+ *      (the `AGENTS.md` map and skills-index slots) included.
  *   5. Stage `skills` — each spec validated against its schema,
  *      rendered with `renderSkill`, and written to
  *      `.claude/skills/<name>/SKILL.md` (plus supporting files) with
@@ -38,14 +43,17 @@ import {
   SkillSpecSchema,
   type SkillSpec,
 } from '../contract/skill.js';
-import type {
-  DeferredAction,
-  Adapter,
-  Contribution,
-  Ctx,
-  ManifestV2,
-  Tag,
-  Tree,
+import { assertRegion, markdownRegion, outsideRegions, type Region } from '../contract/region.js';
+import {
+  ENGINE_CONTRIBUTOR_ID,
+  type DeferredAction,
+  type Adapter,
+  type Contribution,
+  type ContributionPatch,
+  type Ctx,
+  type ManifestV2,
+  type Tag,
+  type Tree,
 } from '../contract/composition.js';
 import type { Logger } from '../contract/ports/logger.js';
 import type { ProcessRunner } from '../contract/ports/process-runner.js';
@@ -118,11 +126,66 @@ export class ContributionConflictError extends Error {
     message: string,
     readonly adapterId: string,
     readonly path: string,
-    readonly kind: 'overwrite' | 'missing-patch-target' | 'reapply-divergence' | 'skill-collision',
+    readonly kind:
+      | 'overwrite'
+      | 'missing-patch-target'
+      | 'reapply-divergence'
+      | 'skill-collision'
+      | 'region-escape'
+      | 'region-collision',
   ) {
     super(message);
     this.name = 'ContributionConflictError';
   }
+}
+
+/**
+ * The cross-adapter memory of one run: which adapter owns each skill
+ * name and each declared region of each target, so a second claim
+ * is refused naming both origins. One per run, threaded by the
+ * caller through every {@link applyContribution}.
+ */
+export interface Ownership {
+  /** Skill name → owning adapter id. */
+  readonly skills: Map<string, string>;
+  /** {@link regionKey} → owning contributor id. */
+  readonly regions: Map<string, string>;
+}
+
+/**
+ * The regions the engine writes without any adapter — the slots the
+ * binding spec ships empty for the projection commands to fill —
+ * owned by {@link ENGINE_CONTRIBUTOR_ID} from the first apply of a
+ * run, so an adapter declaring one is refused naming the engine.
+ */
+export const ENGINE_REGIONS: readonly { readonly target: string; readonly region: Region }[] = [
+  { target: 'AGENTS.md', region: markdownRegion('map') },
+  { target: 'AGENTS.md', region: markdownRegion('skills-index') },
+];
+
+/** A fresh {@link Ownership} with the engine's own regions already claimed. */
+export function newOwnership(): Ownership {
+  const regions = new Map<string, string>();
+  for (const owned of ENGINE_REGIONS) {
+    regions.set(regionKey(owned.target, owned.region), ENGINE_CONTRIBUTOR_ID);
+  }
+  return { skills: new Map(), regions };
+}
+
+/**
+ * The ownership key of one region of one target: the opening marker
+ * is the region's identity, and the target is taken as the Tree
+ * takes it — forward slashes, no leading `./` or `/` — so `AGENTS.md`
+ * and `./AGENTS.md` are one file here as they are on disk, and an
+ * alias spelling is not a way around the one-owner rule.
+ */
+export function regionKey(target: string, region: Region): string {
+  return `${canonicalTarget(target)} ${region.begin}`;
+}
+
+/** The Tree's own path canonicalization, mirrored for ownership keys. */
+function canonicalTarget(target: string): string {
+  return target.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
 }
 
 /**
@@ -145,7 +208,7 @@ export interface ApplyInputs {
 export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResult> {
   const tagsAdded = new Set<Tag>();
   const skills: StagedSkill[] = [];
-  const skillOwners = new Map<string, string>();
+  const owners = newOwnership();
   const actions: DeferredAction[] = [];
 
   for (const adapter of inputs.adapters) {
@@ -157,7 +220,7 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    skills.push(...applyContribution(adapter, contribution, inputs.tree, inputs.mode, skillOwners));
+    skills.push(...applyContribution(adapter, contribution, inputs.tree, inputs.mode, owners));
     for (const t of contribution.tagsAdd ?? []) tagsAdded.add(t);
     for (const a of contribution.actions ?? []) actions.push(a);
   }
@@ -212,22 +275,23 @@ export function makeCtx(
  * conflict detection), chained patches, and skill staging. Exposed so
  * the install orchestrator can interleave per-adapter manifest
  * updates between applies; it returns the skills staged for this
- * adapter, and `skillOwners` (skill name → owning adapter id) is the
- * cross-adapter memory that turns a second claim on a name into a
- * refusal naming both origins — one map per run, threaded by the
- * caller.
+ * adapter, and `owners` is the cross-adapter memory that turns a
+ * second claim on a skill name or a declared region into a refusal
+ * naming both origins — one {@link Ownership} per run, threaded by
+ * the caller.
  */
 export function applyContribution(
   adapter: Adapter,
   contribution: Contribution,
   tree: Tree,
   mode: ApplyMode = 'install',
-  skillOwners: Map<string, string> = new Map(),
+  owners: Ownership = newOwnership(),
 ): readonly StagedSkill[] {
   for (const f of contribution.files ?? []) {
     writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
   }
   for (const p of contribution.patches ?? []) {
+    const regions = claimRegions(adapter, p, owners.regions);
     const current = tree.read(p.target);
     if (current === null && p.seed === undefined) {
       throw new ContributionConflictError(
@@ -239,6 +303,7 @@ export function applyContribution(
     }
     const base = current === null ? (p.seed as string) : current.toString('utf8');
     const next = p.apply(base);
+    if (regions.length > 0) assertConfined(adapter, p, regions, base, next);
     if (mode === 'reapply' && current !== null) {
       // Unchanged content still goes through the tree when the patch
       // declares a mode: a script that lost its executable bit gets
@@ -263,9 +328,88 @@ export function applyContribution(
   }
   const staged: StagedSkill[] = [];
   for (const raw of contribution.skills ?? []) {
-    staged.push(stageSkill(adapter, raw, tree, mode, skillOwners));
+    staged.push(stageSkill(adapter, raw, tree, mode, owners.skills));
   }
   return staged;
+}
+
+/**
+ * Holds a region-owning transform to its declaration: what lies
+ * outside the declared regions must come back as it was (the file's
+ * own edges excepted — landing a fresh region moves the last
+ * newline). A `base` whose sentinels are already broken is the
+ * file's fault and throws the fix-it message as the transform itself
+ * would; a `next` whose sentinels the transform broke is the
+ * transform's, and an escape like any other.
+ */
+function assertConfined(
+  adapter: Adapter,
+  patch: ContributionPatch,
+  regions: readonly Region[],
+  base: string,
+  next: string,
+): void {
+  const named = regions.map((r) => `'${r.begin}'`).join(', ');
+  const plural = regions.length > 1 ? 's' : '';
+  const before = outsideRegions(base, regions, patch.target);
+  let after: string | null;
+  try {
+    after = outsideRegions(next, regions, patch.target);
+  } catch {
+    after = null;
+  }
+  if (after === null) {
+    throw new ContributionConflictError(
+      `adapter '${adapter.id}': its patch on '${patch.target}' left the sentinels of the region${plural} it declares (${named}) broken — a region-owning patch keeps both markers of every region it owns`,
+      adapter.id,
+      patch.target,
+      'region-escape',
+    );
+  }
+  if (before.trim() !== after.trim()) {
+    throw new ContributionConflictError(
+      `adapter '${adapter.id}': its patch on '${patch.target}' changed content outside the region${plural} it declares (${named}) — a region-owning patch may re-render only what lies between its own markers`,
+      adapter.id,
+      patch.target,
+      'region-escape',
+    );
+  }
+}
+
+/**
+ * Validates the regions a patch declares and claims each for the
+ * adapter: a region already owned on that target — by another
+ * adapter of the run, by this one twice, or by the engine — is a
+ * refusal naming both. The one claim that goes through is the
+ * engine's on a region it pre-owns: that is the projection commands'
+ * write path into the `AGENTS.md` slots. Returns the validated
+ * regions, empty for a patch declaring none.
+ */
+function claimRegions(
+  adapter: Adapter,
+  patch: ContributionPatch,
+  regionOwners: Map<string, string>,
+): readonly Region[] {
+  const regions = (patch.regions ?? []).map((raw) =>
+    assertRegion(raw, `adapter '${adapter.id}', patch on '${patch.target}'`),
+  );
+  for (const region of regions) {
+    const key = regionKey(patch.target, region);
+    const owner = regionOwners.get(key);
+    if (owner === ENGINE_CONTRIBUTOR_ID && adapter.id === ENGINE_CONTRIBUTOR_ID) continue;
+    if (owner !== undefined) {
+      throw new ContributionConflictError(
+        owner === adapter.id
+          ? `adapter '${adapter.id}' declares region '${region.begin}' of '${patch.target}' twice — one patch owns a region`
+          : `adapter '${adapter.id}' declares region '${region.begin}' of '${patch.target}', which ${owner === ENGINE_CONTRIBUTOR_ID ? 'the engine' : `adapter '${owner}'`} already owns — exactly one contributor of a run may own a region of a file`,
+        adapter.id,
+        patch.target,
+        'region-collision',
+      );
+    }
+    regionOwners.set(key, adapter.id);
+  }
+  return regions;
 }
 
 /**

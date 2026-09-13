@@ -30,6 +30,8 @@ import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolch
 import {
   applyContribution,
   makeCtx,
+  newOwnership,
+  type Ownership,
   type ApplyMode,
   type ApplyResult,
   type StagedSkill,
@@ -68,6 +70,14 @@ export interface InstallVerticalInputs {
    * {@link ApplyMode}.
    */
   readonly apply?: ApplyMode;
+  /**
+   * The run's ownership memory — which contributor owns each skill
+   * name and each declared region of each file — so a second claim
+   * is refused naming both. A run that installs several verticals
+   * onto one tree (`keel new`) passes one {@link Ownership} through
+   * every call; absent, the call is its own run.
+   */
+  readonly owners?: Ownership;
 }
 
 /** Result of installing a vertical. */
@@ -86,7 +96,7 @@ export async function installVertical(
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];
   const collectedSkills: StagedSkill[] = [];
-  const skillOwners = new Map<string, string>();
+  const owners = inputs.owners ?? newOwnership();
   const allTagsAdded = new Set<Tag>();
 
   for (const adapter of ordered) {
@@ -103,7 +113,7 @@ export async function installVertical(
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    const staged = applyContribution(adapter, contribution, inputs.tree, inputs.apply, skillOwners);
+    const staged = applyContribution(adapter, contribution, inputs.tree, inputs.apply, owners);
 
     if (contribution.tagsAdd && contribution.tagsAdd.length > 0) {
       assertDeclaredPromotions(inputs.vertical, adapter, contribution.tagsAdd);

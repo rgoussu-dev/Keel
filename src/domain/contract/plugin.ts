@@ -108,12 +108,21 @@ export type {
   Predicate,
   Question,
   QuestionChoice,
+  Region,
   SkillSpec,
   SkillSupportingFile,
   Tag,
   Tree,
   Vertical,
 } from './composition.js';
+export {
+  hashRegion,
+  markdownRegion,
+  regionPatch,
+  upsertRegion,
+  type RegionPatchSpec,
+  type UpsertRegionOptions,
+} from './region.js';
 export type {
   BuildSystemOption,
   ModuleLayout,
