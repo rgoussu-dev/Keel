@@ -85,26 +85,35 @@ export function driverIdentity(driver, mode, model, version) {
  * {@link assertMergeable}).
  *
  * Called on every checkpoint, not only at the end, so a fresh
- * benchmark that is not yet complete carries one case still in
- * progress — its last. That case does not replace its earlier entry:
- * the last complete measurement stays in the file until the re-run
- * has finished, so a kill mid-case loses the partial re-run, never
- * the measurement it was replacing.
+ * benchmark that is not yet complete carries a case still in
+ * progress, marked `complete: false` on the entry itself (an entry
+ * without the flag predates it and is settled). That case does not
+ * replace its earlier entry: the last complete measurement stays in
+ * the file until the re-run has finished, so a kill mid-case loses
+ * the partial re-run, never the measurement it was replacing; a case
+ * new to the file lands as it is, flag and all, so the next merge
+ * still knows it. The merge is complete only when the fresh part is
+ * and every case the campaign lists has a settled entry from one
+ * sitting or the other — a one-case `--only` over an interrupted
+ * campaign does not turn it into a finished one.
  */
 export function mergeBenchmark(previous, fresh, order) {
   assertMergeable(previous, fresh);
+  const isSettled = (c) => c.complete !== false;
   const byId = new Map(previous.cases.map((c) => [c.id, c]));
-  const settled = fresh.complete ? fresh.cases : fresh.cases.slice(0, -1);
-  const inProgress = fresh.complete ? [] : fresh.cases.slice(-1);
-  for (const c of settled) byId.set(c.id, c);
-  for (const c of inProgress) if (!byId.has(c.id)) byId.set(c.id, c);
+  for (const c of fresh.cases) {
+    if (isSettled(c) || !byId.has(c.id)) byId.set(c.id, c);
+  }
+  const settledIds = new Set(
+    [...previous.cases, ...fresh.cases].filter(isSettled).map((c) => c.id),
+  );
   const cases = [
     ...order.filter((id) => byId.has(id)).map((id) => byId.get(id)),
     ...[...byId.keys()].filter((id) => !order.includes(id)).map((id) => byId.get(id)),
   ];
   return {
     ...previous,
-    complete: fresh.complete,
+    complete: fresh.complete && order.every((id) => settledIds.has(id)),
     finishedAt: fresh.finishedAt,
     cases,
     summary: summarize(cases),
@@ -169,9 +178,13 @@ export async function runCampaign(deps) {
 
   const startedAt = now();
   const cases = [];
-  const caseEntry = (caseSpec, results, contextAudit) => ({
+  // `complete` is the case's own: false on the entry a checkpoint
+  // carries while its runs are still going, so a merge can tell a
+  // settled measurement from a partial one wherever it sits.
+  const caseEntry = (caseSpec, results, contextAudit, complete) => ({
     id: caseSpec.id,
     tags: caseSpec.tags,
+    complete,
     contextAudit,
     runs: results,
     aggregate: aggregateCase(results),
@@ -230,7 +243,7 @@ export async function runCampaign(deps) {
           metrics: emptyMetrics(),
         });
         log(`${caseSpec.id}: run ${i} UNPREPARED — no agent ran`);
-        checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit)));
+        checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit, false)));
         continue;
       }
       if (contextAudit === null) contextAudit = auditContext(workspace);
@@ -258,9 +271,9 @@ export async function runCampaign(deps) {
       log(
         `${caseSpec.id}: run ${i} ${oracle.pass ? 'PASS' : `FAIL (${oracle.failures.join('; ')})`}`,
       );
-      checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit)));
+      checkpoint?.(benchmark(false, caseEntry(caseSpec, results, contextAudit, false)));
     }
-    cases.push(caseEntry(caseSpec, results, contextAudit));
+    cases.push(caseEntry(caseSpec, results, contextAudit, true));
   }
 
   return benchmark(true, null);

@@ -629,9 +629,13 @@ refuses before a workspace is built or a session is spent (an agent
 upgraded between sittings is a different measurement) — and the file
 records the merge under `merged`, naming the cases and the keel
 commit they were re-run at, so a baseline finished in two sittings
-says so. While a re-run case is still in progress its earlier entry
-stays in the file: a kill mid-case loses the partial re-run, never
-the measurement it was replacing.
+says so. While a re-run case is still in progress (its entry says
+`complete: false`) its earlier entry stays in the file: a kill
+mid-case loses the partial re-run, never the measurement it was
+replacing. And the merged file is `complete` only once every case of
+the campaign has a settled entry from one sitting or the other — a
+one-case `--only` over an interrupted campaign does not call it
+finished.
 
 **The baseline is the owner's local step.** The `baseline` campaign
 captures the current emitted harness _before_ the redesign lands:

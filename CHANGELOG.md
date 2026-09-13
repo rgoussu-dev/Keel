@@ -83,8 +83,10 @@ use to keep a long-lived changelog scannable — and the root keeps
   different agent version into an existing benchmark — before the
   first session is spent — reads a benchmark written before
   `unprepared` was counted as having none, prints the summary of the
-  merged file it wrote, and keeps a case's last complete measurement
-  in the file until its re-run has finished; a scaffold that fails
+  merged file it wrote, keeps a case's last complete measurement in
+  the file until its re-run has finished, and calls a merged
+  benchmark complete only when every case of the campaign is; a
+  scaffold that fails
   removes its half-built workspace before the retry. An explicit
   `--model` gets its own results file, and an attended run records
   no model, since the rig cannot verify the one the operator picked.

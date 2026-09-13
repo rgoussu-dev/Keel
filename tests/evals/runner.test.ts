@@ -231,17 +231,25 @@ describe('runCampaign against the fake driver', () => {
     expect(benchmark.summary).toEqual({ cases: 1, successRate: null, unprepared: 2 });
   });
 
-  it('checkpoints the benchmark so far after every run', async () => {
-    const seen: { complete: boolean; runs: number }[] = [];
-    const checkpoint = (b: { complete: boolean; cases: { runs: unknown[] }[] }): void => {
-      seen.push({ complete: b.complete, runs: b.cases.reduce((n, c) => n + c.runs.length, 0) });
+  it('checkpoints the benchmark so far after every run, the running case marked as such', async () => {
+    const seen: { complete: boolean; runs: number; caseComplete: boolean }[] = [];
+    const checkpoint = (b: {
+      complete: boolean;
+      cases: { runs: unknown[]; complete: boolean }[];
+    }): void => {
+      seen.push({
+        complete: b.complete,
+        runs: b.cases.reduce((n, c) => n + c.runs.length, 0),
+        caseComplete: b.cases.at(-1)!.complete,
+      });
     };
     const benchmark = await runCampaign({ ...baseDeps(fakeDriver({ solve })), checkpoint });
     expect(seen).toEqual([
-      { complete: false, runs: 1 },
-      { complete: false, runs: 2 },
+      { complete: false, runs: 1, caseComplete: false },
+      { complete: false, runs: 2, caseComplete: false },
     ]);
     expect(benchmark.complete).toBe(true);
+    expect(benchmark.cases[0]!.complete).toBe(true);
     expect(benchmark.summary.successRate).toBe(1);
   });
 
@@ -266,9 +274,15 @@ describe('runCampaign against the fake driver', () => {
 });
 
 describe('mergeBenchmark — re-running a subset of cases into an existing benchmark', () => {
-  const caseResult = (id: string, successRate: number | null, unprepared = 0) => ({
+  const caseResult = (
+    id: string,
+    successRate: number | null,
+    unprepared = 0,
+    complete: boolean | undefined = true,
+  ) => ({
     id,
     tags: ['navigation'],
+    ...(complete === undefined ? {} : { complete }),
     contextAudit: null,
     runs: [],
     aggregate: { successRate, unprepared },
@@ -306,17 +320,23 @@ describe('mergeBenchmark — re-running a subset of cases into an existing bench
   });
 
   it('keeps the last complete measurement of a case while its re-run is still in progress', () => {
-    const partial = { ...fresh, complete: false, finishedAt: null };
+    const partial = {
+      ...fresh,
+      complete: false,
+      finishedAt: null,
+      cases: [caseResult('c', 1, 0, false)],
+    };
     const merged = mergeBenchmark(previous, partial, order);
     expect(merged.complete).toBe(false);
     expect(merged.cases.map((c: { id: string }) => c.id)).toEqual(['a', 'b', 'c']);
     expect(merged.cases[2]!.aggregate).toEqual({ successRate: null, unprepared: 2 });
 
     // Settled cases of an incomplete re-run do replace theirs; only the
-    // last, still running, waits — and a case new to the file lands at once.
+    // one still running waits — and a case new to the file lands at
+    // once, flag and all.
     const twoCases = {
       ...partial,
-      cases: [caseResult('c', 1), caseResult('d', 0.5)],
+      cases: [caseResult('c', 1), caseResult('d', 0.5, 0, false)],
     };
     const settled = mergeBenchmark(previous, twoCases, [...order, 'd']);
     expect(
@@ -330,6 +350,25 @@ describe('mergeBenchmark — re-running a subset of cases into an existing bench
       ['c', 1],
       ['d', 0.5],
     ]);
+    expect(settled.cases[3]!.complete).toBe(false);
+    expect(settled.complete).toBe(false);
+  });
+
+  it('does not call an interrupted campaign complete because one case was re-run', () => {
+    // The earlier sitting died during 'b' and never reached 'c'.
+    const interrupted = {
+      ...previous,
+      complete: false,
+      finishedAt: null,
+      cases: [caseResult('a', 1), caseResult('b', 0.5, 0, false)],
+    };
+    const onlyC = mergeBenchmark(interrupted, fresh, order);
+    expect(onlyC.complete).toBe(false);
+    expect(onlyC.cases.map((c: { id: string }) => c.id)).toEqual(['a', 'b', 'c']);
+
+    // Re-running the case it died in settles it, and the campaign is whole.
+    const thenB = mergeBenchmark(onlyC, { ...fresh, cases: [caseResult('b', 1)] }, order);
+    expect(thenB.complete).toBe(true);
   });
 
   it('records that the benchmark is a merge, naming the re-run cases and both commits', () => {
