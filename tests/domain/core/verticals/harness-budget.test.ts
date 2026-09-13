@@ -1,16 +1,19 @@
 /**
  * The context-budget guard of the emitted harness (#134): what an
  * AGENTS.md-reading agent loads at session start — the root
- * `AGENTS.md` and its `CLAUDE.md` pointer — stays under a fixed
- * budget for every non-composite stack, on every layout it offers.
- * keel's native guard-test idiom: cheaper than waiting for the evals
- * to notice bloat, and it runs in `verify`.
+ * `AGENTS.md` plus every loading shim `claude-core` emits beside it
+ * (`CLAUDE.md`, `.gemini/settings.json`, `.aider.conf.yml`) — stays
+ * under a fixed budget for every non-composite stack, on every layout
+ * it offers. keel's native guard-test idiom: cheaper than waiting for
+ * the evals to notice bloat, and it runs in `verify`.
  *
  * Three things are held per stack: the root line count the redesign
  * committed to (≤ 120 lines, stack section included), the eager byte
- * budget (well under Codex's 32 KiB combined-doc default, leaving
- * room for a nested chain), and the cross-family negative — only this
- * project's dispatch stance ships, never the other four.
+ * budget over the root and the shims together (well under Codex's
+ * 32 KiB combined-doc default, leaving room for a nested chain) — a
+ * shim that grows rules of its own is counted, not overlooked — and
+ * the cross-family negative — only this project's dispatch stance
+ * ships, never the other four.
  */
 
 import path from 'node:path';
@@ -18,6 +21,10 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import {
+  AIDER_CONF_TARGET,
+  GEMINI_SETTINGS_TARGET,
+} from '../../../../src/domain/core/adapters/claude-core.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
@@ -30,8 +37,11 @@ import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 /** The redesign's root ceiling, stack section and slots included. */
 const MAX_ROOT_LINES = 120;
 
-/** Eager context bytes: root doc + pointer. Codex's default cap is 32 KiB for the whole chain. */
+/** Eager context bytes: root doc + every shim. Codex's default cap is 32 KiB for the whole chain. */
 const MAX_EAGER_BYTES = 8 * 1024;
+
+/** The shims loaded beside the root at session start, by the tool that reads each. */
+const SHIMS = ['CLAUDE.md', GEMINI_SETTINGS_TARGET, AIDER_CONF_TARGET] as const;
 
 /**
  * One phrase per family that appears in its stance and in no other
@@ -56,7 +66,9 @@ afterEach(async () => {
   await Promise.all(cwds.map((c) => fs.remove(c)));
 });
 
-async function emit(tags: readonly string[]): Promise<{ agents: string; pointer: string }> {
+async function emit(
+  tags: readonly string[],
+): Promise<{ agents: string; shims: Readonly<Record<string, string>> }> {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-harness-budget-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);
@@ -74,7 +86,7 @@ async function emit(tags: readonly string[]): Promise<{ agents: string; pointer:
   });
   return {
     agents: tree.read('AGENTS.md')?.toString() ?? '',
-    pointer: tree.read('CLAUDE.md')?.toString() ?? '',
+    shims: Object.fromEntries(SHIMS.map((shim) => [shim, tree.read(shim)?.toString() ?? ''])),
   };
 }
 
@@ -94,12 +106,13 @@ const cells = Object.values(STACKS)
 describe('emitted harness context budget', () => {
   for (const cell of cells) {
     it(`${cell.id}: root ≤ ${MAX_ROOT_LINES} lines, eager bytes ≤ ${MAX_EAGER_BYTES}, one stance`, async () => {
-      const { agents, pointer } = await emit(cell.tags);
-      expect(pointer).toBe('@AGENTS.md\n');
+      const { agents, shims } = await emit(cell.tags);
+      expect(shims['CLAUDE.md']).toBe('@AGENTS.md\n');
+      for (const shim of SHIMS) expect(shims[shim], `${cell.id}: ${shim} emitted`).not.toBe('');
 
       const lines = agents.split('\n').length;
       expect(lines, `${cell.id}: ${lines} lines`).toBeLessThanOrEqual(MAX_ROOT_LINES);
-      const bytes = Buffer.byteLength(agents) + Buffer.byteLength(pointer);
+      const bytes = [agents, ...Object.values(shims)].reduce((n, s) => n + Buffer.byteLength(s), 0);
       expect(bytes, `${cell.id}: ${bytes} bytes`).toBeLessThanOrEqual(MAX_EAGER_BYTES);
 
       // The stack section filled its slot: a layout map and a stance.
