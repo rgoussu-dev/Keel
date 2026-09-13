@@ -348,8 +348,8 @@ export const jvmFormatAdapter: Adapter = {
         maven
           ? { target: MAVEN_TARGET, apply: eolAware((e) => addSpotlessToPom(e, tags)) }
           : { target: GRADLE_TARGET, apply: eolAware((e) => addSpotlessToGradle(e, tags)) },
-        formatStepPatch(commands.format),
       ],
+      harnessPatches: [formatStepPatch(commands.format)],
       actions: [formatAction(ctx.manifest)],
       tagsAdd: [STYLE_MANAGED_TAG],
     };

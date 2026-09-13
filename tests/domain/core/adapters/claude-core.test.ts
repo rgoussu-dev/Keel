@@ -31,7 +31,7 @@ import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.j
 describe('claude-core adapter', () => {
   it('declares the right vertical, predicate, and coverage', () => {
     expect(claudeCoreAdapter.id).toBe(CLAUDE_CORE_ID);
-    expect(claudeCoreAdapter.vertical).toBe('walking-skeleton');
+    expect(claudeCoreAdapter.vertical).toBe('agent-harness');
     expect(claudeCoreAdapter.covers).toEqual(['agentic-baseline']);
     expect(claudeCoreAdapter.predicate).toEqual({});
     expect(claudeCoreAdapter.questions ?? []).toEqual([]);

@@ -1,5 +1,5 @@
 /**
- * `walking-skeleton/go-claude-kit` adapter — the Claude kit for the
+ * `agent-harness/go-claude-kit` adapter — the Claude kit for the
  * Go stacks. The entrypoint shapes are additive on Go (a tag set may
  * carry `arch.cli`, `arch.server-http`, or both on one bootstrap
  * shell), so the runbook and the run skill cover every shape the
@@ -21,7 +21,7 @@ import {
   type RunbookCommand,
 } from './claude-kit.js';
 
-export const GO_CLAUDE_KIT_ID = 'walking-skeleton/go-claude-kit';
+export const GO_CLAUDE_KIT_ID = 'agent-harness/go-claude-kit';
 
 const PROBE = "curl 'http://localhost:8080/greet?name=World'";
 

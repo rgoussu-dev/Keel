@@ -15,6 +15,7 @@ import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.j
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
+import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
@@ -175,9 +176,23 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
     expect(helloCmd).toContain('import com.acme.tooling.contract.greet.GreetCommand;');
   });
 
-  it('emits the binding spec at AGENTS.md with a CLAUDE.md pointer', async () => {
-    const { tree, cwd } = await installWith(baseTags('arch.cli'));
+  it('adds the binding spec and pointer when agent-harness follows the skeleton', async () => {
+    const { tree, cwd, result } = await installWith(baseTags('arch.cli'));
     cwds.push(cwd);
+    expect(tree.read('AGENTS.md')).toBeNull();
+    expect(tree.read('CLAUDE.md')).toBeNull();
+    await installVertical({
+      vertical: agentHarnessVertical,
+      manifest: result.manifest,
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-09-13T00:00:00Z',
+    });
     const agentsMd = tree.read('AGENTS.md')?.toString() ?? '';
     expect(agentsMd).toContain('Engineering conventions (keel)');
     expect(tree.read('CLAUDE.md')?.toString()).toBe('@AGENTS.md\n');

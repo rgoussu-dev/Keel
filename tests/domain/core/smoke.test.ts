@@ -109,7 +109,7 @@ describe('installVertical end-to-end', () => {
     const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-      tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+      tags: ['agentic.harness', 'lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
     };
     const result = await installVertical({
       vertical: distribution,
@@ -169,7 +169,7 @@ describe('installVertical end-to-end', () => {
     const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-      tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+      tags: ['agentic.harness', 'lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
       answers: {
         'distribution/quarkus-cli-native': { targets: 'linux-amd64' },
       },
@@ -219,7 +219,7 @@ describe('installVertical end-to-end', () => {
     const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-      tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+      tags: ['agentic.harness', 'lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
     };
     // `promotes` is what a caller reasoning ahead of an install reads
     // — a front-door coverage check, say. An adapter quietly adding a
@@ -245,7 +245,7 @@ describe('installVertical end-to-end', () => {
     const tree = new FsTree(tmp);
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
-      tags: ['lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+      tags: ['agentic.harness', 'lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
     };
     // Mirrors the `promotes` check: `skills` is what a front end
     // reporting an assembly's contents reads ahead of the install,

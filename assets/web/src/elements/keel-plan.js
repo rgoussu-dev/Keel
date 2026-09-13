@@ -96,6 +96,7 @@ export class KeelPlan extends HTMLElement {
           el('div', { class: 'plan-counts', attrs: { 'data-role': 'counts' } }),
         ),
         el('div', { attrs: { 'data-role': 'report' }, hidden: true }),
+        el('p', { class: 'muted', attrs: { 'data-role': 'harness-suppression' }, hidden: true }),
         el(
           'div',
           { class: 'tree-panel' },
@@ -145,6 +146,7 @@ export class KeelPlan extends HTMLElement {
     this.#build();
     this.#renderCounts();
     this.#renderReport();
+    this.#renderHarnessSuppression();
     this.#renderTree();
     this.#renderActions();
     this.#renderCommand();
@@ -200,6 +202,15 @@ export class KeelPlan extends HTMLElement {
         }),
       ),
     );
+  }
+
+  #renderHarnessSuppression() {
+    const host = this.#part('harness-suppression');
+    if (!host) return;
+    const count = (this.#report ?? this.#preview)?.skippedHarnessElements ?? 0;
+    host.hidden = count === 0;
+    host.textContent =
+      count > 0 ? `skipped ${count} harness elements — no agent-harness in this project` : '';
   }
 
   /**

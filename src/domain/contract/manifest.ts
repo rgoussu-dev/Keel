@@ -98,6 +98,8 @@ export interface InstalledModule {
   readonly installedAt: string;
   /** Whether it publishes a `user-side/service` seam other contexts may consume. */
   readonly seam: boolean;
+  /** Consumed peer for harness replay; absent for standalone contexts and older manifests. */
+  readonly consumes?: string | undefined;
 }
 
 /**
@@ -194,6 +196,7 @@ export const InstalledModuleSchema = z.object({
   name: z.string(),
   installedAt: z.string(),
   seam: z.boolean(),
+  consumes: z.string().optional(),
 });
 
 /** Schema for a composite-install service record. */

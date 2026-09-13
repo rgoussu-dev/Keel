@@ -63,6 +63,20 @@ const NEW_PROJECT = {
 };
 
 describe('the keel ui API', () => {
+  it.each(['/api/preview', '/api/install'])(
+    'preserves suppression reporting through %s',
+    async (route) => {
+      const report = { subject: 'acme', changes: [], actions: [], skippedHarnessElements: 2 };
+      const response = await call(new RecordingMediator(ok(report)), {
+        method: 'POST',
+        path: route,
+        body: JSON.stringify(NEW_PROJECT),
+      });
+      expect(response.status).toBe(200);
+      expect(bodyOf(response)).toEqual(report);
+    },
+  );
+
   it('declines anything outside /api so the statics can answer', async () => {
     const mediator = new RecordingMediator();
     const outside = await buildApi({ mediator, directories })(request({ path: '/app/app.css' }));

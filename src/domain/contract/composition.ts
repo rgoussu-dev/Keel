@@ -205,6 +205,13 @@ export interface Contribution {
    */
   readonly skills?: readonly SkillSpec[];
   /**
+   * Harness-only patches, collected with skills and realized after all
+   * verticals have installed, only under {@link AGENT_HARNESS_TAG}.
+   * Every patch must declare nonempty owned regions; the engine verifies
+   * confinement on realization. Domain patches stay in `patches`.
+   */
+  readonly harnessPatches?: readonly ContributionPatch[];
+  /**
    * Capability tags this adapter promotes into the manifest. Every
    * one of them must appear in the parent {@link Vertical.promotes}
    * set — the installer checks it, so a tag no vertical declares
@@ -276,6 +283,9 @@ export interface ContributionPatch {
  * registry refuses one, naming its origin.
  */
 export const ENGINE_CONTRIBUTOR_ID = 'keel:engine';
+
+/** Local project capability enabling final realization of declared harness elements. */
+export const AGENT_HARNESS_TAG = 'agentic.harness';
 
 /**
  * A deferred side effect emitted by an adapter — typically a shell

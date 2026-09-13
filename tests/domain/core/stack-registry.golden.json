@@ -26,7 +26,7 @@
       "tags": ["lang.java", "runtime.jvm", "framework.quarkus", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -46,6 +46,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -61,7 +62,7 @@
       "tags": ["lang.kotlin", "runtime.jvm", "framework.quarkus", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -81,6 +82,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -106,6 +108,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -131,6 +134,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -146,7 +150,7 @@
       "tags": ["lang.java", "runtime.jvm", "framework.spring", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -166,6 +170,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -181,7 +186,7 @@
       "tags": ["lang.kotlin", "runtime.jvm", "framework.spring", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -201,6 +206,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -226,6 +232,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -251,6 +258,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -266,7 +274,7 @@
       "tags": ["lang.java", "runtime.jvm", "framework.micronaut", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -286,6 +294,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -301,7 +310,7 @@
       "tags": ["lang.kotlin", "runtime.jvm", "framework.micronaut", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -321,6 +330,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -346,6 +356,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -371,6 +382,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -386,7 +398,7 @@
       "tags": ["lang.go", "pkg.go-modules", "arch.hexagonal", "arch.cli"],
       "buildSystems": [],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -400,6 +412,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -418,6 +431,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -433,7 +447,7 @@
       "tags": ["lang.rust", "pkg.cargo", "arch.hexagonal", "arch.cli"],
       "buildSystems": [],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -447,6 +461,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -465,6 +480,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -480,7 +496,7 @@
       "tags": ["lang.typescript", "runtime.node", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["npm", "pnpm"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": [],
       "services": [],
       "conflicts": []
@@ -494,6 +510,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -512,6 +529,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -533,7 +551,7 @@
       ],
       "buildSystems": ["npm", "pnpm"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": ["peer.ui.spa"],
       "services": [],
       "conflicts": []

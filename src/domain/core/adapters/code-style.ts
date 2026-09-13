@@ -376,10 +376,10 @@ export interface FormatterSpec {
  * on a project scaffolded before the vertical existed) — one
  * mechanism, no install-order special cases.
  *
- * The hook patch carries no `seed`: every keel project has one,
- * because `walking-skeleton` makes `agentic-kit` a required
- * dimension. A project whose hook was deleted fails loudly naming
- * the file, which is the house behaviour for an uncovered gap.
+ * The hook patch is a declared harness element: realization waits for
+ * the settled harness tag. Formatter configuration installs even when
+ * the project opts out; an enabled harness with a deleted hook still
+ * fails loudly naming the missing target.
  */
 export function formatterAdapter(
   id: string,
@@ -401,7 +401,8 @@ export function formatterAdapter(
       const { files, patches } = spec(ctx);
       return {
         files: files ?? [],
-        patches: [...(patches ?? []), formatStepPatch(commands.format)],
+        patches: patches ?? [],
+        harnessPatches: [formatStepPatch(commands.format)],
         tagsAdd: [STYLE_MANAGED_TAG],
       };
     },

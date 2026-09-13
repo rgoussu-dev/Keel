@@ -12,6 +12,13 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ## [Unreleased]
 
+### Fixed
+
+- **Harness adoption preserves recorded inputs:** repeated-question answers
+  and module consumer relationships are replayed without changing ordinary
+  question behavior. Harness opt-out refuses plugin activation, and adoption
+  refuses composite product roots before staging files.
+
 ### Changed
 
 - **The emitted `AGENTS.md` is a terse root** (wave 2 of the
@@ -47,6 +54,17 @@ use to keep a long-lived changelog scannable — and the root keeps
   and refuses a stance leaking across families.
 
 ### Added
+
+- **The `agent-harness` vertical** owns root agent documents, cross-tool
+  shims and the five family Claude kits. All 28 single-service presets
+  install it by default after `walking-skeleton`, preserving project
+  file bytes; `keel new --no-agent-harness` opts out and
+  `keel add agent-harness` adopts it later. Declared harness elements
+  are realized after the run settles, gated by `agentic.harness`,
+  including contributors installed earlier and existing bounded
+  contexts replayed from the manifest. Formatter configuration still
+  installs without the harness. The contributor catalog lives in
+  `docs/verticals/agent-harness.md`.
 
 - **Owned regions are a declared, verified seam** (#133, wave 2 of
   the agent-harness redesign): a patch on a shared file names the

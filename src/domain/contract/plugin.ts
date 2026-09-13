@@ -98,6 +98,7 @@ export function parsePluginTemplateId(
 }
 
 /** Re-exports so a plugin author writes against one module. */
+export { AGENT_HARNESS_TAG } from './composition.js';
 export type {
   Adapter,
   Conflict,

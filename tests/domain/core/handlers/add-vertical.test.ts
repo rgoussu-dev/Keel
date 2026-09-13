@@ -92,6 +92,7 @@ describe('keel.add-vertical (keel add)', () => {
     const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest).not.toBeNull();
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'agent-harness',
       'code-style',
       'dev-container',
       'distribution',
@@ -143,6 +144,7 @@ describe('keel.add-vertical (keel add)', () => {
     expect(await fs.pathExists(path.join(cwd, '.github/workflows/release.yml'))).toBe(false);
     const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
     expect(manifest!.verticals.map((v) => v.id).sort()).toEqual([
+      'agent-harness',
       'code-style',
       'dev-container',
       'vcs',
@@ -207,14 +209,14 @@ describe('keel.add-vertical (keel add)', () => {
       expect(pristine).toContain('<!-- keel:stack-runbook:begin -->\n\n## Stack');
       // code-style wired the formatter into the hook's owned step at scaffold time.
       expect(hookWired).toContain('spotlessApply');
-      const reapplySkeleton = () =>
+      const reapplyHarness = () =>
         installMediator({
           clock: new FakeClock('2026-04-28T09:00:00Z'),
           runDeferred: () => Promise.resolve(),
         }).dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'walking-skeleton',
+            vertical: 'agent-harness',
             answers: {},
             interactive: false,
             dryRun: false,
@@ -224,7 +226,7 @@ describe('keel.add-vertical (keel add)', () => {
 
       // Nothing edited: nothing to report — the section is already
       // rendered and the hook keeps the formatter code-style wired in.
-      const untouched = expectOk(await reapplySkeleton());
+      const untouched = expectOk(await reapplyHarness());
       expect(untouched.changes).toEqual([]);
       expect(await fs.readFile(hook, 'utf8')).toBe(hookWired);
 
@@ -243,7 +245,7 @@ describe('keel.add-vertical (keel add)', () => {
         settings,
         `${JSON.stringify({ ...own, permissions: { allow: ['Bash(pnpm test)'] } }, null, 2)}\n`,
       );
-      const report = expectOk(await reapplySkeleton());
+      const report = expectOk(await reapplyHarness());
       expect(report.changes.map((c) => c.path)).toEqual([
         '.claude/hooks/pre-commit-format.sh',
         'AGENTS.md',

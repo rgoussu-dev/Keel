@@ -1,5 +1,5 @@
 /**
- * `walking-skeleton/jvm-claude-kit` adapter — the Claude kit for all
+ * `agent-harness/jvm-claude-kit` adapter — the Claude kit for all
  * twelve JVM stacks. One adapter serves the whole family: framework,
  * build system, entrypoint shape and module layout are read from the
  * manifest tag set, and every command below is spelled through
@@ -26,7 +26,7 @@ import {
 } from './container-image.js';
 import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
 
-export const JVM_CLAUDE_KIT_ID = 'walking-skeleton/jvm-claude-kit';
+export const JVM_CLAUDE_KIT_ID = 'agent-harness/jvm-claude-kit';
 
 const PROBE = "curl 'http://localhost:8080/greet?name=World'";
 const CLI_ARGS = 'hello --name World';

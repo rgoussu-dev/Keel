@@ -20,6 +20,9 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { Vertical } from '../../../../src/domain/contract/composition.js';
+import { registryOf } from '../../../../src/domain/core/registry.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { previewQuery } from '../../../../src/domain/contract/queries.js';
 import type { InstallPreview } from '../../../../src/domain/contract/queries.js';
@@ -79,9 +82,64 @@ const valueOf = (preview: InstallPreview, adapter: string, question: string): st
 const BOOTSTRAP = 'walking-skeleton/ts-cli-bootstrap';
 
 describe('keel.preview', () => {
+  it('reports suppressed plugin harness elements without printing or writing a preview', async () => {
+    const producer: Vertical = {
+      id: 'acme-domain',
+      description: 'Domain files and an optional agent skill',
+      dimensions: [],
+      skills: ['inspect-domain'],
+      adapters: [
+        {
+          id: 'acme-domain/content',
+          vertical: 'acme-domain',
+          covers: [],
+          predicate: {},
+          contribute: () => ({
+            files: [{ path: 'domain.txt', content: 'domain content\n' }],
+            skills: [
+              {
+                name: 'inspect-domain',
+                description: 'Inspect the domain.',
+                body: 'Read domain.txt.',
+              },
+            ],
+          }),
+        },
+      ],
+    };
+    const logger = new FakeLogger();
+    const mediator = installMediator({
+      logger,
+      registry: registryOf([
+        {
+          origin: 'plugin-preview-test',
+          verticals: [producer],
+          stacks: [
+            {
+              id: 'acme',
+              description: 'Plugin without a harness',
+              tags: [],
+              verticals: [producer],
+            },
+          ],
+        },
+      ]),
+    });
+    const preview = expectOk(
+      await mediator.dispatch(
+        previewQuery({ cwd, target: { kind: 'new-project', stack: 'acme' }, answers: {} }),
+      ),
+    );
+    expect(preview.skippedHarnessElements).toBe(1);
+    expect(preview.changes).toEqual([{ kind: 'create', path: 'domain.txt' }]);
+    expect(logger.entries).toEqual([]);
+    expect(await fs.readdir(cwd)).toEqual([]);
+  });
+
   it('writes nothing to disk', async () => {
     const preview = await previewNew();
     expect(preview.changes.length).toBeGreaterThan(0);
+    expect(preview).not.toHaveProperty('skippedHarnessElements');
     expect(await fs.readdir(cwd)).toEqual([]);
   });
 

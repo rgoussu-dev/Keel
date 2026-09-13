@@ -1,6 +1,6 @@
 /**
  * End-to-end tests for the `code-style` vertical against a realistic
- * tree — `code-style` installs *after* `walking-skeleton`, so the
+ * tree — `code-style` installs *after* `walking-skeleton` and `agent-harness`, so the
  * files its formatter adapters patch (the root build file, the
  * pre-commit hook) are already on disk. The fixtures below stand in
  * for that, which is also what lets these tests assert the patches
@@ -28,7 +28,7 @@ import { ResolutionError } from '../../../../src/domain/core/resolver.js';
 
 const HOOK = '.claude/hooks/pre-commit-format.sh';
 
-/** The hook as `walking-skeleton` leaves it: sentinels, no formatter. */
+/** The hook as `agent-harness` leaves it: sentinels, no formatter. */
 const hookWithoutFormatter = (verify: string): string =>
   renderPreCommitHook({
     runbook: '',
@@ -106,7 +106,10 @@ const installWith = async (tags: string[], extra?: Record<string, string>) => {
   const tree = new FsTree(cwd);
   const result = await installVertical({
     vertical: codeStyleVertical,
-    manifest: { ...emptyManifestV2('2026-04-26T00:00:00Z', '0.5.0-alpha'), tags },
+    manifest: {
+      ...emptyManifestV2('2026-04-26T00:00:00Z', '0.5.0-alpha'),
+      tags: [...tags, 'agentic.harness'],
+    },
     tree,
     mode: 'non-interactive',
     prompt: rejectingPrompt,

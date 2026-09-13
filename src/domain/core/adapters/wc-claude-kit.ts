@@ -1,5 +1,5 @@
 /**
- * `walking-skeleton/wc-claude-kit` adapter — the Claude kit for the
+ * `agent-harness/wc-claude-kit` adapter — the Claude kit for the
  * `web-components` SPA. Shares the TypeScript commit gate with
  * `ts-claude-kit` (same root scripts, same `--if-present` lint rule)
  * but keeps its own runbook and run skill: the SPA launches through
@@ -19,7 +19,7 @@ import {
   type RunbookCommand,
 } from './claude-kit.js';
 
-export const WC_CLAUDE_KIT_ID = 'walking-skeleton/wc-claude-kit';
+export const WC_CLAUDE_KIT_ID = 'agent-harness/wc-claude-kit';
 
 function wcFamily(ctx: Ctx): ClaudeKitFamily {
   const tags = ctx.manifest.tags;

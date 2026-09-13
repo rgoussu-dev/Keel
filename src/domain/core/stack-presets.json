@@ -40,7 +40,7 @@
       "tags": ["lang.java", "runtime.jvm", "framework.quarkus", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "quarkus-rest",
@@ -57,6 +57,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -70,7 +71,7 @@
       "tags": ["lang.kotlin", "runtime.jvm", "framework.quarkus", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "quarkus-rest-kotlin",
@@ -87,6 +88,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -110,6 +112,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -133,6 +136,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -146,7 +150,7 @@
       "tags": ["lang.java", "runtime.jvm", "framework.spring", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "spring-rest",
@@ -163,6 +167,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -176,7 +181,7 @@
       "tags": ["lang.kotlin", "runtime.jvm", "framework.spring", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "spring-rest-kotlin",
@@ -193,6 +198,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -216,6 +222,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -239,6 +246,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -252,7 +260,7 @@
       "tags": ["lang.java", "runtime.jvm", "framework.micronaut", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "micronaut-rest",
@@ -269,6 +277,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -282,7 +291,7 @@
       "tags": ["lang.kotlin", "runtime.jvm", "framework.micronaut", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["gradle", "maven"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "micronaut-rest-kotlin",
@@ -299,6 +308,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -322,6 +332,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -345,6 +356,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -357,7 +369,7 @@
       "description": "Go CLI on the stdlib, hexagonal layout, no mediator object.",
       "tags": ["lang.go", "pkg.go-modules", "arch.hexagonal", "arch.cli"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "go-http",
@@ -367,6 +379,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -382,6 +395,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -394,7 +408,7 @@
       "description": "Rust CLI on the stdlib, hexagonal layout, no mediator object.",
       "tags": ["lang.rust", "pkg.cargo", "arch.hexagonal", "arch.cli"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "rust-http",
@@ -404,6 +418,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -419,6 +434,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -432,7 +448,7 @@
       "tags": ["lang.typescript", "runtime.node", "arch.hexagonal", "arch.cli"],
       "buildSystems": ["npm", "pnpm"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"]
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"]
     },
     {
       "id": "ts-http",
@@ -443,6 +459,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -459,6 +476,7 @@
       "verticals": [
         "vcs",
         "walking-skeleton",
+        "agent-harness",
         "code-style",
         "dev-env",
         "observability",
@@ -478,7 +496,7 @@
       ],
       "buildSystems": ["npm", "pnpm"],
       "moduleLayouts": ["basic", "modulith"],
-      "verticals": ["vcs", "walking-skeleton", "code-style", "dev-container"],
+      "verticals": ["vcs", "walking-skeleton", "agent-harness", "code-style", "dev-container"],
       "projects": ["peer.ui.spa"]
     },
     {

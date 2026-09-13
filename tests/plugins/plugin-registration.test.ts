@@ -168,10 +168,29 @@ describe('keel new, from a plugin stack', () => {
 
   it("stages the plugin's skill through the seam, with provenance in the manifest", async () => {
     await install(PLUGIN);
-    const mediator = await mediatorFor();
+    const plugins = await loadPlugins({ projectDir: cwd });
+    const go = shippedSource.stacks!.find((stack) => stack.id === 'go-cli')!;
+    const mediator = await mediatorFor({
+      runDeferred: async () => {},
+      registry: registryOf([
+        shippedSource,
+        ...plugins.map(sourceOf),
+        {
+          origin: 'test fixture',
+          stacks: [{ ...go, id: 'plugin-with-harness', tags: [...go.tags, 'lang.acme'] }],
+        },
+      ]),
+    });
     expectOk(
       await mediator.dispatch(
-        newProjectCommand({ cwd, stack: STACK, answers: {}, interactive: false, dryRun: false }),
+        newProjectCommand({
+          cwd,
+          stack: 'plugin-with-harness',
+          extraVerticals: [VERTICAL],
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
       ),
     );
 

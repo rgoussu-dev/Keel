@@ -80,6 +80,34 @@ describe('peerRef', () => {
 });
 
 describe('fullstack composite install (monorepo)', () => {
+  it.each([false, true])(
+    'refuses a family harness at the product root even with family tags (%s)',
+    async (familyTags) => {
+      const { ran, runDeferred } = recordActions();
+      const mediator = installMediator({ runDeferred });
+      expectOk(await mediator.dispatch(newFullstack({})));
+      const stored = (await fsManifestStore.read(projectScopeRoot(cwd)))!;
+      const before = familyTags ? { ...stored, tags: [...stored.tags, 'lang.go'] } : stored;
+      await fsManifestStore.write(projectScopeRoot(cwd), before);
+      const actionsBefore = [...ran];
+      const error = expectErr(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            vertical: 'agent-harness',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expect(error.code).toBe('keel.invalid-agent-harness');
+      expect(error.message).toContain('inside a service');
+      expect(read('AGENTS.md')).toBeNull();
+      expect(await fsManifestStore.read(projectScopeRoot(cwd))).toEqual(before);
+      expect(ran).toEqual(actionsBefore);
+    },
+  );
   it('scaffolds both services, root glue, and hoists vcs to the root', async () => {
     const { ran, runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred });
@@ -118,6 +146,7 @@ describe('fullstack composite install (monorepo)', () => {
     expect(backend?.peers).toEqual([{ ref: '../frontend', tags: ['peer.ui.spa'] }]);
     expect(backend?.verticals.map((v) => v.id)).toEqual([
       'walking-skeleton',
+      'agent-harness',
       'code-style',
       'dev-env',
       'observability',
@@ -268,6 +297,7 @@ describe('fullstack composite install (polyrepo)', () => {
     expect(backend?.verticals.map((v) => v.id)).toEqual([
       'vcs',
       'walking-skeleton',
+      'agent-harness',
       'code-style',
       'dev-env',
       'observability',

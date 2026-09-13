@@ -49,9 +49,10 @@ import type { ManifestV2 } from '../../contract/manifest.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
 import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
-import { ContributionConflictError } from '../apply.js';
+import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
 import { unifiedDiff } from '../diff.js';
-import { installVertical } from '../install.js';
+import { finalizeHarness, installVertical } from '../install.js';
+import { retrofitHarness } from '../harness-retrofit.js';
 import { listVerticalIds } from '../registry.js';
 import type { InstallDeps } from './deps.js';
 
@@ -81,6 +82,15 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         new DomainError(
           `no project initialised at ${scopeRoot} — run 'keel new --stack=<id>' first to create one`,
           'keel.not-initialised',
+        ),
+      );
+    }
+
+    if (vertical.id === 'agent-harness' && stored.services.length > 0) {
+      return err(
+        new DomainError(
+          "agent-harness applies to single-service projects; run 'keel add agent-harness' inside a service, not at the composite product root",
+          'keel.invalid-agent-harness',
         ),
       );
     }
@@ -133,11 +143,15 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       ? stored
       : { ...stored, answers: mergeAnswers(stored.answers, command.answers) };
     let result;
+    const owners = newOwnership();
+    const harness: HarnessContribution[] = [];
     try {
       result = await installVertical({
         vertical,
         manifest: merged,
         tree,
+        owners,
+        harness,
         // Reapply is "from the recorded answers" by definition; a
         // question added to a template since the original install
         // resolves to its default and is recorded like any first ask.
@@ -150,6 +164,35 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         now: () => now,
         apply: reapply ? 'reapply' : 'install',
       });
+      if (vertical.id === 'agent-harness') {
+        await retrofitHarness({
+          ...this.deps,
+          manifest: result.manifest,
+          tree,
+          owners,
+          harness,
+          cwd: command.cwd,
+          mode: 'non-interactive',
+          now: () => now,
+        });
+      }
+      const finalized = finalizeHarness({
+        manifest: result.manifest,
+        harness,
+        tree,
+        owners,
+        logger: this.deps.logger,
+        now: () => now,
+      });
+      result = {
+        ...result,
+        manifest: finalized.manifest,
+        applyResult: {
+          ...result.applyResult,
+          skills: finalized.skills,
+          ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
+        },
+      };
     } catch (e) {
       if (reapply && e instanceof ContributionConflictError) {
         return err(
@@ -167,6 +210,9 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       changes: tree.changes(),
       actions: result.applyResult.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(result.applyResult.skippedHarnessElements
+        ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
+        : {}),
       ...(reapply ? { diffs: this.workingTreeDiffs(command.cwd, tree) } : {}),
     };
 

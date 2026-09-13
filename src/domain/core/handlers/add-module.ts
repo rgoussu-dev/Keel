@@ -130,6 +130,9 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       changes: tree.changes(),
       actions: result.applyResult.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(result.applyResult.skippedHarnessElements
+        ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
+        : {}),
     };
 
     if (command.dryRun) return ok(report);
@@ -137,7 +140,15 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     await tree.commit();
     await this.deps.manifests.write(scopeRoot, {
       ...withoutAddModuleInputs(result.manifest),
-      modules: [...stored.modules, { name: name.value, installedAt: now, seam: true }],
+      modules: [
+        ...stored.modules,
+        {
+          name: name.value,
+          installedAt: now,
+          seam: true,
+          ...(gate.value === null ? {} : { consumes: gate.value.name }),
+        },
+      ],
     });
     const runDeferred = this.deps.runDeferred ?? runActions;
     await runDeferred({
