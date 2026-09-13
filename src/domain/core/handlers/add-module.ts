@@ -63,6 +63,7 @@ import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapter
 import { emitsFor } from '../adapters/context-support.js';
 import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
 import { assemblyRefusal } from '../compatibility.js';
+import { harnessGenerationRefusal } from '../harness-generation.js';
 import { installVertical } from '../install.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import type { InstallDeps } from './deps.js';
@@ -97,6 +98,9 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
         ),
       );
     }
+
+    const stale = harnessGenerationRefusal(stored, `keel add module ${name.value}`);
+    if (stale !== null) return err(stale);
 
     const gate = admissible(stored, name.value, command.consumes ?? null);
     if (!gate.ok) return gate;

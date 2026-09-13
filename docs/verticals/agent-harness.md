@@ -177,9 +177,14 @@ surrounding text; future settings merges preserve unowned keys. Every
 realized element carries contributor provenance. See the
 [contribution model](../composition.md#harness-contributions).
 
-The generation marker is manifest machinery, not a harness element;
-it remains unconditional when #137 lands, and its remediation is
-`keel add agent-harness`.
+The generation marker is manifest machinery, not a harness element
+(#137, shipped): every manifest keel creates carries
+`harnessGeneration`, whether or not the project installs the harness.
+`keel add` and `keel add module` refuse a project stamped with another
+generation, or with none, before a file moves; the remediation is
+`keel add agent-harness` (`--reapply` when it is installed), which
+re-renders the harness and restamps the marker. See
+[`keel add`](../cli.md#keel-add).
 
 **agent-harness (the vertical itself: claude-core + family kits' shared surface)**
 

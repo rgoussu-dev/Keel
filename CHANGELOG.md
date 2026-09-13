@@ -64,6 +64,18 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **`keel add` fails loudly on a scaffold from another harness
+  generation** (#137, wave 3 of the agent-harness redesign). Every
+  manifest keel creates is stamped `harnessGeneration` (generation 1:
+  the terse root, owned regions, the hook seam). `keel add <vertical>`
+  and `keel add module` refuse a project stamped with an older
+  generation — or with none, scaffolded before the marker existed —
+  with `keel.harness-generation`, touching nothing, and name the way
+  forward: move the old agent documents and `.claude/` aside (keeping
+  the manifest), run `keel add agent-harness` (`--reapply` when it is
+  installed), which re-renders the harness and restamps the marker,
+  or pin the keel that scaffolded the project. A newer marker asks for
+  a newer keel.
 - **The hook seam** (#136, wave 3 of the agent-harness redesign): an
   adapter ships a Claude Code hook as a `HookSpec` on
   `Contribution.hooks` — the script, its event and matcher, the
