@@ -229,11 +229,13 @@ export function upsertClaudeHook(existing: string): string {
       `${SETTINGS_TARGET}: expected a JSON object at the top level. Fix the file and re-run.`,
     );
   }
-  const hooks = settings.hooks ?? {};
+  // Absent is fine and defaults; present-but-null is a value the
+  // file holds, and one that fails the check below.
+  const hooks = settings.hooks === undefined ? {} : settings.hooks;
   if (hooks === null || typeof hooks !== 'object' || Array.isArray(hooks)) {
     throw new Error(`${SETTINGS_TARGET}: expected hooks to be an object. Fix the file and re-run.`);
   }
-  const preToolUse = hooks.PreToolUse ?? [];
+  const preToolUse = hooks.PreToolUse === undefined ? [] : hooks.PreToolUse;
   if (!Array.isArray(preToolUse)) {
     throw new Error(
       `${SETTINGS_TARGET}: expected hooks.PreToolUse to be a list. Fix the file and re-run.`,
