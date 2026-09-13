@@ -222,6 +222,8 @@ describe('upsertClaudeHook', () => {
     expect(() => upsertClaudeHook('{ not json')).toThrow(/not valid JSON/);
     expect(() => upsertClaudeHook('[]')).toThrow(/JSON object/);
     expect(() => upsertClaudeHook('{"hooks":{"PreToolUse":{}}}')).toThrow(/to be a list/);
+    expect(() => upsertClaudeHook('{"hooks":"owned-by-the-project"}')).toThrow(/to be an object/);
+    expect(() => upsertClaudeHook('{"hooks":[]}')).toThrow(/to be an object/);
   });
 });
 
