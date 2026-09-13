@@ -613,7 +613,15 @@ benchmark's identity and an Opus run must not overwrite the Sonnet
 one — **written after every run**, not once at the end: each run is a paid agent session,
 and a crash in the ninth must not discard the eight. Each write is a
 sibling temp file renamed over the benchmark, so a kill mid-write
-leaves the previous checkpoint rather than a truncated one. The file
+leaves the previous checkpoint rather than a truncated one. Every
+prepared workspace is kept under the OS temp directory
+(`keel-eval-<case>-*`), and the benchmark names it per run: it is
+what you open to see what the agent did with the tree, and the diff
+and transcript are read from it after the fact. Nothing removes them
+but the OS's own temp cleanup — a campaign is ten of them, each with
+its installs, so clear `keel-eval-*` by hand when you are done with a
+benchmark. A scaffold that fails removes its own directory before the
+retry. The file
 carries `complete: false` until the campaign finishes.
 
 A scaffold that fails is retried once — it runs real package managers
