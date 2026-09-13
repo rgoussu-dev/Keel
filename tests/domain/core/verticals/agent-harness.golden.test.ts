@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
@@ -64,6 +64,28 @@ describe('agent-harness extraction preserves default project files', () => {
         .update(await fs.readFile(path.join(cwd, change.path)))
         .digest('hex');
     }
+    if (process.env['KEEL_UPDATE_GOLDEN'] === '1') {
+      updated[stack] = files;
+      return;
+    }
     expect(files).toEqual(golden[stack]);
+  });
+});
+
+// `KEEL_UPDATE_GOLDEN=1` rewrites the golden from this run — for a
+// deliberate template change, reviewed in the diff like any other.
+const updated: Record<string, Record<string, string>> = {};
+afterAll(async () => {
+  if (process.env['KEEL_UPDATE_GOLDEN'] !== '1') return;
+  const sorted = Object.fromEntries(
+    Object.keys(updated)
+      .sort()
+      .map((stack) => [
+        stack,
+        Object.fromEntries(Object.entries(updated[stack]!).sort(([a], [b]) => a.localeCompare(b))),
+      ]),
+  );
+  await fs.writeJson(new URL('./agent-harness.golden.json', import.meta.url), sorted, {
+    spaces: 2,
   });
 });

@@ -308,6 +308,75 @@ describe('claude-kit on the other families', () => {
   });
 });
 
+describe('claude-kit per-layer docs', () => {
+  const FAMILIES = [
+    {
+      family: 'JVM',
+      stack: 'quarkus-rest',
+      basic: ['domain', 'application', 'infrastructure'],
+      modulith: ['platform', 'modules', 'application'],
+      port: ['domain', '`Clock`'],
+    },
+    {
+      family: 'Go',
+      stack: 'go-http',
+      basic: ['internal/domain', 'internal/app', 'internal/infra'],
+      modulith: ['internal/platform', 'internal/modules', 'cmd'],
+      port: ['internal/domain', '`Clock`'],
+    },
+    {
+      family: 'Rust',
+      stack: 'rust-http',
+      basic: ['src/domain', 'src/infra', 'tests'],
+      modulith: ['platform', 'modules', 'application'],
+      port: ['src/domain', '`Clock`'],
+    },
+    {
+      family: 'TypeScript',
+      stack: 'ts-http',
+      basic: ['domain', 'application', 'infrastructure'],
+      modulith: ['platform', 'modules', 'application'],
+      port: ['domain', '`Clock`'],
+    },
+    {
+      family: 'web components',
+      stack: 'web-components',
+      basic: ['domain', 'application', 'infrastructure'],
+      modulith: ['platform', 'modules', 'application'],
+      port: ['domain', '`Clock`'],
+    },
+  ] as const;
+
+  const tagsFor = (stack: string, layout: 'basic' | 'modulith'): string[] => {
+    const preset = STACKS[stack]!;
+    const tag = preset.moduleLayouts?.find((l) => l.tag?.endsWith(layout))?.tag;
+    const build = preset.buildSystems?.[0]?.tag;
+    return [...preset.tags, ...(build ? [build] : []), ...(tag ? [tag] : [])];
+  };
+
+  for (const f of FAMILIES) {
+    it(`${f.family}: a doc and its pointer in every layer directory the layout has, and only there`, async () => {
+      for (const layout of ['basic', 'modulith'] as const) {
+        const tree = await install(tagsFor(f.stack, layout));
+        const agents = read(tree, 'AGENTS.md');
+        for (const dir of f[layout]) {
+          const doc = read(tree, `${dir}/AGENTS.md`);
+          expect(doc, `${layout}: ${dir}/AGENTS.md`).toContain('<!-- keel:layer:begin -->');
+          expect(doc).toContain(`## \`${dir}/\` — `);
+          expect(read(tree, `${dir}/CLAUDE.md`)).toBe('@AGENTS.md\n');
+          expect(agents, `${layout}: map row for ${dir}`).toContain(`](${dir}/AGENTS.md)`);
+        }
+        const other = layout === 'basic' ? f.modulith : f.basic;
+        for (const dir of other.filter((d) => !(f[layout] as readonly string[]).includes(d))) {
+          expect(tree.exists(`${dir}/AGENTS.md`), `${layout}: no ${dir}/AGENTS.md`).toBe(false);
+        }
+      }
+      const basic = await install(tagsFor(f.stack, 'basic'));
+      expect(read(basic, `${f.port[0]}/AGENTS.md`)).toContain(f.port[1]);
+    });
+  }
+});
+
 describe('claude-kit coverage across the stack registry', () => {
   it('resolves exactly one family adapter for every non-composite stack, on every layout', () => {
     for (const stack of Object.values(STACKS)) {

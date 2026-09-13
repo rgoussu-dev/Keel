@@ -59,6 +59,15 @@ against the dev database on every boot.
 
 ## Tests
 
+When the project carries the agent harness, `persistence` also
+composes a **Persistence** section into the per-directory doc the
+family kit keeps for its driven adapters (`infrastructure/` or
+`internal/infra/` on `basic`, `modules/` on the modulith, `tests/` on
+a basic Rust crate): the two ports, where the SQL adapter's
+Testcontainers test lives, and that a run on a host without Docker has
+not proven the adapter. See
+[per-directory docs](agent-harness.md#per-directory-docs).
+
 Every stack ships three layers of tests:
 
 - a **contract test of the SQL adapter against the dialed engine via

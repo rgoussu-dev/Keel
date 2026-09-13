@@ -56,7 +56,23 @@ import {
   renderHook,
   type HookSpec,
 } from '../contract/hook.js';
-import { assertRegion, confinementOf, markdownRegion, type Region } from '../contract/region.js';
+import {
+  DOC_POINTER,
+  DocSectionSchema,
+  docPointerTarget,
+  docRegion,
+  docSeed,
+  docTarget,
+  type DocSection,
+} from '../contract/doc.js';
+import {
+  assertRegion,
+  confinementOf,
+  locateRegion,
+  markdownRegion,
+  regionPatch,
+  type Region,
+} from '../contract/region.js';
 import { SETTINGS_SEED, mergeHookSettings } from './hook-settings.js';
 import { eolAware } from './util.js';
 import {
@@ -191,6 +207,9 @@ export const ENGINE_REGIONS: readonly { readonly target: string; readonly region
   { target: 'AGENTS.md', region: markdownRegion('skills-index') },
 ];
 
+const ROOT_DOC = 'AGENTS.md';
+const MAP_REGION = markdownRegion('map');
+
 /** A fresh {@link Ownership} with the engine's own regions already claimed. */
 export function newOwnership(): Ownership {
   const regions = new Map<string, string>();
@@ -287,6 +306,7 @@ export interface HarnessContribution {
   readonly adapter: Adapter;
   readonly skills: readonly SkillSpec[];
   readonly hooks: readonly HookSpec[];
+  readonly docs: readonly DocSection[];
   readonly patches: readonly ContributionPatch[];
   readonly mode: ApplyMode;
 }
@@ -320,9 +340,22 @@ export function collectHarness(
       );
   }
   const hooks = (contribution.hooks ?? []).map((raw) => parseHook(adapter, raw));
-  if (skills.length + hooks.length + patches.length > 0) {
-    pending.push({ adapter, skills, hooks, patches, mode });
+  const docs = (contribution.docs ?? []).map((raw) => parseDoc(adapter, raw));
+  if (skills.length + hooks.length + docs.length + patches.length > 0) {
+    pending.push({ adapter, skills, hooks, docs, patches, mode });
   }
+}
+
+/** Validates one contributed doc section, refusing a malformed spec naming the adapter. */
+function parseDoc(adapter: Adapter, raw: DocSection): DocSection {
+  const parsed = DocSectionSchema.safeParse(raw);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((issue) => `${issue.path.join('.') || 'spec'}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`adapter '${adapter.id}' contributes a malformed doc section — ${detail}`);
+  }
+  return parsed.data;
 }
 
 /** Validates one contributed hook, refusing a malformed spec naming the adapter. */
@@ -355,7 +388,7 @@ export function realizeHarness(
 } {
   const contributions = pending.splice(0);
   const count = contributions.reduce(
-    (total, c) => total + c.skills.length + c.hooks.length + c.patches.length,
+    (total, c) => total + c.skills.length + c.hooks.length + c.docs.length + c.patches.length,
     0,
   );
   if (!tags.includes(AGENT_HARNESS_TAG)) {
@@ -396,16 +429,131 @@ export function realizeHarness(
       owners,
     );
   }
+  // Doc sections compose one directory's doc from the same seed, in
+  // any order; each is an owned region, so two contributors of a run
+  // cannot write one section and none may touch another's.
   for (const contribution of contributions) {
-    for (const patch of contribution.patches) {
+    applyContribution(
+      contribution.adapter,
+      { patches: contribution.docs.map(docPatch) },
+      tree,
+      contribution.mode,
+      owners,
+    );
+  }
+  for (const contribution of contributions) {
+    const targets = [
+      ...contribution.patches.map((patch) => patch.target),
+      ...new Set(contribution.docs.map((doc) => docTarget(doc.directory))),
+    ];
+    for (const target of targets) {
       files.push({
         adapterId: contribution.adapter.id,
-        path: canonicalTarget(patch.target),
-        sha256: createHash('sha256').update(tree.read(patch.target)!).digest('hex'),
+        path: canonicalTarget(target),
+        sha256: createHash('sha256').update(tree.read(target)!).digest('hex'),
       });
     }
   }
+  const docs = contributions.flatMap((c) => c.docs);
+  if (docs.length > 0) files.push(...stagePointers(docs, tree), ...projectMap(docs, tree, owners));
   return { skills, files, skipped: 0 };
+}
+
+/** The region patch landing one doc section in its directory's seeded `AGENTS.md`. */
+function docPatch(doc: DocSection): ContributionPatch {
+  return regionPatch({
+    target: docTarget(doc.directory),
+    seed: docSeed(doc.directory),
+    region: docRegion(doc.section),
+    body: doc.body,
+    padding: 'blank',
+  });
+}
+
+/**
+ * Writes the `CLAUDE.md` pointer beside every doc that has none — a
+ * pointer the project already has, whatever it holds, is its own —
+ * and records each one written under the engine.
+ */
+function stagePointers(docs: readonly DocSection[], tree: Tree): HarnessFile[] {
+  const written: HarnessFile[] = [];
+  for (const directory of new Set(docs.map((doc) => doc.directory))) {
+    const target = docPointerTarget(directory);
+    if (tree.exists(target)) continue;
+    tree.write(target, DOC_POINTER);
+    written.push({ adapterId: ENGINE_CONTRIBUTOR_ID, path: target, sha256: sha256Of(DOC_POINTER) });
+  }
+  return written;
+}
+
+/** The engine as a contributor: what a region it writes itself is attributed to. */
+const ENGINE_ADAPTER: Adapter = {
+  id: ENGINE_CONTRIBUTOR_ID,
+  vertical: 'agent-harness',
+  covers: [],
+  predicate: {},
+  contribute: () => ({}),
+};
+
+/** The line that opens the map the engine projects into the root `AGENTS.md`. */
+export const MAP_HEADING =
+  '**Map** — every directory with notes of its own; read the one for the directory you work in.';
+
+/**
+ * Projects a row per realized doc into the root `AGENTS.md`'s
+ * `keel:map` slot, under the engine's own identity: rows already
+ * there stay as they are (a later run adding one directory's section
+ * never drops the others), a directory without a row gains one named
+ * by the first section that describes it, and the rows sort by path.
+ * A root without the slot is left alone — the spec it carries
+ * predates the map.
+ */
+function projectMap(docs: readonly DocSection[], tree: Tree, owners: Ownership): HarnessFile[] {
+  const current = tree.read(ROOT_DOC);
+  if (current === null) return [];
+  const text = current.toString('utf8');
+  const span = locateRegion(text, MAP_REGION, ROOT_DOC);
+  if (span === null) return [];
+  const rows = new Map<string, string>();
+  const inside = text.slice(span.begin + MAP_REGION.begin.length, span.end - MAP_REGION.end.length);
+  for (const line of inside.split(/\r?\n/)) {
+    const listed = /^- \[`(.+)\/`\]\(/.exec(line);
+    if (listed !== null) rows.set(listed[1]!, line);
+  }
+  for (const doc of docs) {
+    if (rows.has(doc.directory)) continue;
+    rows.set(
+      doc.directory,
+      `- [\`${doc.directory}/\`](${docTarget(doc.directory)}) — ${doc.description}`,
+    );
+  }
+  const body = [MAP_HEADING, '', ...[...rows.keys()].sort().map((dir) => rows.get(dir)!)].join(
+    '\n',
+  );
+  applyContribution(
+    ENGINE_ADAPTER,
+    {
+      patches: [
+        regionPatch({
+          target: ROOT_DOC,
+          region: MAP_REGION,
+          body,
+          padding: 'blank',
+          whenAbsent: 'keep',
+        }),
+      ],
+    },
+    tree,
+    'install',
+    owners,
+  );
+  return [
+    {
+      adapterId: ENGINE_CONTRIBUTOR_ID,
+      path: ROOT_DOC,
+      sha256: createHash('sha256').update(tree.read(ROOT_DOC)!).digest('hex'),
+    },
+  ];
 }
 
 /** Inputs for {@link makeCtx}. */

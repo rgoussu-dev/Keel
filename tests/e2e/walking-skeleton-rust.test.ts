@@ -31,6 +31,7 @@ import {
   withServer,
   type RustProject,
 } from '../support/rust-e2e.js';
+import { expectLayerDoc } from '../support/harness-docs.js';
 
 let cargoHome: string;
 let cwd: string;
@@ -53,6 +54,7 @@ afterEach(async () => {
 
 const buildProject = async (stack: string): Promise<RustProject> => {
   const project = await scaffold({ stack, projectName: 'skel' }, cwd, cargoHome);
+  await expectLayerDoc(cwd, 'src/domain', ['Clock', 'trait Greeter']);
   cargoRun(project, ['test']);
   cargoRun(project, ['build']);
   return project;

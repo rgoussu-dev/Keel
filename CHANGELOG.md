@@ -64,6 +64,27 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **Per-directory docs** (#135, wave 3 of the agent-harness
+  redesign): the context that left the root lands where it binds. An
+  adapter contributes a `DocSection` on `Contribution.docs` — a
+  directory, a section, a one-line description, a body — and the
+  engine lands it as an owned region of `<directory>/AGENTS.md`
+  (seeded with `docSeed`, so contributors compose one doc in any
+  order; a section two adapters claim is refused naming both), writes
+  a one-line `CLAUDE.md` pointer (`@AGENTS.md`) beside it, and
+  projects a row per doc into the root `keel:map` slot for the agents
+  that never auto-load nested files. The five family kits emit a doc
+  in every layer directory the scaffolded layout has — this project's
+  language only, the real ports and files, the layer's silent
+  failure, under 30 lines each — and `persistence` composes its
+  Testcontainers note into the family's driven-adapter doc (`tests/`
+  on a basic Rust crate). The context-budget guard holds each nested
+  doc to its ceiling, the root plus every nested chain under Codex's
+  32 KiB default, and every doc free of the other families' stances;
+  one e2e cell per family reads the doc off a real scaffold, and an
+  opt-in upstream check (`KEEL_RUN_UPSTREAM=1`) confirms Claude Code
+  loads a nested pointer's import. `DocSection`, `docSeed` and
+  `docTarget` ship on the plugin surface.
 - **`keel add` fails loudly on a scaffold from another harness
   generation** (#137, wave 3 of the agent-harness redesign). Every
   manifest keel creates is stamped `harnessGeneration` (generation 1:

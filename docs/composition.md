@@ -326,8 +326,8 @@ hooks and patches retain contributor provenance when realized. The pass
 stages every whole file first — skills and hook scripts, across all
 contributors — then merges the settings, then runs harness patches, so
 code-style's format step lands in the family kit's hook whichever
-resolved first. The document declaration class extends this final
-pass when its seam lands.
+resolved first. Doc sections land after the harness patches, then
+the pointers and the root map rows.
 
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
@@ -444,6 +444,56 @@ running `<shell> .claude/hooks/<name>.sh`. The rules the seam enforces:
 
 A plugin's verticals ship hooks through exactly this seam. See
 [Plugins](plugins.md#hooks).
+
+### Per-directory docs
+
+The context that belongs to one directory lives in that directory: a
+short `AGENTS.md` beside the code it is about, and a one-line
+`CLAUDE.md` pointer (`@AGENTS.md`) beside it. An adapter contributes a
+**section** of such a doc as a `DocSection` on `Contribution.docs`:
+
+```ts
+docs: [
+  {
+    directory: 'domain',
+    section: 'layer',
+    description: 'the contract face — commands, ports, the Clock port and its fake',
+    body: '## domain/\n\n…the commands, the wiring file, the silent failure…',
+  },
+];
+```
+
+The engine validates the spec (`DocSectionSchema`: a relative
+directory that is not the root, a kebab-case section, a one-line
+description), then:
+
+- **lands the section as an owned region** of `<directory>/AGENTS.md`
+  (`<!-- keel:<section>:begin -->`), seeded with `docSeed(directory)` —
+  a function of the directory alone, so contributors compose one doc
+  in any order and a reapply re-renders each section in place. The
+  one-owner rule of [owned regions](#owned-regions) holds: a section
+  two adapters of a run declare on one directory is refused naming
+  both, and no transform may touch another's section or the project's
+  notes around them;
+- **writes the pointer** beside every doc that has none, attributed to
+  `keel:engine`; a pointer the project already has is left as it is.
+  Claude Code lazy-loads only nested `CLAUDE.md` files and resolves an
+  import relative to the importing file, so the pointer pulls its
+  sibling in exactly when files in that directory are touched; the
+  agents that read nested `AGENTS.md` natively need no pointer;
+- **projects a row per doc into the root `keel:map` slot**, under the
+  engine's own identity, so an agent that never auto-loads nested
+  files (Codex, Gemini CLI, Zed, opencode) still reaches every doc
+  from the root. Rows already in the map stay as written, a directory
+  without one gains a row named by the first section describing it,
+  and rows sort by path. `keel docs sync` (#138) will own the full
+  projection.
+
+Docs realize in the same final harness pass as skills and hooks, after
+the harness patches, and only under `agentic.harness`. What a section
+may carry is held to one rule, **noise cancellation**: the real
+commands, the wiring file's path, the silent failure the layer is known
+for — anything an agent could derive from the tree does not ship.
 
 ### Owned regions
 

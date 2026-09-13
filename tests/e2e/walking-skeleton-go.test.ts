@@ -28,6 +28,7 @@ import {
   skipGoE2E,
   withHttpUnit,
 } from '../support/go-e2e.js';
+import { expectLayerDoc } from '../support/harness-docs.js';
 
 let goHome: string;
 let cwd: string;
@@ -49,6 +50,7 @@ describe.skipIf(skipGoE2E)('walking-skeleton Go e2e', () => {
     'go-cli: generates a project that vets, tests, builds, and runs',
     async () => {
       await scaffold({ stack: 'go-cli', projectName: 'skel' }, cwd);
+      await expectLayerDoc(cwd, 'internal/domain', ['Clock', 'NewGreeter()']);
 
       goRun(cwd, goHome, ['vet', './...']);
       goRun(cwd, goHome, ['test', './...']);

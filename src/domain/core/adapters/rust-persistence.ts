@@ -69,6 +69,7 @@ import type {
   ContributionPatch,
   Ctx,
 } from '../../contract/composition.js';
+import { persistenceDoc } from './persistence-doc.js';
 
 export const RUST_PERSISTENCE_ID = 'persistence/rust-persistence';
 
@@ -213,6 +214,7 @@ export const rustPersistenceAdapter: Adapter = {
     });
     return {
       files,
+      docs: [persistenceDoc(ctx.manifest.tags)],
       patches: [
         ...(basic ? basicPatches(layout) : modulithPatches(layout)),
         { target: assembly.rootFile, apply: patchRustMain(layout) },

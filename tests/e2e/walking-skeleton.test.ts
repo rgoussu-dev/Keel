@@ -27,6 +27,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, it } from 'vitest';
 import { E2E_TIMEOUT_MS, runJvmCliE2E, skipJvmCliE2E } from '../support/jvm-cli-e2e.js';
+import { expectLayerDoc } from '../support/harness-docs.js';
 
 let cwd: string;
 let gradleUserHome: string;
@@ -44,8 +45,8 @@ afterEach(async () => {
 describe.skipIf(skipJvmCliE2E)('walking-skeleton e2e', () => {
   it(
     'generates a project that builds, whose tests pass, and that runs',
-    () =>
-      runJvmCliE2E(
+    async () => {
+      await runJvmCliE2E(
         {
           stack: 'quarkus-cli',
           bootstrapId: 'walking-skeleton/quarkus-cli-bootstrap',
@@ -55,7 +56,10 @@ describe.skipIf(skipJvmCliE2E)('walking-skeleton e2e', () => {
         },
         cwd,
         gradleUserHome,
-      ),
+      );
+      await expectLayerDoc(cwd, 'domain', ['Clock', '@DomainHandler', 'Provider<Mediator>']);
+      await expectLayerDoc(cwd, 'application', ['MediatorProducer', 'beans.xml']);
+    },
     E2E_TIMEOUT_MS,
   );
 });

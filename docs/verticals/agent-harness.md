@@ -70,8 +70,10 @@ holds, in reading order:
    stack section is keel's to maintain.
 2. **The stack section** (`<!-- keel:stack-runbook:… -->`), filled by
    the family kit below: commands, dispatch stance, layout map.
-3. Empty `keel:map` and `keel:skills-index` slots, reserved for the
-   index projection (`keel docs sync`, a later wave).
+3. The `keel:map` slot, which the engine fills with a row per
+   [per-directory doc](#per-directory-docs), and the empty
+   `keel:skills-index` slot — both reserved for the index projection
+   (`keel docs sync`, a later wave).
 4. **Architecture** — the dependency rule, the dispatch-seam opening
    rule ("commands as data through one seam"; _which_ seam is the
    stack section's business), error→transport, fakes beside adapters,
@@ -154,6 +156,42 @@ framework, entrypoint shape, module layout) — one adapter per stack
   name in `skills: ['run']`, and the engine stages the file with its
   provenance recorded in the manifest.
 
+## Per-directory docs
+
+The context that left the root lands where it binds. Each family kit
+ships a short `AGENTS.md` in every layer directory the scaffolded
+layout actually has — and only there — with a one-line `CLAUDE.md`
+(`@AGENTS.md`) beside it, through the
+[per-directory doc seam](../composition.md#per-directory-docs):
+
+| Family         | `basic`                                                | `modulith`                                        |
+| -------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| JVM            | `domain/`, `application/`, `infrastructure/`           | `platform/`, `modules/`, `application/`           |
+| Go             | `internal/domain/`, `internal/app/`, `internal/infra/` | `internal/platform/`, `internal/modules/`, `cmd/` |
+| Rust           | `src/domain/`, `src/infra/`, `tests/`                  | `platform/`, `modules/`, `application/`           |
+| TypeScript     | `domain/`, `application/`, `infrastructure/`           | `platform/`, `modules/`, `application/`           |
+| web-components | `domain/`, `application/`, `infrastructure/`           | `platform/`, `modules/`, `application/`           |
+
+A doc carries only what an agent cannot read off the tree, in this
+project's language alone: the recipe for the layer's usual change
+naming the real files and ports (`Clock`, `NewGreeter()`,
+`registry-mediator.ts`), the wiring it needs, and the silent failure
+it is known for — a JVM handler the container never discovered
+compiles and starts perfectly; a Go import past `internal/` fails to
+build; a TypeScript peer import typechecks clean and only `lint` goes
+red; an element-defining package inlined twice kills its bundle's
+registrations. Each stays under 30 lines. `persistence` composes its
+own section into the family's driven-adapter doc (`tests/` on a basic
+Rust crate): the `GreetingLog` and `UnitOfWork` ports, where the
+Testcontainers test lives, and that a run without Docker has not
+proven the SQL adapter.
+
+Every doc gains a row in the root `keel:map` slot, so Codex, Gemini
+CLI and the other agents that never auto-load nested files reach it
+from the root. The context-budget guard holds each nested doc to its
+ceiling, the root plus every nested chain under Codex's 32 KiB
+default, and every doc free of the other families' stances.
+
 ## Per-contributor catalog (normative)
 
 This catalog is the ownership contract from #132. The root documents,
@@ -162,8 +200,9 @@ settings wiring described above are shipped. The final-pass gate and
 brownfield replay are shipped here. All other elements below are
 planned work under their named issues; catalog membership does not mean
 those files or commands are emitted today. The hook seam is shipped
-(#136); the declarative per-directory document seam remains pending
-#135, and engine projections remain pending #138.
+(#136), and so are the per-directory document seam and the family
+kits' layer docs (#135); engine projections beyond the map rows remain
+pending #138.
 
 Each row is grounded in the contributor's own artifacts. Prefer skills,
 then nested documents, then root doctrine. Root doctrine admits only
@@ -192,17 +231,17 @@ re-renders the harness and restamps the marker. See
 
 **Family claude-kits (jvm/go/rust/ts/wc — inside agent-harness; parameterized by framework × build system × language × layout × shape)**
 
-- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs `domain/ application/ infrastructure/ tests/` + pointers (#135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (#139) — single owner; the skill body _covers_ `keel add module`'s assembly-patch/registration behavior, bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
+- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (#139) — single owner; the skill body _covers_ `keel add module`'s assembly-patch/registration behavior, bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
 - **→ #150 (owner: walking-skeleton, below):** the family kits do _not_ own `new-port` — the port exemplars are walking-skeleton files.
 
 **walking-skeleton (after extraction: bootstraps, port examples, peer contexts, build tools)**
 
-- Peer-context seam rules composed into `modules/` docs (#135).
+- Peer-context seam rules composed into `modules/` docs (seam shipped, #135; content pending).
 - **→ #150:** `new-port` skill — the port-example dimension as a procedure (contract port + canonical fake beside the real adapter + Scenario/Factory test, pointing at the shipped exemplar). First non-harness client of #148's final-pass realization.
 
 **bounded-context + the `layout.modulith` axis**
 
-- `modules/` + `platform/` docs on modulith only (#135). (No skill: `add-module` is family-kit-owned, #139.)
+- `modules/` + `platform/` docs on modulith only (shipped by the family kits, #135). (No skill: `add-module` is family-kit-owned, #139.)
 - **→ #150:** per-context `modules/<name>/` doc emitted with each `keel add module` (the context's local law: peers meet only at the seam; per-language consequences — Go's facade factory, Rust's infra-crate dependency wall). New work — #135 owns only the directory-level docs.
 
 **code-style**
@@ -232,7 +271,7 @@ re-renders the harness and restamps the marker. See
 
 **persistence**
 
-- `migrate` skill (#139); Testcontainers note composed into the `tests/` doc (#135).
+- `migrate` skill (#139); Testcontainers note composed into the family kit's driven-adapter doc — `tests/` on a basic Rust crate (shipped, #135).
 - **→ #151:** `add-repository` skill (replicate the GreetingLog slice end-to-end: port + SQL adapter + Testcontainers contract test + fake + unit-of-work demarcation, with per-layout/per-language placement); `migrations/` nested doc carrying the persistence doctrine (env-only config; the service never migrates in production — migrations are their own deployment unit; the `UnitOfWork` port is the transaction boundary); Docker-skip caveat in the `tests/` doc (a green suite on a Docker-less host has not proven the SQL adapter — say so before claiming done).
 
 **observability**
@@ -250,7 +289,7 @@ re-renders the harness and restamps the marker. See
 
 **iac**
 
-- `iac/AGENTS.md` nested doc (#135's stated location); `deploy` skill (#139).
+- `iac/AGENTS.md` nested doc (seam shipped, #135; content pending); `deploy` skill (#139).
 - **→ #152:** the secrets doctrine as that doc's content (no secret ever lands in a file; credentials ride the environment; one workspace per environment) — a refinement of #135's row; confirm-gate settings entry for `tofu apply`/`tofu destroy` (the only commands in the kit that mutate billable, stateful infrastructure — force a human gate).
 
 **vcs**

@@ -12,6 +12,7 @@
  */
 
 import type { ContributionFile } from './files.js';
+import type { DocSection } from './doc.js';
 import type { HookSpec } from './hook.js';
 import type { SkillSpec } from './skill.js';
 import type { Tag } from './tags.js';
@@ -217,6 +218,17 @@ export interface Contribution {
    * run settles, only under {@link AGENT_HARNESS_TAG}.
    */
   readonly hooks?: readonly HookSpec[];
+  /**
+   * Per-directory doc sections — content-carrying {@link DocSection}s
+   * the engine lands as owned regions of `<directory>/AGENTS.md`
+   * (seeded with `docSeed`, so contributors compose one directory's
+   * doc in any order), with a `CLAUDE.md` pointer beside each doc and
+   * a row per doc projected into the root `keel:map` slot. A section
+   * two adapters of the run both declare on one directory is refused
+   * naming both. Realized with skills and hooks, after the run
+   * settles, only under {@link AGENT_HARNESS_TAG}.
+   */
+  readonly docs?: readonly DocSection[];
   /**
    * Harness-only patches, collected with skills and realized after all
    * verticals have installed, only under {@link AGENT_HARNESS_TAG}.
@@ -485,6 +497,7 @@ export type { Tag } from './tags.js';
 export type { ContributionFile } from './files.js';
 export type { SkillSpec, SkillSupportingFile } from './skill.js';
 export type { HookEvent, HookSpec } from './hook.js';
+export type { DocSection } from './doc.js';
 export type { Region } from './region.js';
 export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';
 export type { ToolchainNeed, ToolchainTool, ToolchainBlock } from './toolchain.js';

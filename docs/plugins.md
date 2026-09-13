@@ -229,6 +229,32 @@ A project turns one hook off by listing its name under
 `env.KEEL_DISABLED_HOOKS` in `.claude/settings.json`. The full rules
 live in [Composition → Hooks](composition.md#hooks).
 
+### Per-directory docs
+
+A note that belongs to one directory of the project ships as a
+`DocSection` — a section of that directory's `AGENTS.md`, which keel's
+own verticals may be writing too:
+
+```js
+docs: [
+  {
+    directory: 'infrastructure/acme',
+    section: 'acme-client',
+    description: 'the acme API client and its fake',
+    body: '## Acme client\n\nRun `acme mock` before the contract tests.',
+  },
+],
+```
+
+The engine lands it as an owned region of
+`infrastructure/acme/AGENTS.md` (seeded with `docSeed`, exported from
+`@rgoussu.dev/keel/plugin`, so it composes with any other contributor's
+section), writes the `CLAUDE.md` pointer beside it, and adds a row for
+the doc to the root map. Pick a section name no other vertical uses on
+that directory — a second claim is refused — and carry only what an
+agent cannot read off the tree. The full rules live in
+[Composition → Per-directory docs](composition.md#per-directory-docs).
+
 ### Owned regions
 
 A patch on a file the project (or another vertical) also writes owns

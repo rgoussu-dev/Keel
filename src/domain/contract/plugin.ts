@@ -106,6 +106,7 @@ export type {
   ContributionFile,
   ContributionPatch,
   Ctx,
+  DocSection,
   HookEvent,
   HookSpec,
   Predicate,
@@ -119,6 +120,7 @@ export type {
   Vertical,
 } from './composition.js';
 export { DISABLED_HOOKS_ENV, HOOK_REMINDER_BUDGET, hookTarget } from './hook.js';
+export { docSeed, docTarget } from './doc.js';
 export {
   hashRegion,
   markdownRegion,

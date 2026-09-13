@@ -39,6 +39,7 @@ import type {
   Adapter,
   Contribution,
   Ctx,
+  DocSection,
   HookSpec,
   SkillSpec,
   Tag,
@@ -104,6 +105,47 @@ export interface ClaudeKitFamily {
    * pipeline would run.
    */
   readonly verifyCommand: string;
+  /**
+   * The per-layer docs of the shape that was scaffolded — one per
+   * directory that exists in it, this family's facts only. Rendered
+   * by {@link layerDocSections}; absent where a family ships none.
+   */
+  readonly docs?: readonly LayerDoc[];
+}
+
+/** One per-layer doc a family kit emits: where it lives, its map row, and its bullets. */
+export interface LayerDoc {
+  /** The directory, relative to the project root — one that exists in the scaffold. */
+  readonly directory: string;
+  /** The one-line row the root map projects for the doc. */
+  readonly description: string;
+  /** What the directory is, after its path — `the contract face`. */
+  readonly title: string;
+  /**
+   * Facts an agent cannot read off the tree: the recipe for the
+   * layer's usual change naming real files, the wiring it needs, the
+   * silent failure it is known for. One bullet each.
+   */
+  readonly bullets: readonly string[];
+}
+
+/** The section every family kit owns in the docs it seeds. */
+export const LAYER_DOC_SECTION = 'layer';
+
+/**
+ * Renders a family's layer docs into doc sections — one shape for
+ * all five families, so their docs cannot drift apart: a heading
+ * naming the directory and what it is, then the bullets.
+ */
+export function layerDocSections(docs: readonly LayerDoc[]): DocSection[] {
+  return docs.map((doc) => ({
+    directory: doc.directory,
+    section: LAYER_DOC_SECTION,
+    description: doc.description,
+    body: [`## \`${doc.directory}/\` — ${doc.title}`, '', ...doc.bullets.map((b) => `- ${b}`)].join(
+      '\n',
+    ),
+  }));
 }
 
 /**
@@ -335,6 +377,7 @@ export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
     skills: [family.runSkill],
     hooks: [preCommitHookSpec(family)],
+    ...(family.docs === undefined ? {} : { docs: layerDocSections(family.docs) }),
     patches: [
       regionPatch({
         target: AGENTS_TARGET,

@@ -8,6 +8,7 @@ import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-pr
 import {
   ContributionConflictError,
   ENGINE_REGIONS,
+  MAP_HEADING,
   applyContributions,
   collectHarness,
   newOwnership,
@@ -17,6 +18,7 @@ import {
   type HarnessContribution,
 } from '../../../src/domain/core/apply.js';
 import type { HookSpec } from '../../../src/domain/contract/hook.js';
+import { docSeed, type DocSection } from '../../../src/domain/contract/doc.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { hashRegion, regionPatch } from '../../../src/domain/contract/region.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
@@ -498,6 +500,146 @@ describe('applyContributions', () => {
       await run([adapter('kit', { hooks: [gate()] })], tree);
       expect(tree.read(SETTINGS)?.toString()).toBe(own);
       expect(tree.changes()).toEqual([{ kind: 'create', path: SCRIPT }]);
+    });
+  });
+
+  describe('per-directory docs', () => {
+    const run = (
+      adapters: readonly Adapter[],
+      tree: FsTree,
+      tags: readonly string[] = ['agentic.harness'],
+    ) =>
+      applyContributions({
+        adapters,
+        answers: {},
+        manifest: { ...emptyManifestV2('now', '0.4.0'), tags: [...tags] },
+        tree,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+      });
+    const layer: DocSection = {
+      directory: 'domain',
+      section: 'layer',
+      description: 'the contract face — ports and commands',
+      body: '## Layer\n\nPorts live here.',
+    };
+    const persistence: DocSection = {
+      directory: 'domain',
+      section: 'persistence',
+      description: 'where the repository ports sit',
+      body: '## Persistence\n\nThe `GreetingLog` port.',
+    };
+    const slot = ENGINE_REGIONS[0]!.region;
+    const ROOT = `# Spec\n\n${slot.begin}\n${slot.end}\n`;
+
+    it('composes one directory’s doc from several contributors in either order, with its pointer and map row', async () => {
+      const composed: string[] = [];
+      for (const order of [
+        [layer, persistence],
+        [persistence, layer],
+      ]) {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-docs-'));
+        try {
+          await fs.writeFile(path.join(dir, 'AGENTS.md'), ROOT);
+          const tree = new FsTree(dir);
+          await applyContributions({
+            adapters: order.map((doc) => adapter(`kit-${doc.section}`, { docs: [doc] })),
+            answers: {},
+            manifest: { ...emptyManifestV2('now', '0.4.0'), tags: ['agentic.harness'] },
+            tree,
+            logger: new FakeLogger(),
+            cwd: dir,
+            templates: ejsTemplateSource,
+            processes: spawnProcessRunner,
+          });
+          const doc = tree.read('domain/AGENTS.md')!.toString();
+          expect(doc.startsWith(docSeed('domain'))).toBe(true);
+          expect(doc).toContain('<!-- keel:layer:begin -->\n\n## Layer\n\nPorts live here.');
+          expect(doc).toContain('<!-- keel:persistence:begin -->\n\n## Persistence');
+          expect(tree.read('domain/CLAUDE.md')?.toString()).toBe('@AGENTS.md\n');
+          expect(tree.read('AGENTS.md')?.toString()).toBe(
+            `# Spec\n\n${slot.begin}\n\n${MAP_HEADING}\n\n- [\`domain/\`](domain/AGENTS.md) — ${order[0]!.description}\n\n${slot.end}\n`,
+          );
+          composed.push(
+            [...doc.matchAll(/<!-- keel:(\w+):begin -->([\s\S]*?)<!-- keel:\1:end -->/g)]
+              .map((m) => m[0])
+              .sort()
+              .join('\n'),
+          );
+        } finally {
+          await fs.remove(dir);
+        }
+      }
+      expect(composed[0]).toBe(composed[1]);
+    });
+
+    it('refuses a section two adapters declare on one directory, naming both', async () => {
+      const error = await run(
+        [adapter('one', { docs: [layer] }), adapter('two', { docs: [layer] })],
+        new FsTree(tmp),
+      ).then(
+        () => null,
+        (e: unknown) => e as ContributionConflictError,
+      );
+      expect(error?.kind).toBe('region-collision');
+      expect(error?.message).toContain("adapter 'two' declares region '<!-- keel:layer:begin -->'");
+      expect(error?.message).toContain("adapter 'one' already owns");
+    });
+
+    it('refuses a malformed section naming the adapter, before anything is staged', async () => {
+      const tree = new FsTree(tmp);
+      const escaping = adapter('bad-plugin/docs', {
+        docs: [{ ...layer, directory: '../outside' }],
+      });
+      await expect(run([escaping], tree)).rejects.toThrow(
+        /adapter 'bad-plugin\/docs' contributes a malformed doc section — directory: must not contain empty, "\." or "\.\." segments/,
+      );
+      const rooted = adapter('p', { docs: [{ ...layer, description: 'two\nlines' }] });
+      await expect(run([rooted], tree)).rejects.toThrow(/description: must be a single line/);
+      expect(tree.changes()).toEqual([]);
+    });
+
+    it('keeps the rows a map already has and adds the missing ones sorted; a root without the slot is left alone', async () => {
+      const existing = `- [\`zeta/\`](zeta/AGENTS.md) — kept as written`;
+      await fs.writeFile(
+        path.join(tmp, 'AGENTS.md'),
+        `# Spec\n\n${slot.begin}\n\n${MAP_HEADING}\n\n${existing}\n\n${slot.end}\n`,
+      );
+      const tree = new FsTree(tmp);
+      await run([adapter('kit', { docs: [{ ...layer, directory: 'alpha' }] })], tree);
+      expect(tree.read('AGENTS.md')?.toString()).toContain(
+        `- [\`alpha/\`](alpha/AGENTS.md) — ${layer.description}\n${existing}\n`,
+      );
+
+      const bare = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-docs-bare-'));
+      try {
+        await fs.writeFile(path.join(bare, 'AGENTS.md'), '# An older spec\n');
+        const older = new FsTree(bare);
+        await run([adapter('kit', { docs: [layer] })], older);
+        expect(older.read('AGENTS.md')?.toString()).toBe('# An older spec\n');
+        expect(older.read('domain/AGENTS.md')).not.toBeNull();
+      } finally {
+        await fs.remove(bare);
+      }
+    });
+
+    it('keeps a pointer the project already has, and suppresses docs without the harness', async () => {
+      await fs.outputFile(path.join(tmp, 'domain/CLAUDE.md'), '@AGENTS.md\n@../notes.md\n');
+      const tree = new FsTree(tmp);
+      await run([adapter('kit', { docs: [layer] })], tree);
+      expect(tree.read('domain/CLAUDE.md')?.toString()).toBe('@AGENTS.md\n@../notes.md\n');
+
+      const off = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-docs-off-'));
+      try {
+        const opted = new FsTree(off);
+        const result = await run([adapter('kit', { docs: [layer] })], opted, []);
+        expect(result.skippedHarnessElements).toBe(1);
+        expect(opted.changes()).toEqual([]);
+      } finally {
+        await fs.remove(off);
+      }
     });
   });
 

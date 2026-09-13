@@ -33,8 +33,10 @@ prompts at all. Sixty seconds later you have:
   run commands, the dispatch stance of _this_ language only, and a
   layout map of exactly the shape that was scaffolded so an agent
   orients by map before it greps — a pre-commit hook that keeps every
-  Claude-issued commit green against the stack's own gate, and a
-  `run` skill so "launch the app and check it" works out of the box
+  Claude-issued commit green against the stack's own gate, a `run`
+  skill so "launch the app and check it" works out of the box, and a
+  short `AGENTS.md` in each layer directory carrying that layer's real
+  ports, wiring and silent failures, mapped from the root
   ([docs](docs/verticals/agent-harness.md#the-claude-kit)).
 
 The harness is included by default. Use `keel new --no-agent-harness`

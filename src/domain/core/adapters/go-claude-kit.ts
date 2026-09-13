@@ -18,6 +18,7 @@ import {
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
+  type LayerDoc,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -132,7 +133,70 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
     body: `# Run ${projectName}\n\n${steps.join('\n\n')}`,
   });
 
-  return { runbook, runSkill, formatCommand: 'gofmt -w .', verifyCommand };
+  const channels = [...(http ? ['`resthttp`'] : []), ...(cli ? ['`cli`'] : [])].join(' and ');
+  const docs: LayerDoc[] = modulith
+    ? [
+        {
+          directory: 'internal/platform',
+          title: 'what no context owns',
+          description: 'the clock port and observability every bounded context shares',
+          bullets: [
+            '`clock/` is the port, `clockfake/` its fake (`clocksys/` arrives with `keel add persistence`); `observability/` — logging and tracing. Nothing context-specific belongs here.',
+          ],
+        },
+        {
+          directory: 'internal/modules',
+          title: 'bounded contexts',
+          description: 'one package tree per bounded context; peers meet only at userside/service',
+          bullets: [
+            '`<ctx>/<ctx>.go` — the facade: factories only, it re-exports no types; `<ctx>/internal/domain/` — commands, ports and factories, behind the `internal/` wall.',
+            '`<ctx>/userside/service/` — the peer seam, the only package a sibling imports. Every seam is `package service`, so a second one needs an import alias.',
+            '`<ctx>/infra/<peer>gateway/` — implements `<ctx>`’s driven port over `<peer>`’s seam. A peer importing `internal/modules/<ctx>/internal/…` fails to build: `use of internal package … not allowed`.',
+            'Tests are `_test.go` files beside the code, over the fakes: `go test ./...`.',
+          ],
+        },
+        {
+          directory: 'cmd',
+          title: 'assemblies',
+          description: 'one directory per deployment unit, one wiring file per context',
+          bullets: [
+            '`<unit>/main.go` assembles the unit by hand — no mediator object; `<unit>/<ctx>.go` wires one context’s service and gateways into it.',
+            'Cross-cutting concerns are decorator functions around a port, applied here, at the assembly point.',
+          ],
+        },
+      ]
+    : [
+        {
+          directory: 'internal/domain',
+          title: 'the contract face',
+          description: 'commands, ports and factories; the core hides behind internal/',
+          bullets: [
+            'Commands are structs, driving ports are per-use-case interfaces built by factories (`NewGreeter()`), driven ports sit beside them (`Clock`).',
+            '`internal/<aggregate>/` is the compiler-hidden core: importing past an `internal/` fails to build (`use of internal package … not allowed`), so adapters sit beside the wall, never behind it.',
+            'Tests are `_test.go` files beside the code, over the fakes in `internal/infra/`: `go test ./...`.',
+          ],
+        },
+        {
+          directory: 'internal/app',
+          title: 'driving adapters',
+          description: 'transport → command → port → transport, wired by hand in cmd/',
+          bullets: [
+            `One package per channel (${channels}): it maps transport to a command, calls the port and maps back — no business logic.`,
+            'No mediator object: `cmd/<unit>/main.go` constructs every port and adapter by hand, and a decorator wraps a port there, at the assembly point.',
+          ],
+        },
+        {
+          directory: 'internal/infra',
+          title: 'driven adapters',
+          description: 'driven adapters, the fake beside the real one',
+          bullets: [
+            'One package per adapter: `clockfake/` ships with the skeleton; `clocksys/` and `postgres/` arrive with `keel add persistence`.',
+            'A new port: the interface in `internal/domain/`, a fake package here, the real adapter beside it, and one test run against both — never a mocking library.',
+          ],
+        },
+      ];
+
+  return { runbook, runSkill, formatCommand: 'gofmt -w .', verifyCommand, docs };
 }
 
 export const goClaudeKitAdapter: Adapter = claudeKitAdapter(

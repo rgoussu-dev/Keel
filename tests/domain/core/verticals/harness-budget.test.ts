@@ -75,9 +75,19 @@ afterEach(async () => {
   await Promise.all(cwds.map((c) => fs.remove(c)));
 });
 
-async function emit(
-  tags: readonly string[],
-): Promise<{ agents: string; audit: Audit; shims: Readonly<Record<string, string>> }> {
+/** A nested doc's ceiling: non-derivable facts only, well under a screen. */
+const MAX_NESTED_LINES = 30;
+
+/** Codex's default cap on the instruction chain it loads: the root plus every doc on the path to cwd. */
+const CODEX_CHAIN_BYTES = 32 * 1024;
+
+async function emit(tags: readonly string[]): Promise<{
+  agents: string;
+  audit: Audit;
+  eagerBytes: number;
+  shims: Readonly<Record<string, string>>;
+  nested: Readonly<Record<string, string>>;
+}> {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-harness-budget-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);
@@ -101,10 +111,18 @@ async function emit(
     manifest = result.manifest;
   }
   await tree.commit();
+  const audit = auditContext(cwd) as Audit;
   return {
     agents: tree.read('AGENTS.md')?.toString() ?? '',
-    audit: auditContext(cwd) as Audit,
+    audit,
+    eagerBytes: AUDITED.reduce((n, p) => n + (tree.read(p)?.length ?? 0), 0),
     shims: Object.fromEntries(SHIMS.map((shim) => [shim, tree.read(shim)?.toString() ?? ''])),
+    nested: Object.fromEntries(
+      audit.files
+        .map((f) => f.path)
+        .filter((p) => !AUDITED.includes(p))
+        .map((p) => [p, tree.read(p)?.toString() ?? '']),
+    ),
   };
 }
 
@@ -127,18 +145,50 @@ const cells = Object.values(STACKS)
 
 describe('emitted harness context budget', () => {
   for (const cell of cells) {
-    it(`${cell.id}: root ≤ ${MAX_ROOT_LINES} lines, eager bytes ≤ ${MAX_EAGER_BYTES}, one stance`, async () => {
-      const { agents, audit, shims } = await emit(cell.tags);
-      expect(audit.files.map((f) => f.path)).toEqual(AUDITED);
+    it(`${cell.id}: root ≤ ${MAX_ROOT_LINES} lines, eager bytes ≤ ${MAX_EAGER_BYTES}, nested docs ≤ ${MAX_NESTED_LINES} lines within the Codex chain, one stance`, async () => {
+      const { agents, audit, eagerBytes, shims, nested } = await emit(cell.tags);
+      const paths = audit.files.map((f) => f.path);
+      for (const eager of AUDITED) expect(paths, `${cell.id}: ${eager} audited`).toContain(eager);
       for (const shim of SHIMS) expect(shims[shim], `${cell.id}: ${shim} emitted`).not.toBe('');
 
       const lines = agents.split('\n').length;
       expect(lines, `${cell.id}: ${lines} lines`).toBeLessThanOrEqual(MAX_ROOT_LINES);
-      const bytes = Object.values(shims).reduce(
-        (n, s) => n + Buffer.byteLength(s),
-        audit.totalBytes,
-      );
+      // What every session carries from the start: the root set and the
+      // shims. Nested docs load only where an agent works.
+      const bytes = Object.values(shims).reduce((n, s) => n + Buffer.byteLength(s), eagerBytes);
       expect(bytes, `${cell.id}: ${bytes} bytes`).toBeLessThanOrEqual(MAX_EAGER_BYTES);
+
+      // Every nested doc: under its ceiling, a pointer beside it, a row
+      // in the root map, and — with every doc above it — inside the
+      // chain Codex loads.
+      const docs = Object.keys(nested).filter((p) => p.endsWith('/AGENTS.md'));
+      expect(docs.length, `${cell.id}: nested docs emitted`).toBeGreaterThan(0);
+      for (const doc of docs) {
+        const dir = doc.slice(0, -'/AGENTS.md'.length);
+        const docLines = nested[doc]!.trimEnd().split('\n').length;
+        expect(docLines, `${cell.id}: ${doc} is ${docLines} lines`).toBeLessThanOrEqual(
+          MAX_NESTED_LINES,
+        );
+        expect(nested[`${dir}/CLAUDE.md`], `${cell.id}: pointer beside ${doc}`).toBe(
+          '@AGENTS.md\n',
+        );
+        expect(agents, `${cell.id}: map row for ${doc}`).toContain(`](${doc})`);
+        const chain = docs
+          .filter((other) => doc.startsWith(other.slice(0, -'AGENTS.md'.length)))
+          .reduce((n, other) => n + Buffer.byteLength(nested[other]!), Buffer.byteLength(agents));
+        expect(chain, `${cell.id}: chain to ${doc} is ${chain} bytes`).toBeLessThanOrEqual(
+          CODEX_CHAIN_BYTES,
+        );
+      }
+      for (const doc of docs) {
+        const own = Object.values(STANCE_MARKERS).find((m) => cell.tags.includes(m.tag))!;
+        for (const [family, { marker }] of Object.entries(STANCE_MARKERS)) {
+          if (marker === own.marker) continue;
+          expect(nested[doc], `${cell.id}: ${family} stance leaked into ${doc}`).not.toContain(
+            marker,
+          );
+        }
+      }
 
       // The stack section filled its slot: a layout map and a stance.
       expect(agents).toContain('**Dispatch.**');

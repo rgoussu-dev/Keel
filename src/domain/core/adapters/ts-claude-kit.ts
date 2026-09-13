@@ -20,6 +20,7 @@ import {
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
+  type LayerDoc,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -146,7 +147,72 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
     body: `# Run ${projectName}\n\n${steps.join('\n\n')}`,
   });
 
-  return { runbook, runSkill, verifyCommand };
+  const hoisting = `Declare every workspace package a package imports in its own \`package.json\`: npm’s hoisting resolves an undeclared one anyway, and pnpm’s isolated store refuses the same tree. \`${verifyCommand}\` is the commit gate.`;
+  const docs: LayerDoc[] = modulith
+    ? [
+        {
+          directory: 'platform',
+          title: 'what no context owns',
+          description:
+            'the kernel package every bounded context shares: commands, handlers, the mediator',
+          bullets: [
+            '`kernel/` — `@<scope>/platform-kernel`: `Command`, `Query`, `Handler`, `Mediator`, `RegistryMediator`. Nothing context-specific belongs here.',
+          ],
+        },
+        {
+          directory: 'modules',
+          title: 'bounded contexts',
+          description: 'one package per bounded context; peers meet only at its ./service export',
+          bullets: [
+            '`<ctx>/` is one package, `@<scope>/<ctx>`: `src/domain/contract/` — commands, errors, driven ports; `src/domain/core/internal/` — handlers; `src/infra/<x>/` — driven adapters with their fakes; `tests/` — its tests.',
+            '`src/service.ts` (the `./service` export) is the only entry a sibling may import. dependency-cruiser holds that rule, and a violating import typechecks and runs clean — `lint` is the only thing that goes red.',
+            '`src/infra/<peer>-gateway/index.ts` implements `<ctx>`’s `<Peer>Client` over `<peer>`’s `./service`.',
+            'No enums and no parameter properties (`erasableSyntaxOnly`): Node runs these sources directly.',
+          ],
+        },
+        {
+          directory: 'application',
+          title: 'assemblies',
+          description: 'the deployment units: one wiring module per context',
+          bullets: [
+            '`<unit>/src/main.ts` builds the `RegistryMediator` from the handler array; `<unit>/src/<ctx>.ts` wires one context’s service and gateways. Transport maps to a command and back, with no business logic.',
+            hoisting,
+          ],
+        },
+      ]
+    : [
+        {
+          directory: 'domain',
+          title: 'kernel, contract, core',
+          description:
+            'workspace packages: the mediator bases, the commands and ports, the handlers',
+          bullets: [
+            '`kernel/` — `Command`, `Query`, `Handler`, `Mediator`; `contract/` — commands, errors, ports (`Clock`); `core/` — `src/internal/` handlers and `registry-mediator.ts`. Each is a workspace package with its own `tests/`.',
+            'A new use case is a command in `contract/` and a handler in `core/src/internal/` that self-declares via `supports()`, added to the handler array the assembly builds the mediator from — never an injected map.',
+            'No enums and no parameter properties (`erasableSyntaxOnly`): Node runs these sources directly, so `readonly` fields and union types.',
+          ],
+        },
+        {
+          directory: 'application',
+          title: 'composition roots',
+          description: 'the deployment units: transport → command → mediator → transport',
+          bullets: [
+            '`<unit>/src/main.ts` builds the `RegistryMediator` from the handler array; transport sits beside it and maps to a command and back, with no business logic.',
+            hoisting,
+          ],
+        },
+        {
+          directory: 'infrastructure',
+          title: 'driven adapters',
+          description: 'driven adapters, the fake beside the real one',
+          bullets: [
+            '`<port>/src/` — `fake-clock.ts` beside `system-clock.ts`; `pg-greeting-log.ts` arrives with `keel add persistence`.',
+            'A new port: the interface in `domain/contract/`, a package here with the fake beside the real adapter, and one test run against both — never a mocking library.',
+          ],
+        },
+      ];
+
+  return { runbook, runSkill, verifyCommand, docs };
 }
 
 export const tsClaudeKitAdapter: Adapter = claudeKitAdapter(

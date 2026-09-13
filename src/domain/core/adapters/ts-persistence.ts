@@ -43,6 +43,7 @@ import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
 import { eolAware, eolOf, withEol } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import { persistenceDoc } from './persistence-doc.js';
 
 export const TS_PERSISTENCE_ID = 'persistence/ts-persistence';
 
@@ -332,6 +333,7 @@ export const tsPersistenceAdapter: Adapter = {
     );
     return {
       files: rendered.flat(),
+      docs: [persistenceDoc(ctx.manifest.tags)],
       patches: [
         appendExports(layout.contractIndex, './greeting-log.ts', CONTRACT_EXPORTS),
         appendExports(layout.coreIndex, 'greeting-log-handlers', coreExports(layout)),

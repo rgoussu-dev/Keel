@@ -59,6 +59,7 @@ import {
 } from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import { persistenceDoc } from './persistence-doc.js';
 
 export const MICRONAUT_PERSISTENCE_ID = 'persistence/micronaut-persistence';
 
@@ -265,6 +266,7 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
       const testRoot = assemblySourceRoot(layout, sourceDir, basePackage, 'test');
       return {
         files: [...shared, ...sources, ...build],
+        docs: [persistenceDoc(ctx.manifest.tags)],
         patches: [
           moduleRegistrationPatch(buildSystem, id, UOW_MODULE, layout),
           frameworkDepsPatch(buildSystem, layout, engine),
