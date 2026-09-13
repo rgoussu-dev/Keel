@@ -48,8 +48,13 @@ MISE_SHA256_ARM64="9d5d4c3187ccc2c5a9659be427231208eba689c8adcc0203004c4c2ef75ca
 # mise lands in ~/.local/bin, which the image's PATH may or may not
 # carry; put it there explicitly rather than assume.
 export PATH="${HOME}/.local/bin:${PATH}"
-if ! command -v mise >/dev/null 2>&1; then
-  echo "session-start: installing mise ${MISE_VERSION}"
+# Not "is there a mise" but "is it the pinned one": an older binary the
+# image or a warm container carries would otherwise provision the
+# toolchain with an unpinned resolver, and the pin above would be a
+# claim about a download that never happened.
+installed="$(mise --version 2>/dev/null | cut -d' ' -f1 || true)"
+if [ "${installed}" != "${MISE_VERSION#v}" ]; then
+  echo "session-start: installing mise ${MISE_VERSION}${installed:+ (replacing ${installed})}"
   case "$(uname -m)" in
     x86_64 | amd64) arch="x64"; sum="${MISE_SHA256_X64}" ;;
     aarch64 | arm64) arch="arm64"; sum="${MISE_SHA256_ARM64}" ;;

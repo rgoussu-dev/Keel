@@ -34,11 +34,12 @@ developer's own home, and it is idempotent — a warm container re-runs
 it in seconds.
 
 It does what a CI shard does, with the same file: installs mise if the
-image lacks it — a pinned release tarball from GitHub, checked against
-the checksums the hook carries, never an installer script piped into a
-shell, since this runs with shell privileges before anything in the
-project is trusted; bumping mise is the version and the two sums,
-copied from the release's `SHASUMS256.txt` — runs `mise install` over
+image lacks it or carries another version — a pinned release tarball
+from GitHub, checked against the checksums the hook carries, never an
+installer script piped into a shell, since this runs with shell
+privileges before anything in the project is trusted; bumping mise is
+the version and the two sums, copied from the release's
+`SHASUMS256.txt` — runs `mise install` over
 `mise.toml` (the whole file,
 since a web session may run any shard and the container is snapshotted
 after the hook), and writes `mise env` to `$CLAUDE_ENV_FILE` so every
