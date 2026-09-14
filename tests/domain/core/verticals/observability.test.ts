@@ -12,6 +12,7 @@
 
 import path from 'node:path';
 import os from 'node:os';
+import { isMainThread } from 'node:worker_threads';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
@@ -43,6 +44,7 @@ import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { DeferredAction } from '../../../../src/domain/contract/composition.js';
 
 const read = (tree: FsTree, p: string): string => tree.read(p)?.toString() ?? '';
+const itInMainThread = isMainThread ? it : it.skip;
 
 const installBoth = async (
   tags: string[],
@@ -221,7 +223,7 @@ describe('the monitoring stack shape question', () => {
     expect(tree.exists('dev/observability/otel-collector.yaml')).toBe(false);
   });
 
-  it('writes the mounted config files world-readable, whatever the umask', async () => {
+  itInMainThread('writes the mounted config files world-readable, whatever the umask', async () => {
     // Each of these files is bind-mounted into a container running
     // as an unprivileged user (tempo 10001, prometheus nobody,
     // otelcol 10001). A `keel new` run under a umask of 077 would
