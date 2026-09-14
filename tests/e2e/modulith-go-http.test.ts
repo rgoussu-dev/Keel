@@ -36,6 +36,7 @@ import {
   skipGoE2E,
   withHttpUnit,
 } from '../support/go-e2e.js';
+import { expectLifecycleSkill } from '../support/harness-docs.js';
 
 let goHome: string;
 let cwd: string;
@@ -60,6 +61,7 @@ describe.skipIf(skipGoE2E)('go-http modulith e2e', () => {
     'builds, serves /greet, and holds its walls',
     async () => {
       await modulith();
+      await expectLifecycleSkill(cwd, 'modulith');
 
       goRun(cwd, goHome, ['vet', './...']);
       goRun(cwd, goHome, ['test', './...']);

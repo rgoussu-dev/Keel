@@ -27,7 +27,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, it } from 'vitest';
 import { E2E_TIMEOUT_MS, runJvmCliE2E, skipJvmCliE2E } from '../support/jvm-cli-e2e.js';
-import { expectLayerDoc } from '../support/harness-docs.js';
+import { expectLayerDoc, expectLifecycleSkill } from '../support/harness-docs.js';
 
 let cwd: string;
 let gradleUserHome: string;
@@ -59,6 +59,7 @@ describe.skipIf(skipJvmCliE2E)('walking-skeleton e2e', () => {
       );
       await expectLayerDoc(cwd, 'domain', ['Clock', '@DomainHandler', 'Provider<Mediator>']);
       await expectLayerDoc(cwd, 'application', ['MediatorProducer', 'beans.xml']);
+      await expectLifecycleSkill(cwd, 'basic');
     },
     E2E_TIMEOUT_MS,
   );

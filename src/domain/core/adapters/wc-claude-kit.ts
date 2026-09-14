@@ -17,6 +17,7 @@ import {
   runSkillSpec,
   type ClaudeKitFamily,
   type LayerDoc,
+  type LifecycleFacts,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -165,7 +166,34 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
         },
       ];
 
-  return { runbook, runSkill, verifyCommand, docs };
+  const workspaceList =
+    pm === 'pnpm' ? '`pnpm-workspace.yaml`' : 'the root `package.json`’s `workspaces` list';
+  const lifecycle: LifecycleFacts = {
+    addModule: [
+      `Every emitted package is added to ${workspaceList} in the same run, and its dependents get it in their own \`package.json\`. Re-run \`${pm} install\` afterwards, or the new workspace link does not exist yet.`,
+      '`src/service.ts` (`./service`) and `./elements` are the only public entries a sibling may import. dependency-cruiser holds that rule and nothing else does: a violating import typechecks, runs clean, and only `lint` goes red.',
+      '`src/elements.ts` registers the context’s `<scope>-<ctx>-*` custom-element tags, and `tests/element-tags.test.ts` pins the prefix. Two contexts defining one tag is a runtime throw, not a compile error.',
+      `${duplicate} The new package must not import the design system: \`web-app/src/main.ts\` does, once, and the import map keeps it external to every bundle.`,
+      '`web-app/src/<ctx>.ts` is the context’s wiring module and `main.ts` must call it — a context nobody wires provides no ports, and its elements come up empty rather than failing.',
+      'The domain stays DOM-less: nothing under `src/domain/` imports an element or touches `document`. Ports reach the elements through the typed context keys, never through an import.',
+    ],
+    promote: [
+      '`domain/domain-api/` and `domain/domain-core/` → one package, `modules/<ctx>/`, as `src/domain/contract/` and `src/domain/core/internal/`. The context-key protocol goes to `platform/context/`: it belongs to no context.',
+      '`application/web-app/src/components/` → `modules/<ctx>/src/user-side/elements/`, with `src/elements.ts` registering the `<scope>-<ctx>-*` tags. Rename the tags as you move them; the prefix test is what will tell you if two contexts collide.',
+      '`infrastructure/commons/` → `modules/<ctx>/src/infra/` for an adapter the context owns, the fake still beside the real one.',
+      'Add `modules/<ctx>/src/service.ts` and give the package `./service` and `./elements` exports — those two, and only those, are what a sibling may import. Add the dependency-cruiser rule in the same change: nothing else enforces it.',
+      `\`application/web-app/\` stays the assembly and keeps the single design-system import and the import map; the per-context wiring moves to \`src/<ctx>.ts\`. List every new package in ${workspaceList} and re-run \`${pm} install\`.`,
+    ],
+  };
+
+  return {
+    runbook,
+    runSkill,
+    verifyCommand,
+    layout: modulith ? 'modulith' : 'basic',
+    lifecycle,
+    docs,
+  };
 }
 
 export const wcClaudeKitAdapter: Adapter = claudeKitAdapter(

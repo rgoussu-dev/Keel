@@ -27,6 +27,7 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { addModule, buildProject, scaffold, type JvmProjectSpec } from './jvm-e2e.js';
+import { expectLifecycleSkill } from './harness-docs.js';
 
 /**
  * The source language of a stack, which its id encodes as a suffix.
@@ -97,6 +98,10 @@ export async function runJvmAddModuleE2E(
     fs.readFile(path.join(cwd, rel.replace(/\//g, path.sep)), 'utf8');
 
   await addThreeContexts(spec, cwd);
+
+  // The modulith half of the lifecycle skill pair, and the flat half
+  // absent — the procedure this very command is the subject of.
+  await expectLifecycleSkill(cwd, 'modulith');
 
   // Every module of every context is a module of the build, not a
   // directory sitting outside it.

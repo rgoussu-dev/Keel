@@ -60,6 +60,7 @@ import {
 } from '../adapters/spring-persistence.js';
 import { tsPersistenceAdapter } from '../adapters/ts-persistence.js';
 import { FLYWAY_TAG, LIQUIBASE_TAG } from '../adapters/migrations-tool.js';
+import { MIGRATE_SKILL_NAME } from '../adapters/migrations-skill.js';
 import { SQL_ENGINES } from '../adapters/persistence-engine.js';
 import type { Vertical } from '../../contract/composition.js';
 
@@ -76,6 +77,7 @@ export const persistenceVertical: Vertical = {
     'database-compose',
   ],
   promotes: [...SQL_ENGINES.map((engine) => engine.tag), FLYWAY_TAG, LIQUIBASE_TAG],
+  skills: [MIGRATE_SKILL_NAME],
   adapters: [
     quarkusPersistenceAdapter,
     quarkusPersistenceKotlinAdapter,

@@ -64,6 +64,33 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **Lifecycle skills per component** (#139, wave 4): each component
+  that contributes files now contributes the matching procedure as a
+  skill, gated by the no-fiction rule — a skill ships only for
+  something the component's own files make real.
+
+  The family kits ship **one layout lifecycle skill and never both**:
+  `add-module` on `layout.modulith` — the procedure `keel add module`
+  _is_, plus the failures the 24-cell add-module grid exists to catch,
+  each of them silent (the build registration a hand-copied directory
+  skips, the per-context wiring class, how this framework's container
+  discovers a handler, the dependency scope that keeps the peer's
+  domain off your compile classpath) — and `promote-to-modulith` on
+  the flat layout, which takes the promotion essay out of the root
+  document and turns it into a procedure with this family's own target
+  paths, loaded when it is needed and free when it is not.
+  `persistence` ships `migrate` (one shape over both halves of the
+  `migrations` dial, spelled for the recorded tool, with the two
+  nevers) and `iac` ships `deploy` (the OpenTofu loop over the
+  recorded cloud and flavor: the workspace **is** the environment, and
+  `apply`/`destroy` are the only commands here that cost money).
+
+  Every one is description-triggered through the `SkillSpec` seam,
+  declared on its vertical's `skills`, and at most two sentences long.
+  The tests assert the **absence** as well as the presence — a
+  scaffold with no persistence has no `migrate`, one with no target has
+  no `deploy`, and no scaffold carries both halves of the layout pair.
+
 - **`keel docs sync` and `keel docs check`** (#138, wave 4 of the
   agent-harness redesign): the agents' navigation index is now a
   projection of what keel already knows — the manifest plus the

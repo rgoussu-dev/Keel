@@ -155,8 +155,26 @@ framework, entrypoint shape, module layout) — one adapter per stack
   for the HTTP services, the sample invocation for the CLIs, the Vite
   dev server for the SPA. Contributed as a `SkillSpec` through the
   [skill seam](../composition.md#skills) — the vertical declares the
-  name in `skills: ['run']`, and the engine stages the file with its
+  name in `skills`, and the engine stages the file with its
   provenance recorded in the manifest.
+- **One layout lifecycle skill**, and never both of the pair:
+  - `add-module` on `layout.modulith` — the procedure `keel add
+module` _is_, plus what fails quietly in this family around it:
+    the build registration the command performs (and a hand-copied
+    directory does not), the per-context wiring class, how this
+    framework's container discovers a handler (a `@ComponentScan`
+    list that stopped growing compiles and starts perfectly), and the
+    dependency scope that keeps the peer's domain off your compile
+    classpath. Those are the failures the 24-cell `add-module` e2e
+    grid exists to catch, written down where an agent about to add a
+    context reads them.
+  - `promote-to-modulith` on the flat layout — where each directory
+    lands under `modules/<ctx>/`, in this family's own paths, and the
+    three rules the shape then carries. `keel` chooses the layout at
+    `keel new` and moves no project between them, so the procedure is
+    the agent's; the essay that used to sit in the root document is
+    now a skill that loads when it is needed and costs nothing when
+    it is not.
 
 ## Per-directory docs
 
@@ -235,7 +253,7 @@ re-renders the harness and restamps the marker. See
 
 **Family claude-kits (jvm/go/rust/ts/wc — inside agent-harness; parameterized by framework × build system × language × layout × shape)**
 
-- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (#139) — single owner; the skill body _covers_ `keel add module`'s assembly-patch/registration behavior, bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
+- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (shipped, #139) — single owner, exactly one of the two per scaffold; the `add-module` body _covers_ `keel add module`'s assembly-patch/registration behavior and the family's silent failures (container discovery, the `@ComponentScan` list, the seam scope, the `internal/` wall), and bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
 - **→ #150 (owner: walking-skeleton, below):** the family kits do _not_ own `new-port` — the port exemplars are walking-skeleton files.
 
 **walking-skeleton (after extraction: bootstraps, port examples, peer contexts, build tools)**
@@ -275,7 +293,7 @@ re-renders the harness and restamps the marker. See
 
 **persistence**
 
-- `migrate` skill (#139); Testcontainers note composed into the family kit's driven-adapter doc — `tests/` on a basic Rust crate (shipped, #135).
+- `migrate` skill (shipped, #139: one shape over both halves of the `migrations` dial, spelled for the tool the project recorded); Testcontainers note composed into the family kit's driven-adapter doc — `tests/` on a basic Rust crate (shipped, #135).
 - **→ #151:** `add-repository` skill (replicate the GreetingLog slice end-to-end: port + SQL adapter + Testcontainers contract test + fake + unit-of-work demarcation, with per-layout/per-language placement); `migrations/` nested doc carrying the persistence doctrine (env-only config; the service never migrates in production — migrations are their own deployment unit; the `UnitOfWork` port is the transaction boundary); Docker-skip caveat in the `tests/` doc (a green suite on a Docker-less host has not proven the SQL adapter — say so before claiming done).
 
 **observability**
@@ -293,7 +311,7 @@ re-renders the harness and restamps the marker. See
 
 **iac**
 
-- `iac/AGENTS.md` nested doc (seam shipped, #135; content pending); `deploy` skill (#139).
+- `iac/AGENTS.md` nested doc (seam shipped, #135; content pending); `deploy` skill (shipped, #139: the OpenTofu loop over the recorded cloud and flavor, with the workspace-is-the-environment rule and the apply/destroy gate).
 - **→ #152:** the secrets doctrine as that doc's content (no secret ever lands in a file; credentials ride the environment; one workspace per environment) — a refinement of #135's row; confirm-gate settings entry for `tofu apply`/`tofu destroy` (the only commands in the kit that mutate billable, stateful infrastructure — force a human gate).
 
 **vcs**

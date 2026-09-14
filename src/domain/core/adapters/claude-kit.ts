@@ -87,6 +87,22 @@ const HOOK_TARGET = hookTarget(PRE_COMMIT_HOOK_NAME);
  */
 export const RUN_SKILL_NAME = 'run';
 
+/**
+ * The layout lifecycle skill of a modulith: the procedure behind
+ * `keel add module`, with the silent failures the e2e grid documents.
+ * Emitted only on `layout.modulith` — there is no context to add to a
+ * single hexagon.
+ */
+export const ADD_MODULE_SKILL_NAME = 'add-module';
+
+/**
+ * The layout lifecycle skill of a flat project: what moving onto the
+ * modulith layout costs, as a procedure. Emitted only on `basic` —
+ * the counterpart of {@link ADD_MODULE_SKILL_NAME}, and the reason
+ * the pair is exhaustive rather than optional.
+ */
+export const PROMOTE_SKILL_NAME = 'promote-to-modulith';
+
 /** What a family adapter contributes on top of the shared shape. */
 export interface ClaudeKitFamily {
   /** Markdown body of the stack section, without the sentinels. */
@@ -111,6 +127,39 @@ export interface ClaudeKitFamily {
    * by {@link layerDocSections}; absent where a family ships none.
    */
   readonly docs?: readonly LayerDoc[];
+  /**
+   * The module layout that was scaffolded. The axis the layout
+   * lifecycle skill turns on: `modulith` ships `add-module`, `basic`
+   * ships `promote-to-modulith`, and neither ships both.
+   */
+  readonly layout: 'basic' | 'modulith';
+  /** This family's half of the two layout lifecycle skills. */
+  readonly lifecycle: LifecycleFacts;
+}
+
+/**
+ * What a family contributes to its layout lifecycle skill — the facts
+ * that are true of *this* language and of no other, so the shared
+ * frame can carry everything that is true of all five.
+ *
+ * Held to the no-fiction rule the seam exists for: every bullet names
+ * a file the scaffold really has, a command it really runs, or a
+ * failure the e2e grid really caught. A bullet an agent could derive
+ * from the tree does not ship.
+ */
+export interface LifecycleFacts {
+  /**
+   * What `keel add module` leaves behind in this family, and the way
+   * each step fails **silently** — the failures a compile does not
+   * catch and only the wiring test does. One bullet each.
+   */
+  readonly addModule: readonly string[];
+  /**
+   * Where each directory of the flat layout lands under
+   * `modules/<ctx>/`, and the wall the build must then hold. One
+   * bullet each.
+   */
+  readonly promote: readonly string[];
 }
 
 /** One per-layer doc a family kit emits: where it lives, its map row, and its bullets. */
@@ -237,6 +286,121 @@ export function runSkillSpec(spec: { description: string; body: string }): Skill
 }
 
 /**
+ * The layout lifecycle skill for the shape that was scaffolded —
+ * `add-module` on a modulith, `promote-to-modulith` on a flat
+ * project, never both and never neither. One frame for all five
+ * families, the way `renderRunbook` holds the stack sections
+ * together; the family supplies only what is true of its language.
+ */
+export function lifecycleSkill(family: ClaudeKitFamily): SkillSpec {
+  return family.layout === 'modulith' ? addModuleSkill(family) : promoteSkill(family);
+}
+
+/**
+ * The `add-module` skill: the command first, because
+ * `keel add module` is the procedure — it scaffolds the context *and*
+ * registers it with the build and the assembly, which is exactly the
+ * half a hand-copied directory gets wrong. The family's bullets are
+ * the silent failures around it.
+ */
+function addModuleSkill(family: ClaudeKitFamily): SkillSpec {
+  return {
+    name: ADD_MODULE_SKILL_NAME,
+    description:
+      "Add a bounded context to this modulith and wire it to a peer's seam. Use when asked to add a module, a bounded context or a new subdomain.",
+    body: [
+      '# Add a bounded context',
+      '',
+      'Run the command. It scaffolds the context **and** registers it with',
+      'the build and the assembly; a hand-copied directory gets the second',
+      'half wrong and nothing says so until dispatch fails at runtime.',
+      '',
+      '```sh',
+      'keel add module <name>                    # a context that consumes nothing',
+      "keel add module <name> --consumes <peer>  # …and a gateway over <peer>'s seam",
+      '```',
+      '',
+      '`<name>` is one lowercase word. `--consumes` names a context that',
+      'already exists **and publishes a seam**; keel refuses anything else at',
+      'the front door and lists the contexts that qualify. It is opt-in — a',
+      'context that consumes nothing is a perfectly good context.',
+      '',
+      '## What it emitted, and what fails quietly here',
+      '',
+      ...family.lifecycle.addModule.map((fact) => `- ${fact}`),
+      '',
+      '## Then',
+      '',
+      `1. Run the gate: \`${family.verifyCommand}\`. Green over the emitted`,
+      '   placeholder is the proof the registration landed — that is the only',
+      '   check that sees it.',
+      '2. Put your first real use case where the placeholder is. Peers still',
+      '   meet only at the seam: a new edge means a driven port in **your**',
+      "   vocabulary and an adapter over the peer's seam, never an import.",
+      '',
+      'Never create a context directory by hand, and never widen the seam to',
+      "reach a peer's internals — the wall is what keeps the contexts apart.",
+    ].join('\n'),
+  };
+}
+
+/**
+ * The `promote-to-modulith` skill: the flat layout's counterpart.
+ * `keel new` chooses the layout and nothing moves a project between
+ * them, so this is a procedure a person or an agent performs — which
+ * is precisely why it ships as one, with the target paths spelled for
+ * the family rather than left as an essay about layouts in general.
+ */
+function promoteSkill(family: ClaudeKitFamily): SkillSpec {
+  return {
+    name: PROMOTE_SKILL_NAME,
+    description:
+      'Move this flat project onto the modulith layout, one hexagon per bounded context. Use when a second bounded context appears and the single hexagon no longer fits.',
+    body: [
+      '# Promote this project to the modulith layout',
+      '',
+      'This project is one hexagon. A second genuine bounded context is the',
+      'moment to carve it: the flat trisection maps onto `modules/<ctx>/`',
+      'one-to-one, so this is a directory move plus a build change — never a',
+      'redesign. Do not start it earlier: `modules/<the-only-one>/` buys a',
+      'level of nesting and nothing else.',
+      '',
+      '`keel` chooses the layout at `keel new` and does not move a project',
+      'between them, so the move is yours. Do it in this order, running the',
+      `gate (\`${family.verifyCommand}\`) between every step — one verifiable`,
+      'step at a time.',
+      '',
+      '## Where each directory lands',
+      '',
+      ...family.lifecycle.promote.map((fact) => `- ${fact}`),
+      '',
+      '## The three rules the shape then carries',
+      '',
+      '1. **The deployment unit is the assembly, not the adapter.** Nothing',
+      '   under `modules/` produces a runnable artifact, and only an assembly',
+      '   may see a context’s core.',
+      '2. **The dispatch seam is per context.** A repository-wide command bus',
+      '   hands every adapter every context’s vocabulary and quietly re-merges',
+      '   the contexts you just separated.',
+      '3. **Contexts meet only at `user-side/service`.** A context needing a',
+      '   peer declares a driven port in **its own** vocabulary and implements',
+      '   it over the peer’s seam. Every other edge must fail the build.',
+      '',
+      'Once the shape is in place, `keel add module <name>` scaffolds each',
+      'further context and registers it for you.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * All the pre-commit hook takes from a family: the auto-fix step and
+ * the gate. Narrower than {@link ClaudeKitFamily} on purpose — the
+ * hook has no business knowing the layout or the runbook, and a test
+ * exercising it should not have to invent them.
+ */
+export type HookCommands = Pick<ClaudeKitFamily, 'formatCommand' | 'verifyCommand'>;
+
+/**
  * The pre-commit hook, keel's own
  * (`.claude/hooks/pre-commit-format.sh`) adapted to the family's
  * commands. Built here rather than rendered from a template because
@@ -249,7 +413,7 @@ export function runSkillSpec(spec: { description: string; body: string }): Skill
  * or JVM project cannot assume Node (or jq) on the machine, and the
  * worst a false positive costs is one extra verify run.
  */
-export function renderPreCommitHook(family: ClaudeKitFamily): string {
+export function renderPreCommitHook(family: HookCommands): string {
   return `#!/usr/bin/env bash
 # PreToolUse hook: before Claude runs \`git commit\`, auto-format the tree
 # (where the stack has a formatter) and run the project's own fast gate,
@@ -364,7 +528,7 @@ export function formatStepPatch(formatCommand: string | undefined) {
  * it wires a formatter in, so a reapply re-renders the hook around
  * the step it finds.
  */
-export function preCommitHookSpec(family: ClaudeKitFamily): HookSpec {
+export function preCommitHookSpec(family: HookCommands): HookSpec {
   return {
     name: PRE_COMMIT_HOOK_NAME,
     event: 'PreToolUse',
@@ -384,7 +548,7 @@ export function preCommitHookSpec(family: ClaudeKitFamily): HookSpec {
  */
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
-    skills: [family.runSkill],
+    skills: [family.runSkill, lifecycleSkill(family)],
     hooks: [preCommitHookSpec(family)],
     ...(family.docs === undefined ? {} : { docs: layerDocSections(family.docs) }),
     patches: [

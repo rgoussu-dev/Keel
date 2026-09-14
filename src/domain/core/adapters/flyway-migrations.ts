@@ -25,6 +25,7 @@
 import { DATABASE_COMPOSE_ID } from './database-compose.js';
 import { addComposeService, devComposeSeed, DEV_COMPOSE_TARGET } from './dev-env-compose.js';
 import { FLYWAY_TAG, migrationsTool } from './migrations-tool.js';
+import { migrateSkill } from './migrations-skill.js';
 import {
   databaseName,
   DEV_DB_PASSWORD,
@@ -130,6 +131,7 @@ export const flywayMigrationsAdapter: Adapter = {
           }),
         },
       ],
+      skills: [migrateSkill('flyway')],
       tagsAdd: [FLYWAY_TAG],
     };
   },

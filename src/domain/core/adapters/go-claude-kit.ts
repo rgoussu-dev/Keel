@@ -19,6 +19,7 @@ import {
   runSkillSpec,
   type ClaudeKitFamily,
   type LayerDoc,
+  type LifecycleFacts,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -197,7 +198,32 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
         },
       ];
 
-  return { runbook, runSkill, formatCommand: 'gofmt -w .', verifyCommand, docs };
+  const lifecycle: LifecycleFacts = {
+    addModule: [
+      'The context is a package tree under `internal/modules/<ctx>/`, and Go needs no registration: there is no module list to forget. What there is instead is `cmd/<unit>/<ctx>.go`, the wiring file, and `main.go` must call the function it defines — a wiring file nobody calls compiles and the binary starts without the context.',
+      'Everything under `internal/modules/<ctx>/internal/` is behind the compiler’s own wall: a peer importing it fails to build with `use of internal package … not allowed`. That refusal is the seam rule, enforced by the toolchain rather than by review.',
+      '`<ctx>/<ctx>.go` is the facade and holds **factories only** — no type aliases. An alias re-exports the context’s internals past the wall and the compiler is satisfied.',
+      'Every seam package is `package service`, so a unit wiring two contexts needs an import alias for the second. Without one the file does not compile — loud, but the fix is an alias, not a rename.',
+      'The gateway in `<ctx>/infra/<peer>gateway/` implements `<ctx>`’s own driven port over `<peer>`’s seam. It is a struct in your vocabulary, never the peer’s type passed through.',
+    ],
+    promote: [
+      '`internal/domain/` → `internal/modules/<ctx>/internal/domain/`, and the compiler-hidden core stays hidden under it. The `clock` port and `observability` go to `internal/platform/`: they belong to no context.',
+      'Add `internal/modules/<ctx>/<ctx>.go`, the facade: factories only, no type aliases. It is the only file of the context a peer’s wiring may touch.',
+      '`internal/app/<channel>/` → `internal/modules/<ctx>/userside/<channel>/`, and add `internal/modules/<ctx>/userside/service/` — `package service` — as the peer seam. There is nothing to publish there yet; add it when a peer appears.',
+      '`internal/infra/<adapter>/` → `internal/modules/<ctx>/infra/<adapter>/` for what the context owns.',
+      '`cmd/<unit>/main.go` keeps assembling, but the per-context wiring moves to `cmd/<unit>/<ctx>.go`, one file per context, each called from `main`. Nothing in `go.mod` changes: the `internal/` wall does the enforcing a build file would elsewhere.',
+    ],
+  };
+
+  return {
+    runbook,
+    runSkill,
+    formatCommand: 'gofmt -w .',
+    verifyCommand,
+    layout: modulith ? 'modulith' : 'basic',
+    lifecycle,
+    docs,
+  };
 }
 
 export const goClaudeKitAdapter: Adapter = claudeKitAdapter(

@@ -385,6 +385,25 @@ Two rules the seam enforces:
   contribution's names against the declaration and refuses an
   undeclared one.
 
+**A component ships a skill only for a procedure its own files make
+real** — the no-fiction rule, and the reason the `release` skill was
+never emitted. What that produces today:
+
+| Skill                 | Owner                                              | Emitted when             |
+| --------------------- | -------------------------------------------------- | ------------------------ |
+| `run`                 | the family kit                                     | always                   |
+| `add-module`          | the family kit                                     | `layout.modulith`        |
+| `promote-to-modulith` | the family kit                                     | the flat layout          |
+| `migrate`             | `persistence` (the migrations adapter of the dial) | persistence is installed |
+| `deploy`              | `iac`                                              | iac is installed         |
+
+The first pair is exhaustive and exclusive: a project has one layout,
+so exactly one of the two ships, and a scaffold carrying both would
+read as two contradictory procedures. `migrate` and `deploy` are
+absent until the vertical that makes them real is layered, and the
+tests assert the absence as well as the presence — a rule with no
+negative is an intention.
+
 A plugin's verticals ship skills through exactly this seam — same
 schema, same serializer, same collision refusal and provenance, no
 special case. See [Plugins](plugins.md#skills).

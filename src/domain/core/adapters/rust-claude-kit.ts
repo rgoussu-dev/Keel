@@ -20,6 +20,7 @@ import {
   runSkillSpec,
   type ClaudeKitFamily,
   type LayerDoc,
+  type LifecycleFacts,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -193,7 +194,32 @@ function rustFamily(ctx: Ctx): ClaudeKitFamily {
         },
       ];
 
-  return { runbook, runSkill, formatCommand: 'cargo fmt', verifyCommand, docs };
+  const lifecycle: LifecycleFacts = {
+    addModule: [
+      'Every emitted crate is added to the workspace `Cargo.toml` `members` list in the same run. A crate directory outside that list is not built at all — `cargo build` succeeds and never looks at it.',
+      '`application/<unit>/src/<ctx>.rs` is the context’s wiring module, and `main.rs` must `mod <ctx>;` it. Rust catches this one: an unreferenced module is a dead file the compiler warns about rather than a handler silently never found.',
+      'The gateway crate depends on the peer’s `<peer>-user-side-service` crate and on nothing else of the peer. That single dependency **is** the wall — adding `<peer>-domain-contract` beside it re-merges the two contexts, and cargo will not object.',
+      'The seam publishes only its own DTOs, and Rust does not enforce it: inference lets a domain type flow out through a public signature. Read the new seam’s signatures before you call it done.',
+      'Port traits return `BoxFuture`, never a bare `async fn` — ports are used as `dyn`, and an `async fn` in a trait is not dyn-compatible.',
+    ],
+    promote: [
+      '`src/domain.rs` + `src/domain/` → `modules/<ctx>/domain/contract/` and `modules/<ctx>/domain/core/`, one crate each; the `Clock` port and `BoxFuture` go to `platform/kernel/`, which belongs to no context.',
+      '`src/infra/` → `modules/<ctx>/infra/<x>/`, one crate per adapter, with the fake beside the real one as before.',
+      '`src/bin/<unit>/main.rs` → `application/<unit>/src/main.rs`, a bin crate of its own, with one `src/<ctx>.rs` wiring module per context.',
+      'The root `Cargo.toml` becomes a workspace: list every new crate under `members`, and let each crate carry its own `Cargo.toml`. `tests/` follows the crate whose public API it drives.',
+      'A peer edge is then a `<Peer>Client` trait in your own `domain/contract` plus a `modules/<ctx>/infra/<peer>-gateway/` crate depending on the peer’s seam crate and nothing else.',
+    ],
+  };
+
+  return {
+    runbook,
+    runSkill,
+    formatCommand: 'cargo fmt',
+    verifyCommand,
+    layout: modulith ? 'modulith' : 'basic',
+    lifecycle,
+    docs,
+  };
 }
 
 export const rustClaudeKitAdapter: Adapter = claudeKitAdapter(

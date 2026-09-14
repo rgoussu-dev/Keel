@@ -18,6 +18,7 @@ import {
   cloudTag,
   iacDeployTargetAdapter,
 } from '../adapters/iac-deploy-target.js';
+import { DEPLOY_SKILL_NAME } from '../adapters/deploy-skill.js';
 import type { Vertical } from '../../contract/composition.js';
 
 export const iacVertical: Vertical = {
@@ -26,5 +27,6 @@ export const iacVertical: Vertical = {
   description: 'Where this project runs — the OpenTofu deploy target.',
   dimensions: ['deploy-target'],
   promotes: [OPENTOFU_TAG, ...IAC_CLOUDS.map(cloudTag)],
+  skills: [DEPLOY_SKILL_NAME],
   adapters: [iacDeployTargetAdapter],
 };

@@ -34,10 +34,17 @@ prompts at all. Sixty seconds later you have:
   layout map of exactly the shape that was scaffolded so an agent
   orients by map before it greps — a pre-commit hook that keeps every
   Claude-issued commit green against the stack's own gate, a `run`
-  skill so "launch the app and check it" works out of the box, and a
-  short `AGENTS.md` in each layer directory carrying that layer's real
-  ports, wiring and silent failures, mapped from the root
+  skill so "launch the app and check it" works out of the box, a
+  layout lifecycle skill (`add-module` on a modulith, with the silent
+  failures of _this_ family; `promote-to-modulith` on a flat project),
+  and a short `AGENTS.md` in each layer directory carrying that
+  layer's real ports, wiring and silent failures, mapped from the root
   ([docs](docs/verticals/agent-harness.md#the-claude-kit)).
+
+Layered verticals bring their own procedure with them: `persistence`
+adds a `migrate` skill, `iac` a `deploy` skill. A component ships a
+skill only for something its files make real — nothing is emitted for
+a procedure that would be fiction.
 
 The harness is included by default. Use `keel new --no-agent-harness`
 to scaffold without it, and `keel add agent-harness` to adopt it later.

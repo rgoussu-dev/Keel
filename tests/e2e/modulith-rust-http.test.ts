@@ -24,6 +24,7 @@ import {
   skipRustE2E,
   withServer,
 } from '../support/rust-e2e.js';
+import { expectLifecycleSkill } from '../support/harness-docs.js';
 
 let cargoHome: string;
 let cwd: string;
@@ -53,6 +54,8 @@ describe.skipIf(skipRustE2E)('rust-http modulith e2e', () => {
         cwd,
         cargoHome,
       );
+
+      await expectLifecycleSkill(cwd, 'modulith');
 
       const root = await fs.readFile(path.join(cwd, 'Cargo.toml'), 'utf8');
       expect(root).toContain('[workspace]');

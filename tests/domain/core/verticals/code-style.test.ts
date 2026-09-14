@@ -30,11 +30,7 @@ const HOOK = '.claude/hooks/pre-commit-format.sh';
 
 /** The hook as `agent-harness` leaves it: sentinels, no formatter. */
 const hookWithoutFormatter = (verify: string): string =>
-  renderPreCommitHook({
-    runbook: '',
-    runSkill: { name: 'run', description: 'x', body: 'x' },
-    verifyCommand: verify,
-  });
+  renderPreCommitHook({ verifyCommand: verify });
 
 const GRADLE_ROOT = `plugins {
     java
