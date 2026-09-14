@@ -77,3 +77,19 @@ export async function expectVerticalSkill(
     `${name} skill ${present ? 'present' : 'absent'}`,
   ).toBe(present);
 }
+
+/**
+ * Asserts the habit hooks of a scaffold: both scripts staged and
+ * executable, and both wired into `.claude/settings.json`. Read off a
+ * built project because that is the only place the executable bit and
+ * the settings merge are both real.
+ */
+export async function expectHooksWired(cwd: string, names: readonly string[]): Promise<void> {
+  const settings = await fs.readFile(path.join(cwd, '.claude', 'settings.json'), 'utf8');
+  for (const name of names) {
+    const script = path.join(cwd, '.claude', 'hooks', `${name}.sh`);
+    expect(await fs.pathExists(script), `${name} staged`).toBe(true);
+    expect((await fs.stat(script)).mode & 0o111, `${name} executable`).not.toBe(0);
+    expect(settings, `${name} wired`).toContain(`.claude/hooks/${name}.sh`);
+  }
+}

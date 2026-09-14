@@ -78,6 +78,34 @@ const AGENTS_TARGET = 'AGENTS.md';
 /** The one hook every family kit ships: format, then gate, before a Claude-issued `git commit`. */
 export const PRE_COMMIT_HOOK_NAME = 'pre-commit-format';
 
+/**
+ * The habit hook every family kit ships: after an edit, notice when
+ * the uncommitted diff has outgrown one reviewable step and say so.
+ *
+ * A **habit** hook rather than a gate — it reinforces the
+ * Chain-of-Small-Steps agreement mechanically, because prose in a
+ * root document does not survive context rot (the catalog's Selective
+ * Hearing obstacle) and a working agreement nothing enforces is a
+ * working agreement that stops holding around the third hour.
+ *
+ * Chosen first of its kind because it is the one such check that is
+ * genuinely language-agnostic: pure `git`, POSIX `sh`, no per-language
+ * parser. Function-size, comment-removal and duplication detectors
+ * need real tooling per family to avoid regex slop across Java,
+ * Kotlin, Go, Rust and TypeScript; they are deferred until the evals
+ * can price them, not forgotten.
+ */
+export const DIFF_SIZE_HOOK_NAME = 'diff-size';
+
+/**
+ * The default threshold, in changed lines, before the habit hook says
+ * anything. Deliberately generous: a nudge that fires on ordinary
+ * work is a nudge an agent learns to ignore, which costs the seam its
+ * credibility as well as the reminder. Overridable per project in the
+ * emitted script.
+ */
+export const DIFF_SIZE_LIMIT = 400;
+
 const HOOK_TARGET = hookTarget(PRE_COMMIT_HOOK_NAME);
 
 /**
@@ -283,6 +311,127 @@ export function renderRunbook(spec: RunbookSpec): string {
  */
 export function runSkillSpec(spec: { description: string; body: string }): SkillSpec {
   return { name: RUN_SKILL_NAME, ...spec };
+}
+
+/**
+ * What the habit hook says, as a `printf` format taking the live
+ * threshold and the project's gate.
+ *
+ * Actionable and specific per the catalog's Habit Hooks guidance —
+ * the number, and the one command that makes the next commit a green
+ * one — never an essay about clean code. Both values are `printf`
+ * arguments rather than interpolations: the message runs inside a
+ * shell, where a backtick or a `$` in the gate command would be
+ * something to execute.
+ */
+export const DIFF_SIZE_MESSAGE =
+  'diff-size: the uncommitted change has passed %s lines. Commit the part that already ' +
+  'works before going further: run "%s", commit what passes, and continue from there. ' +
+  'A change this size is hard to review, and harder to revert one mistake out of.';
+
+/** Where the hook remembers the last band it spoke at, inside `.git/`. */
+export const DIFF_SIZE_STAMP = 'keel-diff-size';
+
+/**
+ * The diff-size habit hook's script: after Claude edits or writes a
+ * file, count what is uncommitted and speak up once each time the
+ * total crosses another multiple of the threshold.
+ *
+ * Three decisions the script makes, each for a reason:
+ *
+ *   - **It counts tracked changes against `HEAD` plus the lines of
+ *     new files.** An agent's large change is usually part edit and
+ *     part new file, and counting only the former would miss it.
+ *   - **It fires once per band, not once per edit.** A reminder on
+ *     every keystroke past the line is noise, and noise is what makes
+ *     the next one ignorable. The band lives in `.git/`, outside the
+ *     working tree it is measuring.
+ *   - **It degrades silently.** No git, no repository, no commits
+ *     yet, a threshold of `0` — every one of those exits 0. A habit
+ *     hook that breaks a session is worse than no habit hook.
+ *
+ * POSIX `sh` and `git` only: a scaffolded Go, Rust or JVM project
+ * cannot assume anything else, and this is the same rule the
+ * pre-commit hook follows.
+ */
+export function renderDiffSizeHook(family: HookCommands): string {
+  return `#!/bin/sh
+# PostToolUse hook: after Claude edits a file, notice when the
+# uncommitted change has outgrown one reviewable step and say so once.
+# A reminder, never a gate — it reinforces the Chain-of-Small-Steps
+# working agreement (AGENTS.md) mechanically rather than by hoping the
+# prose is still in context.
+set -eu
+
+# Changed lines — added + deleted against HEAD, plus the lines of new
+# files — before this hook says anything. Raise it for a codebase
+# whose natural step is bigger; set it to 0 to keep the hook staged
+# and silent. To turn the hook off entirely, list '${DIFF_SIZE_HOOK_NAME}' under
+# env.KEEL_DISABLED_HOOKS in .claude/settings.json.
+limit=\${KEEL_DIFF_SIZE_LIMIT:-${String(DIFF_SIZE_LIMIT)}}
+
+cd "\${CLAUDE_PROJECT_DIR:-.}"
+case "$limit" in '' | *[!0-9]*) exit 0 ;; esac
+[ "$limit" -gt 0 ] || exit 0
+command -v git >/dev/null 2>&1 || exit 0
+git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  tracked=$(git diff HEAD --numstat 2>/dev/null || true)
+else
+  tracked=$(git diff --numstat 2>/dev/null || true)
+fi
+changed=$(printf '%s\\n' "$tracked" | awk '{ n += $1 + $2 } END { print n + 0 }')
+
+# New files are part of the change a reviewer would read, and no diff
+# against HEAD can see them.
+new=$(git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r f; do
+  if [ -f "$f" ]; then wc -l < "$f"; fi
+done | awk '{ n += $1 } END { print n + 0 }')
+total=$((changed + new))
+
+# One reminder per band crossed, not one per edit: a nudge that fires
+# on every keystroke past the line is the kind that gets ignored. The
+# band is remembered under .git/, outside the tree being measured.
+stamp="$git_dir/${DIFF_SIZE_STAMP}"
+band=$((total / limit))
+seen=0
+if [ -f "$stamp" ]; then seen=$(cat "$stamp" 2>/dev/null || echo 0); fi
+case "$seen" in '' | *[!0-9]*) seen=0 ;; esac
+printf '%s\\n' "$band" > "$stamp" 2>/dev/null || true
+[ "$band" -gt "$seen" ] || exit 0
+
+printf '${DIFF_SIZE_MESSAGE}\\n' "$limit" '${family.verifyCommand}' >&2
+exit 2
+`;
+}
+
+/**
+ * The message the hook may inject, spelled with the default
+ * threshold. What the engine counts against the reminder budget, and
+ * what a project reading its own manifest sees it has agreed to; a
+ * project that raised `KEEL_DIFF_SIZE_LIMIT` sees its own number in
+ * the actual reminder.
+ */
+export function diffSizeReminder(family: HookCommands): string {
+  return DIFF_SIZE_MESSAGE.replace('%s', String(DIFF_SIZE_LIMIT)).replace(
+    '%s',
+    family.verifyCommand,
+  );
+}
+
+/**
+ * The habit hook as a {@link HookSpec}: `PostToolUse` on the editing
+ * tools, one reminder, and no slots — nothing else composes into it.
+ */
+export function diffSizeHookSpec(family: HookCommands): HookSpec {
+  return {
+    name: DIFF_SIZE_HOOK_NAME,
+    event: 'PostToolUse',
+    matcher: 'Edit|Write',
+    script: renderDiffSizeHook(family),
+    reminders: [diffSizeReminder(family)],
+  };
 }
 
 /**
@@ -549,7 +698,7 @@ export function preCommitHookSpec(family: HookCommands): HookSpec {
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
     skills: [family.runSkill, lifecycleSkill(family)],
-    hooks: [preCommitHookSpec(family)],
+    hooks: [preCommitHookSpec(family), diffSizeHookSpec(family)],
     ...(family.docs === undefined ? {} : { docs: layerDocSections(family.docs) }),
     patches: [
       regionPatch({

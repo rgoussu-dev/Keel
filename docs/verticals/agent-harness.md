@@ -157,6 +157,33 @@ framework, entrypoint shape, module layout) — one adapter per stack
   [skill seam](../composition.md#skills) — the vertical declares the
   name in `skills`, and the engine stages the file with its
   provenance recorded in the manifest.
+- **A `diff-size` habit hook** (`.claude/hooks/diff-size.sh`,
+  `PostToolUse` on `Edit|Write`): after Claude edits a file it counts
+  the uncommitted change — the diff against `HEAD` plus the lines of
+  new files — and, once per threshold crossed, says so and names this
+  stack's gate to run before committing the part that already works.
+  A **reminder, never a gate**: it reinforces the Chain-of-Small-Steps
+  working agreement mechanically, because prose in a root document
+  does not survive context rot (the catalog's Selective Hearing
+  obstacle), and a working agreement nothing enforces stops holding
+  around the third hour.
+
+  It is the first Habit Hook because it is the one such check that is
+  genuinely language-agnostic — pure `git`, POSIX `sh`, no
+  per-language parser — so one script serves all five families.
+  Function-size, comment-removal and duplication detectors need real
+  tooling per family to avoid regex slop across Java, Kotlin, Go, Rust
+  and TypeScript; they are deferred until the evals can price them.
+
+  Two things keep it from becoming noise. It fires **once per band**,
+  not once per edit — the last band it spoke at is remembered in
+  `.git/`, outside the tree it is measuring — and it exits silently
+  wherever it cannot honestly answer: no `git`, no repository, no
+  commits yet, `KEEL_DIFF_SIZE_LIMIT=0`. The threshold is that
+  variable, defaulting to 400 changed lines and documented at the top
+  of the emitted script; to turn the hook off entirely, list
+  `diff-size` under `env.KEEL_DISABLED_HOOKS`.
+
 - **One layout lifecycle skill**, and never both of the pair:
   - `add-module` on `layout.modulith` — the procedure `keel add
 module` _is_, plus what fails quietly in this family around it:
@@ -253,7 +280,7 @@ re-renders the harness and restamps the marker. See
 
 **Family claude-kits (jvm/go/rust/ts/wc — inside agent-harness; parameterized by framework × build system × language × layout × shape)**
 
-- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (shipped, #139) — single owner, exactly one of the two per scaffold; the `add-module` body _covers_ `keel add module`'s assembly-patch/registration behavior and the family's silent failures (container discovery, the `@ComponentScan` list, the seam scope, the `internal/` wall), and bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
+- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (shipped, #139) — single owner, exactly one of the two per scaffold; the `add-module` body _covers_ `keel add module`'s assembly-patch/registration behavior and the family's silent failures (container discovery, the `@ComponentScan` list, the seam scope, the `internal/` wall), and bounded-context stages nothing for it; `diff-size.sh` habit hook (shipped, #140: kit-owned, all five families, pure `git` and POSIX `sh`, one reminder); `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
 - **→ #150 (owner: walking-skeleton, below):** the family kits do _not_ own `new-port` — the port exemplars are walking-skeleton files.
 
 **walking-skeleton (after extraction: bootstraps, port examples, peer contexts, build tools)**

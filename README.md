@@ -33,7 +33,9 @@ prompts at all. Sixty seconds later you have:
   run commands, the dispatch stance of _this_ language only, and a
   layout map of exactly the shape that was scaffolded so an agent
   orients by map before it greps — a pre-commit hook that keeps every
-  Claude-issued commit green against the stack's own gate, a `run`
+  Claude-issued commit green against the stack's own gate, a
+  `diff-size` habit hook that notices when the uncommitted change has
+  outgrown one reviewable step, a `run`
   skill so "launch the app and check it" works out of the box, a
   layout lifecycle skill (`add-module` on a modulith, with the silent
   failures of _this_ family; `promote-to-modulith` on a flat project),

@@ -24,7 +24,7 @@ import {
   skipWebE2E,
   type PackageManager,
 } from '../support/web-e2e.js';
-import { expectLayerDoc, expectLifecycleSkill } from '../support/harness-docs.js';
+import { expectHooksWired, expectLayerDoc, expectLifecycleSkill } from '../support/harness-docs.js';
 
 let cwd: string;
 
@@ -46,6 +46,7 @@ describe.skipIf(skipWebE2E('npm'))('ts-http walking-skeleton e2e (npm)', () => {
       await basic('npm');
       await expectLayerDoc(cwd, 'domain', ['Clock', 'registry-mediator.ts']);
       await expectLifecycleSkill(cwd, 'basic');
+      await expectHooksWired(cwd, ['pre-commit-format', 'diff-size']);
       runStep(cwd, 'npm run typecheck', 'npm', ['run', 'typecheck']);
       runStep(cwd, 'npm test', 'npm', ['test']);
     },

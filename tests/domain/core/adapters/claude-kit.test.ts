@@ -23,6 +23,7 @@ import {
   RUNBOOK_REGION,
   RUN_SKILL_NAME,
   claudeKitContribution,
+  diffSizeHookSpec,
   formatStepPatch,
   lifecycleSkill,
   preCommitHookSpec,
@@ -236,7 +237,7 @@ describe('preCommitHookSpec', () => {
 });
 
 describe('claudeKitContribution', () => {
-  it('ships the hook and the two skills through their seams, and the stack section as a region', () => {
+  it('ships both hooks and the two skills through their seams, and the stack section as a region', () => {
     const contribution = claudeKitContribution(family);
     expect(contribution.files ?? []).toEqual([]);
     // Nothing under .claude/ is a bare patch or file any more: the
@@ -245,7 +246,7 @@ describe('claudeKitContribution', () => {
     expect(contribution.patches?.[0]?.regions).toEqual([RUNBOOK_REGION]);
     expect(contribution.skills).toEqual([family.runSkill, lifecycleSkill(family)]);
     expect(contribution.skills?.[0]?.name).toBe(RUN_SKILL_NAME);
-    expect(contribution.hooks).toEqual([preCommitHookSpec(family)]);
+    expect(contribution.hooks).toEqual([preCommitHookSpec(family), diffSizeHookSpec(family)]);
     expect(contribution.tagsAdd).toEqual(['agentic.claude-kit']);
   });
 

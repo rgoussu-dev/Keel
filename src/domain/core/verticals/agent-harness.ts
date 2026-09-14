@@ -10,6 +10,7 @@ import { claudeCoreAdapter } from '../adapters/claude-core.js';
 import {
   ADD_MODULE_SKILL_NAME,
   CLAUDE_KIT_TAG,
+  DIFF_SIZE_HOOK_NAME,
   PRE_COMMIT_HOOK_NAME,
   PROMOTE_SKILL_NAME,
   RUN_SKILL_NAME,
@@ -31,7 +32,7 @@ export const agentHarnessVertical: Vertical = {
   // the family kit ships exactly one of the two layout lifecycle
   // skills, and which one is a tag the declaration cannot read.
   skills: [RUN_SKILL_NAME, ADD_MODULE_SKILL_NAME, PROMOTE_SKILL_NAME],
-  hooks: [PRE_COMMIT_HOOK_NAME],
+  hooks: [PRE_COMMIT_HOOK_NAME, DIFF_SIZE_HOOK_NAME],
   adapters: [
     claudeCoreAdapter,
     jvmClaudeKitAdapter,

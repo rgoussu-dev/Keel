@@ -64,6 +64,33 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **The first habit hook: `diff-size`** (#140, wave 4). Every family
+  kit now ships `.claude/hooks/diff-size.sh`, a `PostToolUse` hook on
+  the editing tools: after Claude edits a file it counts the
+  uncommitted change — the diff against `HEAD` plus the lines of new
+  files — and, once per threshold crossed, says so and names this
+  stack's own gate to run before committing the part that already
+  works.
+
+  A **reminder, never a gate**, and the distinction is the point: it
+  reinforces the Chain-of-Small-Steps working agreement mechanically,
+  because prose in a root document does not survive context rot. It
+  is the first Habit Hook because it is the one such check that is
+  genuinely language-agnostic — pure `git`, POSIX `sh`, no
+  per-language parser — so one script serves all five families;
+  function-size and duplication detectors are deferred until the
+  evals can price them.
+
+  Two things keep it from becoming noise: it fires once per threshold
+  band rather than once per edit (the band lives in `.git/`, outside
+  the tree it measures), and it exits silently wherever it cannot
+  honestly answer — no `git`, no repository, no commits yet,
+  `KEEL_DIFF_SIZE_LIMIT=0`. That variable is the threshold, defaulting
+  to 400 changed lines and documented at the top of the emitted
+  script; `diff-size` under `env.KEEL_DISABLED_HOOKS` turns it off
+  entirely. Its one reminder brings keel's own total to two, within
+  the three the budget leaves it.
+
 - **Lifecycle skills per component** (#139, wave 4): each component
   that contributes files now contributes the matching procedure as a
   skill, gated by the no-fiction rule — a skill ships only for

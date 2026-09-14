@@ -447,7 +447,19 @@ running `<shell> .claude/hooks/<name>.sh`. The rules the seam enforces:
   all of its hooks (`HOOK_REMINDER_BUDGET`); a run over it is refused
   (`reminder-budget`) before anything is staged, naming each
   contributor's share. keel's own hooks spend at most three, leaving
-  two for plugins — a guard test holds every stack to it.
+  two for plugins — a guard test holds every stack to it. Two are
+  spent today: the pre-commit gate's refusal, and the diff-size
+  habit hook's nudge.
+- **A gate refuses; a habit hook reminds.** The two shipped hooks are
+  one of each, and the distinction is the seam's. `pre-commit-format`
+  is a gate: it stops a `git commit` that would not be green.
+  `diff-size` is a **habit** hook: after an edit it counts what is
+  uncommitted and, once per threshold crossed, says so — reinforcing
+  the Chain-of-Small-Steps working agreement mechanically, because
+  prose in a root document does not survive context rot. A habit hook
+  fires once per band rather than once per edit, and stays silent
+  wherever it cannot honestly answer; one that breaks a session is
+  worse than no habit hook at all.
 - **Slots survive a reapply.** `--reapply` rewrites the script
   pristine around what each declared slot holds on disk, so the
   format step `code-style` wired in stays; a harness patch declaring
