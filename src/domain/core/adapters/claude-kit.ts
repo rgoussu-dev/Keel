@@ -127,6 +127,14 @@ export interface LayerDoc {
    * silent failure it is known for. One bullet each.
    */
   readonly bullets: readonly string[];
+  /**
+   * Set on the directory the project's bounded contexts sit in, so
+   * the engine's index projects a row per context beneath it. The
+   * family owns the layout — `modules/` here, `internal/modules/` on
+   * Go — and the projection reads the declaration rather than
+   * carrying five path prefixes of its own.
+   */
+  readonly indexes?: 'modules';
 }
 
 /** The section every family kit owns in the docs it seeds. */
@@ -142,6 +150,7 @@ export function layerDocSections(docs: readonly LayerDoc[]): DocSection[] {
     directory: doc.directory,
     section: LAYER_DOC_SECTION,
     description: doc.description,
+    ...(doc.indexes === undefined ? {} : { indexes: doc.indexes }),
     body: [`## \`${doc.directory}/\` — ${doc.title}`, '', ...doc.bullets.map((b) => `- ${b}`)].join(
       '\n',
     ),

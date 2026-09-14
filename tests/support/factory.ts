@@ -20,6 +20,8 @@ import { PreviewHandler } from '../../src/domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../src/domain/core/handlers/project-status.js';
 import { AddModuleHandler } from '../../src/domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../src/domain/core/handlers/add-vertical.js';
+import { DocsCheckHandler } from '../../src/domain/core/handlers/docs-check.js';
+import { DocsSyncHandler } from '../../src/domain/core/handlers/docs-sync.js';
 import { LinkPeerHandler } from '../../src/domain/core/handlers/link-peer.js';
 import { ToolchainCheckHandler } from '../../src/domain/toolchain/core/check.js';
 import { ToolchainInstallHandler } from '../../src/domain/toolchain/core/install.js';
@@ -55,6 +57,8 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
+    new DocsSyncHandler(deps),
+    new DocsCheckHandler(deps),
     new LinkPeerHandler(deps),
     new ToolchainInstallHandler(deps),
     new ToolchainCheckHandler(deps),

@@ -64,6 +64,41 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **`keel docs sync` and `keel docs check`** (#138, wave 4 of the
+  agent-harness redesign): the agents' navigation index is now a
+  projection of what keel already knows — the manifest plus the
+  resolved registry — rather than something anyone maintains by hand.
+  `sync` replays every recorded contributor from its recorded
+  answers, recomputes every row, and rewrites **only** the
+  engine-owned regions that carry them: `keel:map` and
+  `keel:skills-index` in the root `AGENTS.md`, and `keel:children` in
+  a nested document that has documents beneath it. Prose, rows and
+  other contributors' sections outside those markers are untouched,
+  a document keel did not write is reported as unindexed rather than
+  adopted or deleted, and running it twice writes nothing the second
+  time. `check` is the same computation with no writes and a
+  non-zero exit naming each drift — a reworded row, a row pointing at
+  something that is gone, a hand-edited region — so it wires into CI
+  or behind a `command -v keel` probe in the pre-commit hook.
+
+  The map now carries a row per **bounded context** as well as per
+  documented directory, and the skills index a row per staged skill
+  whose description is byte-identical to that skill's own
+  frontmatter (a sweep over every emitted stack holds the two
+  together). Where the contexts live is a new
+  `DocSection.indexes: 'modules'` declaration on the family kits'
+  `modules/` document, so the engine carries no per-family path.
+
+  **The same-commit rule is machinery now, not discipline.**
+  `keel new`, `keel add <vertical>` and `keel add module` project the
+  index inside their own apply — a context's row lands in the commit
+  that creates it — an install merging its rows over the ones already
+  there, `sync` recomputing the set outright. Documented in
+  [`keel docs`](docs/cli.md#keel-docs) and
+  [the navigation index](docs/composition.md#the-navigation-index).
+  No harness-generation bump: the two root slots this fills are the
+  ones every generation-1 scaffold already ships.
+
 - **Per-directory docs** (#135, wave 3 of the agent-harness
   redesign): the context that left the root lands where it binds. An
   adapter contributes a `DocSection` on `Contribution.docs` — a

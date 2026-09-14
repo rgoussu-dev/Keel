@@ -216,6 +216,7 @@ function jvmDocs(
       },
       {
         directory: 'modules',
+        indexes: 'modules',
         title: 'bounded contexts',
         description: 'one directory per bounded context; peers meet only at user-side/service',
         bullets: [

@@ -146,6 +146,7 @@ function goFamily(ctx: Ctx): ClaudeKitFamily {
         },
         {
           directory: 'internal/modules',
+          indexes: 'modules',
           title: 'bounded contexts',
           description: 'one package tree per bounded context; peers meet only at userside/service',
           bullets: [

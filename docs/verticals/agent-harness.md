@@ -71,9 +71,11 @@ holds, in reading order:
 2. **The stack section** (`<!-- keel:stack-runbook:… -->`), filled by
    the family kit below: commands, dispatch stance, layout map.
 3. The `keel:map` slot, which the engine fills with a row per
-   [per-directory doc](#per-directory-docs), and the empty
-   `keel:skills-index` slot — both reserved for the index projection
-   (`keel docs sync`, a later wave).
+   [per-directory doc](#per-directory-docs) and per bounded context,
+   and the `keel:skills-index` slot, a row per staged skill — both
+   written by the index projection
+   ([`keel docs sync`](../cli.md#keel-docs), and every install in its
+   own apply).
 4. **Architecture** — the dependency rule, the dispatch-seam opening
    rule ("commands as data through one seam"; _which_ seam is the
    stack section's business), error→transport, fakes beside adapters,
@@ -186,7 +188,8 @@ Rust crate): the `GreetingLog` and `UnitOfWork` ports, where the
 Testcontainers test lives, and that a run without Docker has not
 proven the SQL adapter.
 
-Every doc gains a row in the root `keel:map` slot, so Codex, Gemini
+Every doc gains a row in the root `keel:map` slot — recomputed by
+[`keel docs sync`](../cli.md#keel-docs) — so Codex, Gemini
 CLI and the other agents that never auto-load nested files reach it
 from the root. The context-budget guard holds each nested doc to its
 ceiling, the root plus every nested chain under Codex's 32 KiB
@@ -201,8 +204,9 @@ brownfield replay are shipped here. All other elements below are
 planned work under their named issues; catalog membership does not mean
 those files or commands are emitted today. The hook seam is shipped
 (#136), and so are the per-directory document seam and the family
-kits' layer docs (#135); engine projections beyond the map rows remain
-pending #138.
+kits' layer docs (#135). The engine's navigation index is shipped
+(#138): `keel docs sync|check` and the same projection inside every
+install.
 
 Each row is grounded in the contributor's own artifacts. Prefer skills,
 then nested documents, then root doctrine. Root doctrine admits only
@@ -304,7 +308,7 @@ re-renders the harness and restamps the marker. See
 
 **Engine (reserved identity, #133)**
 
-- `keel:map` / `keel:skills-index` / child-index rows via `keel docs sync` (#138). Nothing else: the generation marker is machinery (#137), and the docs-check hook step is family-kit hook content.
+- `keel:map` / `keel:skills-index` / `keel:children` rows via `keel docs sync` (shipped, #138), and the same projection inside every install — a bounded context's row lands in the apply that scaffolds it. The directory the contexts live in is the family kit's `DocSection.indexes` declaration; the engine carries no per-family path. Nothing else: the generation marker is machinery (#137), and the docs-check hook step is family-kit hook content.
 
 **Plugins**
 

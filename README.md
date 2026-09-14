@@ -308,6 +308,9 @@ keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam
 
 cd my-frontend && keel link ../my-backend   # then `keel add gateway` on both sides
+
+keel docs check               # is the agents' navigation index still true? (exit 1 if not)
+keel docs sync                # recompute it from the manifest and the registry
 ```
 
 A **vertical** names a capability the project either has or lacks; a
@@ -319,6 +322,13 @@ the driven port and the gateway over that context's seam, and is
 opt-in because a context that consumes nothing is a perfectly good
 context. Needs `--module-layout=modulith`; the flat layout has no seam
 for a second context to meet the first at, and keel says so.
+
+Every one of those commands re-projects the agents' **navigation
+index** — the map and skills rows in the root `AGENTS.md` — in its own
+apply, so a bounded context's row lands in the commit that creates it.
+`keel docs check` is the net for the structural edits a person or an
+agent makes by hand: it writes nothing and exits 1 on drift, so it
+wires into CI or the pre-commit hook.
 
 `keel …` is shorthand for the installed binary — without an install,
 prefix with npx: `npx @rgoussu.dev/keel add observability`.

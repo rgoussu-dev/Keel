@@ -78,6 +78,12 @@ export async function addThreeContexts(spec: JvmProjectSpec, cwd: string): Promi
  *     proves it worked.
  *   - **The new modules are on a classpath**, rather than merely
  *     present in the tree.
+ *
+ * Before the build, the cheap structural reads: the build file
+ * registers every module, the wiring class names each consumed peer,
+ * and the root document's `keel:map` gained a row per context — the
+ * index is recomputed inside `keel add module`'s own apply, so this
+ * is a fact about that command rather than about a later sync.
  */
 export async function runJvmAddModuleE2E(
   spec: JvmProjectSpec,
@@ -119,6 +125,14 @@ export async function runJvmAddModuleE2E(
   expect(await read(wiring)).toContain(
     `import ${PKG}.shipping.domain.contract.OrderingClient${terminator}`,
   );
+
+  // The navigation index moved with the structure, in the same apply
+  // — every added context has a map row in the root document, and no
+  // later `keel docs sync` was needed to notice them.
+  const map = await read('AGENTS.md');
+  for (const context of ['greeting', 'ordering', 'shipping', 'billing']) {
+    expect(map, `map row for ${context}`).toContain(`](modules/${context}/) — bounded context`);
+  }
 
   if (maven) {
     // The assembly's new dependencies landed on the classpath, not

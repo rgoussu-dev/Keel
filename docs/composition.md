@@ -484,16 +484,49 @@ description), then:
 - **projects a row per doc into the root `keel:map` slot**, under the
   engine's own identity, so an agent that never auto-loads nested
   files (Codex, Gemini CLI, Zed, opencode) still reaches every doc
-  from the root. Rows already in the map stay as written, a directory
-  without one gains a row named by the first section describing it,
-  and rows sort by path. `keel docs sync` (#138) will own the full
-  projection.
+  from the root — see [the navigation index](#the-navigation-index)
+  below. A section may also declare `indexes: 'modules'`, marking the
+  directory the project's bounded contexts live in so the index
+  projects a row per context beneath it; the family kit owns that
+  layout, and the projection reads the declaration rather than
+  carrying five path prefixes of its own.
 
 Docs realize in the same final harness pass as skills and hooks, after
 the harness patches, and only under `agentic.harness`. What a section
 may carry is held to one rule, **noise cancellation**: the real
 commands, the wiring file's path, the silent failure the layer is known
 for — anything an agent could derive from the tree does not ship.
+
+### The navigation index
+
+The rows an agent orients by are a **projection**, not a document
+anyone maintains: `keel docs sync|check` (and every install, in its
+own apply) recomputes them from the manifest and the resolved
+registry and writes them into three engine-owned regions —
+`keel:map` and `keel:skills-index` in the root `AGENTS.md`,
+`keel:children` in a nested one that has documents beneath it. Every
+row reads `- [Title](href) — description`.
+
+Three rules the projection holds to:
+
+- **Only what has architectural identity is indexed.** Directories
+  with a document, bounded contexts, skills — things keel or an
+  architectural action creates and names. The long tail (function
+  bodies, call sites, literals) is not, and will not be: it has no
+  stable identity, so a shipped index of it would lie within days.
+- **A skill's row is its own description, verbatim.** The row and the
+  frontmatter come from one `SkillSpec.description`, and a sweep over
+  every emitted stack holds them byte-identical — two spellings of one
+  trigger is exactly the drift the index exists to prevent.
+- **An install merges, a sync replaces.** An install realizes only the
+  contributors that ran, so it lays its rows over the ones already
+  there and drops none; a row several contributors may describe (a
+  directory's) keeps the description the first section gave it. `keel
+docs sync` recomputes the set outright, which is what prunes a row
+  whose subject is gone.
+
+Full reference, including what `check` reports and how it is wired
+into CI: [`keel docs`](cli.md#keel-docs).
 
 ### Owned regions
 
@@ -549,8 +582,9 @@ apply** rather than trusting the adapter:
   is refused too, and a transform that leaves one of its own markers
   missing is an escape as well.
 - **The engine's own regions are claimed first.** The `keel:map` and
-  `keel:skills-index` slots the binding spec ships empty belong to the
-  engine — attributed to the reserved contributor identity
+  `keel:skills-index` slots the binding spec ships empty, and the
+  `keel:children` slot the projection lands in a nested document that
+  needs one, belong to the engine — attributed to the reserved contributor identity
   `keel:engine` (`ENGINE_CONTRIBUTOR_ID`), which no adapter may
   register under and which manifest `entries` name as `source` for
   content the engine writes without an adapter. An adapter claiming

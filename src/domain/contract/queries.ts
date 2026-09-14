@@ -23,7 +23,7 @@
  */
 
 import type { Query } from '../kernel/action.js';
-import type { InstallTarget, PresetAnswers } from './commands.js';
+import type { DocsReport, InstallTarget, PresetAnswers } from './commands.js';
 import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
@@ -441,4 +441,24 @@ export function projectStatusQuery(
   input: Omit<ProjectStatusQuery, 'kind' | 'intent'>,
 ): ProjectStatusQuery {
   return { kind: 'keel.project-status', intent: 'query', ...input };
+}
+
+/* ------------------------------------------------------------------ *
+ * Docs check                                                          *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Recomputes the navigation index and reports how the project's
+ * documents differ from it. The read half of `keel docs`: the same
+ * computation `keel.docs-sync` writes, with nothing written — so a
+ * pipeline can gate on drift without a working tree it may dirty.
+ */
+export interface DocsCheckQuery extends Query<DocsReport> {
+  readonly kind: 'keel.docs-check';
+  readonly cwd: string;
+}
+
+/** Constructs a {@link DocsCheckQuery}. */
+export function docsCheckQuery(input: Omit<DocsCheckQuery, 'kind' | 'intent'>): DocsCheckQuery {
+  return { kind: 'keel.docs-check', intent: 'query', ...input };
 }

@@ -69,10 +69,20 @@ import {
   assertRegion,
   confinementOf,
   locateRegion,
-  markdownRegion,
   regionPatch,
   type Region,
 } from '../contract/region.js';
+import {
+  MAP_REGION,
+  ROOT_DOC,
+  SKILLS_INDEX_REGION,
+  computeDocsIndex,
+  mergeRows,
+  parseRows,
+  renderIndexBody,
+  type DocsIndexInput,
+  type DocsIndexRegion,
+} from './docs-index.js';
 import { SETTINGS_SEED, mergeHookSettings } from './hook-settings.js';
 import { eolAware } from './util.js';
 import {
@@ -203,12 +213,9 @@ export interface Ownership {
  * run, so an adapter declaring one is refused naming the engine.
  */
 export const ENGINE_REGIONS: readonly { readonly target: string; readonly region: Region }[] = [
-  { target: 'AGENTS.md', region: markdownRegion('map') },
-  { target: 'AGENTS.md', region: markdownRegion('skills-index') },
+  { target: ROOT_DOC, region: MAP_REGION },
+  { target: ROOT_DOC, region: SKILLS_INDEX_REGION },
 ];
-
-const ROOT_DOC = 'AGENTS.md';
-const MAP_REGION = markdownRegion('map');
 
 /** A fresh {@link Ownership} with the engine's own regions already claimed. */
 export function newOwnership(): Ownership {
@@ -292,6 +299,7 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
     [...inputs.manifest.tags, ...tagsAdded],
     inputs.logger,
     owners,
+    inputs.manifest.modules,
   );
   return {
     tagsAdded: [...tagsAdded],
@@ -381,6 +389,7 @@ export function realizeHarness(
   tags: readonly Tag[],
   logger: Logger,
   owners: Ownership,
+  modules: DocsIndexInput['modules'] = [],
 ): {
   readonly skills: readonly StagedSkill[];
   readonly files: readonly HarnessFile[];
@@ -455,7 +464,23 @@ export function realizeHarness(
     }
   }
   const docs = contributions.flatMap((c) => c.docs);
-  if (docs.length > 0) files.push(...stagePointers(docs, tree), ...projectMap(docs, tree, owners));
+  if (docs.length > 0) files.push(...stagePointers(docs, tree));
+  // The index projects what this run realized, laid over the rows
+  // already in the slots — an install never sees the contributors it
+  // did not run, and `keel docs sync` is what recomputes the set
+  // whole. `keel new` runs every contributor, so the two agree there.
+  files.push(
+    ...projectDocsIndex(
+      computeDocsIndex({
+        docs,
+        skills: contributions.flatMap((c) => c.skills),
+        modules,
+      }),
+      tree,
+      owners,
+      { merge: true },
+    ),
+  );
   return { skills, files, skipped: 0 };
 }
 
@@ -495,65 +520,82 @@ const ENGINE_ADAPTER: Adapter = {
   contribute: () => ({}),
 };
 
-/** The line that opens the map the engine projects into the root `AGENTS.md`. */
-export const MAP_HEADING =
-  '**Map** — every directory with notes of its own; read the one for the directory you work in.';
+/**
+ * Writes one project's computed index into the engine-owned regions
+ * that carry it, under the engine's own identity — the projection's
+ * single write path, shared by the final harness pass and by
+ * `keel docs sync`.
+ *
+ * `merge` is what tells the two apart. An install realizes only the
+ * contributors that ran, so it lays its rows over the ones already
+ * there and drops none; a sync recomputes the set outright, which is
+ * what prunes a row whose subject is gone. Either way a document the
+ * project does not have, or one whose region the binding spec
+ * predates, is left exactly as it is: the projection fills a slot, it
+ * never invents one.
+ */
+export function projectDocsIndex(
+  regions: readonly DocsIndexRegion[],
+  tree: Tree,
+  owners: Ownership,
+  options: { readonly merge: boolean },
+): HarnessFile[] {
+  const written: HarnessFile[] = [];
+  const touched = new Set<string>();
+  for (const region of regions) {
+    const current = tree.read(region.target);
+    if (current === null) continue;
+    const text = current.toString('utf8');
+    const span = locateRegion(text, region.region, region.target);
+    if (span === null && region.whenAbsent === 'keep') continue;
+    const inside =
+      span === null
+        ? ''
+        : text.slice(span.begin + region.region.begin.length, span.end - region.region.end.length);
+    const rows = options.merge ? mergeRows(parseRows(inside), region.rows) : region.rows;
+    if (rows.length === 0 && span === null) continue;
+    reserveEngineSlot(owners, region.target, region.region);
+    applyContribution(
+      ENGINE_ADAPTER,
+      {
+        patches: [
+          regionPatch({
+            target: region.target,
+            region: region.region,
+            body: renderIndexBody(region.heading, rows),
+            padding: 'blank',
+            whenAbsent: region.whenAbsent,
+          }),
+        ],
+      },
+      tree,
+      'install',
+      owners,
+    );
+    touched.add(region.target);
+  }
+  for (const target of touched) {
+    written.push({
+      adapterId: ENGINE_CONTRIBUTOR_ID,
+      path: target,
+      sha256: createHash('sha256').update(tree.read(target)!).digest('hex'),
+    });
+  }
+  return written;
+}
 
 /**
- * Projects a row per realized doc into the root `AGENTS.md`'s
- * `keel:map` slot, under the engine's own identity: rows already
- * there stay as they are (a later run adding one directory's section
- * never drops the others), a directory without a row gains one named
- * by the first section that describes it, and the rows sort by path.
- * A root without the slot is left alone — the spec it carries
- * predates the map.
+ * Pre-owns one more engine region mid-run — a child index, whose
+ * target only the projection knows, so {@link ENGINE_REGIONS} cannot
+ * list it up front. A region an adapter already owns is left alone:
+ * the claim that follows is then refused naming the adapter, as any
+ * second claim is.
  */
-function projectMap(docs: readonly DocSection[], tree: Tree, owners: Ownership): HarnessFile[] {
-  const current = tree.read(ROOT_DOC);
-  if (current === null) return [];
-  const text = current.toString('utf8');
-  const span = locateRegion(text, MAP_REGION, ROOT_DOC);
-  if (span === null) return [];
-  const rows = new Map<string, string>();
-  const inside = text.slice(span.begin + MAP_REGION.begin.length, span.end - MAP_REGION.end.length);
-  for (const line of inside.split(/\r?\n/)) {
-    const listed = /^- \[`(.+)\/`\]\(/.exec(line);
-    if (listed !== null) rows.set(listed[1]!, line);
-  }
-  for (const doc of docs) {
-    if (rows.has(doc.directory)) continue;
-    rows.set(
-      doc.directory,
-      `- [\`${doc.directory}/\`](${docTarget(doc.directory)}) — ${doc.description}`,
-    );
-  }
-  const body = [MAP_HEADING, '', ...[...rows.keys()].sort().map((dir) => rows.get(dir)!)].join(
-    '\n',
-  );
-  applyContribution(
-    ENGINE_ADAPTER,
-    {
-      patches: [
-        regionPatch({
-          target: ROOT_DOC,
-          region: MAP_REGION,
-          body,
-          padding: 'blank',
-          whenAbsent: 'keep',
-        }),
-      ],
-    },
-    tree,
-    'install',
-    owners,
-  );
-  return [
-    {
-      adapterId: ENGINE_CONTRIBUTOR_ID,
-      path: ROOT_DOC,
-      sha256: createHash('sha256').update(tree.read(ROOT_DOC)!).digest('hex'),
-    },
-  ];
+function reserveEngineSlot(owners: Ownership, target: string, region: Region): void {
+  const key = regionKey(target, region);
+  if (owners.regions.has(key)) return;
+  owners.regions.set(key, ENGINE_CONTRIBUTOR_ID);
+  owners.engineSlots.add(key);
 }
 
 /** Inputs for {@link makeCtx}. */

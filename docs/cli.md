@@ -391,6 +391,86 @@ actually take.
 Full reference, including the JSON API and how the loopback port is
 protected: [the local scaffolder](ui.md).
 
+## `keel docs`
+
+Project the **navigation index** — the rows an agent orients by —
+from what keel already knows about this project, and hold the
+documents to it.
+
+```sh
+keel docs sync [--dry-run]   # recompute the rows and write them
+keel docs check              # report drift; exit 1 when there is any
+```
+
+### What is indexed, and what is deliberately not
+
+Truth is the manifest plus the resolved registry, never a walk of the
+tree. Three regions carry the result, all
+[engine-owned](composition.md#owned-regions):
+
+| Region              | In                   | Rows                                                                             |
+| ------------------- | -------------------- | -------------------------------------------------------------------------------- |
+| `keel:map`          | root `AGENTS.md`     | every documented directory at the top of its chain, plus one per bounded context |
+| `keel:skills-index` | root `AGENTS.md`     | one per staged skill, its description **verbatim** from the skill's frontmatter  |
+| `keel:children`     | a nested `AGENTS.md` | the documents immediately beneath it, where there are any                        |
+
+Every row reads `- [Title](href) — description`.
+
+**Indexed** is what has architectural identity and a name keel or an
+architectural action creates or renames: directories with a document,
+bounded contexts, skills. **The long tail is not**: function bodies,
+call sites, usages, literals. Those churn every commit and have no
+stable identity, so any index of them would lie within days — grep is
+the right tool there, and the root document says so. _Orient by map,
+look up by index, grep the long tail._
+
+### `keel docs sync`
+
+Replays every recorded contributor from the answers the manifest
+holds — the motion [`--reapply`](#--reapply-the-update-path) already
+performs — recomputes every row, and rewrites **only** the regions
+above. Prose, user-authored rows and other contributors' sections
+outside those markers come back untouched, and a document keel did
+not write is listed as not indexed rather than silently adopted or
+deleted. Running it twice writes nothing the second time.
+
+A document that carries no slot is left alone rather than given one;
+`check` reports the missing pair instead, since the projection fills
+a slot and never invents one in a file it did not write.
+
+### `keel docs check`
+
+The same computation, zero writes, and a non-zero exit listing what
+it found:
+
+```
+keel docs check:
+    AGENTS.md <!-- keel:map:begin --> — 5 rows
+    AGENTS.md <!-- keel:skills-index:begin --> — 1 row
+  ✗ AGENTS.md <!-- keel:map:begin -->: row 'cmd/AGENTS.md' reads 'reworded' where the declaration says 'one directory per deployment unit, one wiring file per context'
+  ✗ AGENTS.md <!-- keel:map:begin -->: row '`platform/`' points at 'platform/AGENTS.md', which this project does not have
+```
+
+Three drifts it names, each with a different fix: a row's text no
+longer matching its declaration, a row pointing at something that is
+gone, and a region edited by hand. Because it writes nothing, it is
+safe in a pipeline and behind a `command -v keel` probe in the
+pre-commit hook.
+
+### The same-commit rule, as machinery
+
+`keel new`, `keel add <vertical>` and `keel add module` run the
+projection **inside their own apply**, so keel-driven structural
+change can never drift: the row for a bounded context lands in the
+same commit as the context. An install projects what it realized over
+the rows already there — it never saw the contributors it did not run
+— while `sync` recomputes the set outright, which is what prunes a row
+whose subject is gone. `keel new` runs every contributor, so the two
+agree on a fresh scaffold.
+
+What is left for the net is a **human or agent** structural edit:
+that is what `check` is for.
+
 ## `keel toolchain`
 
 Provision the project's **declared toolchain** — the manifest's

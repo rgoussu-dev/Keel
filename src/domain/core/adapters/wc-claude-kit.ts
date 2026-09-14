@@ -116,6 +116,7 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
         },
         {
           directory: 'modules',
+          indexes: 'modules',
           title: 'bounded contexts',
           description: 'one package per bounded context; peers meet only at its ./service export',
           bullets: [

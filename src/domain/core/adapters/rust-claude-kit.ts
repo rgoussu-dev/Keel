@@ -142,6 +142,7 @@ function rustFamily(ctx: Ctx): ClaudeKitFamily {
         },
         {
           directory: 'modules',
+          indexes: 'modules',
           title: 'bounded contexts',
           description:
             'one directory of crates per bounded context; peers meet only at user-side/service',

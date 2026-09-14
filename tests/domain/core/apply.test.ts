@@ -8,7 +8,6 @@ import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-pr
 import {
   ContributionConflictError,
   ENGINE_REGIONS,
-  MAP_HEADING,
   applyContributions,
   collectHarness,
   newOwnership,
@@ -19,6 +18,7 @@ import {
 } from '../../../src/domain/core/apply.js';
 import type { HookSpec } from '../../../src/domain/contract/hook.js';
 import { docSeed, type DocSection } from '../../../src/domain/contract/doc.js';
+import { MAP_HEADING } from '../../../src/domain/core/docs-index.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { hashRegion, regionPatch } from '../../../src/domain/contract/region.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
