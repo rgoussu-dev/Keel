@@ -190,6 +190,74 @@ export function addModuleCommand(
   return { kind: 'keel.add-module', intent: 'command', ...input };
 }
 
+/* ------------------------------------------------------------------ *
+ * Navigation index                                                    *
+ * ------------------------------------------------------------------ */
+
+/** One index region the projection owns, and what a run did to it. */
+export interface DocsRegionRecord {
+  /** The document carrying the region, relative to the project root. */
+  readonly target: string;
+  /** The region's opening marker — `<!-- keel:map:begin -->`. */
+  readonly region: string;
+  /** How many rows the projection computed for it. */
+  readonly rows: number;
+  /** Whether this run's write changed the document. Always false for `check`. */
+  readonly changed: boolean;
+}
+
+/** One way a project and its index disagree, as `keel docs check` reports it. */
+export interface DocsDriftRecord {
+  readonly target: string;
+  /** The region's opening marker, or absent for drift about the document itself. */
+  readonly region?: string;
+  /** What is wrong, in one line. */
+  readonly detail: string;
+}
+
+/**
+ * Result DTO of `keel docs sync` and `keel docs check` — the same
+ * report either way, because the two run the same computation and
+ * differ only in whether they write it.
+ */
+export interface DocsReport {
+  /** Every region the projection owns for this project, in write order. */
+  readonly regions: readonly DocsRegionRecord[];
+  /**
+   * How the project and its index disagreed *before* this run.
+   * `keel docs check` exits non-zero when it is non-empty; `sync`
+   * reports it as what it just fixed.
+   */
+  readonly drift: readonly DocsDriftRecord[];
+  /**
+   * Documents the project carries that the declarations do not name —
+   * a hand-written `AGENTS.md`, or one from a plugin that is gone.
+   * Reported, never indexed and never deleted: keel says what it does
+   * not know rather than guessing at it.
+   */
+  readonly unindexed: readonly string[];
+  /** Files the sync staged; empty for `check` and for a sync with nothing to do. */
+  readonly changes: readonly TreeChange[];
+  /** False under `--dry-run`, and always for `check`. */
+  readonly committed: boolean;
+}
+
+/**
+ * Recompute the navigation index from the manifest and the resolved
+ * registry, and rewrite the engine-owned regions that carry it.
+ * Writes nothing outside those regions.
+ */
+export interface DocsSyncCommand extends Command<DocsReport> {
+  readonly kind: 'keel.docs-sync';
+  readonly cwd: string;
+  readonly dryRun: boolean;
+}
+
+/** Constructs a {@link DocsSyncCommand}. */
+export function docsSyncCommand(input: Omit<DocsSyncCommand, 'kind' | 'intent'>): DocsSyncCommand {
+  return { kind: 'keel.docs-sync', intent: 'command', ...input };
+}
+
 /** Result DTO of `keel link`. */
 export interface LinkReport {
   /** The peer's directory as recorded in this project's manifest. */

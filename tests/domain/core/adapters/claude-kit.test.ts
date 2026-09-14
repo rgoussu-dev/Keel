@@ -12,16 +12,20 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { describe, expect, it } from 'vitest';
 import {
+  ADD_MODULE_SKILL_NAME,
   FORMAT_STEP_BEGIN,
   FORMAT_STEP_END,
   FORMAT_STEP_REGION,
   PRE_COMMIT_HOOK_NAME,
+  PROMOTE_SKILL_NAME,
   RUNBOOK_BEGIN,
   RUNBOOK_END,
   RUNBOOK_REGION,
   RUN_SKILL_NAME,
   claudeKitContribution,
+  diffSizeHookSpec,
   formatStepPatch,
+  lifecycleSkill,
   preCommitHookSpec,
   renderPreCommitHook,
   renderRunbook,
@@ -48,6 +52,8 @@ const family: ClaudeKitFamily = {
   runSkill: runSkillSpec({ description: 'Launch the app.', body: '# Run\n\nsteps' }),
   formatCommand: 'toolfmt -w .',
   verifyCommand: 'tool build && tool test',
+  layout: 'modulith',
+  lifecycle: { addModule: ['a fact about adding one'], promote: ['a fact about promoting'] },
 };
 
 describe('upsertRunbook', () => {
@@ -231,17 +237,38 @@ describe('preCommitHookSpec', () => {
 });
 
 describe('claudeKitContribution', () => {
-  it('ships the hook and the run skill through their seams, and the stack section as a region', () => {
+  it('ships both hooks and the two skills through their seams, and the stack section as a region', () => {
     const contribution = claudeKitContribution(family);
     expect(contribution.files ?? []).toEqual([]);
     // Nothing under .claude/ is a bare patch or file any more: the
     // engine owns the hook's path, mode, settings wiring and provenance.
     expect((contribution.patches ?? []).map((p) => p.target)).toEqual(['AGENTS.md']);
     expect(contribution.patches?.[0]?.regions).toEqual([RUNBOOK_REGION]);
-    expect(contribution.skills).toEqual([family.runSkill]);
+    expect(contribution.skills).toEqual([family.runSkill, lifecycleSkill(family)]);
     expect(contribution.skills?.[0]?.name).toBe(RUN_SKILL_NAME);
-    expect(contribution.hooks).toEqual([preCommitHookSpec(family)]);
+    expect(contribution.hooks).toEqual([preCommitHookSpec(family), diffSizeHookSpec(family)]);
     expect(contribution.tagsAdd).toEqual(['agentic.claude-kit']);
+  });
+
+  it('ships exactly one layout lifecycle skill, and which one is the layout', () => {
+    const modulith = claudeKitContribution(family).skills ?? [];
+    expect(modulith.map((s) => s.name)).toEqual([RUN_SKILL_NAME, ADD_MODULE_SKILL_NAME]);
+    const flat = claudeKitContribution({ ...family, layout: 'basic' }).skills ?? [];
+    expect(flat.map((s) => s.name)).toEqual([RUN_SKILL_NAME, PROMOTE_SKILL_NAME]);
+  });
+
+  it('carries the family’s own facts, and the gate, into the lifecycle skill', () => {
+    const skill = lifecycleSkill(family);
+    expect(skill.body).toContain('a fact about adding one');
+    expect(skill.body).toContain(family.verifyCommand);
+    expect(lifecycleSkill({ ...family, layout: 'basic' }).body).toContain('a fact about promoting');
+  });
+
+  it('keeps every skill description to at most two sentences', () => {
+    for (const layout of ['basic', 'modulith'] as const) {
+      const skill = lifecycleSkill({ ...family, layout });
+      expect(skill.description.split(/(?<=\.)\s+/), skill.name).toHaveLength(2);
+    }
   });
 
   it('round-trips CRLF specs through the runbook patch', () => {

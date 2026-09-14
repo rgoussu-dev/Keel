@@ -40,8 +40,14 @@ import { auditContext } from '../../../../evals/lib/context-audit.mjs';
 /** The redesign's root ceiling, stack section and slots included. */
 const MAX_ROOT_LINES = 120;
 
-/** Context bytes: the audit's set + the shims. Codex's default cap is 32 KiB for the whole chain. */
-const MAX_EAGER_BYTES = 8 * 1024;
+/**
+ * Context bytes: the audit's set + the shims. Codex's default cap is
+ * 32 KiB for the whole chain, so the ceiling here is a bloat tripwire
+ * rather than a hard limit. Raised from 8 KiB with #138: the root now
+ * carries the projected skills index as well as the map, which is the
+ * navigation the redesign is for and roughly 250 bytes of it.
+ */
+const MAX_EAGER_BYTES = 9 * 1024;
 
 /** What the audit counts in a fresh scaffold, and the shims it does not (no rules of their own). */
 const AUDITED = ['.claude/skills/run/SKILL.md', 'AGENTS.md', 'CLAUDE.md'];

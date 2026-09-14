@@ -71,9 +71,11 @@ holds, in reading order:
 2. **The stack section** (`<!-- keel:stack-runbook:… -->`), filled by
    the family kit below: commands, dispatch stance, layout map.
 3. The `keel:map` slot, which the engine fills with a row per
-   [per-directory doc](#per-directory-docs), and the empty
-   `keel:skills-index` slot — both reserved for the index projection
-   (`keel docs sync`, a later wave).
+   [per-directory doc](#per-directory-docs) and per bounded context,
+   and the `keel:skills-index` slot, a row per staged skill — both
+   written by the index projection
+   ([`keel docs sync`](../cli.md#keel-docs), and every install in its
+   own apply).
 4. **Architecture** — the dependency rule, the dispatch-seam opening
    rule ("commands as data through one seam"; _which_ seam is the
    stack section's business), error→transport, fakes beside adapters,
@@ -153,8 +155,53 @@ framework, entrypoint shape, module layout) — one adapter per stack
   for the HTTP services, the sample invocation for the CLIs, the Vite
   dev server for the SPA. Contributed as a `SkillSpec` through the
   [skill seam](../composition.md#skills) — the vertical declares the
-  name in `skills: ['run']`, and the engine stages the file with its
+  name in `skills`, and the engine stages the file with its
   provenance recorded in the manifest.
+- **A `diff-size` habit hook** (`.claude/hooks/diff-size.sh`,
+  `PostToolUse` on `Edit|Write`): after Claude edits a file it counts
+  the uncommitted change — the diff against `HEAD` plus the lines of
+  new files — and, once per threshold crossed, says so and names this
+  stack's gate to run before committing the part that already works.
+  A **reminder, never a gate**: it reinforces the Chain-of-Small-Steps
+  working agreement mechanically, because prose in a root document
+  does not survive context rot (the catalog's Selective Hearing
+  obstacle), and a working agreement nothing enforces stops holding
+  around the third hour.
+
+  It is the first Habit Hook because it is the one such check that is
+  genuinely language-agnostic — pure `git`, POSIX `sh`, no
+  per-language parser — so one script serves all five families.
+  Function-size, comment-removal and duplication detectors need real
+  tooling per family to avoid regex slop across Java, Kotlin, Go, Rust
+  and TypeScript; they are deferred until the evals can price them.
+
+  Two things keep it from becoming noise. It fires **once per band**,
+  not once per edit — the last band it spoke at is remembered in
+  `.git/`, outside the tree it is measuring — and it exits silently
+  wherever it cannot honestly answer: no `git`, no repository, no
+  commits yet, `KEEL_DIFF_SIZE_LIMIT=0`. The threshold is that
+  variable, defaulting to 400 changed lines and documented at the top
+  of the emitted script; to turn the hook off entirely, list
+  `diff-size` under `env.KEEL_DISABLED_HOOKS`.
+
+- **One layout lifecycle skill**, and never both of the pair:
+  - `add-module` on `layout.modulith` — the procedure `keel add
+module` _is_, plus what fails quietly in this family around it:
+    the build registration the command performs (and a hand-copied
+    directory does not), the per-context wiring class, how this
+    framework's container discovers a handler (a `@ComponentScan`
+    list that stopped growing compiles and starts perfectly), and the
+    dependency scope that keeps the peer's domain off your compile
+    classpath. Those are the failures the 24-cell `add-module` e2e
+    grid exists to catch, written down where an agent about to add a
+    context reads them.
+  - `promote-to-modulith` on the flat layout — where each directory
+    lands under `modules/<ctx>/`, in this family's own paths, and the
+    three rules the shape then carries. `keel` chooses the layout at
+    `keel new` and moves no project between them, so the procedure is
+    the agent's; the essay that used to sit in the root document is
+    now a skill that loads when it is needed and costs nothing when
+    it is not.
 
 ## Per-directory docs
 
@@ -186,7 +233,8 @@ Rust crate): the `GreetingLog` and `UnitOfWork` ports, where the
 Testcontainers test lives, and that a run without Docker has not
 proven the SQL adapter.
 
-Every doc gains a row in the root `keel:map` slot, so Codex, Gemini
+Every doc gains a row in the root `keel:map` slot — recomputed by
+[`keel docs sync`](../cli.md#keel-docs) — so Codex, Gemini
 CLI and the other agents that never auto-load nested files reach it
 from the root. The context-budget guard holds each nested doc to its
 ceiling, the root plus every nested chain under Codex's 32 KiB
@@ -201,8 +249,9 @@ brownfield replay are shipped here. All other elements below are
 planned work under their named issues; catalog membership does not mean
 those files or commands are emitted today. The hook seam is shipped
 (#136), and so are the per-directory document seam and the family
-kits' layer docs (#135); engine projections beyond the map rows remain
-pending #138.
+kits' layer docs (#135). The engine's navigation index is shipped
+(#138): `keel docs sync|check` and the same projection inside every
+install.
 
 Each row is grounded in the contributor's own artifacts. Prefer skills,
 then nested documents, then root doctrine. Root doctrine admits only
@@ -231,7 +280,7 @@ re-renders the harness and restamps the marker. See
 
 **Family claude-kits (jvm/go/rust/ts/wc — inside agent-harness; parameterized by framework × build system × language × layout × shape)**
 
-- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (#139) — single owner; the skill body _covers_ `keel add module`'s assembly-patch/registration behavior, bounded-context stages nothing for it; diff-size hook _(decided here, for #140: kit-owned, all five families)_; `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
+- Stack-runbook region (shipped through the owned-region seam); `run` skill (shipped through SkillSpec); `pre-commit-format.sh` + settings wiring (shipped through the hook seam, #136), optionally carrying #138's guarded `keel docs check` step (hook content, sourced from #138); per-layer docs + pointers in the layer directories each layout has (shipped through the doc seam, #135); `add-module` skill on modulith layouts / `promote-to-modulith` on flat (shipped, #139) — single owner, exactly one of the two per scaffold; the `add-module` body _covers_ `keel add module`'s assembly-patch/registration behavior and the family's silent failures (container discovery, the `@ComponentScan` list, the seam scope, the `internal/` wall), and bounded-context stages nothing for it; `diff-size.sh` habit hook (shipped, #140: kit-owned, all five families, pure `git` and POSIX `sh`, one reminder); `code-index` skill (gated, #146); rtk wrapper when opted in _(decided here, for #144: opt-in dial on the kit)_.
 - **→ #150 (owner: walking-skeleton, below):** the family kits do _not_ own `new-port` — the port exemplars are walking-skeleton files.
 
 **walking-skeleton (after extraction: bootstraps, port examples, peer contexts, build tools)**
@@ -271,7 +320,7 @@ re-renders the harness and restamps the marker. See
 
 **persistence**
 
-- `migrate` skill (#139); Testcontainers note composed into the family kit's driven-adapter doc — `tests/` on a basic Rust crate (shipped, #135).
+- `migrate` skill (shipped, #139: one shape over both halves of the `migrations` dial, spelled for the tool the project recorded); Testcontainers note composed into the family kit's driven-adapter doc — `tests/` on a basic Rust crate (shipped, #135).
 - **→ #151:** `add-repository` skill (replicate the GreetingLog slice end-to-end: port + SQL adapter + Testcontainers contract test + fake + unit-of-work demarcation, with per-layout/per-language placement); `migrations/` nested doc carrying the persistence doctrine (env-only config; the service never migrates in production — migrations are their own deployment unit; the `UnitOfWork` port is the transaction boundary); Docker-skip caveat in the `tests/` doc (a green suite on a Docker-less host has not proven the SQL adapter — say so before claiming done).
 
 **observability**
@@ -289,7 +338,7 @@ re-renders the harness and restamps the marker. See
 
 **iac**
 
-- `iac/AGENTS.md` nested doc (seam shipped, #135; content pending); `deploy` skill (#139).
+- `iac/AGENTS.md` nested doc (seam shipped, #135; content pending); `deploy` skill (shipped, #139: the OpenTofu loop over the recorded cloud and flavor, with the workspace-is-the-environment rule and the apply/destroy gate).
 - **→ #152:** the secrets doctrine as that doc's content (no secret ever lands in a file; credentials ride the environment; one workspace per environment) — a refinement of #135's row; confirm-gate settings entry for `tofu apply`/`tofu destroy` (the only commands in the kit that mutate billable, stateful infrastructure — force a human gate).
 
 **vcs**
@@ -304,7 +353,7 @@ re-renders the harness and restamps the marker. See
 
 **Engine (reserved identity, #133)**
 
-- `keel:map` / `keel:skills-index` / child-index rows via `keel docs sync` (#138). Nothing else: the generation marker is machinery (#137), and the docs-check hook step is family-kit hook content.
+- `keel:map` / `keel:skills-index` / `keel:children` rows via `keel docs sync` (shipped, #138), and the same projection inside every install — a bounded context's row lands in the apply that scaffolds it. The directory the contexts live in is the family kit's `DocSection.indexes` declaration; the engine carries no per-family path. Nothing else: the generation marker is machinery (#137), and the docs-check hook step is family-kit hook content.
 
 **Plugins**
 

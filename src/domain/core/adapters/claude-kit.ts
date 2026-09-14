@@ -78,6 +78,34 @@ const AGENTS_TARGET = 'AGENTS.md';
 /** The one hook every family kit ships: format, then gate, before a Claude-issued `git commit`. */
 export const PRE_COMMIT_HOOK_NAME = 'pre-commit-format';
 
+/**
+ * The habit hook every family kit ships: after an edit, notice when
+ * the uncommitted diff has outgrown one reviewable step and say so.
+ *
+ * A **habit** hook rather than a gate — it reinforces the
+ * Chain-of-Small-Steps agreement mechanically, because prose in a
+ * root document does not survive context rot (the catalog's Selective
+ * Hearing obstacle) and a working agreement nothing enforces is a
+ * working agreement that stops holding around the third hour.
+ *
+ * Chosen first of its kind because it is the one such check that is
+ * genuinely language-agnostic: pure `git`, POSIX `sh`, no per-language
+ * parser. Function-size, comment-removal and duplication detectors
+ * need real tooling per family to avoid regex slop across Java,
+ * Kotlin, Go, Rust and TypeScript; they are deferred until the evals
+ * can price them, not forgotten.
+ */
+export const DIFF_SIZE_HOOK_NAME = 'diff-size';
+
+/**
+ * The default threshold, in changed lines, before the habit hook says
+ * anything. Deliberately generous: a nudge that fires on ordinary
+ * work is a nudge an agent learns to ignore, which costs the seam its
+ * credibility as well as the reminder. Overridable per project in the
+ * emitted script.
+ */
+export const DIFF_SIZE_LIMIT = 400;
+
 const HOOK_TARGET = hookTarget(PRE_COMMIT_HOOK_NAME);
 
 /**
@@ -86,6 +114,22 @@ const HOOK_TARGET = hookTarget(PRE_COMMIT_HOOK_NAME);
  * vertical's `skills`, staged through the {@link SkillSpec} seam.
  */
 export const RUN_SKILL_NAME = 'run';
+
+/**
+ * The layout lifecycle skill of a modulith: the procedure behind
+ * `keel add module`, with the silent failures the e2e grid documents.
+ * Emitted only on `layout.modulith` — there is no context to add to a
+ * single hexagon.
+ */
+export const ADD_MODULE_SKILL_NAME = 'add-module';
+
+/**
+ * The layout lifecycle skill of a flat project: what moving onto the
+ * modulith layout costs, as a procedure. Emitted only on `basic` —
+ * the counterpart of {@link ADD_MODULE_SKILL_NAME}, and the reason
+ * the pair is exhaustive rather than optional.
+ */
+export const PROMOTE_SKILL_NAME = 'promote-to-modulith';
 
 /** What a family adapter contributes on top of the shared shape. */
 export interface ClaudeKitFamily {
@@ -111,6 +155,39 @@ export interface ClaudeKitFamily {
    * by {@link layerDocSections}; absent where a family ships none.
    */
   readonly docs?: readonly LayerDoc[];
+  /**
+   * The module layout that was scaffolded. The axis the layout
+   * lifecycle skill turns on: `modulith` ships `add-module`, `basic`
+   * ships `promote-to-modulith`, and neither ships both.
+   */
+  readonly layout: 'basic' | 'modulith';
+  /** This family's half of the two layout lifecycle skills. */
+  readonly lifecycle: LifecycleFacts;
+}
+
+/**
+ * What a family contributes to its layout lifecycle skill — the facts
+ * that are true of *this* language and of no other, so the shared
+ * frame can carry everything that is true of all five.
+ *
+ * Held to the no-fiction rule the seam exists for: every bullet names
+ * a file the scaffold really has, a command it really runs, or a
+ * failure the e2e grid really caught. A bullet an agent could derive
+ * from the tree does not ship.
+ */
+export interface LifecycleFacts {
+  /**
+   * What `keel add module` leaves behind in this family, and the way
+   * each step fails **silently** — the failures a compile does not
+   * catch and only the wiring test does. One bullet each.
+   */
+  readonly addModule: readonly string[];
+  /**
+   * Where each directory of the flat layout lands under
+   * `modules/<ctx>/`, and the wall the build must then hold. One
+   * bullet each.
+   */
+  readonly promote: readonly string[];
 }
 
 /** One per-layer doc a family kit emits: where it lives, its map row, and its bullets. */
@@ -127,6 +204,14 @@ export interface LayerDoc {
    * silent failure it is known for. One bullet each.
    */
   readonly bullets: readonly string[];
+  /**
+   * Set on the directory the project's bounded contexts sit in, so
+   * the engine's index projects a row per context beneath it. The
+   * family owns the layout — `modules/` here, `internal/modules/` on
+   * Go — and the projection reads the declaration rather than
+   * carrying five path prefixes of its own.
+   */
+  readonly indexes?: 'modules';
 }
 
 /** The section every family kit owns in the docs it seeds. */
@@ -142,6 +227,7 @@ export function layerDocSections(docs: readonly LayerDoc[]): DocSection[] {
     directory: doc.directory,
     section: LAYER_DOC_SECTION,
     description: doc.description,
+    ...(doc.indexes === undefined ? {} : { indexes: doc.indexes }),
     body: [`## \`${doc.directory}/\` — ${doc.title}`, '', ...doc.bullets.map((b) => `- ${b}`)].join(
       '\n',
     ),
@@ -228,6 +314,242 @@ export function runSkillSpec(spec: { description: string; body: string }): Skill
 }
 
 /**
+ * What the habit hook says, as a `printf` format taking the live
+ * threshold and the project's gate.
+ *
+ * Actionable and specific per the catalog's Habit Hooks guidance —
+ * the number, and the one command that makes the next commit a green
+ * one — never an essay about clean code. Both values are `printf`
+ * arguments rather than interpolations: the message runs inside a
+ * shell, where a backtick or a `$` in the gate command would be
+ * something to execute.
+ */
+export const DIFF_SIZE_MESSAGE =
+  'diff-size: the uncommitted change has passed %s lines. Commit the part that already ' +
+  'works before going further: run "%s", commit what passes, and continue from there. ' +
+  'A change this size is hard to review, and harder to revert one mistake out of.';
+
+/** Where the hook remembers the last band it spoke at, inside `.git/`. */
+export const DIFF_SIZE_STAMP = 'keel-diff-size';
+
+/**
+ * The diff-size habit hook's script: after Claude edits or writes a
+ * file, count what is uncommitted and speak up once each time the
+ * total crosses another multiple of the threshold.
+ *
+ * Three decisions the script makes, each for a reason:
+ *
+ *   - **It counts tracked changes against `HEAD` plus the lines of
+ *     new files.** An agent's large change is usually part edit and
+ *     part new file, and counting only the former would miss it.
+ *   - **It fires once per band, not once per edit.** A reminder on
+ *     every keystroke past the line is noise, and noise is what makes
+ *     the next one ignorable. The band lives in `.git/`, outside the
+ *     working tree it is measuring.
+ *   - **It degrades silently.** No git, no repository, no commits
+ *     yet, a threshold of `0` — every one of those exits 0. A habit
+ *     hook that breaks a session is worse than no habit hook.
+ *
+ * POSIX `sh` and `git` only: a scaffolded Go, Rust or JVM project
+ * cannot assume anything else, and this is the same rule the
+ * pre-commit hook follows.
+ */
+export function renderDiffSizeHook(family: HookCommands): string {
+  return `#!/bin/sh
+# PostToolUse hook: after Claude edits a file, notice when the
+# uncommitted change has outgrown one reviewable step and say so once.
+# A reminder, never a gate — it reinforces the Chain-of-Small-Steps
+# working agreement (AGENTS.md) mechanically rather than by hoping the
+# prose is still in context.
+set -eu
+
+# Changed lines — added + deleted against HEAD, plus the lines of new
+# files — before this hook says anything. Raise it for a codebase
+# whose natural step is bigger; set it to 0 to keep the hook staged
+# and silent. To turn the hook off entirely, list '${DIFF_SIZE_HOOK_NAME}' under
+# env.KEEL_DISABLED_HOOKS in .claude/settings.json.
+limit=\${KEEL_DIFF_SIZE_LIMIT:-${String(DIFF_SIZE_LIMIT)}}
+
+cd "\${CLAUDE_PROJECT_DIR:-.}"
+case "$limit" in '' | *[!0-9]*) exit 0 ;; esac
+[ "$limit" -gt 0 ] || exit 0
+command -v git >/dev/null 2>&1 || exit 0
+git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  tracked=$(git diff HEAD --numstat 2>/dev/null || true)
+else
+  tracked=$(git diff --numstat 2>/dev/null || true)
+fi
+changed=$(printf '%s\\n' "$tracked" | awk '{ n += $1 + $2 } END { print n + 0 }')
+
+# New files are part of the change a reviewer would read, and no diff
+# against HEAD can see them.
+new=$(git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r f; do
+  if [ -f "$f" ]; then wc -l < "$f"; fi
+done | awk '{ n += $1 } END { print n + 0 }')
+total=$((changed + new))
+
+# One reminder per band crossed, not one per edit: a nudge that fires
+# on every keystroke past the line is the kind that gets ignored. The
+# band is remembered under .git/, outside the tree being measured.
+stamp="$git_dir/${DIFF_SIZE_STAMP}"
+band=$((total / limit))
+seen=0
+if [ -f "$stamp" ]; then seen=$(cat "$stamp" 2>/dev/null || echo 0); fi
+case "$seen" in '' | *[!0-9]*) seen=0 ;; esac
+printf '%s\\n' "$band" > "$stamp" 2>/dev/null || true
+[ "$band" -gt "$seen" ] || exit 0
+
+printf '${DIFF_SIZE_MESSAGE}\\n' "$limit" '${family.verifyCommand}' >&2
+exit 2
+`;
+}
+
+/**
+ * The message the hook may inject, spelled with the default
+ * threshold. What the engine counts against the reminder budget, and
+ * what a project reading its own manifest sees it has agreed to; a
+ * project that raised `KEEL_DIFF_SIZE_LIMIT` sees its own number in
+ * the actual reminder.
+ */
+export function diffSizeReminder(family: HookCommands): string {
+  return DIFF_SIZE_MESSAGE.replace('%s', String(DIFF_SIZE_LIMIT)).replace(
+    '%s',
+    family.verifyCommand,
+  );
+}
+
+/**
+ * The habit hook as a {@link HookSpec}: `PostToolUse` on the editing
+ * tools, one reminder, and no slots — nothing else composes into it.
+ */
+export function diffSizeHookSpec(family: HookCommands): HookSpec {
+  return {
+    name: DIFF_SIZE_HOOK_NAME,
+    event: 'PostToolUse',
+    matcher: 'Edit|Write',
+    script: renderDiffSizeHook(family),
+    reminders: [diffSizeReminder(family)],
+  };
+}
+
+/**
+ * The layout lifecycle skill for the shape that was scaffolded —
+ * `add-module` on a modulith, `promote-to-modulith` on a flat
+ * project, never both and never neither. One frame for all five
+ * families, the way `renderRunbook` holds the stack sections
+ * together; the family supplies only what is true of its language.
+ */
+export function lifecycleSkill(family: ClaudeKitFamily): SkillSpec {
+  return family.layout === 'modulith' ? addModuleSkill(family) : promoteSkill(family);
+}
+
+/**
+ * The `add-module` skill: the command first, because
+ * `keel add module` is the procedure — it scaffolds the context *and*
+ * registers it with the build and the assembly, which is exactly the
+ * half a hand-copied directory gets wrong. The family's bullets are
+ * the silent failures around it.
+ */
+function addModuleSkill(family: ClaudeKitFamily): SkillSpec {
+  return {
+    name: ADD_MODULE_SKILL_NAME,
+    description:
+      "Add a bounded context to this modulith and wire it to a peer's seam. Use when asked to add a module, a bounded context or a new subdomain.",
+    body: [
+      '# Add a bounded context',
+      '',
+      'Run the command. It scaffolds the context **and** registers it with',
+      'the build and the assembly; a hand-copied directory gets the second',
+      'half wrong and nothing says so until dispatch fails at runtime.',
+      '',
+      '```sh',
+      'keel add module <name>                    # a context that consumes nothing',
+      "keel add module <name> --consumes <peer>  # …and a gateway over <peer>'s seam",
+      '```',
+      '',
+      '`<name>` is one lowercase word. `--consumes` names a context that',
+      'already exists **and publishes a seam**; keel refuses anything else at',
+      'the front door and lists the contexts that qualify. It is opt-in — a',
+      'context that consumes nothing is a perfectly good context.',
+      '',
+      '## What it emitted, and what fails quietly here',
+      '',
+      ...family.lifecycle.addModule.map((fact) => `- ${fact}`),
+      '',
+      '## Then',
+      '',
+      `1. Run the gate: \`${family.verifyCommand}\`. Green over the emitted`,
+      '   placeholder is the proof the registration landed — that is the only',
+      '   check that sees it.',
+      '2. Put your first real use case where the placeholder is. Peers still',
+      '   meet only at the seam: a new edge means a driven port in **your**',
+      "   vocabulary and an adapter over the peer's seam, never an import.",
+      '',
+      'Never create a context directory by hand, and never widen the seam to',
+      "reach a peer's internals — the wall is what keeps the contexts apart.",
+    ].join('\n'),
+  };
+}
+
+/**
+ * The `promote-to-modulith` skill: the flat layout's counterpart.
+ * `keel new` chooses the layout and nothing moves a project between
+ * them, so this is a procedure a person or an agent performs — which
+ * is precisely why it ships as one, with the target paths spelled for
+ * the family rather than left as an essay about layouts in general.
+ */
+function promoteSkill(family: ClaudeKitFamily): SkillSpec {
+  return {
+    name: PROMOTE_SKILL_NAME,
+    description:
+      'Move this flat project onto the modulith layout, one hexagon per bounded context. Use when a second bounded context appears and the single hexagon no longer fits.',
+    body: [
+      '# Promote this project to the modulith layout',
+      '',
+      'This project is one hexagon. A second genuine bounded context is the',
+      'moment to carve it: the flat trisection maps onto `modules/<ctx>/`',
+      'one-to-one, so this is a directory move plus a build change — never a',
+      'redesign. Do not start it earlier: `modules/<the-only-one>/` buys a',
+      'level of nesting and nothing else.',
+      '',
+      '`keel` chooses the layout at `keel new` and does not move a project',
+      'between them, so the move is yours. Do it in this order, running the',
+      `gate (\`${family.verifyCommand}\`) between every step — one verifiable`,
+      'step at a time.',
+      '',
+      '## Where each directory lands',
+      '',
+      ...family.lifecycle.promote.map((fact) => `- ${fact}`),
+      '',
+      '## The three rules the shape then carries',
+      '',
+      '1. **The deployment unit is the assembly, not the adapter.** Nothing',
+      '   under `modules/` produces a runnable artifact, and only an assembly',
+      '   may see a context’s core.',
+      '2. **The dispatch seam is per context.** A repository-wide command bus',
+      '   hands every adapter every context’s vocabulary and quietly re-merges',
+      '   the contexts you just separated.',
+      '3. **Contexts meet only at `user-side/service`.** A context needing a',
+      '   peer declares a driven port in **its own** vocabulary and implements',
+      '   it over the peer’s seam. Every other edge must fail the build.',
+      '',
+      'Once the shape is in place, `keel add module <name>` scaffolds each',
+      'further context and registers it for you.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * All the pre-commit hook takes from a family: the auto-fix step and
+ * the gate. Narrower than {@link ClaudeKitFamily} on purpose — the
+ * hook has no business knowing the layout or the runbook, and a test
+ * exercising it should not have to invent them.
+ */
+export type HookCommands = Pick<ClaudeKitFamily, 'formatCommand' | 'verifyCommand'>;
+
+/**
  * The pre-commit hook, keel's own
  * (`.claude/hooks/pre-commit-format.sh`) adapted to the family's
  * commands. Built here rather than rendered from a template because
@@ -240,7 +562,7 @@ export function runSkillSpec(spec: { description: string; body: string }): Skill
  * or JVM project cannot assume Node (or jq) on the machine, and the
  * worst a false positive costs is one extra verify run.
  */
-export function renderPreCommitHook(family: ClaudeKitFamily): string {
+export function renderPreCommitHook(family: HookCommands): string {
   return `#!/usr/bin/env bash
 # PreToolUse hook: before Claude runs \`git commit\`, auto-format the tree
 # (where the stack has a formatter) and run the project's own fast gate,
@@ -355,7 +677,7 @@ export function formatStepPatch(formatCommand: string | undefined) {
  * it wires a formatter in, so a reapply re-renders the hook around
  * the step it finds.
  */
-export function preCommitHookSpec(family: ClaudeKitFamily): HookSpec {
+export function preCommitHookSpec(family: HookCommands): HookSpec {
   return {
     name: PRE_COMMIT_HOOK_NAME,
     event: 'PreToolUse',
@@ -375,8 +697,8 @@ export function preCommitHookSpec(family: ClaudeKitFamily): HookSpec {
  */
 export function claudeKitContribution(family: ClaudeKitFamily): Contribution {
   return {
-    skills: [family.runSkill],
-    hooks: [preCommitHookSpec(family)],
+    skills: [family.runSkill, lifecycleSkill(family)],
+    hooks: [preCommitHookSpec(family), diffSizeHookSpec(family)],
     ...(family.docs === undefined ? {} : { docs: layerDocSections(family.docs) }),
     patches: [
       regionPatch({

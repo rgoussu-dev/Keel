@@ -29,6 +29,8 @@ import {
   type JvmRunnableSpec,
   javaLauncher,
 } from './jvm-e2e.js';
+import { expectVerticalSkill } from './harness-docs.js';
+import { MIGRATE_SKILL_NAME } from '../../src/domain/core/adapters/migrations-skill.js';
 
 export { E2E_TIMEOUT_MS, skipJvmMavenE2E } from './jvm-e2e.js';
 
@@ -189,7 +191,12 @@ export async function runJvmPersistenceE2E(
   answers: Readonly<Record<string, Record<string, string>>> = {},
 ): Promise<void> {
   await scaffold(spec, cwd);
+  // No persistence yet, so no procedure for one: the vertical ships
+  // `migrate` because its files make the migration real, and the
+  // negative is what holds that rule to more than an intention.
+  await expectVerticalSkill(cwd, MIGRATE_SKILL_NAME, false);
   await addVertical('persistence', cwd, answers);
+  await expectVerticalSkill(cwd, MIGRATE_SKILL_NAME, true);
 
   const dockerBound = [':modules:greeting:infra:greeting-log:jdbc', ':application:api'];
   const withoutDocker = [

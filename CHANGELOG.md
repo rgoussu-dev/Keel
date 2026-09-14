@@ -64,6 +64,95 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **The first habit hook: `diff-size`** (#140, wave 4). Every family
+  kit now ships `.claude/hooks/diff-size.sh`, a `PostToolUse` hook on
+  the editing tools: after Claude edits a file it counts the
+  uncommitted change — the diff against `HEAD` plus the lines of new
+  files — and, once per threshold crossed, says so and names this
+  stack's own gate to run before committing the part that already
+  works.
+
+  A **reminder, never a gate**, and the distinction is the point: it
+  reinforces the Chain-of-Small-Steps working agreement mechanically,
+  because prose in a root document does not survive context rot. It
+  is the first Habit Hook because it is the one such check that is
+  genuinely language-agnostic — pure `git`, POSIX `sh`, no
+  per-language parser — so one script serves all five families;
+  function-size and duplication detectors are deferred until the
+  evals can price them.
+
+  Two things keep it from becoming noise: it fires once per threshold
+  band rather than once per edit (the band lives in `.git/`, outside
+  the tree it measures), and it exits silently wherever it cannot
+  honestly answer — no `git`, no repository, no commits yet,
+  `KEEL_DIFF_SIZE_LIMIT=0`. That variable is the threshold, defaulting
+  to 400 changed lines and documented at the top of the emitted
+  script; `diff-size` under `env.KEEL_DISABLED_HOOKS` turns it off
+  entirely. Its one reminder brings keel's own total to two, within
+  the three the budget leaves it.
+
+- **Lifecycle skills per component** (#139, wave 4): each component
+  that contributes files now contributes the matching procedure as a
+  skill, gated by the no-fiction rule — a skill ships only for
+  something the component's own files make real.
+
+  The family kits ship **one layout lifecycle skill and never both**:
+  `add-module` on `layout.modulith` — the procedure `keel add module`
+  _is_, plus the failures the 24-cell add-module grid exists to catch,
+  each of them silent (the build registration a hand-copied directory
+  skips, the per-context wiring class, how this framework's container
+  discovers a handler, the dependency scope that keeps the peer's
+  domain off your compile classpath) — and `promote-to-modulith` on
+  the flat layout, which takes the promotion essay out of the root
+  document and turns it into a procedure with this family's own target
+  paths, loaded when it is needed and free when it is not.
+  `persistence` ships `migrate` (one shape over both halves of the
+  `migrations` dial, spelled for the recorded tool, with the two
+  nevers) and `iac` ships `deploy` (the OpenTofu loop over the
+  recorded cloud and flavor: the workspace **is** the environment, and
+  `apply`/`destroy` are the only commands here that cost money).
+
+  Every one is description-triggered through the `SkillSpec` seam,
+  declared on its vertical's `skills`, and at most two sentences long.
+  The tests assert the **absence** as well as the presence — a
+  scaffold with no persistence has no `migrate`, one with no target has
+  no `deploy`, and no scaffold carries both halves of the layout pair.
+
+- **`keel docs sync` and `keel docs check`** (#138, wave 4 of the
+  agent-harness redesign): the agents' navigation index is now a
+  projection of what keel already knows — the manifest plus the
+  resolved registry — rather than something anyone maintains by hand.
+  `sync` replays every recorded contributor from its recorded
+  answers, recomputes every row, and rewrites **only** the
+  engine-owned regions that carry them: `keel:map` and
+  `keel:skills-index` in the root `AGENTS.md`, and `keel:children` in
+  a nested document that has documents beneath it. Prose, rows and
+  other contributors' sections outside those markers are untouched,
+  a document keel did not write is reported as unindexed rather than
+  adopted or deleted, and running it twice writes nothing the second
+  time. `check` is the same computation with no writes and a
+  non-zero exit naming each drift — a reworded row, a row pointing at
+  something that is gone, a hand-edited region — so it wires into CI
+  or behind a `command -v keel` probe in the pre-commit hook.
+
+  The map now carries a row per **bounded context** as well as per
+  documented directory, and the skills index a row per staged skill
+  whose description is byte-identical to that skill's own
+  frontmatter (a sweep over every emitted stack holds the two
+  together). Where the contexts live is a new
+  `DocSection.indexes: 'modules'` declaration on the family kits'
+  `modules/` document, so the engine carries no per-family path.
+
+  **The same-commit rule is machinery now, not discipline.**
+  `keel new`, `keel add <vertical>` and `keel add module` project the
+  index inside their own apply — a context's row lands in the commit
+  that creates it — an install merging its rows over the ones already
+  there, `sync` recomputing the set outright. Documented in
+  [`keel docs`](docs/cli.md#keel-docs) and
+  [the navigation index](docs/composition.md#the-navigation-index).
+  No harness-generation bump: the two root slots this fills are the
+  ones every generation-1 scaffold already ships.
+
 - **Per-directory docs** (#135, wave 3 of the agent-harness
   redesign): the context that left the root lands where it binds. An
   adapter contributes a `DocSection` on `Contribution.docs` — a

@@ -88,6 +88,23 @@ dev|staging|prod`, resource names carry `-${terraform.workspace}`.
   environment-agnostic image the pipeline pushed serves every
   workspace.
 
+## The `deploy` skill
+
+When the project carries the agent harness, this vertical ships
+`.claude/skills/deploy/SKILL.md`: the OpenTofu loop over the target it
+just provisioned, spelled for the cloud and flavor this project
+recorded. It exists for the two facts that cost real money to learn —
+`tofu apply` and `tofu destroy` mutate billable, stateful
+infrastructure, and one workspace **is** one environment, since
+nothing but `-${terraform.workspace}` separates staging from
+production.
+
+`iac` owns it rather than `distribution`, and that split is the
+no-fiction rule: `distribution` emits a descriptor and a pipeline, but
+nothing it ships can be deployed _to_ until a target exists. The
+pipeline facts are body content in this one skill, never a second one
+staged beside it. See [skills](../composition.md#skills).
+
 ## Prerequisites
 
 | Requirement               | When                                                         |

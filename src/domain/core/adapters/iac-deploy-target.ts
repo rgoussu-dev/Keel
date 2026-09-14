@@ -30,6 +30,7 @@
 
 import type { Adapter, Ctx, ManifestV2, Question, Tag } from '../../contract/composition.js';
 import { bootstrapProjectName, deployFlavor, type DeployFlavor } from './distribution-container.js';
+import { deploySkill } from './deploy-skill.js';
 
 export const IAC_DEPLOY_TARGET_ID = 'iac/deploy-target';
 
@@ -115,6 +116,10 @@ export const iacDeployTargetAdapter: Adapter = {
       ...(await ctx.templates.render(`composition/iac/deploy-target/${cloud}/common`, '', vars)),
       ...(await ctx.templates.render(`composition/iac/deploy-target/${cloud}/${flavor}`, '', vars)),
     ];
-    return { files, tagsAdd: [OPENTOFU_TAG, cloudTag(cloud)] };
+    return {
+      files,
+      skills: [deploySkill(cloud, flavor)],
+      tagsAdd: [OPENTOFU_TAG, cloudTag(cloud)],
+    };
   },
 };
