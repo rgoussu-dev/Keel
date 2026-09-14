@@ -241,6 +241,20 @@ catalog.
 Adding an already-installed vertical errors with
 `keel.vertical-already-installed` — that is what `--reapply` is for.
 
+**A project from another harness generation is refused.** Every
+manifest keel creates records the generation of the agent harness it
+wrote (`harnessGeneration`). `keel add <vertical>` — with or without
+`--reapply` — and `keel add module` refuse a project stamped with an
+older generation, or with none, with `keel.harness-generation`, before
+a file moves: its sentinels and agent documents live where this keel
+no longer looks, and a half-patch would corrupt them. The message names
+the way forward — move `AGENTS.md`, `CLAUDE.md` and `.claude/` aside
+(keeping `.claude/.keel-manifest.json`), run `keel add agent-harness`
+(`--reapply` when it is installed), which re-renders the harness and
+restamps the marker, then re-run the command — or pin the keel that
+scaffolded the project. `keel add agent-harness` is the one command
+the gate lets through. A newer marker asks for a newer keel.
+
 ### `--reapply`: the update path
 
 `keel add <vertical> --reapply` re-renders an **installed** vertical

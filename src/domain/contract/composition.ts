@@ -12,6 +12,8 @@
  */
 
 import type { ContributionFile } from './files.js';
+import type { DocSection } from './doc.js';
+import type { HookSpec } from './hook.js';
 import type { SkillSpec } from './skill.js';
 import type { Tag } from './tags.js';
 import type { Logger } from './ports/logger.js';
@@ -204,6 +206,29 @@ export interface Contribution {
    * resolved set both contribute is a hard refusal naming both.
    */
   readonly skills?: readonly SkillSpec[];
+  /**
+   * Hooks shipped alongside the code change — content-carrying
+   * {@link HookSpec}s the applier stages to `.claude/hooks/<name>.sh`
+   * as adapter-owned whole files and wires into
+   * `.claude/settings.json` itself, one entry per hook. Every name
+   * must appear in the parent {@link Vertical.hooks} declaration; a
+   * name two adapters of the resolved set both contribute is a hard
+   * refusal naming both; the reminders every realized hook declares
+   * stay within the project's budget. Realized with skills, after the
+   * run settles, only under {@link AGENT_HARNESS_TAG}.
+   */
+  readonly hooks?: readonly HookSpec[];
+  /**
+   * Per-directory doc sections — content-carrying {@link DocSection}s
+   * the engine lands as owned regions of `<directory>/AGENTS.md`
+   * (seeded with `docSeed`, so contributors compose one directory's
+   * doc in any order), with a `CLAUDE.md` pointer beside each doc and
+   * a row per doc projected into the root `keel:map` slot. A section
+   * two adapters of the run both declare on one directory is refused
+   * naming both. Realized with skills and hooks, after the run
+   * settles, only under {@link AGENT_HARNESS_TAG}.
+   */
+  readonly docs?: readonly DocSection[];
   /**
    * Harness-only patches, collected with skills and realized after all
    * verticals have installed, only under {@link AGENT_HARNESS_TAG}.
@@ -453,6 +478,14 @@ export interface Vertical {
    * contributes a skill.
    */
   readonly skills?: readonly string[];
+  /**
+   * Every hook name installing this vertical may stage — the union
+   * over its adapters' {@link Contribution.hooks}. Same bargain as
+   * {@link skills}: checked against each contribution at install
+   * time, an undeclared name a hard error. Omit only when no adapter
+   * of the vertical contributes a hook.
+   */
+  readonly hooks?: readonly string[];
 }
 
 /**
@@ -463,6 +496,8 @@ export type { Tree };
 export type { Tag } from './tags.js';
 export type { ContributionFile } from './files.js';
 export type { SkillSpec, SkillSupportingFile } from './skill.js';
+export type { HookEvent, HookSpec } from './hook.js';
+export type { DocSection } from './doc.js';
 export type { Region } from './region.js';
 export type { ManifestV2, InstalledVertical, ManifestEntry } from './manifest.js';
 export type { ToolchainNeed, ToolchainTool, ToolchainBlock } from './toolchain.js';

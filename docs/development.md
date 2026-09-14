@@ -511,6 +511,20 @@ Extending the real-install suite to a second manager means a second
 tool on the runner and a second mutated state, so it waits for a
 reason beyond symmetry.
 
+### Upstream checks
+
+`tests/upstream/` checks the agent behaviour keel's emitted harness
+rests on, against the real tool rather than an assumption. Today it
+holds one suite: Claude Code loads a nested `CLAUDE.md` when a file in
+its directory is read, and resolves its `@AGENTS.md` import relative to
+that file — the shape of every per-directory doc pointer. It is opt-in
+(`KEEL_RUN_UPSTREAM=1`, plus `claude` on the PATH), spends one short
+Haiku session of the operator's subscription, and never gates a PR:
+
+```sh
+KEEL_RUN_UPSTREAM=1 pnpm vitest run tests/upstream
+```
+
 ## Harness evals
 
 `evals/` measures how well coding agents navigate what keel emits —

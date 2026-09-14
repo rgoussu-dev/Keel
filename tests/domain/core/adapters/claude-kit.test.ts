@@ -15,21 +15,22 @@ import {
   FORMAT_STEP_BEGIN,
   FORMAT_STEP_END,
   FORMAT_STEP_REGION,
+  PRE_COMMIT_HOOK_NAME,
   RUNBOOK_BEGIN,
   RUNBOOK_END,
   RUNBOOK_REGION,
   RUN_SKILL_NAME,
   claudeKitContribution,
   formatStepPatch,
-  refreshPreCommitHook,
+  preCommitHookSpec,
   renderPreCommitHook,
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
-  upsertClaudeHook,
   upsertFormatStep,
   upsertRunbook,
 } from '../../../../src/domain/core/adapters/claude-kit.js';
+import { HookSpecSchema, renderHook } from '../../../../src/domain/contract/hook.js';
 
 /**
  * The same family with **no** formatter — the key absent rather than
@@ -123,9 +124,10 @@ describe('renderPreCommitHook', () => {
     }
   });
 
-  it('parses as bash in every shape it renders', () => {
+  it('parses as bash, and as POSIX sh, in every shape it renders', () => {
     // A generated hook that does not parse fails at commit time, on
     // the user's machine, with a shell error — worth catching here.
+    // `sh -n` holds the body to POSIX syntax, bash-isms excluded.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keel-hook-'));
     try {
       const shapes = {
@@ -140,6 +142,7 @@ describe('renderPreCommitHook', () => {
         const file = path.join(dir, `${name}.sh`);
         fs.writeFileSync(file, src);
         expect(() => execFileSync('bash', ['-n', file]), `${name} is not valid bash`).not.toThrow();
+        expect(() => execFileSync('sh', ['-n', file]), `${name} is not POSIX sh`).not.toThrow();
       }
     } finally {
       fs.removeSync(dir);
@@ -194,115 +197,50 @@ describe('upsertFormatStep', () => {
   });
 });
 
-describe('upsertClaudeHook', () => {
-  const HOOK = 'bash .claude/hooks/pre-commit-format.sh';
-  const parse = (s: string) =>
-    JSON.parse(s) as {
-      hooks: {
-        PreToolUse: { matcher: string; hooks: { command: string }[] }[];
-        PostToolUse?: unknown[];
-      };
-      [k: string]: unknown;
-    };
-
-  it('adds keel’s entry to a project’s settings and keeps everything else', () => {
-    const own = JSON.stringify(
-      {
-        permissions: { allow: ['Bash(pnpm test)'] },
-        env: { FOO: 'bar' },
-        hooks: {
-          PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'echo edit' }] }],
-          PostToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo done' }] }],
-        },
-      },
-      null,
-      2,
-    );
-    const merged = parse(upsertClaudeHook(own));
-    expect(merged['permissions']).toEqual({ allow: ['Bash(pnpm test)'] });
-    expect(merged['env']).toEqual({ FOO: 'bar' });
-    expect(merged.hooks.PostToolUse).toHaveLength(1);
-    expect(merged.hooks.PreToolUse.map((e) => e.hooks[0]!.command)).toEqual(['echo edit', HOOK]);
+describe('preCommitHookSpec', () => {
+  it('is a well-formed hook in both shapes: PreToolUse on Bash, its format step a slot', () => {
+    for (const f of [family, withoutFormatter(family)]) {
+      const hook = preCommitHookSpec(f);
+      expect(HookSpecSchema.safeParse(hook).success).toBe(true);
+      expect(hook).toMatchObject({
+        name: PRE_COMMIT_HOOK_NAME,
+        event: 'PreToolUse',
+        matcher: 'Bash',
+        script: renderPreCommitHook(f),
+        slots: [FORMAT_STEP_REGION],
+      });
+    }
   });
 
-  it('is its own fixed point, on the seed and on a merged file alike', () => {
-    const seeded = upsertClaudeHook('{}');
-    expect(parse(seeded).hooks.PreToolUse[0]!.hooks[0]!.command).toBe(HOOK);
-    expect(upsertClaudeHook(seeded)).toBe(seeded);
-    const once = upsertClaudeHook('{"env":{"A":"1"}}');
-    expect(upsertClaudeHook(once)).toBe(once);
+  it('declares the one reminder it can inject — the gate’s refusal, as the script spells it', () => {
+    const hook = preCommitHookSpec(family);
+    expect(hook.reminders).toEqual([
+      "pre-commit-format: 'tool build && tool test' failed. Fix it before committing.",
+    ]);
+    expect(hook.script).toContain(`echo "${hook.reminders[0]}" >&2`);
   });
 
-  it('refuses a file it cannot read as settings, naming the fix', () => {
-    expect(() => upsertClaudeHook('{ not json')).toThrow(/not valid JSON/);
-    expect(() => upsertClaudeHook('[]')).toThrow(/JSON object/);
-    expect(() => upsertClaudeHook('{"hooks":{"PreToolUse":{}}}')).toThrow(/to be a list/);
-    expect(() => upsertClaudeHook('{"hooks":"owned-by-the-project"}')).toThrow(/to be an object/);
-    expect(() => upsertClaudeHook('{"hooks":[]}')).toThrow(/to be an object/);
-    // An explicit null is a value the file holds, not an absence to default.
-    expect(() => upsertClaudeHook('{"hooks":null}')).toThrow(/to be an object/);
-    expect(() => upsertClaudeHook('{"hooks":{"PreToolUse":null}}')).toThrow(/to be a list/);
-  });
-});
-
-describe('refreshPreCommitHook', () => {
-  it('re-renders the hook around the format step code-style wired in', () => {
-    const wired = upsertFormatStep(renderPreCommitHook(family), 'toolfmt -w .');
+  it('re-renders around the format step code-style wired in, and whole over a pre-sentinel hook', () => {
+    const hook = preCommitHookSpec(family);
+    const wired = upsertFormatStep(renderPreCommitHook(family), 'toolfmt --all');
     const edited = wired.replace('set -euo pipefail', 'set -eu # hand-edited');
-    const refreshed = refreshPreCommitHook(edited, family);
-    expect(refreshed).toContain('toolfmt -w .');
-    expect(refreshed).toContain('set -euo pipefail');
-    expect(refreshed).not.toContain('hand-edited');
-    expect(refreshed).toBe(wired);
-    expect(refreshPreCommitHook(refreshed, family)).toBe(refreshed);
-  });
-
-  it('re-renders a hook from before the sentinels whole', () => {
-    expect(refreshPreCommitHook('#!/bin/sh\nold hook\n', family)).toBe(renderPreCommitHook(family));
-  });
-
-  it('throws with the fix when the sentinels were hand-edited apart', () => {
-    expect(() => refreshPreCommitHook(`x\n${FORMAT_STEP_END}\ny\n`, family)).toThrow(
-      /sentinels are broken/,
-    );
+    expect(renderHook(hook, edited)).toBe(wired);
+    expect(renderHook(hook, '#!/bin/sh\nold hook\n')).toBe(renderPreCommitHook(family));
+    expect(() => renderHook(hook, `x\n${FORMAT_STEP_END}\ny\n`)).toThrow(/sentinels are broken/);
   });
 });
 
 describe('claudeKitContribution', () => {
-  it('emits settings and hook upserts, and the run skill through the seam', () => {
+  it('ships the hook and the run skill through their seams, and the stack section as a region', () => {
     const contribution = claudeKitContribution(family);
     expect(contribution.files ?? []).toEqual([]);
-    const byPath = new Map((contribution.patches ?? []).map((p) => [p.target, p]));
-    expect([...byPath.keys()]).toEqual([
-      '.claude/settings.json',
-      'AGENTS.md',
-      '.claude/hooks/pre-commit-format.sh',
-    ]);
-    // The run skill rides the SkillSpec seam, never a bare files: entry
-    // — that is what lets the applier own its path, provenance and
-    // collision rules.
+    // Nothing under .claude/ is a bare patch or file any more: the
+    // engine owns the hook's path, mode, settings wiring and provenance.
+    expect((contribution.patches ?? []).map((p) => p.target)).toEqual(['AGENTS.md']);
+    expect(contribution.patches?.[0]?.regions).toEqual([RUNBOOK_REGION]);
     expect(contribution.skills).toEqual([family.runSkill]);
     expect(contribution.skills?.[0]?.name).toBe(RUN_SKILL_NAME);
-    // The hook is seeded, executable, and its own fixed point — so a
-    // reapply refreshes it around the format step it finds.
-    const hook = contribution.patches?.find(
-      (p) => p.target === '.claude/hooks/pre-commit-format.sh',
-    );
-    expect(hook?.mode).toBe(0o755);
-    expect(hook?.seed).toBe(renderPreCommitHook(family));
-    expect(hook?.apply(hook.seed!)).toBe(hook?.seed);
-    // The stack section is an owned region, declared so the engine
-    // holds it to its markers; the hook re-renders around the format
-    // step and so owns the complement, which declares nothing.
-    expect(byPath.get('AGENTS.md')?.regions).toEqual([RUNBOOK_REGION]);
-    expect(hook?.regions).toBeUndefined();
-    const settings = JSON.parse(String(byPath.get('.claude/settings.json')?.seed)) as {
-      hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
-    };
-    expect(settings.hooks.PreToolUse[0]?.matcher).toBe('Bash');
-    expect(settings.hooks.PreToolUse[0]?.hooks[0]?.command).toBe(
-      'bash .claude/hooks/pre-commit-format.sh',
-    );
+    expect(contribution.hooks).toEqual([preCommitHookSpec(family)]);
     expect(contribution.tagsAdd).toEqual(['agentic.claude-kit']);
   });
 

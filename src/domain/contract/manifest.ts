@@ -19,6 +19,20 @@ import { ToolchainBlockSchema, type ToolchainBlock } from './toolchain.js';
 export const MANIFEST_FILENAME = '.keel-manifest.json';
 
 /**
+ * The generation of the agent harness this keel emits — where its
+ * sentinels sit and where its documents live. Every manifest keel
+ * creates carries it, and `keel add` refuses a project stamped with
+ * any other (or none) rather than half-patching a layout it no longer
+ * knows. Bumped by a change that moves a sentinel, a region or a
+ * harness document an older scaffold carries.
+ *
+ * Generation 1 is the redesigned harness: the terse root `AGENTS.md`
+ * with its owned regions, the loading shims, and hooks staged through
+ * the hook seam.
+ */
+export const HARNESS_GENERATION = 1;
+
+/**
  * The project scope root keel owns: `<cwd>/.claude`. keel installs
  * are scoped to the **project** only — the user's home directory
  * (`~/.claude`) is never read, written, or otherwise touched.
@@ -79,6 +93,14 @@ export interface ManifestV2 {
    * declared", which is distinct from a written block with no needs.
    */
   readonly toolchain?: ToolchainBlock | undefined;
+  /**
+   * The {@link HARNESS_GENERATION} this project's layout was written
+   * at. Manifest machinery, not a harness element: stamped whether or
+   * not the project installs the harness, and restamped by
+   * `keel add agent-harness`. Absent on a manifest written before the
+   * marker existed.
+   */
+  readonly harnessGeneration?: number | undefined;
 }
 
 /**
@@ -226,6 +248,9 @@ export const ManifestV2Schema = z.object({
   // Optional rather than defaulted: an absent block is a fact (no
   // needs declared), not an empty list to normalise.
   toolchain: ToolchainBlockSchema.optional(),
+  // Optional, never defaulted: an absent marker is the fact `keel add`
+  // refuses on, and a default would forge it.
+  harnessGeneration: z.number().int().nonnegative().optional(),
 });
 
 /**
@@ -263,7 +288,7 @@ export function migrateV1(v1: z.infer<typeof ManifestV1Schema>): ManifestV2 {
   };
 }
 
-/** A new, empty v2 manifest. */
+/** A new, empty v2 manifest, stamped with this keel's {@link HARNESS_GENERATION}. */
 export function emptyManifestV2(now: string, keelVersion: string): ManifestV2 {
   return {
     version: 2,
@@ -279,6 +304,7 @@ export function emptyManifestV2(now: string, keelVersion: string): ManifestV2 {
     peers: [],
     services: [],
     modules: [],
+    harnessGeneration: HARNESS_GENERATION,
   };
 }
 

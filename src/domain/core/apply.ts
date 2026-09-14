@@ -19,14 +19,17 @@
  *      and a region two adapters of the run both declare on one
  *      target is refused naming both — the engine's own regions
  *      (the `AGENTS.md` map and skills-index slots) included.
- *   5. Collect `skills` and region-confined `harnessPatches`; after
- *      the entire chain, realize them only when the settled local
- *      tags carry `agentic.harness`. Each skill is schema-validated,
- *      rendered with `renderSkill`, and written to
+ *   5. Collect `skills`, `hooks` and region-confined `harnessPatches`;
+ *      after the entire chain, realize them only when the settled
+ *      local tags carry `agentic.harness`. Each skill is
+ *      schema-validated, rendered with `renderSkill`, and written to
  *      `.claude/skills/<name>/SKILL.md` (plus supporting files) with
- *      the same whole-file conflict rules as `files`. A skill name
- *      two adapters of the run both contribute is a hard refusal
- *      naming both origins.
+ *      the same whole-file conflict rules as `files`; each hook is
+ *      staged to `.claude/hooks/<name>.sh` under the same rules and
+ *      wired into `.claude/settings.json` by the engine. A skill or
+ *      hook name two adapters of the run both contribute is a hard
+ *      refusal naming both origins. Harness patches run last, over
+ *      the files the whole run staged.
  *   6. Aggregate `tagsAdd` into a flat list returned to the caller.
  *
  * The applier is pure with respect to the manifest — it does not
@@ -45,7 +48,33 @@ import {
   SkillSpecSchema,
   type SkillSpec,
 } from '../contract/skill.js';
-import { assertRegion, markdownRegion, outsideRegions, type Region } from '../contract/region.js';
+import {
+  HOOK_REMINDER_BUDGET,
+  HookSpecSchema,
+  SETTINGS_TARGET,
+  hookTarget,
+  renderHook,
+  type HookSpec,
+} from '../contract/hook.js';
+import {
+  DOC_POINTER,
+  DocSectionSchema,
+  docPointerTarget,
+  docRegion,
+  docSeed,
+  docTarget,
+  type DocSection,
+} from '../contract/doc.js';
+import {
+  assertRegion,
+  confinementOf,
+  locateRegion,
+  markdownRegion,
+  regionPatch,
+  type Region,
+} from '../contract/region.js';
+import { SETTINGS_SEED, mergeHookSettings } from './hook-settings.js';
+import { eolAware } from './util.js';
 import {
   ENGINE_CONTRIBUTOR_ID,
   AGENT_HARNESS_TAG,
@@ -136,6 +165,8 @@ export class ContributionConflictError extends Error {
       | 'missing-patch-target'
       | 'reapply-divergence'
       | 'skill-collision'
+      | 'hook-collision'
+      | 'reminder-budget'
       | 'region-escape'
       | 'region-collision',
   ) {
@@ -153,8 +184,16 @@ export class ContributionConflictError extends Error {
 export interface Ownership {
   /** Skill name → owning adapter id. */
   readonly skills: Map<string, string>;
+  /** Hook name → owning adapter id. */
+  readonly hooks: Map<string, string>;
   /** {@link regionKey} → owning contributor id. */
   readonly regions: Map<string, string>;
+  /**
+   * The engine's pre-owned region keys it has not yet re-rendered
+   * this run: its one claim on each goes through, a second is a
+   * region declared twice like any adapter's.
+   */
+  readonly engineSlots: Set<string>;
 }
 
 /**
@@ -168,13 +207,21 @@ export const ENGINE_REGIONS: readonly { readonly target: string; readonly region
   { target: 'AGENTS.md', region: markdownRegion('skills-index') },
 ];
 
+const ROOT_DOC = 'AGENTS.md';
+const MAP_REGION = markdownRegion('map');
+
 /** A fresh {@link Ownership} with the engine's own regions already claimed. */
 export function newOwnership(): Ownership {
   const regions = new Map<string, string>();
   for (const owned of ENGINE_REGIONS) {
     regions.set(regionKey(owned.target, owned.region), ENGINE_CONTRIBUTOR_ID);
   }
-  return { skills: new Map(), regions };
+  return {
+    skills: new Map(),
+    hooks: new Map(),
+    regions,
+    engineSlots: new Set(regions.keys()),
+  };
 }
 
 /**
@@ -182,10 +229,12 @@ export function newOwnership(): Ownership {
  * is the region's identity, and the target is taken as the Tree
  * takes it — forward slashes, no leading `./` or `/` — so `AGENTS.md`
  * and `./AGENTS.md` are one file here as they are on disk, and an
- * alias spelling is not a way around the one-owner rule.
+ * alias spelling is not a way around the one-owner rule. Encoded as
+ * a tuple, since either half may contain the separator a
+ * concatenation would need.
  */
 export function regionKey(target: string, region: Region): string {
-  return `${canonicalTarget(target)} ${region.begin}`;
+  return JSON.stringify([canonicalTarget(target), region.begin]);
 }
 
 /** The Tree's own path canonicalization, mirrored for ownership keys. */
@@ -256,6 +305,8 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
 export interface HarnessContribution {
   readonly adapter: Adapter;
   readonly skills: readonly SkillSpec[];
+  readonly hooks: readonly HookSpec[];
+  readonly docs: readonly DocSection[];
   readonly patches: readonly ContributionPatch[];
   readonly mode: ApplyMode;
 }
@@ -288,7 +339,35 @@ export function collectHarness(
         `adapter '${adapter.id}' contributes a malformed skill — ${parsed.error.message}`,
       );
   }
-  if (skills.length + patches.length > 0) pending.push({ adapter, skills, patches, mode });
+  const hooks = (contribution.hooks ?? []).map((raw) => parseHook(adapter, raw));
+  const docs = (contribution.docs ?? []).map((raw) => parseDoc(adapter, raw));
+  if (skills.length + hooks.length + docs.length + patches.length > 0) {
+    pending.push({ adapter, skills, hooks, docs, patches, mode });
+  }
+}
+
+/** Validates one contributed doc section, refusing a malformed spec naming the adapter. */
+function parseDoc(adapter: Adapter, raw: DocSection): DocSection {
+  const parsed = DocSectionSchema.safeParse(raw);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((issue) => `${issue.path.join('.') || 'spec'}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`adapter '${adapter.id}' contributes a malformed doc section — ${detail}`);
+  }
+  return parsed.data;
+}
+
+/** Validates one contributed hook, refusing a malformed spec naming the adapter. */
+function parseHook(adapter: Adapter, raw: HookSpec): HookSpec {
+  const parsed = HookSpecSchema.safeParse(raw);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((issue) => `${issue.path.join('.') || 'spec'}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`adapter '${adapter.id}' contributes a malformed hook — ${detail}`);
+  }
+  return parsed.data;
 }
 
 /**
@@ -308,18 +387,25 @@ export function realizeHarness(
   readonly skipped: number;
 } {
   const contributions = pending.splice(0);
-  const count = contributions.reduce((total, c) => total + c.skills.length + c.patches.length, 0);
+  const count = contributions.reduce(
+    (total, c) => total + c.skills.length + c.hooks.length + c.docs.length + c.patches.length,
+    0,
+  );
   if (!tags.includes(AGENT_HARNESS_TAG)) {
     if (count > 0)
       logger.info(`skipped ${String(count)} harness elements — no agent-harness in this project`);
     return { skills: [], files: [], skipped: count };
   }
+  assertReminderBudget(contributions);
   const skills: StagedSkill[] = [];
   const files: HarnessFile[] = [];
+  // Whole files first, across every contributor — a harness patch
+  // lands in a hook another adapter stages (code-style's format step
+  // in the family kit's pre-commit hook), whichever resolved first.
   for (const contribution of contributions) {
     const staged = applyContribution(
       contribution.adapter,
-      contribution,
+      { skills: contribution.skills },
       tree,
       contribution.mode,
       owners,
@@ -328,17 +414,146 @@ export function realizeHarness(
     for (const skill of staged) {
       files.push(...skill.files.map((file) => ({ ...file, adapterId: skill.adapterId })));
     }
+    for (const hook of contribution.hooks) {
+      files.push(stageHook(contribution.adapter, hook, tree, contribution.mode, owners.hooks));
+    }
+  }
+  const wired = contributions.flatMap((c) => c.hooks);
+  if (wired.length > 0) files.push(wireHooks(wired, tree));
+  for (const contribution of contributions) {
+    applyContribution(
+      contribution.adapter,
+      { patches: contribution.patches },
+      tree,
+      contribution.mode,
+      owners,
+    );
+  }
+  // Doc sections compose one directory's doc from the same seed, in
+  // any order; each is an owned region, so two contributors of a run
+  // cannot write one section and none may touch another's.
+  for (const contribution of contributions) {
+    applyContribution(
+      contribution.adapter,
+      { patches: contribution.docs.map(docPatch) },
+      tree,
+      contribution.mode,
+      owners,
+    );
   }
   for (const contribution of contributions) {
-    for (const patch of contribution.patches) {
+    const targets = [
+      ...contribution.patches.map((patch) => patch.target),
+      ...new Set(contribution.docs.map((doc) => docTarget(doc.directory))),
+    ];
+    for (const target of targets) {
       files.push({
         adapterId: contribution.adapter.id,
-        path: canonicalTarget(patch.target),
-        sha256: createHash('sha256').update(tree.read(patch.target)!).digest('hex'),
+        path: canonicalTarget(target),
+        sha256: createHash('sha256').update(tree.read(target)!).digest('hex'),
       });
     }
   }
+  const docs = contributions.flatMap((c) => c.docs);
+  if (docs.length > 0) files.push(...stagePointers(docs, tree), ...projectMap(docs, tree, owners));
   return { skills, files, skipped: 0 };
+}
+
+/** The region patch landing one doc section in its directory's seeded `AGENTS.md`. */
+function docPatch(doc: DocSection): ContributionPatch {
+  return regionPatch({
+    target: docTarget(doc.directory),
+    seed: docSeed(doc.directory),
+    region: docRegion(doc.section),
+    body: doc.body,
+    padding: 'blank',
+  });
+}
+
+/**
+ * Writes the `CLAUDE.md` pointer beside every doc that has none — a
+ * pointer the project already has, whatever it holds, is its own —
+ * and records each one written under the engine.
+ */
+function stagePointers(docs: readonly DocSection[], tree: Tree): HarnessFile[] {
+  const written: HarnessFile[] = [];
+  for (const directory of new Set(docs.map((doc) => doc.directory))) {
+    const target = docPointerTarget(directory);
+    if (tree.exists(target)) continue;
+    tree.write(target, DOC_POINTER);
+    written.push({ adapterId: ENGINE_CONTRIBUTOR_ID, path: target, sha256: sha256Of(DOC_POINTER) });
+  }
+  return written;
+}
+
+/** The engine as a contributor: what a region it writes itself is attributed to. */
+const ENGINE_ADAPTER: Adapter = {
+  id: ENGINE_CONTRIBUTOR_ID,
+  vertical: 'agent-harness',
+  covers: [],
+  predicate: {},
+  contribute: () => ({}),
+};
+
+/** The line that opens the map the engine projects into the root `AGENTS.md`. */
+export const MAP_HEADING =
+  '**Map** — every directory with notes of its own; read the one for the directory you work in.';
+
+/**
+ * Projects a row per realized doc into the root `AGENTS.md`'s
+ * `keel:map` slot, under the engine's own identity: rows already
+ * there stay as they are (a later run adding one directory's section
+ * never drops the others), a directory without a row gains one named
+ * by the first section that describes it, and the rows sort by path.
+ * A root without the slot is left alone — the spec it carries
+ * predates the map.
+ */
+function projectMap(docs: readonly DocSection[], tree: Tree, owners: Ownership): HarnessFile[] {
+  const current = tree.read(ROOT_DOC);
+  if (current === null) return [];
+  const text = current.toString('utf8');
+  const span = locateRegion(text, MAP_REGION, ROOT_DOC);
+  if (span === null) return [];
+  const rows = new Map<string, string>();
+  const inside = text.slice(span.begin + MAP_REGION.begin.length, span.end - MAP_REGION.end.length);
+  for (const line of inside.split(/\r?\n/)) {
+    const listed = /^- \[`(.+)\/`\]\(/.exec(line);
+    if (listed !== null) rows.set(listed[1]!, line);
+  }
+  for (const doc of docs) {
+    if (rows.has(doc.directory)) continue;
+    rows.set(
+      doc.directory,
+      `- [\`${doc.directory}/\`](${docTarget(doc.directory)}) — ${doc.description}`,
+    );
+  }
+  const body = [MAP_HEADING, '', ...[...rows.keys()].sort().map((dir) => rows.get(dir)!)].join(
+    '\n',
+  );
+  applyContribution(
+    ENGINE_ADAPTER,
+    {
+      patches: [
+        regionPatch({
+          target: ROOT_DOC,
+          region: MAP_REGION,
+          body,
+          padding: 'blank',
+          whenAbsent: 'keep',
+        }),
+      ],
+    },
+    tree,
+    'install',
+    owners,
+  );
+  return [
+    {
+      adapterId: ENGINE_CONTRIBUTOR_ID,
+      path: ROOT_DOC,
+      sha256: createHash('sha256').update(tree.read(ROOT_DOC)!).digest('hex'),
+    },
+  ];
 }
 
 /** Inputs for {@link makeCtx}. */
@@ -404,7 +619,7 @@ export function applyContribution(
     writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
   }
   for (const p of contribution.patches ?? []) {
-    const regions = claimRegions(adapter, p, owners.regions);
+    const regions = claimRegions(adapter, p, owners);
     const current = tree.read(p.target);
     if (current === null && p.seed === undefined) {
       throw new ContributionConflictError(
@@ -447,13 +662,12 @@ export function applyContribution(
 }
 
 /**
- * Holds a region-owning transform to its declaration: what lies
- * outside the declared regions must come back as it was (the file's
- * own edges excepted — landing a fresh region moves the last
- * newline). A `base` whose sentinels are already broken is the
+ * Holds a region-owning transform to its declaration through
+ * {@link confinementOf}: what lies outside the declared regions must
+ * come back as it was, and every region the file carried must
+ * survive whole. A `base` whose sentinels are already broken is the
  * file's fault and throws the fix-it message as the transform itself
- * would; a `next` whose sentinels the transform broke is the
- * transform's, and an escape like any other.
+ * would; anything the transform did is its own, and an escape.
  */
 function assertConfined(
   adapter: Adapter,
@@ -462,31 +676,21 @@ function assertConfined(
   base: string,
   next: string,
 ): void {
+  const escape = confinementOf(base, next, regions, patch.target);
+  if (escape === null) return;
   const named = regions.map((r) => `'${r.begin}'`).join(', ');
   const plural = regions.length > 1 ? 's' : '';
-  const before = outsideRegions(base, regions, patch.target);
-  let after: string | null;
-  try {
-    after = outsideRegions(next, regions, patch.target);
-  } catch {
-    after = null;
-  }
-  if (after === null) {
-    throw new ContributionConflictError(
-      `adapter '${adapter.id}': its patch on '${patch.target}' left the sentinels of the region${plural} it declares (${named}) broken — a region-owning patch keeps both markers of every region it owns`,
-      adapter.id,
-      patch.target,
-      'region-escape',
-    );
-  }
-  if (before.trim() !== after.trim()) {
-    throw new ContributionConflictError(
-      `adapter '${adapter.id}': its patch on '${patch.target}' changed content outside the region${plural} it declares (${named}) — a region-owning patch may re-render only what lies between its own markers`,
-      adapter.id,
-      patch.target,
-      'region-escape',
-    );
-  }
+  const what = {
+    broken: `left the sentinels of the region${plural} it declares (${named}) broken — a region-owning patch keeps both markers of every region it owns`,
+    removed: `removed a region it declares (${named}) that the file carried — a region-owning patch keeps both markers of every region it owns`,
+    outside: `changed content outside the region${plural} it declares (${named}) — a region-owning patch may re-render only what lies between its own markers`,
+  }[escape];
+  throw new ContributionConflictError(
+    `adapter '${adapter.id}': its patch on '${patch.target}' ${what}`,
+    adapter.id,
+    patch.target,
+    'region-escape',
+  );
 }
 
 /**
@@ -494,22 +698,23 @@ function assertConfined(
  * adapter: a region already owned on that target — by another
  * adapter of the run, by this one twice, or by the engine — is a
  * refusal naming both. The one claim that goes through is the
- * engine's on a region it pre-owns: that is the projection commands'
- * write path into the `AGENTS.md` slots. Returns the validated
- * regions, empty for a patch declaring none.
+ * engine's first on a region it pre-owns: that is the projection
+ * commands' write path into the `AGENTS.md` slots, once a run.
+ * Returns the validated regions, empty for a patch declaring none.
  */
 function claimRegions(
   adapter: Adapter,
   patch: ContributionPatch,
-  regionOwners: Map<string, string>,
+  owners: Ownership,
 ): readonly Region[] {
   const regions = (patch.regions ?? []).map((raw) =>
     assertRegion(raw, `adapter '${adapter.id}', patch on '${patch.target}'`),
   );
+  const regionOwners = owners.regions;
   for (const region of regions) {
     const key = regionKey(patch.target, region);
     const owner = regionOwners.get(key);
-    if (owner === ENGINE_CONTRIBUTOR_ID && adapter.id === ENGINE_CONTRIBUTOR_ID) continue;
+    if (adapter.id === ENGINE_CONTRIBUTOR_ID && owners.engineSlots.delete(key)) continue;
     if (owner !== undefined) {
       throw new ContributionConflictError(
         owner === adapter.id
@@ -572,6 +777,80 @@ function stageSkill(
     name: spec.name,
     files: files.map((f) => ({ path: f.path, sha256: sha256Of(f.content) })),
   };
+}
+
+/**
+ * Stages one hook's script as an adapter-owned whole file, executable:
+ * a name another adapter of the run already owns is a refusal naming
+ * both, an existing path is a conflict on install, and a reapply
+ * rewrites the script pristine around whatever its slots hold on
+ * disk. Returns the provenance record.
+ */
+function stageHook(
+  adapter: Adapter,
+  hook: HookSpec,
+  tree: Tree,
+  mode: ApplyMode,
+  hookOwners: Map<string, string>,
+): HarnessFile {
+  const target = hookTarget(hook.name);
+  const owner = hookOwners.get(hook.name);
+  if (owner !== undefined) {
+    throw new ContributionConflictError(
+      owner === adapter.id
+        ? `adapter '${adapter.id}' contributes hook '${hook.name}' twice — a hook is an adapter-owned whole file, one spec per name`
+        : `adapter '${adapter.id}' contributes hook '${hook.name}', which adapter '${owner}' already contributes — a hook is an adapter-owned whole file, so exactly one adapter of the resolved set may own the name`,
+      adapter.id,
+      target,
+      'hook-collision',
+    );
+  }
+  hookOwners.set(hook.name, adapter.id);
+  const current = tree.read(target);
+  const content = renderHook(
+    hook,
+    mode === 'reapply' && current !== null ? current.toString('utf8') : null,
+  );
+  writeWholeFile(adapter, tree, mode, target, content, 0o755);
+  return { adapterId: adapter.id, path: target, sha256: sha256Of(content) };
+}
+
+/**
+ * Merges every realized hook into `.claude/settings.json` — seeded
+ * when the project has none — and writes it only when the merge
+ * changed it. The file is the project's, so this is never a whole-file
+ * conflict; keel's entries are attributed to the engine, which wrote
+ * them for every contributor alike.
+ */
+function wireHooks(hooks: readonly HookSpec[], tree: Tree): HarnessFile {
+  const current = tree.read(SETTINGS_TARGET);
+  const base = current === null ? SETTINGS_SEED : current.toString('utf8');
+  const next = eolAware((existing) => mergeHookSettings(existing, hooks))(base);
+  if (current === null || next !== base) tree.write(SETTINGS_TARGET, next);
+  return { adapterId: ENGINE_CONTRIBUTOR_ID, path: SETTINGS_TARGET, sha256: sha256Of(next) };
+}
+
+/**
+ * Refuses a run whose hooks may inject more reminders, together, than
+ * {@link HOOK_REMINDER_BUDGET} — before anything is staged, naming
+ * each contributor's share.
+ */
+function assertReminderBudget(contributions: readonly HarnessContribution[]): void {
+  const shares = contributions
+    .map((c) => ({
+      adapter: c.adapter.id,
+      reminders: c.hooks.reduce((n, hook) => n + hook.reminders.length, 0),
+    }))
+    .filter((share) => share.reminders > 0);
+  const total = shares.reduce((n, share) => n + share.reminders, 0);
+  if (total <= HOOK_REMINDER_BUDGET) return;
+  const last = shares.at(-1)!;
+  throw new ContributionConflictError(
+    `the project's hooks may inject ${String(total)} reminders (${shares.map((s) => `'${s.adapter}' ${String(s.reminders)}`).join(', ')}) — at most ${String(HOOK_REMINDER_BUDGET)} across all hooks; drop a hook or fold its reminders`,
+    last.adapter,
+    SETTINGS_TARGET,
+    'reminder-budget',
+  );
 }
 
 /**

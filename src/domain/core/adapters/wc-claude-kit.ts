@@ -16,6 +16,7 @@ import {
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
+  type LayerDoc,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -101,7 +102,69 @@ function wcFamily(ctx: Ctx): ClaudeKitFamily {
    server when done.`,
   });
 
-  return { runbook, runSkill, verifyCommand };
+  const duplicate =
+    'An element-defining package inlined twice throws `NotSupportedError` and silently kills that bundle’s registrations — the page looks right and the elements never upgrade.';
+  const docs: LayerDoc[] = modulith
+    ? [
+        {
+          directory: 'platform',
+          title: 'what no context owns',
+          description: 'the context-key protocol every bounded context delivers its ports through',
+          bullets: [
+            '`context/` — `@<scope>/platform-context`: the typed context-key protocol. Nothing context-specific belongs here.',
+          ],
+        },
+        {
+          directory: 'modules',
+          title: 'bounded contexts',
+          description: 'one package per bounded context; peers meet only at its ./service export',
+          bullets: [
+            '`<ctx>/` is one package: `src/domain/contract/` (use cases, ports), `src/domain/core/internal/` (services, stores), `src/user-side/elements/`, `src/infra/`; the domain stays DOM-less.',
+            '`src/service.ts` (`./service`) and `./elements` are the only public entries. dependency-cruiser holds the seam, and a violating import typechecks clean — `lint` is the only thing that goes red.',
+            '`src/elements.ts` registers the `<scope>-<ctx>-*` tags; `tests/element-tags.test.ts` pins the prefix, so two contexts cannot define one tag.',
+          ],
+        },
+        {
+          directory: 'application',
+          title: 'the SPA assembly',
+          description: 'the web app: one wiring module per context, the import map',
+          bullets: [
+            '`web-app/src/main.ts` assembles; `web-app/src/<ctx>.ts` wires one context; `web-app/index.html` carries the import map that keeps the design system external to every bundle.',
+            duplicate,
+          ],
+        },
+      ]
+    : [
+        {
+          directory: 'domain',
+          title: 'use cases and ports',
+          description: 'DOM-less packages: the use cases and ports, the services and stores',
+          bullets: [
+            '`domain-api/src/` — use cases and `ports/` (`Clock`); `domain-core/src/internal/` — services and stores. Both are DOM-less: nothing here imports an element or touches `document`.',
+            'The ports reach the elements through the typed context keys in `application/web-app/src/context-keys.ts`, never through an import of an implementation.',
+          ],
+        },
+        {
+          directory: 'application',
+          title: 'the SPA assembly',
+          description:
+            'the web app: context delivery, the app’s elements, the one design-system import',
+          bullets: [
+            '`web-app/src/main.ts` assembles and imports the design system; `context.ts` provides the ports; `components/` holds the app’s own elements.',
+            `${duplicate} Import the design system from \`main.ts\` and nowhere else.`,
+          ],
+        },
+        {
+          directory: 'infrastructure',
+          title: 'driven adapters',
+          description: 'driven adapters, the fake beside the real one',
+          bullets: [
+            '`commons/src/` — `fake-clock.ts` beside `system-clock.ts`. A new adapter lands beside its fake, and one test runs against both — never a mocking library.',
+          ],
+        },
+      ];
+
+  return { runbook, runSkill, verifyCommand, docs };
 }
 
 export const wcClaudeKitAdapter: Adapter = claudeKitAdapter(

@@ -18,6 +18,15 @@ use to keep a long-lived changelog scannable — and the root keeps
   and module consumer relationships are replayed without changing ordinary
   question behavior. Harness opt-out refuses plugin activation, and adoption
   refuses composite product roots before staging files.
+- **Owned regions hold their boundary tighter.** A transform that
+  removes a region the file carried is now a `region-escape` (a
+  markerless file left markerless by `whenAbsent: 'keep'` stays
+  legal); whitespace beside an existing region at the file's edge is
+  no longer forgiven — only a freshly landed region moves the edges;
+  the engine re-renders each of its pre-owned `AGENTS.md` slots once
+  a run, a second claim being a region declared twice; and the
+  ownership key encodes target and marker as a tuple, so a space in
+  either can no longer alias two distinct regions into a collision.
 
 ### Changed
 
@@ -55,6 +64,56 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **Per-directory docs** (#135, wave 3 of the agent-harness
+  redesign): the context that left the root lands where it binds. An
+  adapter contributes a `DocSection` on `Contribution.docs` — a
+  directory, a section, a one-line description, a body — and the
+  engine lands it as an owned region of `<directory>/AGENTS.md`
+  (seeded with `docSeed`, so contributors compose one doc in any
+  order; a section two adapters claim is refused naming both), writes
+  a one-line `CLAUDE.md` pointer (`@AGENTS.md`) beside it, and
+  projects a row per doc into the root `keel:map` slot for the agents
+  that never auto-load nested files. The five family kits emit a doc
+  in every layer directory the scaffolded layout has — this project's
+  language only, the real ports and files, the layer's silent
+  failure, under 30 lines each — and `persistence` composes its
+  Testcontainers note into the family's driven-adapter doc (`tests/`
+  on a basic Rust crate). The context-budget guard holds each nested
+  doc to its ceiling, the root plus every nested chain under Codex's
+  32 KiB default, and every doc free of the other families' stances;
+  one e2e cell per family reads the doc off a real scaffold, and an
+  opt-in upstream check (`KEEL_RUN_UPSTREAM=1`) confirms Claude Code
+  loads a nested pointer's import. `DocSection`, `docSeed` and
+  `docTarget` ship on the plugin surface.
+- **`keel add` fails loudly on a scaffold from another harness
+  generation** (#137, wave 3 of the agent-harness redesign). Every
+  manifest keel creates is stamped `harnessGeneration` (generation 1:
+  the terse root, owned regions, the hook seam). `keel add <vertical>`
+  and `keel add module` refuse a project stamped with an older
+  generation — or with none, scaffolded before the marker existed —
+  with `keel.harness-generation`, touching nothing, and name the way
+  forward: move the old agent documents and `.claude/` aside (keeping
+  the manifest), run `keel add agent-harness` (`--reapply` when it is
+  installed), which re-renders the harness and restamps the marker,
+  or pin the keel that scaffolded the project. A newer marker asks for
+  a newer keel.
+- **The hook seam** (#136, wave 3 of the agent-harness redesign): an
+  adapter ships a Claude Code hook as a `HookSpec` on
+  `Contribution.hooks` — the script, its event and matcher, the
+  reminders it may inject, and the slots other contributors own inside
+  it — declared on `Vertical.hooks`. The engine stages the script to
+  `.claude/hooks/<name>.sh` as an executable adapter-owned whole file
+  (a name two adapters claim is refused naming both), wires one
+  `.claude/settings.json` entry per hook into whatever the project's
+  file holds, records provenance, and re-renders the script around
+  its slots on `--reapply`. A hook is a `sh`/`bash` script invoking no
+  Node, `jq` or Python; a project realizes at most five reminders
+  across its hooks, and keel's own leave two for plugins. Listing a
+  hook under `env.KEEL_DISABLED_HOOKS` turns it off. The five family
+  kits' `pre-commit-format.sh` and `settings.json` moved onto the seam
+  byte for byte. `HookSpec`, `HookEvent`, `hookTarget`,
+  `HOOK_REMINDER_BUDGET` and `DISABLED_HOOKS_ENV` ship on the plugin
+  surface. See `docs/composition.md` → Hooks.
 - **The `agent-harness` vertical** owns root agent documents, cross-tool
   shims and the five family Claude kits. All 28 single-service presets
   install it by default after `walking-skeleton`, preserving project

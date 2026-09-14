@@ -24,6 +24,7 @@ import {
   skipWebE2E,
   type PackageManager,
 } from '../support/web-e2e.js';
+import { expectLayerDoc } from '../support/harness-docs.js';
 
 let cwd: string;
 
@@ -43,6 +44,7 @@ describe.skipIf(skipWebE2E('npm'))('ts-http walking-skeleton e2e (npm)', () => {
     'generates a workspace that installs, typechecks, and tests green',
     async () => {
       await basic('npm');
+      await expectLayerDoc(cwd, 'domain', ['Clock', 'registry-mediator.ts']);
       runStep(cwd, 'npm run typecheck', 'npm', ['run', 'typecheck']);
       runStep(cwd, 'npm test', 'npm', ['test']);
     },

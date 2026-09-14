@@ -19,6 +19,7 @@ import {
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
+  type LayerDoc,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -123,7 +124,75 @@ function rustFamily(ctx: Ctx): ClaudeKitFamily {
     body: `# Run ${projectName}\n\n${steps.join('\n\n')}`,
   });
 
-  return { runbook, runSkill, formatCommand: 'cargo fmt', verifyCommand };
+  const newPort =
+    'A new port: the trait in the contract, a fake beside the real adapter, and one test run against both — never a mocking crate.';
+  const boxFuture =
+    'Port traits return `BoxFuture`, never a bare `async fn`: an `async fn` in a trait is not dyn-compatible, and ports are used as `dyn`.';
+  const docs: LayerDoc[] = modulith
+    ? [
+        {
+          directory: 'platform',
+          title: 'what no context owns',
+          description:
+            'the kernel crate every bounded context shares: BoxFuture and the Clock port',
+          bullets: [
+            '`kernel/` — crate `platform-kernel`: `BoxFuture` and the `Clock` port with its fake and system adapters. Nothing context-specific belongs here.',
+            boxFuture,
+          ],
+        },
+        {
+          directory: 'modules',
+          title: 'bounded contexts',
+          description:
+            'one directory of crates per bounded context; peers meet only at user-side/service',
+          bullets: [
+            '`<ctx>/domain/contract/` — commands, results, errors, driven port traits (`<Peer>Client`), with its tests in `tests/`; `<ctx>/domain/core/` — the handlers; `<ctx>/infra/<x>/` — driven adapters, one crate each.',
+            '`<ctx>/user-side/service/` — crate `<ctx>-user-side-service`, the peer seam and the only crate a sibling context depends on; it is its own crate so that dependency is all a peer can reach.',
+            'The seam publishes only its own DTOs. Rust does not enforce that — inference lets a domain type flow through — so it holds by review: never put a domain type in a seam crate’s public signatures.',
+            `\`<ctx>/infra/<peer>-gateway/\` implements \`<ctx>\`’s \`<Peer>Client\` over \`<peer>\`’s seam crate. ${newPort}`,
+          ],
+        },
+        {
+          directory: 'application',
+          title: 'assemblies',
+          description: 'the bin crates: one per deployment unit, one wiring module per context',
+          bullets: [
+            '`<unit>/src/main.rs` assembles the unit; `<unit>/src/<ctx>.rs` wires one context’s service and gateways into it. Transport maps to a command and back, with no business logic.',
+          ],
+        },
+      ]
+    : [
+        {
+          directory: 'src/domain',
+          title: 'the contract face',
+          description: 'commands, ports and use cases; the core stays private to it',
+          bullets: [
+            '`src/domain.rs` declares the modules; `greet.rs` holds the use case behind `trait Greeter` (`new_greeter()`), `clock.rs` the `Clock` port.',
+            boxFuture,
+            'Where one seam is justified, commands are one enum matched exhaustively — the compiler is the registry.',
+          ],
+        },
+        {
+          directory: 'src/infra',
+          title: 'driven adapters',
+          description: 'driven adapters, the fake beside the real one',
+          bullets: [
+            '`clock_fake.rs` ships with the skeleton; `clock_sys` and `postgres` arrive with `keel add persistence`, declared in `src/infra.rs`.',
+            newPort,
+          ],
+        },
+        {
+          directory: 'tests',
+          title: 'port-level tests',
+          description: 'integration tests that drive the crate through its public API',
+          bullets: [
+            'Each file here is its own test crate and sees only the public API (`greet.rs`): drive a use case through its port, on the fakes.',
+            '`cargo test --workspace` runs these with the unit tests — the commit gate.',
+          ],
+        },
+      ];
+
+  return { runbook, runSkill, formatCommand: 'cargo fmt', verifyCommand, docs };
 }
 
 export const rustClaudeKitAdapter: Adapter = claudeKitAdapter(

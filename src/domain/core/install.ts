@@ -130,7 +130,8 @@ export async function installVertical(
       processes: inputs.processes,
     });
     const contribution = await adapter.contribute(ctx);
-    assertDeclaredSkills(inputs.vertical, adapter, contribution.skills ?? []);
+    assertDeclared('skills', inputs.vertical, adapter, contribution.skills ?? []);
+    assertDeclared('hooks', inputs.vertical, adapter, contribution.hooks ?? []);
     collectHarness(adapter, contribution, harness, inputs.apply);
     if (inputs.harnessOnly) continue;
     applyContribution(
@@ -198,21 +199,23 @@ function assertDeclaredPromotions(
 }
 
 /**
- * Holds `Vertical.skills` to its meaning, exactly as
- * {@link assertDeclaredPromotions} holds `promotes`: the complete set
- * of skill names installing the vertical may stage. An undeclared
- * name is a keel (or plugin) bug, not a user error, so it throws.
+ * Holds `Vertical.skills` and `Vertical.hooks` to their meaning,
+ * exactly as {@link assertDeclaredPromotions} holds `promotes`: the
+ * complete set of names installing the vertical may stage. An
+ * undeclared name is a keel (or plugin) bug, not a user error, so it
+ * throws.
  */
-function assertDeclaredSkills(
+function assertDeclared(
+  kind: 'skills' | 'hooks',
   vertical: Vertical,
   adapter: Adapter,
   staged: readonly { readonly name: string }[],
 ): void {
-  const declared = new Set(vertical.skills ?? []);
-  const undeclared = staged.map((skill) => skill.name).filter((name) => !declared.has(name));
+  const declared = new Set(vertical[kind] ?? []);
+  const undeclared = staged.map((element) => element.name).filter((name) => !declared.has(name));
   if (undeclared.length === 0) return;
   throw new Error(
-    `adapter '${adapter.id}' contributes skill '${undeclared.join("', '")}', which vertical '${vertical.id}' does not declare in 'skills' — add it there, so what an assembly ships can be reported before applying`,
+    `adapter '${adapter.id}' contributes ${kind === 'skills' ? 'skill' : 'hook'} '${undeclared.join("', '")}', which vertical '${vertical.id}' does not declare in '${kind}' — add it there, so what an assembly ships can be reported before applying`,
   );
 }
 

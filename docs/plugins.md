@@ -193,6 +193,68 @@ adapter's skills, no special case. Two things to hold to:
 The full rules live in
 [Composition → Harness contributions](composition.md#harness-contributions).
 
+### Hooks
+
+A Claude Code hook ships the same way — a **content-carrying
+`HookSpec`**, never a `files:` entry or a hand-edited
+`.claude/settings.json`:
+
+```js
+hooks: [
+  {
+    name: 'acme-lint-reminder',
+    event: 'PostToolUse',
+    matcher: 'Edit',
+    script: '#!/bin/sh\necho "acme: run acme lint before committing." >&2\n',
+    reminders: ['acme: run acme lint before committing.'],
+  },
+],
+```
+
+The engine stages `.claude/hooks/acme-lint-reminder.sh` executable,
+wires one settings entry for it, and records its provenance. What to
+hold to:
+
+- **Declare every name on the vertical**: `hooks: ['acme-lint-reminder']`.
+- **Shell only.** A `sh` or `bash` shebang, and no `node`, `npx`,
+  `jq`, `python`, `deno` or `bun` in the script — the project it lands
+  in may have none of them.
+- **Declare every reminder.** Each message the hook can feed back into
+  the agent counts against a budget of five per project, and keel's
+  own hooks leave two of those for plugins. A run over the budget is
+  refused before anything is staged.
+- **One owner per name**, as for skills.
+
+A project turns one hook off by listing its name under
+`env.KEEL_DISABLED_HOOKS` in `.claude/settings.json`. The full rules
+live in [Composition → Hooks](composition.md#hooks).
+
+### Per-directory docs
+
+A note that belongs to one directory of the project ships as a
+`DocSection` — a section of that directory's `AGENTS.md`, which keel's
+own verticals may be writing too:
+
+```js
+docs: [
+  {
+    directory: 'infrastructure/acme',
+    section: 'acme-client',
+    description: 'the acme API client and its fake',
+    body: '## Acme client\n\nRun `acme mock` before the contract tests.',
+  },
+],
+```
+
+The engine lands it as an owned region of
+`infrastructure/acme/AGENTS.md` (seeded with `docSeed`, exported from
+`@rgoussu.dev/keel/plugin`, so it composes with any other contributor's
+section), writes the `CLAUDE.md` pointer beside it, and adds a row for
+the doc to the root map. Pick a section name no other vertical uses on
+that directory — a second claim is refused — and carry only what an
+agent cannot read off the tree. The full rules live in
+[Composition → Per-directory docs](composition.md#per-directory-docs).
+
 ### Owned regions
 
 A patch on a file the project (or another vertical) also writes owns
@@ -220,8 +282,9 @@ checks is the declaration, not how the transform was written.
 Two things to hold to:
 
 - **Stay inside.** A transform that changed anything outside its
-  declared regions is refused naming the adapter — on install and on
-  `--reapply` alike.
+  declared regions — whitespace beside a region included — or removed
+  a region the file already carried is refused naming the adapter, on
+  install and on `--reapply` alike.
 - **One owner per region of a file.** The same region declared by two
   adapters of a run on one target is a hard refusal naming both, and
   the `keel:map` / `keel:skills-index` slots of `AGENTS.md` are the

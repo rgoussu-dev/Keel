@@ -24,6 +24,7 @@ import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js
 import { observabilityVertical } from '../../../../src/domain/core/verticals/observability.js';
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
+import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
 import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
@@ -117,10 +118,13 @@ const installChain = async (
   {
     devEnv = true,
     observability = false,
+    harness = false,
     answers = {},
   }: {
     devEnv?: boolean;
     observability?: boolean;
+    /** Install the agent harness after the skeleton, so harness declarations realize. */
+    harness?: boolean;
     /** Sticky answers preset before any install, as `--set` would. */
     answers?: Record<string, Record<string, string>>;
   } = {},
@@ -145,6 +149,10 @@ const installChain = async (
   };
   const skeleton = await installVertical({ vertical: walkingSkeletonVertical, manifest, ...deps });
   manifest = skeleton.manifest;
+  if (harness) {
+    const kit = await installVertical({ vertical: agentHarnessVertical, manifest, ...deps });
+    manifest = kit.manifest;
+  }
   if (devEnv) {
     const dev = await installVertical({ vertical: devEnvVertical, manifest, ...deps });
     manifest = dev.manifest;
@@ -439,6 +447,39 @@ describe('persistence install on rust-http', () => {
     expect(read(tree, 'src/infra/postgres.rs')).toContain(
       'postgres://app:app@localhost:5432/walking_skeleton',
     );
+  });
+});
+
+describe('persistence composes its section into the family kit’s docs', () => {
+  it('lands in the Rust crate’s tests/ doc beside the layer section, and in the JVM infrastructure doc', async () => {
+    const rust = await installChain(
+      ['lang.rust', 'pkg.cargo', 'arch.hexagonal', 'arch.server-http'],
+      {
+        harness: true,
+      },
+    );
+    const tests = read(rust.tree, 'tests/AGENTS.md');
+    expect(tests).toContain('<!-- keel:layer:begin -->');
+    expect(tests).toContain('<!-- keel:persistence:begin -->\n\n## Persistence');
+    expect(tests).toContain('`tests/greeting_log.rs`');
+    expect(tests.indexOf('keel:layer:begin')).toBeLessThan(tests.indexOf('keel:persistence:begin'));
+    expect(read(rust.tree, 'tests/CLAUDE.md')).toBe('@AGENTS.md\n');
+    expect(read(rust.tree, 'AGENTS.md')).toContain('](tests/AGENTS.md)');
+
+    const jvm = await installChain([...QUARKUS_JAVA, 'pkg.gradle'], { harness: true });
+    const infrastructure = read(jvm.tree, 'infrastructure/AGENTS.md');
+    expect(infrastructure).toContain('<!-- keel:layer:begin -->');
+    expect(infrastructure).toContain('`JdbcGreetingLogTest`');
+  });
+
+  it('realizes nothing without the harness', async () => {
+    const { tree } = await installChain([
+      'lang.rust',
+      'pkg.cargo',
+      'arch.hexagonal',
+      'arch.server-http',
+    ]);
+    expect(tree.exists('tests/AGENTS.md')).toBe(false);
   });
 });
 

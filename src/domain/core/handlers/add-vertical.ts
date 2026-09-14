@@ -46,7 +46,8 @@ import type {
   PresetAnswers,
 } from '../../contract/commands.js';
 import type { ManifestV2 } from '../../contract/manifest.js';
-import { projectScopeRoot } from '../../contract/manifest.js';
+import { HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
+import { harnessGenerationRefusal } from '../harness-generation.js';
 import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
@@ -94,6 +95,18 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         ),
       );
     }
+
+    // Only the command that brings a harness forward may run on a
+    // project from another generation; everything else refuses
+    // before a file moves.
+    const stale =
+      vertical.id === 'agent-harness'
+        ? null
+        : harnessGenerationRefusal(
+            stored,
+            `keel add ${vertical.id}${command.reapply === true ? ' --reapply' : ''}`,
+          );
+    if (stale !== null) return err(stale);
 
     const installed = stored.verticals.some((v) => v.id === vertical.id);
     const reapply = command.reapply === true;
@@ -186,7 +199,12 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       });
       result = {
         ...result,
-        manifest: finalized.manifest,
+        // Adopting or re-rendering the harness writes this keel's
+        // layout, so it is what restamps the generation.
+        manifest:
+          vertical.id === 'agent-harness'
+            ? { ...finalized.manifest, harnessGeneration: HARNESS_GENERATION }
+            : finalized.manifest,
         applyResult: {
           ...result.applyResult,
           skills: finalized.skills,

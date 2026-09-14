@@ -274,9 +274,8 @@ tree.
 
 How a piece ships **agent-harness elements** — the `.claude/` workflow
 kit and the agent-facing documents — with the code it contributes.
-These rules are normative for every harness seam; the skill and
-owned-region seams below are live, and the settings seam follows the
-same model.
+These rules are normative for every harness seam; the skill, hook and
+owned-region seams below are live.
 
 **Harness elements ride typed, declarative contribution fields — never
 bare `files:` entries or ad-hoc patches.** The engine can only refuse,
@@ -295,9 +294,11 @@ Three ownership patterns, with different reapply semantics:
    and never touches the user's prose around it. The patch
    _declares_ the region and the engine verifies the claim — see
    [Owned regions](#owned-regions).
-3. **Key-addressed settings merges.** JSON settings composed key by
-   key, each key carrying its contributor — so a reapply refreshes a
-   contributor's keys in place. (Lands with the hook/settings seam.)
+3. **Key-addressed settings merges.** JSON settings composed entry by
+   entry, each addressed by what it runs — so a reapply finds keel's
+   entries where it left them, adds only what is missing, and never
+   rewrites the project's own keys. `.claude/settings.json` is this
+   class, and the engine writes it for every hook contributor alike.
 
 Whatever the class, a contribution is **owned by exactly one adapter**
 (grouped under its vertical). Tags select and parameterize adapters;
@@ -311,7 +312,7 @@ promotes `agentic.harness`. Every single-service preset installs it after
 An opted-out assembly refuses plugin stack tags or other verticals that
 would activate `agentic.harness`, before staging files.
 
-Every adapter's `skills` and interim `harnessPatches` are collected across
+Every adapter's `skills`, `hooks` and interim `harnessPatches` are collected across
 the whole install run. Only the final, local tag set decides whether they
 are realized; a peer's tag never activates this project's harness. Without
 the tag, one diagnostic reports the total skipped elements, also carried
@@ -320,9 +321,13 @@ patches and formatter configurations still install.
 
 `Contribution.harnessPatches` is the interim region-confined patch seam for
 code-style's hook format step. Each patch must declare nonempty `regions`,
-verified through the same ownership and confinement rules below. Skills
-and patches retain contributor provenance when realized. Hook/settings
-and document declaration classes extend this final pass when their seams land.
+verified through the same ownership and confinement rules below. Skills,
+hooks and patches retain contributor provenance when realized. The pass
+stages every whole file first — skills and hook scripts, across all
+contributors — then merges the settings, then runs harness patches, so
+code-style's format step lands in the family kit's hook whichever
+resolved first. Doc sections land after the harness patches, then
+the pointers and the root map rows.
 
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
@@ -384,6 +389,112 @@ A plugin's verticals ship skills through exactly this seam — same
 schema, same serializer, same collision refusal and provenance, no
 special case. See [Plugins](plugins.md#skills).
 
+### Hooks
+
+An adapter ships a Claude Code hook as a `HookSpec` on its
+contribution — content-carrying like a skill: the script, the event it
+runs on, the reminders it may feed back into the agent's context, and
+the **slots** other contributors own inside it:
+
+```ts
+hooks: [
+  {
+    name: 'pre-commit-format',
+    event: 'PreToolUse',
+    matcher: 'Bash',
+    script: renderPreCommitHook(family),
+    reminders: [`pre-commit-format: '${verify}' failed. Fix it before committing.`],
+    slots: [FORMAT_STEP_REGION],
+  },
+];
+```
+
+The engine validates the spec (`HookSpecSchema`, refusing a malformed
+one naming the adapter), stages the script to
+`.claude/hooks/<name>.sh` as an executable adapter-owned whole file,
+and wires it into `.claude/settings.json` itself — one entry per hook,
+running `<shell> .claude/hooks/<name>.sh`. The rules the seam enforces:
+
+- **One owner per name, declared on the vertical.** A hook name two
+  adapters of a run contribute is refused (`hook-collision`) naming
+  both; `Vertical.hooks` lists every name the vertical may stage and
+  the installer refuses an undeclared one — the mirror of `skills`.
+- **A hook is a shell script and assumes no runtime.** The script's
+  first line is a `sh` or `bash` shebang, and it invokes no Node,
+  `npx`, `jq`, Python, Deno or Bun: a scaffolded Go, Rust or JVM
+  project cannot count on any of them. keel's own hooks parse as
+  POSIX `sh` too.
+- **Reminders are a budget.** A project realizes at most five across
+  all of its hooks (`HOOK_REMINDER_BUDGET`); a run over it is refused
+  (`reminder-budget`) before anything is staged, naming each
+  contributor's share. keel's own hooks spend at most three, leaving
+  two for plugins — a guard test holds every stack to it.
+- **Slots survive a reapply.** `--reapply` rewrites the script
+  pristine around what each declared slot holds on disk, so the
+  format step `code-style` wired in stays; a harness patch declaring
+  that region is what writes it.
+- **The settings file is the project's.** The engine merges keel's
+  entries into whatever the file holds, returns it byte for byte when
+  nothing is missing, and attributes the file's provenance to
+  `keel:engine`. Each hook is its own entry, so it can be turned off
+  on its own: list its name under `env.KEEL_DISABLED_HOOKS`
+  (comma-separated) and every later apply leaves it unwired and
+  removes keel's entry for it. The script itself stays staged, so the
+  slots other verticals patch keep a target.
+
+A plugin's verticals ship hooks through exactly this seam. See
+[Plugins](plugins.md#hooks).
+
+### Per-directory docs
+
+The context that belongs to one directory lives in that directory: a
+short `AGENTS.md` beside the code it is about, and a one-line
+`CLAUDE.md` pointer (`@AGENTS.md`) beside it. An adapter contributes a
+**section** of such a doc as a `DocSection` on `Contribution.docs`:
+
+```ts
+docs: [
+  {
+    directory: 'domain',
+    section: 'layer',
+    description: 'the contract face — commands, ports, the Clock port and its fake',
+    body: '## domain/\n\n…the commands, the wiring file, the silent failure…',
+  },
+];
+```
+
+The engine validates the spec (`DocSectionSchema`: a relative
+directory that is not the root, a kebab-case section, a one-line
+description), then:
+
+- **lands the section as an owned region** of `<directory>/AGENTS.md`
+  (`<!-- keel:<section>:begin -->`), seeded with `docSeed(directory)` —
+  a function of the directory alone, so contributors compose one doc
+  in any order and a reapply re-renders each section in place. The
+  one-owner rule of [owned regions](#owned-regions) holds: a section
+  two adapters of a run declare on one directory is refused naming
+  both, and no transform may touch another's section or the project's
+  notes around them;
+- **writes the pointer** beside every doc that has none, attributed to
+  `keel:engine`; a pointer the project already has is left as it is.
+  Claude Code lazy-loads only nested `CLAUDE.md` files and resolves an
+  import relative to the importing file, so the pointer pulls its
+  sibling in exactly when files in that directory are touched; the
+  agents that read nested `AGENTS.md` natively need no pointer;
+- **projects a row per doc into the root `keel:map` slot**, under the
+  engine's own identity, so an agent that never auto-loads nested
+  files (Codex, Gemini CLI, Zed, opencode) still reaches every doc
+  from the root. Rows already in the map stay as written, a directory
+  without one gains a row named by the first section describing it,
+  and rows sort by path. `keel docs sync` (#138) will own the full
+  projection.
+
+Docs realize in the same final harness pass as skills and hooks, after
+the harness patches, and only under `agentic.harness`. What a section
+may carry is held to one rule, **noise cancellation**: the real
+commands, the wiring file's path, the silent failure the layer is known
+for — anything an agent could derive from the tree does not ship.
+
 ### Owned regions
 
 A patch on a file several parties write owns one or more **regions**
@@ -423,8 +534,13 @@ apply** rather than trusting the adapter:
 
 - **Confinement.** The transform may change nothing outside its
   declared regions. One that did is refused (`region-escape`) naming
-  the adapter, the file and the region — whitespace at the file's own
-  edges excepted, since landing a fresh region moves the last newline.
+  the adapter, the file and the region. A region the file already
+  carries is compared in place, so whitespace beside it is content
+  like any other; the file's own edges are forgiven only when the
+  transform landed a fresh region, since that moves the last newline.
+  A region the file carried must survive: a transform that removes
+  it is an escape, while a `whenAbsent: 'keep'` patch leaving a
+  markerless file markerless is not.
 - **One owner per region of a file.** A region two adapters of the
   run both declare on the same target is refused (`region-collision`)
   naming both; the same markers on two different files are two
@@ -439,8 +555,8 @@ apply** rather than trusting the adapter:
   register under and which manifest `entries` name as `source` for
   content the engine writes without an adapter. An adapter claiming
   one is refused naming the engine; the engine itself, contributing
-  under that identity, re-renders its own slots through the same
-  seam.
+  under that identity, re-renders each of its own slots through the
+  same seam once a run — a second claim is a region declared twice.
 
 A patch declaring no region is an ordinary chained transform with no
 ownership claim; on `--reapply` it may still change its file only

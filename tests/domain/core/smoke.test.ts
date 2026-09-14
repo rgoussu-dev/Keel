@@ -265,4 +265,50 @@ describe('installVertical end-to-end', () => {
       }),
     ).rejects.toThrow(/skill 'native-build-debug'.*does not declare/);
   });
+
+  it('refuses a hook the vertical does not declare in `hooks`', async () => {
+    const tree = new FsTree(tmp);
+    const hooky: Vertical = {
+      id: 'hooky',
+      description: 'A vertical shipping one hook it forgot to declare.',
+      dimensions: ['gate'],
+      hooks: [],
+      adapters: [
+        {
+          id: 'hooky/gate',
+          vertical: 'hooky',
+          covers: ['gate'],
+          predicate: {},
+          contribute: () => ({
+            hooks: [
+              {
+                name: 'gate',
+                event: 'PreToolUse',
+                matcher: 'Bash',
+                script: '#!/bin/sh\nexit 0\n',
+                reminders: [],
+              },
+            ],
+          }),
+        },
+      ],
+    };
+    await expect(
+      installVertical({
+        vertical: hooky,
+        manifest: {
+          ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
+          tags: ['agentic.harness'],
+        },
+        tree,
+        mode: 'non-interactive',
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        now: () => '2026-04-26T12:00:00Z',
+      }),
+    ).rejects.toThrow(/hook 'gate', which vertical 'hooky' does not declare in 'hooks'/);
+  });
 });

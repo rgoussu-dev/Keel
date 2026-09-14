@@ -43,6 +43,7 @@ import { addProjectImports, goLayout, type GoLayoutPaths } from './go-module-lay
 import { databaseName, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-engine.js';
 import { eolAware } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
+import { persistenceDoc } from './persistence-doc.js';
 
 export const GO_PERSISTENCE_ID = 'persistence/go-persistence';
 
@@ -217,6 +218,7 @@ export const goPersistenceAdapter: Adapter = {
         : [];
     return {
       files: [...rendered.flat(), ...facade],
+      docs: [persistenceDoc(ctx.manifest.tags)],
       patches: [
         { target: layout.main('http'), apply: patchGoMain(layout) },
         {

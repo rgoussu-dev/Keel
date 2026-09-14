@@ -45,6 +45,9 @@ import {
   jvmTestEnv,
   type JvmProjectSpec,
 } from '../support/jvm-e2e.js';
+import { expectOk, installMediator } from '../support/factory.js';
+import { addVerticalCommand } from '../../src/domain/contract/commands.js';
+import { upsertFormatStep } from '../../src/domain/core/adapters/claude-kit.js';
 
 const SPEC: JvmProjectSpec = {
   stack: 'quarkus-cli',
@@ -123,6 +126,25 @@ describe.skipIf(skipJvmE2E)('code-style e2e (JVM)', () => {
         'utf8',
       );
       expect(hook).toContain('./gradlew spotlessApply >/dev/null');
+
+      // Brownfield: `keel add code-style` wires the format step into a
+      // hook that carries none — its harness patch realized over the
+      // hook the family kit stages through the hook seam.
+      const hookPath = path.join(cwd, '.claude', 'hooks', 'pre-commit-format.sh');
+      await fs.writeFile(hookPath, upsertFormatStep(hook, undefined));
+      expectOk(
+        await installMediator({ runDeferred: () => Promise.resolve() }).dispatch(
+          addVerticalCommand({
+            cwd,
+            vertical: 'code-style',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            reapply: true,
+          }),
+        ),
+      );
+      expect(await fs.readFile(hookPath, 'utf8')).toBe(hook);
 
       // The claim: the scaffold is format-clean without the user
       // doing anything, so its first CI run is green.

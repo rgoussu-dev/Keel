@@ -16,6 +16,7 @@ import {
   renderRunbook,
   runSkillSpec,
   type ClaudeKitFamily,
+  type LayerDoc,
   type RunbookCommand,
 } from './claude-kit.js';
 import {
@@ -159,6 +160,117 @@ function jvmLayoutRows(
   ];
 }
 
+/**
+ * How each framework's container finds a handler — the list a
+ * context missing from compiles and starts perfectly, never found.
+ */
+function discovery(framework: JvmRestFramework, lang: 'java' | 'kotlin'): string {
+  if (framework === 'quarkus') {
+    return 'Quarkus (ArC) finds a handler only in a module carrying a `beans.xml` — a `domain/core` without one is invisible to it';
+  }
+  if (framework === 'spring') {
+    return 'Spring finds a handler only in a package the boot class’s `@ComponentScan(basePackages = …)` names';
+  }
+  return lang === 'kotlin'
+    ? 'Micronaut (Kotlin) finds a handler only in `MediatorFactory`’s hand-wired `listOf(…)`, the handler taken as a parameter'
+    : 'Micronaut finds a handler only in a package `MediatorFactory`’s `@Import(packages = …)` names, and does not recurse into subpackages';
+}
+
+/** The JVM per-layer docs — one per top-level directory the layout scaffolds. */
+function jvmDocs(
+  layout: JvmLayoutPaths,
+  framework: JvmRestFramework,
+  build: JvmBuildSystem,
+  lang: 'java' | 'kotlin',
+  rest: boolean,
+  cli: boolean,
+): LayerDoc[] {
+  const builder = MEDIATOR_BUILDER[framework];
+  const test = build === 'gradle' ? './gradlew test' : './mvnw test';
+  const provider =
+    'A handler that dispatches another command takes `Provider<Mediator>`, never `Mediator`: the mediator is built from every handler, so a direct one closes a construction cycle.';
+  const assemblies = [
+    ...(rest
+      ? [
+          layout.layout === 'modulith'
+            ? `\`${layout.restRuntime}/\` — the REST assembly; \`${builder}\` builds the mediator.`
+            : `\`${layout.restContract}/\` — DTOs and \`ProblemDetails\`; \`${layout.restAdapters}/\` — resources, error mappers and \`${builder}\`, the REST composition root.`,
+        ]
+      : []),
+    ...(cli
+      ? [
+          `\`${layout.cliRuntime}/\` — picocli commands, \`Main\` and \`${builder}\`, the CLI composition root.`,
+        ]
+      : []),
+  ];
+  if (layout.layout === 'modulith') {
+    return [
+      {
+        directory: 'platform',
+        title: 'what no context owns',
+        description: 'the kernel every bounded context shares: commands, handlers, the mediator',
+        bullets: [
+          '`platform/kernel/` — `Command`, `Handler`, `Mediator`, `RegistryMediator`, `@DomainHandler`; it depends on nothing, and nothing context-specific belongs in it.',
+          provider,
+        ],
+      },
+      {
+        directory: 'modules',
+        title: 'bounded contexts',
+        description: 'one directory per bounded context; peers meet only at user-side/service',
+        bullets: [
+          '`<ctx>/domain/contract/` — commands, results, errors, driven ports (`<Peer>Client`, `Clock`); `<ctx>/domain/core/` — the handlers; `<ctx>/infra/` — driven adapters, each beside its canonical fake (`infra/clock/fake`).',
+          '`<ctx>/user-side/service/` — `<Ctx>Service` + `<Ctx>ServiceAdapter`, the only module a sibling context may depend on; depending on another context’s `domain` module is the violation the seam exists to refuse.',
+          '`<ctx>/infra/<peer>-gateway/` — implements `<ctx>`’s `<Peer>Client` over `<peer>`’s service.',
+          `A new context comes from \`keel add module <name>\`, which also emits its \`<Name>WiringTest\`; tests are Scenario + Factory over the fakes, run with \`${test}\`.`,
+        ],
+      },
+      {
+        directory: 'application',
+        title: 'assemblies',
+        description: 'the deployment units, and the container wiring every context needs',
+        bullets: [
+          ...assemblies,
+          '`<Ctx>Wiring` wires one context’s service and gateways into the mediator; transport maps to a command and back, with no business logic.',
+          `${discovery(framework, lang)}. A context missing from it is never discovered — no error, an application that starts perfectly — and its \`<Ctx>WiringTest\`, dispatching through the real container, is the only thing that goes red.`,
+        ],
+      },
+    ];
+  }
+  return [
+    {
+      directory: 'domain',
+      title: 'kernel, contract, core',
+      description: 'the hexagon: the mediator, the commands and ports, the handlers',
+      bullets: [
+        '`kernel/` — `Command`, `Handler`, `Mediator`; `contract/` — commands, errors, driven ports (`Clock`), `@DomainHandler`; `core/` — the handlers and `RegistryMediator`. Each is its own build module.',
+        'A new use case is a command in `contract/` and a handler in `core/` that self-declares via `supports()` and carries `@DomainHandler` — never an entry in a `Map`.',
+        provider,
+        `Tests are Scenario + Factory over the fakes in \`infrastructure/\`, under each module’s \`src/test/${lang}\`: \`${test}\`.`,
+      ],
+    },
+    {
+      directory: 'application',
+      title: 'composition roots',
+      description: 'the deployment units: transport → command → mediator → transport',
+      bullets: [
+        ...assemblies,
+        'A resource or picocli command maps transport to a `Command`, dispatches it, and maps the result or domain error back — no business logic here.',
+        `${discovery(framework, lang)}; a handler it never found compiles, and the application starts perfectly without it.`,
+      ],
+    },
+    {
+      directory: 'infrastructure',
+      title: 'driven adapters',
+      description: 'driven adapters, each real one beside its canonical fake',
+      bullets: [
+        '`<port>/<impl>/` and `<port>/fake/` are build modules; `clock/fake` ships `FakeClock`, the fake the domain tests run on.',
+        'A new port: the interface in `domain/contract/`, a fake module here, the real adapter beside it, and one contract test both pass — never a mocking library.',
+      ],
+    },
+  ];
+}
+
 function jvmFamily(ctx: Ctx): ClaudeKitFamily {
   const framework = jvmRestFramework(ctx.manifest, JVM_CLAUDE_KIT_ID);
   const build = jvmBuildSystem(ctx.manifest, JVM_CLAUDE_KIT_ID);
@@ -252,7 +364,12 @@ non-zero with the domain error.`,
     body: `# Run the ${restRun !== null && cliRun !== null ? 'service and the CLI' : restRun !== null ? 'service' : 'CLI'}\n\n${steps.join('\n\n')}`,
   });
 
-  return { runbook, runSkill, verifyCommand };
+  return {
+    runbook,
+    runSkill,
+    verifyCommand,
+    docs: jvmDocs(layout, framework, build, lang, rest, cli || !rest),
+  };
 }
 
 export const jvmClaudeKitAdapter: Adapter = claudeKitAdapter(

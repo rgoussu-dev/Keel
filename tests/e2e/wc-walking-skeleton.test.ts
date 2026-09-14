@@ -16,6 +16,7 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { E2E_TIMEOUT_MS, mkTempDir, runStep, scaffold, skipWebE2E } from '../support/web-e2e.js';
+import { expectLayerDoc } from '../support/harness-docs.js';
 
 let cwd: string;
 
@@ -39,6 +40,7 @@ describe.skipIf(skipWebE2E('npm'))('web-components walking-skeleton e2e', () => 
         },
         cwd,
       );
+      await expectLayerDoc(cwd, 'domain', ['Clock', 'domain-api']);
 
       runStep(cwd, 'npm run typecheck', 'npm', ['run', 'typecheck']);
       runStep(cwd, 'npm test', 'npm', ['test']);
