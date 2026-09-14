@@ -5,10 +5,12 @@
  *
  *   node evals/run.mjs --list
  *   node evals/run.mjs --check [--driver codex]
+ *   node evals/run.mjs --solvable --campaign tasks
  *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline
  *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --driver claude-code --mode attended
  *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --model opus
  *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --only navigation/ts-http
+ *   KEEL_RUN_EVALS=1 node evals/run.mjs --campaign tasks --variant terse --overlay evals/overlays/terse
  *
  * Live runs are gated on `KEEL_RUN_EVALS=1` and are never a PR gate:
  * they spawn a real agent on the operator's own auth (see
@@ -24,13 +26,12 @@ import { parseArgs } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { loadCampaign } from './lib/case-schema.mjs';
 import { assertMergeable, driverIdentity, mergeBenchmark, runCampaign } from './lib/runner.mjs';
+import { proveSolvable } from './lib/solvable.mjs';
 import { prepareWorkspace, diffStats } from './lib/workspace.mjs';
-import { claudeCodeDriver } from './drivers/claude-code.mjs';
-import { codexDriver } from './drivers/codex.mjs';
+import { DRIVERS } from './drivers/index.mjs';
 
 const EVALS_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const KEEL_ROOT = path.dirname(EVALS_ROOT);
-const DRIVERS = { 'claude-code': claudeCodeDriver, codex: codexDriver };
 
 const { values } = parseArgs({
   options: {
@@ -42,8 +43,18 @@ const { values } = parseArgs({
     out: { type: 'string' },
     list: { type: 'boolean', default: false },
     check: { type: 'boolean', default: false },
+    solvable: { type: 'boolean', default: false },
+    variant: { type: 'string' },
+    overlay: { type: 'string' },
   },
 });
+
+/** The harness variant a run is taken under; `baseline` when none is named. */
+const variant = {
+  id: values.variant ?? 'baseline',
+  ...(values.overlay === undefined ? {} : { overlay: values.overlay }),
+};
+const overlay = values.overlay === undefined ? null : path.resolve(KEEL_ROOT, values.overlay);
 
 const driver = DRIVERS[values.driver];
 if (driver === undefined) {
@@ -77,9 +88,48 @@ if (values.check) {
 
 if (values.campaign === undefined) {
   console.error(
-    'usage: node evals/run.mjs --campaign <name> [--driver claude-code|codex] [--mode scripted|attended] [--model id] [--only case-id]... [--out file] | --list | --check',
+    'usage: node evals/run.mjs --campaign <name> [--driver claude-code|codex] [--mode scripted|attended]\n' +
+      '         [--model id] [--only case-id]... [--variant id --overlay dir] [--out file]\n' +
+      '       node evals/run.mjs --solvable --campaign <name> [--only case-id]...\n' +
+      '       node evals/run.mjs --list | --check',
   );
   process.exit(2);
+}
+
+// `--solvable` proves every reference solution against a freshly
+// prepared workspace. No agent runs, so it is neither billed nor
+// gated — but the oracle is the project's own build, so the family's
+// toolchain has to be there.
+if (values.solvable) {
+  const { loadCampaign: load } = await import('./lib/case-schema.mjs');
+  const suite = load(
+    path.join(EVALS_ROOT, 'campaigns', `${values.campaign}.yaml`),
+    path.join(EVALS_ROOT, 'cases'),
+  );
+  const selected =
+    values.only.length === 0
+      ? suite.resolved
+      : suite.resolved.filter((c) => values.only.includes(c.id));
+  let failed = 0;
+  for (const caseSpec of selected) {
+    console.log(`${caseSpec.id}: preparing…`);
+    let workspace = null;
+    try {
+      workspace = prepareWorkspace(caseSpec, KEEL_ROOT, overlay);
+      const result = proveSolvable(caseSpec, workspace);
+      console.log(`${caseSpec.id}: ${result.ok ? 'SOLVABLE' : 'NOT SOLVABLE'}`);
+      for (const failure of result.failures) console.log(`  - ${failure}`);
+      if (!result.ok) failed += 1;
+    } catch (err) {
+      console.log(`${caseSpec.id}: NOT SOLVABLE`);
+      console.log(`  - ${err instanceof Error ? err.message : String(err)}`);
+      failed += 1;
+    } finally {
+      if (workspace !== null) fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+  console.log(`\n${String(selected.length - failed)}/${String(selected.length)} solvable`);
+  process.exit(failed === 0 ? 0 : 1);
 }
 
 if (process.env.KEEL_RUN_EVALS !== '1') {
@@ -143,12 +193,17 @@ const version = JSON.parse(fs.readFileSync(path.join(KEEL_ROOT, 'package.json'),
 // default's; the default keeps the plain name the docs give.
 const modelSuffix =
   values.model === undefined ? '' : `-${values.model.replace(/[^a-z0-9.]+/gi, '_')}`;
+// The variant is part of a benchmark's identity too, and for the
+// same reason as the model: two variants overwriting one file is an
+// A/B with nothing to compare.
+const variantSuffix =
+  variant.id === 'baseline' ? '' : `-${variant.id.replace(/[^a-z0-9.]+/gi, '_')}`;
 const out =
   values.out ??
   path.join(
     EVALS_ROOT,
     'results',
-    `${campaign.name}-${driver.id}-${values.mode}${modelSuffix}.json`,
+    `${campaign.name}-${driver.id}-${values.mode}${modelSuffix}${variantSuffix}.json`,
   );
 fs.mkdirSync(path.dirname(out), { recursive: true });
 const previous =
@@ -200,9 +255,10 @@ try {
     driver,
     mode: values.mode,
     model: values.model,
-    prepareWorkspace: (caseSpec) => Promise.resolve(prepareWorkspace(caseSpec, KEEL_ROOT)),
+    prepareWorkspace: (caseSpec) => Promise.resolve(prepareWorkspace(caseSpec, KEEL_ROOT, overlay)),
     diffStats,
     keel: { version, commit, dirty },
+    variant,
     now: () => Date.now(),
     log: (line) => console.log(line),
     io,

@@ -1,0 +1,13 @@
+# The variant that asks what the per-directory documents are worth on
+# a real change: every nested AGENTS.md and its CLAUDE.md pointer,
+# gone. The root document stays — the pattern's `**` prefix matches at
+# depth one and deeper, so the thing being ablated is the nested layer
+# and not the harness.
+#
+# It leaves the root map pointing at documents that are no longer
+# there, and that is not a flaw in the measurement: a project whose
+# nested docs were never written has no rows either, and a project
+# that lost them has exactly this. Read the A/B report's flags — a
+# case that stops discriminating under the variant says so.
+**/AGENTS.md
+**/CLAUDE.md

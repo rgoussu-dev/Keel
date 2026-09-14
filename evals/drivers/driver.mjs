@@ -6,6 +6,7 @@
  *   {
  *     id: 'claude-code',
  *     modes: ['scripted', 'attended'],
+ *     isolation: '--setting-sources project',
  *     capabilities(mode) → CapabilityManifest,
  *     async probe() → { available, version, detail? },
  *     async run({ caseSpec, workspace, mode, io }) → RunOutcome,
@@ -13,11 +14,22 @@
  *   }
  *
  * `run` maps case concepts to the agent's own CLI: autonomy, config
- * isolation (the operator's home-dir settings, skills and MCP servers
- * must not load), prompt delivery, budgets. `harvest` turns whatever
- * the agent left behind (stdout stream, session transcript on disk)
- * into the normalized metrics; every field a manifest declares false
- * is `null` in the harvest, never a guess. The manifest's `model`
+ * isolation, prompt delivery, budgets.
+ *
+ * **`isolation` is a declaration the rig holds the driver to.** The
+ * operator's home-dir settings, skills and MCP servers must not load
+ * into a measured session — a campaign that read them would be
+ * measuring that machine, and the result would look like a harness
+ * finding. Every driver names the flag (or the private home) it
+ * achieves that with, `tests/evals/isolation.test.ts` sweeps the
+ * registry for it, and a driver whose scripted argv does not carry
+ * what it declared fails there rather than quietly measuring the
+ * wrong thing.
+ *
+ * `harvest` turns whatever the agent left behind (stdout stream,
+ * session transcript on disk) into the normalized metrics; every
+ * field a manifest declares false is `null` in the harvest, never a
+ * guess. The manifest's `model`
  * says whether the driver can pin the model in that mode; where it
  * cannot (an attended session the operator opens), the benchmark
  * records the model as `null` rather than the one it asked for.

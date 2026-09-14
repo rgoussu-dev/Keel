@@ -1,0 +1,30 @@
+# Lane B task eval — one use case through the hexagon, on the
+# TypeScript modulith. Same shape as every other family's task, so a
+# campaign compares harnesses rather than languages: the command in
+# the contract face, the handler behind the context's internal wall,
+# the facade export that lets the assembly reach it, the mediator it
+# has to be registered with, and the transport route.
+id: task/ts-http
+tags:
+  - task
+  - typescript
+scaffold:
+  stack: ts-http
+  module_layout: modulith
+setup_script: setup.sh
+prompt: |
+  This project has a failing test at
+  `application/rest/tests/farewell.test.ts`.
+
+  Make it pass, and keep `npm run typecheck && npm test && npm run lint`
+  green.
+
+  Do not edit that test file. Follow the conventions this project
+  already documents; the change belongs in more than one place, and
+  the running application should serve the new route too.
+oracle:
+  script: check.sh
+budgets:
+  timeout_seconds: 1800
+  max_turns: 60
+runs: 3

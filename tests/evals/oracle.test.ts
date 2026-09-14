@@ -130,4 +130,16 @@ describe('script oracle', () => {
     expect(verdict.pass).toBe(false);
     expect(verdict.failures[0]).toMatch(/exited 3: missing thing/);
   });
+
+  it('kills a script that outruns the case budget, and says so', async () => {
+    // A task oracle runs the project's real build; a wedged daemon
+    // must cost one case, not the campaign.
+    await fs.writeFile(path.join(caseDir, 'hang.sh'), 'sleep 30\n');
+    const verdict = judge(workspace, {
+      ...probeCase({ script: 'hang.sh' }),
+      budgets: { timeout_seconds: 1 },
+    });
+    expect(verdict.pass).toBe(false);
+    expect(verdict.failures[0]).toMatch(/timed out after 1s/);
+  });
 });

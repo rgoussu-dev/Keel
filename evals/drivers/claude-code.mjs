@@ -169,6 +169,10 @@ export const claudeCodeDriver = {
   id: 'claude-code',
   modes: ['scripted', 'attended'],
   defaultModel: DEFAULT_MODEL,
+  // `--bare` is never used: it would drop the project layer the
+  // harness under measurement lives in, which is the one layer a
+  // campaign is about.
+  isolation: '--setting-sources project',
 
   capabilities(mode) {
     return mode === 'scripted'

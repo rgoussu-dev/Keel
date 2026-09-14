@@ -1,0 +1,30 @@
+# Lane B task eval — one use case through the hexagon, on the Rust
+# modulith. The dependency wall here is the crate graph: the core is
+# a crate only the contract face depends on, so the change is one
+# manifest-visible step per ring, and an agent that reaches for the
+# core from the assembly finds it unnameable.
+id: task/rust-http
+tags:
+  - task
+  - rust
+scaffold:
+  stack: rust-http
+  module_layout: modulith
+setup_script: setup.sh
+prompt: |
+  This project has a failing test at
+  `modules/greeting/domain/contract/tests/farewell.rs`.
+
+  Make it pass, and keep `cargo test --workspace` and
+  `cargo fmt --check` green.
+
+  Do not edit that test file. Follow the conventions this project
+  already documents; the change belongs in more than one crate, and
+  the HTTP unit should serve `GET /farewell?name=…` too, answering
+  `{"farewell": …}`.
+oracle:
+  script: check.sh
+budgets:
+  timeout_seconds: 2400
+  max_turns: 60
+runs: 3

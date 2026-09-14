@@ -1,0 +1,27 @@
+# Lane B task eval — one use case through the hexagon, on the
+# web-components SPA. The domain here is DOM-less by rule, so the
+# injected specification is too: a driving port and a read model, the
+# service behind the internal wall, and the element that shows it.
+id: task/web-components
+tags:
+  - task
+  - web-components
+scaffold:
+  stack: web-components
+setup_script: setup.sh
+prompt: |
+  This project has a failing test at
+  `domain/domain-core/tests/farewell.test.ts`.
+
+  Make it pass, and keep `npm run typecheck && npm test && npm run build`
+  green.
+
+  Do not edit that test file. Follow the conventions this project
+  already documents; the change belongs in more than one place, and
+  the app itself should show the farewell alongside the greeting.
+oracle:
+  script: check.sh
+budgets:
+  timeout_seconds: 1800
+  max_turns: 60
+runs: 3

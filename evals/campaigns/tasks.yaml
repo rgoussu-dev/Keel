@@ -1,0 +1,16 @@
+# Lane B's flagship campaign: one task per stack family, each a use
+# case carried through every ring of that family's hexagon. N=3 — a
+# regression tripwire, not statistics; act on a delta only when the
+# A/B report marks it wider than the pooled spread of the two samples.
+#
+# Fifteen agent sessions, each one a real build. Far heavier than the
+# navigation lane, which is why it is dispatch-only and never a gate.
+name: tasks
+description: One hexagon-crossing change per family, judged by the project's own build
+cases:
+  - task/quarkus-rest
+  - task/go-http
+  - task/rust-http
+  - task/ts-http
+  - task/web-components
+runs: 3
