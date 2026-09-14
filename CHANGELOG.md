@@ -64,6 +64,47 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **Harness evals, lane B** (#141, wave 4): task evals in the
+  SWE-bench shape, an A/B protocol over harness variants, and a
+  report-only workflow.
+
+  **Five task cases, one per family** (`evals/cases/task/`). The setup
+  injects a failing test into a scaffolded project and the oracle is
+  `check.sh` — the injected test passes **and** the project's own
+  build stays green. Each is the same change carried through every
+  ring of that family's hexagon, so a campaign compares harnesses
+  rather than languages, and each ships a reference `solve.sh`.
+  `node evals/run.mjs --solvable --campaign tasks` proves all five:
+  it prepares a real workspace, checks the oracle starts **red**,
+  runs the reference solution, and checks it ends green — because an
+  eval whose oracle is already green measures nothing while looking
+  perfectly healthy.
+
+  **A/B over harness variants.** A campaign records the variant it
+  ran under (`--variant <id>`), and an overlay directory
+  (`--overlay <dir>`) is copied over each workspace after the
+  scaffold and before the git baseline — with a `.keel-remove` list
+  for the ablations, which is what `evals/overlays/no-nested-docs`
+  is. `node evals/ab.mjs --before … --after …` pairs two benchmarks
+  per case and reports each metric's delta against the pooled spread
+  of the two samples: N=3 is a regression tripwire, so a delta inside
+  that spread is named as this campaign's noise, and an analyst pass
+  flags the cases that discriminate nothing or discriminate at
+  random. It refuses to compare across campaigns, drivers, versions,
+  modes or models — an A/B varies the harness and nothing else.
+
+  **`.github/workflows/harness-evals.yml`**, report-only and never a
+  PR gate. Its `solvable` job is weekly and needs no key; its
+  `campaign` job is dispatch-only, opt-in, and needs the driver's
+  key (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY`, now in AGENTS.md §9).
+
+  Also: the driver registry is one list (`evals/drivers/index.mjs`)
+  that `verify` sweeps — every driver declares how it keeps the
+  operator's home-dir configuration out of a measured session and is
+  held to actually passing it — and a script oracle now runs under
+  its case's own wall-clock budget, so a wedged build costs one case
+  rather than the campaign.
+
 - **Per-directory docs** (#135, wave 3 of the agent-harness
   redesign): the context that left the root lands where it binds. An
   adapter contributes a `DocSection` on `Contribution.docs` — a

@@ -559,6 +559,71 @@ CLI would validate one consumer.
   `CLAUDE.md` / skill body the emitted harness asks an agent to
   carry.
 
+### Two lanes
+
+- **Lane A, navigation** (`baseline`): orientation questions answered
+  by writing paths into `.keel-eval/answers.txt`, graded by exact
+  match, `clean_worktree` asserting the probe changed nothing. Cheap,
+  read-only, and the lane the redesign's "zero search calls" claim is
+  measured on.
+- **Lane B, tasks** (`tasks`): SWE-bench shape. The setup injects a
+  failing test into a scaffolded project; the agent has to make it
+  pass; the oracle is `check.sh` — **the injected test passes AND the
+  project's own build stays green**. One case per family, five in
+  all, each the same change carried through every ring of that
+  family's hexagon, so a campaign compares harnesses rather than
+  languages. Each ships a reference `solve.sh`, and the rig proves it
+  (see [Proving the cases solvable](#proving-the-cases-solvable)).
+
+  A task run is heavy — fifteen agent sessions, each ending in a real
+  Gradle, cargo or npm build — which is why the campaign is
+  dispatch-only and never scheduled against an agent.
+
+### A/B: what a harness change was worth
+
+A **variant** is a harness overlay, and a campaign records the one it
+ran under. Two kinds:
+
+- **An overlay directory** (`--variant <id> --overlay <dir>`): every
+  file under it is copied over each prepared workspace after the
+  scaffold and before the git baseline, so the agent meets the
+  variant and the diff floor still starts at zero. A `.keel-remove`
+  list in the overlay deletes paths first — exact paths, or `**`
+  patterns matching a name at depth one or deeper, which is how
+  `evals/overlays/no-nested-docs` takes the per-directory documents
+  and leaves the root one.
+- **A keel ref**: check it out, `pnpm build`, run the campaign with
+  `--variant <ref>`. The benchmark already records `keel.commit`, so
+  the report names what it compared.
+
+Then pair the two benchmarks:
+
+```sh
+node evals/ab.mjs --before evals/results/tasks-claude-code-scripted.json \
+                  --after  evals/results/tasks-claude-code-scripted-no_nested_docs.json
+```
+
+Three rules the report encodes, all of them about not over-reading a
+small sample:
+
+- **Paired per scenario.** A case is compared with itself, never with
+  the campaign average — cases differ from one another far more than
+  harnesses do, so an unpaired comparison measures the case mix. A
+  case only one side ran is listed under `unpaired` and compared
+  nowhere.
+- **One stddev is the tripwire, not a p-value.** N=3 is a regression
+  detector. A delta inside the pooled spread of the two samples
+  (`sqrt((sa² + sb²) / 2)`) is this campaign's noise, and the report
+  marks the ones that clear it rather than leaving it to the eye.
+- **The analyst pass runs first.** A case both variants pass every
+  time discriminates nothing; one that passes sometimes is flaky and
+  its own variance can swamp the harness effect. Both are flagged on
+  the case, because the fix is to the case.
+
+A comparison may vary the harness and nothing else: `ab.mjs` refuses
+two benchmarks whose campaign, driver, version, mode or model differ,
+and refuses two of the same variant.
+
 ### Two drive modes
 
 - **Scripted** — the automation default where the CLI supports it:
@@ -612,8 +677,11 @@ named one.
 ```sh
 node evals/run.mjs --list                    # campaigns and cases, no gate
 node evals/run.mjs --check [--driver codex]  # agent installed + authenticated?
+node evals/run.mjs --solvable --campaign tasks   # reference solutions, no agent
 KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline
 KEEL_RUN_EVALS=1 node evals/run.mjs --campaign baseline --model opus
+KEEL_RUN_EVALS=1 node evals/run.mjs --campaign tasks \
+  --variant no-nested-docs --overlay evals/overlays/no-nested-docs
 ```
 
 Live runs are gated on `KEEL_RUN_EVALS=1` (plus per-driver auth:
@@ -622,9 +690,9 @@ first — workspaces are scaffolded through the packaged CLI, the very
 commands the verify suites dispatch in process, so the two trees
 cannot drift. Results land in
 `evals/results/<campaign>-<driver>-<mode>.json` — with `-<model>`
-appended when `--model` names one, since the model is part of a
-benchmark's identity and an Opus run must not overwrite the Sonnet
-one — **written after every run**, not once at the end: each run is a paid agent session,
+and `-<variant>` appended when either is named, since both are part
+of a benchmark's identity and an Opus run must not overwrite the
+Sonnet one, nor a variant its baseline — **written after every run**, not once at the end: each run is a paid agent session,
 and a crash in the ninth must not discard the eight. Each write is a
 sibling temp file renamed over the benchmark, so a kill mid-write
 leaves the previous checkpoint rather than a truncated one. Every
@@ -682,6 +750,42 @@ byte-for-byte what a clean checkout of `73bf83b` grows for that case
 the harness measured is that commit's. The "after"
 (`after-wave2-claude-code-scripted.json`) ran clean.
 
+### Proving the cases solvable
+
+```sh
+node evals/run.mjs --solvable --campaign tasks [--only task/go-http]
+```
+
+The terminal-bench rule as a command: for each case it prepares a
+real workspace, runs the setup, checks the oracle is **red**, runs
+the reference `solve.sh`, and checks the oracle is **green**. No
+agent, so it is neither billed nor gated on `KEEL_RUN_EVALS` — but
+the oracle is each family's own build, so it needs the family's
+toolchain (`mise install`).
+
+Both halves rot, and differently. A template change that moves a
+wiring file breaks the reference solution; a scaffold that starts
+shipping the feature makes the oracle green before anything solves
+it, and **an eval whose oracle is already green measures nothing
+while looking perfectly healthy** — which is why the first check is
+that it starts red. The `harness-evals` workflow runs this weekly.
+
+### The workflow
+
+`.github/workflows/harness-evals.yml` — report-only, the
+`mutation.yml` precedent, never a PR gate. Two jobs:
+
+- `solvable` runs on the weekly schedule and on every dispatch. No
+  key, no billing; it provisions every toolchain `mise.toml` pins,
+  because the campaign spans every family.
+- `campaign` is dispatch-only and opt-in (`agent: true`). It installs
+  the chosen driver and runs with `KEEL_EVALS_API_BILLING=1`: on a
+  runner there is no subscription to protect, so the key **is** the
+  auth. The benchmark is uploaded as an artifact on every outcome —
+  a campaign killed at the timeout has still paid for the sessions it
+  finished, and the runner checkpoints after each one. Two
+  dispatches, one per `variant`, make an A/B.
+
 **`verify` never makes an agent call.** The rig's unit tests
 (`tests/evals/`) drive the whole runner through the fake driver and
 fixture transcripts, and prove every shipped probe solvable by
@@ -690,6 +794,15 @@ growing its fixture in process
 `solve.sh` against the real oracle. An adapter that moves a wiring
 file breaks `verify`, not the owner's live campaign. Evals are never
 a PR gate.
+
+For the task cases, `verify` proves everything that needs no
+toolchain — the setup lands where the scaffold really is, and the
+oracle starts red — and leaves the build half to `--solvable`. It
+also sweeps the **driver registry**: every driver declares how it
+keeps the operator's home-dir configuration out of a measured
+session (`isolation`) and is held to actually passing it, because
+that failure arrives with the _next_ driver and a campaign that read
+the operator's machine would report it as a harness finding.
 
 ## Adding surface
 

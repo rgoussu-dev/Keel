@@ -1,0 +1,28 @@
+# Lane B task eval — one use case through the hexagon, on the Quarkus
+# modulith. The injected specification is a `@QuarkusTest`, and that
+# is the point: on the JVM the failure this task can hide is
+# *discovery*. A handler the container never found compiles cleanly
+# and the application starts perfectly; only a dispatch through the
+# real container says otherwise.
+id: task/quarkus-rest
+tags:
+  - task
+  - jvm
+scaffold:
+  stack: quarkus-rest
+  module_layout: modulith
+setup_script: setup.sh
+prompt: |
+  This project has a failing test at
+  `application/api/src/test/java/com/example/application/api/FarewellResourceTest.java`.
+
+  Make it pass, and keep `./gradlew build` green.
+
+  Do not edit that test file. Follow the conventions this project
+  already documents; the change belongs in more than one module.
+oracle:
+  script: check.sh
+budgets:
+  timeout_seconds: 3600
+  max_turns: 80
+runs: 3

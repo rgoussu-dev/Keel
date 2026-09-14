@@ -1,0 +1,149 @@
+# Harness evals, lane B — report-only, never a gate.
+#
+# The `mutation.yml` precedent, for the same reason and then some: a
+# task campaign spawns fifteen real agent sessions, each ending in a
+# real Gradle/cargo/npm build, and no fast gate absorbs that. There is
+# also nothing to gate on — a harness delta is a finding to read, not
+# a threshold to fail, and a lane that could turn a PR red would end
+# up measured for its greenness rather than for what it says.
+#
+# Two jobs, and only the first one runs without a key:
+#
+#   - `solvable` proves every reference solution against a freshly
+#     scaffolded workspace. No agent, so no key and no billing — but
+#     the oracle is each family's own build, so the job provisions
+#     every toolchain mise.toml pins. It is the drift guard the whole
+#     lane rests on: a template change that moves a wiring file turns
+#     a case unsolvable, and an eval whose oracle is already green
+#     measures nothing while looking perfectly healthy.
+#   - `campaign` runs the agent. Dispatch-only, one driver per run,
+#     and it needs that driver's key (see AGENTS.md §9). Two
+#     dispatches — one per `variant` — make an A/B; `evals/ab.mjs`
+#     pairs the two benchmarks afterwards.
+name: Harness evals
+
+on:
+  schedule:
+    # Weekly solvability sweep: 05:23 UTC Monday, off the on-the-hour
+    # spike and after the mutation run has had the runners.
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      campaign:
+        description: Campaign to run (tasks, baseline)
+        type: string
+        default: tasks
+      driver:
+        description: Agent driver
+        type: choice
+        options: [claude-code, codex]
+        default: claude-code
+      model:
+        description: Model to pin (blank takes the driver's default)
+        type: string
+        default: ''
+      variant:
+        description: Harness variant id recorded in the benchmark
+        type: string
+        default: baseline
+      overlay:
+        description: Overlay directory applied to every workspace (blank for none)
+        type: string
+        default: ''
+      agent:
+        description: Also run the agent campaign (needs the driver's key)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-evals-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  solvable:
+    name: solvable (${{ inputs.campaign || 'tasks' }})
+    runs-on: ubuntu-latest
+    # Five scaffolds, five reference solutions, five real builds —
+    # the JVM one cold.
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every toolchain, because the campaign spans every family and
+      # a case whose build is missing is a case that cannot be proven.
+      - name: Setup toolchain
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: node pnpm java gradle maven go rust
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the CLI the workspaces are scaffolded with
+        run: pnpm build
+
+      - name: Prove every reference solution
+        run: node evals/run.mjs --solvable --campaign ${{ inputs.campaign || 'tasks' }}
+
+  campaign:
+    name: campaign (${{ inputs.campaign }} / ${{ inputs.driver }} / ${{ inputs.variant }})
+    needs: solvable
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.agent }}
+    runs-on: ubuntu-latest
+    # Fifteen agent sessions, each ending in a real build.
+    timeout-minutes: 720
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup toolchain
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: node pnpm java gradle maven go rust
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the CLI the workspaces are scaffolded with
+        run: pnpm build
+
+      - name: Install the driver
+        run: |
+          set -euo pipefail
+          case '${{ inputs.driver }}' in
+            claude-code) npm install -g @anthropic-ai/claude-code ;;
+            codex)       npm install -g @openai/codex ;;
+            *)           echo "::error::unknown driver"; exit 1 ;;
+          esac
+          node evals/run.mjs --check --driver '${{ inputs.driver }}'
+
+      # On a runner there is no subscription to protect, so the key is
+      # the auth — `KEEL_EVALS_API_BILLING=1` is what tells the rig to
+      # leave it in the agent's environment (see evals/lib/env.mjs).
+      - name: Run the campaign
+        env:
+          KEEL_RUN_EVALS: '1'
+          KEEL_EVALS_API_BILLING: '1'
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node evals/run.mjs \
+            --campaign '${{ inputs.campaign }}' \
+            --driver '${{ inputs.driver }}' \
+            --variant '${{ inputs.variant }}' \
+            ${{ inputs.model && format('--model ''{0}''', inputs.model) || '' }} \
+            ${{ inputs.overlay && format('--overlay ''{0}''', inputs.overlay) || '' }}
+
+      # The benchmark is the artifact, always — a campaign killed at
+      # the timeout has still paid for every session it finished, and
+      # the runner checkpoints after each one.
+      - name: Upload the benchmark
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: benchmark-${{ inputs.campaign }}-${{ inputs.driver }}-${{ inputs.variant }}
+          path: evals/results/

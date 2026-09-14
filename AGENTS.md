@@ -623,8 +623,21 @@ would ship as separate packages implementing the same port.
   report, deliberately never a PR gate. Bumping a pin is a
   human-reviewed change that updates the template(s) and the registry
   together, proved by the e2e grid.
-- Secrets required: `NPM_TOKEN`. Provenance is enabled via the workflow's
-  `id-token: write` permission.
+- `.github/workflows/harness-evals.yml` runs the agent-harness evals
+  (`evals/`), report-only and never a PR gate — the `mutation.yml`
+  posture, and then some: a task campaign spawns fifteen real agent
+  sessions, each ending in a real build. Its `solvable` job is
+  weekly and needs no key: it proves every task case's reference
+  `solve.sh` still turns a red oracle green, which is the drift guard
+  between the cases and the templates. Its `campaign` job is
+  dispatch-only and opt-in. Two dispatches, one per harness variant,
+  make an A/B; `evals/ab.mjs` pairs the benchmarks. See
+  `docs/development.md` → Harness evals.
+- Secrets required: `NPM_TOKEN` for the release. The evals workflow's
+  `campaign` job additionally needs the key of whichever driver it
+  runs — `ANTHROPIC_API_KEY` for `claude-code`, `OPENAI_API_KEY` for
+  `codex` — and nothing else in CI reads either. Provenance is
+  enabled via the release workflow's `id-token: write` permission.
 
 To cut a release: bump `package.json`, run
 `node scripts/cut-changelog.mjs X.Y.Z`, commit the three files as

@@ -66,12 +66,26 @@ export function judge(workspace, caseSpec) {
   }
 
   if (oracle.script !== undefined) {
-    const script = path.join(caseSpec.dir, oracle.script);
-    const r = spawnSync('bash', [script], { cwd: workspace, encoding: 'utf8' });
-    if (r.status !== 0) {
-      failures.push(`oracle script exited ${r.status}: ${(r.stderr || r.stdout).trim()}`);
+    // A task oracle runs the project's real build, so it gets the
+    // case's own wall-clock budget: a wedged Gradle daemon must cost
+    // one case, never the campaign.
+    const seconds = caseSpec.budgets?.timeout_seconds;
+    const r = spawnSync('bash', [path.join(caseSpec.dir, oracle.script)], {
+      cwd: workspace,
+      encoding: 'utf8',
+      ...(seconds === undefined ? {} : { timeout: seconds * 1000, killSignal: 'SIGKILL' }),
+    });
+    if (r.error?.code === 'ETIMEDOUT') {
+      failures.push(`oracle script timed out after ${String(seconds)}s`);
+    } else if (r.status !== 0) {
+      failures.push(`oracle script exited ${r.status}: ${tail(r.stderr || r.stdout)}`);
     }
   }
 
   return { pass: failures.length === 0, failures };
+}
+
+/** The last few lines of a build log — enough to diagnose, short enough to read. */
+function tail(output, lines = 12) {
+  return (output ?? '').trim().split('\n').slice(-lines).join('\n');
 }

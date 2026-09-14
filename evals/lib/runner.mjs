@@ -149,6 +149,9 @@ export function mergeBenchmark(previous, fresh, order) {
  *   scaffolded per the case with the git baseline pinned.
  * @param deps.diffStats  (workspace) → { filesChanged, … }.
  * @param deps.keel  { version, commit } recorded in the benchmark.
+ * @param deps.variant  the harness variant this campaign ran under,
+ *   `{ id, overlay? }` — what an A/B report pairs two benchmarks by.
+ *   Absent means `baseline`.
  * @param deps.now  () → epoch ms (injectable clock).
  * @param deps.log  (line) → void progress narration.
  * @param deps.io  passed through to attended drivers.
@@ -166,6 +169,7 @@ export async function runCampaign(deps) {
     prepareWorkspace,
     diffStats,
     keel,
+    variant,
     now,
     log,
     io,
@@ -207,6 +211,7 @@ export async function runCampaign(deps) {
       startedAt: new Date(startedAt).toISOString(),
       finishedAt: done ? new Date(now()).toISOString() : null,
       keel,
+      variant: variant ?? { id: 'baseline' },
       driver: identity,
       cases: all,
       summary: summarize(all),

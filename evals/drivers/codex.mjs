@@ -87,6 +87,10 @@ export function harvestExecJson(stdout) {
 
 export const codexDriver = {
   id: 'codex',
+  // Plus a private CODEX_HOME when the operator exports
+  // KEEL_EVALS_CODEX_HOME; the flag alone already keeps the user
+  // layer out.
+  isolation: '--ignore-user-config',
   modes: ['scripted'],
   /** None declared: an unnamed model is Codex's own default, recorded as null. */
   defaultModel: undefined,

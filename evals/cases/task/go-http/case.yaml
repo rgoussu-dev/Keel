@@ -1,0 +1,35 @@
+# Lane B task eval — agent-neutral: nothing agent-specific appears
+# here; drivers map budgets and autonomy to their own CLI.
+#
+# One endpoint through the port, on the Go modulith. The change
+# crosses every ring of the hexagon — the compiler-hidden core, the
+# context's contract face, its HTTP adapter and the fake the existing
+# test drives it through — which is exactly what makes it a fair
+# question to ask of a harness: an agent that oriented by the map
+# knows where each ring is, and one that did not goes looking.
+id: task/go-http
+tags:
+  - task
+  - go
+scaffold:
+  stack: go-http
+  module_layout: modulith
+  answers:
+    walking-skeleton/go-bootstrap:
+      modulePath: example.com/task-eval
+      projectName: task-eval
+setup_script: setup.sh
+prompt: |
+  This Go project has a failing test at
+  `internal/modules/greeting/userside/resthttp/farewell_test.go`.
+
+  Make it pass, and keep `go build ./... && go test ./...` green.
+
+  Do not edit that test file. Follow the conventions this project
+  already documents; the change belongs in more than one place.
+oracle:
+  script: check.sh
+budgets:
+  timeout_seconds: 1800
+  max_turns: 60
+runs: 3

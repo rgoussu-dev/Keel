@@ -395,17 +395,18 @@ be added later, is one table in the
 
 ## Documentation
 
-| I want to…                                     | Read                                          |
-| ---------------------------------------------- | --------------------------------------------- |
-| See every stack, its prerequisites, its output | [Stack catalog](docs/stacks/README.md)        |
-| See every vertical and where it applies        | [Verticals catalog](docs/verticals/README.md) |
-| Look up a command or flag                      | [CLI reference](docs/cli.md)                  |
-| Scaffold from a browser instead                | [The local scaffolder](docs/ui.md)            |
-| Understand tags, adapters, predicates, peers   | [Composition model](docs/composition.md)      |
-| Bring my own stack or vertical                 | [Plugins](docs/plugins.md)                    |
-| Know the conventions scaffolded projects carry | [Binding spec](assets/project/AGENTS.md)      |
-| Hack on keel itself                            | [Development guide](docs/development.md)      |
-| See what's next                                | [Roadmap](docs/roadmap.md)                    |
+| I want to…                                       | Read                                               |
+| ------------------------------------------------ | -------------------------------------------------- |
+| See every stack, its prerequisites, its output   | [Stack catalog](docs/stacks/README.md)             |
+| See every vertical and where it applies          | [Verticals catalog](docs/verticals/README.md)      |
+| Look up a command or flag                        | [CLI reference](docs/cli.md)                       |
+| Scaffold from a browser instead                  | [The local scaffolder](docs/ui.md)                 |
+| Understand tags, adapters, predicates, peers     | [Composition model](docs/composition.md)           |
+| Bring my own stack or vertical                   | [Plugins](docs/plugins.md)                         |
+| Know the conventions scaffolded projects carry   | [Binding spec](assets/project/AGENTS.md)           |
+| Hack on keel itself                              | [Development guide](docs/development.md)           |
+| Measure how well agents navigate what keel emits | [Harness evals](docs/development.md#harness-evals) |
+| See what's next                                  | [Roadmap](docs/roadmap.md)                         |
 
 ---
 
