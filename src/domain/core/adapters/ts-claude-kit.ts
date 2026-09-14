@@ -21,6 +21,7 @@ import {
   runSkillSpec,
   type ClaudeKitFamily,
   type LayerDoc,
+  type LifecycleFacts,
   type RunbookCommand,
 } from './claude-kit.js';
 
@@ -161,6 +162,7 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
         },
         {
           directory: 'modules',
+          indexes: 'modules',
           title: 'bounded contexts',
           description: 'one package per bounded context; peers meet only at its ./service export',
           bullets: [
@@ -212,7 +214,33 @@ function tsFamily(ctx: Ctx): ClaudeKitFamily {
         },
       ];
 
-  return { runbook, runSkill, verifyCommand, docs };
+  const workspaceList =
+    pm === 'pnpm' ? '`pnpm-workspace.yaml`' : 'the root `package.json`’s `workspaces` list';
+  const lifecycle: LifecycleFacts = {
+    addModule: [
+      `Every emitted package is added to ${workspaceList} in the same run, and its dependents get it in their own \`package.json\`. Re-run \`${pm} install\` afterwards, or the new workspace link does not exist yet.`,
+      `Declare every workspace package a package imports **in that package's own** \`package.json\`. npm's hoisting resolves an undeclared one anyway and pnpm's isolated store refuses the same tree — which is why the e2e grid runs both.`,
+      '`src/service.ts` (the `./service` export) is the only entry a sibling context may import. dependency-cruiser holds that rule and nothing else does: a violating import typechecks, runs clean, and only `lint` goes red.',
+      '`application/<unit>/src/<ctx>.ts` is the context’s wiring module, and `main.ts` must add its handlers to the array the `RegistryMediator` is built from. A handler missing from that array compiles and the unit starts; dispatch is what fails.',
+      'No enums and no parameter properties (`erasableSyntaxOnly`) in the new package: Node runs these sources directly.',
+    ],
+    promote: [
+      '`domain/kernel/` → `platform/kernel/`: the mediator bases belong to no context. `domain/contract/` and `domain/core/` → one package, `modules/<ctx>/`, with `src/domain/contract/` and `src/domain/core/internal/` inside it.',
+      '`infrastructure/<port>/` → `modules/<ctx>/src/infra/<port>/` for an adapter the context owns, the fake still beside the real one.',
+      'Add `modules/<ctx>/src/service.ts` and give the package a `./service` export — that entry, and only that entry, is what a sibling may import. Add the dependency-cruiser rule that says so in the same change: nothing else enforces it.',
+      `\`application/<unit>/\` stays the assembly, but the per-context wiring moves to \`src/<ctx>.ts\`, one module per context, each feeding its handlers into the array \`main.ts\` builds the mediator from.`,
+      `Every moved directory is a workspace package: list it in ${workspaceList}, give it a \`package.json\` declaring what it imports, and re-run \`${pm} install\`.`,
+    ],
+  };
+
+  return {
+    runbook,
+    runSkill,
+    verifyCommand,
+    layout: modulith ? 'modulith' : 'basic',
+    lifecycle,
+    docs,
+  };
 }
 
 export const tsClaudeKitAdapter: Adapter = claudeKitAdapter(

@@ -13,11 +13,14 @@ import type { Logger } from '../../../domain/contract/ports/logger.js';
 import {
   addModuleCommand,
   addVerticalCommand,
+  docsSyncCommand,
   linkPeerCommand,
   newProjectCommand,
+  type DocsReport,
   type InstallReport,
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
+import { docsCheckQuery } from '../../../domain/contract/queries.js';
 import type { ServeUi } from '../../web/contract/server.js';
 import {
   toolchainCheckQuery,
@@ -275,6 +278,39 @@ export function buildProgram(deps: CliDeps): Command {
       await server.closed;
     });
 
+  const docs = program
+    .command('docs')
+    .description(
+      "Project the navigation index — the root map and skills index — from this project's manifest and the registry.",
+    );
+
+  docs
+    .command('sync')
+    .description(
+      'Recompute every index row and rewrite the keel-owned regions that carry them. Content outside those regions is left untouched.',
+    )
+    .option('--dry-run', 'print what would change without writing any file', false)
+    .action(async (opts: { dryRun: boolean }): Promise<void> => {
+      const result = await deps.mediator.dispatch(
+        docsSyncCommand({ cwd: cwd(), dryRun: opts.dryRun }),
+      );
+      printDocs(unwrap(result), 'sync', deps.logger);
+    });
+
+  docs
+    .command('check')
+    .description(
+      'Report how the index and the project disagree; writes nothing. Exits 1 on any drift.',
+    )
+    .action(async (): Promise<void> => {
+      const result = await deps.mediator.dispatch(docsCheckQuery({ cwd: cwd() }));
+      const report = unwrap(result);
+      printDocs(report, 'check', deps.logger);
+      if (report.drift.length > 0) {
+        throw new Error("the navigation index is out of date — run 'keel docs sync'");
+      }
+    });
+
   const toolchain = program
     .command('toolchain')
     .description(
@@ -317,6 +353,47 @@ export function buildProgram(deps: CliDeps): Command {
     });
 
   return program;
+}
+
+/**
+ * One printer for both `keel docs` commands: they answer with the
+ * same report, and printing them differently is how two views of one
+ * computation start disagreeing. `sync` reports the drift it just
+ * closed; `check` reports the drift that is still there.
+ */
+function printDocs(report: DocsReport, mode: 'sync' | 'check', log: Logger): void {
+  log.info(`keel docs ${mode}:`);
+  if (report.regions.length === 0) {
+    log.warn('  no index regions in this project — it has no agent harness to index');
+    return;
+  }
+  for (const region of report.regions) {
+    const rows = `${String(region.rows)} row${region.rows === 1 ? '' : 's'}`;
+    log.info(
+      `  ${region.changed ? chalk.yellow('~') : ' '} ${region.target} ${region.region} — ${rows}`,
+    );
+  }
+  for (const file of report.unindexed) {
+    log.info(`  ${chalk.yellow('?')} ${file} — not indexed; keel did not write it`);
+  }
+  for (const drift of report.drift) {
+    log.info(
+      `  ${chalk.red('✗')} ${drift.target}${drift.region ? ` ${drift.region}` : ''}: ${drift.detail}`,
+    );
+  }
+  if (mode === 'check') {
+    if (report.drift.length === 0) log.success('keel docs check: the index matches this project');
+    return;
+  }
+  if (!report.committed) {
+    log.warn('Dry run — nothing was written.');
+    return;
+  }
+  log.success(
+    report.changes.length === 0
+      ? 'keel docs sync: the index was already up to date'
+      : `keel docs sync: rewrote ${String(report.changes.length)} file${report.changes.length === 1 ? '' : 's'}`,
+  );
 }
 
 function printToolchainInstall(report: ToolchainInstallReport, log: Logger): void {

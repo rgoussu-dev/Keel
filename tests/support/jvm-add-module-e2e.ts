@@ -27,6 +27,7 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { addModule, buildProject, scaffold, type JvmProjectSpec } from './jvm-e2e.js';
+import { expectLifecycleSkill } from './harness-docs.js';
 
 /**
  * The source language of a stack, which its id encodes as a suffix.
@@ -78,6 +79,12 @@ export async function addThreeContexts(spec: JvmProjectSpec, cwd: string): Promi
  *     proves it worked.
  *   - **The new modules are on a classpath**, rather than merely
  *     present in the tree.
+ *
+ * Before the build, the cheap structural reads: the build file
+ * registers every module, the wiring class names each consumed peer,
+ * and the root document's `keel:map` gained a row per context — the
+ * index is recomputed inside `keel add module`'s own apply, so this
+ * is a fact about that command rather than about a later sync.
  */
 export async function runJvmAddModuleE2E(
   spec: JvmProjectSpec,
@@ -91,6 +98,10 @@ export async function runJvmAddModuleE2E(
     fs.readFile(path.join(cwd, rel.replace(/\//g, path.sep)), 'utf8');
 
   await addThreeContexts(spec, cwd);
+
+  // The modulith half of the lifecycle skill pair, and the flat half
+  // absent — the procedure this very command is the subject of.
+  await expectLifecycleSkill(cwd, 'modulith');
 
   // Every module of every context is a module of the build, not a
   // directory sitting outside it.
@@ -119,6 +130,14 @@ export async function runJvmAddModuleE2E(
   expect(await read(wiring)).toContain(
     `import ${PKG}.shipping.domain.contract.OrderingClient${terminator}`,
   );
+
+  // The navigation index moved with the structure, in the same apply
+  // — every added context has a map row in the root document, and no
+  // later `keel docs sync` was needed to notice them.
+  const map = await read('AGENTS.md');
+  for (const context of ['greeting', 'ordering', 'shipping', 'billing']) {
+    expect(map, `map row for ${context}`).toContain(`](modules/${context}/) — bounded context`);
+  }
 
   if (maven) {
     // The assembly's new dependencies landed on the classpath, not

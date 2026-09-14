@@ -60,6 +60,15 @@ export interface DocSection {
   readonly description: string;
   /** The section's Markdown, without its markers. */
   readonly body: string;
+  /**
+   * What keel-known structure lives directly beneath the directory,
+   * for the engine's index to project rows for. `modules` marks the
+   * directory the project's bounded contexts sit in — the one fact
+   * about a modulith layout the engine cannot derive, and a
+   * declaration rather than five hand-written path prefixes in the
+   * projection. Absent for a directory holding nothing keel names.
+   */
+  readonly indexes?: 'modules' | undefined;
 }
 
 const SECTION_RE = /^[a-z][a-z0-9-]*$/;
@@ -86,6 +95,7 @@ export const DocSectionSchema = z.object({
     .min(1)
     .refine((d) => !/[\r\n]/.test(d), { message: 'must be a single line' }),
   body: z.string().min(1),
+  indexes: z.literal('modules').optional(),
 });
 
 /** The doc's path: `<directory>/AGENTS.md`. */

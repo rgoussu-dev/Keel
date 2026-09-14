@@ -30,6 +30,7 @@ import {
   scaffold,
   skipWebE2E,
 } from '../support/web-e2e.js';
+import { expectLifecycleSkill } from '../support/harness-docs.js';
 
 const PM = 'pnpm' as const;
 
@@ -56,6 +57,8 @@ describe.skipIf(skipWebE2E(PM))(`ts-http modulith e2e (${PM})`, () => {
         },
         cwd,
       );
+      await expectLifecycleSkill(cwd, 'modulith');
+
       runStep(cwd, `${PM} run typecheck`, PM, ['run', 'typecheck']);
       runStep(cwd, `${PM} test`, PM, ['test']);
       runStep(cwd, `${PM} run lint`, PM, ['run', 'lint']);

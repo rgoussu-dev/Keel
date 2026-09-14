@@ -35,6 +35,7 @@ import {
   skipWebE2E,
   startDevServer,
 } from '../support/web-e2e.js';
+import { expectLifecycleSkill } from '../support/harness-docs.js';
 
 const PM = 'pnpm' as const;
 
@@ -64,6 +65,7 @@ describe.skipIf(skipWebE2E(PM))(`web-components modulith e2e (${PM})`, () => {
     'builds a bundle that leaves the design system to the import map',
     async () => {
       await modulith();
+      await expectLifecycleSkill(cwd, 'modulith');
 
       runStep(cwd, `${PM} run typecheck`, PM, ['run', 'typecheck']);
       runStep(cwd, `${PM} test`, PM, ['test']);

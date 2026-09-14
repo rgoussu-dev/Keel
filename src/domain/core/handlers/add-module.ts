@@ -57,7 +57,7 @@ import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { AddModuleCommand, InstallReport } from '../../contract/commands.js';
 import type { InstalledModule, ManifestV2 } from '../../contract/manifest.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
-import type { Tag } from '../../contract/composition.js';
+import type { Tag, Tree } from '../../contract/composition.js';
 import { runActions } from '../actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { emitsFor } from '../adapters/context-support.js';
@@ -65,6 +65,8 @@ import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
 import { assemblyRefusal } from '../compatibility.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import { installVertical } from '../install.js';
+import { newOwnership, projectDocsIndex } from '../apply.js';
+import { projectDocs } from '../docs-projection.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import type { InstallDeps } from './deps.js';
 
@@ -107,6 +109,15 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
 
     const now = this.deps.clock.nowIso();
     const tree = this.deps.trees(command.cwd);
+    const recorded: readonly InstalledModule[] = [
+      ...stored.modules,
+      {
+        name: name.value,
+        installedAt: now,
+        seam: true,
+        ...(gate.value === null ? {} : { consumes: gate.value.name }),
+      },
+    ];
     const seeded: ManifestV2 = {
       ...stored,
       tags: [...stored.tags, CONTEXT_TAG].sort(),
@@ -129,6 +140,14 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       now: () => now,
     });
 
+    // The context is a structural fact, so the index moves with it in
+    // the same apply — nothing is left for a later `keel docs sync`
+    // to notice. It is the full projection rather than this run's
+    // declarations because the directory the contexts live in is the
+    // family kit's declaration, and the kit does not run here.
+    const next: ManifestV2 = { ...result.manifest, modules: recorded };
+    await this.reindex(command.cwd, next, tree);
+
     const report: InstallReport = {
       subject: name.value,
       changes: tree.changes(),
@@ -144,15 +163,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     await tree.commit();
     await this.deps.manifests.write(scopeRoot, {
       ...withoutAddModuleInputs(result.manifest),
-      modules: [
-        ...stored.modules,
-        {
-          name: name.value,
-          installedAt: now,
-          seam: true,
-          ...(gate.value === null ? {} : { consumes: gate.value.name }),
-        },
-      ],
+      modules: [...recorded],
     });
     const runDeferred = this.deps.runDeferred ?? runActions;
     await runDeferred({
@@ -163,6 +174,24 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       dryRun: false,
     });
     return ok(report);
+  }
+
+  /**
+   * Re-projects the navigation index over the manifest this run is
+   * about to write, so the new context has its row before anything is
+   * committed. Merged rather than replaced: the replay is complete,
+   * but a row a person put in the slot by hand is still theirs until
+   * `keel docs sync` says otherwise.
+   */
+  private async reindex(cwd: string, manifest: ManifestV2, tree: Tree): Promise<void> {
+    const { regions } = await projectDocs({
+      ...this.deps,
+      manifest,
+      tree,
+      cwd,
+      now: () => manifest.updatedAt,
+    });
+    projectDocsIndex(regions, tree, newOwnership(), { merge: true });
   }
 }
 

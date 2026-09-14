@@ -57,6 +57,16 @@ apply the same `migrations/sql/` at startup for a tight local loop,
 and `docker compose -f dev/compose.yaml up` exercises the real runner
 against the dev database on every boot.
 
+When the project carries the agent harness, that doctrine also ships
+as a **`migrate` skill** (`.claude/skills/migrate/SKILL.md`): the
+procedure for adding a script, the tool-specific step beside it (a
+Liquibase script with no changeset is never applied, and nothing
+reports it), and the two nevers — never edit a migration that has been
+applied anywhere, never migrate from inside the service. One shape
+over both halves of the dial, spelled for the tool this project
+recorded, and emitted only where the vertical is installed. See
+[skills](../composition.md#skills).
+
 ## Tests
 
 When the project carries the agent harness, `persistence` also

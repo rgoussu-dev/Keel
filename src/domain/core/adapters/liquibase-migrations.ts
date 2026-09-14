@@ -27,6 +27,7 @@
 import { DATABASE_COMPOSE_ID } from './database-compose.js';
 import { addComposeService, devComposeSeed, DEV_COMPOSE_TARGET } from './dev-env-compose.js';
 import { LIQUIBASE_TAG, migrationsTool } from './migrations-tool.js';
+import { migrateSkill } from './migrations-skill.js';
 import { MIGRATIONS_SQL_TEMPLATE_ID } from './flyway-migrations.js';
 import {
   databaseName,
@@ -129,6 +130,7 @@ export const liquibaseMigrationsAdapter: Adapter = {
           }),
         },
       ],
+      skills: [migrateSkill('liquibase')],
       tagsAdd: [LIQUIBASE_TAG],
     };
   },

@@ -17,6 +17,7 @@ import {
   runSkillSpec,
   type ClaudeKitFamily,
   type LayerDoc,
+  type LifecycleFacts,
   type RunbookCommand,
 } from './claude-kit.js';
 import {
@@ -176,6 +177,60 @@ function discovery(framework: JvmRestFramework, lang: 'java' | 'kotlin'): string
     : 'Micronaut finds a handler only in a package `MediatorFactory`’s `@Import(packages = …)` names, and does not recurse into subpackages';
 }
 
+/**
+ * The JVM half of the two layout lifecycle skills.
+ *
+ * The `add-module` bullets are the four failures the 24-cell
+ * `add-module` grid exists to catch, and every one of them is
+ * **silent**: an unregistered module compiles as an unused directory,
+ * a handler the container never found starts perfectly, and a seam
+ * dependency scoped too widely produces no error at all — it just
+ * puts the peer's domain back on your classpath.
+ */
+function jvmLifecycle(
+  layout: JvmLayoutPaths,
+  framework: JvmRestFramework,
+  build: JvmBuildSystem,
+  lang: 'java' | 'kotlin',
+  rest: boolean,
+  cli: boolean,
+): LifecycleFacts {
+  const gradle = build === 'gradle';
+  const registry = gradle ? '`settings.gradle.kts`' : 'the root `pom.xml`’s `<modules>`';
+  const seamScope = gradle ? '`implementation`' : '`<optional>true</optional>`';
+  const assemblies = [
+    ...(rest ? [`\`${layout.restRuntime}/\``] : []),
+    ...(cli ? [`\`${layout.cliRuntime}/\``] : []),
+  ].join(' and ');
+  const builder = MEDIATOR_BUILDER[framework];
+  return {
+    addModule: [
+      `Every emitted module is registered in ${registry} in the same run. A context directory that is not there is on no classpath, and the build says nothing about it.`,
+      `A \`<Ctx>Wiring\` class per context lands in ${assemblies}, beside \`${builder}\`. It is what mounts the context’s user-side adapters and its gateways into that assembly.`,
+      `${discovery(framework, lang)} — so a handler outside it compiles, the application starts, and only dispatch fails. The emitted \`<Ctx>WiringTest\` dispatches through the real container: that test is the only thing that sees it.`,
+      `The gateway module depends on the peer’s \`user-side/service\` with ${seamScope}, which keeps the peer’s \`domain\` off your compile classpath. Widening that scope re-merges the two contexts and nothing fails to tell you.`,
+      'A gateway takes its peer as a deferred handle (`Provider<…>`), because `mediator → handler → client → peer service → mediator` is a real construction cycle only the container closes.',
+    ],
+    promote: [
+      `\`${layout.kernel}/\` → \`platform/kernel/\`: it belongs to no context, so it moves out of \`domain/\` rather than into a module.`,
+      `\`${layout.domainContract}/\` and \`${layout.domainCore}/\` → \`modules/<ctx>/domain/{contract,core}/\`, unchanged inside.`,
+      ...(rest
+        ? [
+            `\`${layout.restContract}/\` → \`modules/<ctx>/user-side/api/contract/\` and the resources in \`${layout.restAdapters}/\` → \`modules/<ctx>/user-side/api/adapters/\`. \`${builder}\` stays behind: the composition root is the assembly’s, and \`application/api/\` becomes that assembly.`,
+          ]
+        : []),
+      ...(cli
+        ? [
+            `The picocli commands in \`${layout.cliRuntime}/\` → \`modules/<ctx>/user-side/cli/\`; \`Main\` and \`${builder}\` stay in \`application/cli/\`.`,
+          ]
+        : []),
+      `\`infrastructure/<port>/\` → \`modules/<ctx>/infra/<port>/\` for an adapter the context owns; anything no context owns (the \`Clock\`) goes to \`platform/\`.`,
+      `Each moved directory is a build module: add it to ${registry}, and give the assembly a dependency on it. Add one \`<Ctx>Wiring\` per context to each assembly.`,
+      `A peer edge is then a driven port in your own \`domain/contract\` plus \`modules/<ctx>/infra/<peer>-gateway/\`, depending on the peer’s seam with ${seamScope} and nothing wider.`,
+    ],
+  };
+}
+
 /** The JVM per-layer docs — one per top-level directory the layout scaffolds. */
 function jvmDocs(
   layout: JvmLayoutPaths,
@@ -216,6 +271,7 @@ function jvmDocs(
       },
       {
         directory: 'modules',
+        indexes: 'modules',
         title: 'bounded contexts',
         description: 'one directory per bounded context; peers meet only at user-side/service',
         bullets: [
@@ -368,6 +424,8 @@ non-zero with the domain error.`,
     runbook,
     runSkill,
     verifyCommand,
+    layout: layout.layout,
+    lifecycle: jvmLifecycle(layout, framework, build, lang, rest, cli || !rest),
     docs: jvmDocs(layout, framework, build, lang, rest, cli || !rest),
   };
 }
