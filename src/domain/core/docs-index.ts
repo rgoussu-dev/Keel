@@ -15,8 +15,9 @@
  *
  *   - `keel:map` in the root `AGENTS.md` — one row per documented
  *     directory at the top of its chain, plus one row per bounded
- *     context, so an agent that never auto-loads a nested document
- *     still reaches every one of them from the root;
+ *     context and, at a composite product root, one row per service,
+ *     so an agent that never auto-loads a nested document still
+ *     reaches every one of them from the root;
  *   - `keel:skills-index` in the root `AGENTS.md` — one row per
  *     staged skill, its description **verbatim** as the skill's own
  *     frontmatter carries it, so the two can never drift into two
@@ -28,7 +29,7 @@
  *
  * **Scope is deliberate.** Indexed is what has architectural identity
  * and a name keel or an architectural action creates: directories
- * with a document, bounded contexts, skills. The long tail — function
+ * with a document, bounded contexts, services, skills. The long tail — function
  * bodies, call sites, literals — is not indexed and never will be:
  * it has no stable identity, it churns every commit, and a shipped
  * index of it would lie within days. Grep is the right tool there.
@@ -37,7 +38,7 @@
 import { docTarget, type DocSection } from '../contract/doc.js';
 import { skillTarget } from '../contract/skill.js';
 import { markdownRegion, locateRegion, type Region } from '../contract/region.js';
-import type { InstalledModule } from '../contract/manifest.js';
+import type { InstalledModule, ServiceRef } from '../contract/manifest.js';
 import type { Tree } from '../contract/ports/tree.js';
 
 /** The root document every index region but `keel:children` lives in. */
@@ -103,11 +104,28 @@ export interface IndexedSkill {
   readonly description: string;
 }
 
+/**
+ * One service of a composite product, as its root manifest records
+ * it. A service is a whole project with a harness of its own, so the
+ * row points at that harness rather than at a directory keel
+ * documented — which is why the shape is the manifest's `ServiceRef`
+ * and not an {@link IndexedDoc}.
+ */
+export type IndexedService = Pick<ServiceRef, 'path' | 'stack'>;
+
 /** Everything the projection reads. Pure data — no port, no tree walk. */
 export interface DocsIndexInput {
   readonly docs: readonly IndexedDoc[];
   readonly skills: readonly IndexedSkill[];
   readonly modules: readonly Pick<InstalledModule, 'name' | 'seam'>[];
+  /**
+   * The composite product's services. Empty for every single-service
+   * project, which is what keeps this a declaration rather than a
+   * branch: the manifest's `services[]` is the only thing that says a
+   * root is a product root, exactly as `modules[]` is the only thing
+   * that says a project has bounded contexts.
+   */
+  readonly services: readonly IndexedService[];
 }
 
 /** One region of one document, and the rows the projection computed for it. */
@@ -201,6 +219,7 @@ export function computeDocsIndex(input: DocsIndexInput): readonly DocsIndexRegio
       rows: sortRows([
         ...docs.filter((doc) => nearestParent(doc.directory, directories) === null).map(docRow),
         ...moduleRows(docs, input.modules),
+        ...input.services.map(serviceRow),
       ]),
     },
     {
@@ -282,6 +301,30 @@ function moduleRows(
       ? 'bounded context; peers reach it only through its `user-side/service` seam'
       : 'bounded context; a pure consumer, publishing no seam of its own',
   }));
+}
+
+/**
+ * One row per service of a composite product, pointing at that
+ * service's own root document.
+ *
+ * A product root indexes services for the same reason a modulith
+ * root indexes bounded contexts: an agent that never auto-loads a
+ * nested file has no other way to learn they exist. The row's target
+ * always resolves — `keel new` refuses `--no-agent-harness` on a
+ * composite stack, so every service of a product keel scaffolded
+ * carries the pair.
+ *
+ * The description names the stack and states the product root's one
+ * rule, because that rule is what the row exists to enforce: work
+ * happens inside a service, under that service's own harness, never
+ * from the root.
+ */
+function serviceRow(service: IndexedService): IndexRow {
+  return {
+    title: `\`${service.path}/\``,
+    href: `${service.path}/${ROOT_DOC}`,
+    description: `a \`${service.stack}\` service; work inside it, under its own harness`,
+  };
 }
 
 /**

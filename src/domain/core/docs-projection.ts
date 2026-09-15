@@ -80,6 +80,7 @@ export async function projectDocs(inputs: DocsProjectionInputs): Promise<DocsPro
     docs,
     skills: harness.flatMap((c) => c.skills),
     modules: inputs.manifest.modules,
+    services: inputs.manifest.services,
   });
   return {
     regions,

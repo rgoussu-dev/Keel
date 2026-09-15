@@ -238,7 +238,7 @@ export function finalizeHarness(inputs: {
     inputs.manifest.tags,
     inputs.logger,
     inputs.owners,
-    inputs.manifest.modules,
+    inputs.manifest,
   );
   return {
     manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.now()),

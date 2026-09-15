@@ -90,6 +90,9 @@ describe('fullstack composite install (monorepo)', () => {
       const before = familyTags ? { ...stored, tags: [...stored.tags, 'lang.go'] } : stored;
       await fsManifestStore.write(projectScopeRoot(cwd), before);
       const actionsBefore = [...ran];
+      // The product root has a document of its own (`fullstack/product-harness`);
+      // what the refusal must not do is replace it with a service's binding spec.
+      const rootDocBefore = read('AGENTS.md');
       const error = expectErr(
         await mediator.dispatch(
           addVerticalCommand({
@@ -103,7 +106,9 @@ describe('fullstack composite install (monorepo)', () => {
       );
       expect(error.code).toBe('keel.invalid-agent-harness');
       expect(error.message).toContain('inside a service');
-      expect(read('AGENTS.md')).toBeNull();
+      expect(read('AGENTS.md')).toBe(rootDocBefore);
+      expect(rootDocBefore).toContain('Work inside a service');
+      expect(rootDocBefore).not.toContain('Engineering conventions');
       expect(await fsManifestStore.read(projectScopeRoot(cwd))).toEqual(before);
       expect(ran).toEqual(actionsBefore);
     },
@@ -185,6 +190,35 @@ describe('fullstack composite install (monorepo)', () => {
       read('backend/application/rest/executable/src/main/resources/application.properties'),
     ).toContain('%dev.quarkus.http.cors.enabled=true');
     expect(read('backend/contract/greet.openapi.yaml')).toContain('openapi: 3.1.0');
+  });
+
+  it('gives the product root the agent pair and the shims, with a map over its services', async () => {
+    const { runDeferred } = recordActions();
+    expectOk(await installMediator({ runDeferred }).dispatch(newFullstack({})));
+
+    const doc = read('AGENTS.md')!;
+    expect(doc).toContain('# Product root (keel)');
+    expect(doc).toContain('- [`backend/`](backend/AGENTS.md) — a `quarkus-rest` service;');
+    expect(doc).toContain('- [`frontend/`](frontend/AGENTS.md) — a `web-components` service;');
+    expect(read('CLAUDE.md')).toBe('@AGENTS.md\n');
+    expect(read('.gemini/settings.json')).toContain('"AGENTS.md"');
+    expect(read('.aider.conf.yml')).toContain('read: [AGENTS.md]');
+    // The rows resolve: every service of a composite install carries
+    // its own harness, because --no-agent-harness is refused there.
+    expect(read('backend/AGENTS.md')).toContain('Engineering conventions');
+    expect(read('frontend/AGENTS.md')).toContain('Engineering conventions');
+  });
+
+  it('hoists no settings, hooks or skills to the product root', async () => {
+    const { runDeferred } = recordActions();
+    expectOk(await installMediator({ runDeferred }).dispatch(newFullstack({})));
+
+    expect(read('.claude/settings.json')).toBeNull();
+    expect(fs.pathExistsSync(path.join(cwd, '.claude', 'hooks'))).toBe(false);
+    expect(fs.pathExistsSync(path.join(cwd, '.claude', 'skills'))).toBe(false);
+    // The services keep theirs.
+    expect(read('backend/.claude/settings.json')).not.toBeNull();
+    expect(fs.pathExistsSync(path.join(cwd, 'backend', '.claude', 'skills'))).toBe(true);
   });
 
   it('containerises the pair with a Quarkus backend image', async () => {
@@ -285,6 +319,10 @@ describe('fullstack composite install (polyrepo)', () => {
 
     expect(read('README.md')).toBeNull();
     expect(read('compose.yaml')).toBeNull();
+    // No shared root means no product-root harness either: there is
+    // nothing for the map to be the root of.
+    expect(read('AGENTS.md')).toBeNull();
+    expect(read('CLAUDE.md')).toBeNull();
     expect(await fsManifestStore.read(projectScopeRoot(cwd))).toBeNull();
 
     const gitRuns = ran.filter((a) => a.id === 'vcs/git-init');

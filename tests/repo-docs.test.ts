@@ -40,11 +40,17 @@ const ROOT_BUDGET_LINES = 120;
 const POINTER = '@AGENTS.md';
 
 /**
- * Directories whose `AGENTS.md` is content, not a contributor note:
- * `assets/project/` is the binding spec keel emits verbatim into every
- * scaffold, and the fixtures are trees a suite builds over.
+ * Directories whose `AGENTS.md` is **content keel emits**, not a note
+ * for keel's own contributors: the binding spec every scaffold
+ * receives, the product-root document a composite install seeds, and
+ * the fixture trees the suites build over. A document here is
+ * governed by the emitted harness's own golden tests.
  */
-const NOT_A_CONTRIBUTOR_NOTE = ['assets/project', 'tests/support/fixtures', 'tests/plugins'];
+const NOT_A_CONTRIBUTOR_NOTE = (directory: string): boolean =>
+  directory === 'assets/project' ||
+  directory.startsWith('assets/composition/') ||
+  directory.startsWith('tests/support/fixtures') ||
+  directory.startsWith('tests/plugins');
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', '.stryker-tmp']);
 
@@ -57,8 +63,7 @@ function documentedDirectories(): readonly string[] {
       const rel = dir === '' ? entry : `${dir}/${entry}`;
       const abs = path.join(repoRoot, rel);
       if (fs.statSync(abs).isDirectory()) walk(rel);
-      else if (entry === 'AGENTS.md' && dir !== '' && !NOT_A_CONTRIBUTOR_NOTE.includes(dir))
-        found.push(dir);
+      else if (entry === 'AGENTS.md' && dir !== '' && !NOT_A_CONTRIBUTOR_NOTE(dir)) found.push(dir);
     }
   };
   walk('');

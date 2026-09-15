@@ -538,10 +538,21 @@ registry and writes them into three engine-owned regions —
 `keel:children` in a nested one that has documents beneath it. Every
 row reads `- [Title](href) — description`.
 
+The map's rows come from three declarations, never from a walk of the
+tree: a contributor's `DocSection` (a documented directory), the
+manifest's `modules[]` beneath the directory a section declared
+`indexes: 'modules'` (a bounded context), and the manifest's
+`services[]` (a service of a composite product, pointing at that
+service's own root document). A single-service project records no
+services, so the third contributes nothing there — which is what keeps
+the product root a declaration rather than a branch. See
+[`fullstack`](verticals/fullstack.md#the-product-roots-harness).
+
 Three rules the projection holds to:
 
 - **Only what has architectural identity is indexed.** Directories
-  with a document, bounded contexts, skills — things keel or an
+  with a document, bounded contexts, a composite product's services,
+  skills — things keel or an
   architectural action creates and names. The long tail (function
   bodies, call sites, literals) is not, and will not be: it has no
   stable identity, so a shipped index of it would lie within days.

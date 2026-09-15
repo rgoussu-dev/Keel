@@ -27,6 +27,7 @@ describe('shipped cases and campaigns', () => {
       'navigation/go-http',
       'navigation/rust-http',
       'navigation/ts-http',
+      'navigation/fullstack',
     ]);
   });
 

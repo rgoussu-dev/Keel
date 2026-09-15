@@ -36,6 +36,18 @@ const scenario: DocsIndexInput = {
     { name: 'greeting', seam: true },
     { name: 'guestbook', seam: false },
   ],
+  services: [],
+};
+
+/** The same projection at a composite product root: services, no documents of its own. */
+const productRoot: DocsIndexInput = {
+  docs: [],
+  skills: [],
+  modules: [],
+  services: [
+    { path: 'backend', stack: 'quarkus-rest' },
+    { path: 'frontend', stack: 'web-components' },
+  ],
 };
 
 /** A tree carrying the documents the scenario's rows point at, with empty slots. */
@@ -120,6 +132,46 @@ describe('computeDocsIndex', () => {
     });
     const map = undeclared.find((r) => r.region === MAP_REGION)!;
     expect(map.rows.map((row) => row.href)).toEqual(['modules/AGENTS.md']);
+  });
+
+  it('indexes a composite product’s services, pointing at each service’s own root doc', () => {
+    const map = computeDocsIndex(productRoot).find((r) => r.region === MAP_REGION)!;
+    expect(map.rows).toEqual([
+      {
+        title: '`backend/`',
+        href: 'backend/AGENTS.md',
+        description: 'a `quarkus-rest` service; work inside it, under its own harness',
+      },
+      {
+        title: '`frontend/`',
+        href: 'frontend/AGENTS.md',
+        description: 'a `web-components` service; work inside it, under its own harness',
+      },
+    ]);
+  });
+
+  it('projects an empty skills index at a product root — nothing is hoisted there', () => {
+    const skills = computeDocsIndex(productRoot).find((r) => r.region === SKILLS_INDEX_REGION)!;
+    expect(skills.rows).toEqual([]);
+  });
+
+  it('indexes no services for a single-service project', () => {
+    const map = computeDocsIndex(scenario).find((r) => r.region === MAP_REGION)!;
+    expect(map.rows.every((row) => !row.href.startsWith('backend/'))).toBe(true);
+  });
+
+  it('sorts a service row among the directory rows, by href like every other', () => {
+    const map = computeDocsIndex({ ...scenario, services: productRoot.services }).find(
+      (r) => r.region === MAP_REGION,
+    )!;
+    expect(map.rows.map((row) => row.href)).toEqual([
+      'backend/AGENTS.md',
+      'frontend/AGENTS.md',
+      'modules/AGENTS.md',
+      'modules/greeting/',
+      'modules/guestbook/',
+      'platform/AGENTS.md',
+    ]);
   });
 
   it('carries each skill’s description into its row verbatim', () => {

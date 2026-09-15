@@ -30,6 +30,23 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Changed
 
+- **The navigation index projects services, not only modules** (#142).
+  `DocsIndexInput` gains `services`, `realizeHarness` takes the
+  manifest instead of just its modules, and `keel docs sync|check`
+  reads both. A single-service project records no services, so the new
+  rows contribute nothing there — the manifest is the declaration, the
+  way `modules[]` already was, and no handler branches on what kind of
+  root it is looking at.
+  **`HARNESS_GENERATION` stays 1.** Checked against
+  `src/domain/contract/region.ts` and the marker's own rule in
+  `manifest.ts` ("bumped by a change that moves a sentinel, a region or
+  a harness document an older scaffold carries"): this moves none of
+  the three — it adds a document to a root that never had one. An
+  existing product root is untouched and stays quiet under
+  `keel docs check`, since the projection returns nothing for a
+  manifest without `agentic.harness`; it gains the root harness only by
+  being scaffolded again.
+
 - **keel dogfoods its own per-directory-docs model** (#145). The root
   `AGENTS.md` is 646 lines down to 111 — the same ≤ 120 budget keel
   emits — and nothing was deleted: the e2e grid moved to
@@ -87,6 +104,32 @@ use to keep a long-lived changelog scannable — and the root keeps
   and refuses a stance leaking across families.
 
 ### Added
+
+- **A composite product root gets an agent harness** (#142). Until now
+  it got none — no `AGENTS.md`, no `CLAUDE.md`, no shims — so an agent
+  opened at a monorepo root had nothing: nested service documents
+  auto-load in only some tools, and no tool hoists a service's
+  `.claude/` upward. The new `fullstack/product-harness` adapter lands
+  the pair and the `.gemini` / `.aider` shims over a thin product-root
+  document: what the product is, how to run the composed environment,
+  the service index, and one rule — **work inside a service, under that
+  service's own harness.** The service rows are the engine's
+  `keel:map` projection over `manifest.services[]`, the same seam that
+  projects a row per bounded context, so `keel docs sync|check`
+  recomputes and drift-guards them and a service recorded later needs
+  no change to the adapter. Every row resolves, because `keel new`
+  refuses `--no-agent-harness` on a composite stack. **Nothing is
+  hoisted**: no `.claude/settings.json`, no hooks, no skills, and no
+  `keel:skills-index` slot — a hook at the root would run the wrong
+  gate for whichever service the change is in, and the emitted document
+  says so rather than leaving a reader to conclude the root was
+  forgotten. A polyrepo product has no shared root and gets none of
+  this.
+- **`navigation/fullstack` eval probe** (#142) — the first case whose
+  workspace is a product root, with all three questions crossing the
+  service boundary the root's map exists to bridge. The `baseline`
+  campaign grows from five cases to six (ten sessions to twelve, the
+  guard in `tests/evals/probes.test.ts` moving with it).
 
 - **`tests/repo-docs.test.ts`** — the repo-local `keel docs check`
   (#145). It holds the root `AGENTS.md` to its line budget and its three

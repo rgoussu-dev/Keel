@@ -46,8 +46,11 @@ Plugins use the same declaration, ownership and activation rules.
 
 Composite services inherit their single-service presets and their default
 harness. `--no-agent-harness` applies to standalone single-service installs;
-it is refused for composite products. Product roots do not install this
-family-based vertical; their service-membership activation rule belongs to #142.
+it is refused for composite products — which is what makes every service of a
+keel-scaffolded product carry the pair. Product roots do not install this
+family-based vertical: the root's own harness is
+[`fullstack/product-harness`](fullstack.md#the-product-roots-harness), a thin
+index over the services with nothing hoisted to it.
 
 ## The emitted `AGENTS.md`
 
@@ -348,7 +351,7 @@ re-renders the harness and restamps the marker. See
 
 **fullstack (product root)**
 
-- Root pair + `keel:map` over `manifest.services[]` (#142), gated on the services' harness membership (above); no hooks/settings/skills hoisted to the root _(decided here, confirming #142's "likely")_.
+- Root pair + shims + `keel:map` over `manifest.services[]` (shipped, #142: `fullstack/product-harness`, which promotes `agentic.harness` at the root because `agent-harness` refuses to install there). Every row resolves without a membership gate, because `keel new` refuses `--no-agent-harness` on a composite stack — every service of a product keel scaffolded carries the pair. No hooks/settings/skills hoisted to the root, and no `keel:skills-index` slot either _(decided here, confirming #142's "likely"; the emitted document states the reason, since a reader who does not find it will conclude the root was forgotten)_.
 - **→ #152:** `run-product` skill (the one-command compose story; the two env knobs `BACKEND_URL` / `API_BASE_URL`; a frontend change rebuilds only the assets image — may fold into #142).
 
 **Engine (reserved identity, #133)**
