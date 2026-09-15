@@ -14,6 +14,17 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A child index's rows now resolve.** `keel:children` rows were
+  written project-relative, like the root map's, but markdown resolves
+  a relative link against the file it appears in — so a row for
+  `modules/orders/` inside `modules/AGENTS.md` pointed at
+  `modules/modules/orders/AGENTS.md`. The rows are now relative to the
+  document that holds them (the title keeps the full path), and drift
+  detection resolves them the same way. Latent rather than shipped:
+  every family's documents are top-of-chain today, so no emitted
+  scaffold carries such a row — found by applying the model to keel's
+  own repository (#145), and fixed before #150 makes the seam live.
+
 - **Harness adoption preserves recorded inputs:** repeated-question answers
   and module consumer relationships are replayed without changing ordinary
   question behavior. Harness opt-out refuses plugin activation, and adoption
@@ -29,6 +40,54 @@ use to keep a long-lived changelog scannable — and the root keeps
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`keel new` asks two more questions**, `changelog` and `commitHook`,
+  both sticky and both defaulting to yes (#143). They come before the
+  repository's own questions because adapter id orders the questions
+  within a vertical. `--set vcs/changelog:changelog=no` and
+  `--set vcs/commit-conventions:commitHook=no` decline them
+  non-interactively.
+
+- **The navigation index projects services, not only modules** (#142).
+  `DocsIndexInput` gains `services`, `realizeHarness` takes the
+  manifest instead of just its modules, and `keel docs sync|check`
+  reads both. A single-service project records no services, so the new
+  rows contribute nothing there — the manifest is the declaration, the
+  way `modules[]` already was, and no handler branches on what kind of
+  root it is looking at.
+  **`HARNESS_GENERATION` stays 1.** Checked against
+  `src/domain/contract/region.ts` and the marker's own rule in
+  `manifest.ts` ("bumped by a change that moves a sentinel, a region or
+  a harness document an older scaffold carries"): this moves none of
+  the three — it adds a document to a root that never had one. An
+  existing product root is untouched and stays quiet under
+  `keel docs check`, since the projection returns nothing for a
+  manifest without `agentic.harness`; it gains the root harness only by
+  being scaffolded again.
+
+- **keel dogfoods its own per-directory-docs model** (#145). The root
+  `AGENTS.md` is 646 lines down to 111 — the same ≤ 120 budget keel
+  emits — and nothing was deleted: the e2e grid moved to
+  `tests/e2e/AGENTS.md`, CI/release/PR mechanics to `.github/AGENTS.md`,
+  the documentation and changelog policy to `docs/AGENTS.md`, the
+  template-tree and version-pin rules to `assets/AGENTS.md`, the testing
+  approach and guard-suite index to `tests/AGENTS.md`, the four standing
+  engine notes (registration, compatibility, drill-down,
+  presets-as-data) and the composition-adapter naming note to
+  `src/domain/core/AGENTS.md`, and the repository tree to
+  `docs/development.md`. Each `src/` layer document gained a "what lives
+  here" opener. The root now carries a `keel:map` region indexing all
+  eleven documented directories, `tests/AGENTS.md` a `keel:children`
+  region for `tests/e2e/`, and every documented directory a one-line
+  `CLAUDE.md` pointer so Claude Code lazy-loads it exactly when files
+  there are touched. Measured with the evals' offline context audit
+  (`evals/lib/context-audit.mjs`), what an agent starting at the
+  repository root must load before doing anything fell **82.6 %** —
+  648 lines / ~8.9k approx. tokens to 113 lines / ~1.5k. The
+  contributor prose in total grew 874 → 987 lines, which is the point:
+  relocated and indexed, not deleted. This is keel's own harness only;
+  no emitted document, sentinel or region moved, so `HARNESS_GENERATION`
+  is unchanged.
 
 - **The emitted `AGENTS.md` is a terse root** (wave 2 of the
   agent-harness redesign, #134): ≤ 120 lines including keel's
@@ -63,6 +122,80 @@ use to keep a long-lived changelog scannable — and the root keeps
   and refuses a stance leaking across families.
 
 ### Added
+
+- **The `vcs` vertical grows its working conventions** (#143): two new
+  dimensions on the vertical every stack already installs, each
+  individually declinable through one sticky question defaulting to
+  yes.
+  - **`vcs/commit-conventions`** emits `.githooks/commit-msg`, a
+    Conventional Commits gate in **POSIX `sh` + `grep`** — no
+    commitlint, no husky, no Node, because a scaffolded Go, Rust or
+    JVM project cannot assume one — and points `core.hooksPath` at the
+    tracked `.githooks/` directory rather than the per-clone
+    `.git/hooks/`. A repository that already points `core.hooksPath`
+    elsewhere keeps it, with a warning, the same brownfield posture
+    `vcs/git-init` takes. The rejection names the grammar, the legal
+    types and two examples, so a retry is informed rather than a
+    guess, and the subject is printed rather than interpolated into a
+    shell heredoc. Merge, revert, fixup, squash and amend subjects are
+    git's own wording and are never refused.
+    **It ships no Claude Code hook, and that is #143's open decision
+    resolved:** git already refuses the commit and puts the reason on
+    stderr, which is where an agent reads it, so a `PreToolUse` gate
+    would spend a slot of the reminder budget restating what the agent
+    is about to be told. A project with no harness still gets the gate.
+  - **`vcs/changelog`** emits keel's own split-changelog convention
+    outward — `CHANGELOG.md` with `[Unreleased]` and a newest-first
+    release index, `docs/releases/` for the cut sections, and
+    `scripts/cut-changelog.sh`. **The cut rides POSIX `sh` + `awk`**,
+    not keel and not `npx`: cutting a release is the one moment you
+    least want a missing runtime. Compare links come from
+    `git remote get-url origin` at cut time, so a project with no
+    remote gets no links rather than wrong ones.
+  - **One source of truth for the shape.** The emitted template and
+    keel's own `CHANGELOG.md` are now checked against the same
+    structural rules (`tests/support/changelog-shape.ts`) in `verify`,
+    which is what makes "matches keel's own" a fact rather than a
+    claim. `tests/changelog.test.ts` is that checker's other consumer.
+
+- **A composite product root gets an agent harness** (#142). Until now
+  it got none — no `AGENTS.md`, no `CLAUDE.md`, no shims — so an agent
+  opened at a monorepo root had nothing: nested service documents
+  auto-load in only some tools, and no tool hoists a service's
+  `.claude/` upward. The new `fullstack/product-harness` adapter lands
+  the pair and the `.gemini` / `.aider` shims over a thin product-root
+  document: what the product is, how to run the composed environment,
+  the service index, and one rule — **work inside a service, under that
+  service's own harness.** The service rows are the engine's
+  `keel:map` projection over `manifest.services[]`, the same seam that
+  projects a row per bounded context, so `keel docs sync|check`
+  recomputes and drift-guards them and a service recorded later needs
+  no change to the adapter. Every row resolves, because `keel new`
+  refuses `--no-agent-harness` on a composite stack. **Nothing is
+  hoisted**: no `.claude/settings.json`, no hooks, no skills, and no
+  `keel:skills-index` slot — a hook at the root would run the wrong
+  gate for whichever service the change is in, and the emitted document
+  says so rather than leaving a reader to conclude the root was
+  forgotten. A polyrepo product has no shared root and gets none of
+  this.
+- **`navigation/fullstack` eval probe** (#142) — the first case whose
+  workspace is a product root, with all three questions crossing the
+  service boundary the root's map exists to bridge. The `baseline`
+  campaign grows from five cases to six (ten sessions to twelve, the
+  guard in `tests/evals/probes.test.ts` moving with it).
+
+- **`tests/repo-docs.test.ts`** — the repo-local `keel docs check`
+  (#145). It holds the root `AGENTS.md` to its line budget and its three
+  headings, holds every `keel:map` row to the document it points at, and
+  holds each row's description byte-identical to that document's own
+  `<!-- keel:purpose: … -->` line — the one-description rule the emitted
+  skills index already holds, applied to keel's own map. It also
+  requires the sibling `CLAUDE.md` pointer beside every document, checks
+  that a nested document is reached from its parent's `keel:children`
+  region rather than the root map, and fails on any relative link that
+  does not resolve. `package.json`'s `files` gains `!assets/AGENTS.md`
+  and `!assets/CLAUDE.md`, so keel's own contributor notes stay out of
+  the published tarball.
 
 - **Harness evals, lane B** (#141, wave 4): task evals in the
   SWE-bench shape, an A/B protocol over harness variants, and a

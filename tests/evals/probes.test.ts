@@ -30,9 +30,9 @@ const campaign = loadCampaign(
 const hasBash = spawnSync('bash', ['--version'], { stdio: 'ignore' }).status === 0;
 
 describe('baseline navigation probes', () => {
-  it('spawns at most ten agent sessions — the campaign draws on a subscription allowance', () => {
+  it('spawns at most twelve agent sessions — the campaign draws on a subscription allowance', () => {
     const sessions = campaign.resolved.reduce((n, c) => n + (campaign.runs ?? c.runs), 0);
-    expect(sessions).toBeLessThanOrEqual(10);
+    expect(sessions).toBeLessThanOrEqual(12);
     expect(sessions).toBeGreaterThanOrEqual(campaign.resolved.length * 2);
   });
 

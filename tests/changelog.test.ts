@@ -17,18 +17,22 @@
  * released sections moved verbatim, historical `###` names included,
  * so nothing here validates category names against Keep a Changelog's
  * six.
+ *
+ * The rules themselves live in `tests/support/changelog-shape.ts`,
+ * because `vcs/changelog` (#143) emits this same convention outward
+ * and "the emitted shape matches keel's own" is a fact only if one
+ * definition decides both.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { changelogShapeViolations } from './support/changelog-shape.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const root = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
 const releasesDir = path.join(repoRoot, 'docs', 'releases');
-
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Everything between `CHANGELOG.` and `.md` is the version. */
 const filenameVersion = /^CHANGELOG\.(.+)\.md$/;
@@ -38,83 +42,25 @@ const releaseFiles = fs
   .filter((entry) => filenameVersion.test(entry))
   .sort();
 
-interface IndexRow {
-  version: string;
-  file: string;
-  date: string;
-}
+describe('the split changelog', () => {
+  const tree = {
+    root,
+    releases: releaseFiles.map((name) => ({
+      name,
+      text: fs.readFileSync(path.join(releasesDir, name), 'utf8'),
+    })),
+  };
 
-const indexRows = (): IndexRow[] =>
-  [
-    ...root.matchAll(
-      /^- \[([^\]]+)\]\(docs\/releases\/(CHANGELOG\.[^)]+\.md)\) — (\d{4}-\d{2}-\d{2})/gm,
-    ),
-  ].map((match) => ({ version: match[1] ?? '', file: match[2] ?? '', date: match[3] ?? '' }));
-
-describe('the root CHANGELOG.md', () => {
-  it('holds exactly [Unreleased] and the Releases index', () => {
-    const headings = [...root.matchAll(/^## .*$/gm)].map((match) => match[0]);
-
-    expect(headings).toEqual(['## [Unreleased]', '## Releases']);
+  it('conforms to the shape the `vcs/changelog` adapter emits', () => {
+    // One definition decides both sides — see tests/support/changelog-shape.ts.
+    // keel has releases and a repository URL, so it is held to both
+    // of the options a fresh scaffold is not.
+    expect(
+      changelogShapeViolations(tree, { minimumReleases: 6, requireUnreleasedLink: true }),
+    ).toEqual([]);
   });
 
-  it('carries a single link ref: [Unreleased], compared against the latest tag', () => {
-    const refs = [...root.matchAll(/^\[([^\]]+)\]: (\S+)$/gm)];
-
-    expect(refs.map((match) => match[1])).toEqual(['Unreleased']);
-    expect(refs[0]?.[2]).toMatch(/^https:\/\/github\.com\/.+\/compare\/v.+\.\.\.HEAD$/);
-  });
-
-  it('indexes the releases newest first', () => {
-    const dates = indexRows().map((row) => row.date);
-
-    expect(dates.length).toBeGreaterThan(0);
-    expect(dates).toEqual([...dates].sort().reverse());
-  });
-});
-
-describe('docs/releases/', () => {
-  // The anti-vacuity floor: a renamed directory must fail loudly here
-  // rather than turn every per-file assertion below green over an
-  // empty set. Six is the migrated history — the floor only rises.
-  it('holds at least the six migrated releases', () => {
-    expect(releaseFiles.length).toBeGreaterThanOrEqual(6);
-  });
-
-  it('is a bijection with the index rows', () => {
-    const indexed = indexRows()
-      .map((row) => row.file)
-      .sort();
-
-    expect(indexed).toEqual(releaseFiles);
-  });
-
-  it('names each index row by the version its file carries', () => {
-    for (const row of indexRows()) {
-      expect(row.file, `index row ${row.version}`).toBe(`CHANGELOG.${row.version}.md`);
-    }
-  });
-
-  it('opens every file with the version heading matching its filename', () => {
-    for (const file of releaseFiles) {
-      const version = filenameVersion.exec(file)?.[1] ?? '';
-      const firstLine = fs.readFileSync(path.join(releasesDir, file), 'utf8').split('\n', 1)[0];
-
-      // U+2014 em dash, per the release-heading convention.
-      expect(firstLine, file).toMatch(
-        new RegExp(`^## \\[${escapeRegExp(version)}\\] — \\d{4}-\\d{2}-\\d{2}$`),
-      );
-    }
-  });
-
-  it('gives every file its own link ref', () => {
-    for (const file of releaseFiles) {
-      const version = filenameVersion.exec(file)?.[1] ?? '';
-      const content = fs.readFileSync(path.join(releasesDir, file), 'utf8');
-
-      expect(content, file).toMatch(
-        new RegExp(`^\\[${escapeRegExp(version)}\\]: https://\\S+$`, 'm'),
-      );
-    }
+  it('keeps every released section out of the root', () => {
+    expect(root).not.toMatch(/^## \[\d/m);
   });
 });

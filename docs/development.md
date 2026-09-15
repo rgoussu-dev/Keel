@@ -170,28 +170,77 @@ src/
     kernel/               # Action/Command/Query, Result, Handler,
                           # Mediator — depends on nothing
     contract/             # commands + InstallReport, composition
-                          # vocabulary (Adapter, Vertical, …),
-                          # manifest types + zod schemas, ports/
-    core/                 # the engine (predicate, resolver, answers,
-                          # apply, install, actions), composition
-                          # adapters/ + verticals/ + stacks,
-                          # handlers/, RegistryMediator
+                          # vocabulary (Adapter, Vertical, …), the
+                          # Stack vocabulary (stack.ts) and the
+                          # plugin contract (plugin.ts), the harness
+                          # seams (skill.ts, hook.ts, doc.ts,
+                          # region.ts), manifest types + zod schemas,
+                          # ports/ (Tree, Prompt, Logger, Clock,
+                          # ManifestStore, TemplateSource,
+                          # ProcessRunner, Registry)
+    core/                 # the engine (predicate, resolver,
+                          # compatibility, dials, answers, apply,
+                          # install, actions, docs-index,
+                          # hook-settings), composition adapters/ +
+                          # verticals/, the stack presets as data
+                          # (stack-presets.json) + the schema and id
+                          # resolution over them (stacks.ts),
+                          # handlers/, registry.ts (registryOf + the
+                          # shipped source, and every refusal naming
+                          # its origin), RegistryMediator
+    toolchain/            # the provisioning bounded context (own
+      contract/ core/     # hexagon): provider records (mise, asdf,
+                          # nvm, corepack, sdkman, rustup,
+                          # go-native) + the manager dial that
+                          # computes which cover a needs set whole +
+                          # the keel toolchain install|check engine;
+                          # meets the rest of keel only at
+                          # domain/contract — the seam is held by
+                          # .dependency-cruiser.cjs both ways
   application/
-    cli/
+    cli/                  # primary adapter #1 — the `keel` binary
       contract/           # commander → commands → mediator → Result
                           # rendered; zero business logic
-      executable/         # composition root: wires infra adapters +
-                          # handlers + mediator; no logic
+      executable/         # process composition root: wires infra
+                          # adapters + handlers + mediator + the UI
+                          # server; no logic
+    web/                  # primary adapter #2 — `keel ui`, the local
+      contract/           # scaffolder. contract/ maps UiRequest →
+      executable/         # commands/queries → UiResponse (no
+                          # node:http) and holds the loopback guards;
+                          # executable/ owns the socket, the per-run
+                          # token and the asset roots. The two primary
+                          # adapters never import each other, bar the
+                          # types-only contract/server.ts the CLI
+                          # names to inject `keel ui`
   infrastructure/         # one directory per port, real adapter +
-                          # canonical fake side by side (tree, prompt,
-                          # manifest, template, process, commons)
+    tree/ prompt/         # canonical fake side by side.
+    manifest/ template/   # registry/ finds and imports a project's
+    process/ commons/     # plugins; template/ also holds the router
+    registry/             # that sends `plugin:` ids to their assets
 assets/
-  composition/            # adapter template trees (ejs), one directory
-                          # per <vertical>/<adapter>/
-  project/                # the binding spec (AGENTS.md) — source of
-                          # truth for the universal conventions
-tests/                    # vitest; mirrors src/; support/factory.ts is
-                          # the shared test Factory
+  composition/            # adapter template trees (ejs), one
+                          # directory per `<vertical>/<adapter>/`;
+                          # plus shared trees several adapters
+                          # render (walking-skeleton/jvm-domain/).
+                          # A `*-modulith` sibling tree is the same
+                          # content under the modulith module layout,
+                          # picked by the manifest's `layout.*` tag
+  project/                # binding spec (AGENTS.md) — source of truth
+                          # for the universal engineering conventions
+  web/                    # the `keel ui` page: framework-free custom
+                          # elements on @rgoussu.dev/planks, served
+                          # as-is (no bundler). src/finder.js walks
+                          # the drill-down tree and src/steps.js says
+                          # which steps the rail has — both pure, both
+                          # unit-tested without a browser. Linted with
+                          # src/tests, unlike the ejs template trees
+tests/                    # vitest; mirrors src/ (domain/, e2e/,
+  support/factory.ts      # infrastructure/); the shared test Factory.
+  support/ui-e2e.ts       # support/ also holds the browser harness
+  support/fixtures/       # both `keel ui` suites drive. fixtures/
+  plugins/                # plugins/ holds the fixture plugins the
+                          # plugins/ suite loads from disk
 bin/keel.js               # npm bin entry → dist/application/cli/executable
 .dependency-cruiser.cjs   # the dependency rule, enforced in pnpm lint
 ```
@@ -201,6 +250,34 @@ Naming note: a _composition adapter_ (`git-init`,
 contributing files to a scaffolded project — not a hexagonal adapter
 of keel itself; those implement `src/domain/contract/ports/` and live
 under `src/infrastructure/`.
+
+### Where the conventions live
+
+keel applies its own per-directory-docs model (#145) to itself. The
+root [`AGENTS.md`](../AGENTS.md) is held to the same ≤ 120 lines it
+emits, and carries a `keel:map` region indexing every directory that
+has notes of its own — `.github/`, `assets/`, `docs/`, `tests/` and
+each `src/` layer — with a one-line `CLAUDE.md` pointer beside each so
+Claude Code lazy-loads a document exactly when files in that directory
+are touched. Depth lives where it binds: the e2e grid in
+[`tests/e2e/AGENTS.md`](../tests/e2e/AGENTS.md), the CI and release
+mechanics in [`.github/AGENTS.md`](../.github/AGENTS.md), the four
+standing engine notes (registration, compatibility, drill-down, the
+presets-as-data rule) in
+[`src/domain/core/AGENTS.md`](../src/domain/core/AGENTS.md).
+
+`tests/repo-docs.test.ts` is the repo-local `keel docs check`: it holds
+the root to its budget, holds the map rows to the documents they point
+at (each document declares a `<!-- keel:purpose: … -->` line and the
+row's description must match it verbatim — the same one-description
+rule the emitted skills index holds), requires the sibling pointer, and
+fails on a relative link that does not resolve. A document added
+without a map row, or a row whose subject is gone, is red in `verify`.
+
+Adding notes: write them in the `AGENTS.md` of the directory they are
+about. If that directory had none, give it one with a purpose line, a
+`CLAUDE.md` pointer, and a row in the root map — the guard names
+whichever of the three is missing.
 
 ## Testing approach
 

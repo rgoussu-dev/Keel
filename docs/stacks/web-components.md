@@ -45,6 +45,10 @@ my-app/
   infrastructure/
     commons/             # Clock port: real adapter + canonical fake
   AGENTS.md              # the binding spec; CLAUDE.md is a pointer to it
+  .githooks/             # commit-msg: a Conventional Commits gate (POSIX sh)
+  CHANGELOG.md           # [Unreleased] + the release index;
+  docs/releases/         # one file per cut release, and
+  scripts/               # cut-changelog.sh, which moves one into the other
 ```
 
 Dependencies are installed at scaffold time — it is ready to run.

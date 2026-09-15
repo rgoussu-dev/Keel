@@ -299,7 +299,7 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
     [...inputs.manifest.tags, ...tagsAdded],
     inputs.logger,
     owners,
-    inputs.manifest.modules,
+    inputs.manifest,
   );
   return {
     tagsAdded: [...tagsAdded],
@@ -379,6 +379,14 @@ function parseHook(adapter: Adapter, raw: HookSpec): HookSpec {
 }
 
 /**
+ * What the navigation index reads off the project itself, as opposed
+ * to off the contributors that ran: its bounded contexts and, at a
+ * composite product root, its services. A `ManifestV2` satisfies it
+ * structurally, which is how both call sites pass one.
+ */
+export type ProjectIndexInput = Pick<DocsIndexInput, 'modules' | 'services'>;
+
+/**
  * Realizes one run's declarations against the settled local tags. Peers
  * never activate this project's harness. Suppressed elements produce one
  * diagnostic; realized elements retain ordinary collision and region checks.
@@ -389,7 +397,7 @@ export function realizeHarness(
   tags: readonly Tag[],
   logger: Logger,
   owners: Ownership,
-  modules: DocsIndexInput['modules'] = [],
+  project: ProjectIndexInput = { modules: [], services: [] },
 ): {
   readonly skills: readonly StagedSkill[];
   readonly files: readonly HarnessFile[];
@@ -474,7 +482,8 @@ export function realizeHarness(
       computeDocsIndex({
         docs,
         skills: contributions.flatMap((c) => c.skills),
-        modules,
+        modules: project.modules,
+        services: project.services,
       }),
       tree,
       owners,

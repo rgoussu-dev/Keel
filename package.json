@@ -23,6 +23,8 @@
     "bin",
     "dist",
     "assets",
+    "!assets/AGENTS.md",
+    "!assets/CLAUDE.md",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

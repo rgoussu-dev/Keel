@@ -146,17 +146,25 @@ describe('keel.preview', () => {
   it('reports the questions an interactive install would ask, with their bindings', async () => {
     const preview = await previewNew();
     expect(preview.subject).toBe('ts-cli');
+    // Adapter order inside a vertical orders its questions: id, except
+    // where an `after` moves one — `vcs/commit-conventions` declares
+    // `after: ['vcs/git-init']`, because `core.hooksPath` needs the
+    // repository to exist, and its question follows its adapter.
     expect(preview.questions.map((pending) => pending.id)).toEqual([
       'extraVerticals',
+      'changelog',
       'remote',
       'defaultBranch',
+      'commitHook',
       'npmScope',
       'projectName',
     ]);
     expect(preview.questions.map((pending) => pending.binding)).toEqual([
       { kind: 'extraVerticals' },
+      { kind: 'answer', adapter: 'vcs/changelog', question: 'changelog' },
       { kind: 'answer', adapter: 'vcs/git-init', question: 'remote' },
       { kind: 'answer', adapter: 'vcs/git-init', question: 'defaultBranch' },
+      { kind: 'answer', adapter: 'vcs/commit-conventions', question: 'commitHook' },
       { kind: 'answer', adapter: BOOTSTRAP, question: 'npmScope' },
       { kind: 'answer', adapter: BOOTSTRAP, question: 'projectName' },
     ]);

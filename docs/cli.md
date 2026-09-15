@@ -408,17 +408,17 @@ Truth is the manifest plus the resolved registry, never a walk of the
 tree. Three regions carry the result, all
 [engine-owned](composition.md#owned-regions):
 
-| Region              | In                   | Rows                                                                             |
-| ------------------- | -------------------- | -------------------------------------------------------------------------------- |
-| `keel:map`          | root `AGENTS.md`     | every documented directory at the top of its chain, plus one per bounded context |
-| `keel:skills-index` | root `AGENTS.md`     | one per staged skill, its description **verbatim** from the skill's frontmatter  |
-| `keel:children`     | a nested `AGENTS.md` | the documents immediately beneath it, where there are any                        |
+| Region              | In                   | Rows                                                                                                                                 |
+| ------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `keel:map`          | root `AGENTS.md`     | every documented directory at the top of its chain, plus one per bounded context — and, at a composite product root, one per service |
+| `keel:skills-index` | root `AGENTS.md`     | one per staged skill, its description **verbatim** from the skill's frontmatter                                                      |
+| `keel:children`     | a nested `AGENTS.md` | the documents immediately beneath it, where there are any                                                                            |
 
 Every row reads `- [Title](href) — description`.
 
 **Indexed** is what has architectural identity and a name keel or an
 architectural action creates or renames: directories with a document,
-bounded contexts, skills. **The long tail is not**: function bodies,
+bounded contexts, a composite product's services, skills. **The long tail is not**: function bodies,
 call sites, usages, literals. Those churn every commit and have no
 stable identity, so any index of them would lie within days — grep is
 the right tool there, and the root document says so. _Orient by map,
@@ -436,7 +436,18 @@ deleted. Running it twice writes nothing the second time.
 
 A document that carries no slot is left alone rather than given one;
 `check` reports the missing pair instead, since the projection fills
-a slot and never invents one in a file it did not write.
+a slot and never invents one in a file it did not write. A slot the
+projection has no rows for is the exception: its absence is not drift,
+which is why a
+[product root](verticals/fullstack.md#the-product-roots-harness) ships
+no `keel:skills-index` pair at all — nothing is hoisted there, so a
+slot that could only ever be empty would be a promise the root does
+not make.
+
+Both work at a **composite product root**, where the rows are services
+rather than documented directories. Nothing about the command changes:
+the same projection reads the same manifest, so a reworded service
+description is the same drift as a reworded directory one.
 
 ### `keel docs check`
 
