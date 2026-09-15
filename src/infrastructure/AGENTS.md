@@ -1,5 +1,13 @@
 # Agent conventions — infrastructure
 
+<!-- keel:purpose: one directory per port, real adapter and canonical fake side by side -->
+
+What lives here: one directory per port, the real adapter and its
+canonical fake side by side — `tree/`, `prompt/`, `manifest/`,
+`template/`, `process/`, `commons/`, `registry/`. `registry/` finds and
+imports a project's plugins; `template/` also holds the router that
+sends `plugin:` ids to their assets.
+
 - Zero business logic. An adapter translates between a port and one
   technology; decisions belong in `domain/core`.
 - Never import `domain/core` or `application/`, and never a sibling

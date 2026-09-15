@@ -30,6 +30,30 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Changed
 
+- **keel dogfoods its own per-directory-docs model** (#145). The root
+  `AGENTS.md` is 646 lines down to 111 — the same ≤ 120 budget keel
+  emits — and nothing was deleted: the e2e grid moved to
+  `tests/e2e/AGENTS.md`, CI/release/PR mechanics to `.github/AGENTS.md`,
+  the documentation and changelog policy to `docs/AGENTS.md`, the
+  template-tree and version-pin rules to `assets/AGENTS.md`, the testing
+  approach and guard-suite index to `tests/AGENTS.md`, the four standing
+  engine notes (registration, compatibility, drill-down,
+  presets-as-data) and the composition-adapter naming note to
+  `src/domain/core/AGENTS.md`, and the repository tree to
+  `docs/development.md`. Each `src/` layer document gained a "what lives
+  here" opener. The root now carries a `keel:map` region indexing all
+  eleven documented directories, `tests/AGENTS.md` a `keel:children`
+  region for `tests/e2e/`, and every documented directory a one-line
+  `CLAUDE.md` pointer so Claude Code lazy-loads it exactly when files
+  there are touched. Measured with the evals' offline context audit
+  (`evals/lib/context-audit.mjs`), what an agent starting at the
+  repository root must load before doing anything fell **82.6 %** —
+  648 lines / ~8.9k approx. tokens to 113 lines / ~1.5k. The
+  contributor prose in total grew 874 → 987 lines, which is the point:
+  relocated and indexed, not deleted. This is keel's own harness only;
+  no emitted document, sentinel or region moved, so `HARNESS_GENERATION`
+  is unchanged.
+
 - **The emitted `AGENTS.md` is a terse root** (wave 2 of the
   agent-harness redesign, #134): ≤ 120 lines including keel's
   regions, down from ~290. The universal body keeps the dependency
@@ -63,6 +87,19 @@ use to keep a long-lived changelog scannable — and the root keeps
   and refuses a stance leaking across families.
 
 ### Added
+
+- **`tests/repo-docs.test.ts`** — the repo-local `keel docs check`
+  (#145). It holds the root `AGENTS.md` to its line budget and its three
+  headings, holds every `keel:map` row to the document it points at, and
+  holds each row's description byte-identical to that document's own
+  `<!-- keel:purpose: … -->` line — the one-description rule the emitted
+  skills index already holds, applied to keel's own map. It also
+  requires the sibling `CLAUDE.md` pointer beside every document, checks
+  that a nested document is reached from its parent's `keel:children`
+  region rather than the root map, and fails on any relative link that
+  does not resolve. `package.json`'s `files` gains `!assets/AGENTS.md`
+  and `!assets/CLAUDE.md`, so keel's own contributor notes stay out of
+  the published tarball.
 
 - **Harness evals, lane B** (#141, wave 4): task evals in the
   SWE-bench shape, an A/B protocol over harness variants, and a

@@ -1,5 +1,13 @@
 # Agent conventions — application/cli
 
+<!-- keel:purpose: primary adapter #1, the `keel` binary; presentation and wiring, no logic -->
+
+What lives here: primary adapter #1, the `keel` binary. `contract/` is
+commander → commands → mediator → `Result` rendered, with zero business
+logic; `executable/` is the process composition root that wires the
+infrastructure adapters, the handlers, the mediator and the UI server —
+no logic.
+
 - `contract/` may import `domain/kernel` and `domain/contract` only
   (enforced by dependency-cruiser); presentation (chalk, commander)
   lives here and nowhere deeper.

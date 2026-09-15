@@ -1,5 +1,14 @@
 # Agent conventions — domain/toolchain
 
+<!-- keel:purpose: the provisioning bounded context, its own hexagon -->
+
+What lives here: the provisioning bounded context, its own hexagon
+(`contract/` + `core/`) — provider records (mise, asdf, nvm, corepack,
+sdkman, rustup, go-native), the manager dial that computes which
+providers cover a needs set whole, and the `keel toolchain
+install|check` engine. It meets the rest of keel only at
+`domain/contract`; `.dependency-cruiser.cjs` holds that seam both ways.
+
 - This is a **bounded context**, not another corner of `domain/core`.
   Import `domain/kernel`, `domain/contract`, and this directory —
   nothing else. Never import `domain/core`, `application/`, or
