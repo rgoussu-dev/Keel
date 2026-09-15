@@ -83,7 +83,7 @@ function project(tree: FakeTree, input: DocsIndexInput = scenario): void {
       region.target,
       upsertRegion(current, region.region, renderIndexBody(region.heading, region.rows), {
         padding: 'blank',
-        whenAbsent: 'keep',
+        whenAbsent: region.whenAbsent,
       }),
     );
   }
@@ -107,7 +107,11 @@ describe('computeDocsIndex', () => {
     const children = computeDocsIndex(scenario).filter((r) => r.region === CHILDREN_REGION);
     expect(children).toHaveLength(1);
     expect(children[0]!.target).toBe('modules/AGENTS.md');
-    expect(children[0]!.rows.map((row) => row.href)).toEqual(['modules/greeting/docs/AGENTS.md']);
+    // Relative to the document that holds the row, as markdown
+    // resolves links — 'modules/greeting/docs/AGENTS.md' inside
+    // 'modules/AGENTS.md' would point at 'modules/modules/…'.
+    expect(children[0]!.rows.map((row) => row.href)).toEqual(['greeting/docs/AGENTS.md']);
+    expect(children[0]!.rows.map((row) => row.title)).toEqual(['`modules/greeting/docs/`']);
   });
 
   it('emits no child index for a document with nothing beneath it', () => {
@@ -267,6 +271,30 @@ describe('docsIndexDrift', () => {
     const once = tree.read('AGENTS.md')!.toString('utf8');
     project(tree);
     expect(tree.read('AGENTS.md')!.toString('utf8')).toBe(once);
+  });
+
+  it('resolves a child row against the document that holds it', () => {
+    const tree = seededTree();
+    project(tree);
+    // The row reads 'greeting/docs/AGENTS.md' inside 'modules/AGENTS.md';
+    // resolving it means putting 'modules/' back in front, which the
+    // seeded tree has. Nothing here is drift.
+    expect(tree.read('modules/AGENTS.md')!.toString('utf8')).toContain(
+      '- [`modules/greeting/docs/`](greeting/docs/AGENTS.md) —',
+    );
+    expect(docsIndexDrift(computeDocsIndex(scenario), tree)).toEqual([]);
+  });
+
+  it('names a child row whose target is gone', () => {
+    const tree = seededTree();
+    project(tree);
+    tree.delete('modules/greeting/docs/AGENTS.md');
+    expect(docsIndexDrift(computeDocsIndex(scenario), tree)).toContainEqual(
+      expect.objectContaining({
+        target: 'modules/AGENTS.md',
+        detail: expect.stringContaining("points at 'greeting/docs/AGENTS.md'"),
+      }),
+    );
   });
 
   it('names a row whose description was changed by hand', () => {

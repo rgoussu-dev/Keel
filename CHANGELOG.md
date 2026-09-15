@@ -14,6 +14,17 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A child index's rows now resolve.** `keel:children` rows were
+  written project-relative, like the root map's, but markdown resolves
+  a relative link against the file it appears in — so a row for
+  `modules/orders/` inside `modules/AGENTS.md` pointed at
+  `modules/modules/orders/AGENTS.md`. The rows are now relative to the
+  document that holds them (the title keeps the full path), and drift
+  detection resolves them the same way. Latent rather than shipped:
+  every family's documents are top-of-chain today, so no emitted
+  scaffold carries such a row — found by applying the model to keel's
+  own repository (#145), and fixed before #150 makes the seam live.
+
 - **Harness adoption preserves recorded inputs:** repeated-question answers
   and module consumer relationships are replayed without changing ordinary
   question behavior. Harness opt-out refuses plugin activation, and adoption

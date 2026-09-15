@@ -23,9 +23,10 @@
  *     frontmatter carries it, so the two can never drift into two
  *     different triggers;
  *   - `keel:children` in a nested `AGENTS.md` — the documents
- *     immediately beneath it. Emitted only where there are any: an
- *     empty index is noise, and every family's documents are
- *     top-of-chain today.
+ *     immediately beneath it, linked **relative to that document**,
+ *     since that is how markdown resolves a link. Emitted only where
+ *     there are any: an empty index is noise, and every family's
+ *     documents are top-of-chain today.
  *
  * **Scope is deliberate.** Indexed is what has architectural identity
  * and a name keel or an architectural action creates: directories
@@ -240,7 +241,7 @@ export function computeDocsIndex(input: DocsIndexInput): readonly DocsIndexRegio
       region: CHILDREN_REGION,
       heading: CHILDREN_HEADING,
       whenAbsent: 'append',
-      rows: sortRows(children.map(docRow)),
+      rows: sortRows(children.map((child) => childRow(doc.directory, child))),
     });
   }
   return regions;
@@ -262,6 +263,23 @@ function dedupeDocs(docs: readonly IndexedDoc[]): readonly IndexedDoc[] {
     }
   }
   return [...byDirectory.values()];
+}
+
+/**
+ * One row of a **child** index, whose href is relative to the
+ * document that holds it rather than to the project root.
+ *
+ * Markdown resolves a relative link against the file it appears in,
+ * so a child row of `modules/AGENTS.md` naming
+ * `modules/orders/AGENTS.md` would point at
+ * `modules/modules/orders/AGENTS.md` — a dead link. The root map's
+ * rows stay project-relative because the root *is* the project root;
+ * only a nested index has a base to subtract. The title keeps the
+ * full path, so a row still says where in the project it is.
+ */
+function childRow(parent: string, doc: IndexedDoc): IndexRow {
+  const row = docRow(doc);
+  return { ...row, href: row.href.slice(`${parent}/`.length) };
 }
 
 function docRow(doc: IndexedDoc): IndexRow {
@@ -396,7 +414,7 @@ export function docsIndexDrift(
     );
     drift.push(...rowDrift(region, parseRows(body), body));
     for (const row of parseRows(body)) {
-      if (resolves(tree, row.href)) continue;
+      if (resolves(tree, beside(region.target, row.href))) continue;
       drift.push({
         target: region.target,
         region: region.region.begin,
@@ -445,6 +463,18 @@ function rowDrift(
 }
 
 /** Whether a row's target is really there: a file, or a directory with something in it. */
+/**
+ * A row's href as a project path. A child index's rows are relative
+ * to the document that holds them (see {@link childRow}), so
+ * resolving one means putting that document's directory back in
+ * front; the root document sits at the project root, where this is
+ * the identity.
+ */
+function beside(target: string, href: string): string {
+  const slash = target.lastIndexOf('/');
+  return slash === -1 ? href : `${target.slice(0, slash + 1)}${href}`;
+}
+
 function resolves(tree: Tree, href: string): boolean {
   if (!href.endsWith('/')) return tree.exists(href);
   return tree.list(href.slice(0, -1)).length > 0;

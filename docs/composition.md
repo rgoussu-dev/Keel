@@ -535,7 +535,9 @@ anyone maintains: `keel docs sync|check` (and every install, in its
 own apply) recomputes them from the manifest and the resolved
 registry and writes them into three engine-owned regions —
 `keel:map` and `keel:skills-index` in the root `AGENTS.md`,
-`keel:children` in a nested one that has documents beneath it. Every
+`keel:children` in a nested one that has documents beneath it — whose
+rows are relative to that document, since that is how markdown
+resolves a link. Every
 row reads `- [Title](href) — description`.
 
 The map's rows come from three declarations, never from a walk of the
