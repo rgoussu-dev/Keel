@@ -41,6 +41,13 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Changed
 
+- **`keel new` asks two more questions**, `changelog` and `commitHook`,
+  both sticky and both defaulting to yes (#143). They come before the
+  repository's own questions because adapter id orders the questions
+  within a vertical. `--set vcs/changelog:changelog=no` and
+  `--set vcs/commit-conventions:commitHook=no` decline them
+  non-interactively.
+
 - **The navigation index projects services, not only modules** (#142).
   `DocsIndexInput` gains `services`, `realizeHarness` takes the
   manifest instead of just its modules, and `keel docs sync|check`
@@ -115,6 +122,41 @@ use to keep a long-lived changelog scannable — and the root keeps
   and refuses a stance leaking across families.
 
 ### Added
+
+- **The `vcs` vertical grows its working conventions** (#143): two new
+  dimensions on the vertical every stack already installs, each
+  individually declinable through one sticky question defaulting to
+  yes.
+  - **`vcs/commit-conventions`** emits `.githooks/commit-msg`, a
+    Conventional Commits gate in **POSIX `sh` + `grep`** — no
+    commitlint, no husky, no Node, because a scaffolded Go, Rust or
+    JVM project cannot assume one — and points `core.hooksPath` at the
+    tracked `.githooks/` directory rather than the per-clone
+    `.git/hooks/`. A repository that already points `core.hooksPath`
+    elsewhere keeps it, with a warning, the same brownfield posture
+    `vcs/git-init` takes. The rejection names the grammar, the legal
+    types and two examples, so a retry is informed rather than a
+    guess, and the subject is printed rather than interpolated into a
+    shell heredoc. Merge, revert, fixup, squash and amend subjects are
+    git's own wording and are never refused.
+    **It ships no Claude Code hook, and that is #143's open decision
+    resolved:** git already refuses the commit and puts the reason on
+    stderr, which is where an agent reads it, so a `PreToolUse` gate
+    would spend a slot of the reminder budget restating what the agent
+    is about to be told. A project with no harness still gets the gate.
+  - **`vcs/changelog`** emits keel's own split-changelog convention
+    outward — `CHANGELOG.md` with `[Unreleased]` and a newest-first
+    release index, `docs/releases/` for the cut sections, and
+    `scripts/cut-changelog.sh`. **The cut rides POSIX `sh` + `awk`**,
+    not keel and not `npx`: cutting a release is the one moment you
+    least want a missing runtime. Compare links come from
+    `git remote get-url origin` at cut time, so a project with no
+    remote gets no links rather than wrong ones.
+  - **One source of truth for the shape.** The emitted template and
+    keel's own `CHANGELOG.md` are now checked against the same
+    structural rules (`tests/support/changelog-shape.ts`) in `verify`,
+    which is what makes "matches keel's own" a fact rather than a
+    claim. `tests/changelog.test.ts` is that checker's other consumer.
 
 - **A composite product root gets an agent harness** (#142). Until now
   it got none — no `AGENTS.md`, no `CLAUDE.md`, no shims — so an agent

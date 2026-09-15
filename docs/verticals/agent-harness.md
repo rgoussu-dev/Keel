@@ -346,7 +346,7 @@ re-renders the harness and restamps the marker. See
 
 **vcs**
 
-- `commit-msg` Conventional-Commits hook (Claude-settings half is harness, gated; git-hook half is domain content) + changelog convention + runbook release note (#143).
+- `commit-msg` Conventional-Commits hook + changelog convention (shipped, #143: `vcs/commit-conventions` and `vcs/changelog`, both domain content, both declinable). **Neither has a harness half, and that is the decision #143 left open.** git already refuses the commit and puts the reason on stderr, where an agent reads it, so a `PreToolUse` gate would spend a reminder slot restating what the agent is about to be told; what the harness half would have bought is bought instead by the rejection message, which names the grammar, the legal types and two examples. A project that installed no harness still gets both conventions.
 - **→ #152:** root trunk-branch doctrine line (the user-named `defaultBranch` surfaced to the agent — nothing else exposes it; one line; may fold into #143).
 
 **fullstack (product root)**

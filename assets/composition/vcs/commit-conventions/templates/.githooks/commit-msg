@@ -1,0 +1,49 @@
+#!/bin/sh
+# Conventional Commits gate — https://www.conventionalcommits.org/
+#
+# POSIX sh and grep only: this runs on every machine that clones the
+# repository, which may have nothing installed but this project's own
+# toolchain. No commitlint, no husky, no Node.
+#
+# Installed by 'git config core.hooksPath .githooks'. A fresh clone
+# runs that once — see .githooks/README.md.
+set -eu
+
+subject=$(sed -n '1p' "$1")
+
+# git's own wording, never the author's: never rewritten, never refused.
+case "$subject" in
+  'Merge '* | 'Revert '* | 'fixup!'* | 'squash!'* | 'amend!'*) exit 0 ;;
+esac
+
+# An empty subject is a commit git is about to abort by itself.
+if [ -z "$subject" ]; then
+  exit 0
+fi
+
+types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+
+if printf '%s\n' "$subject" |
+  grep -Eq "^(${types})(\([a-z0-9][a-z0-9._/-]*\))?!?: [^ ].*$"; then
+  exit 0
+fi
+
+# The subject is printed, never interpolated into a heredoc the shell
+# expands: a commit message is author-controlled text, and a command
+# substitution written in one must stay text.
+printf 'commit-msg: the subject line is not a Conventional Commit.
+
+' >&2
+printf '  got       %s
+' "$subject" >&2
+cat >&2 <<'MESSAGE'
+  expected  <type>[(<scope>)][!]: <description>
+  types     build chore ci docs feat fix perf refactor revert style test
+
+  feat(orders): accept a partial shipment
+  fix!: reject an empty basket          (the ! marks a breaking change)
+
+One commit is one logical unit; if the subject needs an "and", it is
+two commits. https://www.conventionalcommits.org/en/v1.0.0/
+MESSAGE
+exit 1

@@ -351,6 +351,8 @@ describe('fullstack composite install (polyrepo)', () => {
       'buildSystem:backend': 'gradle',
       'buildSystem:frontend': 'npm',
       remote: '',
+      commitHook: 'yes',
+      changelog: 'yes',
       defaultBranch: 'main',
       basePackage: 'com.acme',
       projectName: 'walking-skeleton',
