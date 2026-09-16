@@ -60,4 +60,6 @@ What `keel add <vertical>` layers onto an existing project:
   testing approach.
 - [Release process](release.md) — cutting and publishing a release.
 - [Contributor guide for coding agents](../AGENTS.md) — conventions
-  agents follow when working on keel itself.
+  agents follow when working on keel itself. It is a terse root with a
+  `keel:map` region; the depth lives in the `AGENTS.md` of the
+  directory it binds to, indexed from there.

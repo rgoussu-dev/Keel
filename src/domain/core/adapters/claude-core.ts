@@ -45,13 +45,16 @@ import { AGENT_HARNESS_TAG, type Adapter } from '../../contract/composition.js';
 
 export const CLAUDE_CORE_ID = 'agent-harness/claude-core';
 
-const SPEC_TARGET = 'AGENTS.md';
-const POINTER_TARGET = 'CLAUDE.md';
-const POINTER_CONTENT = '@AGENTS.md\n';
+/** The one content file every agent reads; the shims all point at it. */
+export const SPEC_TARGET = 'AGENTS.md';
+
+/** Claude Code's loading shim, and its one line. */
+export const POINTER_TARGET = 'CLAUDE.md';
+export const POINTER_CONTENT = '@AGENTS.md\n';
 
 /** Gemini CLI project settings: read `AGENTS.md` as a context file. */
 export const GEMINI_SETTINGS_TARGET = '.gemini/settings.json';
-const GEMINI_SETTINGS_CONTENT = `{
+export const GEMINI_SETTINGS_CONTENT = `{
   "context": {
     "fileName": ["AGENTS.md", "GEMINI.md"]
   }
@@ -60,7 +63,7 @@ const GEMINI_SETTINGS_CONTENT = `{
 
 /** aider project config: load `AGENTS.md` read-only on start. */
 export const AIDER_CONF_TARGET = '.aider.conf.yml';
-const AIDER_CONF_CONTENT = `# Loads the project's agent instructions read-only on every start.
+export const AIDER_CONF_CONTENT = `# Loads the project's agent instructions read-only on every start.
 read: [AGENTS.md]
 `;
 

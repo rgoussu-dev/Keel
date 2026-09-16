@@ -267,6 +267,13 @@ Vite dev proxy), the backend gains CORS for the dev origin, the wire is
 pinned by an OpenAPI contract, and monorepo products ship
 `compose.yaml` + Dockerfiles.
 
+The product root gets an agent harness of its own — `AGENTS.md`, the
+`CLAUDE.md` pointer and the shims — whose map indexes the services, so
+an agent opened at the monorepo root finds them instead of guessing.
+Nothing is hoisted there: hooks and skills stay in the service they
+belong to, and the root's one rule is to work inside a service under
+that service's own harness.
+
 **Prerequisites:** those of both services; Docker to run the compose
 story. → [Fullstack products](docs/stacks/fullstack.md)
 
@@ -390,7 +397,7 @@ bootstrap or layered on later with `keel add`:
 
 | Vertical                                                 | What it adds                                                                                                                                                                                                                                               | Applies to                            |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote                                                                                                                                                                                                         | every stack                           |
+| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote; a Conventional Commits `commit-msg` gate and the split-changelog convention, each declinable                                                                                                           | every stack                           |
 | [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                                                                                                                                                                                    | every stack                           |
 | [`agent-harness`](docs/verticals/agent-harness.md)       | agent documents, cross-tool shims, run skill and commit hook; opt out with `keel new --no-agent-harness`, adopt later with `keel add agent-harness`                                                                                                        | every single-service stack by default |
 | [`code-style`](docs/verticals/code-style.md)             | the layout contract — `.editorconfig` + `.gitattributes` + the stack's own formatter (Spotless/prince-of-space, rustfmt, gofmt, Prettier), all rendered from one style model                                                                               | every stack                           |
@@ -404,7 +411,7 @@ bootstrap or layered on later with `keel add`:
 | [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor                                                                                                                                                       | Quarkus CLI + every server shape      |
 | [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster                                                                                                                                                          | after `distribution` (containers)     |
 | [`toolchain`](docs/verticals/toolchain.md)               | records the toolchain the project needs (JDK, build system, Node, …) in the manifest, from keel's pins; `keel toolchain install` provisions it through the manager you pick — mise, asdf, sdkman, rustup, nvm (+ corepack), or Go's own `go.mod` directive | every stack (opt-in)                  |
-| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles                                                                                                                                                                                                    | composite monorepos (not addable)     |
+| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles, and the root agent harness indexing the services                                                                                                                                                  | composite monorepos (not addable)     |
 
 Which verticals are installed by default on which stack, and which can
 be added later, is one table in the

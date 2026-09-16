@@ -36,6 +36,18 @@ const scenario: DocsIndexInput = {
     { name: 'greeting', seam: true },
     { name: 'guestbook', seam: false },
   ],
+  services: [],
+};
+
+/** The same projection at a composite product root: services, no documents of its own. */
+const productRoot: DocsIndexInput = {
+  docs: [],
+  skills: [],
+  modules: [],
+  services: [
+    { path: 'backend', stack: 'quarkus-rest' },
+    { path: 'frontend', stack: 'web-components' },
+  ],
 };
 
 /** A tree carrying the documents the scenario's rows point at, with empty slots. */
@@ -71,7 +83,7 @@ function project(tree: FakeTree, input: DocsIndexInput = scenario): void {
       region.target,
       upsertRegion(current, region.region, renderIndexBody(region.heading, region.rows), {
         padding: 'blank',
-        whenAbsent: 'keep',
+        whenAbsent: region.whenAbsent,
       }),
     );
   }
@@ -95,7 +107,11 @@ describe('computeDocsIndex', () => {
     const children = computeDocsIndex(scenario).filter((r) => r.region === CHILDREN_REGION);
     expect(children).toHaveLength(1);
     expect(children[0]!.target).toBe('modules/AGENTS.md');
-    expect(children[0]!.rows.map((row) => row.href)).toEqual(['modules/greeting/docs/AGENTS.md']);
+    // Relative to the document that holds the row, as markdown
+    // resolves links — 'modules/greeting/docs/AGENTS.md' inside
+    // 'modules/AGENTS.md' would point at 'modules/modules/…'.
+    expect(children[0]!.rows.map((row) => row.href)).toEqual(['greeting/docs/AGENTS.md']);
+    expect(children[0]!.rows.map((row) => row.title)).toEqual(['`modules/greeting/docs/`']);
   });
 
   it('emits no child index for a document with nothing beneath it', () => {
@@ -120,6 +136,46 @@ describe('computeDocsIndex', () => {
     });
     const map = undeclared.find((r) => r.region === MAP_REGION)!;
     expect(map.rows.map((row) => row.href)).toEqual(['modules/AGENTS.md']);
+  });
+
+  it('indexes a composite product’s services, pointing at each service’s own root doc', () => {
+    const map = computeDocsIndex(productRoot).find((r) => r.region === MAP_REGION)!;
+    expect(map.rows).toEqual([
+      {
+        title: '`backend/`',
+        href: 'backend/AGENTS.md',
+        description: 'a `quarkus-rest` service; work inside it, under its own harness',
+      },
+      {
+        title: '`frontend/`',
+        href: 'frontend/AGENTS.md',
+        description: 'a `web-components` service; work inside it, under its own harness',
+      },
+    ]);
+  });
+
+  it('projects an empty skills index at a product root — nothing is hoisted there', () => {
+    const skills = computeDocsIndex(productRoot).find((r) => r.region === SKILLS_INDEX_REGION)!;
+    expect(skills.rows).toEqual([]);
+  });
+
+  it('indexes no services for a single-service project', () => {
+    const map = computeDocsIndex(scenario).find((r) => r.region === MAP_REGION)!;
+    expect(map.rows.every((row) => !row.href.startsWith('backend/'))).toBe(true);
+  });
+
+  it('sorts a service row among the directory rows, by href like every other', () => {
+    const map = computeDocsIndex({ ...scenario, services: productRoot.services }).find(
+      (r) => r.region === MAP_REGION,
+    )!;
+    expect(map.rows.map((row) => row.href)).toEqual([
+      'backend/AGENTS.md',
+      'frontend/AGENTS.md',
+      'modules/AGENTS.md',
+      'modules/greeting/',
+      'modules/guestbook/',
+      'platform/AGENTS.md',
+    ]);
   });
 
   it('carries each skill’s description into its row verbatim', () => {
@@ -215,6 +271,30 @@ describe('docsIndexDrift', () => {
     const once = tree.read('AGENTS.md')!.toString('utf8');
     project(tree);
     expect(tree.read('AGENTS.md')!.toString('utf8')).toBe(once);
+  });
+
+  it('resolves a child row against the document that holds it', () => {
+    const tree = seededTree();
+    project(tree);
+    // The row reads 'greeting/docs/AGENTS.md' inside 'modules/AGENTS.md';
+    // resolving it means putting 'modules/' back in front, which the
+    // seeded tree has. Nothing here is drift.
+    expect(tree.read('modules/AGENTS.md')!.toString('utf8')).toContain(
+      '- [`modules/greeting/docs/`](greeting/docs/AGENTS.md) —',
+    );
+    expect(docsIndexDrift(computeDocsIndex(scenario), tree)).toEqual([]);
+  });
+
+  it('names a child row whose target is gone', () => {
+    const tree = seededTree();
+    project(tree);
+    tree.delete('modules/greeting/docs/AGENTS.md');
+    expect(docsIndexDrift(computeDocsIndex(scenario), tree)).toContainEqual(
+      expect.objectContaining({
+        target: 'modules/AGENTS.md',
+        detail: expect.stringContaining("points at 'greeting/docs/AGENTS.md'"),
+      }),
+    );
   });
 
   it('names a row whose description was changed by hand', () => {

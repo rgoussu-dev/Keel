@@ -13,6 +13,11 @@
  *   - rows and prose *outside* the regions survive both;
  *   - `keel add persistence` keeps the family kit's rows it never
  *     saw, and adds the row for the document it did contribute.
+ *
+ * Plus #142's: a **composite product root** is one of these too. Its
+ * rows are services rather than documented directories, and they come
+ * from the same projection over the same manifest, so `sync` and
+ * `check` cover it without knowing what a product is.
  */
 
 import path from 'node:path';
@@ -145,6 +150,56 @@ describe('keel docs', () => {
     expect(text).toContain('](internal/domain/AGENTS.md)');
     expect(text).toContain('](internal/infra/AGENTS.md)');
     expect(expectOk(await mediator().dispatch(docsCheckQuery({ cwd }))).drift).toEqual([]);
+  });
+
+  it('covers a composite product root, whose rows are its services', async () => {
+    expectOk(
+      await mediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const text = await fs.readFile(root(), 'utf8');
+    expect(text).toContain('](backend/AGENTS.md)');
+    expect(text).toContain('](frontend/AGENTS.md)');
+    // Nothing is hoisted, so the root ships no skills slot at all —
+    // and a slot the projection has no rows for is not drift.
+    expect(text).not.toContain('keel:skills-index');
+    expect(expectOk(await mediator().dispatch(docsCheckQuery({ cwd }))).drift).toEqual([]);
+    const before = await fs.readFile(root(), 'utf8');
+    expect(
+      expectOk(await mediator().dispatch(docsSyncCommand({ cwd, dryRun: false }))).changes,
+    ).toEqual([]);
+    expect(await fs.readFile(root(), 'utf8')).toBe(before);
+  });
+
+  it('is red when a service row is reworded at the product root, and green after a sync', async () => {
+    expectOk(
+      await mediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    await editRoot((text) => text.replace('a `quarkus-rest` service;', 'the API;'));
+    expect(expectOk(await mediator().dispatch(docsCheckQuery({ cwd }))).drift).toEqual([
+      expect.objectContaining({
+        target: 'AGENTS.md',
+        detail: expect.stringContaining("reads 'the API;"),
+      }),
+    ]);
+    expectOk(await mediator().dispatch(docsSyncCommand({ cwd, dryRun: false })));
+    expect(expectOk(await mediator().dispatch(docsCheckQuery({ cwd }))).drift).toEqual([]);
+    expect(await fs.readFile(root(), 'utf8')).toContain('a `quarkus-rest` service;');
   });
 
   it('refuses a directory with no keel project', async () => {

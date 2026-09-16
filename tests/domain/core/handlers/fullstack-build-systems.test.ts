@@ -184,6 +184,8 @@ describe('fullstack per-service build systems (--build-system path=id)', () => {
       'buildSystem:backend': 'maven',
       'buildSystem:frontend': 'pnpm',
       remote: '',
+      commitHook: 'yes',
+      changelog: 'yes',
       defaultBranch: 'main',
       basePackage: 'com.acme',
       projectName: 'walking-skeleton',

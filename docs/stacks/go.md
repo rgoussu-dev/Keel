@@ -56,6 +56,10 @@ my-service/
     infra/               # Clock port: real adapter + canonical fake
   go.mod                 # tidied at scaffold time
   AGENTS.md              # the binding spec; CLAUDE.md is a pointer to it
+  .githooks/             # commit-msg: a Conventional Commits gate (POSIX sh)
+  CHANGELOG.md           # [Unreleased] + the release index;
+  docs/releases/         # one file per cut release, and
+  scripts/               # cut-changelog.sh, which moves one into the other
 ```
 
 **No mediator object** — per the binding spec's Go stance, commands

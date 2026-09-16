@@ -1,5 +1,13 @@
 # Agent conventions — application/web
 
+<!-- keel:purpose: primary adapter #2, `keel ui`; the loopback guards live here -->
+
+What lives here: primary adapter #2, `keel ui` — the local scaffolder.
+`contract/` maps `UiRequest` → commands/queries → `UiResponse` (no
+`node:http`) and holds the loopback guards; `executable/` owns the
+socket, the per-run token and the asset roots. The page it serves is
+`assets/web/`.
+
 - `contract/` may import `domain/kernel` and `domain/contract` only
   (enforced by dependency-cruiser, same rule as the CLI adapter).
   `node:http`, `node:fs` and anything else with a syscall behind it
