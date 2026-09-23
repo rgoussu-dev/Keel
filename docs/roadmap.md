@@ -2339,16 +2339,21 @@ empty directory"); in `keel add` no move-aside advice, since in a
 monorepo service the file may be the root's. A patch target the user
 deleted becomes `keel.path-missing`. I1 becomes hard.
 
-#### Q0.4 — Hidden prerequisites and bad answers get codes; the failing examples are fixed (S)
+#### Q0.4 — Hidden prerequisites and bad answers get codes; the failing examples are fixed (S) ✅
 
 `requireContainerImage` throws `keel.missing-prerequisites` with a
 phase-neutral sentence (interim; Q1.3 deletes it). A supplied answer
-outside a question's choices is `keel.invalid-answer`; the
-`database-compose` guards become `keel.unsupported-answer` (interim;
-Q1.11). The `--with` examples in `keel new --help`, `docs/cli.md` and
-code comments that fail on every shipped stack (`distribution,ci`,
-`distribution,iac`, `persistence,iac`) become
-`containerization,distribution,iac`, pinned by a CLI test.
+outside a question's choices is `keel.invalid-answer` where a prompt
+hands it back — the page's preview, a terminal; a default outside its
+own choices stays a plain throw, being the adapter's bug. `--set` and
+an install body reach the sticky path, which is not checked; Q1.0
+checks them at the front doors. The `database-compose` guards become
+`keel.unsupported-answer` (interim; Q1.11). The `--with` examples in
+`keel new --help`, `docs/cli.md` and code comments that fail on every
+shipped stack (`distribution,iac`, `persistence,iac`) or on every one
+but the two Quarkus CLIs (`distribution,ci`) become
+`containerization,distribution,iac`, pinned by a CLI test that also
+holds `docs/cli.md` to the help's example.
 
 #### Q0.5 — Brownfield page state stops poisoning later picks (S)
 

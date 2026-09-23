@@ -47,6 +47,7 @@ import type {
   Question,
   Tag,
 } from '../../contract/composition.js';
+import { DomainError } from '../../kernel/result.js';
 import {
   ciProvider,
   gitlabSectionPatch,
@@ -104,15 +105,35 @@ export function distributionProvider(ctx: Ctx, requesterId: string): CiProvider 
 }
 
 /**
+ * The code {@link requireContainerImage} refuses with — plural,
+ * because it is the code a refusal naming every missing prerequisite
+ * will carry once one is computed ahead of the install, and a code a
+ * script matches on should not change when the sentence behind it
+ * does.
+ */
+export const MISSING_PREREQUISITES_CODE = 'keel.missing-prerequisites';
+
+/**
  * The release pipeline builds the Dockerfile the `containerization`
  * vertical emitted, so distribution without it would push nothing.
- * Fails with the fix in the message rather than letting the emitted
+ * Refuses with the fix in the message rather than letting the emitted
  * pipeline fail on the host.
+ *
+ * A {@link DomainError}, because a project without an image yet is a
+ * state the user can fix, not a bug — thrown as a plain `Error`, it
+ * reached `keel ui` as a 500. The sentence names no command: the same
+ * refusal fires from `keel add distribution` and from `keel new
+ * --with distribution`, and the fix is spelled differently in each
+ * (run `keel add containerization` first; list `containerization`
+ * ahead of `distribution`), so it says what is missing and the order
+ * it goes in, which holds in both — naming the vertical by id, which
+ * the CLI takes, and by title, which the page's card shows.
  */
-export function requireContainerImage(manifest: ManifestV2, requesterId: string): void {
+export function requireContainerImage(manifest: ManifestV2): void {
   if (manifest.tags.includes('deploy.container-image')) return;
-  throw new Error(
-    `${requesterId}: the release pipeline builds the Dockerfile the containerization vertical emits — run 'keel add containerization' first ('deploy.container-image' is not in the manifest tag set)`,
+  throw new DomainError(
+    'distribution publishes the image that containerization (Container image) builds, and this project has none yet — add containerization as well, ahead of distribution',
+    MISSING_PREREQUISITES_CODE,
   );
 }
 
@@ -187,7 +208,7 @@ export async function containerDistribution(
   ctx: Ctx,
   spec: ContainerDistributionSpec,
 ): Promise<Contribution> {
-  requireContainerImage(ctx.manifest, spec.id);
+  requireContainerImage(ctx.manifest);
   const provider = distributionProvider(ctx, spec.id);
   const deploy = deployFlavor(ctx.answer('deploy'), spec.id);
 

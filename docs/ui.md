@@ -314,6 +314,13 @@ the one thing an HTTP layer can only read as a crash, so that answered
 `Err` rail, so it arrives here as a 422 like any other and the page
 shows what is missing and which tag would close it.
 
+The refusals an adapter raises while it runs travel the same way:
+distribution on a project with no container image yet
+(`keel.missing-prerequisites`), a listed choice this stack cannot
+serve, such as `mariadb` on `go-http` (`keel.unsupported-answer`), and
+an answer sent to a preview that is none of its question's choices
+(`keel.invalid-answer`). Each used to be a plain throw, and so a 500.
+
 A malformed request is a **400**, a missing or wrong token a **401**,
 and a failed `Host`/`Origin` guard a **403**.
 

@@ -177,7 +177,7 @@ describe('the keel ui server', () => {
   });
 
   it('answers a throw nothing turned into a refusal with the envelope, sentence and all', async () => {
-    const sentence = "distribution builds from a Dockerfile: run 'keel add containerization' first";
+    const sentence = 'fullstack/product-compose: product manifest declares no services';
     const broken = await uiServer(new ThrowingMediator(sentence))({
       host: '127.0.0.1',
       port: 0,

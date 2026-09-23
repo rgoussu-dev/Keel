@@ -365,3 +365,53 @@ describe('keel.preview', () => {
     expect(error.message).toContain('arch.server-http');
   });
 });
+
+/**
+ * The refusals raised *inside* an adapter, below every front-door
+ * check. Each used to be a plain `Error` — a 500 in `keel ui` for a
+ * choice the page itself offered — and each is now a `DomainError`
+ * the mediator hands back as an `Err`. Previewed through a new
+ * project, because that is where the page reaches them first.
+ */
+describe('keel.preview — refusals from inside an adapter', () => {
+  const previewGoHttp = (
+    extraVerticals: readonly string[],
+    answers: Record<string, Record<string, string>> = {},
+  ) =>
+    installMediator().dispatch(
+      previewQuery({
+        cwd,
+        target: { kind: 'new-project', stack: 'go-http', extraVerticals },
+        answers,
+      }),
+    );
+
+  it('refuses distribution without its image as a missing prerequisite, naming no command', async () => {
+    const error = expectErr(await previewGoHttp(['distribution']));
+    expect(error.code).toBe('keel.missing-prerequisites');
+    // The same sentence reaches `keel new` and `keel add`, so it names
+    // the vertical and the order rather than either command.
+    expect(error.message).toContain('containerization');
+    expect(error.message).not.toContain('keel add');
+  });
+
+  it('refuses a listed engine this stack cannot serve as an unsupported answer', async () => {
+    const error = expectErr(
+      await previewGoHttp(['persistence'], {
+        'persistence/database-compose': { engine: 'mariadb' },
+      }),
+    );
+    expect(error.code).toBe('keel.unsupported-answer');
+    expect(error.message).toContain("Pick 'postgres'");
+  });
+
+  it('refuses a value the question does not list as an invalid answer', async () => {
+    const error = expectErr(
+      await previewGoHttp(['persistence'], {
+        'persistence/database-compose': { engine: 'oracle' },
+      }),
+    );
+    expect(error.code).toBe('keel.invalid-answer');
+    expect(error.message).toContain('persistence/database-compose:engine');
+  });
+});

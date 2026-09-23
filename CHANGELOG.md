@@ -18,12 +18,37 @@ use to keep a long-lived changelog scannable — and the root keeps
   turned into a refusal was answered as a bare `text/plain` string,
   and the page — which parsed every body as JSON first, consuming it —
   fell back to `POST /api/preview failed with 500`. Some of those
-  throws are refusals not yet coded, whose message names the fix
-  (`run 'keel add containerization' first`). The server now answers
-  with the same `{ error: { code, message } }` envelope a refusal
-  uses, under the code `keel.internal`, and the page shows the
-  message labelled as a bug to report. The page reads every body once,
-  as text, and keeps one that is not the envelope verbatim.
+  throws are refusals not yet coded, whose message names the fix.
+  The server now answers with the same `{ error: { code, message } }`
+  envelope a refusal uses, under the code `keel.internal`, and the page
+  shows the message labelled as a bug to report. The page reads every
+  body once, as text, and keeps one that is not the envelope verbatim.
+
+- **Distribution without an image, and an answer a stack cannot
+  take, are refusals rather than crashes.** `distribution` on a
+  server-shaped project with no container image yet threw a plain
+  error — a 500 in `keel ui` — whose sentence told a `keel new` user
+  to run `keel add containerization`. It is now refused as
+  `keel.missing-prerequisites`, with a sentence that holds in both
+  commands: add `containerization` as well, ahead of `distribution`.
+  The persistence dial guards (`mariadb` off the JVM, `liquibase` on
+  it) are refused as `keel.unsupported-answer`, keeping their
+  sentences, and an answer a prompt hands back — the page's preview, a
+  terminal — that is none of its question's choices as
+  `keel.invalid-answer`, naming the `adapterId:questionId` it was for.
+  A default outside its own choices is an adapter bug and still
+  throws. Scripts matching the distribution refusal's old text should
+  match its code instead.
+
+- **The `--with` example runs.** `keel new --help` suggested
+  `--with persistence,iac`, and `docs/cli.md` `--with distribution,ci`
+  and `--with distribution,iac`. The two ending in `iac` are refused
+  on every shipped stack, and `distribution,ci` on every one but the
+  two Quarkus CLIs, since `iac` is keyed on what `distribution`
+  promotes and `distribution` builds the image `containerization`
+  emits. Both now say `--with containerization,distribution,iac`, and
+  a test plans the help's example on `quarkus-rest` and `go-http` and
+  holds `docs/cli.md` to the same one.
 
 - **A child index's rows now resolve.** `keel:children` rows were
   written project-relative, like the root map's, but markdown resolves

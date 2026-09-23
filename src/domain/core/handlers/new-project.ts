@@ -1161,9 +1161,10 @@ function assemblyIsLegal(
  * conservative — it sees the tags it is given, never the ones an
  * adapter promotes at install time — and conservatism that only hides
  * a menu entry becomes a wrong answer the moment it refuses a
- * command: `--with distribution,iac` is exactly the composition
- * `--with` exists for (`iac` is keyed on the `dist.container-image`
- * tag `distribution` promotes), and a flat probe rejects it.
+ * command: `--with containerization,distribution,iac` is exactly the
+ * composition `--with` exists for (`iac` is keyed on the
+ * `dist.container-image` tag `distribution` promotes), and a flat
+ * probe rejects it.
  *
  * So the check walks the extras the way the install will run them —
  * in the order named, each against the tags its predecessors leave

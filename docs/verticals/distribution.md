@@ -32,8 +32,12 @@ selected by predicate:
 The release pipeline **builds the Dockerfile the
 [`containerization`](containerization.md) vertical emitted** — one
 image definition, no second build system. That is a prerequisite:
-`keel add distribution` on a server-shaped project refuses with the
-fix in the message until `keel add containerization` has run.
+on a server-shaped project without it, distribution is refused as
+`keel.missing-prerequisites`, in `keel add distribution` and
+`keel new --with distribution` alike. The fix is to install
+`containerization` first — `keel add containerization`, or
+`--with containerization,distribution`, since extras install in the
+order named.
 
 What each family's pipeline does on a `v*` tag:
 

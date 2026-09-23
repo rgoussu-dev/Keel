@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveAdapterAnswers, resolveAnswer } from '../../../src/domain/core/answers.js';
 import type { Asker, Prompt } from '../../../src/domain/contract/ports/prompt.js';
 import type { Adapter, Contribution, Question } from '../../../src/domain/contract/composition.js';
+import { DomainError } from '../../../src/domain/kernel/result.js';
 
 const noContribution: Contribution = {};
 
@@ -85,11 +86,47 @@ describe('resolveAnswer', () => {
     expect(r).toEqual({ value: 'new', persist: false });
   });
 
-  it('rejects values not in `choices`', async () => {
+  it('refuses a supplied value outside `choices` as a coded answer error', async () => {
     const q = stickyQ('backend', 'xray', 'xray', 'datadog');
-    await expect(resolveAnswer(q, {}, 'interactive', scripted('honeycomb'), asker)).rejects.toThrow(
-      /invalid value/,
+    const refusal: unknown = await resolveAnswer(
+      q,
+      {},
+      'interactive',
+      scripted('honeycomb'),
+      asker,
+    ).catch((thrown: unknown) => thrown);
+    // A DomainError is what the mediator puts back on the Err rail;
+    // as a plain Error, a form posting a stale value got a 500.
+    expect(refusal).toBeInstanceOf(DomainError);
+    expect(refusal).toMatchObject({ code: 'keel.invalid-answer' });
+    expect((refusal as DomainError).message).toBe(
+      "'honeycomb' is not a choice for test/adapter:backend; choices: xray, datadog",
     );
+  });
+
+  it('keeps a default outside its own `choices` a bug, not a refusal', async () => {
+    const q = stickyQ('backend', 'honeycomb', 'xray', 'datadog');
+    const bug: unknown = await resolveAnswer(q, {}, 'non-interactive', failingPrompt, asker).catch(
+      (thrown: unknown) => thrown,
+    );
+    expect(bug).toBeInstanceOf(Error);
+    expect(bug).not.toBeInstanceOf(DomainError);
+    expect((bug as Error).message).toMatch(/invalid value 'honeycomb'/);
+  });
+
+  it('keeps a bad default a bug when a prompt hands it back unchanged', async () => {
+    // The preview's prompt answers an untouched field with the
+    // question's default; that default is still the adapter's to fix.
+    const q = stickyQ('backend', 'honeycomb', 'xray', 'datadog');
+    const bug: unknown = await resolveAnswer(
+      q,
+      {},
+      'interactive',
+      scripted('honeycomb'),
+      asker,
+    ).catch((thrown: unknown) => thrown);
+    expect(bug).toBeInstanceOf(Error);
+    expect(bug).not.toBeInstanceOf(DomainError);
   });
 });
 

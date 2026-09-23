@@ -451,10 +451,10 @@ export interface Vertical {
    * Declared because a tag promoted at install time is invisible to
    * anything reasoning *before* the install: `coversFor` sees the
    * tags it is given, so a front door checking `--with
-   * distribution,iac` ahead of time would refuse `iac` for want of
-   * the `dist.container-image` tag `distribution` is there to
-   * promote. This is the static half of that answer — what *may*
-   * appear, never what will.
+   * containerization,distribution,iac` ahead of time would refuse
+   * `iac` for want of the `dist.container-image` tag `distribution`
+   * is there to promote. This is the static half of that answer —
+   * what *may* appear, never what will.
    *
    * Over-declaring is safe (it only defers a refusal to the
    * resolver); under-declaring risks refusing a legal composition,

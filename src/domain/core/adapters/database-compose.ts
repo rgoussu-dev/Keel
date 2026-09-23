@@ -42,9 +42,18 @@ import {
   type SqlEngineSpec,
 } from './persistence-engine.js';
 import { eolAware } from '../util.js';
+import { DomainError } from '../../kernel/result.js';
 import type { Adapter } from '../../contract/composition.js';
 
 export const DATABASE_COMPOSE_ID = PERSISTENCE_DIALS_ID;
+
+/**
+ * The code the dial guards below refuse with: the answer is one of the
+ * question's own choices, but not one this stack can serve. A
+ * {@link DomainError}, because the user picked it from a list keel
+ * offered — thrown as a plain `Error`, it reached `keel ui` as a 500.
+ */
+export const UNSUPPORTED_ANSWER_CODE = 'keel.unsupported-answer';
 
 const SERVICE_MARKER = '--- database (persistence vertical)';
 
@@ -86,13 +95,15 @@ export const databaseComposeAdapter: Adapter = {
     // unsupported combination fails before a single file is written.
     const jvm = ctx.manifest.tags.includes('runtime.jvm');
     if (engine.id !== 'postgres' && !jvm) {
-      throw new Error(
+      throw new DomainError(
         `${DATABASE_COMPOSE_ID}: engine '${engine.id}' is served on the JVM stacks only — this stack's driver (pgx / the sync postgres crate / pg) speaks the PostgreSQL wire protocol. Pick 'postgres', or see docs/roadmap.md.`,
+        UNSUPPORTED_ANSWER_CODE,
       );
     }
     if (tool === 'liquibase' && jvm) {
-      throw new Error(
+      throw new DomainError(
         `${DATABASE_COMPOSE_ID}: migrations tool 'liquibase' is served on the Go/Rust/TS stacks today — the JVM %dev/%test replay is wired through the framework's Flyway integration. Pick 'flyway', or see docs/roadmap.md.`,
+        UNSUPPORTED_ANSWER_CODE,
       );
     }
     const seed = await devComposeSeed(ctx);

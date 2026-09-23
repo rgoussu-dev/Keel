@@ -19,8 +19,16 @@
  * (since they're already in the manifest).
  */
 
+import { DomainError } from '../kernel/result.js';
 import type { Adapter, Question } from '../contract/composition.js';
 import type { AnswerMode, Asker, Prompt } from '../contract/ports/prompt.js';
+
+/**
+ * The code a supplied answer outside its question's choices is
+ * refused with — the value came from whoever is running keel (a
+ * terminal reply, a form's field), so it is theirs to correct.
+ */
+export const INVALID_ANSWER_CODE = 'keel.invalid-answer';
 
 /** Result of resolving a single question. */
 export interface AnswerResolution {
@@ -54,7 +62,7 @@ export async function resolveAnswer(
     return { value: question.default, persist: question.memory === 'sticky' };
   }
   const value = await prompt.ask(question, asker);
-  validateChoice(question, value);
+  validateChoice(question, value, asker);
   return { value, persist: question.memory === 'sticky' };
 }
 
@@ -95,12 +103,32 @@ export async function resolveAdapterAnswers(
   return { answers, updates };
 }
 
-function validateChoice(question: Question, value: string): void {
+/**
+ * Holds a value to its question's choices. Who is to blame for a value
+ * outside them decides how it fails: one the prompt handed back was
+ * supplied — typed at a terminal, or posted by a form through the
+ * preview's prompt — and is refused with {@link INVALID_ANSWER_CODE},
+ * where the kernel's rule puts an expected failure; a default outside
+ * its own choices is the declaring adapter's bug and keeps throwing,
+ * even when a prompt handed it back unchanged. `askedBy` is present
+ * exactly when a prompt handed the value back, and names the question's
+ * home for the refusal's `adapterId:questionId`.
+ *
+ * A sticky answer already in memory is not checked at all: that path
+ * also replays answers older manifests recorded, and holding them to
+ * today's choices would break `--reapply` the day a choice is renamed.
+ */
+function validateChoice(question: Question, value: string, askedBy?: Asker): void {
   if (!question.choices) return;
   const allowed = question.choices.map((c) => c.value);
-  if (!allowed.includes(value)) {
+  if (allowed.includes(value)) return;
+  if (askedBy === undefined || value === question.default) {
     throw new Error(
       `invalid value '${value}' for question '${question.id}'; choices: ${allowed.join(', ')}`,
     );
   }
+  throw new DomainError(
+    `'${value}' is not a choice for ${askedBy.id}:${question.id}; choices: ${allowed.join(', ')}`,
+    INVALID_ANSWER_CODE,
+  );
 }

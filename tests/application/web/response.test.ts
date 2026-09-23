@@ -30,7 +30,7 @@ describe('errorFrom', () => {
   });
 
   it('labels an internal error as the bug it is, keeping its sentence', () => {
-    const sentence = "distribution builds from a Dockerfile: run 'keel add containerization' first";
+    const sentence = 'fullstack/product-compose: product manifest declares no services';
     const error = errorFrom(500, envelope(INTERNAL, sentence));
     expect(error.code).toBe('keel.internal');
     expect(error.message).toBe(

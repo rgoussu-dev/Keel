@@ -1059,7 +1059,10 @@ describe('the persistence dials (engine + migrations tool)', () => {
       installChain(['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'], {
         answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
       }),
-    ).rejects.toThrow(/served on the JVM stacks only/);
+    ).rejects.toMatchObject({
+      code: 'keel.unsupported-answer',
+      message: expect.stringMatching(/served on the JVM stacks only.*Pick 'postgres'/),
+    });
   });
 
   it('lays the Liquibase migrations unit on ts-http when the dial says so', async () => {
@@ -1101,7 +1104,10 @@ describe('the persistence dials (engine + migrations tool)', () => {
       installChain([...QUARKUS_JAVA, 'pkg.gradle'], {
         answers: { [DATABASE_COMPOSE_ID]: { migrations: 'liquibase' } },
       }),
-    ).rejects.toThrow(/Flyway integration/);
+    ).rejects.toMatchObject({
+      code: 'keel.unsupported-answer',
+      message: expect.stringMatching(/Flyway integration.*Pick 'flyway'/),
+    });
   });
 
   it('keeps the two engine spec records disjoint where the adapters branch', () => {
