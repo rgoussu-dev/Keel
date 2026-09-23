@@ -2318,12 +2318,15 @@ layouts, and a seeded-user-file axis scoped by phase (`README.md`,
 in `verify`. `tests/AGENTS.md` gains the rule "a menu-versus-gate
 test uses preview or install as its oracle".
 
-#### Q0.2 — A 500 carries its sentence (S)
+#### Q0.2 — A 500 carries its sentence (S) ✅
 
 `executable/server.ts` answers an uncaught throw with the JSON
 envelope (`keel.internal`); `api.js` reads the body once as text and
-parses it with a text fallback, as a pure exported `errorFrom` tested
-like `finder.js`. The page labels `keel.internal` as a bug to report.
+hands it to `response.js`, which parses it with a text fallback, as a
+pure exported `errorFrom` tested like `finder.js` (a module of its own,
+since `api.js` claims the token from `location` on load and cannot be
+imported without a DOM). The page labels `keel.internal` as a bug to
+report.
 
 #### Q0.3 — A file already on disk, or missing from it, is a coded refusal (S)
 

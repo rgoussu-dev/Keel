@@ -14,6 +14,17 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A 500 in `keel ui` carries its sentence.** An exception nothing
+  turned into a refusal was answered as a bare `text/plain` string,
+  and the page — which parsed every body as JSON first, consuming it —
+  fell back to `POST /api/preview failed with 500`. Some of those
+  throws are refusals not yet coded, whose message names the fix
+  (`run 'keel add containerization' first`). The server now answers
+  with the same `{ error: { code, message } }` envelope a refusal
+  uses, under the code `keel.internal`, and the page shows the
+  message labelled as a bug to report. The page reads every body once,
+  as text, and keeps one that is not the envelope verbatim.
+
 - **A child index's rows now resolve.** `keel:children` rows were
   written project-relative, like the root map's, but markdown resolves
   a relative link against the file it appears in — so a row for

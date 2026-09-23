@@ -22,7 +22,7 @@ import type { AddressInfo } from 'node:net';
 import type { Mediator } from '../../../domain/kernel/mediator.js';
 import { buildApi } from '../contract/api.js';
 import { buildRouter } from '../contract/router.js';
-import type { UiRequest, UiResponse } from '../contract/http.js';
+import { failure, INTERNAL, type UiRequest, type UiResponse } from '../contract/http.js';
 import type { ServeUi, UiServer, UiServerOptions } from '../contract/server.js';
 import { fsDirectoryReader } from './directories.js';
 import { buildStatics } from './static-files.js';
@@ -90,6 +90,7 @@ async function handle(
   incoming: http.IncomingMessage,
   outgoing: http.ServerResponse,
 ): Promise<void> {
+  let response: UiResponse;
   try {
     const body = await readBody(incoming);
     if (body === null) {
@@ -97,13 +98,16 @@ async function handle(
       outgoing.end('request body too large');
       return;
     }
-    const response = await route(normalise(incoming, body));
-    outgoing.writeHead(response.status, response.headers);
-    outgoing.end(incoming.method === 'HEAD' ? undefined : response.body);
+    response = await route(normalise(incoming, body));
   } catch (error) {
-    outgoing.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
-    outgoing.end(error instanceof Error ? error.message : String(error));
+    // The envelope a refusal uses, not a bare string: the page
+    // branches on its code, which is how it tells a bug from a
+    // refusal, and a plain-text 500 once reached it as "failed with
+    // 500", dropping a sentence that often named the fix.
+    response = failure(500, INTERNAL, error instanceof Error ? error.message : String(error));
   }
+  outgoing.writeHead(response.status, response.headers);
+  outgoing.end(incoming.method === 'HEAD' ? undefined : response.body);
 }
 
 function normalise(incoming: http.IncomingMessage, body: string): UiRequest {

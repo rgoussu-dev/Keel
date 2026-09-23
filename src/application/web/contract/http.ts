@@ -74,6 +74,18 @@ export interface ApiError {
   readonly error: { readonly code: string; readonly message: string };
 }
 
+/**
+ * Error code for a throw nothing turned into a refusal.
+ *
+ * A refusal is a `DomainError`: the mediator puts it on the `Err`
+ * rail and it arrives as a 422 under its own code. Anything else that
+ * escapes a route is a bug by the kernel's rule, and the executable
+ * answers it with this code and the exception's own message — in the
+ * same envelope, so the page shows the sentence rather than a status
+ * number, and says it is a bug to report.
+ */
+export const INTERNAL = 'keel.internal';
+
 /** A JSON error response carrying a stable code and a display message. */
 export function failure(status: number, code: string, message: string): UiResponse {
   const payload: ApiError = { error: { code, message } };

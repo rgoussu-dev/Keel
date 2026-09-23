@@ -315,8 +315,27 @@ the one thing an HTTP layer can only read as a crash, so that answered
 shows what is missing and which tag would close it.
 
 A malformed request is a **400**, a missing or wrong token a **401**,
-and a failed `Host`/`Origin` guard a **403**. A **500** now means what
-it should: a bug, not a refusal.
+and a failed `Host`/`Origin` guard a **403**.
+
+A **500** means a throw nothing turned into a refusal — by the kernel's
+rule, a bug. It carries the same envelope, with the code
+`keel.internal` and the exception's own message:
+
+```json
+{
+  "error": {
+    "code": "keel.internal",
+    "message": "fullstack/product-compose: product manifest declares no services"
+  }
+}
+```
+
+The page shows that sentence, labelled as a bug to report. It used to
+answer with a bare string the page could not read, so a 500 showed as
+`POST /api/preview failed with 500` — and some of those throws are
+refusals nobody has coded yet, whose sentence names the fix. The page
+reads every body once, as text, and keeps one that is not the envelope
+verbatim, under `keel.web.http-<status>`.
 
 ```sh
 # scripted, against a running `keel ui`

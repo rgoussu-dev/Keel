@@ -35,6 +35,14 @@ socket, the per-run token and the asset roots. The page it serves is
   answer worth being wrong about should hand it to a module there
   rather than keep it. `dom.js` is the shared builder — no
   `innerHTML` on anything that came off the wire.
+- **A response body is read once, as text, and `response.js` says
+  what it means.** `api.js` claims the token out of `location` the
+  moment it loads, so it cannot be imported without a DOM; what a
+  status and body amount to lives beside it, pure. An uncaught throw
+  leaves the executable as a 500 in the envelope a refusal uses,
+  `{ error: { code, message } }`, under `keel.internal`, which the
+  page labels as a bug to report; a body that is not the envelope is
+  still shown verbatim rather than replaced by its status.
 - **Build the shell and the elements once, update them through
   properties.** Replacing a subtree on every preview takes the caret
   out of the field being typed in and resets the plan tree's scroll
