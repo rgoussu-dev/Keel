@@ -21,6 +21,11 @@ held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
 items below each carry an issue of their own.
 
+**Q** (supple composition) is proposed from an audit of how `keel
+new`, `keel add`, the presets and `keel ui` exercise the composition
+model; it is not yet sliced into issues or ordered against the
+backlog.
+
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
 [#69]: https://github.com/rgoussu-dev/keel/issues/69
@@ -2152,6 +2157,474 @@ init` and a resolved toolchain, not a zip. A remote service would
   re-assert what the API tests already assert would buy a screenshot
   and cost a browser download; the day the page grows logic worth
   testing through the DOM, that changes.
+
+---
+
+## Q — Supple composition: one answer, asked everywhere (proposed)
+
+**Proposed 2026-09-23 from an audit; not yet sliced into issues.**
+Anchored on [#117] ("one declaration, read twice"), which it extends
+from the stack drill-down to every vertical, in both phases.
+
+[#117]: https://github.com/rgoussu-dev/keel/issues/117
+
+**Goal.** `keel ui`, `keel new` and `keel add` should feel like one
+supple tool: every choice on screen either works or says, _before_
+it is picked and in the user's words, what it needs. Today the model
+answers correctly but late, in engine vocabulary, and sometimes as a
+crash: "vertical 'observability': no adapter covers dimension(s):
+health, request-context, telemetry, monitoring-stack — would need
+arch.server-http", or, in the page, `keel.web.http-500 POST
+/api/preview failed with 500`.
+
+### How the audit was run
+
+Every stack (34) × every vertical (14), greenfield (`keel.dials` +
+`keel.preview` with `extraVerticals: [v]`) and brownfield (scaffold,
+then `keel.project-status` + a preview of `keel add v`), through the
+real mediator with a fake `ProcessRunner` — plus the fullstack
+service directories under both repository layouts, a sweep of every
+choice of every question, and a walk of `keel ui` in headless
+Chromium. Every finding was re-checked by a second, adversarial pass.
+The prototype of that grid runs in ~6 s, which is why Q0.1 below
+lands it as a test.
+
+### What is actually wrong
+
+**The engine agrees with itself.** Greenfield and brownfield give the
+same verdict on all 392 single-service cells, and `keel new --with
+A,B` writes a tree byte-identical to `keel new; keel add A; keel add
+B`. The shipped catalog holds exactly one real dependency chain
+(containerization → distribution → iac) and one soft read
+(distribution reads whether persistence and observability are
+installed). The crankiness is around the engine, in five places:
+
+1. **Dependencies between verticals are not declared, so every reader
+   guesses.** Distribution's need for a container image is a plain
+   `throw` inside `contribute()` (`distribution-container.ts`
+   `requireContainerImage`), invisible to the menus, the `--with`
+   preflight and coverage. Distribution is offered on 21 stacks and
+   throws on 19, in both phases. The menu asks a flat question per
+   vertical while the `--with` gate walks the extras in order, so iac
+   is offered on **0 of 34** stacks and `keel.dials` silently cuts
+   `[containerization, distribution, iac]` down to two; of the six
+   orderings of those three, one is accepted and two throw. The page
+   posts extras in alphabetical order, which installs distribution
+   before persistence: `deploy/compose.yaml` then silently lacks
+   `DB_URL`.
+2. **Refusals fall off the `Err` rail, and the ones that stay on it
+   speak engine.** 62 stack × vertical cells throw something that is
+   not a `DomainError` (19 greenfield, 19 brownfield, 24 in fullstack
+   service directories), as do `keel new` into a directory holding a
+   `README.md` (13 of 34 stacks), a user-authored `Dockerfile` or
+   `ci.yml` under `keel add`, and answer choices the page offers
+   (`engine=mariadb` off the JVM, `migrations=liquibase` on it). A
+   throw becomes a `text/plain` 500 whose body `api.js` discards.
+   Of 124 brownfield coverage refusals, 90 name a tag no command can
+   supply — `arch.server-http` on a CLI, `framework.quarkus` on
+   spring-cli, `lang.go, pkg.gradle` at a product root — because the
+   nearest-adapter heuristic (`resolver.ts` `coverageGap`) cannot tell
+   identity tags from tags another vertical adds. One fact also gets
+   two codes and two sentences, and greenfield messages tell the user
+   to run `keel add`.
+3. **Availability is answered after the click, with opposite policies
+   in the two halves.** Greenfield hides what a stack cannot carry;
+   brownfield lists every vertical (`project-status.ts`, `steps.js`)
+   and refuses 38 % of cards on click on a single-service project —
+   plus 28 gateway cards that "install" zero files, get recorded, and
+   then block the real install after `keel link`. At a product root
+   11 of 13 cards refuse and the other two do nothing useful. The
+   refusal lands in a banner ~400 px above the card.
+4. **Page state keeps or drops the wrong things.** The extras
+   control is a _question_ the handler stops asking once answered, so
+   it vanishes after the first tick: one extra at most, never
+   unticked. One click on an installed card leaves `reapply: true` on
+   every later pick ("vertical 'ci' is not installed — nothing to
+   reapply"). A preset switch wipes build system, layout, extras and
+   answers, and Kotlin/Spring → fullstack lands on `fullstack-go`.
+   Answers cannot simply be carried either: identity answers are keyed
+   by per-preset bootstrap ids and read first-match, so a carried one
+   previews `com.example` and installs `org.acme`.
+5. **Product scope is invisible to the engine.** A monorepo product
+   root writes each service's `Dockerfile` and `.dockerignore`
+   without telling the service, so `keel add containerization`
+   collides in both services of all six fullstack presets and
+   distribution and iac are unreachable; `ci` writes a workflow under
+   `backend/.github/` that no host reads. At the root, coverage runs
+   against `['agentic.harness']`, and the page never reads
+   `status.services`.
+
+**Not the problem: the number of presets.** The 27 single-service
+presets already are the complete language/framework × entrypoint
+cross-product, and build system and layout are already dials. What
+makes presets feel cranky is (4), plus the entrypoint being frozen at
+`keel new` — which successor **R** addresses.
+
+### Decisions on record that no longer hold
+
+| Decision                                                | Why it no longer holds                                                                    | Replaced in |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------- |
+| Distribution "refuses with the fix in the message" (E)  | The message never reaches `keel ui`, names a brownfield command in `keel new`, can't plan | Q0.4, Q1.3  |
+| `--with` installs extras "in the order named"           | The engine knows the order; the page's order is alphabetical and loses `DB_URL`           | Q1.3        |
+| Brownfield offers every vertical, "says so when picked" | What it says is jargon, off-screen, on 38 % of cards (85 % at a product root)             | Q1.8, Q1.9  |
+| A coverage gap names the nearest adapter's unmet tags   | Useful to adapter authors; names tags no command can add for users                        | Q0.7, Q1.7  |
+| "Already installs / installed" is an error              | "I want X" where X is present has one sensible reading                                    | Q1.6        |
+| Gateway with no peer installs nothing and is recorded   | The recorded no-op later blocks the real install                                          | Q1.3        |
+| A composite's `--with` names no service                 | Preset data already carries per-service extras                                            | Q2.3        |
+| P: "no e2e suite of its own" for the page               | The page now carries state logic worth a DOM test                                         | Q1.5        |
+
+### The measure: the composition grid
+
+Q0.1 lands the grid as a ratchet — a known-violations file asserted
+by exact equality, regenerated as known ∩ actual so it can only
+shrink. Every later step names the invariant it moves. The oracle is
+always the real `keel.preview`, never a re-implementation over tags
+(the existing "what the page can post" test used one, which is how
+the distribution throw got through).
+
+| Id  | Invariant                                                                                            | Today       | Zero at |
+| --- | ---------------------------------------------------------------------------------------------------- | ----------- | ------- |
+| I1  | No preview throws — every cell, plus a seeded-user-file axis                                         | 62 + seeded | Q0.3    |
+| I2  | Every extra `keel.dials` offers, posted with its prerequisites, previews Ok                          | 19          | Q1.3    |
+| I3  | Every extras set the CLI accepts is reachable from the menu                                          | 19          | Q1.3    |
+| I4  | A brownfield card's readiness agrees with preview                                                    | 149 of 294  | Q1.8    |
+| I5  | Phase parity: same outcome (from Q0.1), same code and sentence (from Q1.7)                           | 0 (outcome) | Q1.7    |
+| I6  | No refusal names a `lang.`/`framework.`/`runtime.`/`pkg.`/`layout.`/`arch.` tag                      | ≥ 90        | Q1.7    |
+| I7  | In every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal | —           | Q1.10   |
+| I8  | Any permutation of an accepted extras set gives byte-identical changes                               | —           | Q1.3    |
+| I9  | Preview and dry-run install give identical change lists for the same body                            | —           | Q2.1    |
+
+A weekly report-only lane beside mutation runs the full powerset of
+offered extras (~1.8k previews, where an undeclared soft read shows as
+an I8 diff) and every choice of every question (~1.5k previews).
+
+### Phase 0 — stop the bleeding (defects only, no model change; ~1.5–2 weeks)
+
+Q0.2, Q0.4, Q0.5 and Q0.7 need no grid and land first: between them
+they remove every 500 and every tag-speaking remedy quoted above.
+
+#### Q0.1 — The composition grid, as a ratchet (M)
+
+`tests/domain/core/composition-grid/{greenfield,brownfield,composite}.test.ts`
+over `tests/support/composition-grid.ts`: cells derived from
+`keel.catalog`, `keel.dials` and `keel.project-status`, never
+hand-listed; Factory `installMediator` with a `FakeProcessRunner` and
+a no-op `runDeferred`; port `Mediator.dispatch` only. Axes: stack ×
+vertical in both phases, product × service × vertical under both
+layouts, and a seeded-user-file axis scoped by phase (`README.md`,
+`.gitignore` before `keel new`; `Dockerfile`,
+`.github/workflows/ci.yml` before `keel add`). A verdict golden
+(`KEEL_UPDATE_GOLDEN=1`) plus the shrink-only known file. Under 10 s
+in `verify`. `tests/AGENTS.md` gains the rule "a menu-versus-gate
+test uses preview or install as its oracle".
+
+#### Q0.2 — A 500 carries its sentence (S)
+
+`executable/server.ts` answers an uncaught throw with the JSON
+envelope (`keel.internal`); `api.js` reads the body once as text and
+parses it with a text fallback, as a pure exported `errorFrom` tested
+like `finder.js`. The page labels `keel.internal` as a bug to report.
+
+#### Q0.3 — A file already on disk, or missing from it, is a coded refusal (S)
+
+`apply.ts` `writeWholeFile` raises `PathConflictError extends
+DomainError` (`keel.path-conflict`) when the path exists and this run
+has no `create` for it; a path this run created twice stays a
+`ContributionConflictError` (an adapter bug). Sentences by phase — in
+`keel new` the file is the user's ("move it aside, or start in an
+empty directory"); in `keel add` no move-aside advice, since in a
+monorepo service the file may be the root's. A patch target the user
+deleted becomes `keel.path-missing`. I1 becomes hard.
+
+#### Q0.4 — Hidden prerequisites and bad answers get codes; the failing examples are fixed (S)
+
+`requireContainerImage` throws `keel.missing-prerequisites` with a
+phase-neutral sentence (interim; Q1.3 deletes it). A supplied answer
+outside a question's choices is `keel.invalid-answer`; the
+`database-compose` guards become `keel.unsupported-answer` (interim;
+Q1.11). The `--with` examples in `keel new --help`, `docs/cli.md` and
+code comments that fail on every shipped stack (`distribution,ci`,
+`distribution,iac`, `persistence,iac`) become
+`containerization,distribution,iac`, pinned by a CLI test.
+
+#### Q0.5 — Brownfield page state stops poisoning later picks (S)
+
+Target and answer transitions move out of `keel-app.js` into a pure
+`assets/web/src/target.js`. A card pick always sets `reapply` from
+whether _that_ card is installed and resets answers; a retarget
+invalidates the in-flight `/api/dials` reply.
+
+#### Q0.6 — A preset switch keeps the dials, and says when the language jumps (S)
+
+A stack change keeps `buildSystem`, `moduleLayout` and
+`withPeerContext` and lets `keel.dials` snap them (it already does,
+through `prefer()`), with one line when a value was snapped. The
+finder falls back to a sibling with the same framework, then the same
+runtime, then `finder.defaultStack` — never `languages[0]`, which is
+Go because languages sort by label — and announces the jump.
+
+#### Q0.7 — Coverage refusals stop naming tags (S)
+
+Interim sentence, replaced by Q1.7: identity tags leave the message
+(they stay in the `ResolutionError` detail); `arch.*` prints through
+its `ENTRYPOINTS` label ("needs an HTTP server entrypoint; this
+project has none"); the vertical is named by its title. The
+agent-harness redirect at a product root is generalised to every
+vertical: "this is a product root — run `keel add` inside backend/
+or frontend/".
+
+### Phase 1 — one answer, asked everywhere
+
+A few optional declarations and one pure planner, read by every
+surface: the rule `src/domain/core/AGENTS.md` already applies to
+Conflicts, extended to readiness. No tag is added, no manifest schema
+changes, the kernel is untouched, and every new contract field is
+optional with a fallback, so a plugin declaring none of them keeps
+working.
+
+#### Q1.0 — Answers only reach the adapters they belong to (M)
+
+Brownfield `--set` keys for an installed vertical's adapter are
+`keel.frozen-answer`; keys for no adapter in the plan are
+`keel.unknown-answer`, listing the plan's adapters. Greenfield
+composites record in each scope only the keys that resolved there
+(today every scope's manifest gets all of them). Supplied values are
+checked at the front doors, not in the sticky path that serves older
+manifests. Scripts that `--set` another family's adapter now fail
+loudly instead of splitting a package — a CHANGELOG entry.
+
+#### Q1.1 — refactor: one install loop for both handlers (M)
+
+`NewProjectHandler.stageStack`'s ordered loop moves into `install.ts`
+as `installVerticals`; `AddVerticalHandler` calls it with a list of
+one. No behaviour change; the grid golden is byte-identical.
+
+#### Q1.2 — Two declarations and a planner, with no caller yet (M)
+
+- `Adapter.promotes?` (defaults to the vertical's union), because
+  `Vertical.promotes` is a union over adapters and any reader built on
+  it over-offers (iac on quarkus-cli).
+- `Vertical.reads?` — "`contribute()` reads whether these are
+  installed; install after them when both are in one run". Named to
+  avoid `Adapter.after`. Checked in a post-load pass of `registryOf`:
+  unknown ids ignored (a soft read of an absent plugin is harmless),
+  cycles refused.
+- `src/domain/core/planner.ts`, pure: `readiness(scope, v)` →
+  `included | ready | needs(prerequisites) | unavailable(gap)`, the
+  gap split into entrypoint, peer and identity with the nearest
+  stacks that carry it; `plan(scope, requested)` → the ordered
+  closure, smallest first, refusing when two closures tie rather than
+  guessing between plugin providers.
+
+A shipped-registry readiness golden records today's truth, so Q1.3's
+diff is its review.
+
+#### Q1.3 — The throw becomes a declaration; both front doors and the menus ask the planner (L)
+
+`deploy.container-image` joins `predicate.requires` of the five
+container distribution adapters — a tag containerization already
+promotes, the pattern iac already uses — and `requireContainerImage`
+is deleted. `legalExtraVerticals` offers ready ∪ needs; `DialOptions`
+gains `verticals: {id, title, readiness, requires}`; `keel.dials`
+snaps extras to the ordered closure and reports `adjustments` instead
+of pruning silently. The `--with` gate stops caring about order
+(`keel.extra-verticals-order` retires; naming an id twice stays
+refused); gateway with no peer is `unavailable` ("run `keel link`
+first"). **One commit**, since the shrink-only file forbids the
+intermediate states. Settles D1 first.
+
+#### Q1.4 — Prerequisites are included; `keel add` takes several verticals and proposes refreshes (M)
+
+Both handlers close a named set over its prerequisites and install it
+in one Tree ("added Container image, Distribution — …").
+`keel add a b` and `verticals: string[]` on the target. The planner
+_proposes_ re-rendering installed verticals that read an incoming one
+(distribution after persistence, for `DB_URL`) or whose adapters
+change under the new tags; `--refresh <ids>` accepts. A newly
+matching adapter in a refresh is asked its questions rather than
+taking defaults silently.
+
+#### Q1.5 — Greenfield extras become a real control (M)
+
+An "Also scaffold" group in Options, rendered from `dials.verticals`
+with `target.extraVerticals` as its state: _Ready_, _Needs another
+capability first_, _Comes with <preset>_ (chips). Ticking a "needs"
+card ticks its prerequisites; unticking one unticks its dependants.
+`keel.dials` always pins `extraVerticals` (to `[]` when empty), so the
+question never vanishes; `dials.test.ts`'s "absent stays absent" is
+inverted, and its walk toggles each offered extra against a real
+preview. Review gains the row. A new `tests/e2e/ui-compose.test.ts`
+in the `web` shard asserts what the page posts — no Generate on a JVM
+stack, which that shard has no JDK for.
+
+#### Q1.6 — "Already there" is not an error (S)
+
+`--with` naming a stack's own vertical is dropped with a note;
+`keel add X` on an installed X is Ok with an empty plan and "already
+installed; `--reapply` re-renders it". Exit-code change → CHANGELOG
+(D4).
+
+#### Q1.7 — One refusal vocabulary, the same in both phases (L)
+
+`src/domain/contract/refusal.ts`: a `Refusal` union (`needs`,
+`unavailable`, `elsewhere`, `path-conflict`, `path-missing`) and
+`RefusalError extends DomainError`. `src/domain/core/refusals.ts` is
+the only sentence builder: phase-neutral, entrypoints and build
+systems by label, identity gaps as "no adapter for this project's
+stack; nearest stacks that carry it: …", tags only in the structured
+field. `api.ts` forwards `refusal` in the 422 body; the CLI builds its
+hint from the same fields. Codes stay stable.
+
+#### Q1.8 — Readiness before the click (M)
+
+`ProjectStatus.available` carries `readiness` and `refusal` from the
+same `planner.readiness` the menus and the add front door read, so a
+card, a menu and a refusal cannot disagree. Status also reports the
+harness-generation mismatch once, and why a bounded context cannot be
+added. The add front door checks assembly rules over installed ∪
+incoming. `keel add --list` prints readiness.
+
+#### Q1.9 — The brownfield page shows readiness and takes several picks (L)
+
+Cards grouped _Ready · Needs another capability first · Not for this
+project_ (collapsed, one sentence each) _· Belongs in a service ·
+Installed_ (with a separate **Re-render** action; `fullstack` and
+`bounded-context` as inert chips). The same checkbox control as Q1.5.
+Refusals render inline in the plan column with `role="alert"`. After
+Generate the page stays on "What to add"; a plan with no changes
+cannot be generated.
+
+#### Q1.10 — Composite products: the root points into its services (L)
+
+A `scopeOf` probe through `ManifestStore` finds the enclosing product
+and its services. At the root a vertical a service can take is
+`elsewhere` (`keel.wrong-scope`), and the page renders the services
+as **Open backend/** buttons. `Vertical.placement?: {scope:
+'repository'}` on vcs, ci and distribution (their output is read only
+at a repository root) replaces the hard-coded vcs hoist, so hoisting
+and refusing cannot drift. `Adapter.providesInServices?` lets
+`product-compose` declare the images it builds — and write them from
+the same field — so containerization reads _included_ in those
+services and stays _ready_ in a plugin product's backend the glue
+does not build. Monorepo products still get no per-service release
+pipeline or IaC; that is now said, and handed to **U**. `keel new`
+inside a product's unlisted subdirectory is refused.
+
+#### Q1.11 — Answer choices declare where they apply (S)
+
+`QuestionChoice.predicate?`: `mariadb` requires `runtime.jvm`,
+`liquibase` excludes it; the preview and the prompt offer only
+matching choices, and the `database-compose` guards go.
+
+### Phase 2 — presets that bend
+
+- **Q2.1 — Preview reads answers as install does; identity answers
+  carry across presets (M).** One precedence function (adapter key,
+  then `sharesAnswersWith` siblings, then default) for install _and_
+  preview; `Question.shared: 'project'` marks identity questions for
+  the page's carry-over, persisting nothing (D11); shared readers pick
+  the bootstrap matching the tags, not the first id in a list. Lands
+  I9.
+- **Q2.2 — A preset switch keeps extras and answers (S).** Snapped by
+  `keel.dials` with `adjustments`; answers pruned to the next
+  preview's bindings.
+- **Q2.3 — Per-service extras when creating a product (L).**
+  `--with backend:persistence`, mirroring `--build-system path=id`;
+  per-service menus from `compositeDials`; a bare `--with` routes to
+  the one service that admits it (D7). Two scopes staging the same
+  path are refused before the report, so preview and install agree.
+- **Q2.4 — `--no-agent-harness` reaches the page (S).**
+- **Q2.5 — The verticals matrix is generated from the grid's verdicts
+  (S).** A fifth guard in `verify`; the two "Four guard tests"
+  sentences change with it.
+- **Q2.6 — `README.md` and `.gitignore` are adopted on every stack
+  (M).** Seeded upserts on the Go, Rust, web-components and product
+  bootstraps, as the JVM family already does (D13), so "create a repo
+  with a README, clone, `keel new`" works on all 34.
+- **Q2.7 — One page for both phases (M).** The Directory step decides
+  the flow; on a keel project the same "Also scaffold" control shows
+  installed verticals checked and locked, and Generate dispatches the
+  delta. The commands stay two (converge is **S**).
+- **Q2.8 — Vocabulary (S).** An unknown `--stack` suggests the nearest
+  id; the Backend shape reads "Backend or tool — no front end".
+
+### Decisions for the maintainer
+
+- **D1 — Include prerequisites automatically?** Recommended: yes,
+  everywhere, saying so first in the plan and report; refuse only on a
+  tie. Alternative: include in menus and prompts, require
+  `--with-prerequisites` under `--yes`. Gates Q1.3.
+- **D2 — How monorepo membership reaches the checks.** Recommended:
+  `placement` + `providesInServices`, each read by one structural
+  check. Rejected: a derived `repo.monorepo-member` tag (the "do not
+  invent a tag" rule), a hand list (drifts, misses plugins).
+- **D3 — Distribution alone on a composed CLI + HTTP JVM stack**
+  resolves to the native binary only. Recommended: accept and
+  document; Q1.4 proposes a refresh when Container image arrives.
+- **D4 — "Already there": Ok or error?** Recommended: Ok, exit 0,
+  CHANGELOG. `--strict` only if asked.
+- **D5 — Stray answer keys.** Recommended: refuse (they write split
+  packages today); from Q2.1 the preview reports them so the page
+  prunes them.
+- **D6 — Unavailable brownfield cards.** Recommended: keep them
+  visible, collapsed, with the sentence — and show the same group in
+  greenfield Options, so the halves follow one policy.
+- **D7 — A bare `--with` on a product.** Recommended: route to the one
+  service whose readiness admits it; refuse naming the services when
+  several do.
+- **D8 — The docs matrix.** Recommended: generated from the verdict
+  golden, with a regenerate-is-a-no-op guard.
+- **D9 — Plugin verticals as prerequisites.** Recommended: they take
+  part in the closure; on a tie refuse and name both, never pick by
+  registry order. Cost: a plugin adding a second image provider makes
+  `keel add iac` ask which.
+- **D10 — What follows Q's core.** Recommended: Q2.7 (one page) inside
+  Q, then **R**, then **S**. The alternative is R first, as the
+  largest remaining refusal class (30 CLI cells).
+- **D11 — Where identity answers live.** Recommended: no persisted
+  change (a `Question.shared` marker). The alternative, a persisted
+  `project` key, needs a migration and breaks down in composites,
+  which ask two project names.
+- **D12 — Refresh: propose or re-render automatically?** Recommended:
+  propose — a refresh overwrites template-owned files.
+- **D13 — `keel new` in a non-empty directory.** Recommended: adopt
+  `README.md` and `.gitignore` everywhere (Q2.6), refuse anything
+  else with its name (Q0.3).
+
+### Successors (named here, not part of Q)
+
+- **R — Entrypoints can grow.** `keel add entrypoint <cli|http>`,
+  proven byte-identical to the greenfield `*-cli-rest` cell (which
+  keeps J's one-e2e-per-cell rule by proof), after rank-anchored
+  upserts for shared files. Turns "needs an HTTP server entrypoint"
+  from a sentence into an action. An experiment grew seven families
+  this way with a user-edited `Main` intact.
+- **S — One converge operation (additive).** A desired state planned
+  against disk; `new` and `add` become aliases; removal refused,
+  citing L's missing merge base.
+- **T — Facets over presets.** Presets generated from a platform ×
+  entrypoint table with ids kept as aliases (all 34 regenerate
+  exactly); products as per-service selections. Only with a data
+  support tier for cells no e2e suite proves.
+- **U — A release story for monorepo products.** Decide the image
+  owner, one root Tree across scopes, a product-level pipeline,
+  `keel add service`.
+
+### Deliberately kept
+
+- "Compatibility is a declaration" and "do not invent a tag": Q
+  extends both — readiness is one function read by every surface, and
+  the only predicate change adds a tag containerization already
+  promotes.
+- Presets as the entry vocabulary, and one e2e suite per stack cell:
+  Q offers no new cell.
+- The manifest records tags, not a preset id; answers stay frozen on
+  `--reapply`; no removal or reconfiguration without L's merge base.
+- Distribution needs a container image (E) — only its mechanism, a
+  throw, goes. Naming a vertical twice in `--with` stays refused.
+- `keel new` and `keel add` stay two commands; after Q1.4 and Q1.9
+  both take a set planned by the same planner, and Q2.7 gives them one
+  page.
 
 ---
 
