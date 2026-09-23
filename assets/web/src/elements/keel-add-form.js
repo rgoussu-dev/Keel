@@ -19,10 +19,15 @@
  * one line on what installing it gets you — all three from the
  * catalog, so a plugin's vertical reads the same way keel's own do.
  *
- * Status + target in as properties, `target-changed` out.
+ * Status + target in as properties, `target-changed` out — always
+ * with the **whole** target, never the fields that moved. A card pick
+ * is a new run, and a patch merged into the old one is how a
+ * re-render flag used to outlive the card that set it (see
+ * `../target.js`).
  */
 
 import { cards } from '../dom.js';
+import { pickVertical } from '../target.js';
 
 export class KeelAddForm extends HTMLElement {
   #status = null;
@@ -110,12 +115,7 @@ export class KeelAddForm extends HTMLElement {
           ...available.map((vertical) => this.#choice(vertical)),
           ...installed.map((vertical) => this.#choice(vertical, 'installed')),
         ],
-        onChange: (value) =>
-          this.#change({
-            kind: 'add-vertical',
-            vertical: value,
-            ...(this.#isInstalled(value) ? { reapply: true } : {}),
-          }),
+        onChange: (value) => this.#change(pickVertical(this.#status, value)),
       }),
     );
 
@@ -192,10 +192,6 @@ export class KeelAddForm extends HTMLElement {
       stack.append(consumesLabel, select, consumesDoc);
     }
     return stack;
-  }
-
-  #isInstalled(id) {
-    return this.#status.installed.some((vertical) => vertical.id === id);
   }
 }
 

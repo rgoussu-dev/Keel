@@ -24,6 +24,21 @@ use to keep a long-lived changelog scannable — and the root keeps
   shows the message labelled as a bug to report. The page reads every
   body once, as text, and keeps one that is not the envelope verbatim.
 
+- **One installed card in `keel ui` no longer breaks every card
+  after it.** An installed vertical's card is a re-render, and the
+  flag saying so outlived the card: every vertical picked next was
+  posted as a reapply of something not installed, refused as
+  `keel.vertical-not-installed` with `keel add ci --reapply` on the
+  copyable line, until the directory was picked again. Answers
+  outlived their card the same way — onto a re-render, whose Generate
+  was then refused as `keel.reapply-frozen-answers` over a `--set`
+  nobody typed, or onto a plain install, which recorded them for a
+  vertical that was not installed. Each card now stands for a run of
+  its own, and any change drops a reply still in flight, so a late
+  `/api/dials` answer can no longer undo a newer pick. Choosing
+  "nothing" for a new context's _Consumes_ now clears the context
+  picked before it.
+
 - **Distribution without an image, and an answer a stack cannot
   take, are refusals rather than crashes.** `distribution` on a
   server-shaped project with no container image yet threw a plain

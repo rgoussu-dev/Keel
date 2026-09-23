@@ -2355,12 +2355,19 @@ but the two Quarkus CLIs (`distribution,ci`) become
 `containerization,distribution,iac`, pinned by a CLI test that also
 holds `docs/cli.md` to the help's example.
 
-#### Q0.5 — Brownfield page state stops poisoning later picks (S)
+#### Q0.5 — Brownfield page state stops poisoning later picks (S) ✅
 
 Target and answer transitions move out of `keel-app.js` into a pure
-`assets/web/src/target.js`. A card pick always sets `reapply` from
-whether _that_ card is installed and resets answers; a retarget
-invalidates the in-flight `/api/dials` reply.
+`assets/web/src/target.js` (`retarget`, `answer`, `restart`,
+`pickVertical`). A card pick is a whole target whose `reapply` says
+whether _that_ card is installed, and it replaces the target rather
+than merging into it; another vertical, preset or kind resets the
+answers. Every change, and pointing the page at a directory, moves the
+request generation on, so a late `/api/dials` reply is dropped rather
+than adopted over a newer pick. `ui-refusal.test.ts` drives both card
+switches in a browser. Clicking the `fullstack` or `bounded-context`
+card is still refused as an unknown vertical, but no longer poisons
+the picks after it; the inert chips are Q1.9's.
 
 #### Q0.6 — A preset switch keeps the dials, and says when the language jumps (S)
 

@@ -23,14 +23,26 @@
  * run the engine has already refused are all page-level facts, and
  * this is the only kind of test that has eyes.
  *
+ * **The page's own state is the other way a pick gets refused**, and
+ * the second half of this suite. A card for an installed vertical is
+ * a re-render, and the flag saying so used to outlive the card: every
+ * card picked after it was posted as a reapply of something not
+ * installed, and refused as `keel.vertical-not-installed` — naming
+ * the very command the user thought they had asked for. An answer
+ * given on one card travelled to the next the same way, into a
+ * command line with a `--set` nobody typed. Which transition clears
+ * what is pinned without a browser (`tests/application/web/target.test.ts`);
+ * that a card click actually takes it is the page-level half.
+ *
  * **The project is seeded in-process, with every deferred action
  * faked** — the same trick `dev-compose` uses. The page only needs a
  * manifest whose tags cannot carry `containerization`; running `npm
  * install` to get one would buy this suite a minute and no assertion.
- * Measured on the shipped shape that puts it level with
- * `ui-plugin-stack` and at well under half of `ui-stack-finder`,
- * which floors the three — so it costs the `web` shard no wall clock,
- * that shard having its own floor elsewhere.
+ * Measured on the shipped shape that puts it a few seconds above
+ * `ui-plugin-stack`, which is what the two card-switching cases cost,
+ * and still under half of `ui-stack-finder`, which floors the three —
+ * so it costs the `web` shard no wall clock, that shard having its
+ * own floor elsewhere.
  *
  * Skip rules are the shared ones (`skipE2E`), and the `describe`
  * carries the browser guard because `beforeAll` launches one.
@@ -48,6 +60,7 @@ import {
   buildCli,
   browserBinary,
   choice,
+  control,
   goToStep,
   startUi,
   until,
@@ -63,6 +76,21 @@ import {
  */
 const STACK = 'ts-cli';
 const REFUSED = 'containerization';
+
+/**
+ * Installed by `keel new` on this stack, so its card is a re-render;
+ * and one that is not, which asks a question of its own.
+ */
+const INSTALLED = 'vcs';
+const AVAILABLE = 'ci';
+/** The one question `ci` asks here, by the id its control carries. */
+const PROVIDER = 'q-ci-ts-pipeline--provider';
+
+/** The copyable command, which is derived from the body the page posts. */
+const command = async (page: Page): Promise<string> =>
+  ((await page.locator('keel-plan [data-role="cli-text"]').textContent()) ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** Nothing here is testing a toolchain, so no deferred action runs. */
 const fakeActions = (inputs: RunActionsInputs): Promise<void> => {
@@ -223,6 +251,61 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
       );
       await goToStep(traffic, page, 'review');
       expect(await page.locator('#generate').isEnabled()).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'lets the re-render flag go with the installed card that set it',
+    async () => {
+      await goToStep(traffic, page, 'target');
+      await act(traffic, () => choice(page, 'vertical', INSTALLED).check());
+      await until(
+        async () => (await command(page)) === `keel add ${INSTALLED} --reapply --yes`,
+        'the re-render command',
+      );
+
+      await act(traffic, () => choice(page, 'vertical', AVAILABLE).check());
+      // What this used to post was a reapply of `ci`, refused as
+      // `keel.vertical-not-installed` with `keel add ci --reapply` on
+      // the copyable line.
+      await until(
+        async () => (await command(page)) === `keel add ${AVAILABLE} --yes`,
+        'the plain install command',
+      );
+      await until(
+        async () => (await page.locator('keel-plan keel-file-tree li').count()) > 0,
+        'the plan',
+      );
+      expect(await page.locator('[data-role="error"]').isVisible()).toBe(false);
+      await goToStep(traffic, page, 'review');
+      expect(await page.locator('#generate').isEnabled()).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'leaves the answers given on one card behind when another is picked',
+    async () => {
+      await goToStep(traffic, page, 'target');
+      await act(traffic, () => choice(page, 'vertical', AVAILABLE).check());
+      await goToStep(traffic, page, 'questions');
+      await act(traffic, () => control(page, PROVIDER).selectOption('gitlab-ci'));
+      await until(
+        async () => (await command(page)).includes('--set'),
+        'the answer to reach the command',
+      );
+
+      await goToStep(traffic, page, 'target');
+      await act(traffic, () => choice(page, 'vertical', INSTALLED).check());
+      // The answer was `ci`'s. Carried here it would ride a reapply,
+      // which `POST /api/install` refuses as
+      // `keel.reapply-frozen-answers`; carried to a plain install it
+      // would be recorded for a vertical that is not installed.
+      await until(
+        async () => (await command(page)) === `keel add ${INSTALLED} --reapply --yes`,
+        'a command with no answer on it',
+      );
     },
     E2E_TIMEOUT_MS,
   );

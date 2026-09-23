@@ -35,6 +35,17 @@ socket, the per-run token and the asset roots. The page it serves is
   answer worth being wrong about should hand it to a module there
   rather than keep it. `dom.js` is the shared builder — no
   `innerHTML` on anything that came off the wire.
+- **A change to the run is a transition in `target.js`**, never a
+  field set in `<keel-app>` — which touches them itself only in the
+  preview loop, to adopt a `keel.dials` reply under the generation
+  that asked for it. The target, the answers, the dials and
+  the request generation move together, and every brownfield state
+  bug so far was one of them left behind: a whole target (what
+  `<keel-add-form>` always emits) replaces rather than merges, a new
+  subject (vertical, preset, kind) clears the answers and the menus,
+  and every change moves the generation on so a reply in flight is
+  dropped. A new control adds its transition there, with a case in
+  `tests/application/web/target.test.ts`.
 - **A response body is read once, as text, and `response.js` says
   what it means.** `api.js` claims the token out of `location` the
   moment it loads, so it cannot be imported without a DOM; what a

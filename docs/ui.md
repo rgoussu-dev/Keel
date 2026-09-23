@@ -211,7 +211,7 @@ rather than part of the plan — the page has its own last step for it,
 with its own Generate button and its own jump-back links — so it is
 marked as such at the port and dropped.
 
-Two consequences worth knowing:
+Three consequences worth knowing:
 
 - **The plan is paths, not contents.** An answer that only changes what
   is _inside_ a file leaves the tree identical. The answer is still the
@@ -221,6 +221,12 @@ Two consequences worth knowing:
   the command line. Those questions are absent from the step because
   they are absent from the run — changing one is what `--reapply` is
   deliberately conservative about.
+- **An answer belongs to the card it was given on.** Picking another
+  card under **What to add** starts its questions afresh, so a
+  provider chosen for `ci` never rides along into `keel add dev-env`,
+  and whether a pick is an install or a re-render is decided by that
+  card alone. A change also supersedes whatever the page was still
+  waiting on, so a late reply cannot undo a newer pick.
 
 ## Security
 

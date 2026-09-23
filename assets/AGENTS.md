@@ -17,8 +17,10 @@ it compiled.
   harness is what catches an accidental edit.
 - **`web/`** — the `keel ui` page: framework-free custom elements on
   `@rgoussu.dev/planks`, served as-is (no bundler). `src/finder.js` walks
-  the drill-down tree and `src/steps.js` says which steps the rail has —
-  both pure, both unit-tested without a browser. Linted with `src` and
+  the drill-down tree, `src/steps.js` says which steps the rail has, and
+  `src/target.js` says how a change moves the run — which of the
+  target, the answers, the dials and the request generation it clears.
+  All pure, all unit-tested without a browser. Linted with `src` and
   `tests`, unlike the ejs template trees.
 
 ## Version pins are a registry, not a grep

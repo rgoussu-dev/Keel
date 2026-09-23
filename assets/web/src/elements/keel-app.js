@@ -28,7 +28,14 @@
  * state, do it again. It converges because each pass resolves exactly
  * the way the install would. Requests are debounced and sequenced,
  * and a late reply from a superseded request is dropped rather than
- * rendered over a newer one.
+ * rendered over a newer one — superseded by any change at all, not
+ * only by the next request.
+ *
+ * **How a change moves the state is not decided here.** The target,
+ * the answers, the dials and the request generation move together,
+ * and which of them a change clears is `../target.js`'s answer —
+ * pure, and tested without a browser. This element stores the result
+ * and redraws.
  *
  * **Dials before preview**, and in that order for a reason. A rule
  * can name two dials at once (`Conflict` in the composition
@@ -48,6 +55,7 @@
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
+import { answer, restart, retarget } from '../target.js';
 import {
   DIRECTORY,
   ENTRYPOINTS,
@@ -87,7 +95,10 @@ export class KeelApp extends HTMLElement {
   /** The step the panel currently holds, and the element holding it. */
   #drawn = null;
   #body_ = null;
-  /** Monotonic request id; a reply older than this one is discarded. */
+  /**
+   * Monotonic, and moved on by every request and every change: a reply
+   * to a request made under an older one is discarded.
+   */
   #generation = 0;
 
   connectedCallback() {
@@ -124,9 +135,12 @@ export class KeelApp extends HTMLElement {
     if (!status.ok) return this.#fail(status.error);
     this.#listing = listing.value;
     this.#status = status.value;
-    this.#answers = {};
-    this.#target = this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget();
-    this.#dials = null;
+    this.#adopt(
+      restart(
+        this.#run(),
+        this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget(),
+      ),
+    );
     this.#preview = null;
     this.#step = DIRECTORY;
     this.#drawn = null;
@@ -177,59 +191,35 @@ export class KeelApp extends HTMLElement {
   }
 
   #retarget(patch) {
-    if (patch.kind !== undefined && patch.kind !== this.#target.kind) {
-      this.#target = patch;
-      this.#answers = {};
-      this.#dials = null;
-    } else if (this.#target.kind === 'new-project') {
-      const changingStack = patch.stack !== undefined && patch.stack !== this.#target.stack;
-      // A different stack means different adapters, so the answers
-      // gathered for the old one are meaningless — and re-sending
-      // them would pin a value the new stack never asked for.
-      if (changingStack) this.#answers = {};
-      this.#target = changingStack
-        ? { kind: 'new-project', stack: patch.stack }
-        : { ...this.#target, ...patch };
-      // The old stack's menus describe nothing about the new one, and
-      // a control rendered from them would offer a build system this
-      // preset has never heard of.
-      if (changingStack) this.#dials = null;
-    } else {
-      this.#target = { ...this.#target, ...patch };
-    }
+    this.#move(retarget(this.#run(), patch));
+  }
+
+  #answer(answered) {
+    this.#move(answer(this.#run(), answered));
+  }
+
+  #move(run) {
+    this.#adopt(run);
     this.#report = null;
     this.#render();
     this.#previewSoon();
   }
 
-  #answer({ binding, value }) {
-    if (binding.kind === 'answer') {
-      this.#answers = {
-        ...this.#answers,
-        [binding.adapter]: { ...(this.#answers[binding.adapter] ?? {}), [binding.question]: value },
-      };
-    } else if (binding.kind === 'buildSystem' && binding.service !== undefined) {
-      this.#retarget({ buildSystem: `${binding.service}=${value}` });
-      return;
-    } else if (binding.kind === 'withPeerContext') {
-      this.#retarget({ withPeerContext: value === 'yes' });
-      return;
-    } else if (binding.kind === 'extraVerticals') {
-      // A set answer: comma-joined on the wire, a list in the target.
-      this.#retarget({
-        extraVerticals: value
-          .split(',')
-          .map((id) => id.trim())
-          .filter((id) => id.length > 0),
-      });
-      return;
-    } else {
-      this.#retarget({ [binding.kind]: value });
-      return;
-    }
-    this.#report = null;
-    this.#render();
-    this.#previewSoon();
+  /** The part of the state `../target.js` moves, as one value. */
+  #run() {
+    return {
+      target: this.#target,
+      answers: this.#answers,
+      dials: this.#dials,
+      generation: this.#generation,
+    };
+  }
+
+  #adopt(run) {
+    this.#target = run.target;
+    this.#answers = run.answers;
+    this.#dials = run.dials;
+    this.#generation = run.generation;
   }
 
   /* ---- the preview loop ---------------------------------------- */
