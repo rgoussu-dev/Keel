@@ -13,6 +13,8 @@
  * network being gone.
  */
 
+import { outcomeFrom } from './response.js';
+
 const TOKEN_HEADER = 'x-keel-token';
 
 /** Reads the token from the URL and scrubs it from the address bar. */
@@ -51,9 +53,10 @@ export const preview = (body) => send('POST', '/api/preview', body);
 export const install = (body) => send('POST', '/api/install', body);
 
 async function send(method, path, body) {
-  let response;
+  let status;
+  let text;
   try {
-    response = await fetch(path, {
+    const response = await fetch(path, {
       method,
       headers: {
         [TOKEN_HEADER]: token,
@@ -61,6 +64,10 @@ async function send(method, path, body) {
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
+    status = response.status;
+    // Once, as text: `response.json()` would consume the body, and a
+    // failed parse would leave nothing to show. `outcomeFrom` parses.
+    text = await response.text();
   } catch (cause) {
     return {
       ok: false,
@@ -70,24 +77,5 @@ async function send(method, path, body) {
       },
     };
   }
-
-  const payload = await readJson(response);
-  if (!response.ok) {
-    return {
-      ok: false,
-      error: payload?.error ?? {
-        code: `keel.web.http-${response.status}`,
-        message: `${method} ${path} failed with ${response.status}`,
-      },
-    };
-  }
-  return { ok: true, value: payload };
-}
-
-async function readJson(response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
+  return outcomeFrom(status, text);
 }

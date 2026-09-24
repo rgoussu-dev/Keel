@@ -1,13 +1,14 @@
 # Agent conventions — tests
 
-<!-- keel:purpose: how a test is built, the guard suites, mutation testing -->
+<!-- keel:purpose: how a test is built, the guard suites, the composition grid, mutation testing -->
 
 What lives here: vitest suites mirroring `src/` (`domain/`, `contract/`
 pieces under it, `application/`, `infrastructure/`, `toolchain/`), the
-shared test `support/factory.ts`, the browser harness both `keel ui`
+shared test `support/factory.ts`, the browser harness the `keel ui`
 suites drive (`support/ui-e2e.ts`), the fixture trees under
 `support/fixtures/`, the fixture plugins the `plugins/` suite loads from
-disk, and the guard tests that keep this repo's registries honest.
+disk, the guard tests that keep this repo's registries honest, and the
+composition grid (`domain/core/composition-grid/`).
 
 <!-- keel:children:begin -->
 
@@ -31,9 +32,11 @@ disk, and the guard tests that keep this repo's registries honest.
 
 ## The guard tests
 
-Four suites in `verify` exist because an index nobody checks rots
-silently. They check structure, never content, and they are the reason a
-matching change lands in the same commit as the thing it guards:
+Seven suites in `verify` exist because an index nobody checks rots
+silently. They check structure, never prose — a generated table is
+structure too, checked as the projection it claims to be — and they
+are the reason a matching change lands in the same commit as the thing
+it guards:
 
 - `ci-workflow.test.ts` — the `e2e` shard matrix against `tests/e2e/`. A
   suite in no shard never runs, and that looks exactly like a suite that
@@ -50,6 +53,127 @@ matching change lands in the same commit as the thing it guards:
   preaches a ≤ 120-line root; this is what keeps it one.
 - `mise-toolchain.test.ts` and `toolchain-pins.test.ts` — `mise.toml`
   against the shard matrix's tool lists and against `GRADLE_VERSION`.
+- `generated-docs.test.ts` — the two tables `docs/` does not write by
+  hand, the verticals compatibility matrix and the stack catalog's
+  defaults, against what `support/generated-docs.ts` renders from the
+  grid's goldens, `keel.dials` and the registry. It fails when
+  regenerating would change a committed file, as `prettier --check`
+  does, and `KEEL_UPDATE_GOLDEN=1` rewrites what lies between each
+  region's `generated:` sentinels, and nothing around them:
+  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`.
+  See [`docs/`](../docs/AGENTS.md).
+
+## The composition grid
+
+`domain/core/composition-grid/` sweeps keel's whole composition surface
+through the real mediator, over `support/composition-grid.ts`: the
+measure behind roadmap epic Q, whose invariants (I1–I9) it
+holds. Three suites, split so vitest runs them in parallel:
+
+- `greenfield` — every stack × every vertical as its one extra, held
+  against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
+  offered, or shown as coming with the preset — naming one of those
+  adds nothing), every permutation of each offered set whose order
+  could matter — a vertical that `reads` another, with both chains —
+  and the whole menu named forwards and backwards, held to staging the
+  same bytes (I8, read back through the Trees the preview opened — a
+  product's services' too), every preset with its whole menu sent as
+  one body to a preview and to a dry-run install, held to the same
+  bytes or the same refusal (I9, over the bodies `answerBodies`
+  derives: none, every question answered away from its default, the
+  same keyed to the sibling its asker borrows from, and one question
+  answered twice), plus each file the empty-directory scaffold writes
+  at its root, and `.claude/settings.json`, seeded before `keel new`
+  (`seededBeforeNew`, read off that scaffold's changes): `README.md`
+  and `.gitignore` are adopted (Ok on every stack), every other is
+  `keel.path-conflict` — a patch that would merge into the user's
+  file included.
+- `brownfield` — every single-service stack scaffolded once, `keel add`
+  previewed for every vertical (I4: each vertical is installed or a
+  `keel.project-status` card, and the card agrees with the preview —
+  `ready` Ok, `needs` Ok staging what naming its prerequisites with it
+  stages, a refusal on the card the add's own, code and sentence —
+  and I5, the same outcome as greenfield: Ok on both sides, or refused
+  under the same code in the same sentence), plus a user `Dockerfile`
+  or `.github/workflows/ci.yml` seeded wherever the add would create
+  it.
+- `composite` — every product under every repository layout its install
+  offers: first each service's own extras menu (`keel.dials`'
+  `services[].verticals`), every vertical of it named for that service
+  in a `keel new` preview — offered ⇒ Ok (I2), neither offered nor the
+  service's own ⇒ refused (I3), and I7 against its polyrepo twin as
+  below — then scaffolded, at the root and in each service, its cards
+  held to I4 as brownfield's are — a vertical a monorepo service has from its product
+  (`ProjectStatus.provided`) held to an add that stages nothing and says
+  the card's note — and every service cell to I7: never refused for a
+  file in the way, and Ok or `keel.wrong-scope` under the monorepo
+  layout wherever its polyrepo twin, a repository of its own, is Ok.
+
+Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
+never from a hand list, so a new preset or vertical is swept without an
+edit. The grid is a **ratchet**: today's violations are on record, and
+the record can only shrink. Beside each suite:
+
+- `<axis>.golden.json` holds every cell's verdict (`ok`, the code, or
+  `thrown:<Error>`). `KEEL_UPDATE_GOLDEN=1` rewrites it for a deliberate
+  change; the diff is the review.
+- `<axis>.known.json` maps invariant → cell → finding id, asserted by
+  exact equality both ways. `KEEL_UPDATE_GOLDEN=1` writes known ∩
+  actual, so it only shrinks: a step that clears a violation drops its
+  key in the same commit, and adding a key is never the fix.
+- An invariant a step brings to zero for good becomes **hard**
+  (`HARD` in the support module): its key leaves every known file, so
+  there is nowhere to list a cell, and one violation fails the grid.
+  I1 has been hard since Q0.3 — a thrown cell is always a failure —
+  I2, I3 and I8 since Q1.3, when the menus and both front doors moved
+  onto the planner, I6 since Q1.7, when every refusal came to be
+  worded by one builder that prints no tag, I4 and I7 since Q1.10,
+  when a monorepo service came to read what its product gives it and
+  what only a repository root may carry, and I9 since Q2.1, when the
+  preview came to read the answers it is sent as the install does.
+  Every known file is empty now but brownfield's I5 key.
+- brownfield's I5 reads `greenfield.golden.json`, so when a change moves
+  both, regenerate greenfield first. Where either side refuses, it
+  previews the greenfield twin again (`Grid.twin`, which records
+  nothing) for the sentence the golden does not keep.
+- The docs' compatibility matrix is rendered from the brownfield and
+  composite goldens (`generated-docs.test.ts`, above), so a change that
+  moves a verdict regenerates the docs last, after the grid.
+
+About 25 s wall on its own, greenfield the longest at ~23 s, of which
+I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
+dispatches — about 14 s.
+
+Only I9 posts answers, and only one non-default choice per question,
+so an answer choice offered where it is refused is invisible to the
+grid. That class has a focused sweep instead, in
+`handlers/preview.test.ts`: every stack whose menu offers
+`persistence`, every non-default choice its dials declare, posted to a
+preview and to a dry-run install — Ok from both where the preview
+offers it, `keel.invalid-answer` from both where it does not.
+
+**The planner's readiness golden.** `domain/core/planner-readiness.golden.json`
+records what `planner.ts` reads for every single-service preset × every
+registered vertical on default dials. `KEEL_UPDATE_GOLDEN=1` rewrites
+it, and a change to a declaration — a predicate, an adapter's
+`promotes`, a vertical's `reads` — shows there as a diff to review. It
+is a record of the planner, not an oracle for the gate: the menus and
+both front doors read the planner, and the grid holds each of them to
+the install through preview.
+
+**A menu-versus-gate test uses preview or install as its oracle.** A
+test claiming that what a front end offers is what keel accepts — a dial
+menu, the extras list, a brownfield card — dispatches `keel.preview` (or
+the install) for the offered choice. It never re-derives the gate from
+`compatibility.ts`, `resolver.ts` or the tags: a re-derivation shares
+the menu's blind spots. `application/web/dials.test.ts` held the page's
+bodies to `assemblyRefusal`, the function the menu itself filters by,
+and an offered extra that throws passed it. Its walk now posts every
+body it reaches — each dial setting of every preset, each extra
+ticked and unticked through the page's own `toggleExtra`, and the
+agent harness left out once per single preset — to
+`POST /api/preview`: some 330 previews, about 10 s, under a timeout of
+its own.
 
 ## Mutation testing
 

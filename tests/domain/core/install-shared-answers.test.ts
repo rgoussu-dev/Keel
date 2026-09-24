@@ -154,4 +154,48 @@ describe('sharesAnswersWith', () => {
     expect(seen['test/second']).toBe('its-own');
     expect(result.manifest.answers['test/second']).toEqual({ projectName: 'its-own' });
   });
+
+  describe('answers supplied for the run', () => {
+    const supplied = async (answers: Record<string, Record<string, string>>) => {
+      const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-shared-answers-'));
+      cwds.push(cwd);
+      return installVertical({
+        vertical,
+        manifest: { ...emptyManifestV2('2026-08-21T00:00:00Z', '0.5.0-alpha'), tags: ['test.on'] },
+        supplied: answers,
+        tree: new FsTree(cwd),
+        mode: 'non-interactive',
+        prompt: { ask: () => Promise.reject(new Error('nothing should be asked')) },
+        logger: new FakeLogger(),
+        cwd,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        now: () => '2026-08-21T12:00:00Z',
+      });
+    };
+
+    it('is not read once a sibling the adapter borrows from has recorded an answer', async () => {
+      const result = await supplied({ 'test/second': { projectName: 'borrowed' } });
+      // `first` does not list `second`, so it takes its default; that
+      // is recorded before `second` resolves, and recorded memory is
+      // read before anything supplied — so the two cannot disagree,
+      // and the answer is read by nobody.
+      expect(seen).toEqual({ 'test/first': 'the-default', 'test/second': 'the-default' });
+      expect(result.reads).toEqual([]);
+    });
+
+    it('never lets a second answer to a shared question split the two', async () => {
+      // `first` read its own key; `second` then finds `first`'s answer
+      // recorded, which settles it — its own key is read by nobody,
+      // and the front doors refuse it (`supplied-answers.ts`).
+      const result = await supplied({
+        'test/first': { projectName: 'one' },
+        'test/second': { projectName: 'two' },
+      });
+      expect(seen).toEqual({ 'test/first': 'one', 'test/second': 'one' });
+      expect(result.reads).toEqual([
+        { adapter: 'test/first', question: 'projectName', key: 'test/first' },
+      ]);
+    });
+  });
 });

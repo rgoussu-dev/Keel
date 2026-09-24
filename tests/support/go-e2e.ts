@@ -177,7 +177,13 @@ export async function addVertical(
   const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
-      addVerticalCommand({ cwd, vertical, answers, interactive: false, dryRun: false }),
+      addVerticalCommand({
+        cwd,
+        verticals: [vertical],
+        answers,
+        interactive: false,
+        dryRun: false,
+      }),
     ),
   );
 }

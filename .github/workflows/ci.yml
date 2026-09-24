@@ -522,8 +522,21 @@ jobs:
           # third joined them, `ui-refusal`: it seeds its project
           # in-process with every deferred action faked, so it installs
           # nothing and probes for nothing this shard does not already
-          # have. Measured level with `ui-plugin-stack`, and both well
-          # under `ui-stack-finder`, which floors the three.
+          # have. Measured a few seconds above `ui-plugin-stack` since
+          # it gained its brownfield card-switching cases, and both
+          # well under `ui-stack-finder`, which floors the four.
+          #
+          # `ui-compose` is the fourth: the Options step's "Also
+          # scaffold" group, ticked and unticked on quarkus-rest, and
+          # the same group on two projects it seeds in-process — what
+          # each has ticked and locked, boxes ticked into one run — and
+          # the bodies the page posts for them.
+          # It never presses Generate on a JVM stack — a real Quarkus
+          # install queues `gradle wrapper`, and this shard provisions
+          # no JDK. Its one Generate adds an image, a release path and
+          # IaC to `ts-http`, which queues no action at all, so it needs
+          # nothing the others do not. About the length of
+          # `ui-refusal`, with a third `keel ui` to start.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -544,6 +557,7 @@ jobs:
               tests/e2e/ui-stack-finder.test.ts
               tests/e2e/ui-plugin-stack.test.ts
               tests/e2e/ui-refusal.test.ts
+              tests/e2e/ui-compose.test.ts
           # The TypeScript half of the composed-entrypoint grid, in a
           # shard of its own rather than as three more files above.
           # Two reasons, and neither is wall clock inside this job:

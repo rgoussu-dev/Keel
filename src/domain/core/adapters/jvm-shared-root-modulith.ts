@@ -45,6 +45,7 @@
  */
 
 import type { ContributionPatch } from '../../contract/composition.js';
+import { readmeUpsert } from './adopted-files.js';
 import {
   appendMissingLines,
   appendReadmeSection,
@@ -178,11 +179,9 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       seed: gradlePropertiesSeed(inputs.framework),
       apply: (existing) => existing,
     },
-    {
-      target: 'README.md',
-      seed: readmeSeed(inputs, './gradlew test'),
-      apply: (existing) => appendReadmeSection(existing, gradleReadmeSection(inputs)),
-    },
+    readmeUpsert(readmeSeed(inputs, './gradlew test'), (existing) =>
+      appendReadmeSection(existing, gradleReadmeSection(inputs)),
+    ),
   ];
 }
 
@@ -200,11 +199,9 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       }),
       apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
     },
-    {
-      target: 'README.md',
-      seed: readmeSeed(inputs, './mvnw test'),
-      apply: (existing) => appendReadmeSection(existing, mavenReadmeSection(inputs)),
-    },
+    readmeUpsert(readmeSeed(inputs, './mvnw test'), (existing) =>
+      appendReadmeSection(existing, mavenReadmeSection(inputs)),
+    ),
   ];
 }
 

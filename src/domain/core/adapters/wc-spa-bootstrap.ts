@@ -19,9 +19,15 @@
  * There is deliberately no mediator — per-use-case driving ports are
  * delivered through typed context keys, and cross-cutting concerns
  * decorate the domain factories at the assembly point.
+ *
+ * The README and `.gitignore` are seeded upserts rather than
+ * whole-file writes, so `keel new` in a directory that already holds
+ * either keeps the user's file and adds keel's part to it
+ * (`adopted-files.ts`).
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { adoptingRootFiles } from './adopted-files.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 import { wcLayout, type WcLayoutPaths } from './wc-module-layout.js';
 
@@ -44,6 +50,7 @@ export const wcSpaBootstrapAdapter: Adapter = {
       doc: 'Used as the workspace package scope (@scope/domain-api) and the custom-element tag prefix (<scope-greeting>). Lowercase + digits + dashes; must start with a letter.',
       default: 'acme',
       memory: 'sticky',
+      shared: 'project',
     },
     {
       id: 'projectName',
@@ -51,6 +58,7 @@ export const wcSpaBootstrapAdapter: Adapter = {
       doc: 'Used as the workspace root package name and the page title. Lowercase + digits + dashes; ≤63 chars.',
       default: 'walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
   ],
   async contribute(ctx) {
@@ -64,7 +72,7 @@ export const wcSpaBootstrapAdapter: Adapter = {
     if (ws.pm === 'pnpm') {
       files.push(...(await ctx.templates.render(`${TEMPLATE_ROOT}/pm${suffix}/pnpm`, '', vars)));
     }
-    return { files };
+    return adoptingRootFiles(files);
   },
 };
 

@@ -36,5 +36,13 @@ export const ciVertical: Vertical = {
     'The pipeline every push has to pass: build and test on GitHub Actions or GitLab CI.',
   dimensions: ['pipeline'],
   promotes: CI_PROVIDER_TAGS,
+  // A provider reads `.github/workflows/` and `.gitlab-ci.yml` at the
+  // repository root only: written under a monorepo service, the
+  // pipeline would never run. A product root's own pipeline is epic U.
+  placement: {
+    scope: 'repository',
+    because:
+      'its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout',
+  },
   adapters: [jvmPipelineAdapter, goPipelineAdapter, rustPipelineAdapter, tsPipelineAdapter],
 };

@@ -8,13 +8,20 @@
  *      when omitted).
  *   2. Refuse if a manifest already exists under the project scope —
  *      `keel new` is greenfield-only; brownfield is `keel add`.
- *   3. Build an empty v2 manifest seeded with the stack's tags, its
- *      declared peer projections, and any pre-supplied sticky answers.
- *   4. Install each vertical in stack order against a fresh Tree.
+ *   3. Build an empty v2 manifest seeded with the stack's tags and
+ *      its declared peer projections.
+ *   4. Install each vertical in stack order against a fresh Tree
+ *      (`installVerticals`, the loop `keel add` installs through).
  *      Tags emitted by adapters via `tagsAdd` accumulate into the
- *      manifest snapshot the next vertical sees.
- *   5. Under dry-run: report the plan, commit nothing.
- *   6. Otherwise: commit the Tree, persist the manifest, then run
+ *      manifest snapshot the next vertical sees. A pre-supplied
+ *      answer reaches only the adapters keyed to it (or borrowing
+ *      from it), which record what they resolve — so a scope's
+ *      manifest holds only the answers of adapters that ran there.
+ *   5. Refuse a pre-supplied answer no adapter of the run read
+ *      (`../supplied-answers.ts`) — dry run or not, so a preview
+ *      never approves what the install would refuse.
+ *   6. Under dry-run: report the plan, commit nothing.
+ *   7. Otherwise: commit the Tree, persist the manifest, then run
  *      the deferred actions. Persisting the manifest *before*
  *      actions keeps the workspace recoverable if an action throws
  *      (e.g. `gradle wrapper` with no `gradle` on PATH) — files and
@@ -28,13 +35,24 @@
  * one question per service interactively), recorded both as the
  * service manifest's `pkg.*` tag and on the product manifest's
  * service refs so root glue follows it. The repository
- * layout is the user's choice: under **monorepo** the `vcs` vertical
- * is hoisted out of the services and runs once at the product root
- * together with the composite stack's own glue verticals; under
- * **polyrepo** every service keeps its own `vcs` run and no shared
- * root artifacts exist. Commit order matches the single flow, per
- * scope: trees, then manifests, then deferred actions (root first,
- * then services in declaration order).
+ * layout is the user's choice: under **monorepo** the services are
+ * directories of one repository, so a vertical placed at a repository
+ * root (`Vertical.placement` — `vcs`) is left out of them and runs
+ * once at the product root, together with the composite stack's own
+ * glue verticals; under **polyrepo** every service is a repository of
+ * its own, keeps its own `vcs` run, and no shared root artifacts
+ * exist. Each service's extras — `--with backend:persistence`, or one
+ * named without a service that one service alone can take — are
+ * planned onto that service's scope once the layout and its build
+ * system are settled, as a single stack's are onto the preset. A
+ * directory inside an existing product that it lists no service in, or
+ * a service it lists that holds no project, is refused before anything
+ * is asked (`keel.inside-product`), and a file
+ * two scopes would both write is refused once every scope is staged,
+ * before the plan is reported (`keel.cross-scope-write`). Commit
+ * order matches the single flow, per scope: trees, then manifests,
+ * then deferred actions (root first, then services in declaration
+ * order).
  *
  * **Interactive pipeline** wraps either of the above in a wizard
  * rather than replacing them: `handle()` stages the full plan (every
@@ -67,6 +85,7 @@ import type { InstallReport, NewProjectCommand, RepoLayout } from '../../contrac
 import {
   AGENT_HARNESS_TAG,
   decodeSelection,
+  type Adapter,
   type DeferredAction,
   type Question,
   type QuestionChoice,
@@ -75,10 +94,12 @@ import {
 } from '../../contract/composition.js';
 import type { Asker, Prompt } from '../../contract/ports/prompt.js';
 import {
+  effectiveTags,
   emptyManifestV2,
   projectScopeRoot,
   type ManifestV2,
   type PeerLink,
+  type ServiceRef,
 } from '../../contract/manifest.js';
 import type { TreeChange } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
@@ -92,27 +113,44 @@ import {
 import { assemblyRefusal } from '../compatibility.js';
 import {
   emitsPeerContext,
+  harnessActivatedBy,
+  harnessLeftOut,
+  harnessOptOutSentence,
+  INVALID_AGENT_HARNESS_CODE,
   legalBuildSystems,
-  legalExtraVerticals,
   legalModuleLayouts,
+  offeredAsExtra,
   peerContextOffered,
-  promotedBy,
+  presetScope,
+  productScopes,
+  productIncludedNote,
+  routeExtra,
+  serviceIncludedNote,
+  switchesHarnessOn,
+  verticalOptions,
+  withoutHarness,
+  type ServicePlanScope,
 } from '../dials.js';
-import { finalizeHarness, installVertical } from '../install.js';
-import { newOwnership, type HarnessContribution } from '../apply.js';
+import type { AnswerRead } from '../answers.js';
+import { newOwnership } from '../apply.js';
+import { installVerticals } from '../install.js';
+import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
+import { nearestStack, nearestVertical, unknownIdSentence } from '../nearest-id.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
   listStackIds,
   listStacks,
+  listVerticals,
+  verticalTitle,
   type StackSummary,
-  type VerticalSummary,
 } from '../registry.js';
 import {
   entrypointCombinations,
   entrypointStep,
   entrypointsLabel,
   frameworkChoices,
+  frameworkLabel,
   languageChoices,
   languageLabel,
   normaliseEntrypoints,
@@ -125,12 +163,28 @@ import {
   type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
-import { coverageGap, coversFor, type CoverageGap } from '../resolver.js';
-import { vcsVertical } from '../verticals/vcs.js';
+import {
+  alreadyIncludedNote,
+  crossScopeWriteError,
+  routedExtraNote,
+  unbuiltInServiceNote,
+  type ScopeWriter,
+} from '../refusals.js';
+import { readiness } from '../planner.js';
+import { PathConflictError, PathMissingError } from '../../contract/refusal.js';
+import { NOTHING_INSTALLED, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
+import {
+  enclosingProduct,
+  memberScope,
+  projectScope,
+  provisionsFor,
+  type PresetService,
+} from '../scope.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type { Tag } from '../../contract/composition.js';
+import type { VerticalOption } from '../../contract/queries.js';
 
 /**
  * Question ids of the four **stack-level** dials — the choices the
@@ -246,12 +300,6 @@ const LAYOUT_QUESTION: Question = {
   memory: 'repeat',
 };
 
-interface ResolvedService {
-  readonly path: string;
-  readonly stack: Stack;
-  readonly extraVerticals: readonly Vertical[];
-}
-
 /** One scope (product root or service) staged by a composite install. */
 interface StagedScope {
   /** Path prefix for report changes; '' for the product root. */
@@ -261,6 +309,27 @@ interface StagedScope {
   readonly tree: Tree;
   readonly manifest: ManifestV2;
   readonly actions: readonly DeferredAction[];
+  /** Every adapter the scope's verticals resolved to, in install order. */
+  readonly adapters: readonly Adapter[];
+  /** The supplied answers the scope's adapters read. */
+  readonly reads: readonly AnswerRead[];
+  /** Path (relative to {@link cwd}) → the adapter that last wrote it. */
+  readonly writers: ReadonlyMap<string, string>;
+}
+
+/**
+ * The extras a single-service run installs, and what it was asked for
+ * that the preset carries of its own.
+ */
+interface ResolvedExtras {
+  /** The extras, closed over their prerequisites and in install order. */
+  readonly admitted: AdmittedSet;
+  /**
+   * The preset's own verticals `--with` named, in the order named:
+   * dropped from the request — the scaffold has them either way — with
+   * a note each.
+   */
+  readonly present: readonly Vertical[];
 }
 
 /** A fully-staged plan: nothing committed yet, the caller's to `finish`. */
@@ -300,44 +369,71 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
   /** Resolves the stack and runs the matching staging pipeline. Commits nothing. */
   private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
+    // Before a question is asked: nothing about the stack changes it.
+    const product = await enclosingProduct(this.deps, command.cwd);
+    if (product !== null && product.service === null) {
+      return err(insideProduct(path.relative(command.cwd, product.root)));
+    }
+    // A service the product lists, emptied: scaffolded here, it would
+    // be a repository root inside the product's repository — a second
+    // history's hooks and changelog — of whatever stack was named,
+    // whatever the product records. One that still holds its manifest
+    // is refused below as already initialised.
+    if (
+      product !== null &&
+      product.service !== null &&
+      (await this.deps.manifests.read(projectScopeRoot(command.cwd)).catch(() => null)) === null
+    ) {
+      return err(insideProductService(path.relative(command.cwd, product.root), product.service));
+    }
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
     const registered = this.deps.registry.stack(resolved.value);
     if (!registered) return err(unknownStackError(this.deps.registry, resolved.value));
+    // The harness before any other dial, as `keel.dials` settles it
+    // (`harnessOptional`): every menu after this is read over the
+    // preset as it will be installed.
     if (command.agentHarness === false && registered.services) {
       return err(
         new DomainError(
-          '--no-agent-harness applies to single-service stacks; composite product-root harness selection is not supported',
-          'keel.invalid-agent-harness',
+          '--no-agent-harness applies to single-service stacks: every service of a composite product carries the agent harness',
+          INVALID_AGENT_HARNESS_CODE,
         ),
       );
     }
     if (command.agentHarness === false && command.extraVerticals?.includes('agent-harness')) {
       return err(
-        new DomainError(
-          '--no-agent-harness cannot be combined with --with agent-harness',
-          'keel.invalid-agent-harness',
-        ),
+        new DomainError(harnessOptOutSentence('agent-harness'), INVALID_AGENT_HARNESS_CODE),
       );
     }
-    const stack =
-      command.agentHarness === false
-        ? { ...registered, verticals: registered.verticals.filter((v) => v.id !== 'agent-harness') }
-        : registered;
-    if (
-      command.agentHarness === false &&
-      [...stack.tags, ...promotedBy(stack.verticals)].includes(AGENT_HARNESS_TAG)
-    ) {
+    const stack = command.agentHarness === false ? withoutHarness(registered) : registered;
+    if (command.agentHarness === false && harnessActivatedBy(stack)) {
       return err(
         new DomainError(
           `--no-agent-harness cannot be used with stack '${stack.id}': its tags or remaining verticals activate ${AGENT_HARNESS_TAG}`,
-          'keel.invalid-agent-harness',
+          INVALID_AGENT_HARNESS_CODE,
         ),
       );
     }
-    return stack.services
-      ? this.stageComposite(command, stack, prompt)
-      : this.stageSingle(command, stack, prompt);
+    const staged = stack.services
+      ? await this.stageComposite(command, stack, prompt)
+      : await this.stageSingle(command, stack, prompt);
+    if (!staged.ok) return staged;
+    // Only now is the plan known: an adapter resolves against the tags
+    // the verticals before it promoted, in whichever scope it lands —
+    // and which answer each read, a sibling's or its own.
+    const plan = resolvedAdapters(staged.value.scopes.flatMap((scope) => scope.adapters));
+    const stray = strayAnswerRefusal(
+      command.answers,
+      plan,
+      NOTHING_INSTALLED,
+      staged.value.scopes.flatMap((scope) => scope.reads),
+    );
+    if (stray !== null) return err(stray);
+    return ok({
+      ...staged.value,
+      report: { ...staged.value.report, ...(plan.length > 0 ? { resolvedAdapters: plan } : {}) },
+    });
   }
 
   /** Commits a staged plan unless the run is a dry-run, and unwraps it to the report. */
@@ -443,7 +539,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       `keel new: ${[
         shapeLabel(chosen.shape).split(' — ')[0],
         languageLabel(language),
-        chosen.framework === null || chosen.framework === '' ? null : chosen.framework,
+        chosen.framework === null || chosen.framework === ''
+          ? null
+          : frameworkLabel(chosen.framework),
         entrypointsLabel(entrypoints),
       ]
         .filter((part) => part !== null && part !== '')
@@ -493,6 +591,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
   private printPlan(report: InstallReport): void {
     this.deps.logger.info(`keel new ${report.subject}: planned changes`);
+    for (const note of report.notes ?? []) this.deps.logger.info(`  note: ${note}`);
     for (const c of report.changes) {
       const tag = c.kind === 'create' ? '+' : c.kind === 'modify' ? '~' : '-';
       this.deps.logger.info(`  ${tag} ${c.path}`);
@@ -508,6 +607,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const scopeRoot = projectScopeRoot(command.cwd);
     if ((await this.deps.manifests.read(scopeRoot)) !== null) {
       return err(alreadyInitialised(scopeRoot));
+    }
+    const named = Object.keys(command.services ?? {});
+    if (named.length > 0) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' has no services — name its extras in --with without a service path (got '${named[0] ?? ''}:…')`,
+          INVALID_EXTRAS_CODE,
+        ),
+      );
     }
 
     const buildTag = await this.resolveBuildSystem(command, stack, prompt);
@@ -533,8 +641,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
     if (!extras.ok) return extras;
+    const { admitted, present } = extras.value;
 
-    const legal = assemblyIsLegal(stack, extras.value, [
+    const legal = assemblyIsLegal(stack, admitted.order, [
       ...stackTagsFor(stack, buildTag.value, layoutTag.value),
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
@@ -550,18 +659,25 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       peerTag: peerTag.value,
       peers: [],
       services: [],
-      skipVcs: false,
-      extraVerticals: extras.value,
+      member: false,
+      extraVerticals: admitted.order,
       command,
       now,
       prompt,
     });
 
+    // What the run adds unasked comes first: it is the note that
+    // changes what is written (D1).
+    const notes = [
+      ...admissionNotes(admitted),
+      ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
+    ];
     const report: InstallReport = {
       subject: stack.id,
       changes: staged.tree.changes(),
       actions: staged.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(notes.length > 0 ? { notes } : {}),
       ...(staged.skippedHarnessElements > 0
         ? { skippedHarnessElements: staged.skippedHarnessElements }
         : {}),
@@ -575,7 +691,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     stack: Stack,
     prompt: Prompt,
   ): Promise<Result<StagedPlan>> {
-    const resolved: ResolvedService[] = [];
+    const resolved: PresetService[] = [];
     for (const service of stack.services ?? []) {
       const serviceStack = this.deps.registry.stack(service.stack);
       if (!serviceStack) {
@@ -619,14 +735,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
-    if (command.extraVerticals !== undefined && command.extraVerticals.length > 0) {
-      return err(
-        new DomainError(
-          `stack '${stack.id}' is composite — each service declares its own extra verticals, and '--with' names no service. Scaffold the product, then 'keel add ${command.extraVerticals[0] ?? ''}' inside the service that needs it`,
-          'keel.invalid-extra-verticals',
-        ),
-      );
-    }
+    // What `--with` names, read before a question is asked: the form
+    // of each entry and the ids it names say nothing about the dials.
+    const named = this.namedExtras(command, stack, resolved);
+    if (!named.ok) return named;
+    const { present, bare } = named.value;
 
     const layout = await this.resolveLayout(command, stack, prompt);
     if (!layout.ok) return layout;
@@ -647,6 +760,25 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
     const now = this.deps.clock.nowIso();
     const monorepo = layout.value === 'monorepo';
+
+    // Last of the dials, as on a single stack: each service's extras
+    // are planned onto the scope its build system and the layout
+    // settle, before a single adapter question.
+    const extras = this.resolveServiceExtras(
+      command,
+      stack,
+      productScopes(
+        this.deps.registry,
+        stack,
+        resolved,
+        (servicePath) => builds.value.get(servicePath)?.tag ?? null,
+        monorepo,
+      ),
+      bare,
+      monorepo,
+    );
+    if (!extras.ok) return extras;
+
     const scopes: StagedScope[] = [];
 
     if (monorepo) {
@@ -666,7 +798,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
               ...(chosen ? { buildSystem: chosen.id } : {}),
             };
           }),
-          skipVcs: false,
+          member: false,
           command,
           now,
           prompt,
@@ -684,14 +816,24 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           layoutTag: defaultLayoutTag(service.stack),
           peers: peersFor(service, resolved),
           services: [],
-          skipVcs: monorepo,
-          extraVerticals: service.extraVerticals,
+          member: monorepo,
+          extraVerticals: [
+            ...service.extraVerticals,
+            ...(extras.value.admitted.get(service.path)?.order ?? []),
+          ],
           command,
           now,
           prompt,
         }),
       );
     }
+
+    // Each scope staged into a Tree of its own, so a file two of them
+    // write is nobody's conflict until this: without it, the one
+    // committed last would win. Here, and not at commit, so a preview
+    // and a dry run refuse it as the install does.
+    const clash = crossScopeWrite(scopes);
+    if (clash !== null) return err(clash);
 
     const changes: TreeChange[] = scopes.flatMap((scope) =>
       scope.tree
@@ -704,11 +846,17 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       ),
     );
     const skipped = scopes.reduce((total, scope) => total + scope.skippedHarnessElements, 0);
+    const notes = [
+      ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
+      ...extras.value.notes,
+      ...(monorepo ? this.unbuiltNotes(scopes) : []),
+    ];
     const report: InstallReport = {
       subject: stack.id,
       changes,
       actions,
       committed: !command.dryRun,
+      ...(notes.length > 0 ? { notes } : {}),
       ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     };
 
@@ -716,9 +864,184 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }
 
   /**
-   * Installs one stack's verticals against a fresh manifest and Tree
-   * rooted at `cwd`. Nothing is committed — the caller owns commit
-   * order across scopes.
+   * What `--with` names on a composite product, checked for its form
+   * before any question is asked: each service path the product lists
+   * one at (`services`), every id registered, none named twice for one
+   * service or twice bare, and the two forms not mixed — one command
+   * names its extras with a service each or with none. Of the bare
+   * ids, the product's own are set aside (`present`, a note each, as
+   * on a single stack) and the rest are sent to a service once the
+   * dials are settled (`bare`).
+   */
+  private namedExtras(
+    command: NewProjectCommand,
+    stack: Stack,
+    services: readonly PresetService[],
+  ): Result<{ readonly present: readonly Vertical[]; readonly bare: readonly Vertical[] }> {
+    const registry = this.deps.registry;
+    const paths = services.map((service) => service.path);
+    const perService = Object.entries(command.services ?? {});
+    for (const [servicePath, extras] of perService) {
+      if (!paths.includes(servicePath)) {
+        return err(
+          new DomainError(
+            `stack '${stack.id}' has no service '${servicePath}' — services: ${paths.join(', ')}`,
+            INVALID_EXTRAS_CODE,
+          ),
+        );
+      }
+      const twice = extras.extraVerticals.find(
+        (id, index) => extras.extraVerticals.indexOf(id) !== index,
+      );
+      if (twice !== undefined) {
+        return err(
+          new DomainError(
+            `--with names vertical '${twice}' twice for ${servicePath}`,
+            INVALID_EXTRAS_CODE,
+          ),
+        );
+      }
+    }
+    const requested = command.extraVerticals ?? [];
+    if (requested.length > 0 && perService.some(([, extras]) => extras.extraVerticals.length > 0)) {
+      return err(
+        new DomainError(
+          `--with names some verticals with a service and some without — on stack '${stack.id}' name each with its service, as 'path:id' pairs (e.g. --with ${paths[0] ?? 'backend'}:persistence), or none with one`,
+          INVALID_EXTRAS_CODE,
+        ),
+      );
+    }
+    const twice = requested.find((id, index) => requested.indexOf(id) !== index);
+    if (twice !== undefined) {
+      return err(new DomainError(`--with names vertical '${twice}' twice`, INVALID_EXTRAS_CODE));
+    }
+    const present: Vertical[] = [];
+    const bare: Vertical[] = [];
+    for (const id of [...requested, ...perService.flatMap(([, extras]) => extras.extraVerticals)]) {
+      const vertical = registry.vertical(id);
+      if (vertical === null) {
+        return err(
+          new DomainError(
+            unknownIdSentence(
+              'vertical',
+              id,
+              nearestVertical(registry.verticals(), id),
+              `available: ${listVerticals(registry)
+                .map((v) => v.id)
+                .join(', ')}`,
+            ),
+            'keel.unknown-vertical',
+          ),
+        );
+      }
+      if (!requested.includes(id)) continue;
+      if (stack.verticals.some((own) => own.id === id)) present.push(vertical);
+      else bare.push(vertical);
+    }
+    return ok({ present, bare });
+  }
+
+  /**
+   * Each service's extras, planned onto the scope its dials settled
+   * (`scopes`): the ones `--with` named for it, and each named without
+   * a service that it alone can take (`routeExtra` — set aside with a
+   * note where the services that could have it have it already, and
+   * refused, naming the services, where none or several can). Planned as a single
+   * stack's are: one already there set aside with a note, the rest
+   * closed over their prerequisites in plan order, or refused in the
+   * sentence `keel add` there would give (`keel.wrong-scope` for a
+   * pipeline in a monorepo service). The notes are prefixed with the
+   * service, as its deferred actions are in the report.
+   */
+  private resolveServiceExtras(
+    command: NewProjectCommand,
+    stack: Stack,
+    scopes: readonly ServicePlanScope[],
+    bare: readonly Vertical[],
+    monorepo: boolean,
+  ): Result<{
+    readonly admitted: ReadonlyMap<string, AdmittedSet>;
+    readonly notes: readonly string[];
+  }> {
+    const registry = this.deps.registry;
+    const requested = new Map<string, Vertical[]>();
+    const notes: string[] = [];
+    for (const vertical of [...bare].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+      const routed = routeExtra(registry, scopes, vertical, monorepo);
+      if (routed.kind === 'refused') return err(routed.refusal);
+      if (routed.kind === 'included') {
+        notes.push(productIncludedNote(stack, scopes, vertical, routed.paths, monorepo));
+        continue;
+      }
+      requested.set(routed.path, [...(requested.get(routed.path) ?? []), vertical]);
+      notes.push(routedExtraNote(vertical, routed.path, stack.id));
+    }
+    const admitted = new Map<string, AdmittedSet>();
+    for (const { service, scope } of scopes) {
+      const chosen = [
+        ...(requested.get(service.path) ?? []),
+        ...(command.services?.[service.path]?.extraVerticals ?? []).flatMap(
+          (id) => registry.vertical(id) ?? [],
+        ),
+      ];
+      if (chosen.length === 0) continue;
+      const already = serviceIncludedNote(stack, service, monorepo);
+      const present = chosen.filter((vertical) => scope.installed.includes(vertical.id));
+      const incoming = chosen.filter((vertical) => !scope.installed.includes(vertical.id));
+      if (incoming.length > 0) {
+        const set = admit(registry, scope, incoming);
+        if (!set.ok) return set;
+        admitted.set(service.path, set.value);
+        notes.push(...admissionNotes(set.value).map((note) => `${service.path}: ${note}`));
+      }
+      notes.push(...present.map((vertical) => `${service.path}: ${already(vertical)}`));
+    }
+    return ok({ admitted, notes });
+  }
+
+  /**
+   * What a monorepo product's root leaves out of a service: a vertical
+   * the root's glue builds for the services it knows
+   * (`Adapter.providesInServices`) but not for this one's stack, where
+   * the service could take it on its own — a plugin's backend the
+   * product's `compose.yaml` has no image for. One note each, so the
+   * report says what `keel add` there would fill in; the product root
+   * is the first scope, the services follow in the product's order.
+   */
+  private unbuiltNotes(scopes: readonly StagedScope[]): readonly string[] {
+    const registry = this.deps.registry;
+    const [root, ...services] = scopes;
+    if (root === undefined) return [];
+    const built = [
+      ...new Set(root.adapters.flatMap((adapter) => adapter.providesInServices?.vertical ?? [])),
+    ];
+    const product = {
+      installed: root.manifest.verticals.map((v) => v.id),
+      tags: effectiveTags(root.manifest),
+    };
+    const notes: string[] = [];
+    for (const service of services) {
+      const ref = root.manifest.services.find((candidate) => candidate.path === service.prefix);
+      if (ref === undefined) continue;
+      const provisions = provisionsFor(registry, product, ref.stack);
+      const scope = memberScope(projectScope(registry, service.manifest), provisions);
+      for (const id of built) {
+        const vertical = registry.vertical(id);
+        if (vertical === null || provisions.some((given) => given.vertical.id === id)) continue;
+        const ready = readiness(registry, scope, id).kind;
+        if (ready === 'ready' || ready === 'needs') {
+          notes.push(unbuiltInServiceNote(service.prefix, vertical));
+        }
+      }
+    }
+    return notes;
+  }
+
+  /**
+   * Installs one stack's verticals, then its extras, against a fresh
+   * manifest and Tree rooted at `cwd` — one `installVerticals` run,
+   * the loop `keel add` installs through as well. Nothing is
+   * committed — the caller owns commit order across scopes.
    */
   private async stageStack(inputs: {
     prefix: string;
@@ -732,13 +1055,19 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     peerTag?: Tag | null;
     peers: readonly PeerLink[];
     services: ManifestV2['services'];
-    skipVcs: boolean;
+    /**
+     * Whether the scope is a service of a monorepo product — a
+     * directory of the product's repository — so a vertical placed at
+     * a repository root is left out of it: the product root carries
+     * the repository.
+     */
+    member: boolean;
     extraVerticals?: readonly Vertical[];
     command: NewProjectCommand;
     now: string;
     prompt: Prompt;
   }): Promise<StagedScope> {
-    let manifest: ManifestV2 = {
+    const manifest: ManifestV2 = {
       ...emptyManifestV2(inputs.now, this.deps.keelVersion),
       tags: [
         ...inputs.stack.tags,
@@ -746,7 +1075,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         ...(inputs.layoutTag ? [inputs.layoutTag] : []),
         ...(inputs.peerTag ? [inputs.peerTag] : []),
       ].sort(),
-      answers: inputs.command.answers,
       projects: [...(inputs.stack.projects ?? [])],
       peers: inputs.peers,
       services: inputs.services,
@@ -754,51 +1082,51 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     };
 
     const tree = this.deps.trees(inputs.cwd);
-    const collected: DeferredAction[] = [];
-    const own = inputs.skipVcs
-      ? inputs.stack.verticals.filter((v) => v.id !== vcsVertical.id)
-      : inputs.stack.verticals;
-    const verticals = [...own, ...(inputs.extraVerticals ?? [])];
-    // One ownership scope for the whole scaffold: a skill name or a
-    // region two verticals both claim collides here, not only when
-    // both come from one vertical.
+    // The declaration the add front door refuses by (`Vertical.placement`),
+    // read here too, so what a monorepo service is scaffolded without
+    // and what `keel add` there refuses cannot drift apart.
+    const placed = (v: Vertical) => inputs.member && v.placement?.scope === 'repository';
+    // One per scope, read back for who wrote what (`crossScopeWrite`).
     const owners = newOwnership();
-    const harness: HarnessContribution[] = [];
-
-    for (const vertical of verticals) {
-      const result = await installVertical({
-        vertical,
-        manifest,
-        tree,
-        owners,
-        harness,
-        mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
-        prompt: inputs.prompt,
-        logger: this.deps.logger,
-        cwd: inputs.cwd,
-        templates: this.deps.templates,
-        processes: this.deps.processes,
-        now: () => inputs.now,
-      });
-      manifest = result.manifest;
-      collected.push(...result.applyResult.actions);
-    }
-
-    const finalized = finalizeHarness({
-      manifest,
-      harness,
-      tree,
+    const result = await installVerticals({
+      verticals: [...inputs.stack.verticals, ...(inputs.extraVerticals ?? [])].filter(
+        (v) => !placed(v),
+      ),
       owners,
+      // The preset's own rules, held with its verticals' over every
+      // tag the run folds in, as `assemblyIsLegal` held them over the
+      // tags the dials settled.
+      rules: inputs.stack.conflicts ?? [],
+      manifest,
+      supplied: inputs.command.answers,
+      tree,
+      // Nothing on disk here is keel's: a file in the way is the
+      // user's to move, and a patch target nothing created is a bug.
+      apply: 'scaffold',
+      mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
+      prompt: inputs.prompt,
       logger: this.deps.logger,
+      cwd: inputs.cwd,
+      templates: this.deps.templates,
+      processes: this.deps.processes,
       now: () => inputs.now,
+      registry: this.deps.registry,
+    }).catch((thrown: unknown) => {
+      // A service's Tree is rooted at its own directory, so the file
+      // an adapter names is relative to it; the user ran `keel new`
+      // one level up, where `go.mod` in the way is `backend/go.mod`.
+      throw inputs.prefix === '' ? thrown : underService(thrown, inputs.prefix);
     });
     return {
       prefix: inputs.prefix,
       cwd: inputs.cwd,
       tree,
-      manifest: finalized.manifest,
-      actions: collected,
-      skippedHarnessElements: finalized.skipped,
+      manifest: result.manifest,
+      actions: result.applyResult.actions,
+      adapters: result.adapters,
+      reads: result.reads,
+      skippedHarnessElements: result.applyResult.skippedHarnessElements ?? 0,
+      writers: owners.writers,
     };
   }
 
@@ -878,7 +1206,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async resolveServiceBuildSystems(
     command: NewProjectCommand,
     stack: Stack,
-    services: readonly ResolvedService[],
+    services: readonly PresetService[],
     prompt: Prompt,
   ): Promise<Result<ReadonlyMap<string, BuildSystemOption | null>>> {
     const explicit = parseServiceBuildSystems(command.buildSystem, stack, services);
@@ -1001,97 +1329,95 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   /**
    * Resolves the verticals to layer on top of the stack's own: the
    * `--with` list when supplied, the interactive multi-select
-   * otherwise, none when neither.
+   * otherwise, none when neither — and the order they install in.
    *
-   * **The menu is pruned twice.** The stack's own verticals are off
-   * it — the stack installs them either way, and naming one would be
-   * asking for a second install of something already in the plan.
-   * And so is any vertical whose dimensions no adapter covers for
-   * this stack: `persistence` on a CLI-only preset resolves to
-   * nothing and would hard-fail at install, which is the dead end an
-   * interactive flow must not offer. That probe is
-   * {@link coversFor}, run against the tag set the other three dials
-   * settled — which is why this question comes last among them —
-   * plus what the stack's own verticals promote on their way past.
+   * **The menu is the planner's** (`../planner.ts`, through
+   * {@link verticalOptions}), the same list `keel.dials` reports: the
+   * stack's own verticals are off it — the stack installs them either
+   * way — and so is any vertical nothing keel can add makes install
+   * here, such as `persistence` on a CLI-only preset. What stays is
+   * ready, or ready once others are: `iac` is on it, labelled with the
+   * image and the release it needs. Under `--no-agent-harness` it is
+   * read as {@link harnessLeftOut} reads it, as `keel.dials` reads it
+   * for a target leaving the harness out: nothing that would switch the
+   * harness back on — itself, or through a prerequisite the plan would
+   * add ({@link switchesHarnessOn}) — is offered, and naming one is
+   * refused rather than installed with the harness it brings.
    *
-   * `--with` is not pruned the same way — it is checked, not
-   * filtered: a name that is not a registered vertical, or is one the
-   * stack already carries, is refused at the front door with the list
-   * spelled out, exactly as `keel add` refuses an unknown id. Coverage
-   * is checked there too, but not with the menu's flat probe — see
-   * {@link preflightCoverage}.
+   * `--with` is checked rather than filtered: a name that is not a
+   * registered vertical, or one named twice, is refused at the front
+   * door with the list spelled out, exactly as `keel add` refuses an
+   * unknown id. One the stack already carries is asking for what the
+   * plan has, which has one sensible reading: it is set aside, and the
+   * report says the preset comes with it — as `keel add` notes a
+   * vertical the project has installed. Then the rest of the set is
+   * planned (`../plan-refusal.ts`) — the same reading `keel add` asks
+   * of the verticals it names — closed over its prerequisites, and
+   * installs in the order the planner puts it in, the rest by id,
+   * whatever order it was named in. A prerequisite the set leaves out
+   * is installed with it, and the report's first note names it; a
+   * vertical the stack cannot carry is refused in the resolver's own
+   * sentence, plus the remedy only `--with` has — before a single
+   * adapter question.
    */
   private async resolveExtraVerticals(
     command: NewProjectCommand,
     stack: Stack,
     prompt: Prompt,
     tags: readonly Tag[],
-  ): Promise<Result<readonly Vertical[]>> {
-    const own = new Set(stack.verticals.map((v) => v.id));
-    // What is on the table before any extra runs: the dials' tags
-    // plus whatever the stack's own verticals promote while
-    // installing. A stack that ships `distribution` itself makes
-    // `iac` legal here, and neither the menu nor the front door
-    // should pretend otherwise.
-    const seed = [...tags, ...promotedBy(stack.verticals)];
-    // The same menu `keel.dials` reports, so a form's list and this
-    // question's choices cannot come apart — see `../dials.ts` for
-    // what makes an extra a dead end here.
-    const candidates = legalExtraVerticals(this.deps.registry, stack, tags).filter(
-      (v) =>
-        command.agentHarness !== false ||
-        (v.id !== 'agent-harness' &&
-          !this.deps.registry.vertical(v.id)?.promotes?.includes(AGENT_HARNESS_TAG)),
-    );
+  ): Promise<Result<ResolvedExtras>> {
+    const registry = this.deps.registry;
+    const scope = presetScope(stack, tags);
+    const options = verticalOptions(registry, stack, tags);
+    const candidates = (
+      command.agentHarness === false ? harnessLeftOut(registry, options) : options
+    ).filter(offeredAsExtra);
     const requested =
       command.extraVerticals !== undefined
         ? command.extraVerticals
         : !command.interactive || candidates.length === 0
           ? []
           : decodeSelection(
-              await prompt.ask(extraVerticalsQuestion(candidates, stack), stackAsker(stack)),
+              await prompt.ask(
+                extraVerticalsQuestion(candidates, stack, registry),
+                stackAsker(stack),
+              ),
             );
 
     const chosen: Vertical[] = [];
+    const present: Vertical[] = [];
     for (const id of requested) {
-      if (own.has(id)) {
-        return err(
-          new DomainError(
-            `stack '${stack.id}' already installs vertical '${id}' — remove it from --with`,
-            'keel.invalid-extra-verticals',
-          ),
-        );
+      if ([...present, ...chosen].some((v) => v.id === id)) {
+        return err(new DomainError(`--with names vertical '${id}' twice`, INVALID_EXTRAS_CODE));
       }
-      const vertical = this.deps.registry.vertical(id);
+      const own = stack.verticals.find((v) => v.id === id);
+      if (own !== undefined) {
+        present.push(own);
+        continue;
+      }
+      const vertical = registry.vertical(id);
       if (!vertical) {
         return err(
           new DomainError(
-            `unknown vertical '${id}'; available on top of stack '${stack.id}': ${candidates
-              .map((v) => v.id)
-              .join(', ')}`,
+            unknownIdSentence(
+              'vertical',
+              id,
+              nearestVertical(candidates, id),
+              `available on top of stack '${stack.id}': ${candidates.map((v) => v.id).join(', ')}`,
+            ),
             'keel.unknown-vertical',
           ),
         );
       }
-      if (command.agentHarness === false && vertical.promotes?.includes(AGENT_HARNESS_TAG)) {
-        return err(
-          new DomainError(
-            `--no-agent-harness cannot be combined with --with ${id}: it activates ${AGENT_HARNESS_TAG}`,
-            'keel.invalid-agent-harness',
-          ),
-        );
-      }
-      if (chosen.some((v) => v.id === id)) {
-        return err(
-          new DomainError(`--with names vertical '${id}' twice`, 'keel.invalid-extra-verticals'),
-        );
+      if (command.agentHarness === false && switchesHarnessOn(registry, scope, vertical)) {
+        return err(new DomainError(harnessOptOutSentence(id), INVALID_AGENT_HARNESS_CODE));
       }
       chosen.push(vertical);
     }
 
-    const refusal = preflightCoverage(stack, chosen, seed);
-    if (refusal) return err(refusal);
-    return ok(chosen);
+    const admitted = admit(registry, scope, chosen);
+    if (!admitted.ok) return admitted;
+    return ok({ admitted: admitted.value, present });
   }
 
   private async resolveLayout(
@@ -1151,105 +1477,6 @@ function assemblyIsLegal(
   const refusal = assemblyRefusal([stack, ...stack.verticals, ...extras], tags);
   if (refusal === null) return ok(null);
   return err(new DomainError(`stack '${stack.id}': ${refusal}`, 'keel.incompatible'));
-}
-
-/**
- * The front door's coverage check for `--with`: refuses an extra no
- * adapter here can cover, *before* any adapter question is asked.
- *
- * It cannot be the menu's flat `coversFor` probe. That probe is
- * conservative — it sees the tags it is given, never the ones an
- * adapter promotes at install time — and conservatism that only hides
- * a menu entry becomes a wrong answer the moment it refuses a
- * command: `--with distribution,iac` is exactly the composition
- * `--with` exists for (`iac` is keyed on the `dist.container-image`
- * tag `distribution` promotes), and a flat probe rejects it.
- *
- * So the check walks the extras the way the install will run them —
- * in the order named, each against the tags its predecessors leave
- * behind, seeded with what the stack's own verticals promote. What
- * "leave behind" means statically is `Vertical.promotes`, the union
- * of tags a vertical's adapters may add; over-declaring there only
- * defers a refusal to the resolver, and under-declaring is what the
- * installer's own assertion exists to prevent.
- *
- * That leaves three outcomes per extra, and the middle one is the
- * reason the walk is ordered rather than a set operation:
- *
- *   - covered at its turn → nothing to say;
- *   - uncovered now, covered once a *later* extra has run → the
- *     order is the bug, so the refusal names the extra to list it
- *     after rather than pretending the composition is illegal;
- *   - uncovered whatever the rest of the list does → the stack
- *     cannot carry it, named with the dimension and the tags that
- *     would have covered it.
- *
- * The resolver's `ResolutionError` is still a throw, and still
- * escapes `installVertical` from every caller (`keel add` on a
- * project whose shape cannot take the vertical does the same) — but
- * it is a `DomainError` now, so the mediator puts it back on the
- * `Err` rail for whichever front end asked. That was the decision
- * this comment deferred, and it is made where it belongs: at the seam
- * every escape from the install engine crosses, not here. This path
- * simply no longer reaches it — and refuses with more than it could
- * have said, which is why the two sentences differ at all.
- */
-function preflightCoverage(
-  stack: Stack,
-  chosen: readonly Vertical[],
-  seed: readonly Tag[],
-): DomainError | null {
-  const running = new Set<Tag>(seed);
-  for (const [index, vertical] of chosen.entries()) {
-    const gap = coverageGap(vertical, running);
-    if (gap === null) {
-      for (const tag of vertical.promotes ?? []) running.add(tag);
-      continue;
-    }
-    const later = chosen.slice(index + 1);
-    const singleHanded = later.filter((other) =>
-      coversFor(vertical, [...running, ...(other.promotes ?? [])]),
-    );
-    if (singleHanded.length > 0) return outOfOrder(vertical, gap, singleHanded);
-    if (coversFor(vertical, [...running, ...promotedBy(later)])) {
-      return outOfOrder(
-        vertical,
-        gap,
-        later.filter((other) => (other.promotes ?? []).length > 0),
-      );
-    }
-    return uncoverable(stack, vertical, gap);
-  }
-  return null;
-}
-
-/** The refusal for an extra listed before whatever would enable it. */
-function outOfOrder(
-  vertical: Vertical,
-  gap: CoverageGap,
-  enablers: readonly Vertical[],
-): DomainError {
-  const names = enablers.map((v) => `'${v.id}'`).join(' and ');
-  const promote = enablers.length > 1 ? 'promote' : 'promotes';
-  return new DomainError(
-    `vertical '${vertical.id}' cannot be installed before ${names}: dimension(s) ${gap.dimensions.join(
-      ', ',
-    )} need tag(s) ${gap.enablers.join(', ')}, which ${names} ${promote} — --with installs extras in the order named, so list '${vertical.id}' after ${names}`,
-    'keel.extra-verticals-order',
-  );
-}
-
-/** The refusal for an extra this stack has no adapter for, in any order. */
-function uncoverable(stack: Stack, vertical: Vertical, gap: CoverageGap): DomainError {
-  const missing = `no adapter covers dimension(s) ${gap.dimensions.join(', ')}`;
-  const fix =
-    gap.enablers.length > 0
-      ? `an adapter would need tag(s) ${gap.enablers.join(', ')}, which this stack does not have — drop '${vertical.id}' from --with, or scaffold a stack that does`
-      : `no adapter of '${vertical.id}' can cover them here — drop it from --with`;
-  return new DomainError(
-    `stack '${stack.id}' cannot carry vertical '${vertical.id}': ${missing}; ${fix}`,
-    'keel.uncoverable-vertical',
-  );
 }
 
 /** The asker every stack-level dial carries. @see LAYOUT_QUESTION_ID */
@@ -1363,8 +1590,8 @@ function defaultFramework(
 /**
  * A combination the menus should never have offered. Reachable only
  * from an answer the menus did not produce — a scripted prompt, or a
- * front end posting its own — so it names what it was given rather
- * than guessing at a near miss.
+ * front end posting its own — so it names what it was given, in the
+ * words the menus give it, rather than guessing at a near miss.
  */
 function noSuchCombination(
   shape: string,
@@ -1372,9 +1599,10 @@ function noSuchCombination(
   framework: string | null,
   entrypoints: readonly string[],
 ): DomainError {
-  const named = framework === null || framework === '' ? '' : ` on ${framework}`;
+  const named = framework === null || framework === '' ? '' : ` on ${frameworkLabel(framework)}`;
+  const kind = (shapeLabel(shape as ProjectShape).split(' — ')[0] ?? shape).toLowerCase();
   return new DomainError(
-    `no ${shape} preset scaffolds ${languageLabel(language)} with ${
+    `no ${kind} preset scaffolds ${languageLabel(language)} with ${
       entrypoints.length === 0 ? 'no user-side adapter' : entrypointsLabel(entrypoints)
     }${named} — pick a preset by id with --stack, or 'keel new --list' to see them all`,
     'keel.unknown-stack',
@@ -1399,15 +1627,37 @@ function stackQuestion(options: readonly StackSummary[]): Question {
  *
  * A `multi-select` defaulting to none — the stack's list is a
  * coherent starting point by construction, so "nothing extra" is the
- * answer that needs no justification.
+ * answer that needs no justification. A choice that installs only
+ * once others have says so in its label, naming them: the menu is
+ * flat, and ticking it alone installs them with it, which the review
+ * says first.
  */
-function extraVerticalsQuestion(candidates: readonly VerticalSummary[], stack: Stack): Question {
+function extraVerticalsQuestion(
+  candidates: readonly VerticalOption[],
+  stack: Stack,
+  registry: Registry,
+): Question {
+  const titleOf = (id: string): string => {
+    const vertical = registry.vertical(id);
+    return vertical === null ? id : verticalTitle(vertical);
+  };
   return {
     id: EXTRA_VERTICALS_QUESTION_ID,
     prompt: 'Additional verticals',
-    doc: `Installed on top of what '${stack.id}' already brings, in the same run — so they resolve against one another's tags and the review below shows one plan. Everything here is also available later with 'keel add'.`,
+    doc: `Installed on top of what '${stack.id}' already brings, in the same run and in the order they build on one another, so the review below shows one plan. A choice marked "needs …" brings what it names with it. Everything here is also available later with 'keel add'.`,
     kind: 'multi-select',
-    choices: candidates.map((v) => ({ value: v.id, label: v.id, doc: v.description })),
+    choices: candidates.map((option) => ({
+      value: option.id,
+      label:
+        option.readiness === 'needs'
+          ? `${option.title} — needs ${
+              option.requires.length === 0
+                ? 'one of several verticals first'
+                : option.requires.map(titleOf).join(', ')
+            }`
+          : option.title,
+      doc: option.description,
+    })),
     default: '',
     memory: 'repeat',
   };
@@ -1449,9 +1699,19 @@ function cancelledError(): DomainError {
   return new DomainError('cancelled by user — nothing written', 'keel.cancelled');
 }
 
+/**
+ * The refusal of a `--stack` no preset is registered under: the id it
+ * most likely meant, where one is near enough to name, and every id
+ * there is.
+ */
 function unknownStackError(registry: Registry, id: string): DomainError {
   return new DomainError(
-    `unknown stack '${id}'; available: ${listStackIds(registry).join(', ')}`,
+    unknownIdSentence(
+      'stack',
+      id,
+      nearestStack(registry, id),
+      `available: ${listStackIds(registry).join(', ')}`,
+    ),
     'keel.unknown-stack',
   );
 }
@@ -1477,7 +1737,7 @@ function buildSystemQuestion(
  * distinguishable to the user and to scripted prompts alike.
  */
 function serviceBuildSystemQuestion(
-  service: ResolvedService,
+  service: PresetService,
   options: readonly BuildSystemOption[],
   fallback: BuildSystemOption,
 ): Question {
@@ -1498,7 +1758,7 @@ function serviceBuildSystemQuestion(
 function parseServiceBuildSystems(
   raw: string | undefined,
   stack: Stack,
-  services: readonly ResolvedService[],
+  services: readonly PresetService[],
 ): Result<ReadonlyMap<string, string>> {
   const parsed = new Map<string, string>();
   if (raw === undefined) return ok(parsed);
@@ -1690,9 +1950,101 @@ function peerContextStackIds(registry: Registry): readonly string[] {
     .sort();
 }
 
+/**
+ * `thrown`, with a file refusal's path moved under the service
+ * directory `prefix` — what the user sees from the product root they
+ * ran `keel new` in. Anything else is passed through as it is.
+ */
+function underService(thrown: unknown, prefix: string): unknown {
+  if (thrown instanceof PathConflictError) {
+    return new PathConflictError(
+      path.posix.join(prefix, thrown.path),
+      thrown.adapterId,
+      thrown.refusal.anchor,
+    );
+  }
+  if (thrown instanceof PathMissingError) {
+    return new PathMissingError(path.posix.join(prefix, thrown.path), thrown.adapterId);
+  }
+  return thrown;
+}
+
+/**
+ * The refusal of a composite plan two of whose scopes stage one file —
+ * the same absolute path, from the product root and a service, or from
+ * two services — naming the adapter that wrote it in each, and where
+ * it ran (`../refusals.ts`); null when every file has one scope.
+ */
+function crossScopeWrite(scopes: readonly StagedScope[]): DomainError | null {
+  const staged = new Map<string, { readonly scope: StagedScope; readonly path: string }>();
+  for (const scope of scopes) {
+    for (const change of scope.tree.changes()) {
+      const absolute = path.join(scope.cwd, change.path);
+      const first = staged.get(absolute);
+      if (first === undefined) {
+        staged.set(absolute, { scope, path: change.path });
+        continue;
+      }
+      return crossScopeWriteError(
+        scope.prefix === '' ? change.path : path.posix.join(scope.prefix, change.path),
+        writerIn(first.scope, first.path),
+        writerIn(scope, change.path),
+      );
+    }
+  }
+  return null;
+}
+
+/** Who wrote `file` in `scope`: the adapter, by its `<vertical>/<adapter>` id. */
+function writerIn(scope: StagedScope, file: string): ScopeWriter {
+  return { by: scope.writers.get(file) ?? null, scope: scope.prefix };
+}
+
 /** The default module-layout tag of a service stack, if it declares a choice. */
 function defaultLayoutTag(stack: Stack): Tag | null {
   return stack.moduleLayouts?.[0]?.tag ?? null;
+}
+
+/**
+ * The code `--with` is refused with for its form rather than for what
+ * it names: an id twice, a service path the product does not list, a
+ * path on a single-service stack, or the two forms mixed.
+ */
+const INVALID_EXTRAS_CODE = 'keel.invalid-extra-verticals';
+
+/**
+ * The code `keel new` inside a monorepo product is refused with: in a
+ * directory it does not list, or in a service it lists that holds no
+ * project.
+ */
+export const INSIDE_PRODUCT_CODE = 'keel.inside-product';
+
+/**
+ * The refusal of `keel new` in a directory inside a product root that
+ * lists no service there: a project scaffolded there would be neither
+ * a service of the product nor a project of its own, and the product
+ * has no command that adds one. `root` is the product root, relative
+ * to where `keel new` ran.
+ */
+function insideProduct(root: string): DomainError {
+  return new DomainError(
+    `this directory is inside the product at ${toPosix(root)}/, which lists no service here; adding a service to a product is not supported yet`,
+    INSIDE_PRODUCT_CODE,
+  );
+}
+
+/**
+ * The refusal of `keel new` in a directory a product lists as a
+ * service, that holds no project: the product records what it is, and
+ * scaffolding a service again — its own preset, or another — is not a
+ * command keel has. `root` is the product root, relative to where
+ * `keel new` ran.
+ */
+function insideProductService(root: string, service: ServiceRef): DomainError {
+  return new DomainError(
+    `this directory is ${service.path}/ of the product at ${toPosix(root)}/, recorded as ${service.stack}; re-scaffolding a service is not supported yet`,
+    INSIDE_PRODUCT_CODE,
+  );
 }
 
 function alreadyInitialised(scopeRoot: string): DomainError {
@@ -1715,7 +2067,7 @@ export function peerRef(fromServicePath: string, toServicePath: string): string 
  * The peers a service sees: every sibling's declared projections,
  * ref'd relative to the service's own directory.
  */
-function peersFor(service: ResolvedService, all: readonly ResolvedService[]): PeerLink[] {
+function peersFor(service: PresetService, all: readonly PresetService[]): PeerLink[] {
   return all
     .filter((other) => other.path !== service.path)
     .map((other) => ({

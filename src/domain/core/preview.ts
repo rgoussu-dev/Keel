@@ -21,6 +21,7 @@ import type { PresetAnswers } from '../contract/commands.js';
 import type { Question } from '../contract/composition.js';
 import type { AnswerBinding, PendingQuestion } from '../contract/queries.js';
 import type { Asker, Prompt } from '../contract/ports/prompt.js';
+import { answerKeys, answerUnder, holdSuppliedAnswer, type AnswerRead } from './answers.js';
 import {
   BUILD_SYSTEM_QUESTION_ID,
   ENTRYPOINTS_QUESTION_ID,
@@ -53,12 +54,29 @@ export interface RecordingPrompt {
   readonly prompt: Prompt;
   /** Questions asked so far, in ask order. Read after the run. */
   readonly recorded: readonly PendingQuestion[];
+  /**
+   * The answers it was sent that it answered an adapter's question
+   * with, in ask order — what the install would read of them, so the
+   * rest are the ones it would refuse (`./supplied-answers.ts`).
+   */
+  readonly reads: readonly AnswerRead[];
 }
 
 /**
  * Builds a prompt answering each question from `answers` (keyed the
  * way the answer's binding keys it) and falling back to the
  * question's own default.
+ *
+ * An adapter's question is looked up as the install looks up a
+ * supplied answer — {@link answerUnder} over the asker's own id and
+ * then its `sharesAnswersWith` siblings, for a sticky question only —
+ * and bound to the id the answer was found under. The prompt is asked
+ * exactly where the install's recorded memory is silent, which is
+ * where the install reads what was supplied; so a Quarkus REST
+ * bootstrap's package sent to `quarkus-cli-rest`, whose CLI bootstrap
+ * asks first, previews as the package the install writes. A value
+ * outside the question's choices is refused as the install refuses it,
+ * naming the key it was sent under.
  *
  * Runs are driven **interactively** on purpose. A preset sticky
  * answer folded into the manifest instead would short-circuit its
@@ -70,6 +88,7 @@ export interface RecordingPrompt {
  */
 export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
   const recorded: PendingQuestion[] = [];
+  const reads: AnswerRead[] = [];
   const prompt: Prompt = {
     ask(question: Question, asker: Asker): Promise<string> {
       // The `keel new` wizard's review step asks what to do next, not
@@ -78,23 +97,66 @@ export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
       // it out of `recorded` keeps a flow-control prompt from
       // arriving at a form as a field.
       if (asker.kind === 'control') return Promise.resolve(question.default);
-      const binding = bindingFor(question, asker);
-      const value = suppliedAnswer(answers, binding) ?? question.default;
+      const read = adapterAnswer(answers, question, asker);
+      if (read !== undefined) {
+        // Refused as a rejection, which is what a prompt's caller
+        // awaits, rather than a throw out of `ask` itself.
+        try {
+          holdSuppliedAnswer(question, read.value, read.key);
+        } catch (refused) {
+          return Promise.reject(refused as Error);
+        }
+        reads.push({ adapter: asker.id, question: question.id, key: read.key });
+      }
+      const binding: AnswerBinding =
+        read === undefined
+          ? bindingFor(question, asker)
+          : { kind: 'answer', adapter: read.key, question: question.id };
+      const value =
+        (asker.kind === 'adapter' ? read?.value : suppliedAnswer(answers, binding)) ??
+        question.default;
       recorded.push({
         id: question.id,
         prompt: question.prompt,
         doc: question.doc,
         ...(question.kind === undefined ? {} : { kind: question.kind }),
-        ...(question.choices === undefined ? {} : { choices: question.choices }),
+        // Each without its predicate: the prompt was handed only the
+        // choices it matched, and a front end has no tags to read one
+        // against.
+        ...(question.choices === undefined
+          ? {}
+          : { choices: question.choices.map(({ value, label, doc }) => ({ value, label, doc })) }),
         default: question.default,
         value,
         memory: question.memory,
+        ...(question.shared === undefined ? {} : { shared: question.shared }),
         binding,
       });
       return Promise.resolve(value);
     },
   };
-  return { prompt, recorded };
+  return { prompt, recorded, reads };
+}
+
+/**
+ * The answer an adapter's sticky question takes from `answers`, and
+ * the key it was sent under — the install's own precedence over what
+ * was supplied, so the two read the same one. Undefined for any other
+ * asker's question: a stack-level dial is a field of the target, and
+ * the provisioning dial and the drill-down steps are looked up under
+ * their binding as they always were.
+ */
+function adapterAnswer(
+  answers: PresetAnswers,
+  question: Question,
+  asker: Asker,
+): { readonly key: string; readonly value: string } | undefined {
+  if (asker.kind !== 'adapter') return undefined;
+  // A repeat question is not read from supplied answers by the
+  // install either (`resolveAnswer` never takes one from memory), so
+  // previewing one as answered would show what it does not write.
+  if (question.memory !== 'sticky') return undefined;
+  return answerUnder(answers, answerKeys(asker), question.id);
 }
 
 /**
@@ -102,9 +164,11 @@ export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
  *
  * An adapter's question is sticky memory under the adapter's id — the
  * shape `--set adapterId:questionId=value` writes, and the shape the
- * manifest keeps. A stack-level dial has no such home: it is a field
- * of the command, and which field is decided by the question id the
- * install handler gave it. The toolchain dial reaches neither
+ * manifest keeps — unless the answer arrived under a sibling's id,
+ * which {@link recordingPrompt} binds it to instead, so it is sent
+ * back where it was read. A stack-level dial has no such home: it is
+ * a field of the command, and which field is decided by the question
+ * id the install handler gave it. The toolchain dial reaches neither
  * command, so it binds as an answer under its context's name and is
  * simply never sent back by an install front end.
  */
@@ -140,7 +204,9 @@ export function bindingFor(question: Question, asker: Asker): AnswerBinding {
 }
 
 /**
- * The caller's answer for a binding, if they supplied one.
+ * The caller's answer for a binding of a question no adapter asked —
+ * a drill-down step, the provisioning dial — if they supplied one. An
+ * adapter's question is {@link adapterAnswer}'s.
  *
  * Only `answer` bindings are looked up here: a stack-level dial
  * travels as a field of the target, and the handler has already

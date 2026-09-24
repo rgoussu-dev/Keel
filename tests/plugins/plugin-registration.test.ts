@@ -53,17 +53,12 @@ const fixtures = path.resolve(
 );
 
 /**
- * Answers every shipped stack in the matrix below may ask for, so a
- * non-interactive scaffold of any of them resolves without a prompt.
+ * The answer every shipped stack in the matrix below asks for. A shape
+ * that sets its project's identity adds its own bootstrap's beside it:
+ * one set for every stack would carry answers no adapter of the plan
+ * reads, and a run refuses those.
  */
-const SHIPPED_ANSWERS = {
-  'walking-skeleton/quarkus-cli-bootstrap': { basePackage: 'com.acme.cli', projectName: 'demo' },
-  'walking-skeleton/spring-cli-rest-kotlin-bootstrap': {
-    basePackage: 'com.acme.app',
-    projectName: 'demo',
-  },
-  'vcs/git-init': { remote: '', defaultBranch: 'main' },
-};
+const VCS_ANSWERS = { 'vcs/git-init': { remote: '', defaultBranch: 'main' } };
 
 /** The fixture's own ids, spelled once. */
 const PLUGIN = 'acme';
@@ -424,7 +419,7 @@ describe('a shipped stack, with a plugin registered', () => {
         newProjectCommand({
           cwd: root,
           stack,
-          answers: SHIPPED_ANSWERS,
+          answers: VCS_ANSWERS,
           interactive: false,
           dryRun: false,
           ...dials,
@@ -448,10 +443,36 @@ describe('a shipped stack, with a plugin registered', () => {
     readonly stack: string;
     readonly dials: Partial<Parameters<typeof newProjectCommand>[0]>;
   }[] = [
-    { stack: 'quarkus-cli', dials: { buildSystem: 'gradle', moduleLayout: 'basic' } },
+    {
+      stack: 'quarkus-cli',
+      dials: {
+        buildSystem: 'gradle',
+        moduleLayout: 'basic',
+        answers: {
+          ...VCS_ANSWERS,
+          'walking-skeleton/quarkus-cli-bootstrap': {
+            basePackage: 'com.acme.cli',
+            projectName: 'demo',
+          },
+        },
+      },
+    },
     {
       stack: 'spring-cli-rest-kotlin',
-      dials: { buildSystem: 'maven', moduleLayout: 'modulith', withPeerContext: true },
+      dials: {
+        buildSystem: 'maven',
+        moduleLayout: 'modulith',
+        withPeerContext: true,
+        // The composed stack resolves both entrypoint bootstraps; the
+        // REST one borrows the CLI one's answers.
+        answers: {
+          ...VCS_ANSWERS,
+          'walking-skeleton/spring-cli-kotlin-bootstrap': {
+            basePackage: 'com.acme.app',
+            projectName: 'demo',
+          },
+        },
+      },
     },
     { stack: 'ts-http', dials: { buildSystem: 'npm' } },
     { stack: 'go-cli', dials: {} },

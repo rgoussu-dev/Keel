@@ -9,9 +9,11 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
+import { CONTAINER_IMAGE_TAG } from './container-image.js';
 import {
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
   serviceDeployVars,
 } from './distribution-container.js';
 
@@ -21,7 +23,10 @@ export const tsContainerAdapter: Adapter = {
   id: TS_CONTAINER_ID,
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
-  predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
+  predicate: {
+    requires: ['lang.typescript', 'runtime.node', 'arch.server-http', CONTAINER_IMAGE_TAG],
+  },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(TS_CONTAINER_ID),
   contribute(ctx) {

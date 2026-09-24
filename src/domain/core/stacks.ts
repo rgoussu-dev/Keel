@@ -325,8 +325,9 @@ function resolveConflict(conflict: z.infer<typeof ConflictDataSchema>): Conflict
  *
  * The presets are data, and this is where they become objects. Order
  * is the document's — `Object.values(STACKS)` yields presets in the
- * order they are written, which the wizard's grid reads; the id-sorted
- * views build on {@link listStackIds}.
+ * order they are written, which only the registry golden records:
+ * every menu reads an id-sorted view (`listStackIds`,
+ * `assemblableStacks`, the wizard's `wizardPaths`).
  *
  * A problem here is a defect in this repository rather than a missing
  * optional install, so it is loud: keel's own data file naming a

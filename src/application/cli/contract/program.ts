@@ -17,11 +17,19 @@ import {
   linkPeerCommand,
   newProjectCommand,
   type DocsReport,
+  type ServiceExtras,
   type InstallReport,
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
-import { docsCheckQuery } from '../../../domain/contract/queries.js';
+import {
+  docsCheckQuery,
+  projectStatusQuery,
+  type HarnessGenerationStatus,
+  type ProjectStatus,
+} from '../../../domain/contract/queries.js';
+import { RefusalError } from '../../../domain/contract/refusal.js';
 import type { ServeUi } from '../../web/contract/server.js';
+import { refusalHint, type HintedCommand } from './hint.js';
 import {
   toolchainCheckQuery,
   toolchainInstallCommand,
@@ -36,7 +44,10 @@ export interface StackOption {
   readonly description: string;
 }
 
-/** One `keel add --list` entry: a vertical id + its one-line description. */
+/**
+ * One `keel add --list` entry outside a project: a vertical id + its
+ * one-line description. Inside one, the list is the project's status.
+ */
 export interface VerticalOption {
   readonly id: string;
   readonly description: string;
@@ -50,7 +61,10 @@ export interface CliDeps {
   readonly version: string;
   /** Stacks listed in `keel new`'s help text and `keel new --list`. */
   readonly availableStacks: readonly StackOption[];
-  /** Verticals listed in `keel add`'s help text and `keel add --list`. */
+  /**
+   * Verticals listed in `keel add`'s help text, and by `keel add
+   * --list` where there is no project to ask about them.
+   */
   readonly availableVerticals: readonly VerticalOption[];
   /** Working directory commands run against; defaults to `process.cwd()`. */
   readonly cwd?: () => string;
@@ -67,7 +81,7 @@ export interface CliDeps {
  * The first argument of `keel add` that means "a bounded context"
  * rather than a vertical id.
  *
- * `keel add <vertical>` and `keel add module <name>` share one
+ * `keel add <vertical>...` and `keel add module <name>` share one
  * commander command because commander matches subcommands by name:
  * registering `add` with a nested `module` would stop `keel add
  * persistence` resolving at all. So the branch is here, on a reserved
@@ -120,7 +134,7 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .option(
       '--with <ids>',
-      `verticals to install on top of the stack's own, comma-separated (e.g. 'persistence,iac'); prompted when omitted and interactive, none otherwise. Single-service stacks only`,
+      `verticals to install on top of the stack's own, comma-separated, in any order (e.g. 'containerization,distribution,iac'); prompted when omitted and interactive, none otherwise. On composite stacks name each service's as 'path:id' pairs (e.g. 'backend:persistence,frontend:dev-env'), or name none and each goes to the one service that can take it`,
     )
     .option(
       '--set <kv...>',
@@ -146,6 +160,7 @@ export function buildProgram(deps: CliDeps): Command {
           return;
         }
         const dir = cwd();
+        const extras = opts.with === undefined ? {} : parseWith(opts.with);
         const result = await deps.mediator.dispatch(
           newProjectCommand({
             cwd: dir,
@@ -158,10 +173,10 @@ export function buildProgram(deps: CliDeps): Command {
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
             ...(opts.moduleLayout !== undefined ? { moduleLayout: opts.moduleLayout } : {}),
             ...(opts.withPeerContext ? { withPeerContext: true } : {}),
-            ...(opts.with === undefined ? {} : { extraVerticals: parseVerticalList(opts.with) }),
+            ...extras,
           }),
         );
-        const report = unwrap(result);
+        const report = unwrap(result, 'new', extras.services);
         printReport(`keel new ${report.subject}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
         else deps.logger.success(`keel new ${report.subject}: ready in ${dir}`);
@@ -169,17 +184,25 @@ export function buildProgram(deps: CliDeps): Command {
     );
 
   program
-    .command('add [target] [name]')
+    .command('add [targets...]')
     .description(
-      `Install a vertical onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}), or add a bounded context with 'keel add module <name>'.`,
+      `Install verticals onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}) — several at once, with what they need — or add a bounded context with 'keel add module <name>'.`,
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
-    .option('--list', 'list available verticals with their descriptions, then exit', false)
+    .option(
+      '--list',
+      'list the verticals and whether each can be added here — ready, with what it needs first, or why not — then exit',
+      false,
+    )
     .option(
       '--reapply',
-      're-render an already-installed vertical from its recorded answers, showing a diff against the working tree; refuses on conflict',
+      're-render already-installed verticals from their recorded answers, showing a diff against the working tree; refuses on conflict',
       false,
+    )
+    .option(
+      '--refresh <ids>',
+      'installed verticals to re-render in the same run, comma-separated — the ones a run proposes refreshing, after what they read',
     )
     .option(
       '--consumes <context>',
@@ -192,34 +215,46 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .action(
       async (
-        target: string | undefined,
-        name: string | undefined,
+        targets: string[],
         opts: {
           yes: boolean;
           dryRun: boolean;
           list: boolean;
           reapply: boolean;
+          refresh?: string;
           consumes?: string;
           set: string[];
         },
       ): Promise<void> => {
         if (opts.list) {
-          printOptionList('Available verticals', deps.availableVerticals, deps.logger);
+          const status = unwrap(await deps.mediator.dispatch(projectStatusQuery({ cwd: cwd() })));
+          if (status.initialised) printReadiness(status, deps.logger);
+          else printOptionList('Available verticals', deps.availableVerticals, deps.logger);
           return;
         }
-        if (target === undefined) {
+        const [first, ...rest] = targets;
+        if (first === undefined) {
           throw new Error(
-            "keel add: missing target — pass a vertical id, 'module <name>', or --list",
+            "keel add: missing target — pass vertical ids, 'module <name>', or --list",
           );
         }
-        if (target === MODULE_TARGET && opts.reapply) {
+        const module = first === MODULE_TARGET;
+        if (module && opts.reapply) {
           throw new Error("--reapply applies to verticals; 'keel add module' does not support it");
         }
+        if (module && opts.refresh !== undefined) {
+          throw new Error("--refresh applies to verticals; 'keel add module' does not support it");
+        }
+        if (module && rest.length > 1) {
+          throw new Error(
+            `keel add module takes one name, got ${String(rest.length)}: ${rest.join(' ')}`,
+          );
+        }
         const result = await deps.mediator.dispatch(
-          target === MODULE_TARGET
+          module
             ? addModuleCommand({
                 cwd: cwd(),
-                module: name ?? '',
+                module: rest[0] ?? '',
                 ...(opts.consumes === undefined ? {} : { consumes: opts.consumes }),
                 answers: parseSetAnswers(opts.set),
                 interactive: !opts.yes,
@@ -227,15 +262,17 @@ export function buildProgram(deps: CliDeps): Command {
               })
             : addVerticalCommand({
                 cwd: cwd(),
-                vertical: target,
+                // `ci,persistence`, as `--with` and `--refresh` spell a list.
+                verticals: targets.flatMap(parseVerticalList),
                 answers: parseSetAnswers(opts.set),
                 interactive: !opts.yes,
                 dryRun: opts.dryRun,
+                ...(opts.refresh === undefined ? {} : { refresh: parseVerticalList(opts.refresh) }),
                 ...(opts.reapply ? { reapply: true } : {}),
               }),
         );
-        const report = unwrap(result);
-        const label = target === MODULE_TARGET ? `module ${report.subject}` : report.subject;
+        const report = unwrap(result, 'add');
+        const label = module ? `module ${report.subject}` : report.subject;
         printReport(`keel add ${label}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
         else deps.logger.success(`keel add ${label}: ready`);
@@ -490,16 +527,107 @@ function printOptionList(
 }
 
 /**
- * Maps a domain `Err` to the CLI's failure transport: a thrown error
- * the executable turns into stderr + exit code 1.
+ * `keel add --list` inside a project: every vertical not installed,
+ * grouped by what `keel add <id>` would do with it — install it, install
+ * it with what it needs first, or refuse it, in the refusal's own
+ * sentence — then, in a monorepo service, what the product gives it,
+ * then what is installed, what `--reapply` re-renders apart
+ * from what it does not (a product's glue, a bounded context). A
+ * vertical two sets of
+ * prerequisites tie on is refused until one is named, but it is no
+ * less for this project: it is listed with the others that need
+ * something first, in the sentence that names the choice. It prints
+ * the project's status, which is computed by the function the add
+ * front door refuses by, so the list and the command cannot disagree.
+ * A harness from another generation, which stops every add but the
+ * harness's own, is said once, first.
  */
-function unwrap<T>(result: Result<T>): T {
-  if (!result.ok) throw new Error(result.error.message);
-  return result.value;
+function printReadiness(status: ProjectStatus, log: Logger): void {
+  const generation = status.harnessGeneration;
+  if (generation !== undefined && generation.found !== generation.expected) {
+    log.warn(generationLine(generation));
+  }
+  const width = Math.max(0, ...status.available.map((vertical) => vertical.id.length));
+  const row = (id: string, text: string): string => `  ${id.padEnd(width)}  ${text}`;
+  const ready = status.available.filter((v) => v.readiness === 'ready');
+  const needs = status.available.filter((v) => v.readiness === 'needs');
+  const refused = status.available.filter((v) => v.readiness === 'unavailable');
+  if (ready.length > 0) {
+    log.info('Ready to add here:');
+    for (const v of ready) log.info(row(v.id, `${v.title} — ${v.description}`));
+  }
+  if (needs.length > 0) {
+    log.info('Ready, with what each needs installed first:');
+    for (const v of needs) {
+      const after = `${v.title}, after ${v.requires.join(', ')} — ${v.description}`;
+      log.info(row(v.id, v.refusal?.message ?? after));
+    }
+  }
+  if (refused.length > 0) {
+    log.info('Not for this project:');
+    for (const v of refused) log.info(row(v.id, v.refusal?.message ?? ''));
+  }
+  // A monorepo service has these from its product, and adding one is
+  // an Ok that installs nothing: said, with where each comes from.
+  if (status.provided.length > 0) {
+    log.info('From the product, nothing to add:');
+    const at = Math.max(0, ...status.provided.map((vertical) => vertical.id.length));
+    for (const v of status.provided) log.info(`  ${v.id.padEnd(at)}  ${v.note}`);
+  }
+  const rerenderable = status.installed.filter((v) => v.reapplicable);
+  const recorded = status.installed.filter((v) => !v.reapplicable);
+  if (rerenderable.length > 0) {
+    log.info(
+      `Installed: ${rerenderable.map((v) => v.id).join(', ')} — 'keel add <id> --reapply' re-renders one`,
+    );
+  }
+  // A product's glue and a bounded context are recorded as installed,
+  // and no `keel add <id>` names them: offering a re-render of one
+  // would offer a refusal.
+  if (recorded.length > 0) {
+    log.info(
+      `Also installed, which 'keel add' does not re-render: ${recorded.map((v) => v.id).join(', ')}`,
+    );
+  }
+}
+
+/** The line `keel add --list` opens with on a project from another harness generation. */
+function generationLine(generation: HarnessGenerationStatus): string {
+  const { found, expected } = generation;
+  if (found !== null && found > expected) {
+    return `this project's harness is generation ${String(found)}, newer than the generation ${String(expected)} this keel writes — upgrade keel before adding to it`;
+  }
+  const marker = found === null ? 'carries no generation marker' : `is generation ${String(found)}`;
+  return `this project's harness ${marker}, and this keel writes generation ${String(expected)} — 'keel add' refuses everything but 'keel add agent-harness' until the harness is brought forward; any other 'keel add' says how`;
+}
+
+/**
+ * Maps a domain `Err` to the CLI's failure transport: a thrown error
+ * the executable turns into stderr + exit code 1. A refusal raised as
+ * data gets the remedy `command` has for it on a line of its own
+ * (`./hint.ts`) — the sentence above it is the same in both phases,
+ * and what to type next is not. `services` is what `keel new --with`
+ * named for each service of a product, which the remedy names too.
+ */
+function unwrap<T>(
+  result: Result<T>,
+  command?: HintedCommand,
+  services?: Readonly<Record<string, ServiceExtras>>,
+): T {
+  if (result.ok) return result.value;
+  const { error } = result;
+  const hint =
+    command !== undefined && error instanceof RefusalError
+      ? refusalHint(error.refusal, command, services)
+      : null;
+  throw new Error(hint === null ? error.message : `${error.message}\n  hint: ${hint}`);
 }
 
 function printReport(header: string, report: InstallReport, log: Logger): void {
   log.info(header);
+  // First, because each is a decision the run made that the command
+  // did not spell out — the order the extras went in, for one.
+  for (const note of report.notes ?? []) log.info(`  ${chalk.dim('note:')} ${note}`);
   for (const c of report.changes) {
     const tag =
       c.kind === 'create'
@@ -528,7 +656,8 @@ function printReport(header: string, report: InstallReport, log: Logger): void {
 }
 
 /**
- * Parses `--with persistence,iac` into the ids it names.
+ * Parses `--with containerization,distribution,iac` into the ids it
+ * names — and `keel add --refresh`'s list the same way.
  *
  * Empty entries are dropped, so `--with ''` and `--with ,` both mean
  * "none" — which is a real answer here, not a missing one: passing
@@ -539,6 +668,49 @@ export function parseVerticalList(raw: string): readonly string[] {
     .split(',')
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
+}
+
+/**
+ * Parses `keel new --with` into the command fields it fills: bare ids
+ * (`persistence`) as `extraVerticals`, and `path:id` pairs
+ * (`backend:persistence`) as each service's `services` entry, in the
+ * order named — the `path=id` form `--build-system` takes on a
+ * composite, with `:` because an id is what is named here. A pair with
+ * no id names the service and nothing for it. Both forms at once are
+ * passed on as they are, for `keel new` to refuse: which services a
+ * stack has, and whether mixing is allowed, is the engine's to say.
+ */
+export function parseWith(raw: string): {
+  readonly extraVerticals?: readonly string[];
+  readonly services?: Readonly<Record<string, ServiceExtras>>;
+} {
+  const bare: string[] = [];
+  const services: Record<string, string[]> = {};
+  for (const entry of parseVerticalList(raw)) {
+    const separator = entry.indexOf(':');
+    if (separator < 0) {
+      bare.push(entry);
+      continue;
+    }
+    const servicePath = entry.slice(0, separator).trim();
+    const id = entry.slice(separator + 1).trim();
+    const named = (services[servicePath] ??= []);
+    if (id !== '') named.push(id);
+  }
+  const paths = Object.keys(services);
+  return {
+    ...(bare.length > 0 || paths.length === 0 ? { extraVerticals: bare } : {}),
+    ...(paths.length === 0
+      ? {}
+      : {
+          services: Object.fromEntries(
+            paths.map((servicePath) => [
+              servicePath,
+              { extraVerticals: services[servicePath] ?? [] },
+            ]),
+          ),
+        }),
+  };
 }
 
 /**

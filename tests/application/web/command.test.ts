@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { commandFor, commandText } from '../../../assets/web/src/command.js';
+import { commandFor, commandText, flagSpans } from '../../../assets/web/src/command.js';
 
 interface Token {
   kind: 'command' | 'flag' | 'value';
@@ -52,17 +52,60 @@ describe('commandFor', () => {
     );
   });
 
+  it('spells a harness left out as the opt-out flag, and a harness kept as nothing', () => {
+    expect(
+      line({ kind: 'new-project', stack: 'go-cli', extraVerticals: ['ci'], agentHarness: false }),
+    ).toBe('keel new --stack go-cli --with ci --no-agent-harness --yes');
+    // On is the default: the flag has no positive spelling.
+    expect(line({ kind: 'new-project', stack: 'go-cli', agentHarness: true })).toBe(
+      'keel new --stack go-cli --yes',
+    );
+  });
+
   it('carries a composite build system as the path=id pairs it travels as', () => {
     expect(
       line({ kind: 'new-project', stack: 'fullstack', buildSystem: 'backend=maven,frontend=pnpm' }),
     ).toBe('keel new --stack fullstack --build-system backend=maven,frontend=pnpm --yes');
   });
 
+  it('names each service of a product with its extras, as --with path:id pairs', () => {
+    expect(
+      line({
+        kind: 'new-project',
+        stack: 'fullstack',
+        layout: 'polyrepo',
+        services: {
+          backend: { extraVerticals: ['containerization', 'distribution'] },
+          frontend: { extraVerticals: ['dev-env'] },
+        },
+      }),
+    ).toBe(
+      'keel new --stack fullstack --layout polyrepo --with backend:containerization,backend:distribution,frontend:dev-env --yes',
+    );
+    expect(line({ kind: 'new-project', stack: 'fullstack', services: {} })).toBe(
+      'keel new --stack fullstack --yes',
+    );
+  });
+
   it('spells a vertical, and marks a re-render as one', () => {
-    expect(line({ kind: 'add-vertical', vertical: 'ci' })).toBe('keel add ci --yes');
-    expect(line({ kind: 'add-vertical', vertical: 'ci', reapply: true })).toBe(
+    expect(line({ kind: 'add-vertical', verticals: ['ci'] })).toBe('keel add ci --yes');
+    expect(line({ kind: 'add-vertical', verticals: ['ci'], reapply: true })).toBe(
       'keel add ci --reapply --yes',
     );
+    // The one-vertical alias the API still takes reads the same.
+    expect(line({ kind: 'add-vertical', vertical: 'ci' })).toBe('keel add ci --yes');
+  });
+
+  it('spells several verticals as one add, in the order posted, and the re-renders beside them', () => {
+    expect(
+      line({
+        kind: 'add-vertical',
+        verticals: ['containerization', 'distribution', 'persistence'],
+        refresh: ['observability', 'ci'],
+      }),
+    ).toBe('keel add containerization distribution persistence --refresh observability,ci --yes');
+    // Nothing ticked is no command yet.
+    expect(line({ kind: 'add-vertical', verticals: [] })).toBe('');
   });
 
   it('spells a bounded context and what it consumes', () => {
@@ -121,5 +164,30 @@ describe('commandFor', () => {
     expect(
       commandFor({ cwd: '/tmp', target: { kind: 'add-module', module: '' }, answers: {} }),
     ).toEqual([]);
+  });
+});
+
+/**
+ * A sentence keel wrote names a flag now and then — the bounded-context
+ * tab's reason names `--module-layout=modulith` — and a browser breaks
+ * a line after any hyphen, so the page sets each flag as one literal.
+ */
+describe('flagSpans', () => {
+  it('splits out each flag, its `=` value with it, and keeps every character', () => {
+    const text =
+      '"keel add module" needs a project scaffolded with --module-layout=modulith. Add --yes, or --with ci.';
+    const spans = flagSpans(text);
+    expect(spans.filter((span) => span.flag).map((span) => span.text)).toEqual([
+      '--module-layout=modulith',
+      '--yes',
+      '--with',
+    ]);
+    expect(spans.map((span) => span.text).join('')).toBe(text);
+  });
+
+  it('leaves a sentence naming no flag whole, and a dash in prose alone', () => {
+    const text = 'Continuous integration — per-service pipelines need the polyrepo layout';
+    expect(flagSpans(text)).toEqual([{ text, flag: false }]);
+    expect(flagSpans('')).toEqual([]);
   });
 });

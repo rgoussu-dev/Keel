@@ -182,7 +182,7 @@ describe('harness realization at the end of the run', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'agent-harness',
+          verticals: ['agent-harness'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -270,7 +270,7 @@ describe('harness realization at the end of the run', () => {
         await mediator.dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'second',
+            verticals: ['second'],
             reapply,
             answers: {},
             interactive: false,

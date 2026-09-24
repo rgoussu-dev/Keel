@@ -22,18 +22,29 @@
  * (`stack-assembly.test.ts` builds its scenarios the same way).
  */
 
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
+import { newProjectCommand, type NewProjectTarget } from '../../../src/domain/contract/commands.js';
 import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/composition.js';
 import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
 import { piecesOf, stackDials } from '../../../src/domain/core/dials.js';
-import { shippedRegistry } from '../../../src/domain/core/registry.js';
+import {
+  pluginOrigin,
+  registryOf,
+  shippedRegistry,
+  shippedSource,
+} from '../../../src/domain/core/registry.js';
+import { agentHarnessVertical } from '../../../src/domain/core/verticals/agent-harness.js';
+import { FakePrompt } from '../../../src/infrastructure/prompt/fake.js';
 import {
   stackTagsFor,
   type ModuleLayoutOption,
   type Stack,
 } from '../../../src/domain/core/stacks.js';
+import { expectErr, installMediator } from '../../support/factory.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
@@ -265,15 +276,18 @@ describe('the settled target', () => {
       buildSystem: 'gradle',
       moduleLayout: 'basic',
       withPeerContext: false,
+      extraVerticals: [],
     });
   });
 
-  it('leaves the extras absent when the caller sent none', () => {
-    // The one dial that must stay unpinned: `extraVerticals` is only
-    // ever offered as a preview question, and pinning it here would
-    // stop the question being asked at all.
+  it('pins the extras to none when the caller sent none', () => {
+    // The extras were once the one dial left unpinned, so `keel.preview`
+    // would keep asking for them; a question the install stops asking
+    // once answered is a control that vanishes after its first tick.
+    // They are a menu of their own now (`verticals`), and a target
+    // settled here asks nothing a form already renders.
     const settled = stackDials(shippedRegistry, stackWith([]), target()).target as NewProjectTarget;
-    expect(settled.extraVerticals).toBeUndefined();
+    expect(settled.extraVerticals).toEqual([]);
   });
 
   it('keeps a dial the caller set where the rules still allow it', () => {
@@ -288,6 +302,7 @@ describe('the settled target', () => {
       kind: 'new-project',
       stack: 'demo-stack',
       withPeerContext: false,
+      extraVerticals: [],
     });
   });
 });
@@ -389,5 +404,444 @@ describe('a composite product', () => {
       buildSystem: 'nonsense',
     }).target as NewProjectTarget;
     expect(settled.buildSystem).toBe('backend=gradle');
+  });
+});
+
+describe('the extras, as the planner reads them', () => {
+  /** A shipped preset's dials, settled at `extras` when given. */
+  const shipped = (stack: string, extras?: readonly string[]): DialOptions => {
+    const preset = shippedRegistry.stack(stack);
+    if (preset === null) throw new Error(`no shipped stack '${stack}'`);
+    return stackDials(shippedRegistry, preset, {
+      kind: 'new-project',
+      stack,
+      ...(extras === undefined ? {} : { extraVerticals: extras }),
+    });
+  };
+
+  it('offers what needs another vertical first, saying which, labelled by title', () => {
+    const dials = shipped('quarkus-rest');
+    const option = (id: string) => dials.verticals.find((vertical) => vertical.id === id);
+    expect(option('containerization')).toMatchObject({ readiness: 'ready', requires: [] });
+    expect(option('distribution')).toMatchObject({
+      readiness: 'needs',
+      requires: ['containerization'],
+    });
+    expect(option('iac')).toMatchObject({
+      title: 'Infrastructure as code',
+      readiness: 'needs',
+      requires: ['containerization', 'distribution'],
+    });
+    // The preset's own are there too, to show what comes with it.
+    expect(option('observability')).toMatchObject({ readiness: 'included', requires: [] });
+    // The menu is the rest of them, by the name a person knows.
+    expect(dials.extraVerticals.find((choice) => choice.id === 'iac')?.label).toBe(
+      'Infrastructure as code',
+    );
+    expect(ids(dials.extraVerticals)).not.toContain('observability');
+  });
+
+  it('offers nothing that would install nothing: no gateway without a linked project', () => {
+    const dials = shipped('go-http');
+    expect(ids(dials.extraVerticals)).not.toContain('gateway');
+    // Listed all the same, as the brownfield card is, with the reason.
+    expect(dials.verticals.find((vertical) => vertical.id === 'gateway')).toMatchObject({
+      readiness: 'unavailable',
+      requires: [],
+      refusal: { code: 'keel.uncoverable-vertical' },
+    });
+  });
+
+  it('lists what the preset cannot take, in the words keel new --with refuses it with', async () => {
+    const dials = shipped('go-cli');
+    const persistence = dials.verticals.find((vertical) => vertical.id === 'persistence');
+    expect(persistence).toMatchObject({ readiness: 'unavailable', requires: [] });
+    expect(ids(dials.extraVerticals)).not.toContain('persistence');
+
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-refused-'));
+    try {
+      const refused = expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals: ['persistence'],
+          }),
+        ),
+      );
+      expect(persistence?.refusal).toEqual({
+        code: refused.code,
+        message: refused.message,
+        refusal: expect.objectContaining({ kind: 'unavailable', vertical: 'persistence' }),
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+    // Every registered vertical is on the list once, in one of the four
+    // readings, and only the offered ones are on the menu.
+    expect(dials.verticals.map((vertical) => vertical.id)).toEqual(
+      [...shippedRegistry.verticals()].map((vertical) => vertical.id).sort(),
+    );
+    expect(ids(dials.extraVerticals)).toEqual(
+      dials.verticals
+        .filter((vertical) => vertical.readiness === 'ready' || vertical.readiness === 'needs')
+        .map((vertical) => vertical.id),
+    );
+  });
+
+  it('snaps the extras to their closure, saying what it added and why', () => {
+    const dials = shipped('quarkus-rest', ['iac']);
+    expect((dials.target as NewProjectTarget).extraVerticals).toEqual([
+      'containerization',
+      'distribution',
+      'iac',
+    ]);
+    expect(dials.adjustments).toEqual([
+      {
+        id: 'containerization',
+        change: 'added',
+        because: 'Distribution needs it installed first',
+      },
+      {
+        id: 'distribution',
+        change: 'added',
+        because: 'Infrastructure as code needs it installed first',
+      },
+    ]);
+  });
+
+  it('puts the extras in the order the install runs them, with nothing to report', () => {
+    const dials = shipped('go-http', ['distribution', 'persistence', 'containerization']);
+    const extras = (dials.target as NewProjectTarget).extraVerticals ?? [];
+    expect([...extras].sort()).toEqual(['containerization', 'distribution', 'persistence']);
+    // Distribution reads persistence, and needs the image.
+    expect(extras.indexOf('distribution')).toBe(2);
+    expect(dials.adjustments).toEqual([]);
+  });
+
+  it('drops what this preset cannot take, and says why, rather than pruning silently', () => {
+    const dials = shipped('go-cli', ['persistence', 'ci', 'vcs', 'nonsense']);
+    expect((dials.target as NewProjectTarget).extraVerticals).toEqual(['ci']);
+    expect(dials.adjustments).toEqual([
+      { id: 'nonsense', change: 'dropped', because: "no vertical 'nonsense' is registered" },
+      { id: 'vcs', change: 'dropped', because: 'Version control already comes with go-cli' },
+      {
+        id: 'persistence',
+        change: 'dropped',
+        because:
+          'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      },
+    ]);
+  });
+
+  it('keeps a vertical two providers tie for when the selection names one, in either order', () => {
+    // A plugin's session store, and two caches either of which serves
+    // it. Ticked alone it is the user's choice to make; ticked beside
+    // one of them the choice is made — the command line plans the set
+    // whole and accepts it, so the page must not drop it for coming
+    // first in the list.
+    const piece = (id: string, requires: readonly Tag[], promotes: readonly Tag[]): Vertical => ({
+      id,
+      description: '',
+      dimensions: ['only'],
+      adapters: [
+        {
+          id: `${id}/main`,
+          vertical: id,
+          covers: ['only'],
+          predicate: { requires },
+          contribute: () => ({}),
+        },
+      ],
+      promotes,
+    });
+    const registry = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [
+          piece('acme-session', ['acme.cache'], []),
+          piece('redis-cache', ['lang.acme'], ['acme.cache']),
+          piece('memcached-cache', ['lang.acme'], ['acme.cache']),
+        ],
+      },
+    ]);
+    const stack = stackWith([], { tags: ['lang.acme'], verticals: [] });
+    for (const extras of [
+      ['acme-session', 'redis-cache'],
+      ['redis-cache', 'acme-session'],
+    ]) {
+      const dials = stackDials(registry, stack, target({ extraVerticals: extras }));
+      expect((dials.target as NewProjectTarget).extraVerticals, extras.join(',')).toEqual([
+        'redis-cache',
+        'acme-session',
+      ]);
+      expect(dials.adjustments).toEqual([]);
+    }
+    const alone = stackDials(registry, stack, target({ extraVerticals: ['acme-session'] }));
+    expect((alone.target as NewProjectTarget).extraVerticals).toEqual([]);
+    expect(alone.adjustments).toEqual([
+      expect.objectContaining({ id: 'acme-session', change: 'dropped' }),
+    ]);
+  });
+});
+
+describe('the agent harness, as a dial', () => {
+  /** A plugin's vertical that switches the harness on wherever it goes. */
+  const acmeHarness: Vertical = {
+    id: 'acme-harness',
+    description: 'A second harness',
+    dimensions: ['only'],
+    adapters: [
+      {
+        id: 'acme-harness/core',
+        vertical: 'acme-harness',
+        covers: ['only'],
+        predicate: {},
+        contribute: () => ({}),
+      },
+    ],
+    promotes: ['agentic.harness'],
+  };
+  /** A plugin's vertical that needs the harness there — so brings it as a prerequisite. */
+  const acmeSkills: Vertical = {
+    id: 'acme-skills',
+    description: 'Skills over the harness',
+    dimensions: ['only'],
+    adapters: [
+      {
+        id: 'acme-skills/core',
+        vertical: 'acme-skills',
+        covers: ['only'],
+        predicate: { requires: ['agentic.harness'] },
+        contribute: () => ({}),
+      },
+    ],
+  };
+  const registry = registryOf([
+    shippedSource,
+    { origin: pluginOrigin('acme'), verticals: [acmeHarness] },
+  ]);
+  // On its own: beside `acme-harness` its prerequisite would be tied
+  // between two harnesses, and a tie is refused for being one.
+  const skillsRegistry = registryOf([
+    shippedSource,
+    { origin: pluginOrigin('acme'), verticals: [acmeSkills] },
+  ]);
+  const goCli = (dials: Partial<NewProjectTarget> = {}, on = registry): DialOptions => {
+    const preset = on.stack('go-cli');
+    if (preset === null) throw new Error("no shipped stack 'go-cli'");
+    return stackDials(on, preset, { kind: 'new-project', stack: 'go-cli', ...dials });
+  };
+  const option = (dials: DialOptions, id: string) =>
+    dials.verticals.find((vertical) => vertical.id === id);
+
+  it('is offered on a single preset that comes with it, and carried only when left out', () => {
+    const on = goCli();
+    expect(on.agentHarness).toBe(true);
+    // On is what an absent field means: nothing to pin.
+    expect(on.target).not.toHaveProperty('agentHarness');
+    expect((goCli({ agentHarness: true }).target as NewProjectTarget).agentHarness).toBeUndefined();
+
+    const off = goCli({ agentHarness: false });
+    expect(off.agentHarness).toBe(true);
+    expect((off.target as NewProjectTarget).agentHarness).toBe(false);
+    // Still the preset's own, to press back on — never an extras box.
+    expect(option(off, 'agent-harness')).toMatchObject({ readiness: 'included', requires: [] });
+    expect(ids(off.extraVerticals)).not.toContain('agent-harness');
+  });
+
+  it('keeps what would switch the harness back on off the menu, in the words keel new refuses it with', async () => {
+    // With the harness on, the plugin's harness is one more extra.
+    expect(ids(goCli().extraVerticals)).toContain('acme-harness');
+    expect(option(goCli(), 'acme-harness')?.readiness).toBe('ready');
+
+    const off = goCli({ agentHarness: false });
+    expect(ids(off.extraVerticals)).not.toContain('acme-harness');
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-harness-'));
+    try {
+      const refused = expectErr(
+        await installMediator({ registry }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            agentHarness: false,
+            extraVerticals: ['acme-harness'],
+          }),
+        ),
+      );
+      expect(option(off, 'acme-harness')).toMatchObject({
+        readiness: 'unavailable',
+        requires: [],
+        refusal: { code: refused.code, message: refused.message },
+      });
+      // The sentence names what the harness is, never the tag.
+      expect(refused.message).not.toContain('agentic.');
+
+      // Posted anyway — a selection made before the harness went — it
+      // is dropped for the same reason, and the rest kept.
+      const snapped = goCli({ agentHarness: false, extraVerticals: ['acme-harness', 'ci'] });
+      expect((snapped.target as NewProjectTarget).extraVerticals).toEqual(['ci']);
+      expect(snapped.adjustments).toEqual([
+        { id: 'acme-harness', change: 'dropped', because: refused.message },
+      ]);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('treats a vertical that would bring the harness back as a prerequisite as one that switches it on', async () => {
+    // With the harness on, it is there already: ready.
+    expect(option(goCli({}, skillsRegistry), 'acme-skills')?.readiness).toBe('ready');
+
+    // Left out, the plan would install the harness first to satisfy
+    // it — the harness the target left out, brought back unasked.
+    const off = goCli({ agentHarness: false }, skillsRegistry);
+    expect(ids(off.extraVerticals)).not.toContain('acme-skills');
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-harness-'));
+    try {
+      const refused = expectErr(
+        await installMediator({ registry: skillsRegistry }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            agentHarness: false,
+            extraVerticals: ['acme-skills'],
+          }),
+        ),
+      );
+      expect(refused.code).toBe('keel.invalid-agent-harness');
+      expect(option(off, 'acme-skills')).toMatchObject({
+        readiness: 'unavailable',
+        requires: [],
+        refusal: { code: refused.code, message: refused.message },
+      });
+
+      // Posted anyway, it is dropped for that reason — the harness is
+      // never added back as its prerequisite.
+      const snapped = goCli(
+        { agentHarness: false, extraVerticals: ['acme-skills', 'ci'] },
+        skillsRegistry,
+      );
+      expect(snapped.target).toMatchObject({ extraVerticals: ['ci'], agentHarness: false });
+      expect(snapped.adjustments).toEqual([
+        { id: 'acme-skills', change: 'dropped', because: refused.message },
+      ]);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('asks keel new’s extras question from the same menu', async () => {
+    // Only the dials are scripted: the run stops at the first adapter
+    // question, after the menu this is about has been asked.
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-harness-'));
+    try {
+      for (const [on, agentHarness] of [
+        [registry, true],
+        [registry, false],
+        [skillsRegistry, true],
+        [skillsRegistry, false],
+      ] as const) {
+        const prompt = new FakePrompt({ extraVerticals: '', moduleLayout: 'basic' });
+        await installMediator({ registry: on, prompt })
+          .dispatch(
+            newProjectCommand({
+              cwd,
+              stack: 'go-cli',
+              answers: {},
+              interactive: true,
+              dryRun: true,
+              agentHarness,
+            }),
+          )
+          .catch(() => null);
+        const asked = prompt.questions.find((question) => question.id === 'extraVerticals');
+        expect(
+          asked?.choices?.map((choice) => choice.value),
+          `harness ${agentHarness}`,
+        ).toEqual(ids(goCli({ agentHarness }, on).extraVerticals));
+      }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('is no dial on a product, whose every service carries the harness', async () => {
+    const product = shippedRegistry.stack('fullstack');
+    if (product === null) throw new Error("no shipped stack 'fullstack'");
+    const dials = stackDials(shippedRegistry, product, {
+      kind: 'new-project',
+      stack: 'fullstack',
+      agentHarness: false,
+    });
+    expect(dials.agentHarness).toBe(false);
+    expect(dials.target).not.toHaveProperty('agentHarness');
+
+    // Which is what keeps the page from posting one `keel new` refuses.
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-harness-'));
+    try {
+      const refused = expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            agentHarness: false,
+          }),
+        ),
+      );
+      expect(refused.code).toBe('keel.invalid-agent-harness');
+      expect(refused.message).toBe(
+        '--no-agent-harness applies to single-service stacks: every service of a composite product carries the agent harness',
+      );
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('drops from a product what its services have already, in the words keel new notes it', () => {
+    const product = shippedRegistry.stack('fullstack');
+    if (product === null) throw new Error("no shipped stack 'fullstack'");
+    const dials = stackDials(shippedRegistry, product, {
+      kind: 'new-project',
+      stack: 'fullstack',
+      extraVerticals: ['observability'],
+    });
+    expect(dials.adjustments).toEqual([
+      {
+        id: 'observability',
+        change: 'dropped',
+        because: 'Observability already comes with quarkus-rest in backend/',
+      },
+    ]);
+    // The menu reads it as coming with the product, not as refused.
+    expect(dials.verticals.find((vertical) => vertical.id === 'observability')).toMatchObject({
+      readiness: 'included',
+    });
+  });
+
+  it('is no dial where there is no harness to leave out, or where the preset switches it back on', () => {
+    const none = stackDials(shippedRegistry, stackWith([]), target({ agentHarness: false }));
+    expect(none.agentHarness).toBe(false);
+    expect(none.target).not.toHaveProperty('agentHarness');
+
+    const tagged = stackWith([], {
+      tags: ['lang.java', 'runtime.jvm', 'arch.cli', 'agentic.harness'],
+      verticals: [agentHarnessVertical],
+    });
+    const reactivated = stackDials(shippedRegistry, tagged, target({ agentHarness: false }));
+    expect(reactivated.agentHarness).toBe(false);
+    expect(reactivated.target).not.toHaveProperty('agentHarness');
   });
 });

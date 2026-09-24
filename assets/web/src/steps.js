@@ -3,12 +3,22 @@
  *
  * The page is a stepper now rather than one long form, and the list
  * of steps is **not** a constant: a language reaching one framework
- * has no framework step, a stack pinning its build system has no
- * options step, and the brownfield half is a different list
- * altogether. That is the same rule the terminal wizard skips a
- * question under — a step whose answer is already settled is not a
- * step — so it is derived here from the catalog, the dials and the
- * preview rather than hard-coded in the element that draws the rail.
+ * has no framework step. That is the same rule the terminal wizard
+ * skips a question under — a step whose answer is already settled is
+ * not a step — so it is derived here from the catalog, the dials and
+ * the preview rather than hard-coded in the element that draws the
+ * rail.
+ *
+ * **The directory decides which flow the rail is.** One page serves
+ * both phases: an empty directory is a new project, and the preset
+ * steps narrow to one; a keel project has settled every one of those
+ * answers, so they collapse into one read-only step, **Project**, what
+ * it already is. Options follows either way, and holds the same "Also
+ * scaffold" group — a new project's extras, or what goes on top of a
+ * keel project, its installed verticals ticked and locked — then the
+ * questions and the review. The commands stay two: the review's
+ * Generate posts `keel new`'s target on the one flow and `keel add`'s
+ * on the other.
  *
  * Pure, and separate from any element, so the rail is testable
  * without a DOM — the same split `finder.js` and `tree.js` live
@@ -25,8 +35,8 @@ export const SHAPE = 'shape';
 export const LANGUAGE = 'language';
 export const FRAMEWORK = 'framework';
 export const ENTRYPOINTS = 'entrypoints';
+export const PROJECT = 'project';
 export const OPTIONS = 'options';
-export const TARGET = 'target';
 export const QUESTIONS = 'questions';
 export const REVIEW = 'review';
 
@@ -47,7 +57,7 @@ export function stepsFor(state) {
     {
       id: DIRECTORY,
       label: 'Directory',
-      doc: 'Where the project goes. A directory that does not exist yet is fine — keel creates it.',
+      doc: 'Where the project goes, or the keel project to add to — what is there decides the rest of the rail. A directory that does not exist yet is fine: keel creates it.',
     },
   ];
   steps.push(...(state.status?.initialised ? brownfieldSteps() : greenfieldSteps(state)));
@@ -64,12 +74,21 @@ export function stepsFor(state) {
   return steps;
 }
 
+/**
+ * The keel-project middle: the preset steps collapsed into what the
+ * project already is, then the one Options step both flows share.
+ */
 function brownfieldSteps() {
   return [
     {
-      id: TARGET,
-      label: 'What to add',
-      doc: 'A capability to layer onto this project, or a new bounded context. Every registered vertical is offered — one this project’s shape cannot carry says so when you pick it, rather than being hidden.',
+      id: PROJECT,
+      label: 'Project',
+      doc: 'What this directory already is, read back from its manifest: the choices keel new made, settled now. Nothing here is a control — what can still go on top is under Options.',
+    },
+    {
+      id: OPTIONS,
+      label: 'Options',
+      doc: 'What to add on top of what the project has — tick several, and what one needs first is ticked with it; what it has is ticked and locked, each with a Re-render of its own — or a new bounded context. What it cannot carry is listed too, collapsed, each with the reason.',
     },
   ];
 }
@@ -137,38 +156,34 @@ export function chosenStack(state) {
 }
 
 /**
- * Whether this preset has any dial worth a step of its own.
+ * Whether this preset has any dial worth a step of its own — which is
+ * every preset the catalog knows.
  *
- * The catalog says whether a control exists; the dials say what may
- * be on it. Both are consulted for the same reason `<keel-new-form>`
- * consults both — a control narrowed to one value is still a control,
- * but a preset that offers no choice at all should not cost a step.
+ * A product has its repository layout. A single project has the
+ * "Also scaffold" group whatever else it pins: what else to install
+ * alongside, and what already comes with it. That group used to be a
+ * question the preview asked, so a preset pinning its build system
+ * and layout earned the step only once a preview had landed — and the
+ * rail grew a step under the pointer. Asked of the catalog alone, the
+ * answer is there before any request is made.
  */
 export function hasDials(state) {
-  const stack = chosenStack(state);
-  if (!stack) return false;
-  if (stack.services.length > 0) return true;
-  return (
-    stack.buildSystems.length > 1 ||
-    stack.moduleLayouts.length > 1 ||
-    state.dials?.peerContext === true ||
-    (state.dials?.extraVerticals?.length ?? 0) > 0
-  );
+  return chosenStack(state) !== null;
 }
 
 /**
  * Every step id in the order they can appear, which is what
- * {@link settleStep} measures "before" against. The brownfield
- * `target` sits where the greenfield middle does, the two never
- * being on the same rail.
+ * {@link settleStep} measures "before" against. The keel project's
+ * `project` sits where the preset steps it collapses do, the two never
+ * being on the same rail; `options` is on both.
  */
 const ORDER = [
   DIRECTORY,
+  PROJECT,
   SHAPE,
   LANGUAGE,
   FRAMEWORK,
   ENTRYPOINTS,
-  TARGET,
   OPTIONS,
   QUESTIONS,
   REVIEW,
@@ -180,10 +195,10 @@ const ORDER = [
  *
  * Falls back to the last step at or before it rather than to the
  * first, because a step can vanish under the pointer: pick a preset
- * with no dials while standing on Options and the rail loses that
- * step. Landing on Questions — the next thing that still exists at or
- * after where you were — is a step back; landing on Directory is a
- * lost place in the flow.
+ * whose language has one framework while standing on Framework and
+ * the rail loses that step. Landing on Language — the last thing that
+ * still exists at or before where you were — is a step back; landing
+ * on Directory is a lost place in the flow.
  *
  * @param {Step[]} steps
  * @param {string} wanted

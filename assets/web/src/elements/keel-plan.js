@@ -30,11 +30,34 @@
  * use from then on. It is derived from the same body the review step
  * posts (`../command.js`), so it cannot describe a different install.
  *
+ * **A refused run's line steps back, not out.** It is still the
+ * command the choices on screen spell, and the one a user fixing the
+ * refusal will want — but drawn as usual beside a refusal it reads as
+ * a way round it, and the terminal would refuse it in the same words.
+ * So its block recedes and a caption says why, while its text keeps
+ * full contrast: dimmed, it fell to about 2:1, too faint to read.
+ *
+ * **The refusal is here, where the plan would be.** It used to be a
+ * banner at the top of the step column, and the plan said "The reason
+ * is above" — above a step the user had often scrolled past, in a
+ * two-column layout where "above" was the other column. Now the plan
+ * column says it itself, as an alert, so it is read out the moment it
+ * lands, headed by what kind of failure it is (`../response.js`'s
+ * `failureOf`): a refusal names what to change, a bug asks to be
+ * reported, and no answer means the run never reached the engine.
+ *
+ * **What the run decided on its own is said first** — the preview's
+ * notes, then the report's: the order it installs in when the one
+ * named could not be kept, an installed vertical it proposes
+ * re-rendering, the prerequisites it added. The terminal prints the
+ * same lines first.
+ *
  * Preview/report/state in as properties; nothing out.
  */
 
 import { commandFor, commandText } from '../command.js';
 import { el, icon } from '../dom.js';
+import { failureOf, sameFailure } from '../response.js';
 import { countKinds } from '../tree.js';
 
 export class KeelPlan extends HTMLElement {
@@ -42,8 +65,11 @@ export class KeelPlan extends HTMLElement {
   #report = null;
   #stale = false;
   #hint = '';
+  #error = null;
   #body = null;
   #built = false;
+  /** The error the alert region holds, so an unchanged one is not announced again. */
+  #shown = null;
 
   /** @param {object|null} value the last successful preview */
   set preview(value) {
@@ -66,6 +92,16 @@ export class KeelPlan extends HTMLElement {
   /** @param {string} value what to show instead of a tree, if anything */
   set hint(value) {
     this.#hint = value ?? '';
+    this.#render();
+  }
+
+  /**
+   * @param {{ code: string, message: string } | null} value why there
+   * is no plan — the engine's refusal, a bug, or no answer at all — or
+   * null when nothing failed
+   */
+  set error(value) {
+    this.#error = value ?? null;
     this.#render();
   }
 
@@ -96,6 +132,12 @@ export class KeelPlan extends HTMLElement {
           el('div', { class: 'plan-counts', attrs: { 'data-role': 'counts' } }),
         ),
         el('div', { attrs: { 'data-role': 'report' }, hidden: true }),
+        el('div', {
+          class: 'error refusal',
+          attrs: { 'data-role': 'refusal', role: 'alert' },
+          hidden: true,
+        }),
+        el('ul', { class: 'plain notes', attrs: { 'data-role': 'notes' }, hidden: true }),
         el('p', { class: 'muted', attrs: { 'data-role': 'harness-suppression' }, hidden: true }),
         el(
           'div',
@@ -133,6 +175,12 @@ export class KeelPlan extends HTMLElement {
               el('span', { text: 'Copy' }),
             ),
           ),
+          el('p', {
+            class: 'muted',
+            text: 'Refused as it stands — the terminal would refuse this line too.',
+            attrs: { 'data-role': 'cli-refused' },
+            hidden: true,
+          }),
           el('code', { class: 'cli-block', attrs: { 'data-role': 'cli-text' } }),
         ),
       ),
@@ -146,6 +194,8 @@ export class KeelPlan extends HTMLElement {
     this.#build();
     this.#renderCounts();
     this.#renderReport();
+    this.#renderRefusal();
+    this.#renderNotes();
     this.#renderHarnessSuppression();
     this.#renderTree();
     this.#renderActions();
@@ -204,6 +254,46 @@ export class KeelPlan extends HTMLElement {
     );
   }
 
+  /**
+   * The refusal, in the alert region — rewritten only when it changes,
+   * since an alert announces every rewrite and the plan redraws on
+   * every reply. Changes by what it says: every failed reply is a new
+   * object, and the same refusal met again on the next move is not
+   * news.
+   */
+  #renderRefusal() {
+    const host = this.#part('refusal');
+    if (!host) return;
+    host.hidden = this.#error === null;
+    if (sameFailure(this.#error, this.#shown)) return;
+    this.#shown = this.#error;
+    if (this.#error === null) {
+      host.replaceChildren();
+      return;
+    }
+    const failure = failureOf(this.#error);
+    host.dataset.kind = failure.kind;
+    host.replaceChildren(
+      el('span', {}, icon('warn')),
+      el(
+        'span',
+        {},
+        el('span', { class: 'banner-title', text: failure.title }),
+        el('p', { attrs: { 'data-role': 'refusal-message' }, text: this.#error.message }),
+        el('span', { class: 'code', text: this.#error.code }),
+      ),
+    );
+  }
+
+  /** What the run decided that was not asked for, one line each. */
+  #renderNotes() {
+    const host = this.#part('notes');
+    if (!host) return;
+    const notes = this.#error === null ? ((this.#report ?? this.#preview)?.notes ?? []) : [];
+    host.hidden = notes.length === 0;
+    host.replaceChildren(...notes.map((line) => el('li', { class: 'muted', text: line })));
+  }
+
   #renderHarnessSuppression() {
     const host = this.#part('harness-suppression');
     if (!host) return;
@@ -228,6 +318,12 @@ export class KeelPlan extends HTMLElement {
 
     working.hidden = !this.#stale;
     host.classList.toggle('stale', this.#stale);
+    const panel = host.closest('.tree-panel');
+    if (panel instanceof HTMLElement) panel.hidden = this.#error !== null;
+    if (this.#error !== null) {
+      host.replaceChildren();
+      return;
+    }
 
     if (this.#hint !== '') {
       host.replaceChildren(el('p', { class: 'tree-empty', text: this.#hint }));
@@ -262,6 +358,12 @@ export class KeelPlan extends HTMLElement {
     const tokens = this.#body === null ? [] : commandFor(this.#body);
     host.hidden = tokens.length === 0;
     if (tokens.length === 0) return;
+    // Only a refusal is one the terminal would give this line too: a
+    // bug is not a verdict on the run, and no answer is none at all.
+    const refusedHere = this.#error !== null && failureOf(this.#error).kind === 'refusal';
+    text.classList.toggle('refused', refusedHere);
+    const refused = this.#part('cli-refused');
+    if (refused) refused.hidden = !refusedHere;
     text.replaceChildren(
       ...tokens.flatMap((token, index) => [
         ...(index === 0 ? [] : [document.createTextNode(' ')]),

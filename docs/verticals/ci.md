@@ -19,6 +19,13 @@ It triggers on `push` alone, deliberately: the emitted binding spec
 trigger (or merge-request pipeline) would document a workflow the spec
 forbids.
 
+A pipeline is read only at a repository's root. In a **monorepo
+product** that root is the product root, so a service refuses `ci`
+(`keel.wrong-scope`) and keel installs none at the product root yet
+(`keel.uncoverable-vertical`); under the polyrepo layout each service
+is a repository and takes its own. See the
+[compatibility matrix](README.md#compatibility-matrix).
+
 ## The provider question
 
 One **sticky question**, asked once — nothing in the manifest's tag

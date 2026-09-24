@@ -27,5 +27,12 @@ export const vcsVertical: Vertical = {
   description:
     'A git repository from the first commit: the ignore rules your stack needs, an initial branch you name, an origin remote when you have one — plus the conventions that keep its history readable, a Conventional Commits gate and a split changelog.',
   dimensions: ['vcs', 'commit-conventions', 'changelog'],
+  // One repository, one history: git's own directory, its hooks and the
+  // changelog are read at the repository root, which in a monorepo is
+  // the product's — so its services get none of their own.
+  placement: {
+    scope: 'repository',
+    because: 'a monorepo keeps one history, at the product root',
+  },
   adapters: [gitInitAdapter, commitConventionsAdapter, changelogAdapter],
 };

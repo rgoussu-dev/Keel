@@ -25,7 +25,8 @@ import { observabilityVertical } from '../../../../src/domain/core/verticals/obs
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
-import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
 import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
 import { jvmLayout } from '../../../../src/domain/core/adapters/jvm-module-layout.js';
@@ -125,7 +126,11 @@ const installChain = async (
     observability?: boolean;
     /** Install the agent harness after the skeleton, so harness declarations realize. */
     harness?: boolean;
-    /** Sticky answers preset before any install, as `--set` would. */
+    /**
+     * Answers supplied to every install of the chain, as `--set` gives
+     * them: each reaches only the adapter it is keyed to, held to the
+     * choices its question offers these tags.
+     */
     answers?: Record<string, Record<string, string>>;
   } = {},
 ): Promise<{ tree: FsTree; cwd: string; manifest: ManifestV2 }> => {
@@ -135,9 +140,9 @@ const installChain = async (
   let manifest: ManifestV2 = {
     ...emptyManifestV2('2026-08-11T00:00:00Z', '0.0.0-test'),
     tags,
-    answers,
   };
   const deps = {
+    supplied: answers,
     tree,
     mode: 'non-interactive' as const,
     prompt: rejectingPrompt,
@@ -238,7 +243,7 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
       ['framework.web-components', 'arch.hexagonal', 'arch.spa', 'pkg.npm'],
     ],
   ])('hard-fails on %s instead of half-installing', (_label, tags) => {
-    expect(() => resolveVertical(persistenceVertical, tags)).toThrow(ResolutionError);
+    expect(() => resolveVertical(persistenceVertical, tags)).toThrow(RefusalError);
   });
 });
 
@@ -1054,12 +1059,19 @@ describe('the persistence dials (engine + migrations tool)', () => {
     expect(jdbcAdapter).not.toContain('OffsetDateTime');
   });
 
-  it('refuses a non-postgres engine where the driver is postgres-only', async () => {
+  it('does not take a non-postgres engine where the driver is postgres-only', async () => {
+    // `mariadb` declares `runtime.jvm`, so off the JVM it is not one of
+    // the question's choices at all — refused where the answer reaches
+    // the dials' adapter, before it contributes a file.
     await expect(
       installChain(['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'], {
         answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
       }),
-    ).rejects.toThrow(/served on the JVM stacks only/);
+    ).rejects.toMatchObject({
+      code: 'keel.invalid-answer',
+      message:
+        "'mariadb' is not a choice for persistence/database-compose:engine; choices: postgres",
+    });
   });
 
   it('lays the Liquibase migrations unit on ts-http when the dial says so', async () => {
@@ -1096,12 +1108,16 @@ describe('the persistence dials (engine + migrations tool)', () => {
     expect(manifest.answers[DATABASE_COMPOSE_ID]?.['migrations']).toBe('liquibase');
   });
 
-  it('refuses liquibase on a JVM stack, naming the Flyway-wired replay', async () => {
+  it('does not take liquibase on a JVM stack, whose replay is Flyway-wired', async () => {
     await expect(
       installChain([...QUARKUS_JAVA, 'pkg.gradle'], {
         answers: { [DATABASE_COMPOSE_ID]: { migrations: 'liquibase' } },
       }),
-    ).rejects.toThrow(/Flyway integration/);
+    ).rejects.toMatchObject({
+      code: 'keel.invalid-answer',
+      message:
+        "'liquibase' is not a choice for persistence/database-compose:migrations; choices: flyway",
+    });
   });
 
   it('keeps the two engine spec records disjoint where the adapters branch', () => {

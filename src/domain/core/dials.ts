@@ -32,9 +32,21 @@
  * the install gate, which says so in the rule's own words.
  */
 
-import type { InstallTarget, NewProjectTarget, RepoLayout } from '../contract/commands.js';
-import type { Tag, Vertical } from '../contract/composition.js';
-import type { ChoiceDescriptor, DialOptions, ServiceDescriptor } from '../contract/queries.js';
+import type {
+  InstallTarget,
+  NewProjectTarget,
+  RepoLayout,
+  ServiceExtras,
+} from '../contract/commands.js';
+import { AGENT_HARNESS_TAG, type Tag, type Vertical } from '../contract/composition.js';
+import type {
+  ChoiceDescriptor,
+  DialAdjustment,
+  DialOptions,
+  ServiceDialOptions,
+  VerticalOption,
+} from '../contract/queries.js';
+import type { RefusalError } from '../contract/refusal.js';
 import { emitsFor } from './adapters/context-support.js';
 import {
   MODULITH_LAYOUT_TAG,
@@ -42,9 +54,24 @@ import {
   type ModuleLayoutOption,
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
-import { coversFor } from './resolver.js';
+import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
+import { foresee, planRefusal } from './plan-refusal.js';
+import {
+  alreadyIncludedNote,
+  alreadyInServicesNote,
+  elsewhereRefusal,
+  elsewhereService,
+  productRootPlacementRefusal,
+  routedExtraNote,
+} from './refusals.js';
+import {
+  presetServiceScope,
+  presetServiceTags,
+  presetServiceVerticals,
+  type PresetService,
+} from './scope.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
-import { listVerticals, type VerticalSummary } from './registry.js';
+import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
 
 /** The default repository layout of a composite install. */
@@ -152,39 +179,318 @@ export function peerContextOffered(
 }
 
 /**
- * The verticals that may still be layered on top of this stack, given
- * the tags its dials have settled.
- *
- * Two ways a vertical is a dead end here, and both are asked ahead of
- * the install rather than discovered inside it: no adapter covers one
- * of its dimensions, or one of its own rules is broken by what the
- * dials have settled.
- *
- * Coverage reads the tags *plus* what the stack's own verticals
- * promote, and the rules read the tags alone, because a promotable
- * tag cuts opposite ways: it can only *help* an adapter match, and it
- * can only *create* a conflict. Hiding a vertical over a tag that may
- * never appear would take away a legal choice; the assembly gate
- * still refuses it if the tag does appear.
+ * The scope a preset's extras are planned onto, before anything is
+ * written: the tags its dials settled plus what its own verticals
+ * promote on the way past ({@link seedFor}), its own verticals as
+ * already there, and the rules the preset and they declare — which an
+ * extra's tags must not break.
  */
-export function legalExtraVerticals(
+export function presetScope(stack: Stack, tags: readonly Tag[]): PlanScope {
+  return {
+    tags: seedFor(stack, tags),
+    installed: stack.verticals.map((vertical) => vertical.id),
+    rules: conflictsOf(piecesOf(stack)),
+  };
+}
+
+/**
+ * Every registered vertical as an extras control shows it for this
+ * preset — the preset's own (`included`), those the planner reads as
+ * `ready` or `needs` on the tags its dials have settled, with what
+ * each needs installed first, and the rest (`unavailable`), each with
+ * the refusal `keel new --with` would give it. In the registry's
+ * order.
+ *
+ * The planner's reading (`./planner.ts`), not a probe of its own: the
+ * same one both front doors refuse by, worded as they word it
+ * (`./plan-refusal.ts`'s `foresee`), so a choice offered here is one
+ * they accept once its `requires` are named with it, and a reason
+ * shown here is the sentence they refuse with. That is what the flat
+ * probe this replaced could not be. It saw the tags the preset
+ * settles and what its own verticals may promote, never what another
+ * *extra* would add — so `iac`, which needs the image `distribution`
+ * publishes, was never offered, and `distribution`, whose need for an
+ * image was a throw inside its adapter, was offered everywhere and
+ * refused on install.
+ *
+ * What the preset cannot carry is listed rather than left out, as a
+ * brownfield card is: "does it take persistence?" is a question the
+ * page should answer where it is asked, not by the option's absence.
+ */
+export function verticalOptions(
   registry: Registry,
   stack: Stack,
   tags: readonly Tag[],
-): readonly VerticalSummary[] {
-  const own = new Set(stack.verticals.map((v) => v.id));
-  const seed = [...tags, ...promotedBy(stack.verticals)];
-  return listVerticals(registry).filter((summary) => {
-    if (own.has(summary.id)) return false;
+): readonly VerticalOption[] {
+  return scopeOptions(registry, presetScope(stack, tags));
+}
+
+/**
+ * Every registered vertical as an extras control shows it on `scope` —
+ * {@link verticalOptions}' reading, over a scope already in hand: a
+ * service of a product ({@link presetServiceScope}) as much as a
+ * preset.
+ */
+export function scopeOptions(registry: Registry, scope: PlanScope): readonly VerticalOption[] {
+  const options: VerticalOption[] = [];
+  for (const summary of listVerticals(registry)) {
     const vertical = registry.vertical(summary.id);
-    if (vertical === null) return false;
-    return coversFor(vertical, seed) && assemblyRefusal([vertical], tags) === null;
-  });
+    if (vertical === null) continue;
+    const { readiness: ready, refusal } = foresee(registry, scope, vertical);
+    options.push({
+      ...summary,
+      readiness: ready.kind,
+      requires:
+        ready.kind === 'needs' && ready.alternatives === undefined ? ready.prerequisites : [],
+      ...(refusal === null
+        ? {}
+        : { refusal: { code: refusal.code, message: refusal.message, refusal: refusal.refusal } }),
+    });
+  }
+  return options;
+}
+
+/**
+ * Whether an option of {@link verticalOptions} is on the extras menu:
+ * ready, or ready once others are — not the preset's own, and not one
+ * it cannot carry.
+ */
+export function offeredAsExtra(option: VerticalOption): boolean {
+  return option.readiness === 'ready' || option.readiness === 'needs';
 }
 
 /** Every tag installing `verticals` may promote, in one flat list. */
 export function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
   return verticals.flatMap((vertical) => vertical.promotes ?? []);
+}
+
+/** The vertical `keel new --no-agent-harness` leaves out of a preset. */
+const AGENT_HARNESS = 'agent-harness';
+
+/** The code `keel new` refuses a harness it cannot leave out with. */
+export const INVALID_AGENT_HARNESS_CODE = 'keel.invalid-agent-harness';
+
+/**
+ * `stack` as `keel new --no-agent-harness` installs it: its own
+ * verticals, less the agent harness.
+ */
+export function withoutHarness(stack: Stack): Stack {
+  return {
+    ...stack,
+    verticals: stack.verticals.filter((vertical) => vertical.id !== AGENT_HARNESS),
+  };
+}
+
+/**
+ * Whether `stack`'s own tags or verticals switch the agent harness on
+ * — what makes `--no-agent-harness` meaningless on it, and refused.
+ */
+export function harnessActivatedBy(stack: Stack): boolean {
+  return [...stack.tags, ...promotedBy(stack.verticals)].includes(AGENT_HARNESS_TAG);
+}
+
+/** Whether installing `vertical` switches the agent harness on. */
+export function activatesHarness(vertical: Vertical): boolean {
+  return vertical.promotes?.includes(AGENT_HARNESS_TAG) ?? false;
+}
+
+/**
+ * Whether installing `vertical` on `scope` switches the agent harness
+ * back on: it activates the harness itself, or the plan installs a
+ * prerequisite with it that does. A harness brought in to satisfy
+ * another vertical is a harness all the same, so `--no-agent-harness`
+ * refuses the two alike rather than install one unasked.
+ */
+export function switchesHarnessOn(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+): boolean {
+  if (activatesHarness(vertical)) return true;
+  const planned = plan(registry, scope, [vertical.id]);
+  return (
+    planned.kind === 'planned' &&
+    planned.order.some((step) => activatesHarnessById(registry, step.id))
+  );
+}
+
+function activatesHarnessById(registry: Registry, id: string): boolean {
+  const vertical = registry.vertical(id);
+  return vertical !== null && activatesHarness(vertical);
+}
+
+/**
+ * Whether the agent harness is a dial of `stack` — a harness the
+ * preset comes with and `keel new --no-agent-harness` can leave out.
+ *
+ * A single-service preset, since a composite product refuses the flag
+ * (each of its services carries the harness); one that installs the
+ * harness at all, since leaving out what is not there is no choice;
+ * and one that, without it, does not switch it straight back on
+ * through its own tags or verticals, which the install refuses too.
+ */
+export function harnessOptional(stack: Stack): boolean {
+  return (
+    stack.services === undefined &&
+    stack.verticals.some((vertical) => vertical.id === AGENT_HARNESS) &&
+    !harnessActivatedBy(withoutHarness(stack))
+  );
+}
+
+/**
+ * The sentence `keel new` refuses `--with <id>` beside
+ * `--no-agent-harness` in, where `id` would switch the harness back on
+ * — and the reason `keel.dials` drops it from a selection that leaves
+ * the harness out, word for word.
+ */
+export function harnessOptOutSentence(id: string): string {
+  return id === AGENT_HARNESS
+    ? '--no-agent-harness cannot be combined with --with agent-harness'
+    : `--no-agent-harness cannot be combined with --with ${id}: it switches the agent harness back on`;
+}
+
+/**
+ * `options` as they read on a preset installed without its agent
+ * harness ({@link withoutHarness}): the harness itself still
+ * `included` — the preset's own, left out by the target and there to
+ * put back, which no extras box offers — and every other vertical that
+ * would switch it back on ({@link switchesHarnessOn}: itself, or a
+ * prerequisite it `requires`) `unavailable`, with the refusal
+ * `keel new` gives the pair. Both front ends' menus read them so:
+ * `keel new`'s extras question and `keel.dials`.
+ */
+export function harnessLeftOut(
+  registry: Registry,
+  options: readonly VerticalOption[],
+): readonly VerticalOption[] {
+  const activates = (id: string): boolean => activatesHarnessById(registry, id);
+  return options.map((option): VerticalOption => {
+    const { refusal: _refusal, ...rest } = option;
+    if (option.id === AGENT_HARNESS) return { ...rest, readiness: 'included', requires: [] };
+    if (!activates(option.id) && !option.requires.some(activates)) return option;
+    return {
+      ...rest,
+      readiness: 'unavailable',
+      requires: [],
+      refusal: { code: INVALID_AGENT_HARNESS_CODE, message: harnessOptOutSentence(option.id) },
+    };
+  });
+}
+
+/**
+ * `requested` snapped to what installs on this preset: each id, by id,
+ * kept where the planner can install it beside the ones kept before
+ * it, dropped where it cannot, then the whole set closed over its
+ * prerequisites and put in the order the install runs them — with an
+ * {@link DialAdjustment} for every id added or dropped: the dropped
+ * ones first, the added ones after them in install order.
+ *
+ * A set, like `--with`: taken by id, so the order a page ticks its
+ * boxes in cannot change what is kept or the order it installs in. A
+ * vertical tied between two providers is tried again once the rest is
+ * kept, since one of the rest may be the provider that settles it —
+ * the front door plans the set whole, and would accept it.
+ *
+ * The closure is the one both front doors install for a set that
+ * leaves a prerequisite out, so a form ticking `iac` posts
+ * `containerization, distribution, iac` back — the plan the command
+ * line would run for `--with iac` — and says why.
+ *
+ * With `agentHarness` false, `stack` is the preset without its
+ * harness ({@link withoutHarness}), and a vertical that would switch
+ * it back on ({@link switchesHarnessOn}) is dropped in the sentence
+ * `keel new` refuses the pair in — never kept for the closure to bring
+ * the harness back as its prerequisite.
+ */
+export function snapExtras(
+  registry: Registry,
+  stack: Stack,
+  tags: readonly Tag[],
+  requested: readonly string[],
+  agentHarness = true,
+): SnappedExtras {
+  return snapOnto(
+    registry,
+    presetScope(stack, tags),
+    requested,
+    (vertical) => alreadyIncludedNote(vertical, stack.id),
+    agentHarness,
+  );
+}
+
+/** What {@link snapExtras} settles a selection at, and what it moved. */
+export interface SnappedExtras {
+  readonly extras: readonly string[];
+  readonly adjustments: readonly DialAdjustment[];
+}
+
+/**
+ * {@link snapExtras} over a scope already in hand — a service of a
+ * product as much as a preset — with `included` the sentence a
+ * vertical already on it is dropped in.
+ */
+export function snapOnto(
+  registry: Registry,
+  scope: PlanScope,
+  requested: readonly string[],
+  included: (vertical: Vertical) => string,
+  agentHarness = true,
+): SnappedExtras {
+  const kept: string[] = [];
+  const adjustments: DialAdjustment[] = [];
+  const drop = (id: string, because: string): void => {
+    adjustments.push({ id, change: 'dropped', because });
+  };
+  const unregistered = (id: string): string => `no vertical '${id}' is registered`;
+  const candidates: Vertical[] = [];
+  for (const id of [...new Set(requested)].sort()) {
+    const vertical = registry.vertical(id);
+    if (vertical === null) drop(id, unregistered(id));
+    else if (scope.installed.includes(id)) drop(id, included(vertical));
+    else if (!agentHarness && switchesHarnessOn(registry, scope, vertical)) {
+      drop(id, harnessOptOutSentence(id));
+    } else candidates.push(vertical);
+  }
+  const tied: Vertical[] = [];
+  const keep = (vertical: Vertical, retry: boolean): void => {
+    const tried = plan(registry, scope, [...kept, vertical.id]);
+    if (tried.kind === 'planned') kept.push(vertical.id);
+    else if (tried.kind === 'tied' && retry) tied.push(vertical);
+    else drop(vertical.id, refusalOf(registry, scope, vertical, tried));
+  };
+  for (const vertical of candidates) keep(vertical, true);
+  for (const vertical of tied) keep(vertical, false);
+  kept.sort();
+  const closed = plan(registry, scope, kept);
+  if (closed.kind !== 'planned') return { extras: kept, adjustments };
+  for (const step of closed.order) {
+    if (step.reason === 'requested') continue;
+    const titles = step.reason.neededBy
+      .flatMap((other) => registry.vertical(other) ?? [])
+      .map(verticalTitle);
+    const who =
+      titles.length === 0
+        ? 'the rest of the selection needs'
+        : `${titles.join(' and ')} ${titles.length === 1 ? 'needs' : 'need'}`;
+    adjustments.push({ id: step.id, change: 'added', because: `${who} it installed first` });
+  }
+  return { extras: closed.order.map((step) => step.id), adjustments };
+}
+
+/**
+ * The sentence `vertical` is dropped from a selection with, from the
+ * plan that refused it — the refusal a front door would give it
+ * (`./plan-refusal.ts`), word for word.
+ */
+function refusalOf(registry: Registry, scope: PlanScope, vertical: Vertical, tried: Plan): string {
+  switch (tried.kind) {
+    case 'unknown':
+      return `no vertical '${tried.vertical}' is registered`;
+    case 'planned':
+      throw new Error(`refusalOf: '${vertical.id}' planned`);
+    default:
+      return planRefusal(registry, [vertical], tried, scope.rules).message;
+  }
 }
 
 /**
@@ -234,20 +540,45 @@ function undialled(target: InstallTarget): DialOptions {
     moduleLayouts: [],
     services: [],
     peerContext: false,
+    agentHarness: false,
     extraVerticals: [],
+    verticals: [],
+    adjustments: [],
   };
 }
 
-function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
+function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget): DialOptions {
+  // The harness first, as `keel new` settles it: every menu below is
+  // read over the preset as it will be installed.
+  const agentHarness = harnessOptional(preset);
+  const harnessOff = agentHarness && target.agentHarness === false;
+  const stack = harnessOff ? withoutHarness(preset) : preset;
   const buildSystems = legalBuildSystems(stack, stack.buildSystems ?? []);
   const build = prefer(buildSystems, target.buildSystem);
   const moduleLayouts = legalModuleLayouts(stack, build?.tag ?? null, stack.moduleLayouts ?? []);
   const layout = prefer(moduleLayouts, target.moduleLayout);
 
-  const tags = stackTagsFor(stack, build?.tag ?? null, layout?.tag ?? null);
   const peerContext = peerContextOffered(stack, build?.tag ?? null, layout?.tag ?? null);
-  const extraVerticals = legalExtraVerticals(registry, stack, tags);
-  const legalExtraIds = new Set(extraVerticals.map((vertical) => vertical.id));
+  const withPeerContext = target.withPeerContext === true && peerContext;
+  // The tags the install gate plans the extras onto: the dials', and
+  // the peer context's when it is switched on.
+  const tags = [
+    ...stackTagsFor(stack, build?.tag ?? null, layout?.tag ?? null),
+    ...(withPeerContext ? [PEER_CONTEXT_TAG] : []),
+  ];
+  const options = verticalOptions(registry, stack, tags);
+  const verticals = harnessOff ? harnessLeftOut(registry, options) : options;
+  // A product's per-service extras, carried onto a single preset by a
+  // front end moving between them, are this preset's extras here: a
+  // single project is every service at once, and `keel new` refuses a
+  // service's path on it, so the settled target must not carry one.
+  const snapped = snapExtras(
+    registry,
+    stack,
+    tags,
+    [...(target.extraVerticals ?? []), ...serviceExtrasOf(target)],
+    !harnessOff,
+  );
 
   return {
     target: {
@@ -258,64 +589,355 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
       // Always set, never omitted. An absent `withPeerContext` is
       // what makes the install *ask*, and a front end reading this
       // has already been handed the choice as a menu of its own.
-      withPeerContext: target.withPeerContext === true && peerContext,
-      // Pruned when the caller set it, never pinned when they did
-      // not: absent is what keeps the extras question coming back
-      // from `keel.preview`, which is the only place a caller is
-      // offered the list.
-      ...(target.extraVerticals === undefined
-        ? {}
-        : { extraVerticals: target.extraVerticals.filter((id) => legalExtraIds.has(id)) }),
+      withPeerContext,
+      // Pinned like every other dial — to `[]` when the caller named
+      // none — and snapped to its closure when they named some. It
+      // used to be left absent so `keel.preview` would keep asking
+      // the extras question, which was then the only place a caller
+      // was offered the list; but a question the install stops asking
+      // once answered is a control that vanishes after its first
+      // tick. The list is `verticals` below now, a menu like the
+      // others, and a front end that renders it must not also be
+      // asked it.
+      extraVerticals: snapped.extras,
+      // Only ever `false`: on is what an absent field means, and a
+      // preset whose harness cannot be left out has no such dial.
+      ...(harnessOff ? { agentHarness: false } : {}),
     },
     buildSystems: buildSystems.map(asChoice),
     moduleLayouts: moduleLayouts.map(asChoice),
     services: [],
     peerContext,
-    extraVerticals: extraVerticals.map(verticalChoice),
+    agentHarness,
+    extraVerticals: verticals.filter(offeredAsExtra).map(verticalChoice),
+    verticals,
+    adjustments: snapped.adjustments,
   };
 }
 
 /**
- * A composite product's dials: the repository layout and one build
- * system per service.
+ * A composite product's dials: the repository layout, and each
+ * service's build system and extras.
  *
- * No rule can reach them, and saying so is the point of the empty
+ * No rule spans the services, and saying so is the point of the empty
  * `moduleLayouts`. The repository layout seeds no tag at all, and a
  * service is a full install of its own stack in its own scope — the
  * product root never assembles their tags together, so there is no
  * combination for a {@link Conflict} to bite on. The module layout,
- * the peer context and the extras are not dials here either: the
- * install refuses all three on a composite, so a settled target must
- * not carry them.
+ * the peer context and the harness are not dials here: the install
+ * refuses all three on a composite, so a settled target must not
+ * carry them.
+ *
+ * The extras are each service's: a menu per service
+ * (`ServiceDialOptions.verticals`) read over the scope `keel new`
+ * plans that service's extras onto — on the build system settled for
+ * it, and under the monorepo layout with what the product root gives
+ * it — and the service's selection (`target.services`) snapped to
+ * that scope as a single preset's is, each adjustment naming the
+ * service. Extras named without a service — `keel new --with`'s bare
+ * ids, or a single preset's selection carried onto the product — go
+ * to the one service that can take each ({@link routeExtra}), as the
+ * install sends them, and are dropped with the install's refusal where
+ * none or several can; the settled target carries them in that
+ * service's selection, never bare. The top-level `extraVerticals` and
+ * `verticals` read what a bare id does here.
  */
 function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
+  const layout = target.layout ?? DEFAULT_REPO_LAYOUT;
+  const monorepo = layout === 'monorepo';
   const chosen = readServiceBuildSystems(target.buildSystem);
-  const services: ServiceDescriptor[] = [];
-  const pairs: string[] = [];
+  const builds = new Map<string, BuildSystemOption | null>();
   for (const service of stack.services ?? []) {
-    const serviceStack = registry.stack(service.stack);
-    const options = serviceStack?.buildSystems ?? [];
+    const options = registry.stack(service.stack)?.buildSystems ?? [];
+    builds.set(service.path, prefer(options, chosen.get(service.path)));
+  }
+  const scopes = productScopes(
+    registry,
+    stack,
+    presetServicesOf(registry, stack),
+    (path) => builds.get(path)?.tag ?? null,
+    monorepo,
+  );
+
+  const adjustments: DialAdjustment[] = [];
+  const requested = new Map(
+    scopes.map(({ service }) => [
+      service.path,
+      [...(target.services?.[service.path]?.extraVerticals ?? [])],
+    ]),
+  );
+  for (const [path, extras] of Object.entries(target.services ?? {})) {
+    if (requested.has(path)) continue;
+    for (const id of extras.extraVerticals) {
+      adjustments.push({
+        id,
+        change: 'dropped',
+        because: `${stack.id} has no service at ${path}/`,
+      });
+    }
+  }
+  for (const id of [...new Set(target.extraVerticals ?? [])].sort()) {
+    const vertical = registry.vertical(id);
+    if (vertical === null) {
+      adjustments.push({ id, change: 'dropped', because: `no vertical '${id}' is registered` });
+      continue;
+    }
+    if (stack.verticals.some((own) => own.id === id)) {
+      adjustments.push({ id, change: 'dropped', because: alreadyIncludedNote(vertical, stack.id) });
+      continue;
+    }
+    const routed = routeExtra(registry, scopes, vertical, monorepo);
+    if (routed.kind === 'refused') {
+      adjustments.push({ id, change: 'dropped', because: routed.refusal.message });
+      continue;
+    }
+    if (routed.kind === 'included') {
+      adjustments.push({
+        id,
+        change: 'dropped',
+        because: productIncludedNote(stack, scopes, vertical, routed.paths, monorepo),
+      });
+      continue;
+    }
+    requested.get(routed.path)?.push(id);
+    adjustments.push({
+      id,
+      change: 'added',
+      service: routed.path,
+      because: routedExtraNote(vertical, routed.path, stack.id),
+    });
+  }
+
+  const services: ServiceDialOptions[] = [];
+  const extras: Record<string, ServiceExtras> = {};
+  for (const { service, scope } of scopes) {
+    const snapped = snapOnto(
+      registry,
+      scope,
+      requested.get(service.path) ?? [],
+      serviceIncludedNote(stack, service, monorepo),
+    );
+    adjustments.push(
+      ...snapped.adjustments.map((adjustment) => ({ ...adjustment, service: service.path })),
+    );
+    if (snapped.extras.length > 0) extras[service.path] = { extraVerticals: snapped.extras };
     services.push({
       path: service.path,
-      stack: service.stack,
-      buildSystems: options.map(asChoice),
+      stack: service.stack.id,
+      buildSystems: (service.stack.buildSystems ?? []).map(asChoice),
+      verticals: scopeOptions(registry, scope),
     });
-    const build = prefer(options, chosen.get(service.path));
-    if (build !== null) pairs.push(`${service.path}=${build.id}`);
   }
+  const pairs = [...builds].flatMap(([path, build]) =>
+    build === null ? [] : [`${path}=${build.id}`],
+  );
+  const verticals = productOptions(registry, stack, scopes, monorepo);
   return {
     target: {
       kind: 'new-project',
       stack: stack.id,
-      layout: target.layout ?? DEFAULT_REPO_LAYOUT,
+      layout,
       ...(pairs.length === 0 ? {} : { buildSystem: pairs.join(',') }),
+      ...(Object.keys(extras).length === 0 ? {} : { services: extras }),
     },
     buildSystems: [],
     moduleLayouts: [],
     services,
     peerContext: false,
-    extraVerticals: [],
+    agentHarness: false,
+    extraVerticals: verticals.filter(offeredAsExtra).map(verticalChoice),
+    verticals,
+    adjustments,
   };
+}
+
+/** One service of a product, and the scope its extras plan onto. */
+export interface ServicePlanScope {
+  readonly service: PresetService;
+  readonly scope: PlanScope;
+}
+
+/**
+ * The services of the product preset `product` a registry can
+ * scaffold, in the product's order: each naming a registered
+ * single-service preset. The install refuses a product naming any
+ * other; a menu leaves it out.
+ */
+export function presetServicesOf(registry: Registry, product: Stack): readonly PresetService[] {
+  return (product.services ?? []).flatMap((service) => {
+    const stack = registry.stack(service.stack);
+    return stack === null || stack.services !== undefined
+      ? []
+      : [{ path: service.path, stack, extraVerticals: service.extraVerticals ?? [] }];
+  });
+}
+
+/**
+ * Each of `services` with the scope its extras plan onto
+ * ({@link presetServiceScope}), on the build system `buildTagOf` says
+ * was chosen for it and the repository layout.
+ */
+export function productScopes(
+  registry: Registry,
+  product: Stack,
+  services: readonly PresetService[],
+  buildTagOf: (path: string) => Tag | null,
+  monorepo: boolean,
+): readonly ServicePlanScope[] {
+  return services.map((service) => ({
+    service,
+    scope: presetServiceScope(
+      registry,
+      product,
+      service,
+      presetServiceTags(service, buildTagOf(service.path), services),
+      monorepo,
+    ),
+  }));
+}
+
+/**
+ * Where {@link routeExtra} sends a vertical: to one service; nowhere,
+ * since the services that could have it have it already (`paths`);
+ * or nowhere, and why.
+ */
+export type Routed =
+  | { readonly kind: 'routed'; readonly path: string }
+  | { readonly kind: 'included'; readonly paths: readonly string[] }
+  | { readonly kind: 'refused'; readonly refusal: RefusalError };
+
+/**
+ * Where `vertical`, named for a composite product without a service,
+ * goes: to the one service whose scope admits it — ready, or ready
+ * once its prerequisites are in. Where none does but some service has
+ * it already, it is there — `included`, set aside with a note, as a
+ * vertical a single stack comes with is, so a `--with` list that names
+ * it runs on a product as it does on a single preset. Otherwise it
+ * goes nowhere, and the refusal is the one `keel add` gives it at the
+ * product root: a vertical whose place is a repository root, asked of
+ * a monorepo product, cannot go in any of its services
+ * (`keel.uncoverable-vertical`); any other belongs to a service, and
+ * the refusal names each with its readiness there
+ * (`keel.wrong-scope`) — so a vertical two services could each take
+ * is the user's to place. `vertical` is not the product's own.
+ */
+export function routeExtra(
+  registry: Registry,
+  scopes: readonly ServicePlanScope[],
+  vertical: Vertical,
+  monorepo: boolean,
+): Routed {
+  const read = scopes.map(({ service, scope }) =>
+    elsewhereService(service.path, service.stack.id, readiness(registry, scope, vertical.id)),
+  );
+  const admitting = read.filter(
+    (service) => service.readiness === 'ready' || service.readiness === 'needs',
+  );
+  const [only] = admitting;
+  if (admitting.length === 1 && only !== undefined) return { kind: 'routed', path: only.path };
+  if (monorepo && vertical.placement?.scope === 'repository') {
+    return { kind: 'refused', refusal: productRootPlacementRefusal(registry, vertical) };
+  }
+  const having = read.filter((service) => service.readiness === 'included');
+  if (admitting.length === 0 && having.length > 0) {
+    return { kind: 'included', paths: having.map((service) => service.path) };
+  }
+  return { kind: 'refused', refusal: elsewhereRefusal(registry, vertical, read) };
+}
+
+/**
+ * The sentence a vertical already on a product's service is set aside
+ * in: it comes with the service's preset, or with the product — the
+ * verticals the product installs in it, and under the monorepo layout
+ * what its root gives it, the repository's version control among them:
+ * the preset's own is the one the monorepo layout leaves out of the
+ * service.
+ */
+export function serviceIncludedNote(
+  product: Stack,
+  service: PresetService,
+  monorepo: boolean,
+): (vertical: Vertical) => string {
+  return (vertical) =>
+    alreadyIncludedNote(vertical, includedBy(product, service, vertical, monorepo));
+}
+
+/**
+ * The note a vertical named for a product without a service is set
+ * aside with where the services that could have it have it already
+ * (`paths`, from {@link routeExtra}): what it comes with in each.
+ */
+export function productIncludedNote(
+  product: Stack,
+  scopes: readonly ServicePlanScope[],
+  vertical: Vertical,
+  paths: readonly string[],
+  monorepo: boolean,
+): string {
+  return alreadyInServicesNote(
+    vertical,
+    scopes
+      .filter(({ service }) => paths.includes(service.path))
+      .map(({ service }) => ({
+        path: service.path,
+        by: includedBy(product, service, vertical, monorepo),
+      })),
+  );
+}
+
+/**
+ * What `vertical` on `service` comes with: the service's preset where
+ * the service installs the preset's own — which under the monorepo
+ * layout is not one whose place is the repository root — and the
+ * product otherwise.
+ */
+function includedBy(
+  product: Stack,
+  service: PresetService,
+  vertical: Vertical,
+  monorepo: boolean,
+): string {
+  const own = presetServiceVerticals({ ...service, extraVerticals: [] }, monorepo);
+  return own.some((candidate) => candidate.id === vertical.id) ? service.stack.id : product.id;
+}
+
+/**
+ * Every registered vertical as `keel new --with` reads it on a product
+ * named without a service: the product's own `included`; one a single
+ * service can take, as that service reads it; and the rest
+ * `unavailable`, with the refusal {@link routeExtra} gives it.
+ */
+function productOptions(
+  registry: Registry,
+  product: Stack,
+  scopes: readonly ServicePlanScope[],
+  monorepo: boolean,
+): readonly VerticalOption[] {
+  return listVerticals(registry).flatMap((summary): VerticalOption[] => {
+    const vertical = registry.vertical(summary.id);
+    if (vertical === null) return [];
+    if (product.verticals.some((own) => own.id === summary.id)) {
+      return [{ ...summary, readiness: 'included', requires: [] }];
+    }
+    const routed = routeExtra(registry, scopes, vertical, monorepo);
+    if (routed.kind === 'refused') {
+      const { code, message, refusal } = routed.refusal;
+      return [
+        { ...summary, readiness: 'unavailable', requires: [], refusal: { code, message, refusal } },
+      ];
+    }
+    if (routed.kind === 'included') return [{ ...summary, readiness: 'included', requires: [] }];
+    const scope = scopes.find(({ service }) => service.path === routed.path)?.scope;
+    if (scope === undefined) return [];
+    return scopeOptions(registry, scope).filter((option) => option.id === summary.id);
+  });
+}
+
+/** Every extra a target names for a product's services, in their order, each once. */
+function serviceExtrasOf(target: NewProjectTarget): readonly string[] {
+  return [
+    ...new Set(Object.values(target.services ?? {}).flatMap((service) => service.extraVerticals)),
+  ];
 }
 
 /**
@@ -354,8 +976,8 @@ const asChoice = (option: BuildSystemOption | ModuleLayoutOption): ChoiceDescrip
   doc: option.doc,
 });
 
-const verticalChoice = (vertical: VerticalSummary): ChoiceDescriptor => ({
+const verticalChoice = (vertical: VerticalOption): ChoiceDescriptor => ({
   id: vertical.id,
-  label: vertical.id,
+  label: vertical.title,
   doc: vertical.description,
 });

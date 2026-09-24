@@ -135,10 +135,12 @@ describe('distribution vertical (Quarkus CLI native)', () => {
     const manifest = {
       ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
       // Quarkus + Gradle but no arch.cli — the native-binaries
-      // adapter filters out and `jvm-container` covers the
-      // dimensions instead. Without the containerization Dockerfile
-      // it refuses with the fix in the message (see
-      // distribution-container.test.ts for the covered paths).
+      // adapter filters out, and `jvm-container` is the one that
+      // could cover the dimensions. It requires the containerization
+      // Dockerfile in its predicate, so without one nothing resolves:
+      // a coded refusal, which both front doors get to first as a
+      // missing prerequisite (see distribution-container.test.ts for
+      // the covered paths).
       tags: baseTags('arch.server-http'),
       answers: bootstrapAnswers,
     };
@@ -155,7 +157,7 @@ describe('distribution vertical (Quarkus CLI native)', () => {
         processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
-    ).rejects.toThrow(/keel add containerization/);
+    ).rejects.toMatchObject({ code: 'keel.uncoverable-vertical' });
   });
 
   it('errors if the bootstrap projectName is missing from the manifest', async () => {

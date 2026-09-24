@@ -181,7 +181,7 @@ describe('real preset harness opt-out', () => {
         await mediator.dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'code-style',
+            verticals: ['code-style'],
             reapply: true,
             answers: {},
             interactive: false,
@@ -226,7 +226,7 @@ describe('harness adoption on a grown project', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers: { 'persistence/database-compose': { engine: 'mariadb', migrations: 'flyway' } },
           interactive: false,
           dryRun: false,
@@ -263,7 +263,7 @@ describe('harness adoption on a grown project', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'agent-harness',
+          verticals: ['agent-harness'],
           answers: {},
           interactive: false,
           dryRun: false,

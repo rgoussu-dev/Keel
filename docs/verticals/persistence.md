@@ -11,9 +11,9 @@ keel add persistence
 
 **Every HTTP stack** — Quarkus, Spring and Micronaut (Java and
 Kotlin, Gradle or Maven), `go-http`, `rust-http` and `ts-http`, each
-through one predicate-selected adapter; on a stack with no server
-(CLIs, `web-components`) the install hard-fails with uncovered
-dimensions.
+through one predicate-selected adapter; on a stack with no server the
+install is refused — a CLI is told it lacks an HTTP server entrypoint,
+and `web-components` that persistence has no adapter for its stack.
 
 ## The two dials
 
@@ -21,20 +21,22 @@ The vertical carries two project-wide **sticky questions**, asked
 once by `persistence/database-compose` (the first adapter every
 install runs) and read by everything downstream:
 
-| Dial         | Choices                           | Where each is served                                                                                                                                                                                                                                                                                |
-| ------------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `engine`     | `postgres` (default) \| `mariadb` | PostgreSQL on every HTTP stack. MariaDB on the six JVM stacks — JDBC makes it one spec record in `persistence-engine.ts`. The Go/Rust/TS drivers (pgx, the sync `postgres` crate, `pg`) speak the PostgreSQL wire protocol, so a non-postgres engine there fails loudly before anything is written. |
-| `migrations` | `flyway` (default) \| `liquibase` | Flyway on every HTTP stack. Liquibase (YAML changelog over the **same plain SQL**) on Go/Rust/TS, whose emitted replay paths are tool-agnostic; the JVM `%dev`/`%test` replay is Flyway-wired today, so `liquibase` there fails loudly — the framework integrations are a roadmap item.             |
+| Dial         | Choices                           | Where each is served                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `engine`     | `postgres` (default) \| `mariadb` | PostgreSQL on every HTTP stack. MariaDB on the six JVM stacks — JDBC makes it one spec record in `persistence-engine.ts`. The Go/Rust/TS drivers (pgx, the sync `postgres` crate, `pg`) speak the PostgreSQL wire protocol, so the `mariadb` choice declares `runtime.jvm` and is not offered there — a `--set` naming it is refused as `keel.invalid-answer` before anything is written. |
+| `migrations` | `flyway` (default) \| `liquibase` | Flyway on every HTTP stack. Liquibase (YAML changelog over the **same plain SQL**) on Go/Rust/TS, whose emitted replay paths are tool-agnostic; the JVM `%dev`/`%test` replay is Flyway-wired today, so the `liquibase` choice excludes `runtime.jvm` and is not offered there (`keel.invalid-answer` if named) — the framework integrations are a roadmap item.                          |
 
 Non-interactively, preset them with
 `keel add persistence --set 'persistence/database-compose:engine=mariadb'`
-(and/or `…:migrations=liquibase`). The whole slice follows the engine:
-driver + pool config, the migration SQL's dialect, the dev-compose
-container (image, env, healthcheck), the Testcontainers image and
-container class in every emitted test, and the capability tag
-(`db.postgres` / `db.mariadb`, `db.migrations.flyway` /
-`db.migrations.liquibase`). A further RDBMS lands as one more spec
-record on the dial, not an adapter family.
+on a JVM stack (or `…:migrations=liquibase` on Go/Rust/TS). Each
+choice declares where it is served; elsewhere neither the prompt nor
+`keel ui` offers it, and a `--set` naming it is refused. The whole
+slice follows the engine: driver + pool config, the migration SQL's
+dialect, the dev-compose container (image, env, healthcheck), the
+Testcontainers image and container class in every emitted test, and
+the capability tag (`db.postgres` / `db.mariadb`,
+`db.migrations.flyway` / `db.migrations.liquibase`). A further RDBMS
+lands as one more spec record on the dial, not an adapter family.
 
 ## The five dimensions
 

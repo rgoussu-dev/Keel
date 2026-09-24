@@ -28,11 +28,28 @@
  * list**, and the difference matters. A stack-level dial is a field of
  * the command, so once it is set the install stops asking about it —
  * a control driven by the preview would vanish the moment it was
- * used. Everything conditional comes back from the preview instead
- * and is rendered by `<keel-question-list>`.
+ * used. That is exactly what the extras did while they were a
+ * preview question: one tick, and the list was gone. They are the
+ * "Also scaffold" group here now, drawn from `dials.verticals` — on a
+ * product one group per service, from that service's menu in
+ * `dials.services` (`../extras.js`) — by the builder a keel project's
+ * Options step draws its group with too (`../dom.js`'s
+ * `alsoScaffold`), and `keel.dials` pins them on every target it
+ * settles so the preview never asks them again. Everything
+ * conditional still comes back from the preview and is rendered by
+ * `<keel-question-list>`.
  *
- * Catalog, dials, target and step in as properties, `target-changed`
- * out with the fields that moved.
+ * **Focus survives a re-render.** Every reply redraws the step, and a
+ * box ticked from the keyboard would otherwise hand the focus back to
+ * the page body — so the focused control is found again by its id, or
+ * by its group and value, once the new one is in.
+ *
+ * Catalog, dials, target and step in as properties; `target-changed`
+ * out with the fields that moved — the agent harness pressed off or
+ * back on among them, `agentHarness` — and `extra-toggled` out with
+ * the vertical an "Also scaffold" box stands for, whether it is now
+ * ticked and, on a product, the service whose group it is in — what
+ * else that tick moves is `../target.js`'s answer.
  */
 
 import {
@@ -44,7 +61,20 @@ import {
   pickLanguage,
   pickShape,
 } from '../finder.js';
-import { cards, checkboxCards, note } from '../dom.js';
+import {
+  alsoScaffold,
+  cards,
+  checkboxCards,
+  el,
+  focusIn,
+  icon,
+  note,
+  prose,
+  refocus,
+  refusedList,
+  tickPart,
+} from '../dom.js';
+import { extrasGroup, serviceExtrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
 export class KeelNewForm extends HTMLElement {
@@ -52,6 +82,22 @@ export class KeelNewForm extends HTMLElement {
   #dials = null;
   #target = null;
   #step = SHAPE;
+  /**
+   * Which groups' "Not for this project" lists are open, by the group's
+   * id — the reader's, kept across redraws.
+   */
+  #refusedOpen = new Set();
+  /**
+   * The live region that says what the last reply moved in the "Also
+   * scaffold" groups — outside the part rebuilt on every render, so it
+   * is announced when its text changes, once, rather than inserted
+   * anew with it.
+   */
+  #announcer = null;
+  /** The part rebuilt on every render. */
+  #form = null;
+  /** What the groups of the render in progress say they moved. */
+  #lines = [];
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -109,10 +155,30 @@ export class KeelNewForm extends HTMLElement {
 
   #render() {
     if (!this.isConnected || !this.#catalog || !this.#target) return;
+    const focused = focusIn(this);
     const form = document.createElement('stack-pk');
     form.setAttribute('space', 'var(--s0)');
+    this.#lines = [];
     form.append(...this.#fields());
-    this.replaceChildren(form);
+    if (this.#announcer === null) {
+      this.#announcer = el('p', {
+        class: 'visually-hidden',
+        attrs: { role: 'status', 'data-role': 'extras-status' },
+      });
+    }
+    if (
+      this.#form !== null &&
+      this.#form.parentNode === this &&
+      this.#announcer.parentNode === this
+    ) {
+      this.#form.replaceWith(form);
+    } else {
+      this.replaceChildren(this.#announcer, form);
+    }
+    this.#form = form;
+    const said = this.#lines.join(' ');
+    if (this.#announcer.textContent !== said) this.#announcer.textContent = said;
+    refocus(this, focused);
   }
 
   /** The controls of the step being shown, or an explanation of its absence. */
@@ -214,6 +280,12 @@ export class KeelNewForm extends HTMLElement {
           fields.push(this.#serviceBuildField(service, this.#serviceOptions(service)));
         }
       }
+      // Each service's own "Also scaffold", once the reply has read
+      // its menu: its extras are planned in its scope, not the root's.
+      for (const service of stack.services) {
+        const extras = serviceExtrasGroup(this.#dials, this.#target, service.path);
+        if (extras !== null) fields.push(this.#serviceExtrasField(service, extras));
+      }
       return fields;
     }
     const fields = [];
@@ -224,7 +296,166 @@ export class KeelNewForm extends HTMLElement {
       fields.push(this.#moduleLayoutField(this.#moduleLayouts(stack)));
     }
     if (this.#dials?.peerContext === true) fields.push(this.#peerContextField());
-    return fields.length > 0 ? fields : [note('This preset pins every dial — nothing to choose.')];
+    const extras = extrasGroup(this.#dials, this.#target);
+    if (extras !== null) fields.push(this.#extrasField(stack, extras));
+    if (fields.length > 0) return fields;
+    // Every preset has this step, so one pinning both dials is drawn
+    // before its extras have arrived — and "nothing to choose" would
+    // be wrong for as long as the first reply takes.
+    return [
+      note(
+        this.#dials === null
+          ? 'Reading what this preset can take…'
+          : 'This preset pins every dial — nothing to choose.',
+      ),
+    ];
+  }
+
+  /**
+   * "Also scaffold": the verticals this preset can take on top of its
+   * own, in the parts `../extras.js` sorts them into, and — collapsed,
+   * each with its reason — the ones it cannot take. Ticking and
+   * unticking are gestures rather than field edits — one box can move
+   * several — so a box emits which vertical it is and how it moved,
+   * and `<keel-app>` asks `../target.js` for the rest.
+   */
+  #extrasField(stack, extras) {
+    return this.#extrasSection({
+      id: 'extras',
+      title: 'Also scaffold',
+      help: `Installed in the same run, on top of what \`${stack.id}\` brings, in the order they build on one another. Everything here is also available later with \`keel add\`.`,
+      comesWith: `Comes with ${stack.id}`,
+      extras,
+      service: null,
+    });
+  }
+
+  /**
+   * One service's "Also scaffold" on a product: the same parts as a
+   * preset's, from that service's own menu, under the service's name,
+   * its ids prefixed so two services' groups never share one — and a
+   * box names its service when it emits, since the set it moves is
+   * that service's.
+   */
+  #serviceExtrasField(service, extras) {
+    const slug = service.path.replace(/[^A-Za-z0-9_-]/g, '-');
+    return this.#extrasSection({
+      id: `extras-${slug}`,
+      title: `Also scaffold in ${service.path}/`,
+      help: `Installed in \`${service.path}/\` in the same run, on top of what \`${service.stack}\` and the product bring there — \`--with ${service.path}:<id>\`. Everything here is also available later with \`keel add\` inside \`${service.path}/\`.`,
+      comesWith: `Comes with ${service.path}/`,
+      extras,
+      service: service.path,
+    });
+  }
+
+  /**
+   * The group itself, drawn by the one builder both flows' Options step
+   * draws it with (`../dom.js`'s `alsoScaffold`) — here with what the
+   * preset comes with as chips, where a keel project's has what it
+   * installed ticked and locked.
+   */
+  #extrasSection({ id: prefix, title, help: helpText, comesWith, extras, service }) {
+    const tick = (id, ticked) => this.#toggle(id, ticked, service);
+    const switchable = extras.included.find((vertical) => vertical.on !== undefined);
+    const included =
+      extras.included.length === 0
+        ? null
+        : el(
+            'div',
+            {},
+            el('h4', { id: `${prefix}-included-title`, text: comesWith }),
+            el(
+              'ul',
+              {
+                id: `${prefix}-included`,
+                class: 'plain chips',
+                attrs: { 'aria-labelledby': `${prefix}-included-title` },
+              },
+              ...extras.included.map((vertical) =>
+                vertical.on === undefined
+                  ? el('li', {
+                      class: 'chip',
+                      text: vertical.title,
+                      attrs: { 'data-id': vertical.id },
+                    })
+                  : el('li', { attrs: { 'data-id': vertical.id } }, this.#harnessSwitch(vertical)),
+              ),
+            ),
+            switchable === undefined ? null : harnessHint(switchable),
+          );
+    if (extras.line !== '') this.#lines.push(extras.line);
+    return alsoScaffold({
+      id: prefix,
+      title,
+      count: extras.chosen.length,
+      help: helpText,
+      line: extras.line,
+      parts: [
+        extras.ready.length === 0
+          ? null
+          : tickPart({
+              id: `${prefix}-ready`,
+              title: 'Ready',
+              choices: extras.ready,
+              chosen: extras.chosen,
+              onTick: tick,
+            }),
+        extras.needs.length === 0
+          ? null
+          : tickPart({
+              id: `${prefix}-needs`,
+              title: 'Needs another capability first',
+              choices: extras.needs,
+              chosen: extras.chosen,
+              onTick: tick,
+            }),
+        included,
+        extras.refused.length === 0
+          ? null
+          : refusedList({
+              id: `${prefix}-refused`,
+              title: service === null ? 'Not for this project' : `Not for ${service}/`,
+              items: extras.refused,
+              open: this.#refusedOpen.has(prefix),
+              onToggle: (open) => {
+                if (open) this.#refusedOpen.add(prefix);
+                else this.#refusedOpen.delete(prefix);
+              },
+            }),
+      ],
+    });
+  }
+
+  #toggle(id, ticked, service) {
+    this.dispatchEvent(
+      new CustomEvent('extra-toggled', {
+        bubbles: true,
+        detail: service === null ? { id, ticked } : { id, ticked, service },
+      }),
+    );
+  }
+
+  /**
+   * The agent harness's chip where the preset may leave it out: the
+   * same chip in the same list — it comes with the preset like the
+   * others — drawn as a toggle button, pressed while the harness is on
+   * and let go for `--no-agent-harness`. One field moves, so it is a
+   * field edit like the peer-context box, not an extras gesture.
+   */
+  #harnessSwitch(chip) {
+    return el(
+      'button',
+      {
+        id: 'agentHarness',
+        type: 'button',
+        class: 'chip switch',
+        attrs: { 'aria-pressed': String(chip.on), 'aria-describedby': 'agentHarness-hint' },
+        on: { click: () => this.#change({ agentHarness: !chip.on }) },
+      },
+      chip.on ? icon('check') : null,
+      chip.title,
+    );
   }
 
   /**
@@ -318,6 +549,23 @@ export class KeelNewForm extends HTMLElement {
     label.append(box, text);
     return label;
   }
+}
+
+/**
+ * The line under a harness that can be left out, saying which way it
+ * is and what pressing it does — its state in words, beside the
+ * pressed look, and the switch's description for a screen reader.
+ */
+function harnessHint(chip) {
+  return el(
+    'p',
+    { id: 'agentHarness-hint', class: 'help' },
+    prose(
+      chip.on
+        ? `${chip.title} is on. Press it to leave the agent documents, skills and hooks out — \`keel new --no-agent-harness\`.`
+        : `${chip.title} is left out: no agent documents, skills or hooks. Press it to put it back, or adopt it later with \`keel add agent-harness\`.`,
+    ),
+  );
 }
 
 /**

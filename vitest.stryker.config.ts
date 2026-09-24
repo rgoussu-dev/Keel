@@ -4,7 +4,7 @@ import base from './vitest.config';
 /**
  * The vitest config Stryker runs mutants against.
  *
- * Same config as `pnpm test`, minus two suites — both excluded by
+ * Same config as `pnpm test`, minus three suites — all excluded by
  * construction, not by environment:
  *
  *   - `tests/e2e/`. Those suites decide for themselves whether to
@@ -23,6 +23,15 @@ import base from './vitest.config';
  *     against a file it was never meant to read in that form. Left
  *     in, it fails the initial dry run and aborts the whole mutation
  *     run before a single mutant is tested.
+ *   - `tests/domain/core/composition-grid/`. Each axis sweeps the
+ *     whole registry in a `beforeAll`, and the runner attributes what
+ *     a hook covers to no test at all: the sweep's coverage is
+ *     static, and the grid's own tests, which only compare recorded
+ *     verdicts, cover nothing. No mutant is ever run against them, so
+ *     the grid could kill none; and under `ignoreStatic` a mutant
+ *     only the grid reaches would be scored Ignored rather than
+ *     NoCoverage, hiding the very holes the score exists to show.
+ *     Its verdicts are pinned by its own golden in `verify`.
  *
  * The second exclusion would be right even if the dry run survived
  * it. A text sweep sees the mutant *in the source* rather than in the
@@ -36,7 +45,11 @@ export default mergeConfig(
   base,
   defineConfig({
     test: {
-      exclude: ['tests/e2e/**', 'tests/version-pins.test.ts'],
+      exclude: [
+        'tests/e2e/**',
+        'tests/version-pins.test.ts',
+        'tests/domain/core/composition-grid/**',
+      ],
     },
   }),
 );

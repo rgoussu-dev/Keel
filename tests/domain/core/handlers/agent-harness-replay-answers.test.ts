@@ -86,7 +86,7 @@ describe('harness replay of a plugin repeat question', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'acme',
+          verticals: ['acme'],
           answers: {},
           interactive: true,
           dryRun: false,
@@ -106,7 +106,7 @@ describe('harness replay of a plugin repeat question', () => {
       await replay.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'agent-harness',
+          verticals: ['agent-harness'],
           answers: {},
           interactive: false,
           dryRun: false,

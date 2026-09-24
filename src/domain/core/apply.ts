@@ -7,18 +7,21 @@
  *      the resolved answer map for that adapter.
  *   2. Invoke `adapter.contribute(ctx)` to get a Contribution.
  *   3. Apply `files` (whole-file writes), with conflict detection: a
- *      whole-file write to a path that already exists in the Tree
- *      (whether from an earlier adapter or from disk) is a hard
- *      error. To modify existing files, use `patches` instead.
+ *      whole-file write to a path that already exists in the Tree is
+ *      a hard error — a refusal naming the file when the project held
+ *      it before the run, a bug when an earlier adapter of the run
+ *      created it. To modify existing files, use `patches` instead.
  *   4. Apply `patches` (read–transform–write); a patch whose target
- *      doesn't exist is an error, unless the patch supplies a `seed`
- *      — then the transform runs against the seed and the result is
- *      written as a new file (the shared-file upsert). A patch that
- *      declares `regions` is held to them: a transform that changed
- *      anything outside its regions is refused naming the adapter,
- *      and a region two adapters of the run both declare on one
- *      target is refused naming both — the engine's own regions
- *      (the `AGENTS.md` map and skills-index slots) included.
+ *      doesn't exist is an error — a refusal naming the file on a
+ *      project that should hold it, a bug under `keel new` — unless
+ *      the patch supplies a `seed`: then the transform runs against
+ *      the seed and the result is written as a new file (the
+ *      shared-file upsert). A patch that declares `regions` is held
+ *      to them: a transform that changed anything outside its
+ *      regions is refused naming the adapter, and a region two
+ *      adapters of the run both declare on one target is refused
+ *      naming both — the engine's own regions (the `AGENTS.md` map
+ *      and skills-index slots) included.
  *   5. Collect `skills`, `hooks` and region-confined `harnessPatches`;
  *      after the entire chain, realize them only when the settled
  *      local tags carry `agentic.harness`. Each skill is
@@ -83,7 +86,9 @@ import {
   type DocsIndexInput,
   type DocsIndexRegion,
 } from './docs-index.js';
+import { PathConflictError, PathMissingError } from '../contract/refusal.js';
 import { SETTINGS_SEED, mergeHookSettings } from './hook-settings.js';
+import { ADOPTED_FILES } from './adapters/adopted-files.js';
 import { eolAware } from './util.js';
 import {
   ENGINE_CONTRIBUTOR_ID,
@@ -107,9 +112,24 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
 /**
  * How contributions meet files already in the Tree.
  *
- * `install` (the default) is the greenfield/brownfield contract: a
- * whole-file write to an existing path is a hard conflict, and every
- * patch writes its result.
+ * `install` (the default) is the brownfield contract — `keel add`,
+ * `keel add module`: a whole-file write to an existing path is a hard
+ * conflict, and every patch writes its result. A file this run did
+ * not write is refused as a {@link PathConflictError}; a patch target
+ * the tree does not hold is one the user deleted, refused as a
+ * {@link PathMissingError}.
+ *
+ * `scaffold` is `keel new`'s contract, the same one with a different
+ * reading of a patch target nothing created: no keel project was here
+ * to have lost it, so it is the chain's own ordering bug, and throws
+ * as one. A file in the way is refused in the same words as under
+ * `install`, and so is one a patch would merge into — a user's
+ * `package.json` under keel's is a build neither wrote — unless it is
+ * one of the two files `keel new` adopts (`README.md`, `.gitignore`).
+ * The sentence is phase-neutral; whether moving the file
+ * aside is sound advice (it is before `keel new`, and may not be
+ * after, where a product root writes into its services) is the front
+ * end's to say, from the refusal's fields.
  *
  * `reapply` is the day-2 contract for re-rendering an installed
  * vertical: whole-file writes **overwrite** their target (skipped when
@@ -123,7 +143,7 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
  * an append about to append again — indistinguishable from a double
  * application — and conflicts instead of writing.
  */
-export type ApplyMode = 'install' | 'reapply';
+export type ApplyMode = 'scaffold' | 'install' | 'reapply';
 
 /** One file a staged skill put into the Tree, with its content hash. */
 export interface StagedSkillFile {
@@ -162,8 +182,17 @@ export interface ApplyResult {
 }
 
 /**
- * Thrown when a contribution conflicts with the existing Tree state.
- * Carries the offending path and adapter id for diagnostics.
+ * Thrown when a contribution conflicts with the Tree in a way no user
+ * file explains. Carries the offending path and adapter id for
+ * diagnostics.
+ *
+ * Mostly two contributions of one run disagreeing — a path both write
+ * whole, a region or a skill name both claim, a patch whose target
+ * `keel new` has not created yet — which is keel's bug (or a
+ * plugin's), and by the kernel's rule keeps throwing. A reapply that
+ * would diverge is the other case, and `keel add --reapply` turns it
+ * into a refusal of its own. What a user's files do to an install is
+ * not this: see {@link PathConflictError} and {@link PathMissingError}.
  */
 export class ContributionConflictError extends Error {
   constructor(
@@ -199,6 +228,16 @@ export interface Ownership {
   /** {@link regionKey} → owning contributor id. */
   readonly regions: Map<string, string>;
   /**
+   * Canonical path → the adapter whose contribution last wrote it: a
+   * whole file, a patch, a skill's file or a hook script. Not a claim —
+   * a later patch of another adapter's file is the rule, not a
+   * collision — but what a caller reads to name who wrote a path:
+   * `keel new` refusing a path two scopes of one product both stage.
+   * What the engine writes of its own (the hook wiring, the doc
+   * pointers, the docs index) is not recorded.
+   */
+  readonly writers: Map<string, string>;
+  /**
    * The engine's pre-owned region keys it has not yet re-rendered
    * this run: its one claim on each goes through, a second is a
    * region declared twice like any adapter's.
@@ -227,6 +266,7 @@ export function newOwnership(): Ownership {
     skills: new Map(),
     hooks: new Map(),
     regions,
+    writers: new Map(),
     engineSlots: new Set(regions.keys()),
   };
 }
@@ -432,11 +472,16 @@ export function realizeHarness(
       files.push(...skill.files.map((file) => ({ ...file, adapterId: skill.adapterId })));
     }
     for (const hook of contribution.hooks) {
-      files.push(stageHook(contribution.adapter, hook, tree, contribution.mode, owners.hooks));
+      const staged = stageHook(contribution.adapter, hook, tree, contribution.mode, owners.hooks);
+      owners.writers.set(staged.path, staged.adapterId);
+      files.push(staged);
     }
   }
   const wired = contributions.flatMap((c) => c.hooks);
-  if (wired.length > 0) files.push(wireHooks(wired, tree));
+  if (wired.length > 0) {
+    const scaffold = contributions.some((c) => c.mode === 'scaffold');
+    files.push(wireHooks(wired, tree, scaffold ? owners : null));
+  }
   for (const contribution of contributions) {
     applyContribution(
       contribution.adapter,
@@ -668,11 +713,18 @@ export function applyContribution(
 ): readonly StagedSkill[] {
   for (const f of contribution.files ?? []) {
     writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
+    owners.writers.set(canonicalTarget(f.path), adapter.id);
   }
   for (const p of contribution.patches ?? []) {
     const regions = claimRegions(adapter, p, owners);
     const current = tree.read(p.target);
+    if (mode === 'scaffold' && current !== null && foundInProject(tree, owners, p.target)) {
+      throw new PathConflictError(canonicalTarget(p.target), adapter.id);
+    }
     if (current === null && p.seed === undefined) {
+      if (mode !== 'scaffold') {
+        throw new PathMissingError(canonicalTarget(p.target), adapter.id);
+      }
       throw new ContributionConflictError(
         `adapter '${adapter.id}': patch target '${p.target}' does not exist in tree`,
         adapter.id,
@@ -704,10 +756,13 @@ export function applyContribution(
       }
     }
     tree.write(p.target, next, p.mode !== undefined ? { mode: p.mode } : undefined);
+    owners.writers.set(canonicalTarget(p.target), adapter.id);
   }
   const staged: StagedSkill[] = [];
   for (const raw of contribution.skills ?? []) {
-    staged.push(stageSkill(adapter, raw, tree, mode, owners.skills));
+    const skill = stageSkill(adapter, raw, tree, mode, owners.skills);
+    for (const file of skill.files) owners.writers.set(canonicalTarget(file.path), adapter.id);
+    staged.push(skill);
   }
   return staged;
 }
@@ -869,12 +924,21 @@ function stageHook(
 /**
  * Merges every realized hook into `.claude/settings.json` — seeded
  * when the project has none — and writes it only when the merge
- * changed it. The file is the project's, so this is never a whole-file
- * conflict; keel's entries are attributed to the engine, which wrote
- * them for every contributor alike.
+ * changed it. The file is the project's, so on an install this is
+ * never a whole-file conflict; keel's entries are attributed to the
+ * engine, which wrote them for every contributor alike. Under
+ * `keel new` (`scaffold` set) one the directory held before the run
+ * is refused, as every file but the {@link ADOPTED_FILES} is there.
  */
-function wireHooks(hooks: readonly HookSpec[], tree: Tree): HarnessFile {
+function wireHooks(
+  hooks: readonly HookSpec[],
+  tree: Tree,
+  scaffold: Ownership | null,
+): HarnessFile {
   const current = tree.read(SETTINGS_TARGET);
+  if (scaffold !== null && current !== null && foundInProject(tree, scaffold, SETTINGS_TARGET)) {
+    throw new PathConflictError(SETTINGS_TARGET, ENGINE_CONTRIBUTOR_ID);
+  }
   const base = current === null ? SETTINGS_SEED : current.toString('utf8');
   const next = eolAware((existing) => mergeHookSettings(existing, hooks))(base);
   if (current === null || next !== base) tree.write(SETTINGS_TARGET, next);
@@ -905,12 +969,18 @@ function assertReminderBudget(contributions: readonly HarnessContribution[]): vo
 }
 
 /**
- * The whole-file write contract, shared by `files` and staged skills:
- * an existing path is a hard conflict on install, and on reapply an
- * overwrite back to pristine — skipped when byte-identical, so the
- * staged changes stay an honest diff, unless the contribution
+ * The whole-file write contract, shared by `files`, staged skills and
+ * hooks: an existing path is a hard conflict on install, and on
+ * reapply an overwrite back to pristine — skipped when byte-identical,
+ * so the staged changes stay an honest diff, unless the contribution
  * declares a mode: then the write goes through so a lost executable
  * bit comes back, and the tree stages nothing when disk has it.
+ *
+ * Which conflict depends on who put the file there. One this run
+ * created is two contributions writing one path, keel's bug. Anything
+ * else was in the project before the run — including a file an
+ * earlier contribution patched, which the tree reports as a `modify`
+ * — and is refused naming the file.
  */
 function writeWholeFile(
   adapter: Adapter,
@@ -922,8 +992,11 @@ function writeWholeFile(
 ): void {
   if (tree.exists(filePath)) {
     if (mode !== 'reapply') {
+      if (!createdThisRun(tree, filePath)) {
+        throw new PathConflictError(canonicalTarget(filePath), adapter.id);
+      }
       throw new ContributionConflictError(
-        `adapter '${adapter.id}' would overwrite existing path '${filePath}'; use a patch to modify existing files`,
+        `adapter '${adapter.id}' would overwrite '${filePath}', which an earlier contribution of this run created; use a patch to modify existing files`,
         adapter.id,
         filePath,
         'overwrite',
@@ -934,6 +1007,34 @@ function writeWholeFile(
     if (current !== null && current.equals(next) && fileMode === undefined) return;
   }
   tree.write(filePath, content, fileMode !== undefined ? { mode: fileMode } : undefined);
+}
+
+/**
+ * Whether `keel new` found `target` in the directory rather than
+ * writing it earlier in this run — a file of the user's that a patch
+ * would merge into. The two {@link ADOPTED_FILES} are not: adopting
+ * them is what their patches are for. Anything else is refused as the
+ * whole-file write over it would be, since a `package.json` or a
+ * `settings.gradle.kts` of the user's, merged with keel's part, is a
+ * build neither of them wrote. The writers map answers the common
+ * case — a patch on a file an earlier adapter wrote — without the
+ * walk over every staged change.
+ */
+function foundInProject(tree: Tree, owners: Ownership | null, target: string): boolean {
+  const key = canonicalTarget(target);
+  if (ADOPTED_FILES.includes(key)) return false;
+  if (owners?.writers.has(key) === true) return false;
+  return !tree.changes().some((change) => change.path === key);
+}
+
+/**
+ * Whether the tree's staged changes created `filePath`, as opposed to
+ * finding it in the project. Asked only on the way to a refusal, so
+ * the walk over every staged change is never on the path of a write.
+ */
+function createdThisRun(tree: Tree, filePath: string): boolean {
+  const key = canonicalTarget(filePath);
+  return tree.changes().some((change) => change.kind === 'create' && change.path === key);
 }
 
 function sha256Of(content: string): string {

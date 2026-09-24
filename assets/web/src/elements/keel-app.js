@@ -28,7 +28,14 @@
  * state, do it again. It converges because each pass resolves exactly
  * the way the install would. Requests are debounced and sequenced,
  * and a late reply from a superseded request is dropped rather than
- * rendered over a newer one.
+ * rendered over a newer one — superseded by any change at all, not
+ * only by the next request.
+ *
+ * **How a change moves the state is not decided here.** The target,
+ * the answers, the dials and the request generation move together,
+ * and which of them a change clears is `../target.js`'s answer —
+ * pure, and tested without a browser. This element stores the result
+ * and redraws.
  *
  * **Dials before preview**, and in that order for a reason. A rule
  * can name two dials at once (`Conflict` in the composition
@@ -38,16 +45,85 @@
  * illegal, which is what lets the page correct itself instead of
  * previewing into a refusal it cannot navigate out of. Its reply is
  * adopted whole: the target it hands back is the one the page renders
- * from, previews and finally posts.
+ * from, previews and finally posts. Adopting it is also where a move
+ * onto a new preset says what it could not keep — a dial it had to
+ * snap, an extra it had to drop, a language the new shape does not
+ * have — in one line under the preset picker (`../target.js`'s
+ * `settle`). The answers such a move keeps are placed by the preview
+ * that follows it (`previewed`), and where that places one the reply
+ * did not already show, the reply is not the plan of the run any more:
+ * the page previews again rather than draw it.
  *
- * **The mode.** Pointing at a directory decides everything. No
- * manifest there and only `keel new` applies; a manifest and the page
- * becomes the brownfield one, offering what that project can actually
- * take.
+ * **One page for both phases; the directory decides the flow.** No
+ * manifest there and only `keel new` applies: the preset steps narrow
+ * to one, and Options sets its dials and its **Also scaffold** extras
+ * (`<keel-new-form>`). A manifest there, and the preset steps collapse
+ * into one read-only **Project** step, what the project already is,
+ * while Options draws the same **Also scaffold** group over it
+ * (`<keel-add-form>`): what it has, ticked and locked, each vertical
+ * with a **Re-render**; every vertical it has not installed, in the
+ * part the project status read it into — ready, needing another first,
+ * not for this project (collapsed, with the reason), belonging in a
+ * service — several at a time. Generate posts `keel add` of what the
+ * ticks add, the delta; the commands stay two. What the project cannot
+ * take is said before the click, in the refusal's own words, rather
+ * than learned from it. At a product root, an **Open backend/** button
+ * per service points the page one directory down. In a monorepo
+ * service, a pipeline or a release — whose place is the repository
+ * root — is one of those refusals, and what the product gives the
+ * service is locked beside what it has installed.
+ *
+ * Where the page opens follows the flow: `keel ui` in a keel project
+ * opens on its Options — the next thing to do there is add something —
+ * and in an empty directory on the Directory step, where a new project
+ * starts. Moving through the folder picker keeps the Directory step
+ * open, whatever the directory turns out to be.
+ *
+ * **A refusal is shown where the plan would be.** The plan column
+ * says why there is none — the engine's sentence, as an alert, headed
+ * as a refusal, as a bug or as no answer at all (`../response.js`'s
+ * `failureOf`) — rather than pointing at a banner above a step the
+ * user may have scrolled away from.
+ *
+ * **Generate lands where the directory's flow starts.** The directory
+ * re-read after an install is a keel project's page — Options, with
+ * the report beside it, since the next thing to do is add something
+ * more — except where the run left no project at the directory itself:
+ * a polyrepo product is its services, each a repository with a
+ * manifest of its own, and its root holds none. There the page opens
+ * the directory's listing, each service one click away, rather than a
+ * new project's Options with a stranger preset over the product just
+ * made.
+ *
+ * **A move to another directory is the only one that counts.** Its two
+ * reads are stamped (`#visit`): a later move supersedes them, and a
+ * reply to a superseded visit — or an install that lands after the
+ * user moved on — changes nothing on the page the user is now on. A
+ * read that fails leaves nothing of the previous directory behind to
+ * be posted to this one: its project, target and plan are dropped with
+ * the failure.
  */
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
+import { additionsSummary } from '../additions.js';
+import { extrasSummary, servicesExtrasSummary } from '../extras.js';
+import { projectHeadline, stampsHarnessGeneration } from '../project.js';
+import { failureOf } from '../response.js';
+import { plansNothing } from '../tree.js';
+import {
+  answer,
+  previewed,
+  rerender,
+  rerendering,
+  restart,
+  retarget,
+  settle,
+  toggleExtra,
+  toggleRefresh,
+  toggleVertical,
+  verticalsOf,
+} from '../target.js';
 import {
   DIRECTORY,
   ENTRYPOINTS,
@@ -57,7 +133,6 @@ import {
   QUESTIONS,
   REVIEW,
   SHAPE,
-  TARGET,
   chosenStack,
   located,
   nextStep,
@@ -77,6 +152,10 @@ export class KeelApp extends HTMLElement {
   #cwd = '';
   #target = null;
   #answers = {};
+  #carried = null;
+  #notice = '';
+  #held = [];
+  #identity = [];
   #preview = null;
   #report = null;
   #error = null;
@@ -87,13 +166,43 @@ export class KeelApp extends HTMLElement {
   /** The step the panel currently holds, and the element holding it. */
   #drawn = null;
   #body_ = null;
-  /** Monotonic request id; a reply older than this one is discarded. */
+  /**
+   * Monotonic, and moved on by every request and every change: a reply
+   * to a request made under an older one is discarded.
+   */
   #generation = 0;
+  /**
+   * Monotonic, and moved on by every move to a directory: the reads of
+   * a move superseded by a later one are discarded.
+   */
+  #visit = 0;
 
   connectedCallback() {
     this.#scaffold();
     this.addEventListener('target-chosen', (event) => void this.#goTo(event.detail.path));
+    // A product root's way into a service: another directory, opened
+    // where a keel project's page opens — on what to add there.
+    this.addEventListener('service-opened', (event) => void this.#goTo(event.detail.path, OPTIONS));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
+    this.addEventListener('extra-toggled', (event) =>
+      this.#move(
+        toggleExtra(
+          this.#run(),
+          event.detail.id,
+          event.detail.ticked,
+          event.detail.service ?? null,
+        ),
+      ),
+    );
+    this.addEventListener('vertical-toggled', (event) =>
+      this.#move(toggleVertical(this.#run(), this.#status, event.detail.id, event.detail.ticked)),
+    );
+    this.addEventListener('rerender-requested', (event) =>
+      this.#move(rerender(this.#run(), event.detail.id)),
+    );
+    this.addEventListener('refresh-toggled', (event) =>
+      this.#move(toggleRefresh(this.#run(), event.detail.id, event.detail.ticked)),
+    );
     this.addEventListener('question-answered', (event) => this.#answer(event.detail));
     this.addEventListener('step-selected', (event) => this.#goToStep(event.detail.id));
     this.addEventListener('install-requested', () => void this.#install());
@@ -111,27 +220,55 @@ export class KeelApp extends HTMLElement {
     if (!catalog.ok) return this.#fail(catalog.error);
     if (!listing.ok) return this.#fail(listing.error);
     this.#catalog = catalog.value;
-    await this.#goTo(listing.value.path);
+    await this.#goTo(listing.value.path, null);
   }
 
-  /** Points the whole page at a directory and rebuilds the target. */
-  async #goTo(path) {
+  /**
+   * Points the whole page at a directory and rebuilds the target,
+   * opening on `landing` where the rail has it — the directory step
+   * when the user moved, Options for a product's service — or, for
+   * null, where that directory's flow starts: Options on a keel
+   * project, the directory step on a new one.
+   *
+   * Resolves to whether the page landed there: false when a later move
+   * superseded this one while its reads were out, which then leave the
+   * page to that move.
+   */
+  async #goTo(path, landing = DIRECTORY) {
+    const visit = ++this.#visit;
+    const [listing, status] = await Promise.all([api.browse(path), api.project(path)]);
+    if (visit !== this.#visit) return false;
     this.#cwd = path;
     this.#error = null;
     this.#report = null;
-    const [listing, status] = await Promise.all([api.browse(path), api.project(path)]);
-    if (!listing.ok) return this.#fail(listing.error);
-    if (!status.ok) return this.#fail(status.error);
+    if (!listing.ok || !status.ok) {
+      // Nothing of the directory the page was on may be posted to this
+      // one: its project, its target and its plan go with the failure,
+      // and the page stays on the directory step, where another can be
+      // picked.
+      this.#listing = listing.ok ? listing.value : null;
+      this.#status = null;
+      this.#adopt(restart(this.#run(), null));
+      this.#preview = null;
+      this.#step = DIRECTORY;
+      this.#drawn = null;
+      this.#fail(listing.ok ? status.error : listing.error);
+      return true;
+    }
     this.#listing = listing.value;
     this.#status = status.value;
-    this.#answers = {};
-    this.#target = this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget();
-    this.#dials = null;
+    this.#adopt(
+      restart(
+        this.#run(),
+        this.#status.initialised ? this.#defaultAddTarget() : this.#defaultNewTarget(),
+      ),
+    );
     this.#preview = null;
-    this.#step = DIRECTORY;
+    this.#step = landing ?? (this.#status.initialised ? OPTIONS : DIRECTORY);
     this.#drawn = null;
     this.#render();
     this.#previewSoon();
+    return true;
   }
 
   /**
@@ -155,18 +292,16 @@ export class KeelApp extends HTMLElement {
   }
 
   /**
-   * Where the brownfield wizard opens: on **no** vertical.
+   * Where the brownfield wizard opens: on **no** vertical ticked.
    *
-   * Picking one for the user was defensible when the control was a
-   * `<select>`, which has to show something. A card group does not,
-   * and the pre-pick was never free: `available` is every registered
-   * vertical not yet installed, coverage not consulted, so whichever
-   * one sorted first could be one this project's shape cannot carry —
-   * and the page opened on a refusal nobody had asked for. An
-   * unanswered question is the honest state, and the plan says so.
+   * Ticking one for the user was defensible when the control was a
+   * `<select>`, which has to show something. A set of checkboxes does
+   * not, and the pre-pick was never free: it opened the page on a plan
+   * nobody had asked for. An unanswered question is the honest state,
+   * and the plan says so.
    */
   #defaultAddTarget() {
-    return { kind: 'add-vertical', vertical: '' };
+    return { kind: 'add-vertical', verticals: [] };
   }
 
   /* ---- intent -------------------------------------------------- */
@@ -177,59 +312,45 @@ export class KeelApp extends HTMLElement {
   }
 
   #retarget(patch) {
-    if (patch.kind !== undefined && patch.kind !== this.#target.kind) {
-      this.#target = patch;
-      this.#answers = {};
-      this.#dials = null;
-    } else if (this.#target.kind === 'new-project') {
-      const changingStack = patch.stack !== undefined && patch.stack !== this.#target.stack;
-      // A different stack means different adapters, so the answers
-      // gathered for the old one are meaningless — and re-sending
-      // them would pin a value the new stack never asked for.
-      if (changingStack) this.#answers = {};
-      this.#target = changingStack
-        ? { kind: 'new-project', stack: patch.stack }
-        : { ...this.#target, ...patch };
-      // The old stack's menus describe nothing about the new one, and
-      // a control rendered from them would offer a build system this
-      // preset has never heard of.
-      if (changingStack) this.#dials = null;
-    } else {
-      this.#target = { ...this.#target, ...patch };
-    }
-    this.#report = null;
-    this.#render();
-    this.#previewSoon();
+    this.#move(retarget(this.#run(), patch));
   }
 
-  #answer({ binding, value }) {
-    if (binding.kind === 'answer') {
-      this.#answers = {
-        ...this.#answers,
-        [binding.adapter]: { ...(this.#answers[binding.adapter] ?? {}), [binding.question]: value },
-      };
-    } else if (binding.kind === 'buildSystem' && binding.service !== undefined) {
-      this.#retarget({ buildSystem: `${binding.service}=${value}` });
-      return;
-    } else if (binding.kind === 'withPeerContext') {
-      this.#retarget({ withPeerContext: value === 'yes' });
-      return;
-    } else if (binding.kind === 'extraVerticals') {
-      // A set answer: comma-joined on the wire, a list in the target.
-      this.#retarget({
-        extraVerticals: value
-          .split(',')
-          .map((id) => id.trim())
-          .filter((id) => id.length > 0),
-      });
-      return;
-    } else {
-      this.#retarget({ [binding.kind]: value });
-      return;
-    }
+  #answer(answered) {
+    this.#move(answer(this.#run(), answered));
+  }
+
+  #move(run) {
+    this.#adopt(run);
     this.#report = null;
-    this.#render();
+    // Marked stale before the redraw, so Generate is off from the
+    // moment the run moves until the preview of the move lands.
     this.#previewSoon();
+    this.#render();
+  }
+
+  /** The part of the state `../target.js` moves, as one value. */
+  #run() {
+    return {
+      target: this.#target,
+      answers: this.#answers,
+      dials: this.#dials,
+      generation: this.#generation,
+      carried: this.#carried,
+      notice: this.#notice,
+      held: this.#held,
+      identity: this.#identity,
+    };
+  }
+
+  #adopt(run) {
+    this.#target = run.target;
+    this.#answers = run.answers;
+    this.#dials = run.dials;
+    this.#generation = run.generation;
+    this.#carried = run.carried;
+    this.#notice = run.notice;
+    this.#held = run.held;
+    this.#identity = run.identity;
   }
 
   /* ---- the preview loop ---------------------------------------- */
@@ -265,15 +386,23 @@ export class KeelApp extends HTMLElement {
       const dials = await api.dials(this.#body());
       if (generation !== this.#generation) return;
       if (!dials.ok) return this.#fail(dials.error);
-      this.#dials = dials.value;
-      this.#target = dials.value.target;
+      this.#adopt(settle(this.#run(), dials.value, this.#catalog?.finder ?? null));
       this.#render();
     }
     const result = await api.preview(this.#body());
     if (generation !== this.#generation) return;
     if (result.ok) {
-      this.#preview = result.value;
+      this.#adopt(previewed(this.#run(), result.value));
       this.#error = null;
+      // The reply placed an answer a preset move held, which it had
+      // not read: its plan is not this run's. The last one stays up,
+      // marked stale, until the preview of the answers as they are.
+      if (this.#generation !== generation) {
+        this.#previewSoon();
+        this.#render();
+        return;
+      }
+      this.#preview = result.value;
     } else {
       this.#preview = null;
       this.#error = result.error;
@@ -283,20 +412,29 @@ export class KeelApp extends HTMLElement {
   }
 
   async #install() {
+    const cwd = this.#cwd;
+    const visit = this.#visit;
     this.#busy = true;
     this.#error = null;
     this.#render();
     const result = await api.install(this.#body());
     this.#busy = false;
+    // The user moved to another directory while it ran: that page is
+    // theirs now, and this report is not about it.
+    if (visit !== this.#visit) {
+      this.#render();
+      return;
+    }
     if (!result.ok) {
       this.#error = result.error;
       this.#render();
       return;
     }
-    this.#report = result.value;
-    // The project just changed underneath us: re-read it so the page
-    // becomes the brownfield one, offering what is left to add.
-    await this.#goTo(this.#cwd);
+    // The project just changed underneath us: re-read it, and open it
+    // where its flow starts — a keel project's Options, the report
+    // beside it; a polyrepo product's listing of its services — rather
+    // than back at the directory step it was generated from.
+    if (!(await this.#goTo(cwd, null))) return;
     this.#report = result.value;
     this.#render();
   }
@@ -337,20 +475,30 @@ export class KeelApp extends HTMLElement {
    */
   #summary() {
     const rows = [{ step: DIRECTORY, label: 'Directory', value: this.#cwd || '—' }];
+    const questions = this.#questionsRow();
     if (this.#status?.initialised) {
-      rows.push({
-        step: TARGET,
-        label: this.#target?.kind === 'add-module' ? 'Bounded context' : 'Vertical',
-        value:
-          (this.#target?.kind === 'add-module' ? this.#target.module : this.#target?.vertical) ||
-          '—',
-      });
-      if (this.#target?.kind === 'add-module' && this.#target.consumes) {
-        rows.push({ step: TARGET, label: 'Consumes', value: this.#target.consumes });
+      // No jump: the project is what the run adds to, not a choice it
+      // makes — its step has nothing on it to change.
+      rows.push({ label: 'Project', value: projectHeadline(this.#status) });
+      if (this.#target?.kind === 'add-module') {
+        rows.push({ step: OPTIONS, label: 'Bounded context', value: this.#target.module || '—' });
+        if (this.#target.consumes) {
+          rows.push({ step: OPTIONS, label: 'Consumes', value: this.#target.consumes });
+        }
+        if (questions !== null) rows.push(questions);
+        return rows;
       }
-      if (this.#target?.reapply === true) {
-        rows.push({ step: TARGET, label: 'Mode', value: 're-render (already installed)' });
+      const { adds, refreshes } = additionsSummary(this.#status, this.#target);
+      if (rerendering(this.#target) !== null) {
+        rows.push({ step: OPTIONS, label: 'Re-render', value: adds });
+        if (questions !== null) rows.push(questions);
+        return rows;
       }
+      rows.push({ step: OPTIONS, label: 'Also scaffold', value: adds || '—' });
+      if (refreshes !== '') {
+        rows.push({ step: OPTIONS, label: 'Re-rendered too', value: refreshes });
+      }
+      if (questions !== null) rows.push(questions);
       return rows;
     }
     const here = located(this.#state());
@@ -388,16 +536,39 @@ export class KeelApp extends HTMLElement {
       if (this.#target.withPeerContext === true) {
         rows.push({ step: OPTIONS, label: 'Peer context', value: 'yes' });
       }
-    }
-    const answered = this.#preview?.questions ?? [];
-    if (answered.length > 0) {
+      if (this.#target.agentHarness === false) {
+        rows.push({ step: OPTIONS, label: 'Agent harness', value: 'left out' });
+      }
       rows.push({
-        step: QUESTIONS,
-        label: 'Questions',
-        value: `${answered.length} answered`,
+        step: OPTIONS,
+        label: 'Also scaffold',
+        value:
+          stack.services.length === 0
+            ? extrasSummary(this.#dials, this.#target)
+            : servicesExtrasSummary(this.#dials, this.#target),
       });
     }
+    if (questions !== null) rows.push(questions);
     return rows;
+  }
+
+  /**
+   * The review's Questions row, in both flows — an add asks questions
+   * too, several verticals' at once — or null where the plan asks none.
+   *
+   * What the user set, not what the preview asked: every question has
+   * a default, and a row calling the defaults "answered" said a run
+   * nobody had touched was fully configured. `#answers` holds only
+   * what was moved, pruned to what the plan still asks.
+   */
+  #questionsRow() {
+    const asked = this.#preview?.questions.length ?? 0;
+    if (asked === 0) return null;
+    const set = Object.values(this.#answers).reduce(
+      (count, byQuestion) => count + Object.keys(byQuestion).length,
+      0,
+    );
+    return { step: QUESTIONS, label: 'Questions', value: answeredLine(set, asked) };
   }
 
   /* ---- rendering ----------------------------------------------- */
@@ -424,7 +595,6 @@ export class KeelApp extends HTMLElement {
       <div class="workspace">
         <div class="column">
           <stack-pk space="var(--s1)">
-            <div data-role="error" hidden></div>
             <section class="panel" data-role="step"></section>
           </stack-pk>
         </div>
@@ -452,11 +622,11 @@ export class KeelApp extends HTMLElement {
       if (greenfield) {
         preset.catalog = this.#catalog;
         preset.target = this.#target;
+        preset.notice = this.#notice;
       }
     }
 
     this.#renderMeta();
-    this.#renderError();
     this.#renderStep(steps);
 
     const plan = this.querySelector('keel-plan');
@@ -465,6 +635,7 @@ export class KeelApp extends HTMLElement {
       plan.report = this.#report;
       plan.stale = this.#stale;
       plan.hint = this.#hint();
+      plan.error = this.#error;
       plan.body = this.#body();
     }
   }
@@ -502,48 +673,56 @@ export class KeelApp extends HTMLElement {
     host.replaceChildren(...chips);
   }
 
+  /**
+   * Whether Generate may post the body: a complete run, previewed as
+   * it now stands, with something to do. Not merely previewed once —
+   * the preview is what prunes the answers to the ones its plan asks
+   * (`previewed`), so a body posted between a move and its preview
+   * would carry an answer the install refuses, an unticked extra's
+   * among them. And not a plan that writes nothing and runs nothing:
+   * committing one would record a vertical as installed that had put
+   * nothing on disk.
+   */
   #ready() {
-    return this.#complete() && this.#error === null && this.#preview !== null;
+    return (
+      this.#complete() &&
+      this.#error === null &&
+      this.#preview !== null &&
+      !this.#stale &&
+      !this.#changesNothing()
+    );
+  }
+
+  /**
+   * Whether the previewed run would change nothing at all. A plan with
+   * nothing to write or run still changes the project where it re-renders
+   * the agent harness of one from another harness generation: the run
+   * stamps the generation marker into the manifest, and that is what
+   * lets every other card through.
+   */
+  #changesNothing() {
+    if (this.#preview === null || !plansNothing(this.#preview)) return false;
+    return !stampsHarnessGeneration(this.#status, rerendering(this.#target));
   }
 
   /** Whether the target carries every field its command requires. */
   #complete() {
     if (this.#target === null) return false;
     if (this.#target.kind === 'add-module') return (this.#target.module ?? '') !== '';
-    if (this.#target.kind === 'add-vertical') return (this.#target.vertical ?? '') !== '';
+    if (this.#target.kind === 'add-vertical') return verticalsOf(this.#target).length > 0;
     return (this.#target.stack ?? '') !== '';
   }
 
   /**
-   * What the plan shows instead of a tree when it has no tree to
-   * show — a run still being filled in, or one the engine refused.
-   *
-   * An empty panel is the one thing it must not be. A refused run
-   * previews nothing, so the tree would render as a blank box beside
-   * a banner the eye has already skipped past; saying the plan is
-   * missing *because* the run was refused is what connects the two.
+   * What the plan shows instead of a tree when a run is still being
+   * filled in. A refused one shows the refusal itself (`plan.error`),
+   * where the tree would have been.
    */
   #hint() {
-    if (this.#error !== null) return 'No plan — this run was refused. The reason is above.';
-    if (this.#complete()) return '';
+    if (this.#error !== null || this.#complete()) return '';
     if (this.#target?.kind === 'add-module') return 'Name the context to see its plan.';
-    if (this.#target?.kind === 'add-vertical') return 'Pick a vertical to see its plan.';
+    if (this.#target?.kind === 'add-vertical') return 'Tick a vertical to see its plan.';
     return '';
-  }
-
-  #renderError() {
-    const box = this.querySelector('[data-role="error"]');
-    if (!box) return;
-    box.hidden = this.#error === null;
-    box.replaceChildren();
-    if (this.#error === null) return;
-    box.className = 'error';
-    const code = document.createElement('span');
-    code.className = 'code';
-    code.textContent = this.#error.code;
-    const message = document.createElement('span');
-    message.textContent = this.#error.message;
-    box.append(code, message);
   }
 
   /**
@@ -559,7 +738,16 @@ export class KeelApp extends HTMLElement {
    */
   #renderStep(steps) {
     const host = this.querySelector('[data-role="step"]');
-    if (!host || this.#target === null || this.#catalog === null) return;
+    if (!host || this.#catalog === null) return;
+    // No run — a directory that could not be read: the directory step
+    // alone has something to show, and no other step keeps the last
+    // directory's controls on screen.
+    if (this.#target === null && this.#step !== DIRECTORY) {
+      host.replaceChildren();
+      this.#drawn = null;
+      this.#body_ = null;
+      return;
+    }
     const current = steps.find((step) => step.id === this.#step);
 
     if (this.#step === this.#drawn && this.#body_ !== null && this.#body_.isConnected) {
@@ -588,17 +776,21 @@ export class KeelApp extends HTMLElement {
     host.replaceChildren(stack);
   }
 
-  /** The element a step's controls live in, freshly made. */
+  /**
+   * The element a step's controls live in, freshly made. The middle of
+   * the rail is the flow's: a new project's preset steps and Options,
+   * or a keel project's Project and Options.
+   */
   #stepBody() {
     const tag =
       this.#step === DIRECTORY
         ? 'keel-target-picker'
-        : this.#step === TARGET
-          ? 'keel-add-form'
-          : this.#step === QUESTIONS
-            ? 'keel-question-list'
-            : this.#step === REVIEW
-              ? 'keel-review'
+        : this.#step === QUESTIONS
+          ? 'keel-question-list'
+          : this.#step === REVIEW
+            ? 'keel-review'
+            : this.#status?.initialised
+              ? 'keel-add-form'
               : 'keel-new-form';
     const node = document.createElement(tag);
     this.#fillStepBody(node);
@@ -611,11 +803,6 @@ export class KeelApp extends HTMLElement {
       node.listing = this.#listing;
       return;
     }
-    if (this.#step === TARGET) {
-      node.status = this.#status;
-      node.target = this.#target;
-      return;
-    }
     if (this.#step === QUESTIONS) {
       node.questions = this.#preview?.questions ?? [];
       return;
@@ -625,6 +812,13 @@ export class KeelApp extends HTMLElement {
       node.busy = this.#busy;
       node.ready = this.#ready();
       node.hint = this.#reviewHint();
+      return;
+    }
+    if (this.#status?.initialised) {
+      node.status = this.#status;
+      node.target = this.#target;
+      node.preview = this.#preview;
+      node.step = this.#step;
       return;
     }
     node.catalog = this.#catalog;
@@ -639,9 +833,12 @@ export class KeelApp extends HTMLElement {
    * user arrives at *intending* to commit.
    */
   #reviewHint() {
-    if (this.#error !== null) return `Refused: ${this.#error.message}`;
+    if (this.#error !== null) return `${failureOf(this.#error).lead} ${this.#error.message}`;
     if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
-    if (this.#preview === null) return 'Waiting for the plan…';
+    if (this.#preview === null || this.#stale) return 'Waiting for the plan…';
+    if (this.#changesNothing()) {
+      return 'Nothing to write and nothing to run — this run would change nothing, so there is nothing to generate.';
+    }
     return '';
   }
 
@@ -685,6 +882,13 @@ export class KeelApp extends HTMLElement {
     row.append(back, next);
     return row;
   }
+}
+
+/** `2 answered, 3 on their defaults` — what the user set, and how much was left alone. */
+function answeredLine(set, asked) {
+  const left = Math.max(0, asked - set);
+  if (left === 0) return `${set} answered`;
+  return `${set} answered, ${left} on ${left === 1 ? 'its default' : 'their defaults'}`;
 }
 
 /** One masthead chip. */

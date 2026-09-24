@@ -143,6 +143,28 @@ export interface Question {
    */
   readonly default: string;
   readonly memory: 'sticky' | 'repeat';
+  /**
+   * `project` marks a question about the project's identity — its
+   * name, its base package or module path, its npm scope — rather
+   * than about the piece asking it. Absent on every other question.
+   *
+   * A marker for front ends, and nothing more: the answer is still
+   * recorded under the asking adapter's id, as every answer is, and
+   * nothing about it is persisted. What it says is that the answer is
+   * not the adapter's own. A form that moves from one preset to
+   * another carries an identity answer onto the new preset's
+   * bootstrap — whose id differs — instead of dropping it with the
+   * adapter it was given to; the preview reports it on the question
+   * (`PendingQuestion.shared`) so a front end can. Inside one run the
+   * engine never reads it: in a product each service's bootstrap asks
+   * its own, so two services keep two names.
+   *
+   * Declare it on the questions a project has exactly one answer to,
+   * whichever adapter happens to ask — the bootstraps' identity. A
+   * question whose answer is the piece's own (a database engine, a
+   * CI provider) does not carry it.
+   */
+  readonly shared?: 'project';
 }
 
 /** A single discrete choice for a `select`-style question. */
@@ -150,6 +172,22 @@ export interface QuestionChoice {
   readonly value: string;
   readonly label: string;
   readonly doc: string;
+  /**
+   * Where the choice applies — the same shape, and the same reading,
+   * as {@link Adapter.predicate}, matched against the tags of the
+   * scope an adapter's question is asked in. Where it does not match,
+   * the choice is not offered: the prompt and the preview leave it
+   * out, and a supplied answer naming it is refused as outside the
+   * question's choices (`keel.invalid-answer`), before anything is
+   * written. Absent, the choice is offered everywhere its adapter runs.
+   *
+   * It is how a choice only some stacks can serve says so —
+   * `mariadb` requires `runtime.jvm` — instead of a check in
+   * `contribute()` refusing what the menu offered. The question's
+   * `default` must be offered wherever its adapter runs: a
+   * non-interactive run resolves to it.
+   */
+  readonly predicate?: Predicate;
 }
 
 /**
@@ -239,8 +277,9 @@ export interface Contribution {
   /**
    * Capability tags this adapter promotes into the manifest. Every
    * one of them must appear in the parent {@link Vertical.promotes}
-   * set — the installer checks it, so a tag no vertical declares
-   * fails loudly instead of silently breaking the front-door
+   * set, and in the adapter's own {@link Adapter.promotes} when it
+   * declares one — the installer checks both, so a tag nothing
+   * declares fails loudly instead of silently breaking the front-door
    * coverage check that reads that declaration.
    */
   readonly tagsAdd?: readonly Tag[];
@@ -381,8 +420,13 @@ export interface Adapter {
   readonly questions?: readonly Question[];
   readonly after?: readonly string[];
   /**
-   * Other adapters whose recorded answers count as this one's sticky
-   * memory, tried in order before its own.
+   * Other adapters whose answers count as this one's, read after its
+   * own and in the order listed — for an answer the project records,
+   * and then for one supplied for the run (`--set`, an install body).
+   * A recorded answer always wins over a supplied one, so a question
+   * one sibling has settled is settled for all of them, and the
+   * preview reads supplied answers by the same precedence
+   * (`domain/core/answers.ts`).
    *
    * Sticky memory is keyed per adapter, which is right while one
    * question belongs to one adapter. It stops being right when two
@@ -402,7 +446,77 @@ export interface Adapter {
    * adapter's id too, which is what downstream adapters read.
    */
   readonly sharesAnswersWith?: readonly string[];
+  /**
+   * Every tag this adapter may promote — its own share of
+   * {@link Vertical.promotes}, which is the union over the vertical's
+   * adapters. Absent, the adapter is read as promoting the whole
+   * union, which is what a plugin adapter declaring nothing gets.
+   *
+   * Declared because a union over-offers. `distribution` promotes
+   * `dist.container-image` because its container adapters do, but
+   * on a Quarkus CLI the one adapter that matches builds native
+   * binaries and promotes nothing of the kind — so a reader asking
+   * "what would installing distribution here add?" of the union
+   * offers `iac` on a project that can never have its deploy target.
+   * Declaring the adapter's own share lets a planner read only the
+   * adapters that match (`domain/core/planner.ts`).
+   *
+   * Held to both of its neighbours: registration refuses a tag the
+   * vertical's `promotes` does not list, naming the plugin, and the
+   * installer refuses a {@link Contribution.tagsAdd} outside it. Keep
+   * the union where the tags depend on an answer — an image flavor, a
+   * SQL engine — since "may" is the whole of what it says.
+   */
+  readonly promotes?: readonly Tag[];
+  /**
+   * What this adapter builds inside a product's services when it runs
+   * at the product root — {@link ServiceProvision}. Absent, it builds
+   * nothing there.
+   */
+  readonly providesInServices?: ServiceProvision;
   contribute(ctx: Ctx): Promise<Contribution> | Contribution;
+}
+
+/**
+ * What a product root's adapter builds for its services: `vertical`'s
+ * part in each service scaffolded from one of `stacks`. The product
+ * glue's `compose.yaml` builds an image for each service it knows,
+ * and writes that service's Dockerfile beside it — so in that service
+ * `containerization` is already there, and `keel add containerization`
+ * would only meet the files the root wrote.
+ *
+ * Declared on the adapter that writes those files, and read by the
+ * adapter itself to decide which it writes, so what it declares and
+ * what it builds cannot disagree. A service whose stack it does not
+ * list gets nothing from it and keeps the vertical to add: a plugin
+ * product's backend the glue has no image for.
+ */
+export interface ServiceProvision {
+  /** Id of the vertical whose part it builds — `containerization`. */
+  readonly vertical: string;
+  /** Ids of the service stacks it builds that part for. */
+  readonly stacks: readonly string[];
+}
+
+/**
+ * Where a vertical's output is read, when that is not wherever it is
+ * installed. {@link Vertical.placement}.
+ */
+export interface Placement {
+  /**
+   * `repository` — only at the root of a repository: git's own
+   * directory and hooks, a CI provider's workflows, a release
+   * pipeline. A service of a monorepo product is a directory inside
+   * the product's repository, so what such a vertical writes there is
+   * never read.
+   */
+  readonly scope: 'repository';
+  /**
+   * Why, in words that finish "… cannot go in a monorepo service:" —
+   * the whole of what a refusal of it there says, and of what one
+   * needing it says.
+   */
+  readonly because: string;
 }
 
 /**
@@ -451,18 +565,58 @@ export interface Vertical {
    * Declared because a tag promoted at install time is invisible to
    * anything reasoning *before* the install: `coversFor` sees the
    * tags it is given, so a front door checking `--with
-   * distribution,iac` ahead of time would refuse `iac` for want of
-   * the `dist.container-image` tag `distribution` is there to
-   * promote. This is the static half of that answer — what *may*
-   * appear, never what will.
+   * containerization,distribution,iac` ahead of time would refuse
+   * `iac` for want of the `dist.container-image` tag `distribution`
+   * is there to promote. This is the static half of that answer —
+   * what *may* appear, never what will.
    *
    * Over-declaring is safe (it only defers a refusal to the
    * resolver); under-declaring risks refusing a legal composition,
    * which is why {@link Contribution.tagsAdd} is checked against
    * this set at install time and a tag outside it is a hard error.
-   * Omit only when no adapter of the vertical promotes anything.
+   * Omit only when no adapter of the vertical promotes anything. An
+   * adapter may narrow its own share with {@link Adapter.promotes}.
    */
   readonly promotes?: readonly Tag[];
+  /**
+   * Verticals whose presence `contribute()` reads — "if persistence
+   * is installed, the deployment descriptor carries `DB_URL`" — so
+   * that when both are in one run this one installs after them.
+   *
+   * A soft edge, and named to say so. It is not a requirement: the
+   * vertical installs without them, and renders what it renders. It
+   * is not {@link Adapter.after} either, which orders adapters inside
+   * one vertical and refuses a cycle with a code of its own. What it
+   * buys is an order that does not depend on how a caller happened to
+   * list the verticals — a page posting extras alphabetically would
+   * otherwise install distribution before persistence and ship a
+   * descriptor without the database.
+   *
+   * Checked once every source has registered: an id no registered
+   * vertical bears is ignored, because reading something absent is
+   * harmless and a plugin must load beside another plugin that is not
+   * installed; a cycle among known ids is refused, naming the plugin,
+   * since it would order nothing. Where requirements and reads
+   * disagree, requirements win.
+   */
+  readonly reads?: readonly string[];
+  /**
+   * Where its output is read, when only a repository root reads it —
+   * {@link Placement}. Absent, it goes wherever it is installed.
+   *
+   * Declared because a monorepo product's services are directories of
+   * one repository, and nothing about a service's own tags says so: a
+   * pipeline written under `backend/.github/workflows/` is a pipeline
+   * no provider runs. One declaration, read by two structural checks
+   * that therefore cannot drift apart: `keel new` leaves a placed
+   * vertical out of a monorepo product's services (the product root
+   * carries the repository), and in such a service the planner reads
+   * it as there already when the product root has it, and as not for
+   * this scope otherwise — and so reads a vertical needing it the same
+   * way. A polyrepo product's services are repositories of their own,
+   * and keep it.
+   */
+  readonly placement?: Placement;
   /**
    * Every skill name installing this vertical may stage — the union
    * over its adapters' {@link Contribution.skills}, including the

@@ -17,7 +17,7 @@ import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { InstallVerticalResult } from '../../../../src/domain/core/install.js';
@@ -229,7 +229,7 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
         processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
-    ).rejects.toBeInstanceOf(ResolutionError);
+    ).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('hard-fails when no entrypoint arch tag is present (no adapter covers entrypoint)', async () => {
@@ -253,7 +253,7 @@ describe('walking-skeleton vertical (Quarkus CLI)', () => {
         processes: spawnProcessRunner,
         now: () => '2026-04-26T12:00:00Z',
       }),
-    ).rejects.toBeInstanceOf(ResolutionError);
+    ).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('rejects an invalid basePackage with a clear message', async () => {

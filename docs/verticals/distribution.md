@@ -9,38 +9,73 @@ keel add distribution
 Two shapes cover the same `build` / `release-channel` dimensions,
 selected by predicate:
 
-- **CLI projects** ship as **native binaries**: GraalVM
-  cross-compiles in a CI matrix and the binaries land on a release on
-  tag push.
-- **Server-shaped projects** (every HTTP stack and the SPA) ship as a
+- **Quarkus CLI projects on Gradle** ship as **native binaries**:
+  GraalVM cross-compiles in a CI matrix and the binaries land on a
+  release on tag push. Other CLIs cannot take distribution.
+- **Server-shaped projects** (the HTTP stacks and the SPA) ship as a
   **CI-built container image pushed to a registry on tag push**, plus
   a deployment descriptor.
 
+Its release workflows are read only at a repository's root. In a
+**monorepo product** a service refuses it (`keel.wrong-scope`) and
+keel installs none at the product root yet
+(`keel.uncoverable-vertical`); under the polyrepo layout each service
+is a repository and takes its own. See the
+[compatibility matrix](README.md#compatibility-matrix).
+
 ## Dimensions & adapters
 
-| Dimension                  | Adapter                           | Predicate                                                                  |
-| -------------------------- | --------------------------------- | -------------------------------------------------------------------------- |
-| `build`, `release-channel` | `distribution/quarkus-cli-native` | `framework.quarkus` + `arch.cli` + `pkg.gradle`, minus `runtime.jvm-image` |
-| `build`, `release-channel` | `distribution/jvm-container`      | `runtime.jvm` + `arch.server-http` (all 12 stacks)                         |
-| `build`, `release-channel` | `distribution/go-container`       | `lang.go` + `arch.server-http`                                             |
-| `build`, `release-channel` | `distribution/rust-container`     | `lang.rust` + `arch.server-http`                                           |
-| `build`, `release-channel` | `distribution/ts-container`       | `lang.typescript` + `runtime.node` + `arch.server-http`                    |
-| `build`, `release-channel` | `distribution/wc-container`       | `framework.web-components` + `arch.spa`                                    |
+| Dimension                  | Adapter                           | Predicate                                                                          |
+| -------------------------- | --------------------------------- | ---------------------------------------------------------------------------------- |
+| `build`, `release-channel` | `distribution/quarkus-cli-native` | `framework.quarkus` + `arch.cli` + `pkg.gradle`, minus `runtime.jvm-image`         |
+| `build`, `release-channel` | `distribution/jvm-container`      | `runtime.jvm` + `arch.server-http` + `deploy.container-image` (all 12 stacks)      |
+| `build`, `release-channel` | `distribution/go-container`       | `lang.go` + `arch.server-http` + `deploy.container-image`                          |
+| `build`, `release-channel` | `distribution/rust-container`     | `lang.rust` + `arch.server-http` + `deploy.container-image`                        |
+| `build`, `release-channel` | `distribution/ts-container`       | `lang.typescript` + `runtime.node` + `arch.server-http` + `deploy.container-image` |
+| `build`, `release-channel` | `distribution/wc-container`       | `framework.web-components` + `arch.spa` + `deploy.container-image`                 |
 
 ## The container family
 
 The release pipeline **builds the Dockerfile the
 [`containerization`](containerization.md) vertical emitted** — one
-image definition, no second build system. That is a prerequisite:
-`keel add distribution` on a server-shaped project refuses with the
-fix in the message until `keel add containerization` has run.
+image definition, no second build system. That is a prerequisite, and
+a declared one: every container adapter requires the
+`deploy.container-image` tag containerization adds, in its predicate.
+So every surface knows it before anything runs — the extras menu
+offers distribution as _needs Container image_ (`keel ui` ticks it for
+you), and on a server-shaped project without it, `keel add
+distribution` and `keel new --with distribution` alike install
+`containerization` with it, first, and say so in the plan's first
+note (`added Container image — needed by Distribution`). Naming both,
+in any order, is the same run.
+
+On a stack composing a CLI with an HTTP server (`quarkus-cli-rest`,
+`quarkus-cli-rest-kotlin` on Gradle), distribution **alone** resolves
+to `quarkus-cli-native` only: native binaries, no image pipeline —
+it covers both dimensions without an image, so it is ready rather than
+waiting on one. Add `containerization` in the same run and the image
+is built first; its flavor then decides which pipeline ships it (the
+JVM flavor excludes the native adapter). Adding `containerization` to
+such a project later does not touch the native release already there:
+the run proposes re-rendering distribution, and `keel add
+containerization --refresh distribution` (or `keel add distribution
+--reapply` afterwards) takes it up — asking the image pipeline's
+questions, which the native release never had. The pipeline it then
+renders builds the JVM image's fast-jar, as a fresh project's does.
+Until distribution is re-rendered it publishes no image, so `keel add
+iac` there is refused as `keel.needs-refresh`, naming the re-render
+(_"Infrastructure as code needs Container image, then Distribution
+re-rendered — …"_), with `keel add iac --refresh distribution` as its
+hint: that one run installs the image, re-renders distribution after
+it, and installs `iac`.
 
 What each family's pipeline does on a `v*` tag:
 
 - **JVM** — provisions JDK 25 (or GraalVM, when the containerization
   install recorded the native flavor — the dial is read from the
-  manifest, never re-asked, so the pipeline always builds the
-  artifact the Dockerfile copies), runs the recorded build system's
+  manifest, never re-asked, and a JVM image's own record wins over the
+  native runtime a native-binary release left behind, so the pipeline
+  always builds the artifact the Dockerfile copies), runs the recorded build system's
   package command, then `docker build` + push.
 - **Go** — a static Linux binary pinned to the project's own
   `go.mod` toolchain, then the distroless image.

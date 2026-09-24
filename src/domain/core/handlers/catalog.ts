@@ -47,6 +47,7 @@ import {
   entrypointStep,
   frameworkPaths,
   languageChoices,
+  languageRuntime,
   pathFor,
   shapeChoices,
   wizardPaths,
@@ -127,6 +128,7 @@ function describeLanguage(
     id: language.value,
     label: language.label,
     doc: language.doc,
+    runtime: languageRuntime(language.value),
     frameworks: frameworkPaths(paths, shape, language.value).map((framework) =>
       describeFramework(paths, shape, language.value, framework.id, framework.label),
     ),

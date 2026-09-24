@@ -28,8 +28,12 @@
  * House rule: the release pipeline builds the Dockerfile the
  * `containerization` vertical emitted — one image definition, no
  * second build system. That is why every adapter here requires the
- * Dockerfile to exist (the `deploy.container-image` tag) before it
- * will emit a pipeline that builds it.
+ * Dockerfile to exist — the `deploy.container-image` tag, in its
+ * predicate — before it will emit a pipeline that builds it. A
+ * declaration rather than a check inside `contribute()`, so every
+ * reader sees it before anything runs: the planner puts
+ * containerization ahead of distribution, the menus say distribution
+ * needs it, and a front door refuses a set that leaves it out.
  *
  * 12-factor, binding: the pushed image is environment-agnostic — one
  * image serves every environment — and every emitted descriptor
@@ -53,6 +57,8 @@ import {
   DISTRIBUTION_PIPELINE_SECTION,
   type CiProvider,
 } from './ci-pipeline.js';
+import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
+import { bootstrapAnswers } from './project-identity.js';
 
 /** The tag every distribution container adapter promotes. */
 export const DIST_CONTAINER_TAG: Tag = 'dist.container-image';
@@ -104,27 +110,22 @@ export function distributionProvider(ctx: Ctx, requesterId: string): CiProvider 
 }
 
 /**
- * The release pipeline builds the Dockerfile the `containerization`
- * vertical emitted, so distribution without it would push nothing.
- * Fails with the fix in the message rather than letting the emitted
- * pipeline fail on the host.
- */
-export function requireContainerImage(manifest: ManifestV2, requesterId: string): void {
-  if (manifest.tags.includes('deploy.container-image')) return;
-  throw new Error(
-    `${requesterId}: the release pipeline builds the Dockerfile the containerization vertical emits — run 'keel add containerization' first ('deploy.container-image' is not in the manifest tag set)`,
-  );
-}
-
-/**
- * The project name recorded by whichever walking-skeleton bootstrap
- * ran, used for descriptor defaults (e.g. `OTEL_SERVICE_NAME`, the
- * Helm chart name). Falls back to `app` for manifests that predate
- * the answer.
+ * The project name recorded by the walking-skeleton bootstrap this
+ * project ran — among keel's own, the one its tags match
+ * (`./project-identity.ts`), so a name an older manifest recorded for
+ * another family's bootstrap is never the one read — used for
+ * descriptor defaults (e.g. `OTEL_SERVICE_NAME`, the Helm chart name).
+ * A bootstrap keel does not ship (a plugin's) is found as before, by
+ * the first `walking-skeleton/` id recording a name. Falls back to
+ * `app` for manifests that predate the answer.
  */
 export function bootstrapProjectName(manifest: ManifestV2): string {
+  const own = bootstrapAnswers(manifest, IDENTITY_BOOTSTRAPS)?.['projectName'];
+  if (own) return own;
+  const shipped = new Set(IDENTITY_BOOTSTRAPS.map((bootstrap) => bootstrap.id));
   for (const [adapterId, answers] of Object.entries(manifest.answers)) {
-    const name = adapterId.startsWith('walking-skeleton/') ? answers['projectName'] : undefined;
+    if (shipped.has(adapterId) || !adapterId.startsWith('walking-skeleton/')) continue;
+    const name = answers['projectName'];
     if (name) return name;
   }
   return 'app';
@@ -187,7 +188,6 @@ export async function containerDistribution(
   ctx: Ctx,
   spec: ContainerDistributionSpec,
 ): Promise<Contribution> {
-  requireContainerImage(ctx.manifest, spec.id);
   const provider = distributionProvider(ctx, spec.id);
   const deploy = deployFlavor(ctx.answer('deploy'), spec.id);
 

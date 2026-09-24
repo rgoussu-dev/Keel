@@ -32,6 +32,7 @@ import type {
   ContributionPatch,
 } from '../../contract/composition.js';
 import { eolOf, withEol } from '../util.js';
+import { readmeUpsert, toUpsertPatches } from './adopted-files.js';
 import type { TsWorkspaceShell } from './ts-bootstrap.js';
 import type { TsLayoutPaths } from './ts-module-layout.js';
 import type { TsPackageManager } from './ts-workspace.js';
@@ -76,9 +77,10 @@ const VITEST = '^4.1.0';
  * `tsconfig.base.json`, `.dependency-cruiser.cjs`, and on pnpm
  * `pnpm-workspace.yaml` — are identical regardless of which
  * entrypoint(s) resolve, so they upsert via a seed+identity patch
- * instead of a whole-file write; the root `package.json` and
- * `README.md` upsert too, with an idempotent per-arch `apply` — see
- * {@link tsSharedRootPatches}.
+ * instead of a whole-file write, `.gitignore` with its adoption in
+ * place of the identity (`adopted-files.ts`); the root `package.json`
+ * and `README.md` upsert too, with an idempotent per-arch `apply` —
+ * see {@link tsSharedRootPatches}.
  */
 export function tsEntrypointContribution(inputs: {
   readonly arch: TsRootArch;
@@ -101,24 +103,6 @@ export function tsEntrypointContribution(inputs: {
   };
 }
 
-/**
- * Converts whole-file contributions into upsert patches: the content
- * becomes both the seed (used when no entrypoint has written the
- * path yet) and, since the content is identical regardless of which
- * entrypoint runs, the target the `apply` leaves unchanged.
- */
-function toUpsertPatches(files: readonly ContributionFile[]): readonly ContributionPatch[] {
-  return files.map((f) => ({
-    target: f.path,
-    seed: contentToString(f.content),
-    apply: (existing) => existing,
-  }));
-}
-
-function contentToString(content: Buffer | string): string {
-  return Buffer.isBuffer(content) ? content.toString('utf8') : content;
-}
-
 /** The root-file patches one TS entrypoint bootstrap contributes. */
 export function tsSharedRootPatches(inputs: TsRootInputs): readonly ContributionPatch[] {
   return [
@@ -127,17 +111,16 @@ export function tsSharedRootPatches(inputs: TsRootInputs): readonly Contribution
       seed: packageJsonSeed(inputs),
       apply: (existing) => mergeRoot(existing, inputs),
     },
-    {
-      target: 'README.md',
-      seed: inputs.layout.layout === 'modulith' ? modulithReadmeSeed(inputs) : readmeSeed(inputs),
-      apply: (existing) =>
+    readmeUpsert(
+      inputs.layout.layout === 'modulith' ? modulithReadmeSeed(inputs) : readmeSeed(inputs),
+      (existing) =>
         appendReadmeSection(
           existing,
           inputs.layout.layout === 'modulith'
             ? modulithReadmeSection(inputs)
             : readmeSection(inputs),
         ),
-    },
+    ),
   ];
 }
 
@@ -276,8 +259,8 @@ function appendReadmeSection(
   section: { arch: TsRootArch; body: string },
 ): string {
   const marker = readmeMarker(section.arch);
-  if (existing.includes(marker)) return existing;
   const eol = eolOf(existing);
+  if (existing.includes(withEol(marker, eol))) return existing;
   return `${existing.trimEnd()}${withEol(`\n${marker}${section.body}`, eol)}`;
 }
 

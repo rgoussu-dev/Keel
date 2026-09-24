@@ -19,6 +19,9 @@ import { uiServer } from '../../../src/application/web/executable/server.js';
 import { TOKEN_HEADER } from '../../../src/application/web/contract/router.js';
 import type { UiServer } from '../../../src/application/web/contract/server.js';
 import type { RunActionsInputs } from '../../../src/domain/core/actions.js';
+import type { Action } from '../../../src/domain/kernel/action.js';
+import type { Mediator } from '../../../src/domain/kernel/mediator.js';
+import type { Result } from '../../../src/domain/kernel/result.js';
 import { installMediator } from '../../support/factory.js';
 
 /**
@@ -29,6 +32,19 @@ import { installMediator } from '../../support/factory.js';
 const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
 };
+
+/**
+ * A mediator whose every dispatch throws a plain `Error` — what the
+ * real one does with anything that is not a `DomainError`, because
+ * by the kernel's rule that is a bug and must not pass for a refusal.
+ */
+class ThrowingMediator implements Mediator {
+  constructor(private readonly message: string) {}
+
+  dispatch<A extends Action>(_action: A): Promise<Result<never>> {
+    return Promise.reject(new Error(this.message));
+  }
+}
 
 let cwd: string;
 let server: UiServer;
@@ -158,6 +174,72 @@ describe('the keel ui server', () => {
     });
     expect(response.status).toBe(422);
     expect(await response.json()).toMatchObject({ error: { code: 'keel.unknown-stack' } });
+  });
+
+  it('sends the refusal an extra is refused with as data, over the real engine', async () => {
+    // What the CLI builds its hint from reaches the page too: the gap,
+    // by kind, and the stack that carries the vertical.
+    const response = await post('/api/preview', {
+      cwd,
+      target: { kind: 'new-project', stack: 'go-cli', extraVerticals: ['persistence'] },
+      answers: {},
+    });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'keel.uncoverable-vertical',
+        message:
+          'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+        refusal: {
+          kind: 'unavailable',
+          vertical: 'persistence',
+          missing: { entrypoint: ['arch.server-http'] },
+          carriedBy: ['go-cli-http'],
+        },
+      },
+    });
+  });
+
+  it('holds an install body’s answers to the plan and to their choices, as refusals', async () => {
+    // The body reaches the same front door `--set` does. An answer
+    // outside its choices used to pass the sticky path unchecked and
+    // end in whatever the adapter threw; one keyed to another stack's
+    // adapter was written into the manifest.
+    for (const [answers, code] of [
+      [{ 'vcs/commit-conventions': { commitHook: 'maybe' } }, 'keel.invalid-answer'],
+      [{ 'walking-skeleton/go-bootstrap': { projectName: 'demo' } }, 'keel.unknown-answer'],
+    ] as const) {
+      const response = await post('/api/install', { cwd, target, answers });
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ error: { code } });
+    }
+    expect(await fs.readdir(cwd)).toEqual([]);
+  });
+
+  it('answers a throw nothing turned into a refusal with the envelope, sentence and all', async () => {
+    const sentence = 'fullstack/product-compose: product manifest declares no services';
+    const broken = await uiServer(new ThrowingMediator(sentence))({
+      host: '127.0.0.1',
+      port: 0,
+      cwd,
+    });
+    try {
+      const url = new URL(broken.url);
+      const response = await fetch(`${url.origin}/api/catalog`, {
+        headers: { [TOKEN_HEADER]: url.searchParams.get('token') ?? '' },
+      });
+      expect(response.status).toBe(500);
+      // JSON, so the page reads it with the one branch every refusal
+      // takes — a text/plain 500 is what reached it as "failed with
+      // 500" and threw the sentence away.
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(await response.json()).toEqual({
+        error: { code: 'keel.internal', message: sentence },
+      });
+    } finally {
+      await broken.close();
+    }
   });
 
   it('refuses an API request without the token', async () => {

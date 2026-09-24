@@ -287,6 +287,12 @@ whichever of the three is missing.
   [binding spec §3](../assets/project/AGENTS.md): no mocking libraries
   — fakes are built directly, side by side with the real adapters.
 - Every public API change is accompanied by a test change.
+- **The composition grid** (`tests/domain/core/composition-grid/`)
+  previews every stack × vertical in both phases and every product's
+  services under both repository layouts, and holds the invariants of
+  roadmap epic Q over them: a golden of every verdict, and a
+  known-violations file that can only shrink. How to read and
+  regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md).
 
 ### End-to-end tests
 
@@ -455,7 +461,7 @@ recorded there too:
   stronger check of that declarative surface than a mutant re-running
   the unit suite.
 - **Mutants run against `vitest.stryker.config.ts`**, which is the
-  ordinary config minus two suites — both excluded by construction,
+  ordinary config minus three suites — all excluded by construction,
   not by environment. `tests/e2e/` decides for itself whether to run,
   and on a box with a JDK on PATH it would happily build a real
   project once per mutant. `tests/version-pins.test.ts` is a text
@@ -472,7 +478,12 @@ recorded there too:
   version literal in `src/domain/core/adapters/` would fail the guard
   and be scored killed — coverage credited to an assertion nobody
   wrote. The guard's home is `verify`, on every push and PR, against
-  the real tree.
+  the real tree. The composition grid
+  (`tests/domain/core/composition-grid/`) sweeps the registry in a
+  `beforeAll`, which the runner attributes to no test: its own tests
+  cover nothing, so it could kill no mutant, and a mutant only it
+  reaches would count as static — Ignored under `ignoreStatic`,
+  rather than reported as uncovered.
 
 Incremental mode is on: `reports/stryker-incremental.json`
 (gitignored) records what was tested against which code, so a re-run
@@ -894,6 +905,11 @@ the operator's machine would report it as a harness finding.
   registers in its vertical's adapter list.
 - **A vertical** lives in `src/domain/core/verticals/` and declares
   the dimensions its adapters must cover.
+- **A stack or a vertical** adds cells to the composition grid.
+  Regenerate the grid's goldens (`KEEL_UPDATE_GOLDEN=1` over
+  `tests/domain/core/composition-grid`, greenfield first — brownfield's
+  I5 reads its golden) and read the verdict diff; a cell that breaks
+  an invariant fails the grid rather than joining its known file.
 
 See the [composition model](composition.md) for the vocabulary, and
 the [roadmap](roadmap.md) for what's wanted next.

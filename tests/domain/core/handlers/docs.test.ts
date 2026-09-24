@@ -136,7 +136,7 @@ describe('keel docs', () => {
       await mediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers: {},
           interactive: false,
           dryRun: false,

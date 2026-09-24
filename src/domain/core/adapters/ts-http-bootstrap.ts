@@ -19,6 +19,7 @@ import {
   TS_BOOTSTRAP_QUESTIONS,
   TS_CLI_BOOTSTRAP_ID,
   TS_HTTP_BOOTSTRAP_ID,
+  TS_HTTP_BOOTSTRAP_PREDICATE,
 } from './ts-bootstrap.js';
 import { tsEntrypointContribution } from './ts-shared-root.js';
 
@@ -30,7 +31,7 @@ export const tsHttpBootstrapAdapter: Adapter = {
   id: TS_HTTP_BOOTSTRAP_ID,
   vertical: 'walking-skeleton',
   covers: ['entrypoint'],
-  predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
+  predicate: TS_HTTP_BOOTSTRAP_PREDICATE,
   questions: TS_BOOTSTRAP_QUESTIONS,
   // A workspace carrying both entrypoints resolves both
   // bootstraps, and they declare the same two sticky questions:

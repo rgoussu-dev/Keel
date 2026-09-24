@@ -27,6 +27,18 @@ The single composable unit. Each adapter declares:
 - a `contribute()` function returning files, patches, deferred
   actions, [skills](#harness-contributions), and tags to add.
 
+A question's **choices** may carry a `predicate` of their own, in the
+same grammar, when only some projects can take them: the persistence
+engine's `mariadb` requires `runtime.jvm`, and the migrations tool's
+`liquibase` excludes it. A choice is offered exactly where its
+predicate matches the tags of the project being asked — the terminal
+prompt and `keel.preview` list only those, and a `--set` or an install
+body naming another is refused as outside the question's choices
+(`keel.invalid-answer`) before anything is written. One function
+computes that list (`offeredIn`, in `domain/core/answers.ts`), so what
+is offered and what is taken cannot disagree. A choice without a
+predicate is offered wherever its adapter runs.
+
 > Naming note: a _composition adapter_ (`git-init`,
 > `quarkus-cli-bootstrap`, …) is keel **domain content** — a unit
 > contributing files to a scaffolded project — not a hexagonal adapter
@@ -43,12 +55,9 @@ adapter; an uncovered dimension **hard-fails the install with a
 message naming the gap** — that is why `keel add observability` on a
 CLI project refuses to half-install (no probe surface to cover).
 
-The refusal also names what would close the gap: `coverageGap` picks
-the adapter _nearest_ to matching and reports its unmet `requires`, so
-the message says `would need arch.server-http` rather than only which
-dimension is empty. `resolveVertical` throws from that same gap, so
-the refusal a user runs into and the one a front door shows ahead of
-time cannot say different things.
+The refusal also says what would close the gap, in the words the
+project was picked in rather than the engine's — see
+[Refusals](#refusals) below.
 
 A vertical also declares **`promotes`**: every tag installing it may
 add, the union over its adapters' `tagsAdd` including the ones only
@@ -56,14 +65,200 @@ some answers produce (either container-image flavor, every SQL
 engine, either CI provider). It exists because a tag promoted at
 install time is invisible to anything reasoning _before_ the install,
 and something has to: `keel new --with containerization,distribution,iac`
-is a legal composition only because `distribution` promotes the
-`dist.container-image` tag `iac` is keyed on, so a front door that
-checked coverage flatly would refuse the very composition `--with`
-exists for (see [`keel new --with`](cli.md#keel-new)). Over-declaring
-is safe — it only defers a refusal to the resolver. Under-declaring
-would refuse a legal composition, so the installer checks each
-contribution's `tagsAdd` against the declaration and throws on a tag
-no vertical claims.
+is a legal composition only because `containerization` promotes the
+`deploy.container-image` tag `distribution`'s container adapters
+require, and `distribution` the `dist.container-image` tag `iac` is
+keyed on, so a front door that checked coverage flatly would refuse
+the very composition `--with` exists for (see
+[`keel new --with`](cli.md#keel-new)). Over-declaring is safe — it
+only defers a refusal to the resolver. Under-declaring would refuse a
+legal composition, so the installer checks each contribution's
+`tagsAdd` against the declaration and throws on a tag no vertical
+claims.
+
+A prerequisite is therefore a **`requires` entry**, never a check
+inside `contribute()`: a tag some other vertical promotes, in the
+adapter's own predicate. `iac` has always been keyed that way;
+`distribution`'s container adapters now are too, on the image
+`containerization` builds — which used to be a throw inside their
+shared `contribute()` that no menu, no front door and no planner could
+see, so distribution was offered everywhere and refused on install.
+
+A union over-offers, though: on a Quarkus CLI the one distribution
+adapter that matches builds native binaries, so reading
+`distribution`'s union there promises the `dist.container-image` tag
+`iac` needs and never delivers it. An adapter therefore may declare
+**`promotes`** of its own — its share of the union, which the
+registry holds to being inside it and the installer holds its
+`tagsAdd` to. `quarkus-cli-native` declares `runtime.graalvm-native`,
+the container distribution adapters `dist.container-image`, and the
+Go, Rust, TypeScript and SPA image adapters `deploy.container-image`;
+the JVM image adapters keep the union, since which flavor they
+promote is an answer. An adapter declaring none is read as promoting
+the whole union.
+
+A vertical may also declare **`reads`**: the verticals whose presence
+its `contribute()` reads, so that when both are in one run it installs
+after them. `distribution` reads `persistence` and `observability` —
+its deployment descriptor carries `DB_URL` and the OpenTelemetry
+variables only when they are there — and `persistence` reads
+`observability`. It is a soft edge, not a requirement, and not
+`Adapter.after` (which orders adapters within one vertical). The
+registry ignores a read of an id nobody registers, and refuses a
+cycle.
+
+Both are read by the **planner**,
+[`planner.ts`](../src/domain/core/planner.ts): `readiness` says
+whether a vertical is _included_ on a scope, _ready_ to install on its
+own, _needs_ other verticals first (the smallest such set, in install
+order), or is _unavailable_ — with the gap split into a missing
+entrypoint, a missing peer and the preset's identity, and the nearest
+stacks that do carry it — and `plan` closes a requested set over its
+prerequisites and orders it: after whatever feeds a tag its adapters
+mention, then after what it reads, then as named. Two equally small
+sets of prerequisites (two plugins supplying one capability) are
+refused naming both rather than guessed between. A vertical declaring
+no dimensions (`gateway`) applies only where some adapter matches, so
+with no linked project it is unavailable rather than an install of
+nothing.
+
+The planner is the **one reading of readiness**, and every surface
+asks it: the extras menu (`keel.dials`, and the terminal's
+multi-select) offers what is ready or needs others, labelled with
+what it needs, and `keel.dials` lists the rest with the refusal
+`keel new --with` gives each; the brownfield cards and `keel add
+--list` read it through `keel.project-status`, so `keel ui` groups
+them the same way on both halves, before any click; `keel.dials`
+snaps a page's extras to their closure,
+reporting each vertical it added or dropped and why; `keel new --with`
+installs its extras in plan order, whatever order they were named in —
+it hands the planner the set by id, so verticals nothing ties together
+go in by id and every permutation writes the same bytes; and both
+`keel new --with` and `keel add` refuse — before a file
+moves — a vertical the scope cannot carry, or a tie between two sets
+of prerequisites (`keel.missing-prerequisites`, naming both). A set
+missing a prerequisite is **completed** instead: both front doors
+install the closure in one run, and the report's first note names
+what it added — "added Container image, Distribution — needed by
+Infrastructure as code" — the same set `keel.dials` ticks on the page.
+
+After a `keel add`, the planner also **proposes** what the run did not
+do: re-rendering an installed vertical whose `reads` names one the run
+installed (distribution, rendered before persistence, has no `DB_URL`),
+or whose adapters resolve differently on the tags the run left (a
+native-only distribution once a JVM image arrives). Proposed, never
+done — a re-render overwrites what the vertical owns — and
+`keel add … --refresh <ids>` takes it up in the same run, ordered like
+any other vertical of the set.
+
+### Refusals
+
+Every refusal of a vertical or a file is **data first**: a `Refusal`
+([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
+`RefusalError` beside its code and the sentence written from it.
+
+| Kind            | Carries                                                                                                          | Raised when                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle                                     |
+| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry)     | it is asked of a composite product rather than one of its services                                |
+| `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together                                          |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way                                        |
+| `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                                                    |
+
+One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
+that data as a sentence, and every surface speaks it: the planner's
+refusals at both front doors, `keel.dials`' reasons for dropping an
+extra, the resolver's last-line throw, `keel add`'s product-root
+redirect and `keel new --with` on a composite. The two file sentences
+are spelled beside their errors in the contract, because an adapter —
+a plugin's too — raises them, and the builder reads them from there.
+
+The sentence is **phase-neutral**: `keel new --with persistence` on
+`go-cli` and `keel add persistence` on the project it scaffolds are
+refused in the same words under the same code, and the composition
+grid's I5 holds every single-service stack to that. It never says
+`--with` or `keel add`: the remedy one command has is its front end's,
+built from the refusal's fields — the CLI prints it on a `hint:` line
+(_drop it from `--with`, or scaffold go-cli-http, which carries it_;
+_`keel link <path>` first_; _`cd backend && keel add persistence`_;
+_move `go.mod` aside_ before `keel new`, never after, where the file
+may be a product root's own), and `keel ui` receives the refusal itself
+in the 422 body, as `error.refusal`.
+
+And it **never prints a tag.** A gap is a fact about tags — the unmet
+`requires` of the adapter nearest to matching, as `coverageGap` and the
+planner compute it — and most of those name something no command can
+add. So the sentence sorts it first, naming the vertical by its title:
+
+- an **entrypoint** the project lacks is named by the label the stack
+  finder offers it under — _"Observability needs an entrypoint this
+  project does not have: HTTP server — a REST endpoint"_;
+- a tag the preset fixes at `keel new` (`lang.*`, `framework.*`,
+  `runtime.*`, `pkg.*`, `layout.*`, an `arch.*` that is not an
+  entrypoint) is an **identity** gap, never offered as a remedy — the
+  vertical _"has no adapter for this project's stack"_, followed by
+  _"; the nearest stack that carries it: …"_ where a stack of the
+  project's shape carries it on the project's dials (never its own
+  preset, which does not), or, when only the build system
+  differs, _"…has no adapter for this project's build system; it needs
+  Maven — …"_ — which an adapter a dial away is read as ahead of one an
+  entrypoint away: a Quarkus CLI on Maven is a build system from
+  distribution's native adapter, and never meant to have an HTTP
+  server;
+- a **peer** tag is what a linked project projects, so the gateway
+  reads as _"wires linked projects, and no linked project serves it
+  here — link one that does first"_;
+- any other tag is a **capability** some vertical adds, named by that
+  vertical — _"Distribution needs what Continuous integration adds,
+  which this project does not have yet"_.
+
+One gap is not about the project at all but about how an installed
+vertical was rendered: a Distribution that shipped a Quarkus CLI as
+native binaries, before the project had an image, builds none for
+Infrastructure as code to deploy, and re-rendered beside a JVM image
+it would. `keel add` refuses that as `keel.needs-refresh` — _"Infrastructure
+as code needs Container image, then Distribution re-rendered — as it
+was rendered, Distribution does not add what Infrastructure as code
+needs"_ — rather than as a capability nothing can add, and its hint
+names the run that re-renders it: `keel add iac --refresh
+distribution`. A re-render rewrites files the user may have edited,
+so it is never planned on its own accord (the refusal's `refresh`
+field names it).
+
+The tags travel in the refusal's `missing` field, for a front end or an
+adapter author that wants the engine's view. When one adapter is a
+framework away and another an entrypoint away, the gap is the
+entrypoint — the one a sibling preset has — so `distribution` on a
+Spring CLI reads as the HTTP server it lacks, not as Quarkus.
+`resolveVertical` throws from the same gap, through the same builder, so
+the refusal a user runs into and the one a front door shows ahead of
+time cannot say different things; only an adapter `after` cycle, which
+is an adapter author's bug, is a `ResolutionError` of its own. At a
+composite product's root `keel add` reports no gap at all: a root
+carries almost no tags, so its nearest adapter is advice for some other
+product, and a vertical the root cannot carry is refused as
+`elsewhere`, naming the services that can take it — _"Persistence
+belongs to a service, not to the product root — it goes in
+backend/"_. That, and a monorepo service asked for what only a
+repository root reads — _"Continuous integration cannot go in a
+monorepo service: its pipeline is read only at the repository root,
+which in a monorepo is the product root — per-service pipelines need
+the polyrepo layout"_ — are refused under `keel.wrong-scope`: not
+here, where `keel.uncoverable-vertical` is not in this project. Where
+no service of a monorepo can take the vertical because it needs what
+only the repository root may carry, the root's sentence says so, and
+ends on the same way forward: _"Infrastructure as code belongs to a
+service, not to the product root — none of its services can carry it,
+since it needs Distribution, which cannot go in a monorepo service: …
+per-service releases need the polyrepo layout"_ (each such service's
+`repositoryOnly`, in the refusal's data).
+
+A broken rule reads as its reason with its id — _"… (rule
+'walking-skeleton/peer-context-needs-modulith')"_ — so it can be looked
+up. The one exception is `keel add module` on the flat layout, whose
+sentence `keel ui` shows under the tab it disables: the rule's reason
+alone, as a sentence of its own, its id in the refusal's `rules`.
 
 ### Stacks
 
@@ -144,65 +339,101 @@ renders from that. See [`keel ui`](ui.md#the-dials-are-narrowed-by-the-same-rule
 
 Concretely, the menus that narrow as answers land. The first five are
 the same functions behind both front ends, in `domain/core/dials.ts`;
-the last is brownfield and lives with the project status:
+the last two are brownfield and live with the project status:
 
 | menu                       | filtered by                                                                        |
 | -------------------------- | ---------------------------------------------------------------------------------- |
 | build system               | some module layout must still complete it legally                                  |
 | module layout              | exact — the build system is already settled                                        |
 | peer context               | offered only where switching it on stays legal                                     |
-| extra verticals (`--with`) | coverage (`coversFor`) **and** the vertical's own rules                            |
+| extra verticals (`--with`) | the planner's readiness: ready, or needs others first — coverage, rules and order  |
 | the stack drill-down       | presets no setting of their dials can build are absent from all four steps at once |
 | `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal |
+| `keel add` cards           | the planner's readiness over the project, its installed verticals and their rules  |
 
 A preset is hidden only when **every** setting of its dials is
 refused. Anything stricter would take away a preset reachable by
 moving a dial.
 
-The last row is brownfield rather than a menu, and the shape is the
-same: `ProjectStatusHandler` answers `canAddModule` for a project
-already on disk, and a form greys the control out by it. Two rules
-say the same sentence about two doors, because two different pieces
-own them — `walking-skeleton/peer-context-needs-modulith` for the
-second context `keel new --with-peer-context` scaffolds, and
+The last two rows are brownfield rather than menus, and the shape is
+the same: `ProjectStatusHandler` answers for a project already on disk
+with the function the command's own front door refuses by, and a form
+reads the answer before the click. `canAddModule` greys the bounded
+context control out, with `moduleRefusal` saying why. Two rules say
+the same sentence about two doors, because two different pieces own
+them — `walking-skeleton/peer-context-needs-modulith` for the second
+context `keel new --with-peer-context` scaffolds, and
 `bounded-context/context-needs-modulith` for the one `keel add module`
-adds later.
+adds later. Each `keel add` card carries the planner's readiness —
+ready, needs others first, or unavailable with the very refusal the
+add gives — and a rule reads there as it does at the front door: over
+what is installed and what comes in together. A rule an installed
+vertical declares binds a newcomer whose tags would break it, exactly
+as the newcomer's own rules do, and the install loop holds every such
+rule again after each vertical folds in the tags it really added.
 
-#### Three kinds of refusal, and only one of them is a conflict
+#### Four kinds of refusal, and only one of them is a conflict
 
 A `Conflict` is about **tags**. That is the whole test, and it is
 narrower than "the command said no" — most of what keel refuses is
-not a capability sitting badly with another capability. The three
-kinds, so the next reader does not re-run the audit:
+not a capability sitting badly with another capability. The kinds, so
+the next reader does not re-run the audit:
 
-| kind                 | reads as                                     | lives in                            |
-| -------------------- | -------------------------------------------- | ----------------------------------- |
-| **tag conflict**     | "capability X cannot sit with capability Y"  | a `Conflict` on the piece owning it |
-| **structural fact**  | "this preset/project is not shaped for that" | a check where the shape is known    |
-| **capability probe** | "no adapter here would emit anything"        | `coversFor` / `emitsFor`            |
+| kind                   | reads as                                     | lives in                                                                |
+| ---------------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
+| **tag conflict**       | "capability X cannot sit with capability Y"  | a `Conflict` on the piece owning it                                     |
+| **structural fact**    | "this preset/project is not shaped for that" | a check where the shape is known                                        |
+| **declared placement** | "this is read only at a repository root"     | `Vertical.placement` / `Adapter.providesInServices`, read by `scope.ts` |
+| **capability probe**   | "no adapter here would emit anything"        | `coversFor` / `emitsFor`                                                |
 
 **Structural facts** are the ones that look like conflicts and are
 not, because the thing they turn on is not a tag:
 
 - `stack.services` being non-empty is what makes a preset composite,
-  and it is why `keel new` refuses `--module-layout`,
-  `--with-peer-context` and `--with` on one. Those are refusals about
-  _flags that do not apply at a product root_, not about capabilities
-  — a composite's services can perfectly well each be a modulith.
+  and it is why `keel new` refuses `--module-layout` and
+  `--with-peer-context` on one, and sends each `--with` extra into a
+  service — the one named (`--with backend:persistence`), or the one
+  service that can take it — rather than the product root. Those are
+  refusals about _flags that do not apply at a product root_, not
+  about capabilities — a composite's services can perfectly well each
+  be a modulith.
 - `manifest.services` being non-empty is the same fact brownfield, and
-  why `keel add module` sends the user into a service directory.
+  why `keel add module` sends the user into a service directory — and
+  `keel add` too, for any vertical the planner reads the root as unable
+  to carry (`keel.wrong-scope`, naming the services that can).
 - `manifest.modules` already holding the name, or holding a
   `--consumes` target with no seam, is manifest **state**: it takes a
   name to check, and a name is not a tag.
 - An unknown stack or vertical id, `--layout` that is neither
   `monorepo` nor `polyrepo`, a build system the stack does not list,
-  `--with` naming the same vertical twice — input validation against
-  what the registry declares.
+  `--with` or `keel add` naming the same vertical twice — input
+  validation against what the registry declares.
+
+**Declared placements** are the structural fact a vertical brings with
+it. A monorepo product's services are directories of one repository,
+and nothing in a service's tags says so — only the product root's
+manifest does, by listing it. So a vertical whose output only a
+repository root reads — `vcs`'s hooks and changelog, `ci`'s pipeline,
+`distribution`'s release workflows — declares `placement: { scope:
+'repository', because }`, and product glue that builds something inside
+its services — the fullstack `compose.yaml`'s images — declares
+`providesInServices: { vertical, stacks }` on its adapter, which writes
+exactly those. `scope.ts` reads both off the manifests on disk
+(`scopeOf`, through `ManifestStore`) and hands the planner a value: in
+a monorepo service, the product root's placed verticals and what its
+glue builds read as there already, and a placed vertical the root does
+not have — or a vertical needing one, `iac` needing `distribution` —
+as not for that scope (`keel.wrong-scope`). `keel new` reads the same
+placement to leave those verticals out of a monorepo service, so what
+it scaffolds and what `keel add` refuses there cannot drift. No tag is
+minted for either: the fact is where a directory sits, and a
+declaration read by a structural check is the honest home for it.
 
 **Capability probes** ask the adapter set a question no tag answers:
 would anything actually be emitted here? `coversFor` and
-`coverageGap` ask it of a vertical's dimensions
-(`keel.uncoverable-vertical`, `keel.extra-verticals-order`);
+`coverageGap` ask it of a vertical's dimensions, and the planner of a
+vertical's readiness on a scope, with what other verticals would add
+(`keel.uncoverable-vertical`, `keel.missing-prerequisites`);
 `emitsFor` asks it where a dimension cannot speak, because a context
 adapter declares `covers: []` (`--with-peer-context` and
 `keel add module` both, see [context-support.ts](../src/domain/core/adapters/context-support.ts)).
@@ -702,9 +933,26 @@ service is a **full stack installed into its own directory** (own
 tree, own manifest) with its siblings' projections in scope. The
 repository layout (`monorepo`/`polyrepo`) is the user's choice and is
 deliberately **not a tag**: no adapter behaves differently by topology
-— what varies (where git runs, whether
-[product-root glue](verticals/fullstack.md) exists) belongs to the
-orchestrator.
+— what varies (whether [product-root glue](verticals/fullstack.md)
+exists) belongs to the orchestrator, and where a vertical may go is its
+own declared placement (above): under monorepo, `vcs` runs once at the
+product root because it declares the repository root as its place.
+`keel new` in a directory inside a product that lists no service there
+is refused (`keel.inside-product`): adding a service to a product is
+not supported yet.
+
+A service's extras (`--with backend:persistence`) are planned on one
+scope before anything is written (`scope.ts`'s `presetServiceScope`):
+its preset's verticals and the product's for it, on the build system
+chosen for it and its siblings' projections, and under monorepo what
+the product root gives it. The service's extras menu (`keel.dials`),
+the routing of an extra named without a service, and the install all
+read that scope. Each scope stages into a tree of its own, so a file
+two of them would write is found only by comparing them:
+`keel new` does, after staging and before it reports the plan, and
+refuses the product (`keel.cross-scope-write`) naming the adapter that
+wrote it in each — a preview and an install alike, rather than the
+scope committed last silently replacing the other's file.
 
 ## The toolchain block
 

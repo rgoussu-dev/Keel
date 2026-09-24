@@ -13,7 +13,10 @@ import type { TreeChange } from './ports/tree.js';
 export interface InstallReport {
   /** Declared harness elements suppressed because this project has no harness; absent when zero. */
   readonly skippedHarnessElements?: number;
-  /** What was installed: the stack id for `new`, the vertical id for `add`. */
+  /**
+   * What was installed: the stack id for `new`; for `add`, the vertical
+   * ids named, space-separated in the order they were named.
+   */
   readonly subject: string;
   /** Every file the install staged, in deterministic path order. */
   readonly changes: readonly TreeChange[];
@@ -21,6 +24,34 @@ export interface InstallReport {
   readonly actions: readonly string[];
   /** False under dry-run: nothing was written and no action ran. */
   readonly committed: boolean;
+  /**
+   * What the run decided that the caller did not spell out, one
+   * sentence each: first the verticals it installed because a named
+   * one needs them — `added Container image, Distribution — needed by
+   * Infrastructure as code`; then `installed in dependency order:
+   * containerization, persistence, distribution` when the order named
+   * put one ahead of a vertical it needs or reads; then, under `add`,
+   * each {@link refreshProposals} entry in words. Absent when there is
+   * nothing to say.
+   */
+  readonly notes?: readonly string[];
+  /**
+   * The installed verticals this run proposes re-rendering and did not
+   * — `keel add`'s `--refresh`, or a later `--reapply`, takes one up.
+   * Absent when there are none. Proposed, never done: a re-render
+   * overwrites what the vertical owns, so it is the user's to ask for.
+   */
+  readonly refreshProposals?: readonly RefreshProposal[];
+  /**
+   * Every adapter the run resolved, once each, in the order they first
+   * ran — across every scope a product writes — as far as an answer
+   * supplied for the run is concerned: the ids an answer may be keyed
+   * to, and the questions each asks. What `keel.preview` holds the
+   * answers it was sent against, so it reports the ones this run would
+   * refuse (`InstallPreview.unusedAnswers`). Absent when the run
+   * resolved none.
+   */
+  readonly resolvedAdapters?: readonly ResolvedAdapter[];
   /**
    * Unified diffs against the working tree, one per `modify` change,
    * in the same path order. Populated by reapply only — a plain
@@ -30,6 +61,43 @@ export interface InstallReport {
   readonly diffs?: readonly FileDiff[];
 }
 
+/**
+ * An installed vertical a `keel add` run left as it was rendered,
+ * although what the run installed changes what it would render now —
+ * and why, in either or both of two ways.
+ */
+export interface RefreshProposal {
+  /** The installed vertical's id. */
+  readonly vertical: string;
+  /**
+   * The verticals this run installed whose presence its
+   * `contribute()` reads (`Vertical.reads`) — distribution's deploy
+   * descriptor, rendered before persistence was there, has no
+   * `DB_URL`. In install order; empty when it reads none of them.
+   */
+  readonly reads: readonly string[];
+  /**
+   * The adapters it resolves to on the tags the project had, and on
+   * the tags the run leaves, by id — present only when they differ:
+   * a native-only distribution on a project that has just gained a
+   * JVM container image resolves to the image's release pipeline now.
+   */
+  readonly adapters?: { readonly before: readonly string[]; readonly after: readonly string[] };
+}
+
+/**
+ * An adapter an install run resolved, told by what an answer supplied
+ * for the run can reach: its id, the questions it asks, and the ids it
+ * reads answers under besides its own (`Adapter.sharesAnswersWith`).
+ */
+export interface ResolvedAdapter {
+  readonly id: string;
+  /** The ids of the questions it declares, in declaration order. */
+  readonly questions: readonly string[];
+  /** Its `Adapter.sharesAnswersWith`, in declared order; absent when none. */
+  readonly sharesAnswersWith?: readonly string[];
+}
+
 /** A unified diff of one working-tree file a command would rewrite. */
 export interface FileDiff {
   readonly path: string;
@@ -37,7 +105,25 @@ export interface FileDiff {
   readonly diff: string;
 }
 
-/** Sticky answers supplied up front: adapterId → questionId → value. */
+/**
+ * Sticky answers supplied up front: adapterId → questionId → value.
+ *
+ * Each reaches only the adapter it is keyed to, or one that shares the
+ * question with it (`Adapter.sharesAnswersWith`), and is recorded only
+ * by the adapter that read it. An adapter reads a question's answer
+ * from what the project records first, then from what is supplied —
+ * in both, under its own id before its siblings', in the order it
+ * lists them — so one answer settles a question its siblings share.
+ * An install refuses an answer nothing reads: a key no adapter of its
+ * plan reads, or a question none of them asks (`keel.unknown-answer`),
+ * one for an installed vertical's adapter or a question one has
+ * settled (`keel.frozen-answer`), and one a question shared with
+ * another key it was also given reads under that key instead
+ * (`keel.unknown-answer`); and a value outside the choices its
+ * question offers the project (`keel.invalid-answer`). `keel.preview`
+ * reports each of those (`InstallPreview.unusedAnswers`) rather than
+ * refusing.
+ */
 export type PresetAnswers = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
 /**
@@ -103,11 +189,17 @@ export interface NewProjectCommand extends Command<InstallReport> {
    */
   readonly withPeerContext?: boolean;
   /**
-   * Verticals to install **on top of** the stack's own list, in this
-   * order, as part of the same run — `persistence`, `distribution`,
-   * `iac`, … Ids from the brownfield registry
-   * (`domain/core/verticals/index.ts`), the same ones `keel add`
-   * takes.
+   * Verticals to install **on top of** the stack's own list, as part
+   * of the same run — `persistence`, `distribution`, `iac`, … Ids from
+   * the brownfield registry (`domain/core/verticals/index.ts`), the
+   * same ones `keel add` takes. A set, not a sequence: they install in
+   * the order they depend on one another (`domain/core/planner.ts`),
+   * the rest by id, whatever order they are named in — so every
+   * permutation writes the same bytes — and naming one twice is
+   * refused. A prerequisite of what it names that the set leaves out
+   * is installed with it, in its place in that order, and the report's
+   * first note names it; only a tie between two sets of prerequisites
+   * is refused, naming both.
    *
    * The greenfield counterpart of running `keel add <vertical>` once
    * per vertical straight after `keel new`, and it is genuinely not
@@ -116,24 +208,69 @@ export interface NewProjectCommand extends Command<InstallReport> {
    * four.
    *
    * When absent, interactive single-service installs prompt for it
-   * and non-interactive ones install none. Rejected on composite
-   * stacks, whose services declare their own extras — "which service
-   * gets it?" has no defensible default.
+   * and non-interactive ones install none.
+   *
+   * On a composite product each id goes to a service: a vertical the
+   * product installs of its own is set aside with a note, and any other
+   * to the one service whose readiness admits it (ready, or ready once
+   * its prerequisites are in), with a note naming it. Where several
+   * services would take it, or none, it is refused, naming each
+   * service and whether it can take it (`keel.wrong-scope`) — naming
+   * the service is then the user's, through {@link services}. Refused
+   * beside {@link services}: one command names its extras one way.
    */
   readonly extraVerticals?: readonly string[];
+  /**
+   * The extras of each service of a composite product, by service
+   * path — `keel new --with backend:persistence` — installed on top of
+   * what the product's preset gives that service, planned in that
+   * service's scope exactly as {@link extraVerticals} is planned on a
+   * single stack (a set, closed over its prerequisites; one already
+   * there set aside with a note). A path the product lists no service
+   * at, an id named twice for one service, and any use beside
+   * {@link extraVerticals} or on a single-service stack are refused
+   * (`keel.invalid-extra-verticals`). Absent, no service gets extras
+   * beyond its preset's.
+   */
+  readonly services?: Readonly<Record<string, ServiceExtras>>;
 }
 
-/** Layer an additional vertical onto an initialised project. */
+/**
+ * What one service of a composite product installs on top of its
+ * preset's verticals. @see NewProjectCommand.services
+ */
+export interface ServiceExtras {
+  /** Vertical ids, as {@link NewProjectCommand.extraVerticals} takes them. */
+  readonly extraVerticals: readonly string[];
+}
+
+/** Layer additional verticals onto an initialised project. */
 export interface AddVerticalCommand extends Command<InstallReport> {
   readonly kind: 'keel.add-vertical';
   readonly cwd: string;
-  /** Vertical id, e.g. `distribution`. */
-  readonly vertical: string;
+  /**
+   * Vertical ids, e.g. `['containerization', 'distribution']` — at
+   * least one. A set, exactly as `keel new --with` names one: planned
+   * by id, closed over its prerequisites (a vertical it needs that the
+   * project lacks is installed with it, and the report's first note
+   * says so), installed in the order they depend on one another in one
+   * run, whatever order they are named in. Naming one twice is refused.
+   */
+  readonly verticals: readonly string[];
+  /**
+   * Installed verticals to re-render in the same run, after what they
+   * read or what decides their adapters — the proposals a run reports
+   * (`InstallReport.refreshProposals`), taken up. Each re-renders under
+   * {@link reapply}'s posture: its recorded answers frozen, and an
+   * adapter it newly resolves to asked its questions like any first
+   * install. Absent, none.
+   */
+  readonly refresh?: readonly string[];
   readonly answers: PresetAnswers;
   readonly interactive: boolean;
   readonly dryRun: boolean;
   /**
-   * Re-render an **already installed** vertical from the answers the
+   * Re-render **already installed** verticals from the answers the
    * manifest recorded — the conservative day-2 path (roadmap L).
    *
    * Semantics: template-owned files (whole-file contributions) are
@@ -142,9 +279,12 @@ export interface AddVerticalCommand extends Command<InstallReport> {
    * an already-patched file refuses the whole run
    * (`keel.reapply-conflict`) — with no recorded base there is no way
    * to tell a template fix from a double application, so nothing is
-   * written. Answers are frozen: resolution is non-interactive and
-   * {@link answers} must be empty — changing an answer on reapply is
-   * deliberately out of scope for v1.
+   * written. Recorded answers are frozen: an adapter the manifest holds
+   * answers for resolves from them without asking, and an answer in
+   * {@link answers} for one is refused (`keel.reapply-frozen-answers`)
+   * — changing an answer on reapply is deliberately out of scope for
+   * v1. An adapter the vertical newly resolves to has nothing recorded,
+   * so it is asked, and takes {@link answers}, as a first install would.
    */
   readonly reapply?: boolean;
 }
@@ -332,12 +472,22 @@ export interface NewProjectTarget {
   readonly moduleLayout?: string;
   readonly withPeerContext?: boolean;
   readonly extraVerticals?: readonly string[];
+  /** Each service's extras, by path. See {@link NewProjectCommand.services}. */
+  readonly services?: Readonly<Record<string, ServiceExtras>>;
+  /**
+   * `false` leaves the preset's agent harness out — `keel new
+   * --no-agent-harness`. See {@link NewProjectCommand.agentHarness}.
+   */
+  readonly agentHarness?: boolean;
 }
 
-/** Layer a vertical — the subject of {@link AddVerticalCommand}. */
+/** Layer verticals — the subject of {@link AddVerticalCommand}. */
 export interface AddVerticalTarget {
   readonly kind: 'add-vertical';
-  readonly vertical: string;
+  /** See {@link AddVerticalCommand.verticals}. */
+  readonly verticals: readonly string[];
+  /** See {@link AddVerticalCommand.refresh}. */
+  readonly refresh?: readonly string[];
   readonly reapply?: boolean;
 }
 
@@ -386,14 +536,17 @@ export function installCommandFor(target: InstallTarget, run: InstallRun): Insta
         // means "ask", and a front end that has already offered the
         // list must be able to say "none".
         ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
+        ...(target.services === undefined ? {} : { services: target.services }),
+        ...(target.agentHarness === undefined ? {} : { agentHarness: target.agentHarness }),
       });
     case 'add-vertical':
       return addVerticalCommand({
         cwd: run.cwd,
-        vertical: target.vertical,
+        verticals: target.verticals,
         answers: run.answers,
         interactive: run.interactive,
         dryRun: run.dryRun,
+        ...(target.refresh === undefined ? {} : { refresh: target.refresh }),
         ...(target.reapply === true ? { reapply: true } : {}),
       });
     case 'add-module':

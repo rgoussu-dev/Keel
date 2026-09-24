@@ -66,3 +66,17 @@ export function countKinds(changes) {
   }
   return counts;
 }
+
+/**
+ * Whether a plan would do nothing at all: no file written, modified or
+ * removed, and no action run. Generating one would record a vertical
+ * as installed that put nothing on disk — the gateway at a product
+ * root once did exactly that, and then stood in the way of the real
+ * install — so the review holds Generate shut on it and says why.
+ *
+ * @param {{ changes: ReadonlyArray<unknown>, actions: ReadonlyArray<unknown> }} plan a preview or a report
+ * @returns {boolean}
+ */
+export function plansNothing(plan) {
+  return plan.changes.length === 0 && plan.actions.length === 0;
+}

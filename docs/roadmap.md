@@ -21,6 +21,13 @@ held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
 items below each carry an issue of their own.
 
+**Q** (supple composition) has landed: proposed from an audit of how
+`keel new`, `keel add`, the presets and `keel ui` exercise the
+composition model, it was sliced into the steps its section lists and
+landed one commit per step. Its successors — **R**, **S**, **T** and
+**U** — are named there, not yet sliced into issues or ordered against
+the backlog.
+
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
 [#69]: https://github.com/rgoussu-dev/keel/issues/69
@@ -105,6 +112,12 @@ sketch, on record:
   `containerization` a hard prerequisite — the adapters refuse with
   the fix in the message when `deploy.container-image` is absent,
   rather than emitting a pipeline that fails on the host.
+  _Superseded by Q1.3:_ that refusal was a throw inside
+  `contribute()`, which no menu, front door or planner could see — so
+  distribution was offered everywhere and refused on install. The
+  requirement is now a `requires` entry in each container adapter's
+  predicate, read by the planner: distribution is offered as _needs
+  Container image_, and refused up front without it, naming it.
 - **The provider is `ci`'s dial, reused, not a second question.**
   GHCR under `github-actions`, the GitLab Container Registry under
   `gitlab-ci` (release jobs appended to `.gitlab-ci.yml` via the
@@ -2116,7 +2129,10 @@ every change.
   half, and every field on it mirrors a refusal a handler would issue
   — `canAddModule` runs the same `emitsFor` probe `keel add module`'s
   front door runs, so a family with no context adapter greys the
-  control out instead of being told no after typing a name.
+  control out instead of being told no after typing a name. (`available`
+  listed every vertical not installed, readiness unconsulted, until
+  Q1.8 gave each card the planner's readiness and the refusal the add
+  would give.)
 
 - **The page** (`assets/web/`): framework-free custom elements on
   `@rgoussu.dev/planks`, the design system keel already emits for its
@@ -2151,7 +2167,1277 @@ init` and a resolved toolchain, not a zip. A remote service would
   real browser during development. A shard that boots Chromium to
   re-assert what the API tests already assert would buy a screenshot
   and cost a browser download; the day the page grows logic worth
-  testing through the DOM, that changes.
+  testing through the DOM, that changes. _Since changed:_ the page
+  grew that logic — a stepper, preset moves that keep the dials, a
+  refusal shown where it lands, extras that tick what they need — and
+  four browser suites (`tests/e2e/ui-*.test.ts`) ride the `web` shard,
+  which already had a browser. The latest, `ui-compose`, landed with
+  epic Q's Q1.5, where this decision is recorded as replaced.
+
+---
+
+## Q — Supple composition: one answer, asked everywhere ✅
+
+**Proposed 2026-09-23 from an audit, and landed** — Phase 0 to Phase 2
+below, one commit per step, every decision taken as recommended
+(_Decisions on record_). **R**, **S**, **T** and **U** remain: named at
+the end of this section, not part of Q. Anchored on [#117] ("one
+declaration, read twice"), which it extends from the stack drill-down
+to every vertical, in both phases.
+
+[#117]: https://github.com/rgoussu-dev/keel/issues/117
+
+**Goal.** `keel ui`, `keel new` and `keel add` should feel like one
+supple tool: every choice on screen either works or says, _before_
+it is picked and in the user's words, what it needs. At the audit the
+model answered correctly but late, in engine vocabulary, and sometimes
+as a crash: "vertical 'observability': no adapter covers dimension(s):
+health, request-context, telemetry, monitoring-stack — would need
+arch.server-http", or, in the page, `keel.web.http-500 POST
+/api/preview failed with 500`.
+
+### How the audit was run
+
+Every stack (34) × every vertical (14), greenfield (`keel.dials` +
+`keel.preview` with `extraVerticals: [v]`) and brownfield (scaffold,
+then `keel.project-status` + a preview of `keel add v`), through the
+real mediator with a fake `ProcessRunner` — plus the fullstack
+service directories under both repository layouts, a sweep of every
+choice of every question, and a walk of `keel ui` in headless
+Chromium. Every finding was re-checked by a second, adversarial pass.
+The prototype of that grid runs in ~6 s, which is why Q0.1 below
+lands it as a test.
+
+### What was actually wrong, at the audit
+
+**The engine agreed with itself.** Greenfield and brownfield gave the
+same verdict on all 392 single-service cells, and `keel new --with
+A,B` wrote a tree byte-identical to `keel new; keel add A; keel add
+B`. The shipped catalog held exactly one real dependency chain
+(containerization → distribution → iac) and one soft read
+(distribution reads whether persistence and observability are
+installed). The crankiness was around the engine, in five places —
+each below in the present of the audit, and each closed by the steps
+that follow:
+
+1. **Dependencies between verticals are not declared, so every reader
+   guesses.** Distribution's need for a container image is a plain
+   `throw` inside `contribute()` (`distribution-container.ts`
+   `requireContainerImage`), invisible to the menus, the `--with`
+   preflight and coverage. Distribution is offered on 21 stacks and
+   throws on 19, in both phases. The menu asks a flat question per
+   vertical while the `--with` gate walks the extras in order, so iac
+   is offered on **0 of 34** stacks and `keel.dials` silently cuts
+   `[containerization, distribution, iac]` down to two; of the six
+   orderings of those three, one is accepted and two throw. The page
+   posts extras in alphabetical order, which installs distribution
+   before persistence: `deploy/compose.yaml` then silently lacks
+   `DB_URL`.
+2. **Refusals fall off the `Err` rail, and the ones that stay on it
+   speak engine.** 62 stack × vertical cells throw something that is
+   not a `DomainError` (19 greenfield, 19 brownfield, 24 in fullstack
+   service directories), as do `keel new` into a directory holding a
+   `README.md` (13 of 34 stacks), a user-authored `Dockerfile` or
+   `ci.yml` under `keel add`, and answer choices the page offers
+   (`engine=mariadb` off the JVM, `migrations=liquibase` on it). A
+   throw becomes a `text/plain` 500 whose body `api.js` discards.
+   Of 124 brownfield coverage refusals, 90 name a tag no command can
+   supply — `arch.server-http` on a CLI, `framework.quarkus` on
+   spring-cli, `lang.go, pkg.gradle` at a product root — because the
+   nearest-adapter heuristic (`resolver.ts` `coverageGap`) cannot tell
+   identity tags from tags another vertical adds. One fact also gets
+   two codes and two sentences, and greenfield messages tell the user
+   to run `keel add`.
+3. **Availability is answered after the click, with opposite policies
+   in the two halves.** Greenfield hides what a stack cannot carry;
+   brownfield lists every vertical (`project-status.ts`, `steps.js`)
+   and refuses 38 % of cards on click on a single-service project —
+   plus 28 gateway cards that "install" zero files, get recorded, and
+   then block the real install after `keel link`. At a product root
+   11 of 13 cards refuse and the other two do nothing useful. The
+   refusal lands in a banner ~400 px above the card.
+4. **Page state keeps or drops the wrong things.** The extras
+   control is a _question_ the handler stops asking once answered, so
+   it vanishes after the first tick: one extra at most, never
+   unticked. One click on an installed card leaves `reapply: true` on
+   every later pick ("vertical 'ci' is not installed — nothing to
+   reapply"). A preset switch wipes build system, layout, extras and
+   answers, and Kotlin/Spring → fullstack lands on `fullstack-go`.
+   Answers cannot simply be carried either: identity answers are keyed
+   by per-preset bootstrap ids and read first-match, so a carried one
+   previews `com.example` and installs `org.acme`.
+5. **Product scope is invisible to the engine.** A monorepo product
+   root writes each service's `Dockerfile` and `.dockerignore`
+   without telling the service, so `keel add containerization`
+   collides in both services of all six fullstack presets and
+   distribution and iac are unreachable; `ci` writes a workflow under
+   `backend/.github/` that no host reads. At the root, coverage runs
+   against `['agentic.harness']`, and the page never reads
+   `status.services`.
+
+**Not the problem: the number of presets.** The 27 single-service
+presets already are the complete language/framework × entrypoint
+cross-product, and build system and layout are already dials. What
+makes presets feel cranky is (4), plus the entrypoint being frozen at
+`keel new` — which successor **R** addresses.
+
+### Decisions on record that no longer hold
+
+| Decision                                                | Why it no longer holds                                                                    | Replaced in |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------- |
+| Distribution "refuses with the fix in the message" (E)  | The message never reaches `keel ui`, names a brownfield command in `keel new`, can't plan | Q0.4, Q1.3  |
+| `--with` installs extras "in the order named"           | The engine knows the order; the page's order is alphabetical and loses `DB_URL`           | Q1.3        |
+| Brownfield offers every vertical, "says so when picked" | What it says is jargon, off-screen, on 38 % of cards (85 % at a product root)             | Q1.8, Q1.9  |
+| A coverage gap names the nearest adapter's unmet tags   | Useful to adapter authors; names tags no command can add for users                        | Q0.7, Q1.7  |
+| "Already installs / installed" is an error              | "I want X" where X is present has one sensible reading                                    | Q1.6        |
+| Gateway with no peer installs nothing and is recorded   | The recorded no-op later blocks the real install                                          | Q1.3        |
+| A composite's `--with` names no service                 | Preset data already carries per-service extras                                            | Q2.3        |
+| P: "no e2e suite of its own" for the page               | The page now carries state logic worth a DOM test                                         | Q1.5        |
+
+### The measure: the composition grid
+
+Q0.1 lands the grid as a ratchet — a known-violations file asserted
+by exact equality, regenerated as known ∩ actual so it can only
+shrink. Every later step names the invariant it moves. The oracle is
+always the real `keel.preview`, never a re-implementation over tags
+(the existing "what the page can post" test used one, which is how
+the distribution throw got through).
+
+| Id  | Invariant                                                                                            | At audit    | Zero at             |
+| --- | ---------------------------------------------------------------------------------------------------- | ----------- | ------------------- |
+| I1  | No preview throws — every cell, plus a seeded-user-file axis                                         | 62 + seeded | Q0.3                |
+| I2  | Every extra `keel.dials` offers, posted with its prerequisites, previews Ok                          | 19          | Q1.3                |
+| I3  | Every extras set the CLI accepts is reachable from the menu                                          | 19          | Q1.3                |
+| I4  | A brownfield card's readiness agrees with preview                                                    | 149 of 294  | Q1.8¹               |
+| I5  | Phase parity: same outcome (from Q0.1), same code and sentence (from Q1.7)                           | 0 (outcome) | Q1.7                |
+| I6  | No refusal names a `lang.`/`framework.`/`runtime.`/`pkg.`/`layout.`/`arch.` tag                      | ≥ 90        | Q0.7 (hard at Q1.7) |
+| I7  | In every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal | —           | Q1.10               |
+| I8  | Any permutation of an accepted extras set gives byte-identical changes                               | —           | Q1.3                |
+| I9  | Preview and dry-run install give identical change lists for the same body                            | —           | Q2.1                |
+
+¹ On every single-service project and at every product root; the
+monorepo services' image cells (PHASE-3) read ready and meet the files
+the product root wrote, and reach zero with Q1.10.
+
+A weekly report-only lane beside mutation — the full powerset of
+offered extras (~1.8k previews, where an undeclared soft read would
+show as an I8 diff) and every choice of every question (~1.5k
+previews) — was planned and not built: the grid reads each stack's
+default dials only, and sends one non-default choice per question
+(I9). The lane is listed under Successors.
+
+### Phase 0 — stop the bleeding (defects only, no model change; ~1.5–2 weeks)
+
+Q0.2, Q0.4, Q0.5 and Q0.7 need no grid and land first: between them
+they remove every 500 and every tag-speaking remedy quoted above.
+
+#### Q0.1 — The composition grid, as a ratchet (M) ✅
+
+`tests/domain/core/composition-grid/{greenfield,brownfield,composite}.test.ts`
+over `tests/support/composition-grid.ts`: cells derived from
+`keel.catalog`, `keel.dials` and `keel.project-status`, never
+hand-listed; Factory `installMediator` with a `FakeProcessRunner` and
+a no-op `runDeferred`; port `Mediator.dispatch` only. Axes: stack ×
+vertical in both phases (greenfield against each stack's default
+`keel.dials` menu, brownfield on one scaffold per stack), product ×
+service × vertical under both layouts, and a seeded-user-file axis
+scoped by phase (`README.md`, `.gitignore` before `keel new`;
+`Dockerfile`, `.github/workflows/ci.yml` before `keel add`, beside the
+verticals whose preview creates them). I3's candidate sets come from
+the promotes→requires graph, each chain longer than one also tried
+behind every offered extra that promotes a tag — which is where
+distribution's undeclared image turns up. Each axis keeps its own
+verdict golden (`KEEL_UPDATE_GOLDEN=1`) and shrink-only known file, so
+the parallel suites never race on one file. Landed at I1 = 85 (26
+seeded before `keel new`, 47 seeded before `keel add`, 12
+monorepo-service containerization), I2 = 19, I3 = 19, I4 = 233 (83
+single-service, 150 in products), I5 = 0 and I6 = 0 — Q0.7 had
+already cleared the coverage refusals. About 7 s wall on its own.
+`tests/AGENTS.md` gains the rule "a menu-versus-gate test uses preview
+or install as its oracle".
+
+#### Q0.2 — A 500 carries its sentence (S) ✅
+
+`executable/server.ts` answers an uncaught throw with the JSON
+envelope (`keel.internal`); `api.js` reads the body once as text and
+hands it to `response.js`, which parses it with a text fallback, as a
+pure exported `errorFrom` tested like `finder.js` (a module of its own,
+since `api.js` claims the token from `location` on load and cannot be
+imported without a DOM). The page labels `keel.internal` as a bug to
+report.
+
+#### Q0.3 — A file already on disk, or missing from it, is a coded refusal (S) ✅
+
+`apply.ts` `writeWholeFile` raises `PathConflictError extends
+DomainError` (`keel.path-conflict`, carrying `path` and `adapterId`)
+when the path exists and this run has no `create` for it — a file
+patched earlier in the run shows as `modify` and still counts as the
+project's; a path this run created twice stays a
+`ContributionConflictError` (an adapter bug). Sentences by phase, read
+off a `scaffold` apply mode `keel new` passes — in `keel new` the file
+is the user's ("move it aside, or start in an empty directory"); in
+`keel add` no move-aside advice, since in a monorepo service the file
+may be the root's. A patch target the user deleted becomes
+`PathMissingError` (`keel.path-missing`); under `keel new` it stays an
+ordering bug. `jvm-format`'s foreign-content anchors — no `plugins {`
+in `build.gradle.kts`, no `<build>` in `pom.xml` — raise
+`keel.path-conflict`. I1 becomes hard: its 85 cells (26 seeded before
+`keel new`, 47 before `keel add`, 12 monorepo-service
+containerization) are all `keel.path-conflict` now, and the grid's
+`HARD` list keeps its key out of every known file.
+
+#### Q0.4 — Hidden prerequisites and bad answers get codes; the failing examples are fixed (S) ✅
+
+`requireContainerImage` throws `keel.missing-prerequisites` with a
+phase-neutral sentence (interim; Q1.3 deletes it). A supplied answer
+outside a question's choices is `keel.invalid-answer` where a prompt
+hands it back — the page's preview, a terminal; a default outside its
+own choices stays a plain throw, being the adapter's bug. `--set` and
+an install body reach the sticky path, which is not checked; Q1.0
+checks them at the front doors. The `database-compose` guards become
+`keel.unsupported-answer` (interim; Q1.11). The `--with` examples in
+`keel new --help`, `docs/cli.md` and code comments that fail on every
+shipped stack (`distribution,iac`, `persistence,iac`) or on every one
+but the two Quarkus CLIs (`distribution,ci`) become
+`containerization,distribution,iac`, pinned by a CLI test that also
+holds `docs/cli.md` to the help's example.
+
+#### Q0.5 — Brownfield page state stops poisoning later picks (S) ✅
+
+Target and answer transitions move out of `keel-app.js` into a pure
+`assets/web/src/target.js` (`retarget`, `answer`, `restart`,
+`pickVertical`). A card pick is a whole target whose `reapply` says
+whether _that_ card is installed, and it replaces the target rather
+than merging into it; another vertical, preset or kind resets the
+answers. Every change, and pointing the page at a directory, moves the
+request generation on, so a late `/api/dials` reply is dropped rather
+than adopted over a newer pick. `ui-refusal.test.ts` drives both card
+switches in a browser. Clicking the `fullstack` or `bounded-context`
+card is still refused as an unknown vertical, but no longer poisons
+the picks after it; the inert chips are Q1.9's.
+
+#### Q0.6 — A preset switch keeps the dials, and says when the language jumps (S) ✅
+
+A stack change keeps `buildSystem`, `moduleLayout` and
+`withPeerContext` — and a product's repository `layout`, the one dial
+the list had missed — and lets `keel.dials` snap them (it already
+does, through `prefer()`). `target.js`'s `settle` adopts the reply and
+names, in one line under the Preset picker, each carried value the
+user had moved off its default that did not survive. The finder falls
+back to a sibling with the same framework, then the same runtime (a
+`runtime` field on the catalog's language nodes, so the page never
+parses an id), then `finder.defaultStack`'s language and framework —
+never `languages[0]`, which is Go because languages sort by label —
+and the same line announces the jump. Answers and extras still reset
+(until Q2.2).
+
+#### Q0.7 — Coverage refusals stop naming tags (S) ✅
+
+Interim sentence, replaced by Q1.7: identity tags leave the message
+(they stay in the `ResolutionError` detail); `arch.*` prints through
+its `ENTRYPOINTS` label ("Observability needs an entrypoint this
+project does not have: HTTP server — a REST endpoint"); a gap with an
+identity tag in it reads "has no adapter for this project's stack";
+the vertical is named by its title. The agent-harness redirect at a
+product root is generalised to every vertical the root cannot carry:
+"Persistence belongs to a service, and this is a product root — run
+'keel add persistence' inside backend/ or frontend/". One sentence
+builder (`src/domain/core/refusals.ts`) serves the resolver's throw,
+the `--with` front door and the root redirect. A tag another install
+adds (`iac`'s `dist.container-image`) is still named, as a capability
+the project "does not have yet", until Q1.3 includes the prerequisite
+and Q1.7 names it by its vertical.
+
+### Phase 1 — one answer, asked everywhere
+
+A few optional declarations and one pure planner, read by every
+surface: the rule `src/domain/core/AGENTS.md` already applies to
+Conflicts, extended to readiness. No tag is added, no manifest schema
+changes, the kernel is untouched, and every new contract field is
+optional with a fallback, so a plugin declaring none of them keeps
+working.
+
+#### Q1.0 — Answers only reach the adapters they belong to (M) ✅
+
+Supplied answers (`--set`, an install body) are no longer seeded into
+the manifest: `installVertical` takes them as `supplied`, each adapter
+reads only the ones keyed to it or to a `sharesAnswersWith` sibling,
+and only the adapter that read one records it — so a greenfield
+composite records in each scope only the keys that resolved there,
+and no reader scanning a fixed list of bootstrap ids can find a
+foreign one. `supplied-answers.ts` holds the keys to the plan before
+anything is committed (brownfield before the install, against the
+vertical's resolved adapters; greenfield after staging, against every
+scope's, dry runs included): a key for an installed vertical's
+adapter, including a sibling it would borrow from, is
+`keel.frozen-answer`; a key no adapter of the plan reads, or a
+question its adapter does not ask, is `keel.unknown-answer`, naming
+the plan's adapters that take answers (or the adapter's questions).
+Supplied values are held to their choices where they first reach
+their adapter (`checkSuppliedAnswer`, `keel.invalid-answer`), which
+both front doors pass through, and never on recorded memory, which
+serves older manifests. `validateChoice` holds each value of a
+`multi-select` selection to the choices. The page adopts a preview's
+reply through `previewed` (`target.js`), which drops the answers that
+preview did not ask for: an extra unticked after its question was
+answered would otherwise post a key the install refuses, a case the
+plan's "the page never posts a stray key" had missed. Scripts that
+`--set` another family's adapter now fail loudly instead of splitting
+a package — a CHANGELOG entry; two test fixtures that did (the plugin
+byte-identity matrix, the Kotlin combo e2e cells' Java bootstrap ids)
+are keyed to their own adapters now.
+
+#### Q1.1 — refactor: one install loop for both handlers (M) ✅
+
+`NewProjectHandler.stageStack`'s ordered loop moves into `install.ts`
+as `installVerticals`; `AddVerticalHandler` calls it with a list of
+one. No behaviour change; the grid golden is byte-identical.
+
+Landed with the harness buffer's contract carried over from
+`installVertical`: a run given no buffer realizes its declarations
+once, after the last vertical (`keel new`'s scopes); a caller that
+supplies one finalizes it, which is how `keel add` keeps the harness
+retrofit between the loop and the finalize, and the generation
+restamp after. `keel add module` and the harness replay still call
+`installVertical` directly: the first installs one synthetic vertical,
+and the second replays each contributor against the recorded manifest,
+never a running one. `install-verticals.test.ts` pins the run's three
+shared pieces — running manifest, ownership, harness buffer.
+
+#### Q1.2 — Two declarations and a planner, with no caller yet (M) ✅
+
+- `Adapter.promotes?` (defaults to the vertical's union), because
+  `Vertical.promotes` is a union over adapters and any reader built on
+  it over-offers (iac on quarkus-cli).
+- `Vertical.reads?` — "`contribute()` reads whether these are
+  installed; install after them when both are in one run". Named to
+  avoid `Adapter.after`. Checked in a post-load pass of `registryOf`:
+  unknown ids ignored (a soft read of an absent plugin is harmless),
+  cycles refused.
+- `src/domain/core/planner.ts`, pure: `readiness(scope, v)` →
+  `included | ready | needs(prerequisites) | unavailable(gap)`, the
+  gap split into entrypoint, peer and identity with the nearest
+  stacks that carry it; `plan(scope, requested)` → the ordered
+  closure, smallest first, refusing when two closures tie rather than
+  guessing between plugin providers.
+
+A shipped-registry readiness golden records today's truth, so Q1.3's
+diff is its review.
+
+Landed with `readiness(registry, scope, id)`, `plan(registry, scope,
+requested)`, `seedFor(stack, tags)` and `applies(v, tags)` exported
+from `planner.ts`, a scope being `{tags, installed}`, and the
+readiness types in `contract/queries.ts`. Declared:
+`quarkus-cli-native` → `runtime.graalvm-native`, the five container
+distribution adapters → `dist.container-image`, the four non-JVM
+image adapters → `deploy.container-image`; `distribution.reads =
+[persistence, observability]` and `persistence.reads =
+[observability]`, both checked against the adapters' `contribute()`.
+`dev-env` and `dev-container` read each other and adapt either way
+round, so neither declares it (it would be a cycle). The search
+closes over the providers in reach of the request's unmet `requires`
+(adapter-level `promotes`), at most three added for any one
+requested vertical (a request whose verticals together need more is
+planned as the union of their own closures), and orders by
+depth-first search: whatever feeds a tag a vertical's adapters
+require _or exclude_ goes first, then `reads`, then the caller's
+order — and a step that leaves an earlier vertical matching an
+adapter the new tags exclude, or breaking one of its rules, is taken
+back, which is what keeps `quarkus-cli-native` off a JVM image.
+Beyond the text above: `needs` carries `alternatives` when another
+set is exactly as small (readiness reports the tie; `plan` refuses it
+as `tied`), the gap also names the vertical's own broken `rules`, a
+capability another vertical could add is traced back to what that
+vertical lacks (`iac` on `quarkus-cli` reads _entrypoint HTTP
+server_, not _dist.container-image_), `nearestStacks` lists only the
+nearest group, and `plan` also answers `unknown`, `incompatible`
+(each plans alone, no order takes both) and the requested ids already
+`included`. The golden (`tests/domain/core/planner-readiness.golden.json`,
+28 presets × 14 verticals on default dials) has distribution _ready_
+on every HTTP stack and iac _needs distribution_ on 19; gateway is
+_unavailable_ everywhere, for want of a peer. The grid does not move.
+
+#### Q1.3 — The throw becomes a declaration; both front doors and the menus ask the planner (L) ✅
+
+`deploy.container-image` joins `predicate.requires` of the five
+container distribution adapters — a tag containerization already
+promotes, the pattern iac already uses — and `requireContainerImage`
+is deleted. `legalExtraVerticals` offers ready ∪ needs; `DialOptions`
+gains `verticals: {id, title, readiness, requires}`; `keel.dials`
+snaps extras to the ordered closure and reports `adjustments` instead
+of pruning silently. The `--with` gate stops caring about order
+(`keel.extra-verticals-order` retires; naming an id twice stays
+refused); gateway with no peer is `unavailable` ("run `keel link`
+first"). **One commit**, since the shrink-only file forbids the
+intermediate states. Settles D1 first.
+
+Landed as one commit. Both front doors go through
+`plan-refusal.ts` (`admit`), which plans the request and either
+returns it in plan order or refuses: `keel.uncoverable-vertical` from
+the planner's gap (a peer-only gap reads "Service gateway wires linked
+projects — run `keel link <path>` first"), `keel.incompatible` for a
+broken rule or a set no order installs, and
+`keel.missing-prerequisites` — the code, now in `refusals.ts` — for a
+set that plans only with verticals it did not name, or a tie, naming
+them in install order ("Infrastructure as code needs Container image
+and Distribution installed before it, in that order — add
+containerization, distribution as well"). The command line refuses
+that set in this step; including it is Q1.4's. `--with` is a set:
+`admit` hands the planner its ids sorted, so verticals nothing ties
+together go in by id and every permutation writes the same bytes
+(toolchain and persistence both add a README section, and used to
+place them in the order typed); `InstallReport.notes` says so when
+the order named put one ahead of what it needs. `keel.dials` snaps
+the page's extras the same way, by id, retrying a vertical tied
+between two providers once the rest is kept. The terminal's
+multi-select labels a _needs_ choice with what it needs, by title.
+`legalExtraVerticals` gave way to `verticalOptions` (every vertical
+of the preset, with its readiness) and `offeredAsExtra`, read by both
+front ends. `VerticalOption.readiness` is the kind
+(`included | ready | needs`) with `requires` beside it, so no tag
+reaches the page; `requires` is empty for a vertical two sets would
+serve equally. Distribution alone on `quarkus-cli-rest(-kotlin)`/Gradle
+is _ready_ and installs `quarkus-cli-native` only (D3); with
+`containerization` both install, image first.
+
+Beyond the text above: `keel.project-status` no longer lists a
+vertical that would install nothing — one declaring no dimensions
+with no adapter matching, which today is the gateway without a linked
+project. Refused at `keel add`, its 28 single-service cards and 6
+product-root cards would otherwise have become new I4 violations; Q1.8
+lists it again, as unavailable with its sentence. The planner's
+_nearest adapter_ now counts what no install can add before counting
+every unmet tag, so `go-cli`/`rust-cli`/`ts-cli` + distribution keep
+their entrypoint gap now that the Go/Rust/TS image adapters also miss
+an image. Grid: I2 19 → 0 and I3 19 → 0, both **hard** from here;
+**I8 lands hard** on the greenfield axis — every permutation of each
+offered vertical that `reads` another, with both chains
+(`[containerization, distribution, persistence]` on 18 HTTP stacks,
+108 previews), and each stack's whole menu named forwards and
+backwards (28 stacks), stages byte-identical files; brownfield I4 83 → 81
+(`quarkus-cli-rest(-kotlin)` + distribution); I5 parity kept. The
+`DB_URL` case is pinned directly on go-http and quarkus-rest, every
+permutation. The readiness golden moves exactly the 36 intended cells:
+distribution _needs containerization_ on 17 HTTP stacks, iac _needs
+containerization > distribution_ on 19.
+
+#### Q1.4 — Prerequisites are included; `keel add` takes several verticals and proposes refreshes (M) ✅
+
+Both handlers close a named set over its prerequisites and install it
+in one Tree ("added Container image, Distribution — …").
+`keel add a b` and `verticals: string[]` on the target. The planner
+_proposes_ re-rendering installed verticals that read an incoming one
+(distribution after persistence, for `DB_URL`) or whose adapters
+change under the new tags; `--refresh <ids>` accepts. A newly
+matching adapter in a refresh is asked its questions rather than
+taking defaults silently.
+
+Landed with `admit` returning the closure (`AdmittedSet.added`,
+`neededBy`) and `admissionNotes` writing both front doors' first notes —
+`added Container image, Distribution — needed by Infrastructure as
+code`, then the dependency-order note; `keel.missing-prerequisites`
+now refuses only a tie. `AddVerticalCommand` and `AddVerticalTarget`
+carry `verticals` and `refresh` (the web API keeps `vertical` as the
+alias for a list of one, exactly one of the two); `keel add
+[targets...]` keeps `module` as the reserved first word, and naming a
+vertical twice is `keel.invalid-verticals`. A refreshed vertical is
+planned with the named ones as though it were not installed, so it
+goes after what it reads or what decides its adapters — `keel add iac
+--refresh distribution` installs on a `quarkus-cli-rest` whose
+distribution predates its image — and runs in the `reapply` posture
+(`installVerticals`' `rerender`). `planner.refreshProposals` reads the
+tags the run actually left rather than the promotions the planner
+assumes, and the report carries `refreshProposals` with a note each.
+The frozen rule moved into `installVertical`: under the reapply posture
+an adapter with recorded answers resolves from them without asking and
+takes nothing supplied, and one with none is asked — so plain
+`--reapply` asks a newly matching adapter too, and its preview shows
+it. Adopting the harness beside other verticals replays into its
+buffer only what was installed before the run. Beyond the text above:
+brownfield holds supplied answers twice — before the run against every
+adapter it could reach (`planner.reachableAdapters`), so a typo is
+still refused before a question, and exactly once staged, against the
+adapters it resolved, as greenfield holds them. Grid: brownfield I4 81 → 45 (17 ENG-1
+distribution, 19 TEST-5 iac), composite I4 150 → 126 (the polyrepo
+services' distribution and iac); greenfield's 36 distribution and iac
+cells go from `keel.missing-prerequisites` to Ok, I5 parity kept. The
+monorepo services' distribution and iac now stop on the image files
+the root wrote (`keel.path-conflict`, still PHASE-3 for Q1.10).
+
+#### Q1.5 — Greenfield extras become a real control (M) ✅
+
+An "Also scaffold" group in Options, rendered from `dials.verticals`
+with `target.extraVerticals` as its state: _Ready_, _Needs another
+capability first_, _Comes with <preset>_ (chips). Ticking a "needs"
+card ticks its prerequisites; unticking one unticks its dependants.
+`keel.dials` always pins `extraVerticals` (to `[]` when empty), so the
+question never vanishes; `dials.test.ts`'s "absent stays absent" is
+inverted, and its walk toggles each offered extra against a real
+preview. Review gains the row. A new `tests/e2e/ui-compose.test.ts`
+in the `web` shard asserts what the page posts — no Generate on a JVM
+stack, which that shard has no JDK for.
+
+Landed with the gestures as one transition, `toggleExtra` in
+`assets/web/src/target.js` (an untick follows dependants to a fixed
+point), and the group — its parts, the badge naming `requires` by
+title, `adjustments` as one line — read off the reply by a new pure
+`assets/web/src/extras.js`. `hasDials` is now "the catalog knows the
+preset": every shipped preset already had an Options step, so the rail
+lists did not move; a preset pinning both dials (a plugin's) no longer
+waits for a reply to earn one. The `extraVerticals` binding branch was
+in `target.js`'s `fieldOf` since Q0.5, not in `keel-app.js`, and is
+deleted there. Pruning before a post reuses Q1.0's `previewed`:
+Generate now waits for the preview of the run as it stands, so the
+body carries exactly the answers that preview asked. Beyond the text
+above: _Questions_ reads "N answered, M on their defaults"; the plan's
+command is dimmed with a line saying the terminal would refuse it
+too; the Options step keeps the focus on a box ticked from the
+keyboard across its redraw; and `watchTraffic` keeps the bodies the
+page posts. `dials.test.ts`'s walk previews every body it reaches —
+every dial setting of every preset, each extra ticked on its opening
+dials and each box that moved unticked, some 300 previews — and holds
+the page's gestures to leaving `keel.dials` nothing to add or drop.
+The grid does not move: the step is the page's, and the goldens
+regenerate unchanged.
+
+#### Q1.6 — "Already there" is not an error (S) ✅
+
+`--with` naming a stack's own vertical is dropped with a note;
+`keel add X` on an installed X is Ok with an empty plan and "already
+installed; `--reapply` re-renders it". Exit-code change → CHANGELOG
+(D4).
+
+Landed with two notes in `refusals.ts`, one per phase:
+`alreadyIncludedNote` ("Development environment already comes with
+quarkus-rest", which `keel.dials` now drops a page's extra with too)
+and `alreadyInstalledNote` ("Version control is already installed;
+'keel add vcs --reapply' re-renders it"). Both front doors set such a
+vertical aside before they plan and install the rest; the notes open
+the report. An add left with nothing to install returns before it
+stages, so no file is written and neither is the manifest, but its
+supplied answers are still held — any `--set` on it reaches nothing,
+and is refused as frozen or unknown. A vertical both named and
+`--refresh`ed is re-rendered, not noted. Unchanged ahead of the note:
+a product root's refusal of what it cannot carry (Q1.10) and the
+harness-generation gate. Grid: the 176 greenfield and 176 brownfield
+"already" cells move from `keel.invalid-extra-verticals` /
+`keel.vertical-already-installed` to Ok together (I5 parity kept), and
+the composite axis's 162 with them; I3 counts what the dials reply
+shows as _included_ as on the menu, since naming it adds nothing
+(`new-project.test.ts` pins the same changes with it and without). No
+known key moved.
+
+#### Q1.7 — One refusal vocabulary, the same in both phases (L) ✅
+
+`src/domain/contract/refusal.ts`: a `Refusal` union (`needs`,
+`unavailable`, `elsewhere`, `path-conflict`, `path-missing`) and
+`RefusalError extends DomainError`. `src/domain/core/refusals.ts` is
+the only sentence builder: phase-neutral, entrypoints and build
+systems by label, identity gaps as "no adapter for this project's
+stack; nearest stacks that carry it: …", tags only in the structured
+field. `api.ts` forwards `refusal` in the 422 body; the CLI builds its
+hint from the same fields. Codes stay stable.
+
+Landed with the union extended by what the planner already exposes:
+`incompatible{verticals}` for a set no order installs, and
+`unavailable.because`/`rules` for a vertical's own rule (its reason and
+id, no longer the tags that tripped it); `needs` carries the tied
+options, the only `needs` that still refuses since Q1.4. A capability
+some vertical adds is named by that vertical ("Distribution needs what
+Continuous integration adds, which this project does not have yet"),
+the gateway's missing peer as "link one that does first", and the
+`--with` wrapper is gone: the remedy each command has is the CLI's
+`hint:` line (`contract/hint.ts`). `PathConflictError` and
+`PathMissingError` moved into the contract — their two sentences with
+them (`pathSentence`), since an adapter raises them — are exported to
+plugins, and lost `jvm-format`'s engine import; a conflict inside a
+composite's service names the path from the product root. The
+resolver's `ResolutionError` is now only the `after` cycle; its
+uncovered throw is a `RefusalError` from the builder, naming a
+capability's vertical when the install is handed the registry. The
+planner's nearest adapter now prefers an entrypoint gap to a framework
+one, so `distribution` on a Spring or Micronaut CLI reads as the HTTP
+server it lacks (four readiness-golden cells). The product-root
+redirect and the composite `--with` refusal both became `elsewhere`,
+with each service's readiness — from its manifest brownfield, its
+preset greenfield — under their old codes until Q1.10's
+`keel.wrong-scope`. `extraVerticalsQuestion` already labelled choices
+by title. Grid: I5 compares code and sentence on every single-service
+cell (the old wrapper back makes 73 cells fail), I6 is hard, and no
+golden verdict moved.
+
+#### Q1.8 — Readiness before the click (M) ✅
+
+`ProjectStatus.available` carries `readiness` and `refusal` from the
+same `planner.readiness` the menus and the add front door read, so a
+card, a menu and a refusal cannot disagree. Status also reports the
+harness-generation mismatch once, and why a bounded context cannot be
+added. The add front door checks assembly rules over installed ∪
+incoming. `keel add --list` prints readiness.
+
+Landed as one reading, `add-readiness.ts`: the product-root redirect,
+then `foresee` — the planner's readiness of one vertical, worded as
+`admit` words the plan of it — over `projectScope`, the project's
+effective tags, installed verticals and the rules those declare. The
+add front door plans over the same scope. Every registered vertical
+not installed is a card again (the gateway with nothing linked
+included): `readiness` (`ready | needs | unavailable`), `requires`, and
+`refusal` — the `{code, message, refusal}` the add's `Err` carries.
+`harnessGeneration: {found, expected}` and `moduleRefusal` report the
+other two gates once; the latter is `add-module.ts`'s project gates,
+now one exported function its handler runs too. The rules: a
+`PlanScope.rules` field carries the installed pieces' rules (and, in
+greenfield, the preset's), and a plan must not newly break one — so a
+vertical whose tags would reads unavailable, in the rule's sentence, on
+the card, at `keel add` and at `keel new --with` alike — and
+`installVerticals` holds every rule of the run's pieces again after
+each vertical's fold, refusing one newly broken as `keel.incompatible`
+before anything is committed. No shipped rule is of that kind; a
+plugin fixture pins it. `keel add --list` is one status dispatch,
+printed as ready, ready with what each needs first, not for this
+project (in the refusal's words) and installed — the catalog outside a
+project — and the page shows a generation mismatch once, above the
+cards. Grid: I4 now reads "ready ⇔ Ok; needs ⇔ Ok, staging what naming
+its prerequisites with it stages; a refusal ⇔ the same code and
+sentence", every vertical installed or a card. Brownfield went 45 → 0
+and composite 126 → 36: the product roots' 66 cards and the
+web-components frontends' 24 agree now. The 36 left are the monorepo
+services' image cells (PHASE-3), which read ready and meet the image
+files the product root wrote; the root's declaration of what it builds
+(Q1.10) is what can say so before the click, so I4 is not hard yet. No
+verdict moved.
+
+#### Q1.9 — The brownfield page shows readiness and takes several picks (L) ✅
+
+Cards grouped _Ready · Needs another capability first · Not for this
+project_ (collapsed, one sentence each) _· Belongs in a service ·
+Installed_ (with a separate **Re-render** action; `fullstack` and
+`bounded-context` as inert chips). The same checkbox control as Q1.5.
+Refusals render inline in the plan column with `role="alert"`. After
+Generate the page stays on "What to add"; a plan with no changes
+cannot be generated.
+
+Landed with the grouping in a new pure `assets/web/src/additions.js`
+over `ProjectStatus.available` — a tied `needs` card under _Needs_,
+badged as a choice — and the parts both halves share in
+`readiness.js`: the greenfield _Also scaffold_ group gains _Not for
+this project_ from `keel.dials`, whose `verticals` now lists every
+registered vertical, `unavailable` with the `refusal` `keel new
+--with` gives it (`foresee`, as the card's). The gestures are
+`target.js` transitions — `toggleVertical` (a tick brings the card's
+`requires`, an untick takes what needs it; posted as `verticals`,
+prerequisites first), `rerender` and `toggleRefresh` — and a run's
+subject is now the add as such, so ticking keeps the answers for
+`previewed` to prune, while a re-render is a subject of its own.
+`InstalledVerticalDescriptor.reapplicable` (the add registry has the
+id) turns the product glue and a bounded context into chips, titled
+from the stack's or `keel add module`'s own vertical; `keel add
+--list` lists them apart. Proposed refreshes needed the preview to
+carry them, so `InstallPreview` gains the report's `notes` and
+`refreshProposals`, and the plan column shows the notes first. The
+refusal region is headed by `response.js`'s `failureOf` — a refusal,
+a bug (`keel.internal`) or no answer — and the review leads with the
+same words. `moduleRefusal`'s layout sentence, which the disabled tab
+now shows, names its rule and no longer the `modules.context` tag
+(`refusals.ts`'s `rulesSentence`). `ui-refusal` moved to what only a
+click can meet — a user's own `.github/workflows/ci.yml` in the way
+(`keel.path-conflict`) — beside the card listed before any click; the
+brownfield half of `ui-compose` generates once, on a `ts-http`
+project whose image, release and IaC queue no action. _Belongs in a
+service_ is the sentence alone until Q1.10's buttons. The grid does
+not move: the step is the page's.
+
+#### Q1.10 — Composite products: the root points into its services (L) ✅
+
+A `scopeOf` probe through `ManifestStore` finds the enclosing product
+and its services. At the root a vertical a service can take is
+`elsewhere` (`keel.wrong-scope`), and the page renders the services
+as **Open backend/** buttons. `Vertical.placement?: {scope:
+'repository'}` on vcs, ci and distribution (their output is read only
+at a repository root) replaces the hard-coded vcs hoist, so hoisting
+and refusing cannot drift. `Adapter.providesInServices?` lets
+`product-compose` declare the images it builds — and write them from
+the same field — so containerization reads _included_ in those
+services and stays _ready_ in a plugin product's backend the glue
+does not build. Monorepo products still get no per-service release
+pipeline or IaC; that is now said, and handed to **U**. `keel new`
+inside a product's unlisted subdirectory is refused.
+
+Landed with `domain/core/scope.ts`: `scopeOf` reads a directory's
+manifest, the product root above it — the walk stops at the nearest
+keel project, and looks no deeper than the deepest service path a
+registered product declares — and at a product root each service's
+manifest, once per question (the status no longer re-reads them per
+card). `planScopeOf` hands the planner a value: a monorepo service's
+`PlanScope` holds what the product gives it (`provisionsFor`: a placed
+vertical the root installed, and a vertical a root adapter's
+`providesInServices` lists its stack for) among `installed`, and
+`member`, so a placed vertical neither goes there nor comes in as a
+prerequisite, and one needing it reads unavailable with
+`ReadinessGap.repositoryOnly` — computed by planning the service as a
+repository of its own, without what the product gave it. The refusal
+carries `repositoryOnly` and is worded from the first placed
+vertical's `because`; the plan's "use `--layout polyrepo`" became
+"per-service releases need the polyrepo layout", since a sentence names
+no flag. Every scope refusal is `keel.wrong-scope` — the root's
+`elsewhere` (was `keel.uncoverable-vertical`, and
+`keel.invalid-agent-harness` for the harness) and `keel new --with` on
+a composite (was `keel.invalid-extra-verticals`) — except `ci` and
+`distribution` asked of a monorepo root, which no service can take
+either: refused there as uncovered, sent nowhere. The agent-harness
+special case became a declared rule on the product glue,
+`fullstack/one-harness`, against the family kit's tag. A vertical a
+service has from its product is neither installed nor a card:
+`ProjectStatus.provided`, each with the note `keel add` answers it
+with — an Ok that stages nothing (I4 holds it so) — and
+`ProjectStatus.services` gained `directory` and `label` (the preset id
+and build system, the page's own names for them). `keel new --with vcs`
+on a composite is set aside with a note, as on a single preset, and
+`keel.dials` lists a composite's own verticals as included so the menu
+still says so (I3). The unbuilt-image note is generic ("backend/ has
+no Container image from the product root, which builds one only for
+the stacks it knows — 'keel add containerization' there adds its
+own"), since nothing in the declaration names `compose.yaml`.
+Registration refuses a placement with no `because`. The page's
+**Open backend/** buttons emit `service-opened`, which lands on the
+service's "What to add". Grid: I7 landed hard over the composite
+cells — no service cell refused for a file in the way, and wherever the
+polyrepo twin is Ok the monorepo cell is Ok or `keel.wrong-scope` — and
+the 36 PHASE-3 I4 keys cleared, so I4 is hard too. The monorepo
+scaffold of every shipped product is byte-identical to before
+(manifests and reports included), checked against the previous build.
+
+#### Q1.11 — Answer choices declare where they apply (S) ✅
+
+`QuestionChoice.predicate?`: `mariadb` requires `runtime.jvm`,
+`liquibase` excludes it; the preview and the prompt offer only
+matching choices, and the `database-compose` guards go.
+
+Landed as one function, `offeredIn` (`answers.ts`): the question with
+only the choices whose predicate matches the scope's effective tags
+where the adapter runs. `resolveAdapterAnswers` hands that question to
+the prompt — so the terminal and the preview's recording prompt list
+the same choices — and `validateChoice` holds the reply to it;
+`checkSuppliedAnswer`, the check a `--set` or an install body meets
+where it reaches its adapter, holds the value to the same list. So
+`engine=mariadb` on `go-http` is `keel.invalid-answer` ("choices:
+postgres") from the preview, `--set` and the page alike, and
+`keel.unsupported-answer` is gone with the guards. Recorded memory is
+still not held to the list. The default-answer grid cannot see this
+class (it posts no answers), so it did not move; a focused sweep in
+`preview.test.ts` holds it instead — on every stack whose menu offers
+persistence, each non-default persistence choice previews and installs
+(dry run, as `--set`) Ok where it is offered, and is refused by both as
+`keel.invalid-answer` where it is not: 18 such cells. The preview
+reports each offered choice without its predicate.
+
+### Phase 2 — presets that bend
+
+#### Q2.1 — Preview reads answers as install does; identity answers carry across presets (M) ✅
+
+One precedence function (adapter key, then `sharesAnswersWith`
+siblings, then default) for install _and_ preview;
+`Question.shared: 'project'` marks identity questions for the page's
+carry-over, persisting nothing (D11); shared readers pick the
+bootstrap matching the tags, not the first id in a list. Lands I9.
+
+Landed as `answerUnder` over `answerKeys` (`answers.ts`): an
+adapter's own id, then its siblings in the order it lists them, the
+first holding an answer giving it. The install reads recorded memory
+by it and only then what was supplied — recorded first, because that
+is the one order a preview can reproduce (its prompt is asked exactly
+where recorded memory is silent) and the one that keeps two siblings
+from disagreeing: before, a second bootstrap preferred its own
+supplied answer over the first one's recorded one, and two keys meant
+two packages. The preview's recording prompt reads what it is sent
+by the same function, carries the adapter's siblings on the
+`Asker`, holds the value to the question's choices under the key it
+came under, and binds the question to that key, so the page's
+`previewed` keeps it. `quarkus-cli-rest` with a
+`quarkus-rest-bootstrap` package now previews and installs `org/acme`.
+Every run reports what it read; `unusedAnswers`
+(`supplied-answers.ts`) is the one reading of what nothing read — a
+key no adapter reads, a question none asks, an installed vertical's
+(frozen), a re-rendered one's recorded answers (the old
+`frozenAnswerRefusal`, folded in), and, with the reads, a second,
+different answer to a shared question or one a recorded answer settled
+— which every install front door refuses the first of (`keel add
+module` too, which took none before) and `keel.preview` lists as
+`InstallPreview.unusedAnswers`, over the plan the run resolved
+(`InstallReport.resolvedAdapters`). The same value under both sibling
+ids agrees with itself and passes — the JVM combo e2e answers both
+bootstraps so. `keel add` refuses a stray key before the run only at
+a terminal; a run that asks nothing waits for the exact plan, as the
+preview does. The identity questions of every JVM, Go, Rust,
+TypeScript and web-components bootstrap declare `shared: 'project'`
+(registration refuses another value), which the preview reports on
+the bound question; in a product each service's bootstrap asks its
+own, so two services keep two names. The readers that scanned a list
+of bootstrap ids — the sample ports, the JVM bounded and peer
+contexts, the Quarkus native build, the deploy descriptors' project
+name, the TypeScript shell — read the bootstrap whose predicate the
+manifest's tags match (`adapters/project-identity.ts`), so a manifest
+an older keel seeded with another family's answers renders its own
+package. A manifest recorded before this change reapplies byte for
+byte (`support/fixtures/manifests/legacy-answers.json`). Grid: I9
+landed hard on the greenfield axis — every preset with its whole
+menu, sent as four bodies (none, every question answered away from
+its default, the same keyed to the asker's sibling, and one question
+answered twice) to a preview and a dry-run install, stages the same
+bytes (a product's services included) or is refused alike, in the
+sentence the preview reported.
+
+#### Q2.2 — A preset switch keeps extras and answers (S) ✅
+
+Snapped by `keel.dials` with `adjustments`; answers pruned to the next
+preview's bindings, identity answers moved onto the new preset's
+bootstrap.
+
+Landed in the page alone (`target.js`, `<keel-app>`); no domain
+change. A preset move carries `extraVerticals` with the dials;
+`keel.dials` snaps them, and the line under the Preset picker names
+each extra lost — _Container image dropped: …_ with the reason the
+reply's `dropped` adjustment gave, or, where the reply gives none (a
+product, which takes no extras of its own until Q2.3), in the "did not
+keep" series by the title the old menu gave it — and keeps quiet about
+one the new preset comes with (`included`), which it keeps. The
+answers are **held** (`Run.held`) rather than posted: posted blind, a
+choice the new preset does not offer — MariaDB, moved to Go — is
+`keel.invalid-answer` from the preview, a refusal the page could not
+leave, since the question to change it at comes from the preview it
+refused. `previewed` places each held answer on its own question
+where the new preview asks it and offers the value, and then an
+identity answer — marked by the last preview before the move
+(`Run.identity`, read off `PendingQuestion.shared`) — on the new
+preview's shared question of the same id: only onto a question nothing
+has answered, one question per answer, the first given first. Placing
+a value the reply had not resolved to moves the generation on, and
+`<keel-app>` previews again rather than draw that reply; what is still
+held waits for that preview (an answer can bring its own adapter in),
+and a reply that places nothing new lets the rest go. A carried
+answer is therefore always posted under the key the new preset's own
+bootstrap asks under, never a sibling's, so the question list's
+grouping by `binding.adapter` (a Q2.1 note) never meets one. Held by
+`target.test.ts` — the placements, and a real round trip
+`quarkus-rest` → `quarkus-cli-rest` → `go-http` whose preview and
+dry-run install agree, the package kept within the family and the name
+across it, the same into `fullstack`'s backend under either layout,
+and MariaDB let go on Go without a refusal — by
+`dials.test.ts` (Maven, the modulith and `[ci]` kept onto
+`quarkus-cli-rest`; the image dropped onto `quarkus-cli`, with its
+reason; a development environment quiet onto the preset that includes
+one) and by `ui-compose`, without Generate. No grid verdict moved.
+
+#### Q2.3 — Per-service extras when creating a product (L) ✅
+
+`--with backend:persistence`, mirroring `--build-system path=id`;
+per-service menus from `compositeDials`; a bare `--with` routes to
+the one service that admits it (D7). Two scopes staging the same
+path are refused before the report, so preview and install agree.
+
+Landed as `NewProjectCommand.services` / `NewProjectTarget.services`
+(`Record<path, { extraVerticals }>`, the web schema's too), which the
+CLI fills from `--with` entries of the form `path:id` (`parseWith`,
+bare ids staying `extraVerticals`; which paths exist and whether the
+forms mix is the engine's to refuse, `keel.invalid-extra-verticals`,
+as are an id twice for one service and a pair on a single stack).
+One scope serves the three readers of a service: `scope.ts`'s
+`presetServiceScope`, now over the preset's verticals **and** the
+product's extras for it (their promotions folded in, a placed one left
+out under the monorepo layout, as `stageStack` leaves it out), on
+`presetServiceTags` — the build system chosen for it, its default
+module layout and its siblings' projections — plus the monorepo
+provisions of Q1.10. `stageComposite` checks the form before any
+question, then, after the layout and build systems and before a file
+is staged, routes each bare id (`dials.ts`'s `routeExtra`: the one
+service whose readiness is ready or needs, else the product-root
+placement refusal or the `elsewhere` refusal naming each service's
+readiness) and admits each service's extras on that scope through
+`plan-refusal.ts`'s `admit` — set aside already-there ones with a note
+(_backend: Container image already comes with fullstack_), close the
+rest, notes prefixed with the service. The routed note is
+_Persistence goes in backend/, the one service of fullstack that can
+take it_; the CLI hint for a refusal several services could take
+names the pairs (`'--with backend:toolchain' or '--with
+frontend:toolchain'`), and one under a service's own refusal the pair
+to drop (`drop 'frontend:persistence' from --with`), never another
+stack to scaffold. `compositeDials` returns
+`ServiceDialOptions.verticals` per service (`scopeOptions` over that
+scope), snaps `target.services` per service (`snapOnto`, adjustments
+carrying `service`), moves bare `extraVerticals` onto the routed
+service (an `added` adjustment in the routed note's words) or drops
+them with the refusal, and reports top-level `extraVerticals` /
+`verticals` as a bare id reads — which is what keeps greenfield I3
+hard now that `--with persistence` on a product is Ok. `singleDials`
+reads a product's `services` extras as its own, so a move off a
+product keeps them. `agentHarness` stays false on products, and the
+composite `--no-agent-harness` refusal is unchanged.
+
+Cross-scope writes: `Ownership` gained `writers` (path → the adapter
+that last wrote it, recorded in `applyContribution` and for hook
+scripts), each composite scope stages with its own, and
+`stageComposite` refuses a path two scopes stage
+(`keel.cross-scope-write`, `refusals.ts`'s `crossScopeWriteError`)
+after staging and before the report — the Option A preset
+(containerization among a monorepo backend's extras) is refused by
+preview and dry run in one sentence naming `fullstack/product-compose`
+and `containerization/quarkus-rest-image`. No manifest schema changed.
+The page (`extras.js`' `serviceExtrasGroup` and
+`servicesExtrasSummary`, `target.js`' `toggleExtra(…, service)` and
+`serviceExtrasOf`, `services` carried across a preset move and its
+extras counted kept or lost by id; `command.js` spelling the pairs)
+draws an **Also scaffold in backend/** group per service. Held by
+`new-project.test.ts`, `composite-scope.test.ts` (`fullstack --with
+backend:persistence` byte for byte `keel new` then `keel add
+persistence` in `backend/`, under both layouts, the manifest's owned
+entries by source and target; `backend:ci` refused before a file; the
+Option A preset), `new-with-example.test.ts` (the help's product
+example planned on both layouts), the web `dials`, `extras`,
+`target` and `command` suites and `ui-compose`. Grid: the greenfield
+golden moved 12 product cells from `keel.wrong-scope` to Ok (each
+product's `persistence` and `dev-env`, now routed) and gained their
+I8 orderings; the composite axis now also previews every product ×
+layout × service × vertical of each service's menu (156 cells), held
+to I2 (offered ⇒ Ok), I3 (neither offered nor its own ⇒ refused) and
+I7 against its polyrepo twin. The known files stayed empty. Not done:
+the terminal wizard asks no per-service extras question — interactive
+runs name them with `--with path:id` or take none, as before.
+
+#### Q2.4 — `--no-agent-harness` reaches the page (S) ✅
+
+`NewProjectTarget` and the web target schema gain `agentHarness`; the
+Agent harness chip becomes deselectable and the copyable command
+carries the flag; `keel.dials` filters out extras that promote
+`agentic.harness`.
+
+Landed as a dial of `keel.dials`. `DialOptions.agentHarness` says
+where it exists (`harnessOptional`, `dials.ts`): a single-service
+preset that comes with the harness and whose own tags and remaining
+verticals do not switch it back on — never a product, whose every
+service carries it. The settled target carries `agentHarness: false`
+and nothing for on, which is what an absent field means to the
+install and to the command line; `installCommandFor` maps it, so
+dials, preview and install read one field. With it off, the menus are
+read over the preset as `--no-agent-harness` installs it
+(`withoutHarness`): `harnessLeftOut` keeps the harness `included` —
+the preset's own, to press back on — and marks a vertical that would
+switch it back on `unavailable` in the sentence `keel new` refuses the
+pair with, which `snapExtras` drops it in. Switching it back on
+includes needing it (`switchesHarnessOn`): a plugin vertical whose
+plan installs the harness first as its prerequisite is refused too,
+where `keel new` used to bring the harness back unasked and
+`keel.dials` settled a target the install refused. `keel new`'s extras
+question reads the same function in place of its inline filter, so
+the two menus are one. The sentence stopped naming the tag (_it
+switches the agent harness back on_), and the composite refusal now
+says why the flag is single-service — every service of a product
+carries the harness — where it claimed only "product-root harness
+selection" was unsupported and `docs/cli.md` sent the user to `keel
+add agent-harness` in a service that already had one. On the page
+(`extras.js`, `<keel-new-form>`) the chip is a toggle button with
+`aria-pressed`, a check while on, dashed and struck through when let
+go, with a line under the chips saying which way it is and how to put
+it back; the command line adds `--no-agent-harness`, the review a row,
+and a preset move carries it like the other dials (`target.js`),
+saying _Moving to fullstack-go did not keep the agent harness off._
+where a product puts it back. Held by `dials.test.ts` (the dial on
+`go-cli`, not on a product, a harness-less or self-activating preset;
+a plugin's harness, and a plugin vertical needing one, unavailable and
+dropped in the install's own words; the terminal's extras question
+equal to the menu either way),
+`preview.test.ts` (preview and dry-run install stage the same tree,
+without `AGENTS.md` or skills; refused on a product), the web walk
+(every single preset pressed off once — 28 more previews — and never
+a product), a preset move each way, `command`, `extras`, `target` and
+`api` cases, and `ui-compose` in a browser, without Generate. No grid
+verdict moved.
+
+#### Q2.5 — The verticals matrix is generated from the grid's verdicts (S) ✅
+
+The compatibility matrix in `docs/verticals/README.md` and the stack
+catalog's defaults table are rendered from the grid's goldens (D8),
+between sentinel comments, and a guard in `verify` fails when
+regenerating would change a committed file.
+
+Landed as `tests/support/generated-docs.ts` and the guard beside the
+others, `tests/generated-docs.test.ts`. The renderer reads the
+verdicts from the brownfield and composite goldens (`keel add` in a
+fresh scaffold, which the grid holds to the greenfield `--with`
+verdict), what each scope comes with from `keel.dials` (`included`,
+which under the monorepo layout counts what the product root gives a
+service), and install order from the registry. Stacks, verticals,
+layouts and services come from the catalog and the goldens, and none
+is named in the renderer. Columns are the entrypoint sets the
+presets reach, named as the wizard names them (CLI, HTTP server, CLI +
+HTTP server, Browser SPA), then the product root (only under the
+layouts where it is a keel project) and each product service. A cell
+where a column's scopes disagree names them along the first dimension
+that decides it: the layout (_● monorepo · ➕ polyrepo_), else the
+preset or product, with the most common glyph read as _the rest_. Rows
+follow the catalog table above the matrix, and the renderer refuses a
+vertical that table does not place. The regions sit between
+`<!-- generated:<name>:begin/end -->`; the hand-written notes around
+them replace the old footnotes, and the whole file goes through
+prettier, so the check is byte for byte.
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`
+regenerates, after the grid. The new table fixed what the hand-written
+one got wrong: `distribution` on the Spring and Micronaut CLIs, filed
+under a Quarkus-only footnote; `gateway` on a stack with no linked
+project (refused on every one); and the product root and its two
+services, which shared one column. The defaults table now lists
+`agent-harness` and `code-style`. The stale sentences the plan listed
+were fixed: `docs/cli.md`'s list of verticals (twelve of fourteen)
+and its "three" drill-down questions (four); the "document order" the
+wizard supposedly reads (`stack-presets.json`, `stacks.ts` — every
+reader sorts, and only the registry golden sees the order); and the
+product-compose comment, which Q1.10 had already rewritten and which
+now names `ts-http`'s image too. Deviation: the guard sentences in the
+root `AGENTS.md` and `tests/AGENTS.md` said four, but the list already
+held six suites (the toolchain pair had joined without a recount), so
+this guard makes seven, not five, and both now say so. No verdict
+moved; the known files stayed empty.
+
+#### Q2.6 — `README.md` and `.gitignore` are adopted on every stack (M) ✅
+
+Seeded upserts on the Go, Rust, web-components and product
+bootstraps, as the JVM family already does (D13), so "create a repo
+with a README, clone, `keel new`" works on all 34.
+
+Landed as one module, `adapters/adopted-files.ts`, that every family
+writes the two files through: `adoptingRootFiles` turns a rendered
+tree's root `README.md` and `.gitignore` into seeded upserts (the Go,
+Rust and `web-components` bootstraps, `fullstack/product-docs`), and
+the JVM and TypeScript shared roots reach the same adoptions through
+`toUpsertPatches`, which was two private copies before, and
+`readmeUpsert`. A `README.md` keeps the user's content, title
+included, and gains keel's README after it, less keel's title,
+unless it already has every one of that body's `##` headings (the
+marker guard keel's README patches use, so an edit inside keel's
+sections never makes a second copy). Each entrypoint's `### <arch>` section still follows, as
+in a fresh project. A `.gitignore` keeps every line and gains each of
+keel's entries it lacks, in keel's groups, under keel's comments. Each
+`apply` is the identity on its own seed and its own fixed point,
+compared on LF text so a CRLF file is adopted once. The JVM and
+TypeScript stacks change too: their adopted README gained only the
+entrypoint's section, and their `.gitignore` upsert was the identity,
+so keel's entries went missing without a word. Now every family adds
+them. Under `keel add walking-skeleton --reapply` the two are patched
+files on every stack: the Go, Rust and `web-components` ones are no
+longer rewritten to pristine, and every `.gitignore` regains keel's
+missing entries. The entrypoints' README section patches (Go, Rust,
+JVM, TypeScript) match their `### <arch>` marker in the file's own
+line endings, so a CRLF README, adopted or checked out under
+`core.autocrlf`, does not make that `--reapply` refuse the README as a
+divergence. Any other pre-existing file is still
+`keel.path-conflict` — for a file keel writes whole; one it patches
+(`package.json`, `settings.gradle.kts`, `AGENTS.md`, …) was still
+merged into, which the epic's final review found and fixed, and the
+seeded axis now seeds every file the scaffold writes at the
+directory's root (`seededBeforeNew`). Into an empty directory the bytes are unchanged
+on every stack: 154 scaffolds (every preset on its default dials and,
+where it takes them, the modulith, Maven, npm, polyrepo and two sets
+of extras) hashed before and after, byte for byte. The
+`agent-harness`, `stack-registry` and brownfield and composite grid
+goldens do not move. The greenfield golden's 26 seeded
+`keel.path-conflict` cells turn `ok`, so the seeded axis is `ok` on
+all 34 stacks. Held by `adopted-files.test.ts` (each adoption, its
+identity on the seed, its fixed point, CRLF, a blank file, a README
+keel wrote under another name, an edited section) and
+`new-project-adoption.test.ts`: one stack per family, scaffolded fresh
+and over a user's two files, where the README is the user's followed
+by the fresh one below its title, every keel entry is present once,
+every other file is byte-identical, a service's own README inside a
+product is adopted too, a `--reapply` keeps an edited README and
+restores only a dropped entry, and a CRLF README comes through a
+`--reapply` untouched on the Go, Rust, JVM and TypeScript families.
+The two refusal tests that seeded a README (`new-project`,
+`fullstack`) now seed `go.mod`.
+
+#### Q2.7 — One page for both phases (M) ✅
+
+The Directory step decides the flow; on a keel project the same "Also
+scaffold" control shows installed verticals checked and locked, and
+Generate dispatches the delta. The commands stay two (converge is
+**S**).
+
+Landed with Options hosting the one control, the design with fewer
+page states: the brownfield _What to add_ step is gone rather than
+shared, since sharing it would have split a new project's Options in
+two. A keel project's rail is Directory, **Project**, Options,
+Questions, Review — `project` in the place of the four preset steps,
+`target` retired, so the page has as many step ids as before and one
+Options state for both phases. **Project** is read-only: the preset the
+manifest reads as and the choices that made it, a product's services,
+the bounded contexts and what is installed. The page never sees a tag,
+so this needed one domain addition the plan did not name:
+`ProjectStatus.profile` (`domain/core/profile.ts`), which runs the
+drill-down backwards (`stack-wizard.ts`'s new `axesOf`, the reading
+`singlePath` now shares) over the manifest's tags to the answers
+`keel new` was given and the preset they lead to — or, at a product
+root, names the product with exactly the recorded services — worded
+as `label`/`value` lines. Every assemblable preset on every setting of
+its dials reads back as itself, and every product does
+(`profile.test.ts`). **Options** draws one builder in both flows
+(`dom.js`'s `alsoScaffold`, with `tickPart` and `lockedPart`), under
+the same ids (`#extras-ready`, `-needs`, `-refused`): a new project's
+preset verticals stay chips (nothing is installed yet, and the harness
+is a switch there), and a keel project's installed verticals, its glue
+and context, and a monorepo service's gifts from the product are one
+**Installed** part, boxes ticked and disabled, a **Re-render** beside
+each vertical `--reapply` names (`additions.js`' `installed`, which
+replaces `rerenderable`, `chips` and `provided`). The lock holds in
+the transition too: `toggleVertical` returns the run unchanged for an
+installed or provided id. What Q1.9 and Q1.10 built that Options
+lacked is kept inside the group or beside it: _Proposed re-renders_,
+_Belongs in a service_ with its **Open** buttons, the bounded-context
+tab with its disabled reason, and the harness-generation line above
+the tabs. `keel ui` started in a keel project opens on Options, as do
+Generate and **Open backend/**; an empty directory still opens on
+Directory, and moving through the folder picker never leaves it. A
+keel project's review reads _Project_ and _Also scaffold_ where a new
+project's reads _Preset_ and _Also scaffold_.
+Held by `steps.test.ts` (the rail per flow, where a step of the other
+flow settles), `target.test.ts` (a locked box moves nothing),
+`additions.test.ts`, `project.test.ts` (the summary off real
+scaffolds, a product root and a monorepo service) and a new
+`ui-compose` case on a seeded `ts-http` project: the page opens on
+Options with its installed verticals ticked and disabled, one tick
+posts `{ verticals: ['ci'] }` and `keel add ci --yes`, and the Project
+step shows the profile and no control. The other browser suites
+changed only where the flow did (the rail's `project` step, Options
+for _What to add_, `#extras-*` for `#add-*`). No verdict moved: the
+goldens regenerate byte-identical and the known files stay empty.
+
+#### Q2.8 — Vocabulary: the nearest stack id, and the Backend shape relabelled (S) ✅
+
+An unknown `--stack` suggests the nearest id — by facet tokens, then
+edit distance (`quarkus-cli-http` → `quarkus-cli-rest`,
+`fullstack-quarkus` → `fullstack`); the Backend shape reads "Backend
+or tool — no front end (command line, HTTP service, or both)". Aliases
+arrive with **T**.1.
+
+Landed as one pure reading, `domain/core/nearest-id.ts`, that both
+front doors ask when an id names nothing: `keel.unknown-stack` and
+`keel.unknown-vertical` (`keel new --stack`, `--with`, `keel add`) put
+the nearest id first — _unknown stack 'go-rest' — did you mean
+'go-http'? Available: …_ — and keep the list. A typed word counts
+where it weighs most: what an id spells, then what its own tags and
+the finder's entrypoint labels say (`arch.server-http` is "an HTTP
+server — a REST endpoint", which is how `go-rest` finds `go-http`
+without an alias table), then what a product's services say; a word
+every candidate answers to (`hexagonal`) is not counted; edit distance
+breaks a tie, and is the whole reading only where no word matches,
+within a bound, so noise names nothing. A vertical is read by its id
+and its title (`container` → `containerization`). The relabel reads
+through every summary unchanged, since each takes the name before
+`—` (the terminal's resolution line, the masthead, the profile, the
+language-jump notice: _… has no backend or tool preset_). Folded in
+from the vocabulary notes the earlier steps left for this one:
+frameworks are named as products (_Quarkus_, _Web Components_) in the
+menus, the resolution line, the profile and the refusal of a
+combination no preset scaffolds; the stack matrices'
+hand-written headers use the finder's words (_HTTP server_, _CLI + HTTP
+server_, _Browser SPA_), as the generated tables do; an extras
+adjustment and a move's notice go on from the title (_Left out Version
+control — it already comes with go-cli_) rather than saying it twice.
+Sentences met in a real browser after Phase 1 were fixed too:
+`keel add module` on the flat layout now reads as the rule's own reason,
+capitalised — its id in the refusal's data (`rules`), no longer in the
+words the disabled tab shows — and a flag a sentence names is set on
+the page as one literal (`command.js`' `flagSpans`, `dom.js`'
+`sentence`), so `--module-layout=modulith` no longer breaks after its
+`--`; and a monorepo product root refusing a vertical no service can
+carry says why, ending on the way forward the service's own refusal
+gives — _… since it needs Distribution, which cannot go in a monorepo
+service: … per-service releases need the polyrepo layout_ — from each
+service's `repositoryOnly`, now carried in the `elsewhere` refusal.
+Held by `nearest-id.test.ts` (the audit's guesses, slips and noise,
+and the weighting on hand-made candidates), a `new-project` case per
+guessed stack and one per vertical front door, `stack-wizard.test.ts`
+for the label, `refusals.test.ts` and `composite-scope.test.ts` for
+the product-root sentence, `command.test.ts` for the flag spans, and
+the browser suites (`ui-refusal`: the tab's reason is capitalised,
+names no rule and keeps the flag on one line; `ui-compose`: the root's
+Infrastructure-as-code line ends on the polyrepo layout). No verdict
+moved: the goldens regenerate byte-identical and the known files stay
+as they were.
+
+### Decisions on record
+
+Each taken as the audit recommended; the step that carries it is named.
+
+- **D1 — Prerequisites are included automatically**, everywhere — the
+  menus, `--with`, `keel add` — and said first in the plan and report;
+  only a tie between equally small sets is refused (Q1.3, Q1.4).
+- **D2 — Monorepo membership reaches the checks as declarations:**
+  `Vertical.placement` and `Adapter.providesInServices`, each read by
+  one structural check — no derived tag, no hand list (Q1.10).
+- **D3 — Distribution alone on a composed CLI + HTTP JVM stack**
+  resolves to the native binary only, documented (Q1.3); the refresh
+  Q1.4 proposes covers Container image arriving later.
+- **D4 — "Already there" is Ok**, exit 0, with a note and a CHANGELOG
+  entry; no `--strict` (Q1.6).
+- **D5 — Stray answer keys are refused** by every install front door,
+  and the preview reports them so the page prunes them (Q1.0, Q2.1).
+- **D6 — Unavailable cards stay visible**, collapsed, with the
+  sentence, and the same group is shown in greenfield Options, so the
+  halves follow one policy (Q1.5, Q1.9).
+- **D7 — A bare `--with` on a product** goes to the one service whose
+  readiness admits it, and is refused naming the services when several
+  do (Q2.3).
+- **D8 — The docs matrix is generated** from the grid's verdicts, with
+  a regenerate-is-a-no-op guard (Q2.5).
+- **D9 — Plugin verticals take part in the closure;** a tie is
+  refused naming both, never picked by registry order (Q1.2, Q1.4).
+- **D10 — Q2.7 (one page) was done inside Q;** **R**, then **S**, are
+  the successors.
+- **D11 — Identity answers change nothing persisted:** a
+  `Question.shared` marker (Q2.1, Q2.2).
+- **D12 — A refresh is proposed, never automatic** — a refresh
+  overwrites template-owned files (Q1.4).
+- **D13 — `keel new` in a non-empty directory** adopts `README.md` and
+  `.gitignore` everywhere (Q2.6) and refuses anything else by name
+  (Q0.3).
+
+### Successors (named here, not part of Q)
+
+- **R — Entrypoints can grow.** `keel add entrypoint <cli|http>`,
+  proven byte-identical to the greenfield `*-cli-rest` cell (which
+  keeps J's one-e2e-per-cell rule by proof), after rank-anchored
+  upserts for shared files. Turns "needs an HTTP server entrypoint"
+  from a sentence into an action. An experiment grew seven families
+  this way with a user-edited `Main` intact.
+- **S — One converge operation (additive).** A desired state planned
+  against disk; `new` and `add` become aliases; removal refused,
+  citing L's missing merge base.
+- **T — Facets over presets.** Presets generated from a platform ×
+  entrypoint table with ids kept as aliases (all 34 regenerate
+  exactly); products as per-service selections. Only with a data
+  support tier for cells no e2e suite proves.
+- **U — A release story for monorepo products.** Decide the image
+  owner, one root Tree across scopes, a product-level pipeline,
+  `keel add service`.
+- **The weekly report-only lane.** Planned under _The measure_ and
+  not built: beside mutation, the full powerset of offered extras on
+  every dial setting, and every choice of every question, report-only.
+  Until it exists those combinations are not covered — the grid reads
+  each stack's default dials and one non-default choice per question.
+
+### Deliberately kept
+
+- "Compatibility is a declaration" and "do not invent a tag": Q
+  extends both — readiness is one function read by every surface, and
+  the only predicate change adds a tag containerization already
+  promotes.
+- Presets as the entry vocabulary, and one e2e suite per stack cell:
+  Q offers no new cell.
+- The manifest records tags, not a preset id; answers stay frozen on
+  `--reapply`; no removal or reconfiguration without L's merge base.
+- Distribution needs a container image (E) — only its mechanism, a
+  throw, goes. Naming a vertical twice in `--with` stays refused.
+- `keel new` and `keel add` stay two commands; after Q1.4 and Q1.9
+  both take a set planned by the same planner, and Q2.7 gives them one
+  page.
 
 ---
 
@@ -2208,12 +3494,13 @@ rather than remembered-in-a-file.
   keeps it a spec record) and a Liquibase (YAML) alternative behind
   the sticky `migrations` question (served on Go/Rust/TS, whose
   emitted replay paths are tool-agnostic). What remains, each a
-  loud install-time error today: MariaDB on Go/Rust/TS (their
-  drivers speak the PostgreSQL wire protocol — a second driver per
-  stack, not a spec record) and Liquibase on the JVM (the
-  `%dev`/`%test` replay is wired through each framework's Flyway
-  integration; Quarkus's Liquibase extension reads classpath-only
-  changelogs, so this needs design, not just config).
+  choice its predicate keeps off the menu today (Q1.11): MariaDB on
+  Go/Rust/TS (their drivers speak the PostgreSQL wire protocol — a
+  second driver per stack, not a spec record) and Liquibase on the
+  JVM (the `%dev`/`%test` replay is wired through each framework's
+  Flyway integration; Quarkus's Liquibase extension reads
+  classpath-only changelogs, so this needs design, not just config).
+  Serving one is dropping or widening that predicate.
 - ~~**Per-service build systems in composite stacks**~~
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — **shipped**:
   composites ask the build-system question per service (pin with

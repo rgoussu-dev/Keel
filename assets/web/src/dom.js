@@ -6,13 +6,15 @@
  * decide what gets scaffolded are answered by reading the answers,
  * not by opening a `<select>` — and a second implementation of it is
  * a second place for that decision to erode. The narrowing steps and
- * the brownfield vertical picker are the same control with different
- * data behind it.
+ * the "Also scaffold" group are the same control with different data
+ * behind it — and the group itself is one control too, drawn here for
+ * both flows' Options step ({@link alsoScaffold}).
  *
  * Below the cards sit the smaller shapes the wizard's other halves
  * need — `el`, the builder everything else is written in; `icon`;
  * `prose`/`help` for the documentation strings keel writes for a
- * terminal; and `field`/`select` for the adapters' own questions,
+ * terminal, and `sentence` for the refusals it writes; and
+ * `field`/`select` for the adapters' own questions,
  * which are free text and one-of-many rather than decisions about
  * what gets scaffolded, and so are the one place a `<select>` is
  * still the right control.
@@ -23,6 +25,8 @@
  *
  * @typedef {{ value: string, label: string, doc?: string, meta?: string, badge?: string }} Choice
  */
+
+import { flagSpans } from './command.js';
 
 /**
  * A radio group drawn as cards: title, optional id line, optional
@@ -128,6 +132,199 @@ function body(choice) {
     column.append(doc);
   }
   return column;
+}
+
+/**
+ * What a project cannot take, as a collapsed list: a `<details>`
+ * whose summary counts them, one line each — the title, then the
+ * sentence the command would refuse it with.
+ *
+ * Collapsed because the list answers a question ("why is persistence
+ * not on offer?") rather than asking one, and on a CLI project it is
+ * longer than what is. Kept, rather than left out, because an absent
+ * option answers that question with nothing.
+ *
+ * `open` is the element's to remember: a step is redrawn on every
+ * reply, and a list that snapped shut under the reader each time
+ * would be unreadable. `onToggle` hears each opening and closing.
+ *
+ * @param {{ id: string, title: string, items: { id: string, title: string, sentence: string }[], open: boolean, onToggle: (open: boolean) => void }} spec
+ * @returns {HTMLElement}
+ */
+export function refusedList({ id, title, items, open, onToggle }) {
+  const details = el(
+    'details',
+    { id, class: 'refused', open },
+    el('summary', { text: `${title} (${items.length})` }),
+    el(
+      'ul',
+      { class: 'plain refused-list' },
+      ...items.map((item) =>
+        el(
+          'li',
+          { attrs: { 'data-id': item.id } },
+          el('span', { class: 'refused-title', text: item.title }),
+          el('span', { class: 'muted' }, sentence(item.sentence)),
+        ),
+      ),
+    ),
+  );
+  details.addEventListener('toggle', () => onToggle(details.open));
+  return details;
+}
+
+/* ================================================================ *
+ * "Also scaffold"                                                   *
+ * ================================================================ */
+
+/**
+ * The "Also scaffold" group — what else goes in — on the Options step
+ * of both flows: a new project's extras, and what goes on top of a
+ * keel project.
+ *
+ * One control rather than one per phase, because it is one question,
+ * and two controls asking it had drifted into two policies before
+ * (`../readiness.js`). The frame is the same everywhere — the title,
+ * a count of what is ticked, the help, the line saying what the last
+ * reply moved — and so are the parts inside it, built by the shapes
+ * below from what `../extras.js` or `../additions.js` read: boxes that
+ * tick ({@link tickPart}), what the project has ({@link lockedPart}, or
+ * a new project's chips), what it cannot take ({@link refusedList}).
+ * Which parts a flow has is its data, not a second control.
+ *
+ * @param {{ id: string, title: string, count: number, help: string, line?: string, parts: (Node|null)[] }} spec
+ * @returns {HTMLElement}
+ */
+export function alsoScaffold({ id, title, count, help: helpText, line = '', parts }) {
+  return el(
+    'section',
+    { id, class: 'extras', attrs: { 'aria-labelledby': `${id}-title` } },
+    el(
+      'div',
+      { class: 'section-head' },
+      el('h3', { id: `${id}-title`, text: title }),
+      el('span', { class: count > 0 ? 'chip accent' : 'chip', text: `${count} chosen` }),
+    ),
+    help(helpText),
+    // Seen, not announced: the group is drawn afresh on every reply,
+    // and a live region inserted with its text is announced unreliably
+    // or on every redraw. The form that owns the group speaks the line
+    // through a region of its own that outlives the redraws.
+    line === ''
+      ? null
+      : el('p', { class: 'extras-line', text: line, attrs: { 'data-role': 'extras-line' } }),
+    ...parts,
+  );
+}
+
+/**
+ * A part of the group whose boxes tick — _Ready_, _Needs another
+ * capability first_, a proposed re-render: a small heading labelling a
+ * group of checkbox cards. A box says which vertical it is and whether
+ * it is now ticked, never the new set: one tick can move several
+ * boxes, and which is `../target.js`'s answer.
+ *
+ * @param {{ id: string, title: string, choices: Choice[], chosen: string[], onTick: (value: string, ticked: boolean) => void, role?: string }} spec
+ * @returns {HTMLElement}
+ */
+export function tickPart({ id, title, choices, chosen, onTick, role }) {
+  const heading = el('h4', { id: `${id}-title`, text: title });
+  const group = checkboxCards({
+    id,
+    chosen,
+    choices,
+    onChange: (values) => {
+      const now = new Set(values);
+      const moved = choices.find(
+        (choice) => now.has(choice.value) !== chosen.includes(choice.value),
+      );
+      if (moved) onTick(moved.value, now.has(moved.value));
+    },
+  });
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-labelledby', heading.id);
+  return el('div', { attrs: { 'data-role': role } }, heading, group);
+}
+
+/**
+ * What a keel project already has, as the same cards with the box
+ * ticked for good: checked and disabled, since a vertical installed is
+ * not one an add can take back, and drawn among the boxes that still
+ * tick so what is there reads as ticked rather than as a list apart.
+ * Beside a card, the action its entry carries — a **Re-render** — sits
+ * outside the label, so pressing it never reaches the box.
+ *
+ * @param {{ id: string, title: string, items: (Choice & { chosen?: boolean, action?: Node|null })[] }} spec
+ * @returns {HTMLElement}
+ */
+export function lockedPart({ id, title, items }) {
+  const heading = el('h4', { id: `${id}-title`, text: title });
+  return el(
+    'div',
+    {},
+    heading,
+    el(
+      'div',
+      { id, class: 'cards', attrs: { role: 'group', 'aria-labelledby': heading.id } },
+      ...items.map((item) =>
+        el(
+          'div',
+          {
+            class: item.chosen ? 'card locked chosen' : 'card locked',
+            attrs: { 'data-id': item.value },
+          },
+          el(
+            'label',
+            { class: 'card-check' },
+            el('input', { type: 'checkbox', value: item.value, checked: true, disabled: true }),
+            body(item),
+          ),
+          item.action ?? null,
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * The focused control inside `host`, as something that outlives the
+ * node: its id where it has one, else the card group it sits in and
+ * the value it carries — a card's input has no id of its own.
+ *
+ * A step is redrawn on every reply, and a box ticked from the keyboard
+ * would otherwise hand the focus back to the page body; this and
+ * {@link refocus} put it back on the control that replaced it.
+ *
+ * @param {HTMLElement} host
+ * @returns {{ id: string } | { group: string, value: string } | null}
+ */
+export function focusIn(host) {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !host.contains(active)) return null;
+  if (active.id !== '') return { id: active.id };
+  const group = active.closest('.cards');
+  if (group instanceof HTMLElement && group.id !== '' && active instanceof HTMLInputElement) {
+    return { group: group.id, value: active.value };
+  }
+  return null;
+}
+
+/**
+ * Puts the focus back on the control {@link focusIn} described, if it
+ * is still drawn.
+ *
+ * @param {HTMLElement} host
+ * @param {{ id: string } | { group: string, value: string } | null} focused
+ */
+export function refocus(host, focused) {
+  if (focused === null) return;
+  const found =
+    'id' in focused
+      ? host.querySelector(`#${CSS.escape(focused.id)}`)
+      : host.querySelector(
+          `#${CSS.escape(focused.group)} input[value="${CSS.escape(focused.value)}"]`,
+        );
+  if (found instanceof HTMLElement) found.focus({ preventScroll: true });
 }
 
 /** A muted line of prose, for a step with something to say and nothing to ask. */
@@ -244,6 +441,27 @@ export function prose(text) {
     if (part === '') return;
     fragment.append(index % 2 === 1 ? el('code', { text: part }) : document.createTextNode(part));
   });
+  return fragment;
+}
+
+/**
+ * A sentence the engine wrote — a refusal, a reason — with each
+ * command-line flag it names set as one literal that never breaks
+ * across lines (`command.js`' `flagSpans`). Text nodes, never
+ * `innerHTML`: the sentence comes off the wire.
+ *
+ * @param {string} text
+ * @returns {DocumentFragment}
+ */
+export function sentence(text) {
+  const fragment = document.createDocumentFragment();
+  for (const span of flagSpans(text)) {
+    fragment.append(
+      span.flag
+        ? el('code', { class: 'flag', text: span.text })
+        : document.createTextNode(span.text),
+    );
+  }
   return fragment;
 }
 

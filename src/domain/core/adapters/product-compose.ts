@@ -8,7 +8,8 @@
  *     multi-stage build for `quarkus-rest` / `spring-rest` /
  *     `micronaut-rest`, a Go multi-stage build onto distroless for
  *     `go-http`, a musl-static cargo build onto distroless for
- *     `rust-http`;
+ *     `rust-http`, and a single Node stage running the TypeScript
+ *     sources for `ts-http`;
  *   - the frontend image builds the Vite bundle into an **assets
  *     image** whose entrypoint populates a named volume
  *     (clear-then-copy + `env.js` templated from the environment) as
@@ -31,12 +32,24 @@
  * fall back to each stack's default.
  *
  * Runs at the product root (the `fullstack` vertical), so it writes
- * into the service directories via path-prefixed contributions. A
- * backend stack without a Dockerfile template simply gets none —
- * compose then covers the services that have one.
+ * into the service directories via path-prefixed contributions. Which
+ * services get an image is declared, not only done:
+ * `providesInServices` names the stacks it has a Dockerfile for, and
+ * the contribution writes one for a service exactly when its stack is
+ * listed there — so in such a service `containerization` reads as
+ * there already (`../scope.ts`), and `keel add containerization`
+ * there is an Ok that installs nothing rather than a collision with
+ * the files written here. A service whose stack is not listed — a
+ * plugin's backend — gets none, keeps `containerization` to add, and
+ * the product's `keel new` report says so.
  */
 
-import type { Adapter, ContributionFile, Ctx } from '../../contract/composition.js';
+import type {
+  Adapter,
+  ContributionFile,
+  Ctx,
+  ServiceProvision,
+} from '../../contract/composition.js';
 import type { ServiceRef } from '../../contract/manifest.js';
 import { jvmRestArtifact, type JvmBuildSystem, type JvmRestFramework } from './container-image.js';
 import { jvmLayout } from './jvm-module-layout.js';
@@ -75,6 +88,25 @@ const JVM_BUILDERS: Readonly<Record<JvmBuildSystem, { image: string; command: st
 const FRONTEND_IMAGES: Readonly<Record<string, string>> = {
   'web-components': 'frontend-spa',
 };
+
+/**
+ * The service stacks this adapter builds an image for, as it declares
+ * them — every stack either table has a Dockerfile for.
+ */
+const BUILDS: ServiceProvision = {
+  // The id of `containerization`, whose part in the service this is;
+  // an adapter does not import a vertical, which imports adapters.
+  vertical: 'containerization',
+  stacks: [...Object.keys(BACKEND_IMAGES), ...Object.keys(FRONTEND_IMAGES)],
+};
+
+/** The image template a table names for `service`, when the declaration lists its stack. */
+function imageFor(
+  table: Readonly<Record<string, string>>,
+  service: ServiceRef,
+): string | undefined {
+  return BUILDS.stacks.includes(service.stack) ? table[service.stack] : undefined;
+}
 
 /**
  * The recorded JVM build system of a service ref, defaulting to
@@ -126,6 +158,7 @@ export const productComposeAdapter: Adapter = {
   vertical: 'fullstack',
   covers: ['product-compose'],
   predicate: {},
+  providesInServices: BUILDS,
   async contribute(ctx: Ctx) {
     const services = ctx.manifest.services;
     const backend = services[0];
@@ -138,7 +171,7 @@ export const productComposeAdapter: Adapter = {
       backend,
       frontend,
     });
-    const backendImage = BACKEND_IMAGES[backend.stack];
+    const backendImage = imageFor(BACKEND_IMAGES, backend);
     if (backendImage) {
       files.push(
         ...(await ctx.templates.render(
@@ -148,7 +181,7 @@ export const productComposeAdapter: Adapter = {
         )),
       );
     }
-    const frontendImage = FRONTEND_IMAGES[frontend.stack];
+    const frontendImage = imageFor(FRONTEND_IMAGES, frontend);
     if (frontendImage) {
       files.push(
         ...(await ctx.templates.render(`${TEMPLATE_ROOT}/${frontendImage}`, frontend.path, {

@@ -15,6 +15,8 @@
  * would need this to widen, and nothing here ships one.
  */
 
+import type { Refusal } from '../../../domain/contract/refusal.js';
+
 /** An inbound request, normalised. */
 export interface UiRequest {
   /** Uppercase HTTP method. */
@@ -69,14 +71,46 @@ export function content(body: string, contentType: string, status = 200): UiResp
   return respond(status, contentType, body);
 }
 
-/** The shape every API failure takes, so one client branch handles all of them. */
+/**
+ * The shape every API failure takes, so one client branch handles all
+ * of them. A refusal the engine raised as data — a vertical this
+ * project cannot carry, a file in the way — carries it as `refusal`
+ * beside its sentence, for a page that wants to act on the fields
+ * rather than only show the words.
+ */
 export interface ApiError {
-  readonly error: { readonly code: string; readonly message: string };
+  readonly error: {
+    readonly code: string;
+    readonly message: string;
+    readonly refusal?: Refusal;
+  };
 }
 
-/** A JSON error response carrying a stable code and a display message. */
-export function failure(status: number, code: string, message: string): UiResponse {
-  const payload: ApiError = { error: { code, message } };
+/**
+ * Error code for a throw nothing turned into a refusal.
+ *
+ * A refusal is a `DomainError`: the mediator puts it on the `Err`
+ * rail and it arrives as a 422 under its own code. Anything else that
+ * escapes a route is a bug by the kernel's rule, and the executable
+ * answers it with this code and the exception's own message — in the
+ * same envelope, so the page shows the sentence rather than a status
+ * number, and says it is a bug to report.
+ */
+export const INTERNAL = 'keel.internal';
+
+/**
+ * A JSON error response carrying a stable code and a display message,
+ * and the refusal it was written from when there is one.
+ */
+export function failure(
+  status: number,
+  code: string,
+  message: string,
+  refusal?: Refusal,
+): UiResponse {
+  const payload: ApiError = {
+    error: { code, message, ...(refusal === undefined ? {} : { refusal }) },
+  };
   return json(payload, status);
 }
 

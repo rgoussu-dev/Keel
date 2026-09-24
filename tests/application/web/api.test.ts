@@ -5,9 +5,10 @@
  * Driven over a fake Mediator rather than the real one, because what
  * is under test is the *mapping* — that a body becomes the command
  * the user meant, that a refusal becomes a 422 carrying the domain's
- * own code, that a malformed body becomes a 400 rather than a stack
- * trace. The engine has its own suites; running it here would only
- * make these slow. What `keel.dials` actually answers is
+ * own code (and the refusal's data, when it was raised as data), that
+ * a malformed body becomes a 400 rather than a stack trace. The
+ * engine has its own suites; running it here would only make these
+ * slow. What `keel.dials` actually answers is
  * `dials.test.ts`'s subject, over the real registry.
  */
 
@@ -18,6 +19,7 @@ import type { UiRequest, UiResponse } from '../../../src/application/web/contrac
 import type { Action } from '../../../src/domain/kernel/action.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
 import { DomainError, err, ok, type Result } from '../../../src/domain/kernel/result.js';
+import { RefusalError } from '../../../src/domain/contract/refusal.js';
 
 /** Mediator fake recording what it was asked to dispatch. */
 class RecordingMediator implements Mediator {
@@ -182,6 +184,23 @@ describe('the keel ui API', () => {
     });
   });
 
+  it('carries the agent harness left out to the install command', async () => {
+    const mediator = new RecordingMediator();
+    await call(mediator, {
+      method: 'POST',
+      path: '/api/install',
+      body: JSON.stringify({
+        ...NEW_PROJECT,
+        target: { ...NEW_PROJECT.target, agentHarness: false },
+      }),
+    });
+    expect(mediator.dispatched[0]).toMatchObject({
+      kind: 'keel.new-project',
+      stack: 'ts-cli',
+      agentHarness: false,
+    });
+  });
+
   it('maps each target kind to its own command', async () => {
     const mediator = new RecordingMediator();
     for (const target of [
@@ -199,6 +218,51 @@ describe('the keel ui API', () => {
       'keel.add-module',
     ]);
     expect(mediator.dispatched[1]).toMatchObject({ module: 'billing', consumes: 'greeting' });
+    // `vertical` is the alias for a list of one.
+    expect(mediator.dispatched[0]).toMatchObject({ verticals: ['ci'] });
+  });
+
+  it('takes several verticals, and the installed ones to refresh beside them', async () => {
+    const mediator = new RecordingMediator();
+    await call(mediator, {
+      method: 'POST',
+      path: '/api/install',
+      body: JSON.stringify({
+        cwd: '/tmp/demo',
+        target: {
+          kind: 'add-vertical',
+          verticals: ['containerization', 'distribution'],
+          refresh: ['persistence'],
+        },
+        answers: {},
+      }),
+    });
+    expect(mediator.dispatched[0]).toMatchObject({
+      kind: 'keel.add-vertical',
+      verticals: ['containerization', 'distribution'],
+      refresh: ['persistence'],
+    });
+    expect(Object.keys(mediator.dispatched[0] ?? {})).not.toContain('vertical');
+  });
+
+  it.each([
+    ['neither', {}],
+    ['both', { vertical: 'ci', verticals: ['ci'] }],
+    ['an empty list', { verticals: [] }],
+  ])('rejects an add-vertical target naming %s, before dispatching', async (_, names) => {
+    const mediator = new RecordingMediator();
+    const response = await call(mediator, {
+      method: 'POST',
+      path: '/api/preview',
+      body: JSON.stringify({
+        cwd: '/tmp/demo',
+        target: { kind: 'add-vertical', ...names },
+        answers: {},
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(response.body).toContain('target.verticals');
+    expect(mediator.dispatched).toEqual([]);
   });
 
   it('omits an absent optional field rather than sending it as undefined', async () => {
@@ -265,6 +329,29 @@ describe('the keel ui API', () => {
     expect(response.status).toBe(422);
     expect(bodyOf(response)).toEqual({
       error: { code: 'keel.unknown-stack', message: "unknown stack 'nope'" },
+    });
+  });
+
+  it('carries a refusal raised as data in the 422 body, beside its sentence', async () => {
+    const refusal = {
+      kind: 'unavailable',
+      vertical: 'persistence',
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['quarkus-cli-rest'],
+    } as const;
+    const sentence =
+      'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint';
+    const refusing = new RecordingMediator(
+      err(new RefusalError(sentence, 'keel.uncoverable-vertical', refusal)),
+    );
+    const response = await call(refusing, {
+      method: 'POST',
+      path: '/api/preview',
+      body: JSON.stringify(NEW_PROJECT),
+    });
+    expect(response.status).toBe(422);
+    expect(bodyOf(response)).toEqual({
+      error: { code: 'keel.uncoverable-vertical', message: sentence, refusal },
     });
   });
 

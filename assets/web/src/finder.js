@@ -22,10 +22,11 @@
  * @typedef {{ entrypoints: ReadonlyArray<string>, stack: string }} Combination
  * @typedef {{ kind: string, choices: ReadonlyArray<{ id: string, label: string, doc: string }>, default: string }} EntrypointStep
  * @typedef {{ id: string, label: string, entrypointStep: EntrypointStep | null, combinations: ReadonlyArray<Combination> }} FrameworkNode
- * @typedef {{ id: string, label: string, doc: string, frameworks: ReadonlyArray<FrameworkNode> }} LanguageNode
+ * @typedef {{ id: string, label: string, doc: string, runtime: string | null, frameworks: ReadonlyArray<FrameworkNode> }} LanguageNode
  * @typedef {{ id: string, label: string, doc: string, languages: ReadonlyArray<LanguageNode> }} ShapeNode
  * @typedef {{ shapes: ReadonlyArray<ShapeNode>, defaultStack: string }} Finder
  * @typedef {{ shape: ShapeNode, language: LanguageNode, framework: FrameworkNode, combination: Combination }} Located
+ * @typedef {{ shape: ShapeNode, from: LanguageNode, to: LanguageNode }} Jump
  */
 
 /** Encodes a chosen set the way a `multi-select` answer travels. */
@@ -84,6 +85,11 @@ export function defaultStack(finder) {
  * language, framework and entrypoints wherever the new shape still
  * offers them.
  *
+ * Where it does not offer the language, the move lands on its nearest
+ * kin rather than on whichever language sorts first — see
+ * {@link languageIn} — and {@link languageJump} is how the page finds
+ * out, so it can say so.
+ *
  * @param {Finder} finder
  * @param {string} shapeId
  * @param {Located | null} from
@@ -91,7 +97,31 @@ export function defaultStack(finder) {
  */
 export function pickShape(finder, shapeId, from) {
   const shape = (finder?.shapes ?? []).find((node) => node.id === shapeId);
-  return shape ? descend(shape, from) : null;
+  return shape ? descend(finder, shape, from) : null;
+}
+
+/**
+ * The language a move from one preset to another changed without
+ * being asked to, or null when it changed none.
+ *
+ * A jump is a move onto another shape that does not offer the old
+ * language at all — Kotlin moving to fullstack, where no product is
+ * written in Kotlin. The language could not come along then, whichever
+ * control made the move, and the one thing worse than landing on Java
+ * is landing there without a word. A move within a shape never jumps:
+ * a language changed there is a language someone picked.
+ *
+ * @param {Finder} finder
+ * @param {string | undefined} fromStack
+ * @param {string | undefined} toStack
+ * @returns {Jump | null}
+ */
+export function languageJump(finder, fromStack, toStack) {
+  const from = fromStack ? locate(finder, fromStack) : null;
+  const to = toStack ? locate(finder, toStack) : null;
+  if (!from || !to || from.shape.id === to.shape.id) return null;
+  if (to.shape.languages.some((node) => node.id === from.language.id)) return null;
+  return { shape: to.shape, from: from.language, to: to.language };
 }
 
 /**
@@ -136,17 +166,57 @@ export function pickEntrypoints(framework, answer) {
   return exactCombination(framework, answer)?.stack ?? null;
 }
 
-/** Walks a shape down to a leaf, preferring `from`'s choices at each level. */
-function descend(shape, from) {
-  const language =
-    shape.languages.find((node) => node.id === from?.language.id) ?? shape.languages[0];
-  return language ? resolve(language, from) : null;
+/**
+ * Walks a shape down to a leaf, preferring `from`'s choices at each
+ * level and the default preset's where `from`'s are not there.
+ */
+function descend(finder, shape, from) {
+  const home = locate(finder, defaultStack(finder) ?? '');
+  const language = languageIn(shape, from, home);
+  return language ? resolve(language, from, home) : null;
 }
 
-/** Walks a language down to a leaf, preferring `from`'s choices. */
-function resolve(language, from) {
+/**
+ * The language a move onto `shape` lands on: `from`'s own where the
+ * shape offers it, and otherwise the nearest kin it does —
+ *
+ *   1. one with `from`'s framework, so Kotlin on Spring moving to
+ *      fullstack lands on Java on Spring, where `fullstack-spring` is.
+ *      "No framework" is not a framework: two languages sharing only
+ *      the absence of one are not kin;
+ *   2. then one on `from`'s runtime;
+ *   3. then the default preset's, so a front end moving to the
+ *      backend shape lands where a blank form opens.
+ *
+ * The shape's first language is the last resort, reached only where
+ * the shape shares nothing with where the move came from nor with the
+ * default — the frontend shape today, whose one language is the
+ * browser's. It used to be the only resort, and languages sort by
+ * label, which put a Kotlin backend moving to fullstack on Go.
+ */
+function languageIn(shape, from, home) {
+  const framework = from?.framework.id ?? '';
+  const runtime = from?.language.runtime ?? null;
+  const offered = (test) => shape.languages.find(test);
+  return (
+    offered((node) => node.id === from?.language.id) ??
+    offered((node) => framework !== '' && node.frameworks.some((f) => f.id === framework)) ??
+    offered((node) => runtime !== null && node.runtime === runtime) ??
+    offered((node) => node.id === home?.language.id) ??
+    shape.languages[0]
+  );
+}
+
+/**
+ * Walks a language down to a leaf, preferring `from`'s framework, then
+ * `home`'s — the default preset's, when a shape move passes one — then
+ * the first.
+ */
+function resolve(language, from, home = null) {
   const framework =
-    language.frameworks.find((node) => node.id === from?.framework.id) ?? language.frameworks[0];
+    language.frameworks.find((node) => node.id === from?.framework.id) ??
+    language.frameworks.find((node) => node.id === home?.framework.id) ??
+    language.frameworks[0];
   return framework ? (combinationIn(framework, wanted(from))?.stack ?? null) : null;
 }
 

@@ -15,7 +15,9 @@ import {
   linkPeerCommand,
   newProjectCommand,
 } from '../../../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { projectStatusQuery } from '../../../../src/domain/contract/queries.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { peerRef } from '../../../../src/domain/core/handlers/new-project.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -97,15 +99,21 @@ describe('fullstack composite install (monorepo)', () => {
         await mediator.dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'agent-harness',
+            verticals: ['agent-harness'],
             answers: {},
             interactive: false,
             dryRun: false,
           }),
         ),
       );
-      expect(error.code).toBe('keel.invalid-agent-harness');
-      expect(error.message).toContain('inside a service');
+      // Not a special case any more: the product glue declares the rule
+      // (`fullstack/one-harness`), so the planner reads a family kit as
+      // not for the root even where the root's tags match a family —
+      // and the root sends it to its services, which have it.
+      expect(error.code).toBe('keel.wrong-scope');
+      expect(error.message).toBe(
+        'Agent harness belongs to a service, not to the product root — backend/ and frontend/ have it already',
+      );
       expect(read('AGENTS.md')).toBe(rootDocBefore);
       expect(rootDocBefore).toContain('Work inside a service');
       expect(rootDocBefore).not.toContain('Engineering conventions');
@@ -113,6 +121,135 @@ describe('fullstack composite install (monorepo)', () => {
       expect(ran).toEqual(actionsBefore);
     },
   );
+
+  it('names a file in the way inside a service from the product root it was run in', async () => {
+    // Each service's Tree is rooted at its own directory, so its
+    // adapters see `go.mod`; the user ran `keel new` one level up,
+    // where the file in the way is `backend/go.mod`. (A README there
+    // would be adopted, as at the root.)
+    await fs.outputFile(path.join(cwd, 'backend/go.mod'), 'module example.com/mine\n');
+    const { runDeferred } = recordActions();
+    const error = expectErr(
+      await installMediator({ runDeferred }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack-go',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toBe(
+      "'backend/go.mod' already exists, and keel does not overwrite a file this run did not write",
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      kind: 'path-conflict',
+      path: 'backend/go.mod',
+    });
+    expect(read('backend/go.mod')).toBe('module example.com/mine\n');
+  });
+
+  it('sends a capability the root cannot carry into its services, naming them', async () => {
+    const { ran, runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+    const before = await fsManifestStore.read(projectScopeRoot(cwd));
+    const actionsBefore = [...ran];
+    const error = expectErr(
+      await mediator.dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals: ['persistence'],
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    // A refusal of the scope, not of the project: a root carries almost
+    // no tags, so the gap of the adapter nearest to it is advice for
+    // some other product, and where the capability belongs is the whole
+    // answer — read from each service's own manifest: the backend takes
+    // it, the frontend cannot.
+    expect(error.code).toBe('keel.wrong-scope');
+    expect(error.message).toBe(
+      'Persistence belongs to a service, not to the product root — it goes in backend/',
+    );
+    expect(error).toBeInstanceOf(RefusalError);
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'elsewhere',
+      vertical: 'persistence',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+      ],
+    });
+    expect(await fsManifestStore.read(projectScopeRoot(cwd))).toEqual(before);
+    expect(ran).toEqual(actionsBefore);
+  });
+
+  it('reads where it goes from what each service has, not what its preset had', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+    const persistence = (at: string) =>
+      addVerticalCommand({
+        cwd: at,
+        verticals: ['persistence'],
+        answers: {},
+        interactive: false,
+        dryRun: false,
+      });
+    expectOk(await mediator.dispatch(persistence(path.join(cwd, 'backend'))));
+
+    // Its preset would take it; its manifest says it has it now.
+    const error = expectErr(await mediator.dispatch(persistence(cwd)));
+    expect(error.message).toBe(
+      'Persistence belongs to a service, not to the product root — backend/ has it already',
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      services: [
+        { path: 'backend', readiness: 'included' },
+        { path: 'frontend', readiness: 'unavailable' },
+      ],
+    });
+
+    // A service manifest keel cannot read words nothing wrong here —
+    // the root still refuses, reading that service from its preset.
+    await fs.writeFile(
+      path.join(projectScopeRoot(path.join(cwd, 'backend')), MANIFEST_FILENAME),
+      '{ broken',
+    );
+    const unread = expectErr(await mediator.dispatch(persistence(cwd)));
+    expect(unread.code).toBe('keel.wrong-scope');
+    expect((unread as RefusalError).refusal).toMatchObject({
+      services: [{ path: 'backend', readiness: 'ready' }, { path: 'frontend' }],
+    });
+  });
+
+  it('lets through a capability the root itself can carry', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+    // The redirect is the coverage check asked of the root's own tags,
+    // not a blanket refusal: `dev-env`'s compose adapter matches
+    // anywhere, so the root resolves it and nothing sends it away.
+    const report = expectOk(
+      await mediator.dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals: ['dev-env'],
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(report.changes.map((change) => change.path)).toContain('dev/compose.yaml');
+  });
+
   it('scaffolds both services, root glue, and hoists vcs to the root', async () => {
     const { ran, runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred });
@@ -414,7 +551,7 @@ describe('brownfield: keel link + keel add gateway', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd: frontendDir,
-          vertical: 'gateway',
+          verticals: ['gateway'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -428,7 +565,7 @@ describe('brownfield: keel link + keel add gateway', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd: backendDir,
-          vertical: 'gateway',
+          verticals: ['gateway'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -445,7 +582,9 @@ describe('brownfield: keel link + keel add gateway', () => {
     expect(properties).toContain('%dev.quarkus.http.cors.enabled=true');
   });
 
-  it('installs nothing when the gateway vertical resolves without peers', async () => {
+  it('refuses the gateway where no project is linked, and its card says so first', async () => {
+    // It used to "install" here: zero files, recorded as installed —
+    // which then blocked the real install after `keel link`.
     const { runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred });
     const appDir = path.join(cwd, 'solo');
@@ -461,19 +600,73 @@ describe('brownfield: keel link + keel add gateway', () => {
         }),
       ),
     );
-    const report = expectOk(
+    const error = expectErr(
       await mediator.dispatch(
         addVerticalCommand({
           cwd: appDir,
-          vertical: 'gateway',
+          verticals: ['gateway'],
           answers: {},
           interactive: false,
           dryRun: false,
         }),
       ),
     );
-    expect(report.changes).toHaveLength(0);
-    expect(await fs.pathExists(path.join(appDir, 'infrastructure/gateway-rest'))).toBe(false);
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      'Service gateway wires linked projects, and no linked project serves it here — link one that does first',
+    );
+    const manifest = await fsManifestStore.read(projectScopeRoot(appDir));
+    expect(manifest?.verticals.map((v) => v.id)).not.toContain('gateway');
+
+    const status = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: appDir })));
+    expect(status.available.find((v) => v.id === 'gateway')).toMatchObject({
+      readiness: 'unavailable',
+      refusal: { code: error.code, message: error.message },
+    });
+  });
+
+  it('installs the gateway on a lone go-http once a project is linked, with no --reapply', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    const apiDir = path.join(cwd, 'api');
+    const appDir = path.join(cwd, 'app');
+    for (const [dir, stack] of [
+      [apiDir, 'go-http'],
+      [appDir, 'web-components'],
+    ] as const) {
+      await fs.ensureDir(dir);
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({ cwd: dir, stack, answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+    }
+    const gateway = () =>
+      mediator.dispatch(
+        addVerticalCommand({
+          cwd: apiDir,
+          verticals: ['gateway'],
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      );
+    const card = async () =>
+      expectOk(await mediator.dispatch(projectStatusQuery({ cwd: apiDir }))).available.find(
+        (v) => v.id === 'gateway',
+      );
+
+    // Alone, it is refused, and nothing is recorded that would stand in
+    // the way later.
+    expect((await card())?.readiness).toBe('unavailable');
+    expect(expectErr(await gateway()).code).toBe('keel.uncoverable-vertical');
+
+    expectOk(await mediator.dispatch(linkPeerCommand({ cwd: apiDir, ref: '../app' })));
+    expect(await card()).toMatchObject({ readiness: 'ready', requires: [] });
+    const report = expectOk(await gateway());
+    expect(report.changes.length).toBeGreaterThan(0);
+    const manifest = await fsManifestStore.read(projectScopeRoot(apiDir));
+    expect(manifest?.verticals.map((v) => v.id)).toContain('gateway');
   });
 
   it('link refuses an uninitialised peer', async () => {

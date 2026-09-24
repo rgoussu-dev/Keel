@@ -15,9 +15,13 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import { fsTreeFactory } from '../../../../src/infrastructure/tree/fs-tree.js';
 import {
   expectErr,
   expectOk,
@@ -306,6 +310,68 @@ describe('keel.new-project (keel new)', () => {
     expect(error.message).toMatch(/already initialised/);
   });
 
+  it('refuses a file of the user’s it would overwrite, naming it', async () => {
+    // `README.md` alone would be adopted; `go.mod` is the file in the way.
+    await fs.writeFile(path.join(cwd, 'README.md'), '# my repository\n');
+    await fs.writeFile(path.join(cwd, 'go.mod'), 'module example.com/mine\n');
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    // The same sentence `keel add` refuses a file in the way with; that
+    // moving it aside is the way past it here is the CLI's hint, built
+    // from the refusal.
+    expect(error.message).toBe(
+      "'go.mod' already exists, and keel does not overwrite a file this run did not write",
+    );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'path-conflict',
+      path: 'go.mod',
+      adapterId: 'walking-skeleton/go-bootstrap',
+    });
+    // Refused while staging: nothing was committed, nothing ran — not
+    // even the adoption of the README.
+    expect((await fs.readdir(cwd)).sort()).toEqual(['README.md', 'go.mod']);
+    expect(await fs.readFile(path.join(cwd, 'README.md'), 'utf8')).toBe('# my repository\n');
+    expect(await fs.readFile(path.join(cwd, 'go.mod'), 'utf8')).toBe('module example.com/mine\n');
+  });
+
+  /**
+   * A patch meets a file of the user's the way a whole-file write
+   * does: merged under keel's, a `package.json` or a
+   * `settings.gradle.kts` would be a build neither of them wrote — it
+   * lost keel's workspaces, or its module includes. Only `README.md`
+   * and `.gitignore` are adopted.
+   */
+  it.each([
+    ['ts-http', 'package.json', '{"name":"mine","version":"1.0.0"}\n'],
+    ['quarkus-rest', 'settings.gradle.kts', 'rootProject.name = "mine"\n'],
+    ['go-cli', '.gitattributes', '* text=auto\n'],
+    ['go-cli', '.claude/settings.json', '{}\n'],
+  ])(
+    'refuses %s over a %s of the user’s that a patch would merge into',
+    async (stack, file, content) => {
+      await fs.outputFile(path.join(cwd, file), content);
+      const error = expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({ cwd, stack, answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+      expect(error.code).toBe('keel.path-conflict');
+      expect((error as RefusalError).refusal).toMatchObject({ kind: 'path-conflict', path: file });
+      expect(await fs.readFile(path.join(cwd, file), 'utf8')).toBe(content);
+      expect(await fs.pathExists(path.join(cwd, 'AGENTS.md'))).toBe(false);
+    },
+  );
+
   it('rejects an unknown stack id', async () => {
     const mediator = installMediator();
     const error = expectErr(
@@ -321,6 +387,29 @@ describe('keel.new-project (keel new)', () => {
     );
     expect(error.code).toBe('keel.unknown-stack');
     expect(error.message).toMatch(/unknown stack/);
+  });
+
+  /**
+   * The spellings users guess are real facets in the family's other
+   * word — `-http` where the JVM presets say `-rest`, a product named by
+   * its engine — so the refusal names the preset they meant before the
+   * list of every id, and writes nothing.
+   */
+  it.each([
+    ['quarkus-cli-http', 'quarkus-cli-rest'],
+    ['fullstack-quarkus', 'fullstack'],
+    ['go-rest', 'go-http'],
+  ])('suggests the nearest stack for --stack=%s', async (typed, meant) => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({ cwd, stack: typed, answers: {}, interactive: false, dryRun: false }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toMatch(
+      new RegExp(`^unknown stack '${typed}' — did you mean '${meant}'\\? Available: .*go-cli`),
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
   });
 });
 
@@ -859,8 +948,10 @@ describe('keel.new-project stack selection', () => {
       extraVerticals: '',
       'keel.review': 'proceed',
     });
+    const logger = new FakeLogger();
     const mediator = installMediator({
       prompt,
+      logger,
       runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
     });
     const report = expectOk(
@@ -876,7 +967,33 @@ describe('keel.new-project stack selection', () => {
     expect(report.subject).toBe('quarkus-cli');
     expect(prompt.asked.slice(0, 4)).toEqual(['shape', 'language', 'framework', 'entrypoints']);
     expect(prompt.asked).not.toContain('stack');
+    // The line it resolves on says each answer by name — the shape's,
+    // not its gloss, and the framework as the product it is.
+    expect(logger.messages('info')).toContain(
+      'keel new: Backend or tool · Java · Quarkus · CLI → quarkus-cli',
+    );
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
+  });
+
+  it('refuses a combination no preset scaffolds in the words its menus give each answer', async () => {
+    // A scripted prompt can answer what no menu offered: a browser SPA
+    // on a Quarkus backend.
+    const prompt = new FakePrompt({
+      shape: 'backend',
+      language: 'java@jvm',
+      framework: 'quarkus',
+      entrypoints: 'spa',
+    });
+    const error = expectErr(
+      await installMediator({ prompt }).dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: false }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toMatch(
+      /^no backend or tool preset scaffolds Java with .+ on Quarkus — /,
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
   });
 
   it('resolves both user-side adapters to the composed preset, not a product', async () => {
@@ -1123,9 +1240,11 @@ describe('keel.new-project extra verticals', () => {
     const installed = manifest?.verticals.map((v) => v.id) ?? [];
     expect(installed).toContain('distribution');
     expect(installed).toContain('ci');
-    // The stack's own first, the extras after, in the order named —
-    // which is what lets them resolve against one another's tags.
-    expect(installed.slice(-2)).toEqual(['distribution', 'ci']);
+    // The stack's own first, the extras after — by id where nothing
+    // ties one to the other, which follows no dependency the order
+    // named broke, so there is nothing to note.
+    expect(installed.slice(-2)).toEqual(['ci', 'distribution']);
+    expect(report.notes).toBeUndefined();
   });
 
   it('installs none when --with is omitted non-interactively', async () => {
@@ -1242,6 +1361,32 @@ describe('keel.new-project extra verticals', () => {
     expect(offered).not.toContain('persistence');
   });
 
+  it('labels a choice that needs another first with what it needs, by title', async () => {
+    // Only the dials are scripted: the run stops at the first adapter
+    // question, after the menu this is about has been asked.
+    const prompt = new FakePrompt({
+      extraVerticals: '',
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+    });
+    await installMediator({ prompt })
+      .dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+        }),
+      )
+      .catch(() => null);
+    const asked = prompt.questions.find((q) => q.id === 'extraVerticals');
+    const label = (id: string) => asked?.choices?.find((c) => c.value === id)?.label;
+    expect(label('containerization')).toBe('Container image');
+    expect(label('distribution')).toBe('Distribution — needs Container image');
+    expect(label('iac')).toBe('Infrastructure as code — needs Container image, Distribution');
+  });
+
   it('an explicit --with suppresses the question, including when it is empty', async () => {
     const prompt = new FakePrompt({
       buildSystem: 'gradle',
@@ -1287,24 +1432,58 @@ describe('keel.new-project extra verticals', () => {
     expect(error.message).toContain('ci');
   });
 
-  it('rejects a vertical the stack already installs', async () => {
+  it('suggests the nearest vertical this stack can take', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
           cwd,
-          stack: 'quarkus-cli',
+          stack: 'quarkus-rest',
           answers: bootstrapAnswers,
           interactive: false,
           dryRun: true,
-          extraVerticals: ['vcs'],
+          extraVerticals: ['persistance'],
         }),
       ),
     );
-    expect(error.code).toBe('keel.invalid-extra-verticals');
-    expect(error.message).toContain('already installs');
+    expect(error.code).toBe('keel.unknown-vertical');
+    expect(error.message).toMatch(
+      /^unknown vertical 'persistance' — did you mean 'persistence'\? Available on top of stack 'quarkus-rest': /,
+    );
   });
 
-  it('rejects a vertical no adapter here can cover, naming the dimension and the fix', async () => {
+  it('drops a vertical the stack already installs, and says so, installing the rest', async () => {
+    const plan = async (extraVerticals: readonly string[]) =>
+      expectOk(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-cli',
+            answers: bootstrapAnswers,
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+    const alone = await plan([]);
+    const own = await plan(['vcs']);
+    expect(own.notes).toEqual(['Version control already comes with quarkus-cli']);
+    expect(own.changes).toEqual(alone.changes);
+
+    // Beside an extra it does not ask for, the note comes first — it
+    // is about what was named — and the extra installs as it would
+    // alone.
+    const withCi = await plan(['ci']);
+    const mixed = await plan(['dev-container', 'ci', 'vcs']);
+    expect(mixed.notes).toEqual([
+      'Dev container already comes with quarkus-cli',
+      'Version control already comes with quarkus-cli',
+      ...(withCi.notes ?? []),
+    ]);
+    expect(mixed.changes).toEqual(withCi.changes);
+  });
+
+  it('rejects a vertical no adapter here can cover, naming what is missing', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -1318,11 +1497,49 @@ describe('keel.new-project extra verticals', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toContain("vertical 'persistence'");
-    expect(error.message).toContain('datasource');
-    // What the menu's pruning says implicitly, said out loud: this
-    // preset has no `arch.server-http`, so nothing covers a datasource.
-    expect(error.message).toContain('arch.server-http');
+    // What the menu's pruning says implicitly, said out loud — in the
+    // words the finder offered the entrypoint in, not as the
+    // `arch.server-http` tag this preset lacks, and in the sentence
+    // `keel add persistence` refuses the scaffolded project with. The
+    // remedy only `--with` has (drop it, or scaffold the stack that
+    // carries it) is the CLI's, built from the refusal.
+    expect(error.message).toBe(
+      'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'persistence',
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['quarkus-cli-rest'],
+    });
+  });
+
+  it('names the missing entrypoint, not a framework swap, when both would do', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'spring-cli',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    // A Spring CLI is one tag from Quarkus's native adapter (the
+    // framework) and one from the JVM image one (the HTTP
+    // entrypoint). The framework is the project itself; the entrypoint
+    // is what the sibling preset has — so that is the gap, and no
+    // framework swap is offered.
+    expect(error.message).toBe(
+      'Distribution needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['spring-cli-rest'],
+    });
   });
 
   it('refuses it at the front door, before a single adapter question', async () => {
@@ -1357,7 +1574,7 @@ describe('keel.new-project extra verticals', () => {
     expect(prompt.asked).not.toContain('projectName');
   });
 
-  it('accepts extras that enable one another, in the order named', async () => {
+  it('accepts extras that enable one another', async () => {
     const mediator = installMediator({
       runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
     });
@@ -1369,11 +1586,9 @@ describe('keel.new-project extra verticals', () => {
           answers: { 'vcs/git-init': { remote: '', defaultBranch: 'main' } },
           interactive: false,
           dryRun: true,
-          // `iac` is keyed on the `dist.container-image` tag
-          // `distribution` promotes at install time, which no flat
-          // coverage probe can see — refusing this composition is
-          // exactly the wrong answer, since it is the one --with
-          // exists to enable.
+          // `iac` is keyed on the image `distribution` publishes, and
+          // `distribution` on the one `containerization` builds — the
+          // chain `--with` exists to compose in one run.
           extraVerticals: ['containerization', 'distribution', 'iac'],
         }),
       ),
@@ -1381,10 +1596,144 @@ describe('keel.new-project extra verticals', () => {
     const changed = report.changes.map((c) => c.path);
     expect(changed).toContain('Dockerfile');
     expect(changed.some((p) => p.startsWith('iac/'))).toBe(true);
+    expect(report.notes).toBeUndefined();
   });
 
-  it('names the extra to list it after when --with orders the pair backwards', async () => {
-    const error = expectErr(
+  it('plans the same install from any permutation of the extras', async () => {
+    // A set, not a sequence: every order of the chain is accepted and
+    // stages the same files, installed in the order the planner puts
+    // them in — and a run named out of that order says so.
+    const orders = [
+      ['containerization', 'distribution', 'iac'],
+      ['containerization', 'iac', 'distribution'],
+      ['distribution', 'containerization', 'iac'],
+      ['distribution', 'iac', 'containerization'],
+      ['iac', 'containerization', 'distribution'],
+      ['iac', 'distribution', 'containerization'],
+    ];
+    const plans: string[] = [];
+    for (const extraVerticals of orders) {
+      const report = expectOk(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-rest',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+      plans.push(JSON.stringify(report.changes));
+      expect(report.notes).toEqual(
+        extraVerticals.join(',') === 'containerization,distribution,iac'
+          ? undefined
+          : ['installed in dependency order: containerization, distribution, iac'],
+      );
+    }
+    expect(new Set(plans).size).toBe(1);
+  });
+
+  it('writes the same bytes from either order of two verticals nothing ties together', async () => {
+    // Toolchain and persistence both add a README section; nothing
+    // orders one after the other, so they go in by id — never in the
+    // order typed, which would move a section.
+    const readmes: string[] = [];
+    for (const extraVerticals of [
+      ['persistence', 'toolchain'],
+      ['toolchain', 'persistence'],
+    ]) {
+      let staged: Tree | null = null;
+      const report = expectOk(
+        await installMediator({ trees: (root) => (staged = fsTreeFactory(root)) }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-http',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+      expect(report.notes).toBeUndefined();
+      readmes.push((staged as Tree | null)?.read('README.md')?.toString('utf8') ?? '');
+    }
+    expect(readmes[0]).toContain('### Toolchain');
+    expect(readmes[1]).toBe(readmes[0]);
+  });
+
+  it.each(['go-http', 'quarkus-rest'])(
+    'puts persistence ahead of the distribution that reads it on %s, whatever the order named',
+    async (stack) => {
+      // The descriptor distribution renders carries `DB_URL` only when
+      // persistence is recorded by then. The page used to name extras
+      // alphabetically — distribution first — and lose it silently.
+      const orders = [
+        ['containerization', 'distribution', 'persistence'],
+        ['containerization', 'persistence', 'distribution'],
+        ['distribution', 'containerization', 'persistence'],
+        ['distribution', 'persistence', 'containerization'],
+        ['persistence', 'containerization', 'distribution'],
+        ['persistence', 'distribution', 'containerization'],
+      ];
+      for (const extraVerticals of orders) {
+        let staged: Tree | null = null;
+        const mediator = installMediator({
+          trees: (root) => (staged = fsTreeFactory(root)),
+        });
+        expectOk(
+          await mediator.dispatch(
+            newProjectCommand({
+              cwd,
+              stack,
+              answers: {},
+              interactive: false,
+              dryRun: true,
+              extraVerticals,
+            }),
+          ),
+        );
+        const compose = (staged as Tree | null)?.read('deploy/compose.yaml')?.toString('utf8');
+        expect(compose, extraVerticals.join(',')).toContain('DB_URL');
+      }
+    },
+  );
+
+  it('installs what a set leaves out, says so first, and writes what naming it would', async () => {
+    const staging = async (extraVerticals: readonly string[]) => {
+      let staged: Tree | null = null;
+      const report = expectOk(
+        await installMediator({ trees: (root) => (staged = fsTreeFactory(root)) }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-rest',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+      const tree = staged as Tree | null;
+      const bytes = report.changes.map(
+        (change) => `${change.kind} ${change.path} ${tree?.read(change.path)?.toString('base64')}`,
+      );
+      return { report, bytes };
+    };
+    const alone = await staging(['iac']);
+    expect(alone.report.notes).toEqual([
+      'added Container image, Distribution — needed by Infrastructure as code',
+    ]);
+    expect(alone.report.changes.map((c) => c.path)).toContain('deploy/compose.yaml');
+    const named = await staging(['containerization', 'distribution', 'iac']);
+    expect(named.report.notes).toBeUndefined();
+    expect(alone.bytes).toEqual(named.bytes);
+  });
+
+  it('names only the prerequisite a set leaves out', async () => {
+    const report = expectOk(
       await installMediator().dispatch(
         newProjectCommand({
           cwd,
@@ -1392,15 +1741,132 @@ describe('keel.new-project extra verticals', () => {
           answers: {},
           interactive: false,
           dryRun: true,
-          extraVerticals: ['iac', 'containerization', 'distribution'],
+          extraVerticals: ['iac', 'containerization'],
         }),
       ),
     );
-    expect(error.code).toBe('keel.extra-verticals-order');
-    expect(error.message).toContain("vertical 'iac'");
-    expect(error.message).toContain('dist.container-image');
-    // Not "impossible" — misordered, with the order that works named.
-    expect(error.message).toContain("list 'iac' after 'distribution'");
+    expect(report.notes).toEqual([
+      'added Distribution — needed by Infrastructure as code',
+      'installed in dependency order: containerization, distribution, iac',
+    ]);
+  });
+
+  it('refuses iac on a Quarkus CLI before any adapter question, distribution or not', async () => {
+    // Distribution ships native binaries here, never the image iac is
+    // keyed on — so iac is out of reach, and said so up front rather
+    // than after the bootstrap's questions.
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      'keel.review': 'proceed',
+    });
+    const error = expectErr(
+      await installMediator({ prompt }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+          extraVerticals: ['distribution', 'iac'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      'Infrastructure as code needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+    expect(prompt.asked).not.toContain('basePackage');
+    expect(prompt.asked).not.toContain('targets');
+  });
+
+  it('refuses distribution on a Quarkus CLI on Maven for its build system, naming no stack', async () => {
+    // Its native adapter is a dial away (Gradle), the image one an
+    // entrypoint away: the project is a Quarkus CLI either way, so the
+    // gap is the build system — and quarkus-cli itself, which carries
+    // distribution only on Gradle, is no stack to scaffold instead.
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          buildSystem: 'maven',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      "Distribution has no adapter for this project's build system; it needs Gradle — incremental task-graph build (Kotlin DSL)",
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      missing: { identity: ['pkg.gradle'] },
+    });
+    expect((error as RefusalError).refusal).not.toMatchObject({ carriedBy: ['quarkus-cli'] });
+  });
+
+  it('ships a composed Quarkus CLI + REST as native binaries when distribution comes alone', async () => {
+    const report = expectOk(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli-rest',
+          buildSystem: 'gradle',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution'],
+        }),
+      ),
+    );
+    const changed = report.changes.map((c) => c.path);
+    expect(changed).toContain('.github/workflows/native-build.yml');
+    expect(changed).not.toContain('.github/workflows/release-image.yml');
+    expect(changed).not.toContain('Dockerfile');
+  });
+
+  it('installs both on a composed Quarkus CLI + REST once the image is named, image first', async () => {
+    const report = expectOk(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli-rest',
+          buildSystem: 'gradle',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution', 'containerization'],
+        }),
+      ),
+    );
+    const changed = report.changes.map((c) => c.path);
+    expect(changed).toContain('Dockerfile');
+    expect(changed).toContain('.github/workflows/release-image.yml');
+    expect(changed).toContain('deploy/compose.yaml');
+    expect(report.notes).toEqual(['installed in dependency order: containerization, distribution']);
+  });
+
+  it('refuses the gateway where no project is linked', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-http',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['gateway'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      'Service gateway wires linked projects, and no linked project serves it here — link one that does first',
+    );
+    expect((error as RefusalError).refusal).toMatchObject({ missing: { peer: ['peer.ui.spa'] } });
   });
 
   it('rejects the same vertical named twice', async () => {
@@ -1418,6 +1884,21 @@ describe('keel.new-project extra verticals', () => {
     );
     expect(error.code).toBe('keel.invalid-extra-verticals');
     expect(error.message).toContain('twice');
+    // One the stack installs is set aside, not waved through twice.
+    const own = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['vcs', 'vcs'],
+        }),
+      ),
+    );
+    expect(own.code).toBe('keel.invalid-extra-verticals');
+    expect(own.message).toBe("--with names vertical 'vcs' twice");
   });
 
   it('reads as a set at the review step, empty included', async () => {
@@ -1450,7 +1931,221 @@ describe('keel.new-project extra verticals', () => {
     expect(labels).toContain('Change: Additional verticals = (none)');
   });
 
-  it('rejects --with on a composite stack, whose services declare their own', async () => {
+  it('sends --with on a composite stack to the one service that takes it, and refuses where several or none do', async () => {
+    const composite = (extra: string, layout?: 'monorepo' | 'polyrepo') =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: [extra],
+          ...(layout === undefined ? {} : { layout }),
+        }),
+      );
+    // One service can take persistence — the backend — so that is
+    // where it goes, and the plan says so first.
+    const routed = expectOk(await composite('persistence'));
+    expect(routed.notes).toEqual([
+      'Persistence goes in backend/, the one service of fullstack that can take it',
+    ]);
+    expect(routed.changes.map((change) => change.path)).toContain('backend/migrations/Dockerfile');
+
+    // Both services take a toolchain: which one is the user's to say,
+    // and the refusal names both, as `keel add toolchain` at the
+    // product root does.
+    const both = expectErr(await composite('toolchain'));
+    expect(both.code).toBe('keel.wrong-scope');
+    expect(both.message).toBe(
+      'Toolchain belongs to a service, not to the product root — it goes in backend/ or frontend/',
+    );
+    expect((both as RefusalError).refusal).toEqual({
+      kind: 'elsewhere',
+      vertical: 'toolchain',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'frontend', stack: 'web-components', readiness: 'ready' },
+      ],
+    });
+
+    // A pipeline goes at a repository root. Each polyrepo service is
+    // one, so both could take it; a monorepo's is the product root's,
+    // which no adapter serves yet — so it is sent nowhere, as `keel add
+    // ci` at a monorepo product root is not.
+    const polyrepo = expectErr(await composite('ci', 'polyrepo'));
+    expect(polyrepo.code).toBe('keel.wrong-scope');
+    expect(polyrepo.message).toBe(
+      'Continuous integration belongs to a service, not to the product root — it goes in backend/ or frontend/',
+    );
+    const monorepo = expectErr(await composite('ci'));
+    expect(monorepo.code).toBe('keel.uncoverable-vertical');
+    expect(monorepo.message).toBe(
+      "Continuous integration cannot be installed here: keel installs it at no monorepo product's root yet, and it cannot go in one of the product's services: its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout",
+    );
+  });
+
+  it('installs the extras --with names for each service in that service, as keel add there would', async () => {
+    const product = (
+      services: Readonly<Record<string, { extraVerticals: readonly string[] }>>,
+      layout: 'monorepo' | 'polyrepo' = 'monorepo',
+    ) =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          layout,
+          services,
+        }),
+      );
+    // Closed over its prerequisites in the backend's own scope, said
+    // with the service's name.
+    const iac = expectOk(await product({ backend: { extraVerticals: ['iac'] } }, 'polyrepo'));
+    expect(iac.notes).toEqual([
+      'backend: added Container image, Distribution — needed by Infrastructure as code',
+    ]);
+    expect(iac.changes.map((change) => change.path)).toContain(
+      'backend/.github/workflows/release-image.yml',
+    );
+    // What the service already has is set aside, from its preset or
+    // from the product.
+    const already = expectOk(
+      await product({
+        backend: { extraVerticals: ['dev-env', 'containerization'] },
+      }),
+    );
+    expect(already.notes).toEqual([
+      'backend: Development environment already comes with quarkus-rest',
+      'backend: Container image already comes with fullstack',
+    ]);
+    // A pipeline in a monorepo service is refused before a file is
+    // staged, in the words `keel add ci` there gives it.
+    const ci = expectErr(await product({ backend: { extraVerticals: ['ci'] } }));
+    expect(ci.code).toBe('keel.wrong-scope');
+    expect(ci.message).toBe(
+      'Continuous integration cannot go in a monorepo service: its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout',
+    );
+    // What a service cannot carry, in the sentence it would get there.
+    const frontend = expectErr(await product({ frontend: { extraVerticals: ['persistence'] } }));
+    expect(frontend.code).toBe('keel.uncoverable-vertical');
+  });
+
+  it('refuses a --with that names a service the product lacks, one twice, or both forms', async () => {
+    const refused = async (extras: {
+      extraVerticals?: readonly string[];
+      services?: Readonly<Record<string, { extraVerticals: readonly string[] }>>;
+      stack?: string;
+    }) => {
+      const { stack = 'fullstack', ...named } = extras;
+      return expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack,
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            ...named,
+          }),
+        ),
+      );
+    };
+    const worker = await refused({ services: { worker: { extraVerticals: ['persistence'] } } });
+    expect(worker.code).toBe('keel.invalid-extra-verticals');
+    expect(worker.message).toBe(
+      "stack 'fullstack' has no service 'worker' — services: backend, frontend",
+    );
+    const twice = await refused({
+      services: { backend: { extraVerticals: ['persistence', 'persistence'] } },
+    });
+    expect(twice.message).toBe("--with names vertical 'persistence' twice for backend");
+    const mixed = await refused({
+      extraVerticals: ['toolchain'],
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+    expect(mixed.code).toBe('keel.invalid-extra-verticals');
+    expect(mixed.message).toMatch(/^--with names some verticals with a service and some without/);
+    const single = await refused({
+      stack: 'go-http',
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+    expect(single.code).toBe('keel.invalid-extra-verticals');
+    expect(single.message).toMatch(/^stack 'go-http' has no services/);
+    const unknown = await refused({ services: { backend: { extraVerticals: ['nope'] } } });
+    expect(unknown.code).toBe('keel.unknown-vertical');
+  });
+
+  it('sets aside a vertical the product preset installs of its own, as a single stack does', async () => {
+    const report = expectOk(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['vcs'],
+        }),
+      ),
+    );
+    expect(report.notes).toEqual(['Version control already comes with fullstack']);
+  });
+
+  it('sets aside a vertical its services have already, naming what each has it with (D4)', async () => {
+    const withExtras = (extras: readonly string[], layout?: 'monorepo' | 'polyrepo') =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: [...extras],
+          ...(layout === undefined ? {} : { layout }),
+        }),
+      );
+    // A `--with` list that runs on a single preset runs on a product:
+    // what the services have is there, as what a preset comes with is.
+    expect(expectOk(await withExtras(['code-style'])).notes).toEqual([
+      'Code style already comes with quarkus-rest in backend/ and web-components in frontend/',
+    ]);
+    expect(expectOk(await withExtras(['observability'])).notes).toEqual([
+      'Observability already comes with quarkus-rest in backend/',
+    ]);
+    // The image a monorepo root builds for each service is the product's.
+    expect(expectOk(await withExtras(['containerization'])).notes).toEqual([
+      'Container image already comes with fullstack in backend/ and frontend/',
+    ]);
+  });
+
+  it("credits a monorepo service's version control to the product, whose root keeps it", async () => {
+    const named = (layout: 'monorepo' | 'polyrepo') =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          layout,
+          services: { backend: { extraVerticals: ['vcs'] } },
+        }),
+      );
+    // Under the monorepo layout the preset's own vcs is the one left
+    // out of the service: the product root has it, as `keel add vcs`
+    // there says.
+    expect(expectOk(await named('monorepo')).notes).toEqual([
+      'backend: Version control already comes with fullstack',
+    ]);
+    expect(expectOk(await named('polyrepo')).notes).toEqual([
+      'backend: Version control already comes with quarkus-rest',
+    ]);
+  });
+
+  it('refuses an unregistered id on a composite stack as the unknown vertical it is', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -1459,12 +2154,42 @@ describe('keel.new-project extra verticals', () => {
           answers: {},
           interactive: false,
           dryRun: true,
-          extraVerticals: ['ci'],
+          extraVerticals: ['nope'],
         }),
       ),
     );
-    expect(error.code).toBe('keel.invalid-extra-verticals');
-    expect(error.message).toContain('composite');
+    expect(error.code).toBe('keel.unknown-vertical');
+    expect(error.message).toMatch(/^unknown vertical 'nope'; available: /);
+  });
+
+  it('names the vertical a slip on a composite stack most likely meant, bare or per service', async () => {
+    const refusedWith = async (with_: {
+      extraVerticals?: readonly string[];
+      services?: Record<string, { extraVerticals: readonly string[] }>;
+    }) =>
+      expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            ...with_,
+          }),
+        ),
+      );
+    const bare = await refusedWith({ extraVerticals: ['observabilty'] });
+    expect(bare.code).toBe('keel.unknown-vertical');
+    expect(bare.message).toMatch(
+      /^unknown vertical 'observabilty' — did you mean 'observability'\? Available: /,
+    );
+    const placed = await refusedWith({
+      services: { backend: { extraVerticals: ['persistance'] } },
+    });
+    expect(placed.message).toMatch(
+      /^unknown vertical 'persistance' — did you mean 'persistence'\? Available: /,
+    );
   });
 });
 

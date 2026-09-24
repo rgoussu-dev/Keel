@@ -126,7 +126,9 @@ The module exports the plugin as its **default** export (a named
 **A plugin has no runtime dependency on keel.** It is a module
 exporting plain data. TypeScript authors get the types (and
 `pluginTemplateId`) from `@rgoussu.dev/keel/plugin`, which is erased at
-runtime; JavaScript authors need nothing.
+runtime; JavaScript authors need nothing. (The one exception is
+refusing a file from inside a patch — see
+[A file in the way](#a-file-in-the-way).)
 
 ### Templates
 
@@ -296,7 +298,228 @@ A plugin's `Conflict` is read exactly as a shipped piece's:
 [once to refuse an assembly, once to keep the choice off the
 menu](composition.md#conflicts). Declare it on the piece whose
 capability is constrained — the vertical, or the stack whose
-combination of dials is — never centrally.
+combination of dials is — never centrally. It binds whatever comes
+after its piece, too: a vertical whose tags would break a rule an
+installed vertical declares is read as unavailable on that project's
+card, refused by `keel add` in the rule's own sentence, and — should a
+tag slip past the plan — refused by the install loop once it is
+folded in, before anything is written.
+
+### Answer choices
+
+A choice only some projects can take says where it applies with a
+`predicate` of its own — the shape an adapter's is, matched against
+the tags of the project being asked:
+
+```js
+choices: [
+  { value: 'sqlite', label: 'SQLite', doc: '…' },
+  { value: 'duckdb', label: 'DuckDB', doc: '…', predicate: { requires: ['runtime.jvm'] } },
+],
+```
+
+Where the predicate does not match, the choice is not offered: the
+terminal prompt and `keel ui` leave it out, and a `--set` naming it is
+refused as outside the question's choices (`keel.invalid-answer`)
+before anything is written. That is the whole of the check — do not
+refuse the choice again inside `contribute()`, where it would reach a
+user who picked it from the list. Two things to hold to:
+
+- **A choice without a predicate is offered everywhere** its adapter
+  runs, as every choice was before the field existed.
+- **The `default` must be offered wherever the adapter runs**: `--yes`
+  resolves to it, and a default the project is not offered is reported
+  as the plugin's bug, not the user's.
+
+### Questions about the project
+
+A bootstrap of your own asks the project's name, package or module path
+like keel's do. Mark each such question `shared: 'project'`:
+
+```js
+questions: [
+  {
+    id: 'projectName',
+    prompt: 'Project name',
+    doc: '…',
+    default: 'walking-skeleton',
+    memory: 'sticky',
+    shared: 'project',
+  },
+],
+```
+
+The marker changes nothing a run does or records — the answer is
+still kept under your adapter's id — but `keel ui` reads it on the
+question it previews: moving from one preset to another, the page
+carries an identity answer onto the question the new preset's
+bootstrap asks instead of dropping it with your adapter. Mark only the
+questions a project has one answer to, whichever adapter asks; a
+database engine or a CI provider is the piece's own. `project` is the
+one value keel reads, and registration refuses any other.
+
+When two of your adapters ask the same question of one project — two
+entrypoint bootstraps a tag set can run together — declare
+`sharesAnswersWith` on each, naming the other. An adapter reads an
+answer the project records before one supplied for the run, under its
+own id first and then each sibling's in the order listed, so the
+second to run takes the first one's answer and the two cannot
+disagree; `keel ui` previews supplied answers by the same order.
+
+### A file in the way
+
+A file keel will not overwrite is refused as `keel.path-conflict`, and
+a patch target the project no longer holds as `keel.path-missing`, each
+naming the file. The files and patches your `contribute()` returns are
+held to that for you — one already on disk that a file would
+overwrite, one a patch targets that is gone — so a plugin writes
+nothing for either.
+
+keel's own stacks adopt a freshly cloned repository's `README.md` and
+`.gitignore` rather than refusing them ([cli.md](cli.md#keel-new)):
+their bootstraps return both as a `ContributionPatch` with a `seed`,
+never as files. A stack bootstrap of yours that returns either as a
+file meets a clone's as `keel.path-conflict`. To adopt it too, return
+a patch whose `seed` is what an empty directory gets and whose `apply`
+adds your part to the user's file, leaving the seed and its own
+result unchanged.
+
+The one case keel cannot see is your own patch transform finding that
+the file is not one it can patch, because it lacks the block your lines
+go inside. For that, `PathConflictError` (and `PathMissingError`) come
+from `@rgoussu.dev/keel/plugin`:
+
+```js
+import { PathConflictError } from '@rgoussu.dev/keel/plugin';
+
+if (!existing.includes('plugins {')) {
+  throw new PathConflictError('build.gradle.kts', 'acme/format', "'plugins {' block");
+}
+```
+
+The user then gets `keel.path-conflict` naming the file, in the
+sentence keel uses for its own. Unlike the helpers beside them these
+are classes, and keel knows them by identity: a helper works as well
+bundled into the plugin, but these hold only when imported from the
+very copy of keel that runs it — a project that depends on keel and
+runs that copy. A bundled copy is an `Error` of your own to keel,
+printed by the terminal as its message and answered by `keel ui` as a
+500; and where there is no keel to import at all — `keel new` into an
+empty directory — the import fails and the plugin does not load.
+
+### What an adapter promotes, and what a vertical reads
+
+Two optional fields tell keel's planner how your pieces relate to the
+rest, so that what it offers ahead of an install and the order it
+installs in are right. A plugin declaring neither still loads and
+installs, but `--with` and `keel add` now install a set: verticals
+nothing ties together go in by id rather than in the order named. A
+`contribute()` that reads another vertical's presence
+(`ctx.manifest.verticals`) must declare it in `reads` to be installed
+after it — without it, `--with persistence,audit` may run `audit`
+first, and see no persistence.
+
+```js
+const nativeAdapter = {
+  id: 'acme-release/native',
+  // …
+  promotes: ['acme.native'], // its own share of the vertical's promotes
+};
+
+export const releaseVertical = {
+  id: 'acme-release',
+  promotes: ['acme.native', 'acme.image'],
+  reads: ['persistence', 'acme-metrics'],
+  // …
+};
+```
+
+- **`Adapter.promotes`** — the tags this adapter may add: a subset of
+  its vertical's `promotes`, which stays the union over all of them.
+  Declare it where the adapters of one vertical add different things,
+  so a project whose matching adapter adds only `acme.native` is not
+  offered what `acme.image` would enable. Absent, the adapter is read
+  as promoting the whole union — which may offer your vertical where
+  it cannot deliver; the install still refuses such a project
+  truthfully, only later. A `tagsAdd` outside a declared list fails
+  the install as the plugin's bug.
+- **`Vertical.reads`** — verticals whose presence your `contribute()`
+  reads (`ctx.manifest.verticals`), so that in one run yours installs
+  after them. It orders; it does not require. An id no one has
+  registered is ignored — reading another plugin that is not installed
+  is fine — but a cycle of reads is refused at load. Once yours is
+  installed, a `keel add` of a vertical it reads proposes re-rendering
+  yours (`--refresh`), since it was rendered without it.
+
+Name only what you really read. A pair that reads each other is a
+cycle keel refuses; if each side already adapts to the other either
+way round, declare neither.
+
+**A prerequisite is a `requires` entry.** When your adapter needs
+another vertical installed first, require a tag that vertical
+promotes, in the adapter's own predicate — never check for it inside
+`contribute()`. The planner reads the predicate, so the extras menu
+offers your vertical as _needs …_ naming the other, `keel ui` ticks it
+for the user, and `keel new --with` and `keel add` install it first
+when the user names yours alone, saying so in the plan's first note.
+A check inside `contribute()` is seen by none of them: your vertical
+is offered where it cannot install, and refused only once the install
+reaches it. keel's own `distribution` works this way — its container
+adapters require the `deploy.container-image` tag `containerization`
+promotes. When two verticals would each supply what yours requires,
+the planner does not choose between them: the set is refused as
+`keel.missing-prerequisites`, naming both, and the user names one.
+
+### Where a vertical goes in a product
+
+Two more optional declarations, for pieces that meet a composite
+product. Both are read by keel itself — never re-checked in your
+`contribute()` — and neither is a tag.
+
+```js
+export const pipelineVertical = {
+  id: 'acme-pipeline',
+  placement: {
+    scope: 'repository',
+    because:
+      'its workflow is read only at the repository root, which in a monorepo is the product root',
+  },
+  // …
+};
+
+const productGlueAdapter = {
+  id: 'acme-product/compose',
+  // …
+  providesInServices: { vertical: 'containerization', stacks: ['acme-http', 'web-components'] },
+};
+```
+
+- **A vertical that writes repository-root files declares
+  `placement`.** Git's own directory and hooks, a CI provider's
+  workflows, a release pipeline: written inside a monorepo product's
+  service, none of it is ever read. With a `placement` of scope
+  `'repository'` and a `because`, `keel new` leaves your vertical out of a
+  monorepo product's services — the product root carries the
+  repository — and `keel add` in such a service reads it as there
+  already when the product root has it, and refuses it otherwise, as
+  `keel.wrong-scope`, in the words of your `because` (which finishes
+  _"… cannot go in a monorepo service:"_). A vertical needing yours is
+  refused there too, naming it. A polyrepo service is a repository of
+  its own and takes it. Registration refuses a blank `because`, or a
+  `scope` other than `repository`.
+- **Product glue that builds something inside its services declares
+  `providesInServices`** on the adapter that writes it: the vertical
+  whose part it builds, and the service stacks it builds it for — and
+  it writes exactly those, reading its own declaration, so the two
+  cannot disagree. In a monorepo service whose stack is listed, that
+  vertical then reads as already there, and `keel add` of it adds
+  nothing rather than meeting your files as `keel.path-conflict`; in
+  one whose stack is not listed it stays to add, and the product's
+  `keel new` report says so. A preset that installs that vertical in a
+  monorepo service anyway (its `services[].extraVerticals`) would have
+  two scopes write one file: `keel new` refuses it before it reports
+  the plan, as `keel.cross-scope-write`, naming both adapters and where
+  each runs — a preview and an install alike.
 
 ---
 
@@ -344,6 +567,10 @@ loads there is no name to quote, so those messages name the path.
 | No plugin exported                          | `keel plugin '<path>' exports no plugin — export it as 'default' …`                 |
 | A malformed `Conflict`                      | `plugin 'x' vertical 'y' declares a malformed conflict: …`                          |
 | A dimension none of its own adapters covers | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers` |
+| An adapter promoting beyond its vertical    | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …` |
+| A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
+| A `placement` with no reason                | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                |
+| A question `shared` with anything else      | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …` |
 | An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
 | An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
 
@@ -351,7 +578,8 @@ The dimension check is the static half of the resolver's. `coversFor`
 asks whether a dimension is covered _for a tag set_ and answers "no"
 both for a typo and for a legitimate miss; asking it without tags
 separates them, so a typo fails at load naming the plugin rather than
-eight questions later as `no adapter covers dimension 'boostrap'`.
+eight questions later as a coverage refusal that cannot tell a typo
+from a project of the wrong shape.
 
 Registration failures **throw** rather than returning a `Result`: they
 happen at the composition root, before there is a command to answer.

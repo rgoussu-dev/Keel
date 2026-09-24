@@ -16,6 +16,8 @@
 import { jvmBuildSystem } from './jvm-build-system.js';
 import { gradleProject, jvmLayout } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
+import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
+import { bootstrapAnswers } from './project-identity.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID } from './micronaut-cli-kotlin-bootstrap.js';
 import { MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID } from './micronaut-rest-kotlin-bootstrap.js';
@@ -47,9 +49,7 @@ export const samplePortFakeKotlinAdapter: Adapter = {
   predicate: { requires: ['runtime.jvm', 'arch.hexagonal', 'lang.kotlin'] },
   after: [...BOOTSTRAP_IDS],
   async contribute(ctx) {
-    const bootstrap = BOOTSTRAP_IDS.map((id) => ctx.manifest.answers[id]).find(
-      (answers) => answers?.basePackage,
-    );
+    const bootstrap = bootstrapAnswers(ctx.manifest, IDENTITY_BOOTSTRAPS);
     const basePackage = bootstrap?.basePackage;
     const projectName = bootstrap?.projectName;
     if (!basePackage || !projectName) {

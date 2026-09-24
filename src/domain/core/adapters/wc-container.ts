@@ -18,12 +18,14 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
+import { CONTAINER_IMAGE_TAG } from './container-image.js';
 import { wcLayout } from './wc-module-layout.js';
 import { WC_SPA_BOOTSTRAP_ID } from './wc-spa-bootstrap.js';
 import {
   bootstrapProjectName,
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
 } from './distribution-container.js';
 
 export const WC_CONTAINER_ID = 'distribution/wc-container';
@@ -32,7 +34,8 @@ export const wcContainerAdapter: Adapter = {
   id: WC_CONTAINER_ID,
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
-  predicate: { requires: ['framework.web-components', 'arch.spa'] },
+  predicate: { requires: ['framework.web-components', 'arch.spa', CONTAINER_IMAGE_TAG] },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(WC_CONTAINER_ID),
   contribute(ctx) {

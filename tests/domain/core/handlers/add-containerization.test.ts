@@ -6,8 +6,9 @@
  * vertical, and asserts the Dockerfile beside the deployment unit is
  * thin — no build stage, copying the artifact the host build
  * produces — with the artifact path following the build system and
- * the flavor answer. The CLI-shaped refusal (uncovered `image`
- * dimension) closes the file.
+ * the flavor answer. Two refusals close the file: the CLI-shaped one
+ * (uncovered `image` dimension), and a `Dockerfile` the user already
+ * keeps (`keel.path-conflict`).
  */
 
 import path from 'node:path';
@@ -74,7 +75,7 @@ const addContainerization = async (
     await installMediator().dispatch(
       addVerticalCommand({
         cwd,
-        vertical: 'containerization',
+        verticals: ['containerization'],
         answers,
         interactive: false,
         dryRun: false,
@@ -335,7 +336,7 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(nginx).toContain('try_files $uri /index.html');
   });
 
-  it('refuses a CLI-shaped project with the uncovered image dimension, naming the tag', async () => {
+  it('refuses a CLI-shaped project, naming the entrypoint it lacks', async () => {
     await seed('quarkus-cli');
     // An `Err`, not a throw. The resolver still hard-fails — this is
     // its last line of defence, past every menu — but a refusal a
@@ -346,7 +347,7 @@ describe('keel.add-vertical (keel add containerization)', () => {
       await installMediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'containerization',
+          verticals: ['containerization'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -354,8 +355,33 @@ describe('keel.add-vertical (keel add containerization)', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toMatch(/no adapter covers dimension\(s\): image/);
-    // The enabler is the whole answer: it says what shape would carry it.
-    expect(error.message).toContain('arch.server-http');
+    // The enabler is the whole answer — what shape would carry it —
+    // said as the finder says it rather than as `arch.server-http`.
+    expect(error.message).toBe(
+      'Container image needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+  });
+
+  it('refuses a Dockerfile the user already keeps, naming it, and writes nothing', async () => {
+    await seed('ts-http');
+    await fs.writeFile(path.join(cwd, 'Dockerfile'), 'FROM scratch\n');
+
+    const error = expectErr(
+      await installMediator().dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals: ['containerization'],
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toBe(
+      "'Dockerfile' already exists, and keel does not overwrite a file this run did not write",
+    );
+    expect(await dockerfile()).toBe('FROM scratch\n');
+    expect((await manifest()).verticals.map((v) => v.id)).not.toContain('containerization');
   });
 });

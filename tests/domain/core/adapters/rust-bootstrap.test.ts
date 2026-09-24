@@ -1,10 +1,11 @@
 /**
  * Test for the `rust-bootstrap` adapter — verifies the declarations
  * (vertical, coverage, predicate, sticky question) and the
- * contribution shape: the package shell's files plus the single
- * deferred `cargo check` action. End-to-end placement, answer
- * threading, and template content are covered by the
- * walking-skeleton-rust vertical test.
+ * contribution shape: the package shell's files, its README and
+ * `.gitignore` as seeded upserts, plus the single deferred
+ * `cargo check` action. End-to-end placement, answer threading, and
+ * template content are covered by the walking-skeleton-rust vertical
+ * test.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -47,7 +48,13 @@ describe('rust-bootstrap adapter', () => {
     expect(paths).toContain('src/domain.rs');
     expect(paths).toContain('src/domain/greet.rs');
     expect(paths).toContain('tests/greet.rs');
-    expect(contribution.patches ?? []).toEqual([]);
+    // The two files `keel new` adopts from a directory that already
+    // holds them are seeded upserts, never whole-file writes.
+    expect(paths).not.toContain('README.md');
+    expect(paths).not.toContain('.gitignore');
+    const patches = contribution.patches ?? [];
+    expect(patches.map((p) => p.target).sort()).toEqual(['.gitignore', 'README.md']);
+    for (const patch of patches) expect(patch.apply(patch.seed ?? '')).toBe(patch.seed);
     expect(contribution.actions).toHaveLength(1);
     expect(contribution.actions?.[0]?.id).toBe(RUST_BOOTSTRAP_ID);
     expect(contribution.actions?.[0]?.description).toBe('cargo check');

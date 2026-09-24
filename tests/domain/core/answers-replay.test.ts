@@ -27,6 +27,7 @@ describe('recorded answers during harness replay', () => {
       {},
       'non-interactive',
       rejectingPrompt,
+      [],
       true,
     );
     expect(result).toEqual({ answers: { destination: 'default-target' }, updates: {} });
@@ -38,6 +39,7 @@ describe('recorded answers during harness replay', () => {
       { destination: 'warehouse' },
       'non-interactive',
       rejectingPrompt,
+      [],
     );
     expect(result).toEqual({ answers: { destination: 'default-target' }, updates: {} });
   });

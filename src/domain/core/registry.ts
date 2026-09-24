@@ -15,14 +15,16 @@
  * to read keel's source for a rule keel did not write.
  *
  * **The checks are the ones that can be made without tags.** A
- * malformed {@link Conflict} and a dimension no adapter of its own
- * vertical ever covers are both statically wrong — no assembly
- * makes them right — so they fail at registration, before a user has
- * answered a single question. Everything that depends on the tag set
- * in hand (does *this* assembly cover *that* dimension, does it
- * violate a rule) stays where it was, in the resolver and in
- * `compatibility.ts`: those answers are properties of a run, not of
- * a piece.
+ * malformed {@link Conflict}, a dimension no adapter of its own
+ * vertical ever covers, an adapter promoting what its vertical does
+ * not declare, and a cycle of `reads` are all statically wrong — no
+ * assembly makes them right — so they fail at registration, before a
+ * user has answered a single question. The last is the one check
+ * across pieces, so it runs once every source is in. Everything that
+ * depends on the tag set in hand (does *this* assembly cover *that*
+ * dimension, does it violate a rule) stays where it was, in the
+ * resolver and in `compatibility.ts`: those answers are properties of
+ * a run, not of a piece.
  */
 
 import { DomainError } from '../kernel/result.js';
@@ -102,6 +104,7 @@ export function registryOf(sources: readonly RegistrySource[]): Registry {
 
   const stackList = [...stacks.values()];
   const verticalList = [...verticals.values()];
+  validateReads(knownVerticals(sources, verticalList, verticalOrigins));
   return {
     stacks: () => stackList,
     verticals: () => verticalList,
@@ -157,8 +160,9 @@ function validateStack(origin: string, stack: Stack): void {
  * not match — the same answer for a broken piece and a legitimate
  * miss. Asking it without tags separates them: a dimension no
  * adapter of the vertical **ever** covers is a typo, and it fails
- * here, naming the plugin, rather than eight questions later as
- * "no adapter covers dimension 'boostrap'".
+ * here, naming the plugin, rather than eight questions later as a
+ * coverage refusal that reads exactly like a project of the wrong
+ * shape.
  */
 function validateVertical(origin: string, vertical: Vertical): void {
   if (vertical.id.length === 0) throw refuse(origin, 'registers a vertical with no id');
@@ -180,6 +184,135 @@ function validateVertical(origin: string, vertical: Vertical): void {
       );
     }
   }
+  validateAdapterPromotes(origin, vertical);
+  validatePlacement(origin, vertical);
+  validateSharedQuestions(origin, vertical);
+}
+
+/**
+ * `Question.shared` names what a question is shared across, and keel
+ * reads one value, `project`. A plugin written in plain JavaScript
+ * reaches here without the compiler's help, so any other is refused,
+ * naming the plugin, rather than read as no marker at all — a front
+ * end would drop that answer on a preset switch without a word.
+ */
+function validateSharedQuestions(origin: string, vertical: Vertical): void {
+  for (const adapter of vertical.adapters) {
+    for (const question of adapter.questions ?? []) {
+      if (question.shared === undefined || question.shared === 'project') continue;
+      throw refuse(
+        origin,
+        `vertical '${vertical.id}' adapter '${adapter.id}' marks question '${question.id}' shared '${String(question.shared)}', which keel does not know — the one value is 'project'`,
+      );
+    }
+  }
+}
+
+/**
+ * A placement is read as a sentence — its `because` is all a monorepo
+ * service is told when it is refused the vertical — and as the one
+ * scope keel knows, `repository`. A plugin written in plain JavaScript
+ * reaches here without the compiler's help, so a blank reason or a
+ * scope keel does not read is refused, naming the plugin, rather than
+ * refused in no words, or not held at all.
+ */
+function validatePlacement(origin: string, vertical: Vertical): void {
+  const placement = vertical.placement;
+  if (placement === undefined) return;
+  if (placement.scope !== 'repository') {
+    throw refuse(
+      origin,
+      `vertical '${vertical.id}' declares placement scope '${String(placement.scope)}', which keel does not know — the one scope is 'repository'`,
+    );
+  }
+  if (typeof placement.because !== 'string' || placement.because.trim() === '') {
+    throw refuse(
+      origin,
+      `vertical '${vertical.id}' declares a placement with no 'because' — it is the sentence a monorepo service is refused the vertical in`,
+    );
+  }
+}
+
+/**
+ * An adapter's own `promotes` is its share of the vertical's, so a
+ * tag it lists that the vertical does not is one of two lists being
+ * wrong — and whichever it is, a reader of the union would never see
+ * the tag. Statically wrong, so refused here, naming the plugin.
+ */
+function validateAdapterPromotes(origin: string, vertical: Vertical): void {
+  const union = new Set(vertical.promotes ?? []);
+  for (const adapter of vertical.adapters) {
+    const outside = (adapter.promotes ?? []).filter((tag) => !union.has(tag));
+    if (outside.length === 0) continue;
+    throw refuse(
+      origin,
+      `vertical '${vertical.id}' adapter '${adapter.id}' promotes '${outside.join("', '")}', which the vertical does not declare in 'promotes' — the vertical's list is the union over its adapters`,
+    );
+  }
+}
+
+/** A vertical the `reads` pass can see, with the origin to quote about it. */
+interface KnownVertical {
+  readonly vertical: Vertical;
+  readonly origin: string;
+}
+
+/**
+ * Every vertical a run could install, by id: the registered ones
+ * first, then any a stack names inline that no source registered
+ * under that id — `fullstack` and `bounded-context`, or a plugin
+ * stack's own.
+ */
+function knownVerticals(
+  sources: readonly RegistrySource[],
+  registered: readonly Vertical[],
+  origins: ReadonlyMap<string, string>,
+): ReadonlyMap<string, KnownVertical> {
+  const known = new Map<string, KnownVertical>(
+    registered.map((vertical) => [
+      vertical.id,
+      { vertical, origin: origins.get(vertical.id) ?? KEEL_ORIGIN },
+    ]),
+  );
+  for (const source of sources) {
+    for (const stack of source.stacks ?? []) {
+      for (const vertical of stack.verticals) {
+        if (!known.has(vertical.id)) known.set(vertical.id, { vertical, origin: source.origin });
+      }
+    }
+  }
+  return known;
+}
+
+/**
+ * The one check {@link Vertical.reads} needs that no single vertical
+ * can answer, so it runs once every source has registered.
+ *
+ * An id nothing registers is ignored rather than refused: a read of
+ * an absent vertical changes nothing, and refusing it would stop a
+ * plugin from loading because another plugin it reads is not
+ * installed. A cycle among known ids is refused — `reads` orders an
+ * install, and a cycle orders nothing — naming the origin of the
+ * vertical the walk, in registration order, first meets it at.
+ */
+function validateReads(known: ReadonlyMap<string, KnownVertical>): void {
+  const done = new Set<string>();
+  const visit = (id: string, path: readonly string[]): void => {
+    const at = path.indexOf(id);
+    if (at >= 0) {
+      const cycle = [...path.slice(at), id];
+      throw refuse(
+        known.get(id)?.origin ?? KEEL_ORIGIN,
+        `vertical '${id}' reads in a cycle: ${cycle.map((step) => `'${step}'`).join(' → ')} — 'reads' orders an install after what it reads, and a cycle orders nothing`,
+      );
+    }
+    if (done.has(id)) return;
+    for (const read of known.get(id)?.vertical.reads ?? []) {
+      if (known.has(read)) visit(read, [...path, id]);
+    }
+    done.add(id);
+  };
+  for (const id of known.keys()) visit(id, []);
 }
 
 /**
@@ -245,6 +378,24 @@ export function verticalTitle(vertical: Vertical): string {
   if (vertical.title !== undefined && vertical.title !== '') return vertical.title;
   const spelled = vertical.id.replace(/[-_]+/g, ' ').trim();
   return spelled.charAt(0).toUpperCase() + spelled.slice(1);
+}
+
+/**
+ * The vertical an id a manifest records as installed names: the one
+ * registered under it, or — for a stack's own vertical no source
+ * registers on its own, a product's glue — the one a stack carries.
+ * Null when neither knows it: a vertical from a plugin no longer
+ * loaded, or one this keel has since renamed.
+ */
+export function installedVertical(registry: Registry, id: string): Vertical | null {
+  return (
+    registry.vertical(id) ??
+    registry
+      .stacks()
+      .flatMap((stack) => stack.verticals)
+      .find((vertical) => vertical.id === id) ??
+    null
+  );
 }
 
 /** Registered stack ids in deterministic order. */

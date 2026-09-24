@@ -275,6 +275,25 @@ describe('keel.catalog — the stack finder', () => {
     for (const node of java.frameworks) expect(node.entrypointStep).toBeNull();
   });
 
+  it('names the runtime a language targets, so a page never takes an id apart', async () => {
+    // What the page's shape move reads to tell kin from strangers:
+    // Kotlin and Java share the JVM, TypeScript on Node and in the
+    // browser do not, and a native binary has no runtime at all.
+    const runtimes = new Map(
+      (await catalog()).finder.shapes.flatMap((node) =>
+        node.languages.map((child) => [child.id, child.runtime] as const),
+      ),
+    );
+    expect(Object.fromEntries(runtimes)).toEqual({
+      go: null,
+      'java@jvm': 'jvm',
+      'kotlin@jvm': 'jvm',
+      rust: null,
+      'typescript@node': 'node',
+      'typescript@browser': 'browser',
+    });
+  });
+
   it('defaults the entrypoints towards the default preset’s own', async () => {
     const java = await language('backend', 'java@jvm');
     expect(java.frameworks.find((node) => node.id === 'quarkus')?.entrypointStep?.default).toBe(

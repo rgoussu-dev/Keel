@@ -60,6 +60,7 @@ import {
   formatterCommandsFor,
   styleFor,
 } from './code-style.js';
+import { PathConflictError } from '../../contract/refusal.js';
 import { eolAware } from '../util.js';
 import { formatStepPatch } from './claude-kit.js';
 import type {
@@ -177,14 +178,16 @@ export function renderGradleSpotlessBlock(tags: readonly string[]): string {
  * Adds the Spotless plugin to the root build script and appends the
  * managed configuration block. Idempotent: a script that already
  * names the plugin is returned untouched.
+ *
+ * A script with no `plugins {` block is not one keel wrote, and is
+ * refused as a {@link PathConflictError} naming it: the anchor is the
+ * user's to add, since keel patches the file and never rewrites it.
  */
 export function addSpotlessToGradle(existing: string, tags: readonly string[]): string {
   if (existing.includes('com.diffplug.spotless')) return existing;
   const pluginsAt = existing.indexOf('plugins {');
   if (pluginsAt === -1) {
-    throw new Error(
-      `${JVM_FORMAT_ID}: no 'plugins {' block in ${GRADLE_TARGET} — cannot add the Spotless plugin.`,
-    );
+    throw new PathConflictError(GRADLE_TARGET, JVM_FORMAT_ID, "'plugins {' block");
   }
   const insertAt = pluginsAt + 'plugins {\n'.length;
   const withPlugin =
@@ -260,16 +263,16 @@ function maskPluginManagement(slice: string): string {
  * Handles both shapes keel emits: the Java roots carry only a
  * `<pluginManagement>` block, so a `<plugins>` is created; the Kotlin
  * roots already have a direct `<plugins>` for the Kotlin compiler, so
- * the element is inserted into it. Idempotent.
+ * the element is inserted into it. Idempotent. A POM with no
+ * `<build>` element is refused as {@link addSpotlessToGradle} refuses
+ * a script with no `plugins {` block.
  */
 export function addSpotlessToPom(existing: string, tags: readonly string[]): string {
   if (existing.includes('spotless-maven-plugin')) return existing;
   const buildOpen = existing.indexOf('<build>');
   const buildClose = existing.indexOf('</build>', buildOpen);
   if (buildOpen === -1 || buildClose === -1) {
-    throw new Error(
-      `${JVM_FORMAT_ID}: no <build> element in ${MAVEN_TARGET} — cannot add the Spotless plugin.`,
-    );
+    throw new PathConflictError(MAVEN_TARGET, JVM_FORMAT_ID, '<build> element');
   }
   const plugin = renderMavenSpotlessPlugin(tags);
   const masked = maskPluginManagement(existing.slice(buildOpen, buildClose));

@@ -22,7 +22,8 @@ import { installVertical } from '../../../../src/domain/core/install.js';
 import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
 import { observabilityVertical } from '../../../../src/domain/core/verticals/observability.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
-import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { QUARKUS_OBSERVABILITY_ID } from '../../../../src/domain/core/adapters/quarkus-observability.js';
 import { SPRING_OBSERVABILITY_ID } from '../../../../src/domain/core/adapters/spring-observability.js';
 import { MICRONAUT_OBSERVABILITY_KOTLIN_ID } from '../../../../src/domain/core/adapters/micronaut-observability-kotlin.js';
@@ -132,7 +133,7 @@ describe('observability resolution (per-stack adapter by predicate)', () => {
         'arch.hexagonal',
         'arch.cli',
       ]),
-    ).toThrow(ResolutionError);
+    ).toThrow(RefusalError);
   });
 });
 

@@ -26,6 +26,7 @@ export const tsHttpImageAdapter: Adapter = {
   vertical: 'containerization',
   covers: ['image'],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
+  promotes: [CONTAINER_IMAGE_TAG],
   async contribute(ctx) {
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
     // The image's CMD is the assembly's entry point, and where that

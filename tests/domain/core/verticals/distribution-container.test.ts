@@ -22,7 +22,8 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { distributionVertical } from '../../../../src/domain/core/verticals/distribution.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { ManifestV2 } from '../../../../src/domain/contract/composition.js';
@@ -69,6 +70,7 @@ async function installDistribution(
     templates: ejsTemplateSource,
     processes: spawnProcessRunner,
     now: () => '2026-08-17T12:00:00Z',
+    registry: shippedRegistry,
   });
   return {
     read: (p: string) => tree.read(p)?.toString() ?? '',
@@ -365,19 +367,52 @@ describe('distribution container family — the deploy-flavor dial', () => {
 });
 
 describe('distribution container family — refusals', () => {
-  it('refuses to emit a pipeline for a Dockerfile that does not exist', async () => {
-    await expect(
-      installDistribution(
-        GO_TAGS.filter((t) => t !== 'deploy.container-image'),
-        GO_ANSWERS,
-      ),
-    ).rejects.toThrow(/keel add containerization/);
+  it("declares the Dockerfile it builds, in every container adapter's predicate", () => {
+    // The house rule — the pipeline builds the image containerization
+    // emitted — as a declaration every reader sees before anything
+    // runs, rather than a throw inside `contribute()` only the install
+    // could meet. The planner reads it into `needs containerization`.
+    const containers = distributionVertical.adapters.filter((adapter) =>
+      (adapter.promotes ?? []).includes('dist.container-image'),
+    );
+    expect(containers.map((adapter) => adapter.id).sort()).toEqual([
+      'distribution/go-container',
+      'distribution/jvm-container',
+      'distribution/rust-container',
+      'distribution/ts-container',
+      'distribution/wc-container',
+    ]);
+    for (const adapter of containers) {
+      expect(adapter.predicate.requires, adapter.id).toContain('deploy.container-image');
+    }
+  });
+
+  it('resolves to nothing where no Dockerfile exists, naming the image it needs', async () => {
+    // Reached only by installing past the front doors, which include
+    // the image first: a coded refusal, not a crash, with the missing
+    // capability carried in the refusal and nowhere in its sentence.
+    const refusal: unknown = await installDistribution(
+      GO_TAGS.filter((t) => t !== 'deploy.container-image'),
+      GO_ANSWERS,
+    ).catch((thrown: unknown) => thrown);
+    expect(refusal).toBeInstanceOf(RefusalError);
+    expect(refusal).toMatchObject({
+      code: 'keel.uncoverable-vertical',
+      refusal: {
+        kind: 'unavailable',
+        vertical: 'distribution',
+        missing: { identity: ['deploy.container-image'] },
+      },
+    });
+    expect((refusal as RefusalError).message).toBe(
+      'Distribution needs what Container image adds, which this project does not have yet',
+    );
   });
 
   it('hard-fails when no family matches (a Go CLI covers no dimension)', async () => {
     await expect(
       installDistribution(['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli']),
-    ).rejects.toBeInstanceOf(ResolutionError);
+    ).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('leaves the CLI story to quarkus-cli-native, untouched', async () => {

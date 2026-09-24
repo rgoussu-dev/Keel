@@ -20,7 +20,7 @@ import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-t
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { iacVertical } from '../../../../src/domain/core/verticals/iac.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { ManifestV2 } from '../../../../src/domain/contract/composition.js';
@@ -221,7 +221,7 @@ describe('iac vertical — refusals', () => {
         GO_TAGS.filter((t) => t !== 'dist.container-image'),
         withDistribution('compose'),
       ),
-    ).rejects.toBeInstanceOf(ResolutionError);
+    ).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('refuses to guess a flavor when the tag exists but no distribution answer was recorded', async () => {

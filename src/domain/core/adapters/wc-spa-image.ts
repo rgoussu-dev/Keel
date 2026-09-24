@@ -38,6 +38,7 @@ export const wcSpaImageAdapter: Adapter = {
   vertical: 'containerization',
   covers: ['image'],
   predicate: { requires: ['framework.web-components', 'arch.spa'] },
+  promotes: [CONTAINER_IMAGE_TAG],
   async contribute(ctx) {
     const pm = ctx.manifest.tags.includes('pkg.pnpm') ? 'pnpm' : 'npm';
     // Which directory holds the bundle is the module layout's answer,

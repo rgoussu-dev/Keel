@@ -4,6 +4,7 @@ import type { Registry } from '../contract/ports/registry.js';
 import { DomainError } from '../kernel/result.js';
 import { addModuleInputs, CONTEXT_TAG } from './adapters/added-context.js';
 import { installVertical, type InstallVerticalInputs } from './install.js';
+import { installedVertical } from './registry.js';
 import { boundedContextVertical } from './verticals/bounded-context.js';
 
 /**
@@ -45,12 +46,7 @@ export async function retrofitHarness(
   for (const installed of inputs.manifest.verticals) {
     if (installed.id === 'bounded-context') continue;
     if (installed.id === 'agent-harness' && scope === 'adopting') continue;
-    const vertical =
-      inputs.registry.vertical(installed.id) ??
-      inputs.registry
-        .stacks()
-        .flatMap((stack) => stack.verticals)
-        .find((v) => v.id === installed.id);
+    const vertical = installedVertical(inputs.registry, installed.id);
     if (!vertical) {
       throw new DomainError(
         `cannot restore harness elements from installed vertical '${installed.id}' — restore the plugin that provides it and re-run '${scope === 'complete' ? 'keel docs sync' : 'keel add agent-harness'}'`,

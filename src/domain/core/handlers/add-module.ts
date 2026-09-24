@@ -44,6 +44,11 @@
  *      legal name and an impossible target.
  *   7. **No adapter** — the coverage gate above.
  *
+ * Four of them turn on the project alone — 2, 4, 3 and 7, in the order
+ * the handler runs them — and are {@link moduleRefusal}, which
+ * `keel.project-status` asks too, so a front end greys the control out
+ * by the front door's own gates, and says why in its own words.
+ *
  * Pipeline after that is the `add-vertical` shape: install against a
  * Tree rooted at cwd, and under a real run commit the tree, persist
  * the manifest, then run deferred actions — manifest before actions,
@@ -62,9 +67,11 @@ import { runActions } from '../actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
-import { assemblyRefusal } from '../compatibility.js';
+import { conflictsOf, violatedBy } from '../compatibility.js';
+import { moduleRulesRefusal } from '../refusals.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import { installVertical } from '../install.js';
+import { historyOf, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
 import { projectDocs } from '../docs-projection.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
@@ -92,14 +99,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
 
     const scopeRoot = projectScopeRoot(command.cwd);
     const stored = await this.deps.manifests.read(scopeRoot);
-    if (!stored) {
-      return err(
-        new DomainError(
-          `no project initialised at ${scopeRoot} — run 'keel new --stack=<id> --module-layout=modulith' first`,
-          'keel.not-initialised',
-        ),
-      );
-    }
+    if (!stored) return err(notInitialised(scopeRoot));
 
     const stale = harnessGenerationRefusal(stored, `keel add module ${name.value}`);
     if (stale !== null) return err(stale);
@@ -130,6 +130,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     const result = await installVertical({
       vertical: boundedContextVertical,
       manifest: seeded,
+      supplied: command.answers,
       tree,
       mode: command.interactive ? 'interactive' : 'non-interactive',
       prompt: this.deps.prompt,
@@ -138,7 +139,18 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       templates: this.deps.templates,
       processes: this.deps.processes,
       now: () => now,
+      registry: this.deps.registry,
     });
+    // An answer none of the context's adapters read is refused, as the
+    // other front doors refuse one, before anything is committed.
+    const plan = resolvedAdapters(result.adapters);
+    const stray = strayAnswerRefusal(
+      command.answers,
+      plan,
+      historyOf(this.deps.registry, stored),
+      result.reads,
+    );
+    if (stray !== null) return err(stray);
 
     // The context is a structural fact, so the index moves with it in
     // the same apply — nothing is left for a later `keel docs sync`
@@ -153,6 +165,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       changes: tree.changes(),
       actions: result.applyResult.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(plan.length > 0 ? { resolvedAdapters: plan } : {}),
       ...(result.applyResult.skippedHarnessElements
         ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
         : {}),
@@ -196,35 +209,71 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
 }
 
 /**
+ * Why `keel add module` is refused where `scopeRoot` is, before it
+ * reads a name — the gates that turn on the project alone, in the
+ * order the front door runs them: no project, a composite product
+ * root, the flat layout, a stack with no context adapter. Null when a
+ * context can be added here, given a name.
+ *
+ * Exported for `keel.project-status`, whose `canAddModule` is this
+ * being null and whose `moduleRefusal` is what it returns: a control
+ * greyed out by the front door's own gates, with the front door's own
+ * sentence, cannot say something different from the click. `name`
+ * spells the command the product-root sentence tells the user to run
+ * in a service; a status, with no name to hand, says `<name>`.
+ */
+export function moduleRefusal(
+  manifest: ManifestV2 | null,
+  scopeRoot: string,
+  name = '<name>',
+): DomainError | null {
+  if (manifest === null) return notInitialised(scopeRoot);
+
+  if (manifest.services.length > 0) {
+    return new DomainError(
+      `this is a composite project root holding ${String(manifest.services.length)} services — a bounded context belongs to one service, so run 'keel add module ${name}' inside the service directory instead`,
+      INVALID,
+    );
+  }
+
+  // The layout rule, as the vertical declares it rather than as a
+  // branch here — `CONTEXT_NEEDS_MODULITH`, evaluated against the tag
+  // set this run would carry — worded as its reason, never the tags
+  // that tripped it, with its id in the refusal's data. The project
+  // status shows this sentence beside the tab it disables.
+  const broken = violatedBy(conflictsOf([boundedContextVertical]), [...manifest.tags, CONTEXT_TAG]);
+  if (broken.length > 0) return moduleRulesRefusal(boundedContextVertical, broken);
+
+  if (!emitsFor([boundedContextVertical], CONTEXT_TAG, manifest.tags)) {
+    return new DomainError(
+      `no bounded-context adapter matches this project (tags: ${languageTags(manifest.tags).join(', ') || 'none'}) — 'keel add module' would scaffold nothing at all. Supported: ${supportedLanguages().join(', ')}`,
+      INVALID,
+    );
+  }
+  return null;
+}
+
+/** The refusal of `keel add module` where no keel project is. */
+function notInitialised(scopeRoot: string): DomainError {
+  return new DomainError(
+    `no project initialised at ${scopeRoot} — run 'keel new --stack=<id> --module-layout=modulith' first`,
+    'keel.not-initialised',
+  );
+}
+
+/**
  * Every refusal that can be made from the manifest alone, in the order
- * the user would hit them. Returns the context `--consumes` resolved
- * to, or `null` when none was asked for.
+ * the user would hit them: the project's own ({@link moduleRefusal}),
+ * then the name's. Returns the context `--consumes` resolved to, or
+ * `null` when none was asked for.
  */
 function admissible(
   manifest: ManifestV2,
   name: ModuleName,
   consumes: string | null,
 ): Result<InstalledModule | null> {
-  if (manifest.services.length > 0) {
-    return err(
-      new DomainError(
-        `this is a composite project root holding ${String(manifest.services.length)} services — a bounded context belongs to one service, so run 'keel add module ${name}' inside the service directory instead`,
-        INVALID,
-      ),
-    );
-  }
-
-  // The layout rule, as the vertical declares it rather than as a
-  // branch here — `CONTEXT_NEEDS_MODULITH`, evaluated against the tag
-  // set this run would carry. The same declaration is what
-  // `canAddModule` greys the control out by, so the refusal and the
-  // front end cannot say different things about the flat layout.
-  const refusal = assemblyRefusal([boundedContextVertical], [...manifest.tags, CONTEXT_TAG]);
-  if (refusal !== null) {
-    return err(
-      new DomainError(`cannot add a bounded context here: ${refusal}`, 'keel.incompatible'),
-    );
-  }
+  const refused = moduleRefusal(manifest, '', name);
+  if (refused !== null) return err(refused);
 
   const taken = manifest.modules.find((m) => m.name === name);
   if (taken) {
@@ -233,15 +282,6 @@ function admissible(
         `this project already has a bounded context named '${name}'${
           taken.seam ? '' : ' (the one --with-peer-context scaffolded)'
         }. Contexts are ${manifest.modules.map((m) => m.name).join(', ')}`,
-        INVALID,
-      ),
-    );
-  }
-
-  if (!emitsFor([boundedContextVertical], CONTEXT_TAG, manifest.tags)) {
-    return err(
-      new DomainError(
-        `no bounded-context adapter matches this project (tags: ${languageTags(manifest.tags).join(', ') || 'none'}) — 'keel add module' would scaffold nothing at all. Supported: ${supportedLanguages().join(', ')}`,
         INVALID,
       ),
     );

@@ -1,10 +1,11 @@
 /**
  * The `gateway` vertical — the service-to-service seam. Its adapters
  * are selected purely by peer tags (`peer.api.rest`, `peer.ui.spa`),
- * so the vertical declares no dimensions: with no peers in scope it
- * installs nothing, and with peers each side gets its half of the
- * seam — the frontend a REST gateway package, the backend a CORS
- * accommodation.
+ * so the vertical declares no dimensions: with no peers in scope no
+ * adapter matches and the planner reads it as unavailable — both front
+ * doors refuse it, pointing at `keel link` — and with peers each side
+ * gets its half of the seam — the frontend a REST gateway package, the
+ * backend a CORS accommodation.
  *
  * Installed automatically for every service of a composite stack;
  * brownfield, run `keel link <peer>` in both projects and then

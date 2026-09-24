@@ -1,12 +1,36 @@
 /**
- * The top-level orchestrator: install one vertical against a manifest
- * and a Tree.
+ * The top-level orchestrator: install verticals against a manifest and
+ * a Tree.
  *
- * Pipeline:
+ * `installVerticals` is the run both front doors install through —
+ * `keel new` with a scope's stack verticals and extras, `keel add` with
+ * the verticals it planned, and the ones it re-renders beside them
+ * (`rerender`). It installs each vertical in the order given onto one
+ * Tree, each against the manifest the ones before it produced, under
+ * one ownership memory and one harness buffer, then realizes the
+ * run's harness declarations once — unless the caller supplied the
+ * buffer, and finalizes it itself.
+ *
+ * After each vertical it holds the run to the assembly rules: every
+ * rule the pieces coming together declare — the verticals it installs,
+ * the ones the project has installed already, and any the caller adds
+ * (a preset's own) — against the tags the vertical just folded in. A
+ * rule its tags newly break refuses the run, naming the rule, before
+ * anything is committed: the front doors plan against the promotions
+ * a vertical *may* add, and this is the check against the ones it did.
+ *
+ * `installVertical` installs one of them. Pipeline:
  *   1. `resolveVertical` — predicate match → topo sort → coverage check.
  *   2. For each adapter in order:
- *        a. resolve its questions against the running manifest's
- *           sticky answers (or prompt / default);
+ *        a. resolve its questions against its sticky memory — the
+ *           answer the running manifest records under its id or a
+ *           sibling's it borrows from, or else the one supplied for
+ *           this run under the same ids — or prompt / default, each
+ *           question offering only the choices whose predicate the
+ *           running tags match.
+ *           Under the `reapply` posture an adapter the manifest holds
+ *           answers for resolves from them alone, without asking;
+ *           one it holds none for is asked as on a first install;
  *        b. fold the resolved answers and any tags promoted by
  *           prior adapters into a *running manifest snapshot* —
  *           every subsequent adapter's `ctx.manifest` reflects this
@@ -24,7 +48,14 @@
  * returns the next manifest. The caller commits both.
  */
 
-import { resolveAdapterAnswers } from './answers.js';
+import {
+  answerKeys,
+  answerUnder,
+  checkSuppliedAnswer,
+  resolveAdapterAnswers,
+  type AnswerRead,
+} from './answers.js';
+import type { PresetAnswers } from '../contract/commands.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 import { effectiveTags } from '../contract/manifest.js';
 import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolchain.js';
@@ -41,9 +72,13 @@ import {
   type ApplyResult,
   type StagedSkill,
 } from './apply.js';
+import { conflictsOf, violatedBy } from './compatibility.js';
+import { brokenRulesRefusal, type RefusalNames } from './refusals.js';
+import { installedVertical } from './registry.js';
 import { resolveVertical } from './resolver.js';
 import type {
   Adapter,
+  Conflict,
   DeferredAction,
   InstalledVertical,
   ManifestEntry,
@@ -54,12 +89,24 @@ import type {
 } from '../contract/composition.js';
 import type { Logger } from '../contract/ports/logger.js';
 import type { ProcessRunner } from '../contract/ports/process-runner.js';
+import type { Registry } from '../contract/ports/registry.js';
 import type { TemplateSource } from '../contract/ports/template-source.js';
 
 /** Inputs to `installVertical`. */
 export interface InstallVerticalInputs {
   readonly vertical: Vertical;
   readonly manifest: ManifestV2;
+  /**
+   * Answers supplied for this run (`--set`, an install body), keyed as
+   * the manifest keys them. Each adapter takes only the ones keyed to
+   * it or to a {@link Adapter.sharesAnswersWith} sibling, for a
+   * question its recorded memory does not answer, and records what it
+   * resolved — so an answer no adapter here reads is written nowhere,
+   * and the result says which ones were read. Supplied values are held
+   * to the choices their question offers this scope; recorded ones are
+   * not. Absent, none.
+   */
+  readonly supplied?: PresetAnswers;
   readonly tree: Tree;
   readonly mode: AnswerMode;
   readonly prompt: Prompt;
@@ -71,36 +118,190 @@ export interface InstallVerticalInputs {
   readonly now: () => string;
   /**
    * Conflict posture towards files already in the Tree; defaults to
-   * `install`. `reapply` re-renders over the previous rendering — see
+   * `install`, the brownfield one. `scaffold` is `keel new`'s, and
+   * `reapply` re-renders over the previous rendering — see
    * {@link ApplyMode}.
    */
   readonly apply?: ApplyMode;
   /**
    * The run's ownership memory — which contributor owns each skill
    * name and each declared region of each file — so a second claim
-   * is refused naming both. A run that installs several verticals
-   * onto one tree (`keel new`) passes one {@link Ownership} through
-   * every call; absent, the call is its own run.
+   * is refused naming both. {@link installVerticals} passes one
+   * {@link Ownership} through every vertical it installs; absent, the
+   * call is its own run.
    */
   readonly owners?: Ownership;
-  /** Shared run buffer. Absent, this install finalizes its own declarations. */
+  /**
+   * Shared run buffer. Absent, this install finalizes its own
+   * declarations; present, the caller finalizes them
+   * ({@link finalizeHarness}) once the run is over.
+   */
   readonly harness?: HarnessContribution[];
   /** Replay recorded answers for harness declarations only; never apply domain changes or actions. */
   readonly harnessOnly?: boolean;
+  /**
+   * What the run composes from — read only to word a refusal: a
+   * vertical whose dimension is left uncovered for want of a
+   * capability names the vertical that adds it. Absent, the refusal
+   * can name only the vertical being installed.
+   */
+  readonly registry?: Registry;
 }
 
-/** Result of installing a vertical. */
+/** Result of installing a vertical, or a run of them. */
 export interface InstallVerticalResult {
   /** The next manifest, with tags/vertical/answers merged. */
   readonly manifest: ManifestV2;
   /** The raw apply result, for diagnostics or reuse by callers. */
   readonly applyResult: ApplyResult;
+  /**
+   * The adapters the verticals resolved to, in the order they ran —
+   * what a caller holds supplied answers against once the run is
+   * staged.
+   */
+  readonly adapters: readonly Adapter[];
+  /**
+   * Every supplied answer the run read, in the order it read them:
+   * which key answered which adapter's question. A supplied answer
+   * not among them is one nothing took — refused by the front doors
+   * (`./supplied-answers.ts`).
+   */
+  readonly reads: readonly AnswerRead[];
 }
 
+/** Inputs to {@link installVerticals}: one install's inputs, over a list of verticals. */
+export interface InstallVerticalsInputs extends Omit<
+  InstallVerticalInputs,
+  'vertical' | 'harnessOnly'
+> {
+  /**
+   * The verticals to install, in the order they run. Each resolves
+   * against the manifest the ones before it produced, so a tag an
+   * earlier one promotes is one a later one's adapters can match.
+   */
+  readonly verticals: readonly Vertical[];
+  /**
+   * Ids among {@link verticals} that are installed already and
+   * re-rendered here rather than installed: each runs in the
+   * `reapply` posture whatever {@link InstallVerticalInputs.apply}
+   * says — `keel add --refresh`'s verticals, beside the ones it
+   * installs. Absent, none.
+   */
+  readonly rerender?: readonly string[];
+  /**
+   * Rules of pieces around the run that are none of its verticals —
+   * `keel new` passes its preset's own — held with theirs and the
+   * installed verticals' after every vertical. Absent, none.
+   */
+  readonly rules?: readonly Conflict[];
+}
+
+/**
+ * Installs `verticals` in order onto one Tree — the loop `keel new`
+ * runs over a scope's stack verticals and extras, and `keel add` over
+ * the ones it planned and the ones it re-renders.
+ *
+ * The run is one scope: the running manifest threads from each
+ * vertical into the next, and one {@link Ownership} and one harness
+ * buffer serve every vertical, so a skill name or a region two
+ * verticals both claim collides here, not only when both come from
+ * one vertical. With no `harness` supplied the run realizes its
+ * declarations itself once the last vertical has installed; with one,
+ * the caller finalizes, having first added what else the run needs in
+ * that buffer (`keel add agent-harness` replays the project's earlier
+ * contributors into it). Nothing is committed.
+ */
+export async function installVerticals(
+  inputs: InstallVerticalsInputs,
+): Promise<InstallVerticalResult> {
+  const { verticals, rerender = [], rules: around = [], ...run } = inputs;
+  const owners = inputs.owners ?? newOwnership();
+  const harness = inputs.harness ?? [];
+  let manifest = inputs.manifest;
+  const tagsAdded = new Set<Tag>();
+  const actions: DeferredAction[] = [];
+  const adapters: Adapter[] = [];
+  const reads: AnswerRead[] = [];
+  const rules = runRules(inputs, around);
+  const broken = new Set(violatedBy(rules, effectiveTags(manifest)).map((rule) => rule.id));
+
+  for (const vertical of verticals) {
+    const result = await installVertical({
+      ...run,
+      vertical,
+      manifest,
+      owners,
+      harness,
+      ...(rerender.includes(vertical.id) ? { apply: 'reapply' as const } : {}),
+    });
+    manifest = result.manifest;
+    const newly = violatedBy(rules, effectiveTags(manifest)).filter((rule) => !broken.has(rule.id));
+    if (newly.length > 0) throw brokenRulesRefusal(namesOf(inputs), vertical, newly);
+    for (const tag of result.applyResult.tagsAdded) tagsAdded.add(tag);
+    actions.push(...result.applyResult.actions);
+    adapters.push(...result.adapters);
+    reads.push(...result.reads);
+  }
+
+  if (inputs.harness !== undefined) {
+    return {
+      manifest,
+      applyResult: { tagsAdded: [...tagsAdded], skills: [], actions },
+      adapters,
+      reads,
+    };
+  }
+  const finalized = finalizeHarness({ ...run, manifest, harness, owners });
+  return {
+    manifest: finalized.manifest,
+    applyResult: {
+      tagsAdded: [...tagsAdded],
+      skills: finalized.skills,
+      actions,
+      ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
+    },
+    adapters,
+    reads,
+  };
+}
+
+/**
+ * Every rule the pieces of a run declare: its verticals', the
+ * project's installed verticals' — found through the registry, when
+ * the run was handed one — and `around`, the caller's.
+ */
+function runRules(
+  inputs: InstallVerticalsInputs,
+  around: readonly Conflict[],
+): readonly Conflict[] {
+  const registry = inputs.registry;
+  const installed =
+    registry === undefined
+      ? []
+      : inputs.manifest.verticals.flatMap(({ id }) => installedVertical(registry, id) ?? []);
+  return conflictsOf([...installed, ...inputs.verticals, { conflicts: around }]);
+}
+
+/** Where a run's refusal finds a vertical's title: its own verticals, then the registry. */
+function namesOf(inputs: InstallVerticalsInputs): RefusalNames {
+  return {
+    vertical: (id) =>
+      inputs.verticals.find((vertical) => vertical.id === id) ??
+      inputs.registry?.vertical(id) ??
+      null,
+    verticals: () => inputs.registry?.verticals() ?? inputs.verticals,
+  };
+}
+
+/**
+ * Installs one vertical against `inputs.manifest` and `inputs.tree` —
+ * the step {@link installVerticals} repeats, and what the harness
+ * replay and `keel add module` run on their own.
+ */
 export async function installVertical(
   inputs: InstallVerticalInputs,
 ): Promise<InstallVerticalResult> {
-  const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest));
+  const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest), inputs.registry);
 
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];
@@ -108,15 +309,25 @@ export async function installVertical(
   const owners = inputs.owners ?? newOwnership();
   const allTagsAdded = new Set<Tag>();
   const harness = inputs.harness ?? [];
+  const reads: AnswerRead[] = [];
   let skipped = 0;
 
   for (const adapter of ordered) {
-    const stored = { ...sharedAnswers(running, adapter), ...(running.answers[adapter.id] ?? {}) };
+    const tags = effectiveTags(running);
+    // A re-render is "from the recorded answers" for an adapter that
+    // has some: they are frozen, so nothing supplied reaches it and
+    // nothing is asked — a question it grew since takes its default.
+    // One the vertical newly resolves to has none to be frozen, and is
+    // asked like any first install rather than left to its defaults.
+    const frozen = inputs.apply === 'reapply' && recordsAnswers(inputs.manifest, adapter);
+    const memory = memoryOf(running, frozen ? {} : (inputs.supplied ?? {}), adapter, tags);
+    reads.push(...memory.reads);
     const resolution = await resolveAdapterAnswers(
       adapter,
-      stored,
-      inputs.mode,
+      memory.answers,
+      frozen ? 'non-interactive' : inputs.mode,
       inputs.prompt,
+      tags,
       inputs.harnessOnly === true,
     );
 
@@ -171,6 +382,8 @@ export async function installVertical(
       actions: collectedActions,
       ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     },
+    adapters: ordered,
+    reads,
   };
 }
 
@@ -184,6 +397,11 @@ export async function installVertical(
  * revisit a list in another file. So the engine checks it where the
  * two meet. An undeclared tag is a keel bug, not a user error, so it
  * throws rather than travelling as an `Err`.
+ *
+ * An adapter that declares its own share ({@link Adapter.promotes})
+ * is held to that too: the planner reads it instead of the union, so
+ * a tag outside it is one the planner never offers a prerequisite
+ * for.
  */
 function assertDeclaredPromotions(
   vertical: Vertical,
@@ -192,9 +410,17 @@ function assertDeclaredPromotions(
 ): void {
   const declared = new Set(vertical.promotes ?? []);
   const undeclared = tagsAdd.filter((tag) => !declared.has(tag));
-  if (undeclared.length === 0) return;
+  if (undeclared.length > 0) {
+    throw new Error(
+      `adapter '${adapter.id}' promotes ${undeclared.join(', ')}, which vertical '${vertical.id}' does not declare in 'promotes' — add it there, or the front-door coverage check will refuse compositions this tag enables`,
+    );
+  }
+  if (adapter.promotes === undefined) return;
+  const own = new Set(adapter.promotes);
+  const unowned = tagsAdd.filter((tag) => !own.has(tag));
+  if (unowned.length === 0) return;
   throw new Error(
-    `adapter '${adapter.id}' promotes ${undeclared.join(', ')}, which vertical '${vertical.id}' does not declare in 'promotes' — add it there, or the front-door coverage check will refuse compositions this tag enables`,
+    `adapter '${adapter.id}' promotes ${unowned.join(', ')}, which it does not declare in its own 'promotes' — add it there, or the planner will not know this adapter can supply it`,
   );
 }
 
@@ -278,17 +504,66 @@ function foldHarnessEntries(
 }
 
 /**
- * The sticky memory an adapter borrows from its
- * {@link Adapter.sharesAnswersWith} siblings — earlier entries first,
- * each overridden by the next, and all of them by the adapter's own
- * recorded answers at the call site.
+ * Whether `manifest` records answers for `adapter` — what makes them
+ * frozen when its vertical is re-rendered. The front doors refuse a
+ * supplied answer for one by the same reading, over the answers the
+ * manifest records (`./supplied-answers.ts`).
  */
-function sharedAnswers(manifest: ManifestV2, adapter: Adapter): Record<string, string> {
-  const shared: Record<string, string> = {};
-  for (const id of adapter.sharesAnswersWith ?? []) {
-    Object.assign(shared, manifest.answers[id] ?? {});
+function recordsAnswers(manifest: ManifestV2, adapter: Adapter): boolean {
+  return Object.keys(manifest.answers[adapter.id] ?? {}).length > 0;
+}
+
+/**
+ * The sticky memory an adapter resolves against, question by question:
+ * the answer the running manifest records under its own id or a
+ * {@link Adapter.sharesAnswersWith} sibling, the first of them in that
+ * order ({@link answerUnder}); failing that, for a sticky question, the
+ * one supplied for this run under the same ids in the same order, held
+ * to the choices its question offers a scope with `tags`.
+ *
+ * Recorded before supplied, because a recorded answer is settled: the
+ * adapter's own under a re-render, or a sibling's — an installed
+ * vertical's, or one resolved earlier in this run — which the two may
+ * not disagree with. So a second bootstrap takes the first one's
+ * package whatever else was supplied, and a supplied answer only ever
+ * decides a question nothing has answered yet. That is also the only
+ * order a preview can reproduce: its prompt, which is sent the
+ * supplied answers, is asked exactly when the recorded memory is
+ * silent.
+ *
+ * This is the only door a supplied answer has into a run. It reaches
+ * the adapter it is keyed to and the ones borrowing from that key, for
+ * the questions they declare, and nothing else sees it until the
+ * adapter that took it records what it resolved: an answer keyed to an
+ * adapter of another family is never in the manifest for a reader to
+ * find. Each one taken is returned as read; the front doors refuse the
+ * rest once they know the plan (`./supplied-answers.ts`).
+ */
+function memoryOf(
+  manifest: ManifestV2,
+  supplied: PresetAnswers,
+  adapter: Adapter,
+  tags: readonly Tag[],
+): { readonly answers: Record<string, string>; readonly reads: readonly AnswerRead[] } {
+  const keys = answerKeys(adapter);
+  const answers: Record<string, string> = {};
+  const reads: AnswerRead[] = [];
+  for (const question of adapter.questions ?? []) {
+    const recorded = answerUnder(manifest.answers, keys, question.id);
+    if (recorded !== undefined) {
+      answers[question.id] = recorded.value;
+      continue;
+    }
+    // A repeat question is asked every run and never read from memory
+    // (`resolveAnswer`), so a supplied answer to one reaches nothing.
+    if (question.memory !== 'sticky') continue;
+    const given = answerUnder(supplied, keys, question.id);
+    if (given === undefined) continue;
+    checkSuppliedAnswer(question, given.value, given.key, tags);
+    answers[question.id] = given.value;
+    reads.push({ adapter: adapter.id, question: question.id, key: given.key });
   }
-  return shared;
+  return { answers, reads };
 }
 
 function foldAnswers(

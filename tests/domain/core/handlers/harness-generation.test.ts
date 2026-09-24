@@ -86,7 +86,7 @@ const add = (vertical: string, options: { reapply?: boolean; dryRun?: boolean } 
   mediator().dispatch(
     addVerticalCommand({
       cwd,
-      vertical,
+      verticals: [vertical],
       answers: {},
       interactive: false,
       dryRun: options.dryRun ?? false,

@@ -39,6 +39,14 @@ export interface Asker {
   readonly kind: 'adapter' | 'stack' | 'toolchain' | 'control';
   /** The adapter id, the stack id, or the provisioning context's name. */
   readonly id: string;
+  /**
+   * For an `adapter`: its `Adapter.sharesAnswersWith` siblings, in
+   * declared order — the other ids an answer to its questions may be
+   * given under. A prompt answering from answers supplied up front
+   * (the preview's) reads them in the order the install does: the
+   * adapter's own id, then these. Absent when it borrows from none.
+   */
+  readonly sharesAnswersWith?: readonly string[];
 }
 
 /** Asks the user a single question and resolves to the raw answer. */

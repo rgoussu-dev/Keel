@@ -26,7 +26,7 @@ import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { ciVertical } from '../../../../src/domain/core/verticals/ci.js';
 import { shippedRegistry } from '../../../../src/domain/core/registry.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { ManifestV2 } from '../../../../src/domain/contract/composition.js';
@@ -179,7 +179,7 @@ describe('ci vertical', () => {
   });
 
   it('hard-fails when no stack family matches (pipeline goes uncovered)', async () => {
-    await expect(installCi(['arch.hexagonal'])).rejects.toBeInstanceOf(ResolutionError);
+    await expect(installCi(['arch.hexagonal'])).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('hard-fails on a JVM manifest that lost its pkg.* tag', async () => {

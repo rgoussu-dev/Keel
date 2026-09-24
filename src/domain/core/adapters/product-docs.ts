@@ -7,9 +7,14 @@
  * Fires unconditionally within its vertical: the orchestrator only
  * installs the `fullstack` vertical when a shared product root
  * exists (monorepo layout).
+ *
+ * Both files are seeded upserts rather than whole-file writes, so
+ * `keel new` in a repository that already holds either keeps the
+ * user's file and adds keel's part to it (`adopted-files.ts`).
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { adoptingRootFiles } from './adopted-files.js';
 
 export const PRODUCT_DOCS_ID = 'fullstack/product-docs';
 
@@ -24,6 +29,6 @@ export const productDocsAdapter: Adapter = {
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
       services: ctx.manifest.services,
     });
-    return { files };
+    return adoptingRootFiles(files);
   },
 };

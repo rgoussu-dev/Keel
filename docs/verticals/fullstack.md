@@ -20,7 +20,14 @@ docker compose up --build
 ```
 
 brings the whole product up — backend and frontend — from one command
-at the root. The SPA follows the
+at the root. Which services get an image is **declared**, not only
+done: `product-compose` lists the service stacks it has a Dockerfile
+for (`providesInServices`) and writes one exactly for those. So inside
+such a service `containerization` reads as there already — `keel add
+containerization` there is an Ok that adds nothing, saying the product
+root builds it — and a service whose stack the glue does not know (a
+plugin's backend) keeps it to add; the product's `keel new` report says
+so. The SPA follows the
 [assets-image shape](containerization.md#the-spa-ships-as-an-assets-image):
 its image populates a named volume as an init container, and an
 unmodified official nginx serves the volume, proxying `/api` to the
@@ -74,9 +81,13 @@ forgotten.
 
 The root activates the harness itself: `agent-harness` is a
 single-service vertical and refuses to install at a product root
-(`keel add agent-harness` names the service to run it in), so the
+(`keel add agent-harness` there is refused, noting that `backend/` and
+`frontend/` have it already), so the
 `agentic.harness` tag that opens the engine's final pass is promoted by
-the `fullstack` vertical.
+the `fullstack` vertical. The refusal is a declaration rather than a
+special case: `fullstack` declares the rule `fullstack/one-harness`
+against a family kit's tag, so the planner reads `agent-harness` as not
+for the root even where the root's tags happen to match a family.
 
 ## Prerequisites
 

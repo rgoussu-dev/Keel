@@ -36,12 +36,32 @@ export function commandFor({ target, answers }) {
     flag(tokens, '--build-system', target.buildSystem);
     flag(tokens, '--module-layout', target.moduleLayout);
     if (target.withPeerContext === true) tokens.push({ kind: 'flag', text: '--with-peer-context' });
-    if (Array.isArray(target.extraVerticals) && target.extraVerticals.length > 0) {
-      flag(tokens, '--with', target.extraVerticals.join(','));
-    }
+    // A product's extras are each service's, spelled `path:id` — the
+    // form `--with` names a service in.
+    const extras = [
+      ...(Array.isArray(target.extraVerticals) ? target.extraVerticals : []),
+      ...Object.entries(target.services ?? {}).flatMap(([path, service]) =>
+        (Array.isArray(service?.extraVerticals) ? service.extraVerticals : []).map(
+          (id) => `${path}:${id}`,
+        ),
+      ),
+    ];
+    if (extras.length > 0) flag(tokens, '--with', extras.join(','));
+    // Only the opt-out has a flag: the harness is on unless left out.
+    if (target.agentHarness === false) tokens.push({ kind: 'flag', text: '--no-agent-harness' });
   } else if (target.kind === 'add-vertical') {
-    if (!target.vertical) return [];
-    tokens.push({ kind: 'command', text: 'add' }, { kind: 'value', text: target.vertical });
+    // `vertical` is the one-vertical alias the API still takes.
+    const verticals = Array.isArray(target.verticals)
+      ? target.verticals
+      : target.vertical
+        ? [target.vertical]
+        : [];
+    if (verticals.length === 0) return [];
+    tokens.push({ kind: 'command', text: 'add' });
+    for (const vertical of verticals) tokens.push({ kind: 'value', text: quote(vertical) });
+    if (Array.isArray(target.refresh) && target.refresh.length > 0) {
+      flag(tokens, '--refresh', target.refresh.join(','));
+    }
     if (target.reapply === true) tokens.push({ kind: 'flag', text: '--reapply' });
   } else if (target.kind === 'add-module') {
     if (!target.module) return [];
@@ -71,6 +91,31 @@ export function commandFor({ target, answers }) {
 /** The command as one line, for the clipboard. */
 export function commandText(tokens) {
   return tokens.map((token) => token.text).join(' ');
+}
+
+/**
+ * A sentence keel wrote, split where it names a command-line flag —
+ * `--module-layout=modulith` — so the page can set the flag as one
+ * unbreakable literal. A browser wraps a line after any hyphen, and a
+ * flag broken after its `--` is a flag nobody can read or copy.
+ *
+ * A value belongs to its flag when joined by `=`; a full stop after it
+ * ends the sentence, not the value.
+ *
+ * @param {string} text
+ * @returns {{ text: string, flag: boolean }[]} every character of `text`, in order
+ */
+export function flagSpans(text) {
+  const spans = [];
+  let from = 0;
+  for (const match of text.matchAll(/--[a-z][a-z0-9-]*(?:=[\w./:-]*[\w/-])?/g)) {
+    const at = match.index ?? 0;
+    if (at > from) spans.push({ text: text.slice(from, at), flag: false });
+    spans.push({ text: match[0], flag: true });
+    from = at + match[0].length;
+  }
+  if (from < text.length) spans.push({ text: text.slice(from), flag: false });
+  return spans;
 }
 
 function flag(tokens, name, value) {

@@ -112,7 +112,7 @@ export async function buildGrownFixture(spec: EvalScaffoldSpec, cwd: string): Pr
             })
           : addVerticalCommand({
               cwd,
-              vertical: step.vertical,
+              verticals: [step.vertical],
               answers: {},
               interactive: false,
               dryRun: false,

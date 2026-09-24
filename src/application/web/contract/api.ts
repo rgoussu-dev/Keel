@@ -50,6 +50,7 @@ import {
   previewQuery,
   projectStatusQuery,
 } from '../../../domain/contract/queries.js';
+import { RefusalError } from '../../../domain/contract/refusal.js';
 import { failure, json, type UiHandler, type UiRequest, type UiResponse } from './http.js';
 
 /** Error code for a request this API could not make sense of. */
@@ -97,27 +98,48 @@ export interface ApiDeps {
 
 const answersSchema: z.ZodType<PresetAnswers> = z.record(z.record(z.string()));
 
-const targetSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('new-project'),
-    stack: z.string().min(1).optional(),
-    layout: z.enum(['monorepo', 'polyrepo']).optional(),
-    buildSystem: z.string().min(1).optional(),
-    moduleLayout: z.string().min(1).optional(),
-    withPeerContext: z.boolean().optional(),
-    extraVerticals: z.array(z.string().min(1)).optional(),
-  }),
-  z.object({
-    kind: z.literal('add-vertical'),
-    vertical: z.string().min(1),
-    reapply: z.boolean().optional(),
-  }),
-  z.object({
-    kind: z.literal('add-module'),
-    module: z.string().min(1),
-    consumes: z.string().min(1).optional(),
-  }),
-]);
+/**
+ * An install target. `add-vertical` names its verticals as
+ * `verticals`, or one of them as `vertical` — the shape the page has
+ * always posted, kept as an alias for a list of one. Exactly one of
+ * the two.
+ */
+const targetSchema = z
+  .discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('new-project'),
+      stack: z.string().min(1).optional(),
+      layout: z.enum(['monorepo', 'polyrepo']).optional(),
+      buildSystem: z.string().min(1).optional(),
+      moduleLayout: z.string().min(1).optional(),
+      withPeerContext: z.boolean().optional(),
+      extraVerticals: z.array(z.string().min(1)).optional(),
+      services: z.record(z.object({ extraVerticals: z.array(z.string().min(1)) })).optional(),
+      agentHarness: z.boolean().optional(),
+    }),
+    z.object({
+      kind: z.literal('add-vertical'),
+      verticals: z.array(z.string().min(1)).min(1).optional(),
+      vertical: z.string().min(1).optional(),
+      refresh: z.array(z.string().min(1)).optional(),
+      reapply: z.boolean().optional(),
+    }),
+    z.object({
+      kind: z.literal('add-module'),
+      module: z.string().min(1),
+      consumes: z.string().min(1).optional(),
+    }),
+  ])
+  .superRefine((target, context) => {
+    if (target.kind !== 'add-vertical') return;
+    if ((target.verticals === undefined) === (target.vertical === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['verticals'],
+        message: "name the verticals as 'verticals', or one of them as 'vertical' — exactly one",
+      });
+    }
+  });
 
 const installBodySchema = z.object({
   cwd: z.string().min(1),
@@ -246,11 +268,15 @@ function narrow(target: z.infer<typeof targetSchema>): InstallTarget {
           ? {}
           : { withPeerContext: target.withPeerContext }),
         ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
+        ...(target.services === undefined ? {} : { services: target.services }),
+        ...(target.agentHarness === undefined ? {} : { agentHarness: target.agentHarness }),
       };
     case 'add-vertical':
       return {
         kind: 'add-vertical',
-        vertical: target.vertical,
+        // The schema admits exactly one of the two.
+        verticals: target.verticals ?? (target.vertical === undefined ? [] : [target.vertical]),
+        ...(target.refresh === undefined ? {} : { refresh: target.refresh }),
         ...(target.reapply === undefined ? {} : { reapply: target.reapply }),
       };
     case 'add-module':
@@ -276,8 +302,18 @@ function describe(error: z.ZodError): string {
  * project is already initialised", "that vertical is installed",
  * "this stack ships one module layout" — the request was understood
  * exactly, and refused on its merits. The client shows the message;
- * the code is what it branches on.
+ * the code is what it branches on. A refusal the engine raised as data
+ * (a `RefusalError`) also carries that data as `refusal` — the
+ * structured half the CLI builds its hint from, so a page can act on
+ * the same fields.
  */
 function unwrap<T>(result: Result<T>): UiResponse {
-  return result.ok ? json(result.value) : failure(422, result.error.code, result.error.message);
+  if (result.ok) return json(result.value);
+  const { error } = result;
+  return failure(
+    422,
+    error.code,
+    error.message,
+    error instanceof RefusalError ? error.refusal : undefined,
+  );
 }

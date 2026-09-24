@@ -44,10 +44,11 @@ plus the frontend's
 
 The usual per-service answers, plus one product-level choice:
 
-| Question                 | Notes                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository layout        | `monorepo` (default): one repository, `backend/` + `frontend/` side by side, git initialised once at the root, a product README tying them together. `polyrepo`: a repository per service, no shared root. Pin with `--layout`.                                                                                                                                                               |
-| Build system per service | Each service whose stack offers a choice is asked its own: `gradle` (default) or `maven` for a JVM backend, `npm` (default) or `pnpm` for `ts-http` and the frontend. Pin with `--build-system path=id` pairs, comma-separated (`--build-system backend=maven,frontend=pnpm`). The compose Dockerfiles, the product README's run hints, and the service's own manifest all follow the choice. |
+| Question                 | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository layout        | `monorepo` (default): one repository, `backend/` + `frontend/` side by side, git initialised once at the root, a product README tying them together. `polyrepo`: a repository per service, no shared root. Pin with `--layout`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Build system per service | Each service whose stack offers a choice is asked its own: `gradle` (default) or `maven` for a JVM backend, `npm` (default) or `pnpm` for `ts-http` and the frontend. Pin with `--build-system path=id` pairs, comma-separated (`--build-system backend=maven,frontend=pnpm`). The compose Dockerfiles, the product README's run hints, and the service's own manifest all follow the choice.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Extras per service       | Not asked; named with `--with path:id` pairs (`--with backend:persistence,frontend:dev-env`), or in `keel ui` under each service's **Also scaffold**. Each service's extras install in that service, planned there as on a single stack — `backend:persistence` writes what `keel add persistence` in `backend/` would. An id named without a service goes to the one service that can take it, is set aside with a note where the services that could have it have it already (`--with code-style`), and is refused, naming the services, where both could take it (`--with toolchain`) or none can — but for a pipeline or a release on a monorepo product, whose place is the repository root, where keel installs none yet (`keel.uncoverable-vertical`). See [`keel new --with`](../cli.md). |
 
 ## What gets generated
 
@@ -84,6 +85,18 @@ flowchart LR
 ```sh
 docker compose up --build
 ```
+
+A monorepo's services are directories of **one repository**, so what
+only a repository root reads stays at the product root: git runs once
+there, and inside a service `keel add containerization` and
+`keel add vcs` add nothing (the root already builds the image and holds
+the repository), while `keel add ci`, `distribution` and `iac` are
+refused as the wrong scope — per-service pipelines, releases and IaC
+need `--layout polyrepo`, where each service is a repository of its
+own. `keel new --with backend:ci` reads the same placement and is
+refused the same way, before anything is written. `keel new` in a
+directory of the product that is not one of its services is refused
+(`keel.inside-product`).
 
 ## Brownfield: wire two existing projects instead
 

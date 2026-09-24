@@ -12,8 +12,9 @@
  * second engine, on the JVM stacks: JDBC is what makes it a spec
  * record there. The Go/Rust/TS drivers (pgx, the sync `postgres`
  * crate, `pg`) speak the PostgreSQL wire protocol and nothing else,
- * so a non-postgres engine on those stacks fails loudly at install —
- * `database-compose` owns that guard.
+ * so the `mariadb` choice declares `runtime.jvm` and is not offered
+ * on those stacks — a supplied `mariadb` there is refused as outside
+ * the question's choices, before anything is written.
  */
 
 import { anyProjectName } from '../util.js';
@@ -205,6 +206,7 @@ export const SQL_ENGINE_QUESTION: Question = {
       value: 'mariadb',
       label: 'MariaDB',
       doc: 'JVM stacks only today — the Go/Rust/TS drivers speak the PostgreSQL wire protocol.',
+      predicate: { requires: ['runtime.jvm'] },
     },
   ],
 };

@@ -40,17 +40,13 @@
  * manifest whichever bootstrap fired.
  */
 
+import { toUpsertPatches } from './adopted-files.js';
 import { jvmBuildSystem } from './jvm-build-system.js';
 import { jvmModuleLayout } from './jvm-module-layout.js';
 import { jvmModulithRootPatches } from './jvm-shared-root-modulith.js';
 import { jvmSharedRootPatches, type JvmFramework } from './jvm-shared-root.js';
 import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
-import type {
-  Adapter,
-  ContributionFile,
-  ContributionPatch,
-  Question,
-} from '../../contract/composition.js';
+import type { Adapter, ContributionFile, Question } from '../../contract/composition.js';
 
 /** Languages the JVM bootstraps scaffold. */
 export type JvmLanguage = 'java' | 'kotlin';
@@ -117,6 +113,7 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
       doc: `Used as the root ${langLabel} package and Gradle group, e.g. com.example.`,
       default: 'com.example',
       memory: 'sticky',
+      shared: 'project',
     },
     {
       id: 'projectName',
@@ -127,6 +124,7 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
           : 'Used as the Gradle root project name. Lowercase + digits + dashes; ≤63 chars.',
       default: 'walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
   ];
 }
@@ -171,9 +169,12 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
       // language) pair, so they upsert via a seed+identity patch
       // instead of a whole-file write — the same "shared-file upsert"
       // `apply.ts` documents, letting `arch.cli` and
-      // `arch.server-http` both resolve without conflict. Root files
-      // that genuinely differ per entrypoint (module lists, README
-      // sections) upsert too, with an idempotent per-arch `apply`.
+      // `arch.server-http` both resolve without conflict. The
+      // `.gitignore` among them upserts with its adoption instead of
+      // the identity, so a user's own gains keel's entries
+      // (`adopted-files.ts`). Root files that genuinely differ per
+      // entrypoint (module lists, README sections) upsert too, with
+      // an idempotent per-arch `apply`.
       //
       // Under the modulith an entrypoint also owns modules *inside*
       // the context (`modules/<ctx>/user-side/cli`, `…/api/…`). Those
@@ -224,22 +225,4 @@ function partitionByApplicationPrefix(
   const own: ContributionFile[] = [];
   for (const f of files) (f.path.startsWith('application/') ? own : shared).push(f);
   return [shared, own];
-}
-
-/**
- * Converts whole-file contributions into upsert patches: the content
- * becomes both the seed (used when no entrypoint has written the
- * path yet) and, since the content is identical regardless of which
- * entrypoint runs, the target the `apply` leaves unchanged.
- */
-function toUpsertPatches(files: readonly ContributionFile[]): readonly ContributionPatch[] {
-  return files.map((f) => ({
-    target: f.path,
-    seed: contentToString(f.content),
-    apply: (existing) => existing,
-  }));
-}
-
-function contentToString(content: Buffer | string): string {
-  return Buffer.isBuffer(content) ? content.toString('utf8') : content;
 }

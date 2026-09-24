@@ -19,7 +19,15 @@
  *     short-circuits its question before the prompt sees it — the
  *     question would disappear from the form the moment it was
  *     answered. Answers travel through the prompt instead, so the set
- *     stays whole. See `../preview.ts`.
+ *     stays whole. The prompt reads them by the install's own
+ *     precedence, and is asked exactly where the install would read
+ *     them, so the two resolve the same values. See `../preview.ts`.
+ *   - **An answer the run does not read is reported, not refused.**
+ *     The install refuses it (`../supplied-answers.ts`); the preview
+ *     lists it with that refusal (`InstallPreview.unusedAnswers`), by
+ *     the same function over the plan its run resolved and what its
+ *     prompt read, and previews the body without it — so a form can
+ *     drop what the install would refuse, and see what it then gets.
  *   - **A brownfield question already recorded stays unasked.** On
  *     `add-vertical`, answers the project's manifest carries win over
  *     anything the caller sends, exactly as they would on a real
@@ -42,9 +50,16 @@ import {
   type InstallCommand,
   type InstallReport,
 } from '../../contract/commands.js';
+import { projectScopeRoot } from '../../contract/manifest.js';
 import type { Logger } from '../../contract/ports/logger.js';
-import type { InstallPreview, PreviewQuery } from '../../contract/queries.js';
+import type { InstallPreview, PreviewQuery, UnusedAnswer } from '../../contract/queries.js';
 import { recordingPrompt } from '../preview.js';
+import {
+  historyOf,
+  NOTHING_INSTALLED,
+  unusedAnswers,
+  type AnswerHistory,
+} from '../supplied-answers.js';
 import { AddModuleHandler } from './add-module.js';
 import { AddVerticalHandler } from './add-vertical.js';
 import type { InstallDeps } from './deps.js';
@@ -91,7 +106,27 @@ export class PreviewHandler implements Handler<PreviewQuery> {
 
     const result = await run(command, deps);
     if (!result.ok) return result;
-    return ok(previewOf(result.value, recorder.recorded));
+    // What an install of this body would refuse, read by the install's
+    // own function over the plan this run resolved and the answers its
+    // prompt took — never a model of the check.
+    const unused = unusedAnswers(
+      query.answers,
+      result.value.resolvedAdapters ?? [],
+      await this.history(query),
+      recorder.reads,
+    );
+    return ok(previewOf(result.value, recorder.recorded, unused));
+  }
+
+  /**
+   * The project the answers are held against: none for a new one, and
+   * otherwise what the directory's manifest records — the one the
+   * install reads.
+   */
+  private async history(query: PreviewQuery): Promise<AnswerHistory> {
+    if (query.target.kind === 'new-project') return NOTHING_INSTALLED;
+    const manifest = await this.deps.manifests.read(projectScopeRoot(query.cwd));
+    return manifest === null ? NOTHING_INSTALLED : historyOf(this.deps.registry, manifest);
   }
 }
 
@@ -115,7 +150,11 @@ function run(command: InstallCommand, deps: InstallDeps): Promise<Result<Install
   }
 }
 
-function previewOf(report: InstallReport, questions: InstallPreview['questions']): InstallPreview {
+function previewOf(
+  report: InstallReport,
+  questions: InstallPreview['questions'],
+  unused: readonly UnusedAnswer[],
+): InstallPreview {
   return {
     subject: report.subject,
     questions,
@@ -124,5 +163,8 @@ function previewOf(report: InstallReport, questions: InstallPreview['questions']
     ...(report.skippedHarnessElements === undefined
       ? {}
       : { skippedHarnessElements: report.skippedHarnessElements }),
+    ...(report.notes === undefined ? {} : { notes: report.notes }),
+    ...(report.refreshProposals === undefined ? {} : { refreshProposals: report.refreshProposals }),
+    ...(unused.length > 0 ? { unusedAnswers: unused } : {}),
   };
 }

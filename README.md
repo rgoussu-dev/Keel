@@ -49,7 +49,8 @@ skill only for something its files make real — nothing is emitted for
 a procedure that would be fiction.
 
 The harness is included by default. Use `keel new --no-agent-harness`
-to scaffold without it, and `keel add agent-harness` to adopt it later.
+— in `keel ui`, the **Agent harness** chip pressed off — to scaffold
+without it, and `keel add agent-harness` to adopt it later.
 
 **Don't know the stack id?** Leave `--stack` off:
 
@@ -82,7 +83,7 @@ Java, Kotlin, Go, Rust, or TypeScript. Pick a cell and run
 find the cell for you (`keel new --list` prints every id with its
 description):
 
-| Language / framework                                                    | CLI                    | HTTP service            | CLI + HTTP                  | SPA              | Fullstack product     |
+| Language / framework                                                    | CLI                    | HTTP server             | CLI + HTTP server           | Browser SPA      | Fullstack product     |
 | ----------------------------------------------------------------------- | ---------------------- | ----------------------- | --------------------------- | ---------------- | --------------------- |
 | **Java · Quarkus 3** ([docs](docs/stacks/jvm.md))                       | `quarkus-cli`          | `quarkus-rest`          | `quarkus-cli-rest`          | —                | `fullstack`           |
 | **Kotlin · Quarkus 3** ([docs](docs/stacks/jvm.md))                     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | `quarkus-cli-rest-kotlin`   | —                | —                     |
@@ -294,11 +295,16 @@ sits beside every step, so flipping Gradle to Maven, or `basic` to
 `modulith`, redraws it before anything is written. On a stack you have
 not used before, that tree is the documentation.
 
-It also reads what your project already is. Point it at a directory
-holding a keel manifest and it becomes the brownfield page — verticals
-already installed offered for re-render rather than a second install,
-and "add a bounded context" shown only where `keel add module` would
-actually be accepted.
+It also reads what your project already is — one page for both
+phases, the directory deciding the flow. Point it at a directory
+holding a keel manifest and the preset steps collapse into one
+read-only step saying what the project is, while Options shows the same
+**Also scaffold** group a new project gets: what is installed ticked
+and locked, a **Re-render** beside each; every vertical not installed,
+ready, ready once something else is, or not for this project and why,
+before anything is clicked; several ticked into one `keel add`; and
+"add a bounded context" disabled, with the reason, wherever
+`keel add module` would refuse it.
 
 The URL carries a per-run token, and the server binds loopback only
 and checks `Host` and `Origin` — a local port is reachable by every
@@ -317,8 +323,10 @@ keel add distribution         # registry-pushed images + a deploy descriptor on 
 keel add iac                  # the OpenTofu deploy target those images run on
 keel add dev-env              # dev/compose.yaml for local infra
 keel add dev-container        # .devcontainer/ attached to the dev env's network
+keel add ci toolchain         # several at once, in one plan — and what they need comes along
 
 keel add distribution --reapply  # re-render an installed vertical after a keel template fix
+keel add persistence --refresh distribution  # …or beside what changes it (DB_URL)
 
 keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam
@@ -395,23 +403,23 @@ read [Trust](docs/plugins.md#trust--read-this) first.
 A vertical is one concern of a project's lifecycle, installed at
 bootstrap or layered on later with `keel add`:
 
-| Vertical                                                 | What it adds                                                                                                                                                                                                                                               | Applies to                            |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote; a Conventional Commits `commit-msg` gate and the split-changelog convention, each declinable                                                                                                           | every stack                           |
-| [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                                                                                                                                                                                    | every stack                           |
-| [`agent-harness`](docs/verticals/agent-harness.md)       | agent documents, cross-tool shims, run skill and commit hook; opt out with `keel new --no-agent-harness`, adopt later with `keel add agent-harness`                                                                                                        | every single-service stack by default |
-| [`code-style`](docs/verticals/code-style.md)             | the layout contract — `.editorconfig` + `.gitattributes` + the stack's own formatter (Spotless/prince-of-space, rustfmt, gofmt, Prettier), all rendered from one style model                                                                               | every stack                           |
-| [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                                                                                                                                                                        | every stack (default on HTTP)         |
-| [`dev-container`](docs/verticals/dev-container.md)       | `.devcontainer/` — a containerized dev environment, attached to the dev env's network when present                                                                                                                                                         | every stack                           |
-| [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                                                                                                                                                                                  | HTTP services only                    |
-| [`persistence`](docs/verticals/persistence.md)           | SQL engine dial (PostgreSQL/MariaDB) + Unit-of-Work port + isolated migrations unit (Flyway/Liquibase)                                                                                                                                                     | every HTTP stack                      |
-| [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract                                                                                                                                                                                             | peered projects (`keel link`)         |
-| [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native                                                                                                                                                                                        | HTTP services + SPA                   |
-| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                                                                                                                                                                                  | every stack                           |
-| [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor                                                                                                                                                       | Quarkus CLI + every server shape      |
-| [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster                                                                                                                                                          | after `distribution` (containers)     |
-| [`toolchain`](docs/verticals/toolchain.md)               | records the toolchain the project needs (JDK, build system, Node, …) in the manifest, from keel's pins; `keel toolchain install` provisions it through the manager you pick — mise, asdf, sdkman, rustup, nvm (+ corepack), or Go's own `go.mod` directive | every stack (opt-in)                  |
-| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles, and the root agent harness indexing the services                                                                                                                                                  | composite monorepos (not addable)     |
+| Vertical                                                 | What it adds                                                                                                                                                                                                                                               | Applies to                                                  |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [`vcs`](docs/verticals/vcs.md)                           | git repo, default branch, optional `origin` remote; a Conventional Commits `commit-msg` gate and the split-changelog convention, each declinable                                                                                                           | every stack                                                 |
+| [`walking-skeleton`](docs/verticals/walking-skeleton.md) | the runnable end-to-end skeleton itself                                                                                                                                                                                                                    | every stack                                                 |
+| [`agent-harness`](docs/verticals/agent-harness.md)       | agent documents, cross-tool shims, run skill and commit hook; opt out with `keel new --no-agent-harness`, adopt later with `keel add agent-harness`                                                                                                        | every single-service stack by default                       |
+| [`code-style`](docs/verticals/code-style.md)             | the layout contract — `.editorconfig` + `.gitattributes` + the stack's own formatter (Spotless/prince-of-space, rustfmt, gofmt, Prettier), all rendered from one style model                                                                               | every stack                                                 |
+| [`dev-env`](docs/verticals/dev-env.md)                   | `dev/compose.yaml` — local infra the service needs but does not own                                                                                                                                                                                        | every stack (default on HTTP)                               |
+| [`dev-container`](docs/verticals/dev-container.md)       | `.devcontainer/` — a containerized dev environment, attached to the dev env's network when present                                                                                                                                                         | every stack                                                 |
+| [`observability`](docs/verticals/observability.md)       | health probes, correlation ids, OpenTelemetry, a Grafana monitoring stack                                                                                                                                                                                  | HTTP services only                                          |
+| [`persistence`](docs/verticals/persistence.md)           | SQL engine dial (PostgreSQL/MariaDB) + Unit-of-Work port + isolated migrations unit (Flyway/Liquibase)                                                                                                                                                     | every HTTP stack                                            |
+| [`gateway`](docs/verticals/gateway.md)                   | the cross-service seam: REST gateway + CORS + OpenAPI contract                                                                                                                                                                                             | peered projects (`keel link`)                               |
+| [`containerization`](docs/verticals/containerization.md) | a thin Dockerfile beside the deployment unit, opt-in GraalVM native                                                                                                                                                                                        | HTTP services + SPA                                         |
+| [`ci`](docs/verticals/ci.md)                             | a pipeline that builds and tests every push — GitHub Actions or GitLab CI                                                                                                                                                                                  | every single-service stack; a polyrepo product's services   |
+| [`distribution`](docs/verticals/distribution.md)         | tag-push releases: native CLI binaries, or registry-pushed images + a compose/helm deploy descriptor                                                                                                                                                       | Quarkus CLI + every server shape (after `containerization`) |
+| [`iac`](docs/verticals/iac.md)                           | the OpenTofu deploy target the pushed images run on — a Docker VM or a managed Kubernetes cluster                                                                                                                                                          | after `distribution` (containers)                           |
+| [`toolchain`](docs/verticals/toolchain.md)               | records the toolchain the project needs (JDK, build system, Node, …) in the manifest, from keel's pins; `keel toolchain install` provisions it through the manager you pick — mise, asdf, sdkman, rustup, nvm (+ corepack), or Go's own `go.mod` directive | every stack (opt-in)                                        |
+| [`fullstack`](docs/verticals/fullstack.md)               | product-root glue: README, `compose.yaml` + Dockerfiles, and the root agent harness indexing the services                                                                                                                                                  | composite monorepos (not addable)                           |
 
 Which verticals are installed by default on which stack, and which can
 be added later, is one table in the

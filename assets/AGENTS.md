@@ -16,10 +16,37 @@ it compiled.
   changes what every scaffold preaches; the golden test for the emitted
   harness is what catches an accidental edit.
 - **`web/`** — the `keel ui` page: framework-free custom elements on
-  `@rgoussu.dev/planks`, served as-is (no bundler). `src/finder.js` walks
-  the drill-down tree and `src/steps.js` says which steps the rail has —
-  both pure, both unit-tested without a browser. Linted with `src` and
-  `tests`, unlike the ejs template trees.
+  `@rgoussu.dev/planks`, served as-is (no bundler). One page for both
+  phases: `src/steps.js` says which steps the rail has — the directory
+  decides the flow, a new project's preset steps or a keel project's
+  read-only Project step, then the Options step both share —
+  `src/finder.js` walks the drill-down tree, and `src/target.js` says
+  how a change moves the run — which of the target, the answers, the
+  dials and the request generation it clears, which dials and extras a
+  new preset carries, where the answers it holds land once the new
+  preset is previewed, what the line under the preset picker says a
+  move could not keep, and which boxes an "Also scaffold" tick moves
+  (`toggleExtra` on a new project, `toggleVertical` on a keel project:
+  a tick brings what the vertical needs, an untick takes what needs it,
+  and what the project has is locked; `rerender` and `toggleRefresh`
+  for an installed vertical). That group is one control, drawn by
+  `src/dom.js`'s `alsoScaffold` on both flows' Options step, and
+  `src/extras.js` sorts it into its parts from the `keel.dials` reply
+  (the agent harness's chip a switch where the reply says it may be
+  left out; on a product one group per service, from that service's
+  own menu, `serviceExtrasGroup`), `src/additions.js` from the project
+  status (what is installed ticked and locked), both through the parts
+  they share in `src/readiness.js` (ready, needs, not for this
+  project); `src/project.js` says what the project status reports once
+  for every card (a harness from another generation) and what the
+  project is, for the Project step (`projectSummary`, off the status's
+  `profile`); `src/response.js` heads a failure as a refusal, a bug or
+  no answer; `src/command.js` spells a run as its command line, and
+  finds the flags a sentence names so `dom.js`' `sentence` keeps each
+  on one line.
+  All of these but `dom.js`, the DOM builder, are pure and unit-tested
+  without a browser. Linted with `src` and `tests`, unlike the ejs
+  template trees.
 
 ## Version pins are a registry, not a grep
 

@@ -144,6 +144,13 @@ interface ShapeRecord {
  * is derived is **membership**: which presets land under which shape
  * is {@link shapeOf} counting entrypoint sides, so a stack gaining an
  * `arch.spa` moves shape on its own.
+ *
+ * The backend is labelled "or tool", and names both ways in, because
+ * a command-line tool is built under it as often as a service is, and
+ * a label saying only "a service" left someone looking for a CLI to
+ * read past it. Each label is written `name — gloss`: a summary line
+ * (the terminal's resolution line, the page's masthead and Project
+ * step, a language-jump notice) shows the name alone.
  */
 export const SHAPES: readonly ShapeRecord[] = [
   {
@@ -153,8 +160,8 @@ export const SHAPES: readonly ShapeRecord[] = [
   },
   {
     id: 'backend',
-    label: 'Backend — a service with no front end of its own',
-    doc: 'One project, one hexagon, driven from the back: a command line, an HTTP endpoint, or both in the same project.',
+    label: 'Backend or tool — no front end (command line, HTTP service, or both)',
+    doc: 'One project, one hexagon, driven from the back: a command-line tool, an HTTP service, or both in the same project.',
   },
   {
     id: 'frontend',
@@ -175,6 +182,20 @@ const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   rust: 'Rust',
   'typescript@node': 'TypeScript (Node)',
   'typescript@browser': 'TypeScript (browser)',
+};
+
+/**
+ * Display names for the framework nodes, the way {@link LANGUAGE_LABELS}
+ * names languages: a framework is a product name, and the menus, the
+ * resolution line and a project's profile used to print the tag's
+ * lowercase segment. A framework nobody named here is spelled as its
+ * tag has it.
+ */
+const FRAMEWORK_LABELS: Readonly<Record<string, string>> = {
+  quarkus: 'Quarkus',
+  spring: 'Spring',
+  micronaut: 'Micronaut',
+  'web-components': 'Web Components',
 };
 
 /**
@@ -227,6 +248,38 @@ export function wizardPaths(stacks: readonly Stack[]): readonly WizardPath[] {
     if (placed !== null) paths.push(placed);
   }
   return paths.sort((a, b) => a.stackId.localeCompare(b.stackId));
+}
+
+/** The four answers of a {@link WizardPath}, without the preset they name. */
+export type WizardAxes = Omit<WizardPath, 'stackId'>;
+
+/**
+ * The four answers a set of tags gives the drill-down — a preset's
+ * own, or the tags a scaffolded project's manifest records, read back
+ * — or null where they name no language or no way in, which the
+ * drill-down places nowhere.
+ *
+ * What makes a project's page able to say what it is without a tag on
+ * screen: the same reading placed its preset in the tree, so the
+ * answers read back are the ones `keel new` was given, and
+ * {@link pathFor} over them names the preset they lead to.
+ */
+export function axesOf(tags: readonly Tag[]): WizardAxes | null {
+  const language = languageKey(tags);
+  if (language === null) return null;
+  const entrypoints = entrypointsOf(tags);
+  const shape = shapeOf(entrypoints);
+  if (shape === null) return null;
+  return { shape, language, framework: frameworkOf(tags), entrypoints };
+}
+
+/**
+ * Which end a set of tags is driven from — `backend`, `frontend` or
+ * `fullstack` — counted off its entrypoints as the finder counts a
+ * preset's; null where it has none.
+ */
+export function shapeOfTags(tags: readonly Tag[]): ProjectShape | null {
+  return shapeOf(entrypointsOf(tags));
 }
 
 /** Where `stackId` sits in the tree, or null when it sits nowhere. */
@@ -326,9 +379,10 @@ export function frameworkChoices(
   }));
 }
 
-/** Human-readable label of a framework node. */
+/** Human-readable label of a framework node: its product name, or its id where it has none. */
 export function frameworkLabel(framework: string): string {
-  return framework === '' ? 'none — the language’s own runtime, no framework' : framework;
+  if (framework === '') return 'none — the language’s own runtime, no framework';
+  return FRAMEWORK_LABELS[framework] ?? framework;
 }
 
 /** Human-readable label of a shape node. */
@@ -434,6 +488,17 @@ export function languageLabel(language: string): string {
   return runtime === undefined ? (lang ?? language) : `${lang ?? language} (${runtime})`;
 }
 
+/**
+ * The runtime half of a language node key — `jvm` of `java@jvm` — or
+ * null for a language that names none, Go and Rust compiling to a
+ * native binary. The inverse of how {@link WizardPath.language} is
+ * spelled, kept beside it so the key's format stays this module's.
+ */
+export function languageRuntime(language: string): string | null {
+  const at = language.indexOf('@');
+  return at < 0 ? null : language.slice(at + 1);
+}
+
 /** Spells an entrypoint set the way a message names it: `CLI + HTTP server`. */
 export function entrypointsLabel(entrypoints: readonly string[]): string {
   return entrypoints.map((id) => entrypoint(id)?.short ?? id).join(' + ');
@@ -466,12 +531,8 @@ function matching(
 
 /** The drill-down node a single-service stack sits at, or null. */
 function singlePath(stack: Stack): WizardPath | null {
-  const language = languageKey(stack.tags);
-  if (language === null) return null;
-  const entrypoints = entrypointsOf(stack.tags);
-  const shape = shapeOf(entrypoints);
-  if (shape === null) return null;
-  return { shape, language, framework: frameworkOf(stack.tags), entrypoints, stackId: stack.id };
+  const axes = axesOf(stack.tags);
+  return axes === null ? null : { ...axes, stackId: stack.id };
 }
 
 /**

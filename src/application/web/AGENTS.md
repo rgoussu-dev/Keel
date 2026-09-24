@@ -35,6 +35,53 @@ socket, the per-run token and the asset roots. The page it serves is
   answer worth being wrong about should hand it to a module there
   rather than keep it. `dom.js` is the shared builder — no
   `innerHTML` on anything that came off the wire.
+- **A change to the run is a transition in `target.js`**, never a
+  field set in `<keel-app>` — which touches them itself only in the
+  preview loop, to claim a generation for the request it makes.
+  Adopting the `keel.dials` reply is a transition too, `settle`, and
+  so is adopting a preview's, `previewed`, which drops the answers
+  that preview no longer asked for — an install refuses those, and the
+  preview lists them as `unusedAnswers`; one it read under a sibling's
+  key is bound to that key, so it stays. The
+  target, the answers, the dials, the request generation and the
+  notice move together, and every brownfield state bug so far was one
+  of them left behind: a whole target (what `<keel-add-form>` always
+  emits) replaces rather than merges, a new subject (vertical, preset,
+  kind) clears the answers and the menus — a new preset keeps its
+  dials and extras, for `keel.dials` to snap, `settle` names in one
+  line what it could not keep, and its answers are held for the
+  preview of the new preset to place (`previewed`: the same question,
+  or an identity answer's question of the same id; a placement the
+  reply had not resolved moves the generation on, and the page
+  previews again rather than draw it) — and every change moves the
+  generation on so a reply in flight is dropped. A move to another
+  directory is stamped the same way (`#visit` in `<keel-app>`): the
+  status and listing of a directory the page has left, or an install
+  report that lands after the move, change nothing on the page. A new control adds its transition
+  there, with a case in `tests/application/web/target.test.ts` — as
+  the "Also scaffold" boxes did, on a new project (`toggleExtra`, a
+  product's moving one service's selection) and on a keel project
+  (`toggleVertical`, which leaves what the project has locked;
+  `rerender`, `toggleRefresh`), since one tick can move several boxes
+  and the element only says which one it was. What a card shows is
+  read off the project status by a pure module too (`additions.js`,
+  and `project.js` for the read-only Project step), never re-derived in
+  the element: the status already carries each card's readiness and
+  refusal, word for word, and the project's own profile in words — the
+  page never reads a tag.
+- **A response body is read once, as text, and `response.js` says
+  what it means.** `api.js` claims the token out of `location` the
+  moment it loads, so it cannot be imported without a DOM; what a
+  status and body amount to lives beside it, pure. An uncaught throw
+  leaves the executable as a 500 in the envelope a refusal uses,
+  `{ error: { code, message } }`, under `keel.internal`, which the
+  page labels as a bug to report; a body that is not the envelope is
+  still shown verbatim rather than replaced by its status. A
+  `RefusalError`'s 422 also carries `error.refusal`, the structured
+  refusal (`api.ts` `unwrap`), for a control that acts on its fields
+  rather than its words. The page shows a failure in the plan column,
+  where the plan would be, as an alert — `failureOf` heads it as a
+  refusal, a bug or no answer — never as a banner away from it.
 - **Build the shell and the elements once, update them through
   properties.** Replacing a subtree on every preview takes the caret
   out of the field being typed in and resets the plan tree's scroll

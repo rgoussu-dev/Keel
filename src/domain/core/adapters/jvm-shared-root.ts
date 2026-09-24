@@ -37,6 +37,7 @@
  */
 
 import type { ContributionPatch } from '../../contract/composition.js';
+import { readmeUpsert } from './adopted-files.js';
 import type { JvmBuildSystem } from './jvm-build-system.js';
 import { eolOf, withEol } from '../util.js';
 
@@ -176,11 +177,9 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       seed: gradlePropertiesSeed(inputs.framework),
       apply: (existing) => existing,
     },
-    {
-      target: 'README.md',
-      seed: readmeSeed(meta.label, inputs.projectName, './gradlew test'),
-      apply: (existing) => appendReadmeSection(existing, gradleReadmeSection(inputs)),
-    },
+    readmeUpsert(readmeSeed(meta.label, inputs.projectName, './gradlew test'), (existing) =>
+      appendReadmeSection(existing, gradleReadmeSection(inputs)),
+    ),
   ];
 }
 
@@ -198,11 +197,9 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       }),
       apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
     },
-    {
-      target: 'README.md',
-      seed: readmeSeed(meta.label, inputs.projectName, './mvnw test'),
-      apply: (existing) => appendReadmeSection(existing, mavenReadmeSection(inputs)),
-    },
+    readmeUpsert(readmeSeed(meta.label, inputs.projectName, './mvnw test'), (existing) =>
+      appendReadmeSection(existing, mavenReadmeSection(inputs)),
+    ),
   ];
 }
 
@@ -515,15 +512,18 @@ function readmeMarker(arch: JvmRootArch): string {
 
 /**
  * Appends one entrypoint's README section unless its marker is
- * already there — the idempotence the shared-file upsert needs.
+ * already there — the idempotence the shared-file upsert needs. The
+ * marker is matched in the file's own line endings, so a README
+ * checked out as CRLF still has its section and a reapply adds
+ * nothing.
  */
 export function appendReadmeSection(
   existing: string,
   section: { arch: JvmRootArch; body: string },
 ): string {
   const marker = readmeMarker(section.arch);
-  if (existing.includes(marker)) return existing;
   const eol = eolOf(existing);
+  if (existing.includes(withEol(marker, eol))) return existing;
   return `${existing.trimEnd()}${withEol(`\n${marker}${section.body}`, eol)}`;
 }
 

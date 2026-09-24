@@ -21,11 +21,16 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Vertical } from '../../../../src/domain/contract/composition.js';
-import { registryOf } from '../../../../src/domain/core/registry.js';
+import { registryOf, shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
-import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { previewQuery } from '../../../../src/domain/contract/queries.js';
-import type { InstallPreview } from '../../../../src/domain/contract/queries.js';
+import {
+  addVerticalCommand,
+  installCommandFor,
+  newProjectCommand,
+  type NewProjectTarget,
+} from '../../../../src/domain/contract/commands.js';
+import { catalogQuery, dialsQuery, previewQuery } from '../../../../src/domain/contract/queries.js';
+import type { InstallPreview, PendingQuestion } from '../../../../src/domain/contract/queries.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 
@@ -323,12 +328,59 @@ describe('keel.preview', () => {
     const before = await fs.readdir(cwd);
     const preview = expectOk(
       await mediator.dispatch(
-        previewQuery({ cwd, target: { kind: 'add-vertical', vertical: 'ci' }, answers: {} }),
+        previewQuery({ cwd, target: { kind: 'add-vertical', verticals: ['ci'] }, answers: {} }),
       ),
     );
     expect(preview.subject).toBe('ci');
     expect(preview.changes.some((change) => change.path.startsWith('.github/'))).toBe(true);
     expect(await fs.readdir(cwd)).toEqual(before);
+  });
+
+  it('carries what the run decided on its own: its notes, and the re-renders it proposes', async () => {
+    // A page offers each proposal as a toggle beside the cards, so the
+    // preview says what the dry-run report says, word for word.
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-http',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const add = (verticals: readonly string[], dryRun = true) =>
+      mediator.dispatch(
+        addVerticalCommand({ cwd, verticals, answers: {}, interactive: false, dryRun }),
+      );
+    expectOk(await add(['containerization', 'distribution'], false));
+
+    const preview = expectOk(
+      await mediator.dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'add-vertical', verticals: ['persistence'] },
+          answers: {},
+        }),
+      ),
+    );
+    const report = expectOk(await add(['persistence']));
+    expect(preview.refreshProposals).toEqual([
+      { vertical: 'distribution', reads: ['persistence'] },
+    ]);
+    expect(preview.refreshProposals).toEqual(report.refreshProposals);
+    expect(preview.notes).toEqual(report.notes);
+
+    // Where the run decided nothing, there is nothing to carry.
+    const plain = expectOk(
+      await mediator.dispatch(
+        previewQuery({ cwd, target: { kind: 'add-vertical', verticals: ['ci'] }, answers: {} }),
+      ),
+    );
+    expect(plain).not.toHaveProperty('notes');
+    expect(plain).not.toHaveProperty('refreshProposals');
   });
 
   it('reports a vertical this project cannot carry as an Err, not a crash', async () => {
@@ -337,8 +389,8 @@ describe('keel.preview', () => {
     // `resolveVertical` hard-fails when no adapter covers a dimension,
     // and a CLI project has nothing to build a container image from.
     // A throw is all an HTTP layer can read as a crash, so `keel ui`
-    // answered 500 with a bare string for a refusal that names both
-    // the dimension and the tag that would close it.
+    // answered 500 with a bare string for a refusal that names what
+    // would close the gap.
     const mediator = installMediator({ runDeferred: discardDeferred() });
     expectOk(
       await mediator.dispatch(
@@ -356,12 +408,251 @@ describe('keel.preview', () => {
       await mediator.dispatch(
         previewQuery({
           cwd,
-          target: { kind: 'add-vertical', vertical: 'containerization' },
+          target: { kind: 'add-vertical', verticals: ['containerization'] },
           answers: {},
         }),
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toContain('arch.server-http');
+    expect(error.message).toContain('HTTP server — a REST endpoint');
+  });
+});
+
+/**
+ * The refusals raised *inside* an adapter, below every front-door
+ * check. Each used to be a plain `Error` — a 500 in `keel ui` for a
+ * choice the page itself offered — and each is now a `DomainError`
+ * the mediator hands back as an `Err`. Previewed through a new
+ * project, because that is where the page reaches them first.
+ * Distribution's missing image was the first of them; it is a
+ * declaration now, and the planner installs the image with it.
+ */
+describe('keel.preview — refusals from inside an adapter', () => {
+  const previewGoHttp = (
+    extraVerticals: readonly string[],
+    answers: Record<string, Record<string, string>> = {},
+  ) =>
+    installMediator().dispatch(
+      previewQuery({
+        cwd,
+        target: { kind: 'new-project', stack: 'go-http', extraVerticals },
+        answers,
+      }),
+    );
+
+  it('previews distribution with the image it needs, ahead of it', async () => {
+    const preview = expectOk(await previewGoHttp(['distribution']));
+    const paths = preview.changes.map((change) => change.path);
+    expect(paths).toContain('Dockerfile');
+    expect(paths).toContain('deploy/compose.yaml');
+  });
+
+  it('refuses a value the question does not list as an invalid answer', async () => {
+    const error = expectErr(
+      await previewGoHttp(['persistence'], {
+        'persistence/database-compose': { engine: 'oracle' },
+      }),
+    );
+    expect(error.code).toBe('keel.invalid-answer');
+    expect(error.message).toContain('persistence/database-compose:engine');
+  });
+});
+
+/**
+ * `--no-agent-harness` reaches the page as `target.agentHarness`, and
+ * the preview reads it as the install does — through the one mapping
+ * both share (`installCommandFor`), from the target `keel.dials`
+ * settled.
+ */
+describe('keel.preview — the agent harness left out', () => {
+  /** What a target stages, previewed and installed as a dry run. */
+  async function staged(target: NewProjectTarget): Promise<{
+    readonly previewed: readonly string[];
+    readonly installed: readonly string[];
+  }> {
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+    const preview = expectOk(await mediator.dispatch(previewQuery({ cwd, target, answers: {} })));
+    const report = expectOk(
+      await mediator.dispatch(
+        installCommandFor(target, { cwd, answers: {}, interactive: false, dryRun: true }),
+      ),
+    );
+    return {
+      previewed: preview.changes.map((change) => change.path).sort(),
+      installed: report.changes.map((change) => change.path).sort(),
+    };
+  }
+
+  it('plans no agent documents, skills or hooks, and the install stages the same', async () => {
+    const mediator = installMediator();
+    const settle = async (agentHarness?: boolean): Promise<NewProjectTarget> =>
+      expectOk(
+        await mediator.dispatch(
+          dialsQuery({
+            target: {
+              kind: 'new-project',
+              stack: 'go-cli',
+              ...(agentHarness === undefined ? {} : { agentHarness }),
+            },
+          }),
+        ),
+      ).target as NewProjectTarget;
+
+    const on = await staged(await settle());
+    const off = await staged(await settle(false));
+    expect(off.previewed).toEqual(off.installed);
+    expect(on.previewed).toContain('AGENTS.md');
+    expect(off.previewed).not.toContain('AGENTS.md');
+    const skills = (files: readonly string[]) =>
+      files.some((file) => file.startsWith('.claude/skills/'));
+    expect(skills(on.previewed)).toBe(true);
+    expect(skills(off.previewed)).toBe(false);
+    // The project itself is untouched: only the harness went.
+    expect(off.previewed).toContain('go.mod');
+    expect(on.previewed).toEqual(expect.arrayContaining([...off.previewed]));
+  });
+
+  it('is refused on a product, as the install refuses it', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'new-project', stack: 'fullstack', agentHarness: false },
+          answers: {},
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-agent-harness');
+  });
+});
+
+/**
+ * A choice declares where it applies (`QuestionChoice.predicate`), and
+ * the preview offers it exactly there — the list a form renders, and
+ * the list a posted answer is held to, are one list. Before, the
+ * persistence dials offered `mariadb` and `liquibase` everywhere, and a
+ * guard deep in the install refused the stacks that could not serve
+ * them: a choice the page offered, answered with a refusal.
+ */
+describe('keel.preview — a choice is offered where it is taken', () => {
+  const DIALS = 'persistence/database-compose';
+
+  const previewPersistence = (stack: string, answers: Record<string, string> = {}) =>
+    installMediator().dispatch(
+      previewQuery({
+        cwd,
+        target: { kind: 'new-project', stack, extraVerticals: ['persistence'] },
+        answers: Object.keys(answers).length === 0 ? {} : { [DIALS]: answers },
+      }),
+    );
+
+  const offered = (preview: InstallPreview, question: string): readonly string[] =>
+    (
+      preview.questions.find(
+        (pending) =>
+          pending.binding.kind === 'answer' &&
+          pending.binding.adapter === DIALS &&
+          pending.binding.question === question,
+      )?.choices ?? []
+    ).map((choice) => choice.value);
+
+  it('does not offer mariadb on go-http, and refuses it supplied as an invalid answer', async () => {
+    const preview = expectOk(await previewPersistence('go-http'));
+    expect(offered(preview, 'engine')).toEqual(['postgres']);
+    expect(offered(preview, 'migrations')).toEqual(['flyway', 'liquibase']);
+
+    const error = expectErr(await previewPersistence('go-http', { engine: 'mariadb' }));
+    expect(error.code).toBe('keel.invalid-answer');
+    expect(error.message).toBe(
+      "'mariadb' is not a choice for persistence/database-compose:engine; choices: postgres",
+    );
+  });
+
+  it('offers mariadb on a JVM stack, and not liquibase', async () => {
+    const preview = expectOk(await previewPersistence('quarkus-rest'));
+    expect(offered(preview, 'engine')).toEqual(['postgres', 'mariadb']);
+    expect(offered(preview, 'migrations')).toEqual(['flyway']);
+    // The list arrives applied: no choice carries its predicate, and so
+    // no tag, to the page.
+    expect(
+      preview.questions.flatMap((pending) => pending.choices ?? []).filter((c) => 'predicate' in c),
+    ).toEqual([]);
+
+    const error = expectErr(await previewPersistence('quarkus-rest', { migrations: 'liquibase' }));
+    expect(error.code).toBe('keel.invalid-answer');
+  });
+
+  it('takes every persistence choice a stack is offered, and refuses every one it is not', async () => {
+    // The class the default-answer grid cannot see: it posts no
+    // answers. Every stack whose menu offers persistence, every choice
+    // the dials declare — offered must preview and install Ok, hidden
+    // must be refused by both as outside the choices, never deeper in
+    // the install. The preview holds a posted answer to the list at
+    // the prompt, the install holds a `--set` to it where the answer
+    // reaches its adapter: two doors, one list.
+    const mediator = installMediator();
+    // Defaults are left out: the preview posting no answers resolves
+    // to them, and it must be Ok for the stack to be swept at all.
+    const declared = (shippedRegistry.vertical('persistence')?.adapters ?? []).flatMap((adapter) =>
+      (adapter.questions ?? []).flatMap((question) =>
+        (question.choices ?? [])
+          .filter((choice) => choice.value !== question.default)
+          .map((choice) => ({ adapter: adapter.id, question: question.id, value: choice.value })),
+      ),
+    );
+    expect(declared.length).toBeGreaterThan(0);
+    const verdicts: Record<string, string> = {};
+    const hidden: string[] = [];
+    const catalog = expectOk(await mediator.dispatch(catalogQuery()));
+    // Stacks share nothing, and dry runs write nothing, so they overlap.
+    await Promise.all(
+      catalog.stacks.map(async ({ id: stack }) => {
+        const dials = expectOk(
+          await mediator.dispatch(dialsQuery({ target: { kind: 'new-project', stack } })),
+        );
+        if (!dials.extraVerticals.some((extra) => extra.id === 'persistence')) return;
+        if (dials.target.kind !== 'new-project') throw new Error(`${stack} settled elsewhere`);
+        const target = { ...dials.target, extraVerticals: ['persistence'] };
+        const asked = expectOk(
+          await mediator.dispatch(previewQuery({ cwd, target, answers: {} })),
+        ).questions;
+        for (const choice of declared) {
+          const pending = asked.find(
+            (question: PendingQuestion) =>
+              question.binding.kind === 'answer' &&
+              question.binding.adapter === choice.adapter &&
+              question.binding.question === choice.question,
+          );
+          if (pending === undefined) continue;
+          const key = `${stack} ${choice.question}=${choice.value}`;
+          const shown = (pending.choices ?? []).some((c) => c.value === choice.value);
+          if (!shown) hidden.push(key);
+          const answers = { [choice.adapter]: { [choice.question]: choice.value } };
+          const results = [
+            await mediator.dispatch(previewQuery({ cwd, target, answers })),
+            await mediator.dispatch(
+              installCommandFor(target, { cwd, answers, interactive: false, dryRun: true }),
+            ),
+          ];
+          const [previewed, installed] = results.map((result) =>
+            result.ok ? 'ok' : result.error.code,
+          );
+          const expected = shown ? 'ok' : 'keel.invalid-answer';
+          verdicts[key] =
+            previewed === expected && installed === expected
+              ? 'as offered'
+              : `${shown ? 'offered' : 'not offered'}, yet preview ${previewed}, install ${installed}`;
+        }
+      }),
+    );
+    // Both halves of the class, so neither can pass by sweeping nothing
+    // — or by offering everything everywhere.
+    expect(hidden).toEqual(
+      expect.arrayContaining(['go-http engine=mariadb', 'quarkus-rest migrations=liquibase']),
+    );
+    expect(Object.keys(verdicts)).toEqual(
+      expect.arrayContaining(['quarkus-rest engine=mariadb', 'go-http migrations=liquibase']),
+    );
+    expect(Object.entries(verdicts).filter(([, verdict]) => verdict !== 'as offered')).toEqual([]);
   });
 });

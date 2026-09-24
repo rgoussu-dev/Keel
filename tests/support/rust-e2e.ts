@@ -201,7 +201,13 @@ export async function addVertical(vertical: string, cwd: string): Promise<void> 
   });
   expectOk(
     await mediator.dispatch(
-      addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+      addVerticalCommand({
+        cwd,
+        verticals: [vertical],
+        answers: {},
+        interactive: false,
+        dryRun: false,
+      }),
     ),
   );
 }

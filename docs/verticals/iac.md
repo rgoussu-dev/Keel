@@ -11,7 +11,17 @@ The release pipeline pushes an image; this vertical provisions the
 registry-consuming runtime that image runs on. It is keyed on the
 `dist.container-image` tag `distribution` promotes — a target with no
 release pipeline feeding it would be infrastructure keel cannot
-honestly wire to anything, so `keel add distribution` comes first.
+honestly wire to anything, so `distribution` comes first, and the
+`containerization` it builds on before that. The extras menu offers
+`iac` as _needs Container image, Distribution_; `keel new --with iac`
+or `keel add iac` without them installs both with it, in that order,
+and says so first. `--with containerization,distribution,iac` in any
+order is the same run, and so is `keel add containerization
+distribution iac`. In a **monorepo product** it needs a
+`distribution` no service can carry — a release is read only at the
+repository root — so a service refuses it (`keel.wrong-scope`), and so
+does the product root; under the polyrepo layout each service takes
+it. See the [compatibility matrix](README.md#compatibility-matrix).
 
 ## Dimensions & adapters
 

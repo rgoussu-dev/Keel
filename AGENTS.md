@@ -43,7 +43,7 @@ This root is held to the same ≤ 120 lines keel emits, by
 - [`src/domain/kernel/`](src/domain/kernel/AGENTS.md) — Action/Command/Query, Result, Handler, Mediator; depends on nothing
 - [`src/domain/toolchain/`](src/domain/toolchain/AGENTS.md) — the provisioning bounded context, its own hexagon
 - [`src/infrastructure/`](src/infrastructure/AGENTS.md) — one directory per port, real adapter and canonical fake side by side
-- [`tests/`](tests/AGENTS.md) — how a test is built, the guard suites, mutation testing
+- [`tests/`](tests/AGENTS.md) — how a test is built, the guard suites, the composition grid, mutation testing
 <!-- keel:map:end -->
 
 `bin/keel.js` is the npm bin entry → `dist/application/cli/executable`.
@@ -98,8 +98,9 @@ bootstrap, `keel add <vertical>` for brownfield layering. Local loops
 - **A change updates its docs in the same commit.** A new stack,
   vertical or CLI flag touches the matching `docs/` page and the README
   matrix; every user-visible change gets a `CHANGELOG.md` `[Unreleased]`
-  entry; a new e2e suite goes into a shard in `ci.yml`. Four guard tests
-  in `verify` exist because each of those indexes rots silently
+  entry; a new e2e suite goes into a shard in `ci.yml`; a grid verdict
+  that moves regenerates the docs' compatibility matrix. Seven guard
+  suites in `verify` exist because each of those indexes rots silently
   otherwise — see [`tests/`](tests/AGENTS.md).
 - **Extract knowledge to the nearest document.** A non-obvious discovery
   about this repo goes into the `AGENTS.md` of the directory it is about,

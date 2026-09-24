@@ -2,8 +2,11 @@
 
 Client gateways and server accommodations, selected purely by **peer
 tags**. The vertical declares **no dimensions**: with no peers in
-scope it installs nothing; with peers, each side gets its half of the
-seam.
+scope it is refused — _"Service gateway wires linked projects, and no
+linked project serves it here — link one that does first"_, with
+`keel link <path>` as the terminal's hint — rather than installing
+nothing and being recorded as there; with peers, each side gets its
+half of the seam.
 
 ## How the seam works
 
@@ -41,10 +44,10 @@ cd ../my-backend && keel add gateway        # backend half (CORS + contract)
 
 ## Prerequisites
 
-| Requirement                     | Why                                                       |
-| ------------------------------- | --------------------------------------------------------- |
-| Both projects are keel projects | Peer projections live in the keel manifests.              |
-| `keel link` run first           | Without peer tags in scope the vertical installs nothing. |
+| Requirement                     | Why                                                 |
+| ------------------------------- | --------------------------------------------------- |
+| Both projects are keel projects | Peer projections live in the keel manifests.        |
+| `keel link` run first           | Without peer tags in scope the vertical is refused. |
 
 ## Related
 
