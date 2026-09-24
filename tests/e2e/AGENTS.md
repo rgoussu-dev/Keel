@@ -138,7 +138,7 @@ four families stay one file per family
 `modulith-baseline`), riding their family's existing shard, because a
 Rust or Go context has no container to lose a handler in.
 
-## The two suites that are not cells
+## The suites that are not cells
 
 - **`dev-compose` is the only shard that runs an emitted
   `dev/compose.yaml`, and it exists because nothing did.** Every other
@@ -152,19 +152,30 @@ Rust or Go context has no container to lose a handler in.
   the SELinux relabel the monitoring mounts carry is inert on a GitHub
   runner, so starting those five containers would buy the shard a
   gigabyte of pulls and no assertion.
-- **`keel ui` has one browser-driven suite, and it is not a cell.**
-  `ui-stack-finder.test.ts` spawns `keel ui --port 0`, parses the URL
-  and token the CLI prints, and drives the page with Playwright — the
-  only suite here that scaffolds no project and runs no build. It rides
-  the `web` shard, which already declares `browser` in `tools:`. What it
-  covers is the seam nothing else can: the narrowing is pure and
-  unit-tested (`finder.js`) and so is which steps the rail has
-  (`steps.js`), but the element rebuilds its subtree on every change and
-  `<keel-app>` replaces the element itself, so keeping a choice across a
-  step is a claim about surviving a DOM replacement. A page-level suite
-  is the only thing that sees a `pageerror` too — a throw inside a
+- **`keel ui` has four browser-driven suites, and none is a cell.**
+  Each spawns `keel ui --port 0`, parses the URL and token the CLI
+  prints, and drives the page with Playwright over the shared harness
+  (`tests/support/ui-e2e.ts`); none runs a toolchain, and all four ride
+  the `web` shard, which already declares `browser` in `tools:`. They are
+  four files because they differ by what is on disk when the page
+  opens, or by what they drive once it has:
+  `ui-stack-finder` (an empty directory; the greenfield stepper),
+  `ui-plugin-stack` (a keel plugin on disk; a stack keel never
+  shipped), `ui-refusal` (a scaffolded project; a refusal on the page
+  and the brownfield card state) and `ui-compose` (an empty directory;
+  the Options step's "Also scaffold" group, and the body the page
+  posts for it — `watchTraffic` keeps what went out). What they cover
+  is the seam nothing else can: the narrowing, the steps, the
+  transitions and the extras group are pure and unit-tested
+  (`finder.js`, `steps.js`, `target.js`, `extras.js`), but the element
+  rebuilds its subtree on every change and `<keel-app>` replaces the
+  element itself, so keeping a choice — or the focus — across a step
+  is a claim about surviving a DOM replacement. A page-level suite is
+  the only thing that sees a `pageerror` too — a throw inside a
   listener leaves the page looking right and aborts the rest of that
-  handler.
+  handler. **None of them presses Generate on a JVM stack**: the `web`
+  shard provisions no JDK, and a real Quarkus install queues
+  `gradle wrapper`.
 
 ## Cost — what is measured, and what inverted the guess
 

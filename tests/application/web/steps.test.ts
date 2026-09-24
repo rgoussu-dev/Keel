@@ -137,11 +137,29 @@ describe('the wizard’s steps', () => {
     expect(located(await greenfield('nonsense'))).toBeNull();
   });
 
-  it('counts a dial that only the rules can offer', async () => {
-    // A stack pinning both its dials still earns an options step once
-    // `keel.dials` says the peer context is on the table.
-    const pinned = await greenfield('web-components');
-    expect(hasDials({ ...pinned, dials: { peerContext: true } })).toBe(true);
+  it('gives every preset an options step, before any dials reply has landed', async () => {
+    // A single project always has its "Also scaffold" group, whatever
+    // else it pins, and a product its repository layout. Answered from
+    // the catalog alone, so the rail cannot grow a step under the
+    // pointer when the first reply arrives.
+    const catalogued = await catalog();
+    for (const stack of catalogued.stacks) {
+      expect(ids(stepsFor(await greenfield(stack.id))), stack.id).toContain('options');
+    }
+  });
+
+  it('keeps the options step for a preset that pins every dial, which still has its extras', async () => {
+    // Such a preset used to earn the step only once a preview had
+    // asked the extras question. A plugin's preset can look like this.
+    const catalogued = await catalog();
+    const quarkus = catalogued.stacks.find((stack) => stack.id === 'quarkus-rest');
+    if (quarkus === undefined) throw new Error('no quarkus-rest in the catalog');
+    const pinned = { ...quarkus, id: 'pinned', buildSystems: [], moduleLayouts: [] };
+    const state = await greenfield('pinned', {
+      catalog: { ...catalogued, stacks: [...catalogued.stacks, pinned] },
+    });
+    expect(hasDials(state)).toBe(true);
+    expect(hasDials(await greenfield('nonsense'))).toBe(false);
   });
 
   it('settles a step that no longer exists back to the last one before it', async () => {

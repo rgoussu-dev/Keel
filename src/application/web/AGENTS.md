@@ -49,7 +49,9 @@ socket, the per-run token and the asset roots. The page it serves is
   dials, for `keel.dials` to snap, and `settle` names in one line
   what it could not keep — and every change moves the generation on
   so a reply in flight is dropped. A new control adds its transition
-  there, with a case in `tests/application/web/target.test.ts`.
+  there, with a case in `tests/application/web/target.test.ts` — as
+  the "Also scaffold" boxes did (`toggleExtra`), since one tick can
+  move several boxes and the element only says which one it was.
 - **A response body is read once, as text, and `response.js` says
   what it means.** `api.js` claims the token out of `location` the
   moment it loads, so it cannot be imported without a DOM; what a

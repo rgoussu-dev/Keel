@@ -44,13 +44,15 @@
  * @typedef {{ kind: string } & Record<string, unknown>} Target
  * @typedef {Record<string, Record<string, string>>} Answers
  * @typedef {{ id: string }} Option
- * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<{ path: string, buildSystems: ReadonlyArray<Option> }> }} Dials
+ * @typedef {{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string> }} VerticalOption
+ * @typedef {{ id: string, change: string, because: string }} Adjustment
+ * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<{ path: string, buildSystems: ReadonlyArray<Option> }>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
  * @typedef {{ from: string, dials: Record<string, unknown> }} Carried
  * @typedef {{ target: Target, answers: Answers, dials: Dials | null, generation: number, carried: Carried | null, notice: string }} Run
  * @typedef {{ kind: string, adapter?: string, question?: string, service?: string }} Binding
  */
 
-import { decodeSelection, languageJump } from './finder.js';
+import { languageJump } from './finder.js';
 
 /**
  * The fields of a `new-project` target a new preset keeps. `keel.dials`
@@ -223,6 +225,57 @@ export function answer(run, { binding, value }) {
 }
 
 /**
+ * The run after an extra was ticked or unticked in the Options step's
+ * "Also scaffold" group.
+ *
+ * The group is a set of checkboxes, and one tick is rarely one
+ * vertical. **Ticking one that needs others ticks them too** — its
+ * `requires`, as the last `keel.dials` reply reported them — because
+ * that is the set the install runs either way: both front doors
+ * include a missing prerequisite rather than refuse it, and a box
+ * that stayed unticked beside a plan listing its files would be the
+ * page contradicting itself. **Unticking one unticks every selected
+ * vertical that needs it**, and whatever needed those in turn: a
+ * vertical left ticked without what it needs would bring it straight
+ * back, and the box just unticked would tick itself again on the
+ * next reply.
+ *
+ * The set is then posted like any other dial move, and `keel.dials`
+ * snaps it to the closure the install runs, in the order it runs it
+ * ({@link settle}) — so the order ticks are made in is never the
+ * order anything installs in. A move within one subject, so the
+ * answers stay, and the next preview drops the ones an unticked
+ * extra's adapters had been asked ({@link previewed}).
+ *
+ * @param {Run} run
+ * @param {string} id the vertical the box stands for
+ * @param {boolean} ticked whether the box is now ticked
+ * @returns {Run}
+ */
+export function toggleExtra(run, id, ticked) {
+  const requires = new Map(
+    (run.dials?.verticals ?? []).map((vertical) => [vertical.id, vertical.requires]),
+  );
+  const selected = extrasOf(run.target);
+  const next = ticked
+    ? [...new Set([...selected, ...(requires.get(id) ?? []), id])]
+    : withoutDependants(selected, requires, id);
+  return retarget(run, { extraVerticals: next });
+}
+
+/**
+ * The extras a target holds — `[]` until `keel.dials` has pinned them,
+ * which it always does.
+ *
+ * @param {object | null} target
+ * @returns {string[]}
+ */
+export function extrasOf(target) {
+  const extras = target?.extraVerticals;
+  return Array.isArray(extras) ? extras.map(String) : [];
+}
+
+/**
  * The whole target a vertical's card stands for.
  *
  * `reapply` is always stated, and stated for *this* card: an installed
@@ -240,6 +293,27 @@ export function pickVertical(status, vertical) {
     vertical,
     reapply: status.installed.some((installed) => installed.id === vertical),
   };
+}
+
+/**
+ * `selected` less `id` and everything that needs it, to a fixed
+ * point: a vertical's `requires` is its whole closure today, but a
+ * dependant of a dependant is still worth unticking if it ever is not.
+ */
+function withoutDependants(selected, requires, id) {
+  const gone = new Set([id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const other of selected) {
+      if (gone.has(other)) continue;
+      if ((requires.get(other) ?? []).some((needed) => gone.has(needed))) {
+        gone.add(other);
+        grew = true;
+      }
+    }
+  }
+  return selected.filter((other) => !gone.has(other));
 }
 
 function moved(target, patch) {
@@ -385,9 +459,6 @@ function fieldOf(binding, value) {
       return { buildSystem: binding.service === undefined ? value : `${binding.service}=${value}` };
     case 'withPeerContext':
       return { withPeerContext: value === 'yes' };
-    case 'extraVerticals':
-      // A set answer: comma-joined on the wire, a list in the target.
-      return { extraVerticals: decodeSelection(value) };
     default:
       return { [binding.kind]: value };
   }

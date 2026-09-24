@@ -265,15 +265,18 @@ describe('the settled target', () => {
       buildSystem: 'gradle',
       moduleLayout: 'basic',
       withPeerContext: false,
+      extraVerticals: [],
     });
   });
 
-  it('leaves the extras absent when the caller sent none', () => {
-    // The one dial that must stay unpinned: `extraVerticals` is only
-    // ever offered as a preview question, and pinning it here would
-    // stop the question being asked at all.
+  it('pins the extras to none when the caller sent none', () => {
+    // The extras were once the one dial left unpinned, so `keel.preview`
+    // would keep asking for them; a question the install stops asking
+    // once answered is a control that vanishes after its first tick.
+    // They are a menu of their own now (`verticals`), and a target
+    // settled here asks nothing a form already renders.
     const settled = stackDials(shippedRegistry, stackWith([]), target()).target as NewProjectTarget;
-    expect(settled.extraVerticals).toBeUndefined();
+    expect(settled.extraVerticals).toEqual([]);
   });
 
   it('keeps a dial the caller set where the rules still allow it', () => {
@@ -288,6 +291,7 @@ describe('the settled target', () => {
       kind: 'new-project',
       stack: 'demo-stack',
       withPeerContext: false,
+      extraVerticals: [],
     });
   });
 });

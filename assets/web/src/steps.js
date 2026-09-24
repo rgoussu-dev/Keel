@@ -3,8 +3,7 @@
  *
  * The page is a stepper now rather than one long form, and the list
  * of steps is **not** a constant: a language reaching one framework
- * has no framework step, a stack pinning its build system has no
- * options step, and the brownfield half is a different list
+ * has no framework step, and the brownfield half is a different list
  * altogether. That is the same rule the terminal wizard skips a
  * question under — a step whose answer is already settled is not a
  * step — so it is derived here from the catalog, the dials and the
@@ -137,23 +136,19 @@ export function chosenStack(state) {
 }
 
 /**
- * Whether this preset has any dial worth a step of its own.
+ * Whether this preset has any dial worth a step of its own — which is
+ * every preset the catalog knows.
  *
- * The catalog says whether a control exists; the dials say what may
- * be on it. Both are consulted for the same reason `<keel-new-form>`
- * consults both — a control narrowed to one value is still a control,
- * but a preset that offers no choice at all should not cost a step.
+ * A product has its repository layout. A single project has the
+ * "Also scaffold" group whatever else it pins: what else to install
+ * alongside, and what already comes with it. That group used to be a
+ * question the preview asked, so a preset pinning its build system
+ * and layout earned the step only once a preview had landed — and the
+ * rail grew a step under the pointer. Asked of the catalog alone, the
+ * answer is there before any request is made.
  */
 export function hasDials(state) {
-  const stack = chosenStack(state);
-  if (!stack) return false;
-  if (stack.services.length > 0) return true;
-  return (
-    stack.buildSystems.length > 1 ||
-    stack.moduleLayouts.length > 1 ||
-    state.dials?.peerContext === true ||
-    (state.dials?.extraVerticals?.length ?? 0) > 0
-  );
+  return chosenStack(state) !== null;
 }
 
 /**
@@ -180,10 +175,10 @@ const ORDER = [
  *
  * Falls back to the last step at or before it rather than to the
  * first, because a step can vanish under the pointer: pick a preset
- * with no dials while standing on Options and the rail loses that
- * step. Landing on Questions — the next thing that still exists at or
- * after where you were — is a step back; landing on Directory is a
- * lost place in the flow.
+ * whose language has one framework while standing on Framework and
+ * the rail loses that step. Landing on Language — the last thing that
+ * still exists at or before where you were — is a step back; landing
+ * on Directory is a lost place in the flow.
  *
  * @param {Step[]} steps
  * @param {string} wanted

@@ -263,12 +263,12 @@ export interface DialOptions {
    * the install asking about them: a stack-level dial the install
    * asks about arrives as a preview question, and a form that already
    * renders it from here would show the same choice twice.
-   * `extraVerticals` is the exception — never pinned when the caller
-   * left it absent, because nothing but the preview question offers
-   * it. When the caller did set it, it is **snapped to its closure**:
-   * the prerequisites of what it names added, what cannot go on this
+   * `extraVerticals` is no exception: pinned to `[]` when the caller
+   * named none, and otherwise **snapped to its closure** — the
+   * prerequisites of what it names added, what cannot go on this
    * preset dropped, in the order the install will run them. Every
-   * such change is in {@link DialOptions.adjustments}.
+   * such change is in {@link DialOptions.adjustments}. The list to
+   * choose from is {@link DialOptions.verticals}.
    */
   readonly target: InstallTarget;
   /** Build systems still legal; empty when the stack pins one. */

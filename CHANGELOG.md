@@ -14,6 +14,25 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel ui`'s extras are a control that stays.** They were a
+  question the preview asked, and the install stops asking a question
+  once it is answered — so the list vanished after the first tick: one
+  extra at most, never unticked. The Options step now has an _Also
+  scaffold_ group in three parts: _Ready_; _Needs another capability
+  first_, each card naming what it needs by title — ticking one ticks
+  those too, and unticking one unticks every vertical that needs it,
+  so ticking Infrastructure as code posts
+  `containerization,distribution,iac` and unticking Container image
+  takes all three back; and _Comes with_ the preset, as chips. Every
+  single-service preset has the step, so the rail no longer grows one
+  when the first preview lands. The review lists the extras with a
+  link back to them, and its _Questions_ row counts the answers you
+  set rather than every question asked; Generate waits for the
+  preview of the run as it now stands, so an answer an unticked extra
+  took with it is never posted; and the command line under the plan
+  is dimmed while the run is refused, saying the terminal would refuse
+  it too.
+
 - **Distribution and infrastructure as code are offered where they can
   be built, and nowhere else.** `distribution`'s need for the image
   `containerization` builds was a check inside its adapter, which no
@@ -222,6 +241,12 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   questions it asks. `AddVerticalCommand` and the install target carry
   `verticals` (a list) where they carried `vertical`; the web API still
   takes `vertical` as a list of one.
+
+- **`keel.dials` pins the extras on every target it settles** — to
+  `[]` when none are named, as it pins every other dial — so
+  `keel.preview` no longer asks the extras question of a settled
+  target. A caller that settled its target through `keel.dials` and
+  relied on the preview to offer the list reads `verticals` instead.
 
 - **`keel.dials` reports readiness and snaps the extras to their
   closure.** `DialOptions` gains `verticals` — the preset's own
@@ -1265,9 +1290,11 @@ assets }` and its pieces are written against the ordinary
     on a REST stack (`iac` is keyed on the `dist.container-image` tag
     `distribution` promotes); the same three ids in another order are
     refused naming the one to list it after, not called impossible.
-  - `keel.preview` binds the answer as `{ kind: 'extraVerticals' }`
-    and `NewProjectTarget` carries the list, so `keel ui` round-trips
-    it like any other dial.
+  - `NewProjectTarget` carries the list, and `keel.dials` pins it
+    like any other dial, so `keel ui` round-trips it as one — the
+    Options step's _Also scaffold_ group. `keel.preview` still binds
+    the question as `{ kind: 'extraVerticals' }` for a caller that
+    leaves the list unset and wants it asked.
 
 - **`Vertical.promotes`: what installing a vertical may add to the
   tag set.** The union over its adapters' `tagsAdd`, including the

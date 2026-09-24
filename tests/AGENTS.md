@@ -4,7 +4,7 @@
 
 What lives here: vitest suites mirroring `src/` (`domain/`, `contract/`
 pieces under it, `application/`, `infrastructure/`, `toolchain/`), the
-shared test `support/factory.ts`, the browser harness both `keel ui`
+shared test `support/factory.ts`, the browser harness the `keel ui`
 suites drive (`support/ui-e2e.ts`), the fixture trees under
 `support/fixtures/`, the fixture plugins the `plugins/` suite loads from
 disk, the guard tests that keep this repo's registries honest, and the
@@ -119,9 +119,13 @@ test claiming that what a front end offers is what keel accepts — a dial
 menu, the extras list, a brownfield card — dispatches `keel.preview` (or
 the install) for the offered choice. It never re-derives the gate from
 `compatibility.ts`, `resolver.ts` or the tags: a re-derivation shares
-the menu's blind spots. `application/web/dials.test.ts` holds the page's
+the menu's blind spots. `application/web/dials.test.ts` held the page's
 bodies to `assemblyRefusal`, the function the menu itself filters by,
-and an offered extra that throws passed it.
+and an offered extra that throws passed it. Its walk now posts every
+body it reaches — each dial setting of every preset, and each extra
+ticked and unticked through the page's own `toggleExtra` — to
+`POST /api/preview`: some 300 previews, about 10 s, under a timeout of
+its own.
 
 ## Mutation testing
 

@@ -28,11 +28,23 @@
  * list**, and the difference matters. A stack-level dial is a field of
  * the command, so once it is set the install stops asking about it —
  * a control driven by the preview would vanish the moment it was
- * used. Everything conditional comes back from the preview instead
- * and is rendered by `<keel-question-list>`.
+ * used. That is exactly what the extras did while they were a
+ * preview question: one tick, and the list was gone. They are the
+ * "Also scaffold" group here now, drawn from `dials.verticals`
+ * (`../extras.js`), and `keel.dials` pins them on every target it
+ * settles so the preview never asks them again. Everything
+ * conditional still comes back from the preview and is rendered by
+ * `<keel-question-list>`.
  *
- * Catalog, dials, target and step in as properties, `target-changed`
- * out with the fields that moved.
+ * **Focus survives a re-render.** Every reply redraws the step, and a
+ * box ticked from the keyboard would otherwise hand the focus back to
+ * the page body — so the focused control is found again by its id, or
+ * by its group and value, once the new one is in.
+ *
+ * Catalog, dials, target and step in as properties; `target-changed`
+ * out with the fields that moved, and `extra-toggled` out with the
+ * vertical an "Also scaffold" box stands for and whether it is now
+ * ticked — what else that tick moves is `../target.js`'s answer.
  */
 
 import {
@@ -44,7 +56,8 @@ import {
   pickLanguage,
   pickShape,
 } from '../finder.js';
-import { cards, checkboxCards, note } from '../dom.js';
+import { cards, checkboxCards, el, help, note } from '../dom.js';
+import { extrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
 export class KeelNewForm extends HTMLElement {
@@ -109,10 +122,12 @@ export class KeelNewForm extends HTMLElement {
 
   #render() {
     if (!this.isConnected || !this.#catalog || !this.#target) return;
+    const focused = focusIn(this);
     const form = document.createElement('stack-pk');
     form.setAttribute('space', 'var(--s0)');
     form.append(...this.#fields());
     this.replaceChildren(form);
+    refocus(this, focused);
   }
 
   /** The controls of the step being shown, or an explanation of its absence. */
@@ -224,7 +239,103 @@ export class KeelNewForm extends HTMLElement {
       fields.push(this.#moduleLayoutField(this.#moduleLayouts(stack)));
     }
     if (this.#dials?.peerContext === true) fields.push(this.#peerContextField());
-    return fields.length > 0 ? fields : [note('This preset pins every dial — nothing to choose.')];
+    const extras = extrasGroup(this.#dials, this.#target);
+    if (extras !== null) fields.push(this.#extrasField(stack, extras));
+    if (fields.length > 0) return fields;
+    // Every preset has this step, so one pinning both dials is drawn
+    // before its extras have arrived — and "nothing to choose" would
+    // be wrong for as long as the first reply takes.
+    return [
+      note(
+        this.#dials === null
+          ? 'Reading what this preset can take…'
+          : 'This preset pins every dial — nothing to choose.',
+      ),
+    ];
+  }
+
+  /**
+   * "Also scaffold": the verticals this preset can take on top of its
+   * own, in the three parts `../extras.js` sorts them into. Ticking
+   * and unticking are gestures rather than field edits — one box can
+   * move several — so a box emits which vertical it is and how it
+   * moved, and `<keel-app>` asks `../target.js` for the rest.
+   */
+  #extrasField(stack, extras) {
+    const chosen = extras.chosen;
+    const part = (id, title, choices) => {
+      const heading = el('h4', { id: `${id}-title`, text: title });
+      const group = checkboxCards({
+        id,
+        chosen,
+        choices,
+        onChange: (values) => {
+          const now = new Set(values);
+          const moved = choices.find(
+            (choice) => now.has(choice.value) !== chosen.includes(choice.value),
+          );
+          if (moved) this.#toggle(moved.value, now.has(moved.value));
+        },
+      });
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-labelledby', heading.id);
+      return el('div', {}, heading, group);
+    };
+    const included =
+      extras.included.length === 0
+        ? null
+        : el(
+            'div',
+            {},
+            el('h4', { id: 'extras-included-title', text: `Comes with ${stack.id}` }),
+            el(
+              'ul',
+              {
+                id: 'extras-included',
+                class: 'plain chips',
+                attrs: { 'aria-labelledby': 'extras-included-title' },
+              },
+              ...extras.included.map((vertical) =>
+                el('li', {
+                  class: 'chip',
+                  text: vertical.title,
+                  attrs: { 'data-id': vertical.id },
+                }),
+              ),
+            ),
+          );
+    return el(
+      'section',
+      { id: 'extras', class: 'extras', attrs: { 'aria-labelledby': 'extras-title' } },
+      el(
+        'div',
+        { class: 'section-head' },
+        el('h3', { id: 'extras-title', text: 'Also scaffold' }),
+        el('span', {
+          class: chosen.length > 0 ? 'chip accent' : 'chip',
+          text: `${chosen.length} chosen`,
+        }),
+      ),
+      help(
+        `Installed in the same run, on top of what \`${stack.id}\` brings, in the order they build on one another. Everything here is also available later with \`keel add\`.`,
+      ),
+      extras.line === ''
+        ? null
+        : el('p', {
+            class: 'extras-line',
+            text: extras.line,
+            attrs: { role: 'status', 'data-role': 'extras-line' },
+          }),
+      extras.ready.length === 0 ? null : part('extras-ready', 'Ready', extras.ready),
+      extras.needs.length === 0
+        ? null
+        : part('extras-needs', 'Needs another capability first', extras.needs),
+      included,
+    );
+  }
+
+  #toggle(id, ticked) {
+    this.dispatchEvent(new CustomEvent('extra-toggled', { bubbles: true, detail: { id, ticked } }));
   }
 
   /**
@@ -358,6 +469,34 @@ function field({ id, label, doc, value, choices, onChange }) {
 }
 
 const asChoice = (option) => ({ value: option.id, label: option.label });
+
+/**
+ * The focused control inside `host`, as something that outlives the
+ * node: its id where it has one, else the card group it sits in and
+ * the value it carries — a card's input has no id of its own.
+ */
+function focusIn(host) {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !host.contains(active)) return null;
+  if (active.id !== '') return { id: active.id };
+  const group = active.closest('.cards');
+  if (group instanceof HTMLElement && group.id !== '' && active instanceof HTMLInputElement) {
+    return { group: group.id, value: active.value };
+  }
+  return null;
+}
+
+/** Puts the focus back on the control `focusIn` described, if it is still drawn. */
+function refocus(host, focused) {
+  if (focused === null) return;
+  const found =
+    'id' in focused
+      ? host.querySelector(`#${CSS.escape(focused.id)}`)
+      : host.querySelector(
+          `#${CSS.escape(focused.group)} input[value="${CSS.escape(focused.value)}"]`,
+        );
+  if (found instanceof HTMLElement) found.focus({ preventScroll: true });
+}
 
 const docOf = (options, id) => options.find((option) => option.id === id)?.doc ?? '';
 

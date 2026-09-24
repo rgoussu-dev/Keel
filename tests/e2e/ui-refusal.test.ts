@@ -216,6 +216,13 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
         'the plan to say why it is empty',
       );
       expect(await page.locator('keel-plan keel-file-tree').count()).toBe(0);
+      // The command is still the one the choices spell, so it stays —
+      // dimmed, and saying the terminal would refuse it too, rather
+      // than at full strength beside a refusal as if it were a way
+      // round it.
+      const line = page.locator('keel-plan [data-role="cli-text"]');
+      expect(await line.getAttribute('class')).toContain('refused');
+      expect(await page.locator('keel-plan [data-role="cli-refused"]').isVisible()).toBe(true);
     },
     E2E_TIMEOUT_MS,
   );
@@ -258,6 +265,10 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
         async () => (await page.locator('keel-plan keel-file-tree li').count()) > 0,
         'the plan to come back',
       );
+      expect(
+        await page.locator('keel-plan [data-role="cli-text"]').getAttribute('class'),
+      ).not.toContain('refused');
+      expect(await page.locator('keel-plan [data-role="cli-refused"]').isVisible()).toBe(false);
       await goToStep(traffic, page, 'review');
       expect(await page.locator('#generate').isEnabled()).toBe(true);
     },

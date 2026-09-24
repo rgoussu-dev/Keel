@@ -50,17 +50,17 @@ the plan column scroll independently, so the plan holds its own screen
 however long the step beside it runs. Under 62rem the two collapse
 into one and the page scrolls as an ordinary document.
 
-| Step              | What it asks                                                                                                                                                                                                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                  |
-| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                  |
-| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                          |
-| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                             |
-| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                   |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context`. Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                                                                        |
-| **What to add**   | _(brownfield only)_ A capability to layer on, or a bounded context — one card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys. Installed ones are badged and offered for re-render.                                          |
-| **Questions**     | Everything the composition adapters ask. Conditional, so the list changes as you choose. A question that is a field of the _command_ — additional verticals — is drawn as cards under its own heading; the adapters' own are grouped under **Details** by the adapter that asked. |
-| **Review**        | Every choice the run will make, each with a _change_ link back to its step, and the Generate button. Nothing is written before you press it.                                                                                                                                      |
+| Step              | What it asks                                                                                                                                                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                        |
+| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                        |
+| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                |
+| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                   |
+| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                         |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
+| **What to add**   | _(brownfield only)_ A capability to layer on, or a bounded context — one card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys. Installed ones are badged and offered for re-render.                                                                |
+| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                           |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                               |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
@@ -78,7 +78,9 @@ not a gate — "just show me the plan" is one click, not four screens.
 framework has no framework step; a fullstack product has no adapters
 step; the frontend shape reaches one preset, so it has neither. That
 is the same rule the terminal wizard skips a question under, run over
-the same tree.
+the same tree. Options is never one of them: a preset that pins its
+build system and layout still has its extras to offer, and what
+already comes with it to show.
 
 The tree is the plan as a reader wants it rather than as the report
 lists it: a chain of single-child directories is one row
@@ -93,7 +95,9 @@ vcs/git-init:defaultBranch=trunk --yes`, flags highlighted, one
 need it, with a button that copies it. Paste it into a README or a CI
 job. It is derived from the identical body the review step's Generate
 posts, so it can never describe a different install than the one that
-runs.
+runs. While the run is refused the line stays, dimmed, and says the
+terminal would refuse it too — it is still what the choices on screen
+spell, and at full strength beside a refusal it read as a way round it.
 
 After a successful generate the page re-reads the directory and turns
 into the brownfield one, so layering `ci` onto what you just
@@ -218,12 +222,32 @@ _included_; the ones that install here on their own, _ready_; and the
 ones that install once others have, _needs_, with what they need
 (`requires`, in install order) — Infrastructure as code needs Container
 image, then Distribution. A vertical nothing keel can add makes
-installable here is not on the list. When the target names extras,
-they come back **snapped to their closure**: ticking Infrastructure as
-code posts Container image and Distribution with it, in the order the
-install runs them, and `adjustments` says so — each vertical `added`
-or `dropped`, with the reason as one sentence. Nothing leaves a
-selection silently.
+installable here is not on the list.
+
+The Options step draws that list as its **Also scaffold** group, in
+the same three parts: _Ready_, _Needs another capability first_ —
+each card naming what it needs, by title — and _Comes with
+quarkus-rest_ (or whichever preset), its own, as chips with nothing to
+untick. A box is a gesture, not a field: **ticking one that needs
+others ticks them too**, and **unticking one unticks every ticked
+vertical that needs it**, so tick Infrastructure as code and Container
+image and Distribution tick with it; untick Container image and all
+three go. The group stays on screen however many you tick. It used to
+be a question the preview asked, and the install stops asking a
+question once it is answered — so the list vanished after the first
+tick, and the page could post one extra and never take it back.
+
+`keel.dials` **pins `extraVerticals` on every target it settles**,
+to `[]` when none are named, exactly as it pins every other dial — so
+the preview never asks the extras question of a page that already
+draws them. Named extras come back **snapped to their closure**, in the
+order the install runs them — the page posts `containerization,
+distribution, iac` for the tick above, the plan the command line runs
+for `--with iac` — and `adjustments` says what the snap changed: each
+vertical `added` or `dropped`, with the reason as one sentence, shown
+under the group as one line. The page's own gestures leave it nothing
+to add; a dial move that rules an extra out is what it reports.
+Nothing joins or leaves a selection silently.
 
 ## Why the questions are not one static form
 
@@ -359,8 +383,9 @@ An install holds its body's `answers` to the plan exactly as it holds
 choices (`keel.invalid-answer`) — none of them is written into a
 manifest, and none is a 500. The page sends only the answers its
 latest preview asked for — an extra unticked after its question was
-answered takes that answer with it — and starts them over whenever the
-stack or the card changes.
+answered takes that answer with it, and Generate waits for the preview
+of the run as it now stands — and starts them over whenever the stack
+or the card changes.
 
 A refusal comes back as **422** with the domain's own error code:
 

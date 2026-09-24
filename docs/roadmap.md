@@ -2162,7 +2162,12 @@ init` and a resolved toolchain, not a zip. A remote service would
   real browser during development. A shard that boots Chromium to
   re-assert what the API tests already assert would buy a screenshot
   and cost a browser download; the day the page grows logic worth
-  testing through the DOM, that changes.
+  testing through the DOM, that changes. _Since changed:_ the page
+  grew that logic — a stepper, preset moves that keep the dials, a
+  refusal shown where it lands, extras that tick what they need — and
+  four browser suites (`tests/e2e/ui-*.test.ts`) ride the `web` shard,
+  which already had a browser. The latest, `ui-compose`, landed with
+  epic Q's Q1.5, where this decision is recorded as replaced.
 
 ---
 
@@ -2641,7 +2646,7 @@ cells go from `keel.missing-prerequisites` to Ok, I5 parity kept. The
 monorepo services' distribution and iac now stop on the image files
 the root wrote (`keel.path-conflict`, still PHASE-3 for Q1.10).
 
-#### Q1.5 — Greenfield extras become a real control (M)
+#### Q1.5 — Greenfield extras become a real control (M) ✅
 
 An "Also scaffold" group in Options, rendered from `dials.verticals`
 with `target.extraVerticals` as its state: _Ready_, _Needs another
@@ -2653,6 +2658,29 @@ inverted, and its walk toggles each offered extra against a real
 preview. Review gains the row. A new `tests/e2e/ui-compose.test.ts`
 in the `web` shard asserts what the page posts — no Generate on a JVM
 stack, which that shard has no JDK for.
+
+Landed with the gestures as one transition, `toggleExtra` in
+`assets/web/src/target.js` (an untick follows dependants to a fixed
+point), and the group — its parts, the badge naming `requires` by
+title, `adjustments` as one line — read off the reply by a new pure
+`assets/web/src/extras.js`. `hasDials` is now "the catalog knows the
+preset": every shipped preset already had an Options step, so the rail
+lists did not move; a preset pinning both dials (a plugin's) no longer
+waits for a reply to earn one. The `extraVerticals` binding branch was
+in `target.js`'s `fieldOf` since Q0.5, not in `keel-app.js`, and is
+deleted there. Pruning before a post reuses Q1.0's `previewed`:
+Generate now waits for the preview of the run as it stands, so the
+body carries exactly the answers that preview asked. Beyond the text
+above: _Questions_ reads "N answered, M on their defaults"; the plan's
+command is dimmed with a line saying the terminal would refuse it
+too; the Options step keeps the focus on a box ticked from the
+keyboard across its redraw; and `watchTraffic` keeps the bodies the
+page posts. `dials.test.ts`'s walk previews every body it reaches —
+every dial setting of every preset, each extra ticked on its opening
+dials and each box that moved unticked, some 300 previews — and holds
+the page's gestures to leaving `keel.dials` nothing to add or drop.
+The grid does not move: the step is the page's, and the goldens
+regenerate unchanged.
 
 #### Q1.6 — "Already there" is not an error (S)
 

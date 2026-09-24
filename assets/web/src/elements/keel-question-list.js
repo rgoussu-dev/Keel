@@ -14,11 +14,15 @@
  * — between "initial branch name" and "base Java package".
  * `binding.kind` already says which is which:
  *
- * - **Not `answer`** — a field of the command itself
- *   (`extraVerticals` today). It gets its own heading, and a set of
- *   choices is drawn as cards, the same control the narrowing steps
- *   use: these are decisions about what gets scaffolded, and you
- *   answer them by reading the answers.
+ * - **Not `answer`** — a field of the command itself, which the
+ *   install asks only where the target left it unset. `keel.dials`
+ *   pins every dial the page has a control for — the extras too,
+ *   since they became the Options step's "Also scaffold" group — so
+ *   this is the path for one a preset declares and nothing taught
+ *   the page about. It gets its own heading, and a set of choices is
+ *   drawn as cards, the same control the narrowing steps use: these
+ *   are decisions about what gets scaffolded, and you answer them by
+ *   reading the answers.
  * - **`answer`** — what a composition adapter asked. Free text and
  *   one-of-many, which is the one place a `<select>` is still right.
  *   They are grouped **by the adapter that asked**, and the adapter

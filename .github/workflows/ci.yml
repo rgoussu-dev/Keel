@@ -524,7 +524,14 @@ jobs:
           # nothing and probes for nothing this shard does not already
           # have. Measured a few seconds above `ui-plugin-stack` since
           # it gained its brownfield card-switching cases, and both
-          # well under `ui-stack-finder`, which floors the three.
+          # well under `ui-stack-finder`, which floors the four.
+          #
+          # `ui-compose` is the fourth: the Options step's "Also
+          # scaffold" group, ticked and unticked on quarkus-rest, and
+          # the body the page posts for it. It never presses Generate —
+          # a real Quarkus install queues `gradle wrapper`, and this
+          # shard provisions no JDK — so it needs nothing the others
+          # do not. About the length of `ui-plugin-stack`.
           - id: web
             tools: npm pnpm browser
             files: >-
@@ -545,6 +552,7 @@ jobs:
               tests/e2e/ui-stack-finder.test.ts
               tests/e2e/ui-plugin-stack.test.ts
               tests/e2e/ui-refusal.test.ts
+              tests/e2e/ui-compose.test.ts
           # The TypeScript half of the composed-entrypoint grid, in a
           # shard of its own rather than as three more files above.
           # Two reasons, and neither is wall clock inside this job:

@@ -12,8 +12,8 @@
  * the JVM and web e2e harnesses set that precedent.
  *
  * Nothing here asserts. Each suite owns its own `describe`, its own
- * `keel ui`, and its own temp directory — which is the whole reason
- * there are two: they differ by what is on disk when the page opens.
+ * `keel ui`, and its own temp directory — they differ by what is on
+ * disk when the page opens, or by what they drive once it has.
  */
 
 import fs from 'node:fs';
@@ -221,27 +221,41 @@ export async function until(check: () => Promise<boolean>, what: string): Promis
   }
 }
 
-/** Counts the page's requests, so an interaction can wait for quiet. */
+/**
+ * Counts the page's requests, so an interaction can wait for quiet —
+ * and keeps what it posted, so a suite can assert on the body the page
+ * sent rather than on a control that claims to describe it.
+ */
 export interface Traffic {
   /** Marks now as activity, so the quiet window restarts. */
   touch(): void;
   /** Whether nothing is in flight and nothing has happened recently. */
   quiet(): boolean;
+  /** Every JSON body the page has POSTed to `route` (`/api/preview`), oldest first. */
+  posted(route: string): unknown[];
 }
 
 export function watchTraffic(page: Page): Traffic {
   let inFlight = 0;
   let lastAt = Date.now();
+  const posts: { readonly route: string; readonly body: string }[] = [];
   const mark = (delta: number): void => {
     inFlight += delta;
     lastAt = Date.now();
   };
-  page.on('request', () => mark(1));
+  page.on('request', (request) => {
+    mark(1);
+    if (request.method() === 'POST') {
+      posts.push({ route: new URL(request.url()).pathname, body: request.postData() ?? '' });
+    }
+  });
   page.on('requestfinished', () => mark(-1));
   page.on('requestfailed', () => mark(-1));
   return {
     touch: () => (lastAt = Date.now()),
     quiet: () => inFlight === 0 && Date.now() - lastAt > QUIET_MS,
+    posted: (route) =>
+      posts.filter((post) => post.route === route).map((post) => JSON.parse(post.body) as unknown),
   };
 }
 

@@ -376,10 +376,7 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
     ...(withPeerContext ? [PEER_CONTEXT_TAG] : []),
   ];
   const verticals = verticalOptions(registry, stack, tags);
-  const snapped =
-    target.extraVerticals === undefined
-      ? null
-      : snapExtras(registry, stack, tags, target.extraVerticals);
+  const snapped = snapExtras(registry, stack, tags, target.extraVerticals ?? []);
 
   return {
     target: {
@@ -391,11 +388,16 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
       // what makes the install *ask*, and a front end reading this
       // has already been handed the choice as a menu of its own.
       withPeerContext,
-      // Snapped when the caller set it, never pinned when they did
-      // not: absent is what keeps the extras question coming back
-      // from `keel.preview`, which is the only place a caller is
-      // offered the list.
-      ...(snapped === null ? {} : { extraVerticals: snapped.extras }),
+      // Pinned like every other dial — to `[]` when the caller named
+      // none — and snapped to its closure when they named some. It
+      // used to be left absent so `keel.preview` would keep asking
+      // the extras question, which was then the only place a caller
+      // was offered the list; but a question the install stops asking
+      // once answered is a control that vanishes after its first
+      // tick. The list is `verticals` below now, a menu like the
+      // others, and a front end that renders it must not also be
+      // asked it.
+      extraVerticals: snapped.extras,
     },
     buildSystems: buildSystems.map(asChoice),
     moduleLayouts: moduleLayouts.map(asChoice),
@@ -403,7 +405,7 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
     peerContext,
     extraVerticals: verticals.filter(offeredAsExtra).map(verticalChoice),
     verticals,
-    adjustments: snapped?.adjustments ?? [],
+    adjustments: snapped.adjustments,
   };
 }
 

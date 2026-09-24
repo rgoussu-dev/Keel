@@ -58,7 +58,8 @@
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
-import { answer, previewed, restart, retarget, settle } from '../target.js';
+import { extrasSummary } from '../extras.js';
+import { answer, previewed, restart, retarget, settle, toggleExtra } from '../target.js';
 import {
   DIRECTORY,
   ENTRYPOINTS,
@@ -110,6 +111,9 @@ export class KeelApp extends HTMLElement {
     this.#scaffold();
     this.addEventListener('target-chosen', (event) => void this.#goTo(event.detail.path));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
+    this.addEventListener('extra-toggled', (event) =>
+      this.#move(toggleExtra(this.#run(), event.detail.id, event.detail.ticked)),
+    );
     this.addEventListener('question-answered', (event) => this.#answer(event.detail));
     this.addEventListener('step-selected', (event) => this.#goToStep(event.detail.id));
     this.addEventListener('install-requested', () => void this.#install());
@@ -206,8 +210,10 @@ export class KeelApp extends HTMLElement {
   #move(run) {
     this.#adopt(run);
     this.#report = null;
-    this.#render();
+    // Marked stale before the redraw, so Generate is off from the
+    // moment the run moves until the preview of the move lands.
     this.#previewSoon();
+    this.#render();
   }
 
   /** The part of the state `../target.js` moves, as one value. */
@@ -387,13 +393,28 @@ export class KeelApp extends HTMLElement {
       if (this.#target.withPeerContext === true) {
         rows.push({ step: OPTIONS, label: 'Peer context', value: 'yes' });
       }
+      if (stack.services.length === 0) {
+        rows.push({
+          step: OPTIONS,
+          label: 'Also scaffold',
+          value: extrasSummary(this.#dials, this.#target),
+        });
+      }
     }
-    const answered = this.#preview?.questions ?? [];
-    if (answered.length > 0) {
+    // What the user set, not what the preview asked: every question
+    // has a default, and a row calling the defaults "answered" said a
+    // run nobody had touched was fully configured. `#answers` holds
+    // only what was moved, pruned to what the plan still asks.
+    const asked = this.#preview?.questions.length ?? 0;
+    if (asked > 0) {
+      const set = Object.values(this.#answers).reduce(
+        (count, byQuestion) => count + Object.keys(byQuestion).length,
+        0,
+      );
       rows.push({
         step: QUESTIONS,
         label: 'Questions',
-        value: `${answered.length} answered`,
+        value: answeredLine(set, asked),
       });
     }
     return rows;
@@ -465,6 +486,7 @@ export class KeelApp extends HTMLElement {
       plan.report = this.#report;
       plan.stale = this.#stale;
       plan.hint = this.#hint();
+      plan.refused = this.#error !== null;
       plan.body = this.#body();
     }
   }
@@ -502,8 +524,15 @@ export class KeelApp extends HTMLElement {
     host.replaceChildren(...chips);
   }
 
+  /**
+   * Whether Generate may post the body: a complete run, previewed as
+   * it now stands. Not merely previewed once — the preview is what
+   * prunes the answers to the ones its plan asks (`previewed`), so a
+   * body posted between a move and its preview would carry an answer
+   * the install refuses, an unticked extra's among them.
+   */
   #ready() {
-    return this.#complete() && this.#error === null && this.#preview !== null;
+    return this.#complete() && this.#error === null && this.#preview !== null && !this.#stale;
   }
 
   /** Whether the target carries every field its command requires. */
@@ -641,7 +670,7 @@ export class KeelApp extends HTMLElement {
   #reviewHint() {
     if (this.#error !== null) return `Refused: ${this.#error.message}`;
     if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
-    if (this.#preview === null) return 'Waiting for the plan…';
+    if (this.#preview === null || this.#stale) return 'Waiting for the plan…';
     return '';
   }
 
@@ -685,6 +714,13 @@ export class KeelApp extends HTMLElement {
     row.append(back, next);
     return row;
   }
+}
+
+/** `2 answered, 3 on their defaults` — what the user set, and how much was left alone. */
+function answeredLine(set, asked) {
+  const left = Math.max(0, asked - set);
+  if (left === 0) return `${set} answered`;
+  return `${set} answered, ${left} on ${left === 1 ? 'its default' : 'their defaults'}`;
 }
 
 /** One masthead chip. */

@@ -19,6 +19,12 @@
  * answer no adapter of its plan reads, so a preview's reply drops the
  * ones it did not ask for. That case runs the real preview and install.
  *
+ * An "Also scaffold" box is a gesture rather than a field: ticking one
+ * ticks what it needs, unticking one unticks what needs it. That the
+ * route then has nothing to add or drop — the page's closure is the
+ * planner's — is proved over every shipped preset by `dials.test.ts`'s
+ * walk; which boxes a gesture moves is decided here.
+ *
  * The greenfield half has one more job: a new preset keeps the dials
  * and lets `keel.dials` snap them, and once the reply settles the move
  * the run carries one line naming what it could not keep. That
@@ -46,11 +52,13 @@ import type {
 } from '../../../src/domain/contract/queries.js';
 import {
   answer,
+  extrasOf,
   pickVertical,
   previewed,
   restart,
   retarget,
   settle,
+  toggleExtra,
 } from '../../../assets/web/src/target.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
@@ -317,16 +325,108 @@ describe('an answer', () => {
     );
     expect(fill({ kind: 'withPeerContext' }, 'yes').withPeerContext).toBe(true);
     expect(fill({ kind: 'withPeerContext' }, 'no').withPeerContext).toBe(false);
-    // A set answer travels comma-joined and lands as a list.
-    expect(
-      fill({ kind: 'extraVerticals' }, 'containerization, distribution,').extraVerticals,
-    ).toEqual(['containerization', 'distribution']);
   });
 
   it('moves the preset like the picker does', () => {
     const next = answer(greenfield(), { binding: { kind: 'stack' }, value: 'go-http' });
     expect(next.target).toEqual({ kind: 'new-project', stack: 'go-http', buildSystem: 'gradle' });
     expect(next.answers).toEqual({});
+  });
+});
+
+describe('an "Also scaffold" box', () => {
+  /**
+   * `quarkus-rest`'s extras as `keel.dials` reports them: the image is
+   * ready, the distribution needs it, IaC needs both — the one chain
+   * the shipped catalog holds — and observability comes with the
+   * preset.
+   */
+  const option = (
+    id: string,
+    readiness: DialOptions['verticals'][number]['readiness'],
+    requires: readonly string[] = [],
+  ): DialOptions['verticals'][number] => ({
+    id,
+    title: id,
+    description: '',
+    readiness,
+    requires,
+  });
+  const withExtras = (extras: readonly string[]): Run => {
+    const target = { kind: 'new-project', stack: 'quarkus-rest', extraVerticals: extras } as const;
+    return {
+      ...greenfield(),
+      target,
+      dials: {
+        ...jvmDials(target),
+        verticals: [
+          option('ci', 'ready'),
+          option('containerization', 'ready'),
+          option('distribution', 'needs', ['containerization']),
+          option('iac', 'needs', ['containerization', 'distribution']),
+          option('observability', 'included'),
+        ],
+      },
+    };
+  };
+
+  it('ticks what a vertical needs along with it', () => {
+    expect(extrasOf(toggleExtra(withExtras([]), 'iac', true).target)).toEqual([
+      'containerization',
+      'distribution',
+      'iac',
+    ]);
+    // What is already ticked stays, once.
+    expect(
+      extrasOf(toggleExtra(withExtras(['ci', 'containerization']), 'iac', true).target),
+    ).toEqual(['ci', 'containerization', 'distribution', 'iac']);
+  });
+
+  it('unticks every vertical that needs the one unticked, and nothing else', () => {
+    const all = ['ci', 'containerization', 'distribution', 'iac'];
+    expect(extrasOf(toggleExtra(withExtras(all), 'containerization', false).target)).toEqual([
+      'ci',
+    ]);
+    expect(extrasOf(toggleExtra(withExtras(all), 'distribution', false).target)).toEqual([
+      'ci',
+      'containerization',
+    ]);
+    // Unticking what needed others leaves them: they were ticked too.
+    expect(extrasOf(toggleExtra(withExtras(all), 'iac', false).target)).toEqual([
+      'ci',
+      'containerization',
+      'distribution',
+    ]);
+  });
+
+  it('follows a dependant of a dependant, should requires ever stop listing the whole closure', () => {
+    const run = withExtras(['a', 'b', 'c']);
+    const chain = {
+      ...run,
+      dials: {
+        ...(run.dials as DialOptions),
+        verticals: [option('a', 'ready'), option('b', 'needs', ['a']), option('c', 'needs', ['b'])],
+      },
+    };
+    expect(extrasOf(toggleExtra(chain, 'a', false).target)).toEqual([]);
+  });
+
+  it('is a move within the subject: the answers stay, the generation moves on', () => {
+    const before = withExtras([]);
+    const next = toggleExtra(before, 'ci', true);
+    expect(next.answers).toBe(before.answers);
+    expect(next.generation).toBe(before.generation + 1);
+    expect(next.target).toEqual({
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      extraVerticals: ['ci'],
+    });
+  });
+
+  it('ticks the one box before any menu has landed, having nothing to read requires from', () => {
+    const blank: Run = { ...greenfield(), dials: null };
+    expect(extrasOf(toggleExtra(blank, 'iac', true).target)).toEqual(['iac']);
+    expect(extrasOf(blank.target)).toEqual([]);
   });
 });
 

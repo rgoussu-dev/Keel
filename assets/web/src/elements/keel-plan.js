@@ -30,6 +30,12 @@
  * use from then on. It is derived from the same body the review step
  * posts (`../command.js`), so it cannot describe a different install.
  *
+ * **A refused run's line is dimmed, not hidden.** It is still the
+ * command the choices on screen spell, and the one a user fixing the
+ * refusal will want — but at full strength beside a refusal it reads
+ * as a way round it, and the terminal would refuse it in the same
+ * words. So it steps back, and says why.
+ *
  * Preview/report/state in as properties; nothing out.
  */
 
@@ -42,6 +48,7 @@ export class KeelPlan extends HTMLElement {
   #report = null;
   #stale = false;
   #hint = '';
+  #refused = false;
   #body = null;
   #built = false;
 
@@ -66,6 +73,12 @@ export class KeelPlan extends HTMLElement {
   /** @param {string} value what to show instead of a tree, if anything */
   set hint(value) {
     this.#hint = value ?? '';
+    this.#render();
+  }
+
+  /** @param {boolean} value whether the engine refused the run as it stands */
+  set refused(value) {
+    this.#refused = value === true;
     this.#render();
   }
 
@@ -133,6 +146,12 @@ export class KeelPlan extends HTMLElement {
               el('span', { text: 'Copy' }),
             ),
           ),
+          el('p', {
+            class: 'muted',
+            text: 'Refused as it stands — the terminal would refuse this line too.',
+            attrs: { 'data-role': 'cli-refused' },
+            hidden: true,
+          }),
           el('code', { class: 'cli-block', attrs: { 'data-role': 'cli-text' } }),
         ),
       ),
@@ -262,6 +281,9 @@ export class KeelPlan extends HTMLElement {
     const tokens = this.#body === null ? [] : commandFor(this.#body);
     host.hidden = tokens.length === 0;
     if (tokens.length === 0) return;
+    text.classList.toggle('refused', this.#refused);
+    const refused = this.#part('cli-refused');
+    if (refused) refused.hidden = !this.#refused;
     text.replaceChildren(
       ...tokens.flatMap((token, index) => [
         ...(index === 0 ? [] : [document.createTextNode(' ')]),

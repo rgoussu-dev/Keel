@@ -5,15 +5,27 @@
  * `tests/domain/core/dials.test.ts` proves that as a property of the
  * engine, against a fixture rule that really constrains one dial
  * against another. This is the same assertion from the other end —
- * over the shipped registry, through the mediator, on the route the
+ * over the shipped registry, through the mediator, on the routes the
  * page actually calls — plus the anchor that ties "the gate accepts
  * it" to "the API accepts it": a combination the dials keep off the
  * menu really does come back 422 from the install route.
  *
- * The walk models the page's controls exactly. `<keel-new-form>` can
- * set a dial to any value on its menu and tick the peer-context box
- * where it is shown; it can do nothing else. So following every such
- * move from the blank target enumerates every body the page can post.
+ * The walk models the page's controls. `<keel-new-form>` can set a
+ * dial to any value on its menu, tick the peer-context box where it
+ * is shown, and tick or untick an "Also scaffold" box — a gesture
+ * that can move several boxes at once, which is why the walk makes it
+ * through `target.js`'s own `toggleExtra` rather than a copy of it.
+ * Every dial setting is followed from the blank target until nothing
+ * new shows up; the extras are ticked one at a time on each preset's
+ * opening dials, and each box a tick moved is unticked again. The
+ * full powerset of extras is the weekly lane's (`docs/roadmap.md`,
+ * "The measure").
+ *
+ * **The oracle is the route itself**: every body reached is posted to
+ * `POST /api/preview` and must come back 200. It used to be the
+ * assembly gate re-derived over tags, which is how an offered extra
+ * that threw inside its adapter passed a test claiming the menu and
+ * the gate agree.
  *
  * A preset move is the one control that posts a target the menus did
  * not draw: it keeps the old preset's dials (`target.js`) and leaves
@@ -31,16 +43,10 @@ import { buildApi } from '../../../src/application/web/contract/api.js';
 import type { DirectoryReader } from '../../../src/application/web/contract/api.js';
 import type { UiRequest, UiResponse } from '../../../src/application/web/contract/http.js';
 import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
-import type { Tag } from '../../../src/domain/contract/composition.js';
 import { pickShape, locate } from '../../../assets/web/src/finder.js';
-import { retarget, settle } from '../../../assets/web/src/target.js';
+import { extrasOf, retarget, settle, toggleExtra } from '../../../assets/web/src/target.js';
 import { catalogQuery, dialsQuery } from '../../../src/domain/contract/queries.js';
 import type { Catalog, DialOptions } from '../../../src/domain/contract/queries.js';
-import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
-import { piecesOf } from '../../../src/domain/core/dials.js';
-import { stackTagsFor } from '../../../src/domain/core/stacks.js';
-import { shippedRegistry } from '../../../src/domain/core/registry.js';
-import { PEER_CONTEXT_TAG } from '../../../src/domain/core/adapters/module-layout.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
@@ -75,22 +81,75 @@ async function dialsFor(mediator: Mediator, target: NewProjectTarget): Promise<D
 }
 
 /**
- * Every target the page can post for `stack`: settle the blank one,
- * then follow every move its controls offer until nothing new shows
- * up. Breadth-first, so a stack with four combinations costs four
- * round trips rather than a tree of them.
+ * What `POST /api/preview` answers a body with: `200`, or the status
+ * and the refusal it carried — so a failure names the refusal rather
+ * than only a number.
  */
-async function reachable(mediator: Mediator, stack: string): Promise<readonly NewProjectTarget[]> {
-  const found = new Map<string, NewProjectTarget>();
+async function previewOf(
+  mediator: Mediator,
+  cwd: string,
+  target: NewProjectTarget,
+): Promise<string> {
+  const response = await post(mediator, '/api/preview', { cwd, target, answers: {} });
+  return response.status === 200 ? '200' : `${response.status} ${response.body}`;
+}
+
+/** What `<keel-app>` stores between transitions. */
+type Run = ReturnType<typeof settle>;
+
+/** The page's run once `keel.dials` has replied `dials`, as it holds it after `settle`. */
+const settledRun = (dials: DialOptions): Run =>
+  settle(
+    {
+      target: { kind: 'new-project' },
+      answers: {},
+      dials: null,
+      generation: 0,
+      carried: null,
+      notice: '',
+    },
+    dials,
+  );
+
+/** Where the walk got to for one stack. */
+interface Walk {
+  /** Every distinct body the page can post that the walk reached. */
+  readonly bodies: readonly NewProjectTarget[];
+  /**
+   * Each extras gesture, by what it did — `+iac` ticks IaC on the
+   * opening dials, `+iac-containerization` then unticks the image —
+   * with the `keel.dials` reply that settled it.
+   */
+  readonly gestures: ReadonlyMap<string, DialOptions>;
+}
+
+/**
+ * Every target the page can post for `stack` that the walk reaches:
+ * settle the blank one, follow every dial move its controls offer
+ * until nothing new shows up — breadth-first, so a stack with four
+ * combinations costs four round trips rather than a tree of them —
+ * then, on the dials the page opens with, tick each extra it offers
+ * and untick each box that tick moved.
+ */
+async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
+  const bodies = new Map<string, NewProjectTarget>();
+  const keep = (dials: DialOptions): boolean => {
+    const target = dials.target as NewProjectTarget;
+    const key = JSON.stringify(target);
+    if (bodies.has(key)) return false;
+    bodies.set(key, target);
+    return true;
+  };
+
   const queue: NewProjectTarget[] = [{ kind: 'new-project', stack }];
+  let opening: DialOptions | null = null;
   while (queue.length > 0) {
     const next = queue.shift();
     if (next === undefined) break;
     const dials = await dialsFor(mediator, next);
+    opening ??= dials;
+    if (!keep(dials)) continue;
     const settled = dials.target as NewProjectTarget;
-    const key = JSON.stringify(settled);
-    if (found.has(key)) continue;
-    found.set(key, settled);
     for (const build of dials.buildSystems) queue.push({ ...settled, buildSystem: build.id });
     for (const layout of dials.moduleLayouts) queue.push({ ...settled, moduleLayout: layout.id });
     for (const service of dials.services) {
@@ -101,70 +160,143 @@ async function reachable(mediator: Mediator, stack: string): Promise<readonly Ne
     if (dials.peerContext) queue.push({ ...settled, withPeerContext: true });
     queue.push({ ...settled, withPeerContext: false });
   }
-  return [...found.values()];
+
+  const gestures = new Map<string, DialOptions>();
+  if (opening === null) return { bodies: [...bodies.values()], gestures };
+  const blank = settledRun(opening);
+  for (const extra of opening.extraVerticals) {
+    const moved = toggleExtra(blank, extra.id, true);
+    const tickedDials = await dialsFor(mediator, moved.target as unknown as NewProjectTarget);
+    keep(tickedDials);
+    gestures.set(`+${extra.id}`, tickedDials);
+    const ticked = settle(moved, tickedDials);
+    for (const id of extrasOf(ticked.target)) {
+      const back = toggleExtra(ticked, id, false);
+      const untickedDials = await dialsFor(mediator, back.target as unknown as NewProjectTarget);
+      keep(untickedDials);
+      gestures.set(`+${extra.id}-${id}`, untickedDials);
+    }
+  }
+  return { bodies: [...bodies.values()], gestures };
 }
 
 /**
- * Why `POST /api/install` would refuse this target, or null when it
- * would not: the assembly gate `keel new` runs after the last dial
- * and before the first file, read over the arithmetic it stages from.
- *
- * A composite is a different claim and made below — its services are
- * separate installs of separate stacks, so the product root never
- * assembles their tags together and there is no combination for a
- * rule to bite on.
+ * The walk for each stack, made once and shared by the cases that
+ * read it — it is the expensive part of this file.
  */
-function installRefusal(target: NewProjectTarget): string | null {
-  const stack = shippedRegistry.stack(target.stack ?? '');
-  if (stack === null || stack.services !== undefined) return null;
-  const buildTag = stack.buildSystems?.find((o) => o.id === target.buildSystem)?.tag ?? null;
-  const layoutTag = stack.moduleLayouts?.find((o) => o.id === target.moduleLayout)?.tag ?? null;
-  const tags: Tag[] = [...stackTagsFor(stack, buildTag, layoutTag)];
-  if (target.withPeerContext === true) tags.push(PEER_CONTEXT_TAG);
-  return assemblyRefusal(piecesOf(stack), tags);
-}
+const walks = new Map<string, Promise<Walk>>();
+const walk = (mediator: Mediator, stack: string): Promise<Walk> => {
+  let walked = walks.get(stack);
+  if (walked === undefined) {
+    walked = reachable(mediator, stack);
+    walks.set(stack, walked);
+  }
+  return walked;
+};
+
+const sharedMediator = installMediator();
+
+/**
+ * About 300 previews behind the walk — every dial setting of every
+ * preset, and every extra ticked on each — at some 10 s uncontended,
+ * so the walk gets a budget of its own well above the suite's 30 s
+ * default rather than a flake on a busy runner. Stacks walk and
+ * preview concurrently: a preview writes nothing, so one scratch
+ * directory serves them all.
+ */
+const WALK_TIMEOUT_MS = 120_000;
 
 describe('every body keel ui can post', () => {
-  it('is one POST /api/install accepts, for every stack and every setting of its dials', async () => {
-    const mediator = installMediator();
-    const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
-    expect(catalog.stacks.length).toBeGreaterThan(0);
-
-    for (const descriptor of catalog.stacks) {
-      for (const target of await reachable(mediator, descriptor.id)) {
-        expect(
-          installRefusal(target),
-          `${descriptor.id}: the page can post ${JSON.stringify(target)}`,
-        ).toBeNull();
+  it(
+    'is one POST /api/preview accepts, for every stack, every setting of its dials, and every extra',
+    async () => {
+      const catalog: Catalog = expectOk(await sharedMediator.dispatch(catalogQuery()));
+      expect(catalog.stacks.length).toBeGreaterThan(0);
+      const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-walk-'));
+      try {
+        const walked = await Promise.all(
+          catalog.stacks.map((descriptor) => walk(sharedMediator, descriptor.id)),
+        );
+        let previewed = 0;
+        await Promise.all(
+          catalog.stacks.map(async (descriptor, index) => {
+            const { bodies, gestures } = walked[index] as Walk;
+            for (const target of bodies) {
+              expect(
+                await previewOf(sharedMediator, cwd, target),
+                `${descriptor.id}: the page can post ${JSON.stringify(target)}`,
+              ).toBe('200');
+              previewed += 1;
+            }
+            // The page's own gestures leave `keel.dials` nothing to add or
+            // drop: a tick already carries what the box needs, and an
+            // untick already took what needed it.
+            for (const [gesture, dials] of gestures) {
+              expect(dials.adjustments, `${descriptor.id} ${gesture}`).toEqual([]);
+            }
+          }),
+        );
+        expect(previewed).toBeGreaterThan(catalog.stacks.length);
+      } finally {
+        await rm(cwd, { recursive: true, force: true });
       }
-    }
-  });
+    },
+    WALK_TIMEOUT_MS,
+  );
 
-  it('reaches every setting the shipped stacks offer, so nothing legal is hidden', async () => {
-    // The other half. A menu that offered nothing at all would pass
-    // the assertion above; what stops it is that the walk still
-    // arrives at every combination the registry declares legal.
-    const mediator = installMediator();
-    const reached = await reachable(mediator, 'quarkus-rest');
-    expect(
-      reached
-        .map(
-          (target) =>
-            `${target.buildSystem}/${target.moduleLayout}${target.withPeerContext === true ? '+peer' : ''}`,
-        )
-        .sort(),
-    ).toEqual([
-      'gradle/basic',
-      'gradle/modulith',
-      'gradle/modulith+peer',
-      'maven/basic',
-      'maven/modulith',
-      'maven/modulith+peer',
-    ]);
-    // All four build × layout combinations, and the peer context on
-    // top of the two that can carry it — the shipped rule
-    // `peer-context-needs-modulith`, read as a menu.
-  });
+  it(
+    'reaches every setting the shipped stacks offer, so nothing legal is hidden',
+    async () => {
+      // The other half. A menu that offered nothing at all would pass
+      // the assertion above; what stops it is that the walk still
+      // arrives at every combination the registry declares legal.
+      const { bodies } = await walk(sharedMediator, 'quarkus-rest');
+      expect(
+        bodies
+          .filter((target) => extrasOf(target).length === 0)
+          .map(
+            (target) =>
+              `${target.buildSystem}/${target.moduleLayout}${target.withPeerContext === true ? '+peer' : ''}`,
+          )
+          .sort(),
+      ).toEqual([
+        'gradle/basic',
+        'gradle/modulith',
+        'gradle/modulith+peer',
+        'maven/basic',
+        'maven/modulith',
+        'maven/modulith+peer',
+      ]);
+      // All four build × layout combinations, and the peer context on
+      // top of the two that can carry it — the shipped rule
+      // `peer-context-needs-modulith`, read as a menu.
+    },
+    WALK_TIMEOUT_MS,
+  );
+
+  it(
+    'ticks each extra with what it needs, and unticks what needs a box unticked',
+    async () => {
+      const { gestures } = await walk(sharedMediator, 'quarkus-rest');
+      const after = (gesture: string): readonly string[] | undefined => {
+        const dials = gestures.get(gesture);
+        return dials === undefined ? undefined : extrasOf(dials.target);
+      };
+      // Ticking IaC brings the image and the distribution, in the order
+      // the install runs them…
+      expect(after('+iac')).toEqual(['containerization', 'distribution', 'iac']);
+      // …and unticking the image takes both of them with it, where
+      // unticking IaC leaves what it brought.
+      expect(after('+iac-containerization')).toEqual([]);
+      expect(after('+iac-iac')).toEqual(['containerization', 'distribution']);
+      // Every extra the menu offers was ticked on its own.
+      const offered = (
+        await dialsFor(sharedMediator, { kind: 'new-project', stack: 'quarkus-rest' })
+      ).extraVerticals;
+      for (const extra of offered) expect(after(`+${extra.id}`), extra.id).toContain(extra.id);
+    },
+    WALK_TIMEOUT_MS,
+  );
 
   it('never posts a composite dial the install refuses outright', async () => {
     // `--module-layout`, `--with-peer-context` and `--with` are hard
@@ -272,16 +404,27 @@ describe('the dials query as a menu service', () => {
     ]);
     expect(withExtras.extraVerticals.map((choice) => choice.id)).toContain('ci');
 
-    // Absent stays absent: the extras list only ever reaches the page
-    // as a `keel.preview` question, and pinning it here would stop
-    // that question being asked at all.
+    // Absent is pinned to none. The extras used to be left absent so
+    // `keel.preview` would keep asking for them — and a question the
+    // install stops asking once answered is a control that vanishes
+    // after its first tick. They are the Options step's own group now,
+    // so the preview of a settled target asks nothing about them.
     const blank = await dialsFor(mediator, { kind: 'new-project', stack: 'go-cli' });
-    expect((blank.target as NewProjectTarget).extraVerticals).toBeUndefined();
+    expect((blank.target as NewProjectTarget).extraVerticals).toEqual([]);
+    const preview = await post(mediator, '/api/preview', {
+      cwd: '/tmp/keel-dials-preview',
+      target: blank.target,
+      answers: {},
+    });
+    expect(preview.status).toBe(200);
+    const asked = (bodyOf(preview) as unknown as { questions: { binding: { kind: string } }[] })
+      .questions;
+    expect(asked.map((question) => question.binding.kind)).not.toContain('extraVerticals');
   });
 
-  it('adds the prerequisites of an extra the page ticks, and says so', async () => {
-    // The page includes them for the user; the command line refuses a
-    // set without them, naming the same ones.
+  it('adds the prerequisites of an extra posted without them, and says so', async () => {
+    // The page ticks them itself (`toggleExtra`); a set that arrives
+    // without them gets them here, as both front doors include them.
     const mediator = installMediator();
     const dials = await dialsFor(mediator, {
       kind: 'new-project',
@@ -367,7 +510,13 @@ describe('a preset move, the way the page makes it', () => {
       moduleLayout: 'modulith',
     });
     expect(after.notice).toBe('');
-    expect(installRefusal(after.target as unknown as NewProjectTarget)).toBeNull();
+    expect(
+      await previewOf(
+        mediator,
+        '/tmp/keel-dials-preview',
+        after.target as unknown as NewProjectTarget,
+      ),
+    ).toBe('200');
   });
 
   it('snaps what the new preset cannot take, and says so in one line', async () => {
