@@ -8,7 +8,8 @@
  *     multi-stage build for `quarkus-rest` / `spring-rest` /
  *     `micronaut-rest`, a Go multi-stage build onto distroless for
  *     `go-http`, a musl-static cargo build onto distroless for
- *     `rust-http`;
+ *     `rust-http`, and a single Node stage running the TypeScript
+ *     sources for `ts-http`;
  *   - the frontend image builds the Vite bundle into an **assets
  *     image** whose entrypoint populates a named volume
  *     (clear-then-copy + `env.js` templated from the environment) as

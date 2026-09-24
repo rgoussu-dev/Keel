@@ -3142,9 +3142,50 @@ a product), a preset move each way, `command`, `extras`, `target` and
 `api` cases, and `ui-compose` in a browser, without Generate. No grid
 verdict moved.
 
-- **Q2.5 — The verticals matrix is generated from the grid's verdicts
-  (S).** A fifth guard in `verify`; the two "Four guard tests"
-  sentences change with it.
+#### Q2.5 — The verticals matrix is generated from the grid's verdicts (S) ✅
+
+The compatibility matrix in `docs/verticals/README.md` and the stack
+catalog's defaults table are rendered from the grid's goldens (D8),
+between sentinel comments, and a guard in `verify` fails when
+regenerating would change a committed file.
+
+Landed as `tests/support/generated-docs.ts` and the guard beside the
+others, `tests/generated-docs.test.ts`. The renderer reads the
+verdicts from the brownfield and composite goldens (`keel add` in a
+fresh scaffold, which the grid holds to the greenfield `--with`
+verdict), what each scope comes with from `keel.dials` (`included`,
+which under the monorepo layout counts what the product root gives a
+service), and install order from the registry. Stacks, verticals,
+layouts and services come from the catalog and the goldens, and none
+is named in the renderer. Columns are the entrypoint sets the
+presets reach, named as the wizard names them (CLI, HTTP server, CLI +
+HTTP server, Browser SPA), then the product root (only under the
+layouts where it is a keel project) and each product service. A cell
+where a column's scopes disagree names them along the first dimension
+that decides it: the layout (_● monorepo · ➕ polyrepo_), else the
+preset or product, with the most common glyph read as _the rest_. Rows
+follow the catalog table above the matrix, and the renderer refuses a
+vertical that table does not place. The regions sit between
+`<!-- generated:<name>:begin/end -->`; the hand-written notes around
+them replace the old footnotes, and the whole file goes through
+prettier, so the check is byte for byte.
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`
+regenerates, after the grid. The new table fixed what the hand-written
+one got wrong: `distribution` on the Spring and Micronaut CLIs, filed
+under a Quarkus-only footnote; `gateway` on a stack with no linked
+project (refused on every one); and the product root and its two
+services, which shared one column. The defaults table now lists
+`agent-harness` and `code-style`. The stale sentences the plan listed
+were fixed: `docs/cli.md`'s list of verticals (twelve of fourteen)
+and its "three" drill-down questions (four); the "document order" the
+wizard supposedly reads (`stack-presets.json`, `stacks.ts` — every
+reader sorts, and only the registry golden sees the order); and the
+product-compose comment, which Q1.10 had already rewritten and which
+now names `ts-http`'s image too. Deviation: the guard sentences in the
+root `AGENTS.md` and `tests/AGENTS.md` said four, but the list already
+held six suites (the toolchain pair had joined without a recount), so
+this guard makes seven, not five, and both now say so. No verdict
+moved; the known files stayed empty.
 
 #### Q2.6 — `README.md` and `.gitignore` are adopted on every stack (M) ✅
 

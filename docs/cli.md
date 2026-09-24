@@ -216,7 +216,7 @@ The step numbers count what is actually asked, not what the four axes
 are: pick the frontend shape and there is exactly one preset under
 it, so the run is one question long.
 
-Passing `--stack` skips all three questions; `--yes` skips every
+Passing `--stack` skips all four questions; `--yes` skips every
 question there is.
 
 #### Adding verticals in the same run
@@ -345,9 +345,10 @@ keel add <vertical>... [options]
 keel add containerization distribution iac    # one plan, one run
 ```
 
-Available verticals: `vcs`, `walking-skeleton`, `dev-env`,
-`dev-container`, `observability`, `persistence`, `gateway`,
-`containerization`, `ci`, `distribution`, `iac`, `toolchain`. See
+Available verticals: `vcs`, `walking-skeleton`, `agent-harness`,
+`code-style`, `dev-env`, `dev-container`, `observability`,
+`persistence`, `gateway`, `containerization`, `ci`, `distribution`,
+`iac`, `toolchain`. See
 the [compatibility matrix](verticals/README.md#compatibility-matrix)
 for which vertical applies to which stack — a vertical whose declared
 dimensions cannot be covered on your project **is refused, saying what

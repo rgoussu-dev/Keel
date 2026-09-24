@@ -32,9 +32,11 @@ composition grid (`domain/core/composition-grid/`).
 
 ## The guard tests
 
-Four suites in `verify` exist because an index nobody checks rots
-silently. They check structure, never content, and they are the reason a
-matching change lands in the same commit as the thing it guards:
+Seven suites in `verify` exist because an index nobody checks rots
+silently. They check structure, never prose — a generated table is
+structure too, checked as the projection it claims to be — and they
+are the reason a matching change lands in the same commit as the thing
+it guards:
 
 - `ci-workflow.test.ts` — the `e2e` shard matrix against `tests/e2e/`. A
   suite in no shard never runs, and that looks exactly like a suite that
@@ -51,6 +53,15 @@ matching change lands in the same commit as the thing it guards:
   preaches a ≤ 120-line root; this is what keeps it one.
 - `mise-toolchain.test.ts` and `toolchain-pins.test.ts` — `mise.toml`
   against the shard matrix's tool lists and against `GRADLE_VERSION`.
+- `generated-docs.test.ts` — the two tables `docs/` does not write by
+  hand, the verticals compatibility matrix and the stack catalog's
+  defaults, against what `support/generated-docs.ts` renders from the
+  grid's goldens, `keel.dials` and the registry. It fails when
+  regenerating would change a committed file, as `prettier --check`
+  does, and `KEEL_UPDATE_GOLDEN=1` rewrites what lies between each
+  region's `generated:` sentinels, and nothing around them:
+  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`.
+  See [`docs/`](../docs/AGENTS.md).
 
 ## The composition grid
 
@@ -121,6 +132,9 @@ the record can only shrink. Beside each suite:
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
   nothing) for the sentence the golden does not keep.
+- The docs' compatibility matrix is rendered from the brownfield and
+  composite goldens (`generated-docs.test.ts`, above), so a change that
+  moves a verdict regenerates the docs last, after the grid.
 
 About 25 s wall on its own, greenfield the longest at ~23 s, of which
 I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu

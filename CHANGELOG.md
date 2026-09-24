@@ -320,6 +320,23 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **The verticals compatibility matrix says what keel does.** The
+  table in `docs/verticals/README.md` is now generated from the
+  composition grid's verdicts rather than written by hand, and a test
+  fails whenever it falls behind them. It has a column per way in (CLI,
+  HTTP server, both, browser SPA) and one for the product root and for
+  each product service, and a cell where presets disagree names them —
+  _➕ `quarkus-cli`, `quarkus-cli-kotlin` · ⛔ the rest_ for
+  `distribution` on a CLI, _↪ monorepo · ➕ polyrepo_ for `ci` in a
+  product service. The hand-written table grouped the Spring and
+  Micronaut CLIs under a Quarkus-only footnote, marked `gateway`
+  addable on stacks where, with no project linked, it is refused, and
+  packed the product root and both services into one column. The stack
+  catalog's "What each shape installs by default" table is generated
+  the same way, and now lists `agent-harness` and `code-style`, which
+  every preset installs. `docs/cli.md` lists all fourteen verticals
+  `keel add` takes, where it named twelve.
+
 - **`keel new --with` on a product sends each vertical to the one
   service that can take it.** `--with persistence` on `fullstack` was
   refused as belonging to a service (`keel.wrong-scope`); it now goes

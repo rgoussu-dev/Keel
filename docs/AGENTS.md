@@ -13,6 +13,17 @@ per stack family (prerequisites, questions, generated tree);
 README matrix in the same change.** A doc landing a release later is a
 doc that was never written.
 
+**Two tables here are generated, not written:** the compatibility
+matrix in `verticals/README.md` and the defaults table in
+`stacks/README.md`, each between `<!-- generated:<name>:begin -->` and
+`<!-- generated:<name>:end -->`. Edit `tests/support/generated-docs.ts`,
+never the region; the prose around a region is written by hand and
+survives regeneration. After the grid's goldens move, run
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`
+— `verify` fails until you do. The matrix takes its rows in the order
+of the catalog table above it, so a new vertical gets its catalog row
+first; the renderer refuses one it cannot place.
+
 ## Where each kind of prose belongs
 
 - **`README.md`** (repo root) is the engaging front door — quickstart,
