@@ -19,8 +19,9 @@
  * Every dial setting is followed from the blank target until nothing
  * new shows up; the extras are ticked one at a time on each preset's
  * opening dials, and each box a tick moved is unticked again. The
- * full powerset of extras is the weekly lane's (`docs/roadmap.md`,
- * "The measure").
+ * full powerset of extras is not covered: the weekly lane that was to
+ * post it was planned and not built (`docs/roadmap.md`, "The
+ * measure", and its Successors).
  *
  * **The oracle is the route itself**: every body reached is posted to
  * `POST /api/preview` and must come back 200. It used to be the
@@ -174,8 +175,9 @@ async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
   if (opening === null) return { bodies: [...bodies.values()], gestures };
   // The agent harness's chip, pressed off once, on the dials the page
   // opens with: a field no shipped rule couples to another dial, so
-  // one body per preset holds it — its product with every other is the
-  // weekly lane's, as the extras' powerset is.
+  // one body per preset holds it. Its product with every other is not
+  // covered, as the extras' powerset is not: the weekly lane that was
+  // to post both was planned and not built.
   if (opening.agentHarness) {
     keep(
       await dialsFor(mediator, {

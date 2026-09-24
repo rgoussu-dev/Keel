@@ -411,8 +411,13 @@ empty directory — the import fails and the plugin does not load.
 
 Two optional fields tell keel's planner how your pieces relate to the
 rest, so that what it offers ahead of an install and the order it
-installs in are right. A plugin declaring neither keeps working
-exactly as before.
+installs in are right. A plugin declaring neither still loads and
+installs, but `--with` and `keel add` now install a set: verticals
+nothing ties together go in by id rather than in the order named. A
+`contribute()` that reads another vertical's presence
+(`ctx.manifest.verticals`) must declare it in `reads` to be installed
+after it — without it, `--with persistence,audit` may run `audit`
+first, and see no persistence.
 
 ```js
 const nativeAdapter = {

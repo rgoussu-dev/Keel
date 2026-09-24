@@ -98,8 +98,8 @@ use to keep a long-lived changelog scannable — and the root keeps
   moment HTTP was ticked. The extras now carry over like the dials,
   `keel.dials` drops what the new preset cannot carry, and the line
   under the Preset picker names each one with the reason it gave —
-  _Container image dropped: Container image needs an entrypoint this
-  project does not have: HTTP server — a REST endpoint._ — but not one
+  _Container image dropped: it needs an entrypoint this project does
+  not have: HTTP server — a REST endpoint._ — but not one
   the new preset comes with, which it keeps. The answers are held until
   the new preset's first preview has reported its questions, then
   placed wherever the same question is asked and still offers the
@@ -185,12 +185,13 @@ use to keep a long-lived changelog scannable — and the root keeps
   question the preview asked, and the install stops asking a question
   once it is answered — so the list vanished after the first tick: one
   extra at most, never unticked. The Options step now has an _Also
-  scaffold_ group in three parts: _Ready_; _Needs another capability
+  scaffold_ group in four parts: _Ready_; _Needs another capability
   first_, each card naming what it needs by title — ticking one ticks
   those too, and unticking one unticks every vertical that needs it,
   so ticking Infrastructure as code posts
   `containerization,distribution,iac` and unticking Container image
-  takes all three back; and _Comes with_ the preset, as chips. Every
+  takes all three back; _Comes with_ the preset, as chips; and _Not
+  for this project_, collapsed, each with its reason. Every
   single-service preset has the step, so the rail no longer grows one
   when the first preview lands. The review lists the extras with a
   link back to them, and its _Questions_ row counts the answers you
@@ -218,18 +219,11 @@ use to keep a long-lived changelog scannable — and the root keeps
   a tag. On `quarkus-cli-rest` on Gradle, distribution alone now
   installs its native binaries instead of being refused.
 
-- **`keel ui` no longer loses `DB_URL`.** The page names extras in
-  menu order, which is alphabetical, and `keel new` installed them in
-  the order named — so distribution rendered its deploy descriptor
-  before persistence was there, and `deploy/compose.yaml` came out
-  with no `DB_URL`, silently. Extras now install in the order they
-  depend on one another, whatever order they are named in.
-
 - **The service gateway is refused where no project is linked.** With
   no peer, `gateway` installed zero files and was recorded as
   installed — which then blocked the real install after `keel link`.
-  It is no longer offered as an extra or a card there, and `keel add
-gateway` refuses it: _"Service gateway wires linked projects, and no
+  It is no longer offered there — listed as not for this project
+  instead — and `keel add gateway` refuses it: _"Service gateway wires linked projects, and no
   linked project serves it here — link one that does first"_, with
   `keel link <path>` as the terminal's hint.
 
@@ -239,9 +233,7 @@ gateway` refuses it: _"Service gateway wires linked projects, and no
   Rust, `web-components` and composite stacks, and `keel new` now
   adopts those two instead (under Changed). So did
   `keel add containerization` or `keel add ci` over your own
-  `Dockerfile` or `.github/workflows/ci.yml`, and
-  `keel add containerization` inside a monorepo product's service,
-  whose image files the product root wrote. `keel ui` answered each
+  `Dockerfile` or `.github/workflows/ci.yml`. `keel ui` answered each
   with a 500 whose sentence was meant for an adapter's author
   (_"use a patch to modify existing files"_).
   Each is now refused as `keel.path-conflict`, naming the file — from
@@ -299,8 +291,8 @@ new` the terminal adds the way past it (move it aside, or start in
   outlived their card the same way — onto a re-render, whose Generate
   was then refused as `keel.reapply-frozen-answers` over a `--set`
   nobody typed, or onto a plain install, which recorded them for a
-  vertical that was not installed. Each card now stands for a run of
-  its own, and any change drops a reply still in flight, so a late
+  vertical that was not installed. A pick's state no longer outlives
+  it, and any change drops a reply still in flight, so a late
   `/api/dials` answer can no longer undo a newer pick. Choosing
   "nothing" for a new context's _Consumes_ now clears the context
   picked before it.
@@ -323,19 +315,14 @@ new` the terminal adds the way past it (move it aside, or start in
   the language changed. The catalog's language nodes
   (`Catalog.finder`) gain `runtime`, which is what the page compares.
 
-- **Distribution without an image, and an answer outside its
-  question's choices, are refusals rather than crashes.**
-  `distribution` on a server-shaped project with no container image
-  yet threw a plain error — a 500 in `keel ui` — whose sentence told a
-  `keel new` user to run `keel add containerization`. It is now
-  refused as `keel.missing-prerequisites`, with a sentence that holds
-  in both commands: add `containerization` as well. An answer a prompt
-  hands back — the page's preview,
-  a terminal — that is none of its question's choices is refused as
-  `keel.invalid-answer`, naming the `adapterId:questionId` it was for.
-  A default outside its own choices is an adapter bug and still
-  throws. Scripts matching the distribution refusal's old text should
-  match its code instead.
+- **An answer outside its question's choices is a refusal rather than
+  a crash.** An answer a prompt hands back — the page's preview, a
+  terminal — that is none of its question's choices is refused as
+  `keel.invalid-answer`, naming the `adapterId:questionId` it was for,
+  where it was a 500 in `keel ui`. A default outside its own choices is
+  an adapter bug and still throws. (`distribution` on a server-shaped
+  project with no image, which threw too, now installs the image with
+  it: see _A vertical named without what it needs brings it along_.)
 
 - **An adapter's multi-select question takes a selection.** An
   adapter question declared `kind: 'multi-select'` — none ships one,
@@ -393,6 +380,11 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
   recorded answer is what is read — remove it from
   .claude/.keel-manifest.json to answer anew_.
 
+- **`keel add module` takes exactly one name.** A second name, which
+  was silently ignored — `keel add module billing extra` scaffolded
+  `billing` and exited 0 — is now refused, _keel add module takes one
+  name, got 2: billing extra_, and the command exits 1.
+
 - **The backend shape says it holds tools too.** The drill-down's
   first question offered _Backend — a service with no front end of its
   own_, and someone after a command-line tool had to read past
@@ -417,13 +409,9 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
 --with iac` on the product says the same, and the refusal's
   `services` carry each one's `repositoryOnly`.
 
-- **`keel ui` says what an extras move changed without saying the
-  vertical twice.** _Left out Version control — Version control
-  already comes with go-cli_ and _Container image dropped: Container
-  image needs an entrypoint …_ now read _Left out Version control — it
-  already comes with go-cli_ and _Container image dropped: it needs an
-  entrypoint …_. A flag a refusal names on the page is set as one
-  literal a line never breaks inside.
+- **A flag a refusal names on the `keel ui` page stays on one line.**
+  `--with`, `--build-system` and their like are set as one literal a
+  line never breaks inside.
 
 - **`keel ui` is one page for both phases.** A keel project had a
   step of its own, _What to add_, where a new project has Options: two
@@ -474,7 +462,10 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
   it (a toolchain, a pipeline under the polyrepo layout) or none can,
   it is still refused as `keel.wrong-scope`, naming each service and
   whether it can take it, and the hint names the pairs to type
-  instead: `'--with backend:toolchain' or '--with frontend:toolchain'`.
+  instead: `'--with backend:toolchain' or '--with frontend:toolchain'`
+  — but for a pipeline or a release on a monorepo product, whose place
+  is the repository root the product root is, where keel installs
+  none yet (`keel.uncoverable-vertical`, naming no service).
   One the services that could have it have already — `code-style`,
   `observability`, the image a monorepo root builds — is set aside
   with a note naming what each has it with (_Code style already comes
@@ -538,15 +529,19 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
   service (`elsewhere`) was refused under `keel.uncoverable-vertical`
   — `keel.invalid-agent-harness` for the agent harness — and
   `keel new --with` on a composite under
-  `keel.invalid-extra-verticals`; both, and a monorepo service asked
+  `keel.invalid-extra-verticals`; both, where a vertical still goes
+  nowhere (see _`keel new --with` on a product sends each vertical to
+  the one service that can take it_), and a monorepo service asked
   for what only a repository root
   reads, are now `keel.wrong-scope`: not here, where
   `keel.uncoverable-vertical` stays not in this project. `ci` and
   `distribution` asked of a monorepo product root are refused without
   being sent into a service, since no service there can take them
   (`keel.uncoverable-vertical`). `keel new --with vcs` on a composite
-  is set aside with a note, as on a single preset. Scripts matching
-  the old codes should match the new one.
+  is set aside with a note, as on a single preset. A client of `keel
+ui`'s HTTP API matching the old codes should match the new one in
+  the 4xx body's `error.code`; the terminal prints the sentence and a
+  hint, not the code, and exits 1 either way.
 
 - **`keel new` inside a product refuses a directory the product does
   not list.** `keel new --stack=go-http` in `my-product/worker/` of a
@@ -637,15 +632,15 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   tag, no `--with` and no `keel add`: a capability another vertical
   adds is named by that vertical (_"needs what Container image adds"_),
   a build system by its label. `keel ui` receives the same refusal in
-  the 422 body as `error.refusal`, beside the sentence. `keel new
---with` on a composite stack is refused as the product root refuses
-  `keel add` there — _"Continuous integration belongs to a service,
-  not to the product root — it goes in backend/ or frontend/"_ — under
-  its old code, `keel.invalid-extra-verticals`; an id no vertical is
-  registered under is `keel.unknown-vertical` there, as on any other
-  stack. A tie between two sets of prerequisites now ends _"name the
-  one you want as well"_. Codes are otherwise unchanged; scripts
-  matching refusal text should match the code instead. For plugin
+  the 422 body as `error.refusal`, beside the sentence. On a composite
+  stack an id no vertical is registered under is
+  `keel.unknown-vertical`, as on any other stack. A tie between two
+  sets of prerequisites now ends _"name the one you want as well"_.
+  Codes are otherwise unchanged: a client of `keel ui`'s HTTP API that
+  matched refusal text should match `error.code` in the 4xx body
+  instead; the terminal prints the sentence and a hint line, not the
+  code, so a script there should key on the exit status (1), not the
+  words. For plugin
   authors: `ResolutionError` now means only an adapter `after` cycle
   (`keel.adapter-cycle`, its adapters in `adapters`) — an uncovered
   dimension is a `RefusalError` carrying the gap in `refusal.missing`
@@ -671,14 +666,17 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   order they depend on one another — `containerization` before the
   `distribution` that builds its image, `persistence` before the
   `distribution` whose descriptor reads it — whatever order they are
-  named in, and extras nothing ties together go in by id — a
+  named in. `keel ui` names extras in menu order, which is
+  alphabetical, and `keel new` installed them in the order named, so
+  distribution rendered its deploy descriptor before persistence was
+  there and `deploy/compose.yaml` came out with no `DB_URL`, silently;
+  it no longer does. Extras nothing ties together go in by id — a
   prerequisite added for you as one named would be — so every order
   typed, and every way of naming a set's prerequisites, writes the
   same files and records the same order. The report opens with a note when
   the order typed put one ahead of what it needs
   (`installed in dependency order: …`, `InstallReport.notes`).
-  `keel.extra-verticals-order` is retired;
-  naming an id twice is still refused.
+  Naming an id twice is still refused.
 
 - **A vertical named without what it needs brings it along.**
   `keel new --with iac` and `keel add iac` on a REST stack install
@@ -722,10 +720,9 @@ distribution iac`) — _Not for this project_, collapsed, each with the
 - **Distribution's prerequisite is a declaration.** The five container
   distribution adapters require `deploy.container-image` in their
   predicates, and the check that threw inside their `contribute()` is
-  gone. `keel add distribution` on a project with no image is refused
-  at the front door, still as `keel.missing-prerequisites`, now
-  _"Distribution needs Container image installed before it — add
-  containerization as well"_. A plugin states a prerequisite the same
+  gone. `keel add distribution` on a project with no image installs
+  containerization with it, first (see _A vertical named without what
+  it needs brings it along_). A plugin states a prerequisite the same
   way: a `requires` tag another vertical promotes.
 
 - **An answer reaches only the adapters it belongs to, and a stray
@@ -1020,8 +1017,8 @@ distribution`. The web API's install target takes `verticals` and
   `refresh` too. See `docs/cli.md` → `keel add`.
 
 - **Plugins can say what each adapter adds, and what a vertical
-  reads.** Two optional fields, for the planner keel's menus and front
-  doors are moving onto. `Adapter.promotes` is an adapter's own share
+  reads.** Two optional fields, read by the planner keel's menus and
+  front doors plan by. `Adapter.promotes` is an adapter's own share
   of its vertical's `promotes`: a vertical's list is the union over its
   adapters, and read as a whole it offers `iac` on a Quarkus CLI, whose
   only matching distribution adapter builds native binaries and never
@@ -1030,8 +1027,11 @@ distribution`. The web API's install target takes `verticals` and
   reads `persistence` and `observability`, whose variables its
   deployment descriptor carries only when they are there — so that in
   one run it installs after them. keel's own distribution and image
-  adapters now declare theirs. A plugin declaring neither is
-  unchanged. Registration refuses an adapter promoting what its
+  adapters now declare theirs. A plugin declaring neither loads
+  unchanged, but one whose `contribute()` reads another vertical's
+  presence should now declare `reads`: `--with` no longer installs in
+  the order named (see _`--with` names a set, not a sequence_), so
+  without it the vertical may run before the one it reads. Registration refuses an adapter promoting what its
   vertical does not declare, and a cycle of `reads`, naming the
   plugin; a `reads` naming a vertical nobody registers is ignored, so
   a plugin still loads beside another that is not installed. The
@@ -1808,10 +1808,12 @@ assets }` and its pieces are written against the ordinary
 - **The resolver's thrown refusal now says what the front door says.**
   `resolveVertical` reported only which dimension was empty, while
   `coverageGap` — added for the `--with` front door — could already
-  name the tags that would close it. The throw is built from that same
-  gap now (`would need arch.server-http`, and `detail.enablers`
-  alongside `detail.dimensions`), so the refusal a user runs into and
-  the one they are shown ahead of time cannot differ.
+  name what would close it. An uncovered dimension is now a
+  `RefusalError` built from that same gap, through the one sentence
+  builder the front doors use (the gap's tags travel in
+  `refusal.missing`, never in the sentence), so the refusal a user runs
+  into and the one they are shown ahead of time cannot differ;
+  `ResolutionError` is left for an adapter `after` cycle.
 
 - **`keel ui` gets the drill-down too, as facets.** The page's stack
   picker was a flat select over every preset; above it now sit the
@@ -1884,26 +1886,30 @@ assets }` and its pieces are written against the ordinary
     rather than thrown; the question comes last among the stack dials
     so it can be pruned against what the other three settled.
   - `--with` suppresses the question, `--with ''` included — that is
-    how a script says "none" explicitly. Unknown ids and ids the stack
-    already carries are refused at the front door with the available
-    list spelled out. Rejected on composite stacks, whose services
-    declare their own extras and where `--with` names no service.
+    how a script says "none" explicitly. An unknown id is refused at
+    the front door with the available list spelled out; one the stack
+    already carries is set aside with a note (see _"Already there" is
+    not an error_). On a composite stack an id goes to the one service
+    that can take it, or is named for one as `path:id` (see _A
+    product's services take extras of their own when it is created_).
   - **An uncoverable id is refused there too**, rather than reaching
     the resolver's throw after every other question has been asked.
-    `keel new --stack=quarkus-cli --with persistence` now says which
-    dimension no adapter covers and which tag would have covered it
-    (`arch.server-http`) — the fact the menu's pruning states by
-    omission, said out loud. `coverageGap(vertical, tags)` is
+    `keel new --stack=quarkus-cli --with persistence` says what the
+    project lacks by the entrypoint's label — _"Persistence needs an
+    entrypoint this project does not have: HTTP server — a REST
+    endpoint"_ — the fact the menu's pruning states by omission, said
+    out loud, and never as a tag (see _Coverage refusals say what is
+    missing, not which tag_). `coverageGap(vertical, tags)` is
     `coversFor` with that reason attached; it reports the unmet
     `requires` of the adapter _nearest_ to matching, not of every
     stack shape keel supports.
-  - **The check walks the extras the way the install runs them** — in
-    the order named, each against the tags its predecessors promote —
-    because a flat probe would refuse the compositions `--with`
-    exists for. `--with containerization,distribution,iac` is legal
-    on a REST stack (`iac` is keyed on the `dist.container-image` tag
-    `distribution` promotes); the same three ids in another order are
-    refused naming the one to list it after, not called impossible.
+  - **The extras install in dependency order**, whatever order they are
+    named in, each against the tags the ones before it promote,
+    because a flat probe would refuse the compositions `--with` exists
+    for: `--with containerization,distribution,iac` on a REST stack
+    (`iac` is keyed on the `dist.container-image` tag `distribution`
+    promotes) plans the same install named in any order (see _`--with`
+    names a set, not a sequence_).
   - `NewProjectTarget` carries the list, and `keel.dials` pins it
     like any other dial, so `keel ui` round-trips it as one — the
     Options step's _Also scaffold_ group. `keel.preview` still binds
@@ -2008,7 +2014,8 @@ quarkus-cli-rest`) rather than leaving it to be inferred.
   front end for the engine the CLI already drives, served on loopback
   and stopped with Ctrl-C. Point it at an empty directory and it is
   `keel new`; point it at a keel project and it becomes `keel add` /
-  `keel add module`, offering only what that project can take. What it
+  `keel add module`, listing what that project can take, and what it
+  cannot with the reason. What it
   adds over the CLI is the **plan while the choices are still moving**:
   the file tree redraws on every change, before anything is written.
   Nothing is uploaded — the server is your own `keel` install and the
@@ -2027,7 +2034,7 @@ quarkus-cli-rest`) rather than leaving it to be inferred.
     `--with-peer-context` buys anything, probed against the adapter set
     rather than listed. `keel.project-status` reports what a directory
     already holds, mirroring the refusals the brownfield handlers would
-    issue so a control can be absent instead of an error. `keel.preview`
+    issue, word for word, before the click. `keel.preview`
     runs a real install as a dry run and reports both halves of it: the
     questions it asked and the plan it produced.
   - **The question set is discovered, not enumerated.** An adapter is

@@ -9,12 +9,19 @@ keel add distribution
 Two shapes cover the same `build` / `release-channel` dimensions,
 selected by predicate:
 
-- **CLI projects** ship as **native binaries**: GraalVM
-  cross-compiles in a CI matrix and the binaries land on a release on
-  tag push.
-- **Server-shaped projects** (every HTTP stack and the SPA) ship as a
+- **Quarkus CLI projects on Gradle** ship as **native binaries**:
+  GraalVM cross-compiles in a CI matrix and the binaries land on a
+  release on tag push. Other CLIs cannot take distribution.
+- **Server-shaped projects** (the HTTP stacks and the SPA) ship as a
   **CI-built container image pushed to a registry on tag push**, plus
   a deployment descriptor.
+
+Its release workflows are read only at a repository's root. In a
+**monorepo product** a service refuses it (`keel.wrong-scope`) and
+keel installs none at the product root yet
+(`keel.uncoverable-vertical`); under the polyrepo layout each service
+is a repository and takes its own. See the
+[compatibility matrix](README.md#compatibility-matrix).
 
 ## Dimensions & adapters
 

@@ -2189,9 +2189,9 @@ to every vertical, in both phases.
 
 **Goal.** `keel ui`, `keel new` and `keel add` should feel like one
 supple tool: every choice on screen either works or says, _before_
-it is picked and in the user's words, what it needs. Today the model
-answers correctly but late, in engine vocabulary, and sometimes as a
-crash: "vertical 'observability': no adapter covers dimension(s):
+it is picked and in the user's words, what it needs. At the audit the
+model answered correctly but late, in engine vocabulary, and sometimes
+as a crash: "vertical 'observability': no adapter covers dimension(s):
 health, request-context, telemetry, monitoring-stack — would need
 arch.server-http", or, in the page, `keel.web.http-500 POST
 /api/preview failed with 500`.
@@ -2208,15 +2208,17 @@ Chromium. Every finding was re-checked by a second, adversarial pass.
 The prototype of that grid runs in ~6 s, which is why Q0.1 below
 lands it as a test.
 
-### What is actually wrong
+### What was actually wrong, at the audit
 
-**The engine agrees with itself.** Greenfield and brownfield give the
+**The engine agreed with itself.** Greenfield and brownfield gave the
 same verdict on all 392 single-service cells, and `keel new --with
-A,B` writes a tree byte-identical to `keel new; keel add A; keel add
-B`. The shipped catalog holds exactly one real dependency chain
+A,B` wrote a tree byte-identical to `keel new; keel add A; keel add
+B`. The shipped catalog held exactly one real dependency chain
 (containerization → distribution → iac) and one soft read
 (distribution reads whether persistence and observability are
-installed). The crankiness is around the engine, in five places:
+installed). The crankiness was around the engine, in five places —
+each below in the present of the audit, and each closed by the steps
+that follow:
 
 1. **Dependencies between verticals are not declared, so every reader
    guesses.** Distribution's need for a container image is a plain
@@ -2301,25 +2303,28 @@ always the real `keel.preview`, never a re-implementation over tags
 (the existing "what the page can post" test used one, which is how
 the distribution throw got through).
 
-| Id  | Invariant                                                                                            | At audit    | Zero at |
-| --- | ---------------------------------------------------------------------------------------------------- | ----------- | ------- |
-| I1  | No preview throws — every cell, plus a seeded-user-file axis                                         | 62 + seeded | Q0.3    |
-| I2  | Every extra `keel.dials` offers, posted with its prerequisites, previews Ok                          | 19          | Q1.3    |
-| I3  | Every extras set the CLI accepts is reachable from the menu                                          | 19          | Q1.3    |
-| I4  | A brownfield card's readiness agrees with preview                                                    | 149 of 294  | Q1.8¹   |
-| I5  | Phase parity: same outcome (from Q0.1), same code and sentence (from Q1.7)                           | 0 (outcome) | Q1.7    |
-| I6  | No refusal names a `lang.`/`framework.`/`runtime.`/`pkg.`/`layout.`/`arch.` tag                      | ≥ 90        | Q1.7    |
-| I7  | In every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal | —           | Q1.10   |
-| I8  | Any permutation of an accepted extras set gives byte-identical changes                               | —           | Q1.3    |
-| I9  | Preview and dry-run install give identical change lists for the same body                            | —           | Q2.1    |
+| Id  | Invariant                                                                                            | At audit    | Zero at             |
+| --- | ---------------------------------------------------------------------------------------------------- | ----------- | ------------------- |
+| I1  | No preview throws — every cell, plus a seeded-user-file axis                                         | 62 + seeded | Q0.3                |
+| I2  | Every extra `keel.dials` offers, posted with its prerequisites, previews Ok                          | 19          | Q1.3                |
+| I3  | Every extras set the CLI accepts is reachable from the menu                                          | 19          | Q1.3                |
+| I4  | A brownfield card's readiness agrees with preview                                                    | 149 of 294  | Q1.8¹               |
+| I5  | Phase parity: same outcome (from Q0.1), same code and sentence (from Q1.7)                           | 0 (outcome) | Q1.7                |
+| I6  | No refusal names a `lang.`/`framework.`/`runtime.`/`pkg.`/`layout.`/`arch.` tag                      | ≥ 90        | Q0.7 (hard at Q1.7) |
+| I7  | In every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal | —           | Q1.10               |
+| I8  | Any permutation of an accepted extras set gives byte-identical changes                               | —           | Q1.3                |
+| I9  | Preview and dry-run install give identical change lists for the same body                            | —           | Q2.1                |
 
 ¹ On every single-service project and at every product root; the
 monorepo services' image cells (PHASE-3) read ready and meet the files
 the product root wrote, and reach zero with Q1.10.
 
-A weekly report-only lane beside mutation runs the full powerset of
-offered extras (~1.8k previews, where an undeclared soft read shows as
-an I8 diff) and every choice of every question (~1.5k previews).
+A weekly report-only lane beside mutation — the full powerset of
+offered extras (~1.8k previews, where an undeclared soft read would
+show as an I8 diff) and every choice of every question (~1.5k
+previews) — was planned and not built: the grid reads each stack's
+default dials only, and sends one non-default choice per question
+(I9). The lane is listed under Successors.
 
 ### Phase 0 — stop the bleeding (defects only, no model change; ~1.5–2 weeks)
 
@@ -2796,7 +2801,7 @@ cards. Grid: I4 now reads "ready ⇔ Ok; needs ⇔ Ok, staging what naming
 its prerequisites with it stages; a refusal ⇔ the same code and
 sentence", every vertical installed or a card. Brownfield went 45 → 0
 and composite 126 → 36: the product roots' 66 cards and the
-web-components frontends' 20 agree now. The 36 left are the monorepo
+web-components frontends' 24 agree now. The 36 left are the monorepo
 services' image cells (PHASE-3), which read ready and meet the image
 files the product root wrote; the root's declaration of what it builds
 (Q1.10) is what can say so before the click, so I4 is not hard yet. No
@@ -3412,6 +3417,11 @@ Each taken as the audit recommended; the step that carries it is named.
 - **U — A release story for monorepo products.** Decide the image
   owner, one root Tree across scopes, a product-level pipeline,
   `keel add service`.
+- **The weekly report-only lane.** Planned under _The measure_ and
+  not built: beside mutation, the full powerset of offered extras on
+  every dial setting, and every choice of every question, report-only.
+  Until it exists those combinations are not covered — the grid reads
+  each stack's default dials and one non-default choice per question.
 
 ### Deliberately kept
 

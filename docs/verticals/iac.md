@@ -17,7 +17,11 @@ honestly wire to anything, so `distribution` comes first, and the
 or `keel add iac` without them installs both with it, in that order,
 and says so first. `--with containerization,distribution,iac` in any
 order is the same run, and so is `keel add containerization
-distribution iac`.
+distribution iac`. In a **monorepo product** it needs a
+`distribution` no service can carry — a release is read only at the
+repository root — so a service refuses it (`keel.wrong-scope`), and so
+does the product root; under the polyrepo layout each service takes
+it. See the [compatibility matrix](README.md#compatibility-matrix).
 
 ## Dimensions & adapters
 

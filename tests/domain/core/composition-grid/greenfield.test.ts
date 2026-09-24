@@ -45,7 +45,8 @@
  *     twice).
  *
  * Holds I6 over every refusal on the way. The menu read is each
- * stack's default dial setting; the others are the weekly lane's.
+ * stack's default dial setting; the others are not covered here (the
+ * weekly lane that was to read them was planned and not built).
  */
 
 import { describe } from 'vitest';

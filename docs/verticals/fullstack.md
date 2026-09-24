@@ -81,8 +81,8 @@ forgotten.
 
 The root activates the harness itself: `agent-harness` is a
 single-service vertical and refuses to install at a product root
-(`keel add agent-harness` names the service directories to run it in,
-as `keel add` does for every vertical the root cannot carry), so the
+(`keel add agent-harness` there is refused, noting that `backend/` and
+`frontend/` have it already), so the
 `agentic.harness` tag that opens the engine's final pass is promoted by
 the `fullstack` vertical. The refusal is a declaration rather than a
 special case: `fullstack` declares the rule `fullstack/one-harness`
