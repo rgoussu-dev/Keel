@@ -2127,7 +2127,10 @@ every change.
   half, and every field on it mirrors a refusal a handler would issue
   — `canAddModule` runs the same `emitsFor` probe `keel add module`'s
   front door runs, so a family with no context adapter greys the
-  control out instead of being told no after typing a name.
+  control out instead of being told no after typing a name. (`available`
+  listed every vertical not installed, readiness unconsulted, until
+  Q1.8 gave each card the planner's readiness and the refusal the add
+  would give.)
 
 - **The page** (`assets/web/`): framework-free custom elements on
   `@rgoussu.dev/planks`, the design system keel already emits for its
@@ -2298,12 +2301,16 @@ the distribution throw got through).
 | I1  | No preview throws — every cell, plus a seeded-user-file axis                                         | 62 + seeded | Q0.3    |
 | I2  | Every extra `keel.dials` offers, posted with its prerequisites, previews Ok                          | 19          | Q1.3    |
 | I3  | Every extras set the CLI accepts is reachable from the menu                                          | 19          | Q1.3    |
-| I4  | A brownfield card's readiness agrees with preview                                                    | 149 of 294  | Q1.8    |
+| I4  | A brownfield card's readiness agrees with preview                                                    | 149 of 294  | Q1.8¹   |
 | I5  | Phase parity: same outcome (from Q0.1), same code and sentence (from Q1.7)                           | 0 (outcome) | Q1.7    |
 | I6  | No refusal names a `lang.`/`framework.`/`runtime.`/`pkg.`/`layout.`/`arch.` tag                      | ≥ 90        | Q1.7    |
 | I7  | In every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal | —           | Q1.10   |
 | I8  | Any permutation of an accepted extras set gives byte-identical changes                               | —           | Q1.3    |
 | I9  | Preview and dry-run install give identical change lists for the same body                            | —           | Q2.1    |
+
+¹ On every single-service project and at every product root; the
+monorepo services' image cells (PHASE-3) read ready and meet the files
+the product root wrote, and reach zero with Q1.10.
 
 A weekly report-only lane beside mutation runs the full powerset of
 offered extras (~1.8k previews, where an undeclared soft read shows as
@@ -2748,7 +2755,7 @@ by title. Grid: I5 compares code and sentence on every single-service
 cell (the old wrapper back makes 73 cells fail), I6 is hard, and no
 golden verdict moved.
 
-#### Q1.8 — Readiness before the click (M)
+#### Q1.8 — Readiness before the click (M) ✅
 
 `ProjectStatus.available` carries `readiness` and `refusal` from the
 same `planner.readiness` the menus and the add front door read, so a
@@ -2756,6 +2763,38 @@ card, a menu and a refusal cannot disagree. Status also reports the
 harness-generation mismatch once, and why a bounded context cannot be
 added. The add front door checks assembly rules over installed ∪
 incoming. `keel add --list` prints readiness.
+
+Landed as one reading, `add-readiness.ts`: the product-root redirect,
+then `foresee` — the planner's readiness of one vertical, worded as
+`admit` words the plan of it — over `projectScope`, the project's
+effective tags, installed verticals and the rules those declare. The
+add front door plans over the same scope. Every registered vertical
+not installed is a card again (the gateway with nothing linked
+included): `readiness` (`ready | needs | unavailable`), `requires`, and
+`refusal` — the `{code, message, refusal}` the add's `Err` carries.
+`harnessGeneration: {found, expected}` and `moduleRefusal` report the
+other two gates once; the latter is `add-module.ts`'s project gates,
+now one exported function its handler runs too. The rules: a
+`PlanScope.rules` field carries the installed pieces' rules (and, in
+greenfield, the preset's), and a plan must not newly break one — so a
+vertical whose tags would reads unavailable, in the rule's sentence, on
+the card, at `keel add` and at `keel new --with` alike — and
+`installVerticals` holds every rule of the run's pieces again after
+each vertical's fold, refusing one newly broken as `keel.incompatible`
+before anything is committed. No shipped rule is of that kind; a
+plugin fixture pins it. `keel add --list` is one status dispatch,
+printed as ready, ready with what each needs first, not for this
+project (in the refusal's words) and installed — the catalog outside a
+project — and the page shows a generation mismatch once, above the
+cards. Grid: I4 now reads "ready ⇔ Ok; needs ⇔ Ok, staging what naming
+its prerequisites with it stages; a refusal ⇔ the same code and
+sentence", every vertical installed or a card. Brownfield went 45 → 0
+and composite 126 → 36: the product roots' 66 cards and the
+web-components frontends' 20 agree now. The 36 left are the monorepo
+services' image cells (PHASE-3), which read ready and meet the image
+files the product root wrote; the root's declaration of what it builds
+(Q1.10) is what can say so before the click, so I4 is not hard yet. No
+verdict moved.
 
 #### Q1.9 — The brownfield page shows readiness and takes several picks (L)
 

@@ -50,17 +50,17 @@ the plan column scroll independently, so the plan holds its own screen
 however long the step beside it runs. Under 62rem the two collapse
 into one and the page scrolls as an ordinary document.
 
-| Step              | What it asks                                                                                                                                                                                                                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                        |
-| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                        |
-| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                |
-| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                   |
-| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                         |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
-| **What to add**   | _(brownfield only)_ A capability to layer on, or a bounded context — one card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys. Installed ones are badged and offered for re-render.                                                                |
-| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                           |
-| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                               |
+| Step              | What it asks                                                                                                                                                                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                                                |
+| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                |
+| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                        |
+| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                           |
+| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                 |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                         |
+| **What to add**   | _(brownfield only)_ A capability to layer on, or a bounded context — one card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys. Installed ones are badged and offered for re-render. On a project another harness generation wrote, one line above the cards says so, once. |
+| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                   |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                       |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
@@ -360,6 +360,49 @@ the target is broken is a menu that cannot be used to fix it.
 { "kind": "add-vertical", "vertical": "ci", "reapply": false }
 { "kind": "add-module", "module": "billing", "consumes": "greeting" }
 ```
+
+`GET /api/project` is what the brownfield half reads before it offers
+anything — the answer each brownfield command's own front door would
+give, asked before it is run:
+
+```jsonc
+{
+  "initialised": true,
+  "installed": [{ "id": "vcs", "title": "Version control", "installedAt": "…", … }],
+  "available": [
+    { "id": "ci", "readiness": "ready", "requires": [], … },
+    { "id": "iac", "readiness": "needs", "requires": ["containerization", "distribution"], … },
+    {
+      "id": "gateway",
+      "readiness": "unavailable",
+      "requires": [],
+      "refusal": {
+        "code": "keel.uncoverable-vertical",
+        "message": "Service gateway wires linked projects, and no linked project serves it here — link one that does first",
+        "refusal": { "kind": "unavailable", "vertical": "gateway", "missing": { "peer": ["peer.ui.spa"] }, "carriedBy": [] }
+      }
+    }
+  ],
+  "canAddModule": false,
+  "moduleRefusal": { "code": "keel.incompatible", "message": "cannot add a bounded context here: …" },
+  "harnessGeneration": { "found": 1, "expected": 1 }
+}
+```
+
+`available` is every registered vertical not installed, the ones this
+project cannot carry included, each with the planner's readiness — the
+reading `keel.dials` offers extras by and `keel add` plans by: `ready`
+installs on its own; `needs` installs with `requires` first, in that
+order; `unavailable` carries the `refusal` the add would answer with,
+code, sentence and data exactly as its 422 body would (a `needs` whose
+prerequisites two verticals tie on carries one too). `moduleRefusal`
+is why `keel add module` would be refused before it reads a name,
+present exactly when `canAddModule` is false. `harnessGeneration` is
+the marker the manifest carries (`found`, null when none) beside the
+generation this keel writes: where they differ, every add but
+`agent-harness` is refused until the harness is brought forward — one
+fact, reported once rather than on every card. `keel add --list`
+prints the same status.
 
 `add-vertical` names its verticals as `verticals` — a set, planned
 and installed in one run with what it needs, exactly as `keel add a b`

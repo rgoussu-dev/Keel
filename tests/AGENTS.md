@@ -68,12 +68,20 @@ it holds. Three suites, split so vitest runs them in parallel:
   same bytes (I8, read back through the Trees the preview opened),
   plus `README.md` and `.gitignore` seeded before `keel new`.
 - `brownfield` — every single-service stack scaffolded once, `keel add`
-  previewed for every vertical (I4 available ⇒ Ok, I5 same outcome as
-  greenfield: Ok on both sides, or refused under the same code in the
-  same sentence), plus a user `Dockerfile` or `.github/workflows/ci.yml`
-  seeded wherever the add would create it.
+  previewed for every vertical (I4: each vertical is installed or a
+  `keel.project-status` card, and the card agrees with the preview —
+  `ready` Ok, `needs` Ok staging what naming its prerequisites with it
+  stages, a refusal on the card the add's own, code and sentence —
+  and I5, the same outcome as greenfield: Ok on both sides, or refused
+  under the same code in the same sentence), plus a user `Dockerfile`
+  or `.github/workflows/ci.yml` seeded wherever the add would create
+  it.
 - `composite` — every product under every repository layout its install
-  offers, at the root and in each service.
+  offers, at the root and in each service, its cards held to I4 as
+  brownfield's are. The one I4 allowance left is here: a monorepo
+  service's image cells read ready and meet the image files the product
+  root wrote there (PHASE-3), which only the root's declaration of what
+  it builds can say before the click.
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an

@@ -13,7 +13,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { finalizeHarness, installVerticals } from '../../../src/domain/core/install.js';
+import {
+  finalizeHarness,
+  installVerticals,
+  type InstallVerticalsInputs,
+} from '../../../src/domain/core/install.js';
+import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
 import {
   ContributionConflictError,
   newOwnership,
@@ -96,12 +101,36 @@ function claiming(id: string): Vertical {
   };
 }
 
+/** Declares that it will not sit on {@link BASE_TAG}, which `base` promotes. */
+const guard: Vertical = {
+  id: 'guard',
+  description: 'the guard vertical',
+  dimensions: ['only'],
+  conflicts: [
+    { id: 'guard/no-base', when: [BASE_TAG], reason: 'the guard will not sit on the base' },
+  ],
+  adapters: [
+    {
+      id: 'guard/adapter',
+      vertical: 'guard',
+      covers: ['only'],
+      predicate: {},
+      contribute: () => ({ files: [{ path: 'guard.txt', content: 'guard' }] }),
+    },
+  ],
+};
+
 const harnessed = (): ManifestV2 => ({
   ...emptyManifestV2('now', '0.5.0'),
   tags: [AGENT_HARNESS_TAG],
 });
 
-const run = (verticals: readonly Vertical[], tree: FakeTree, harness?: HarnessContribution[]) =>
+const run = (
+  verticals: readonly Vertical[],
+  tree: FakeTree,
+  harness?: HarnessContribution[],
+  more: Partial<InstallVerticalsInputs> = {},
+) =>
   installVerticals({
     verticals,
     manifest: harnessed(),
@@ -114,7 +143,15 @@ const run = (verticals: readonly Vertical[], tree: FakeTree, harness?: HarnessCo
     processes: new FakeProcessRunner(),
     now: () => 'now',
     ...(harness !== undefined ? { harness } : {}),
+    ...more,
   });
+
+/** What `run` threw, or null. */
+const thrown = (running: Promise<unknown>): Promise<unknown> =>
+  running.then(
+    () => null,
+    (e: unknown) => e,
+  );
 
 describe('installVerticals', () => {
   it('installs each vertical against the manifest the ones before it produced, in order', async () => {
@@ -149,6 +186,48 @@ describe('installVerticals', () => {
     expect(failure?.kind).toBe('region-collision');
     expect(failure?.message).toContain("adapter 'two/adapter' declares region");
     expect(failure?.message).toContain("adapter 'one/adapter' already owns");
+  });
+
+  it('refuses a fold that breaks a rule of a vertical in the run, naming the rule', async () => {
+    const failure = await thrown(run([guard, base], new FakeTree()));
+    expect(failure).toBeInstanceOf(RefusalError);
+    expect((failure as RefusalError).code).toBe('keel.incompatible');
+    expect((failure as RefusalError).message).toBe(
+      "Base cannot be installed here: the guard will not sit on the base (rule 'guard/no-base')",
+    );
+    expect((failure as RefusalError).refusal).toMatchObject({
+      kind: 'unavailable',
+      vertical: 'base',
+      rules: ['guard/no-base'],
+    });
+  });
+
+  it('holds the rules of what the project has installed, and the caller’s, as well', async () => {
+    const registry = registryOf([{ origin: pluginOrigin('test'), verticals: [guard, base] }]);
+    const installed: ManifestV2 = {
+      ...harnessed(),
+      verticals: [{ id: 'guard', installedAt: 'then' }],
+    };
+    const onGuarded = await thrown(
+      run([base], new FakeTree(), undefined, { manifest: installed, registry }),
+    );
+    expect((onGuarded as RefusalError).code).toBe('keel.incompatible');
+
+    const byCaller = await thrown(
+      run([base], new FakeTree(), undefined, { rules: guard.conflicts ?? [] }),
+    );
+    expect((byCaller as RefusalError).code).toBe('keel.incompatible');
+  });
+
+  it('leaves a rule the project broke before the run to the project', async () => {
+    const registry = registryOf([{ origin: pluginOrigin('test'), verticals: [guard, base] }]);
+    const broken: ManifestV2 = {
+      ...harnessed(),
+      tags: [...harnessed().tags, BASE_TAG],
+      verticals: [{ id: 'guard', installedAt: 'then' }],
+    };
+    const result = await run([upper], new FakeTree(), undefined, { manifest: broken, registry });
+    expect(result.manifest.verticals.map((v) => v.id)).toEqual(['guard', 'upper']);
   });
 
   it('realizes the run’s harness declarations itself when no buffer is supplied', async () => {

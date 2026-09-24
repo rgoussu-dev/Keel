@@ -299,7 +299,7 @@ renders from that. See [`keel ui`](ui.md#the-dials-are-narrowed-by-the-same-rule
 
 Concretely, the menus that narrow as answers land. The first five are
 the same functions behind both front ends, in `domain/core/dials.ts`;
-the last is brownfield and lives with the project status:
+the last two are brownfield and live with the project status:
 
 | menu                       | filtered by                                                                        |
 | -------------------------- | ---------------------------------------------------------------------------------- |
@@ -309,19 +309,28 @@ the last is brownfield and lives with the project status:
 | extra verticals (`--with`) | the planner's readiness: ready, or needs others first — coverage, rules and order  |
 | the stack drill-down       | presets no setting of their dials can build are absent from all four steps at once |
 | `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal |
+| `keel add` cards           | the planner's readiness over the project, its installed verticals and their rules  |
 
 A preset is hidden only when **every** setting of its dials is
 refused. Anything stricter would take away a preset reachable by
 moving a dial.
 
-The last row is brownfield rather than a menu, and the shape is the
-same: `ProjectStatusHandler` answers `canAddModule` for a project
-already on disk, and a form greys the control out by it. Two rules
-say the same sentence about two doors, because two different pieces
-own them — `walking-skeleton/peer-context-needs-modulith` for the
-second context `keel new --with-peer-context` scaffolds, and
+The last two rows are brownfield rather than menus, and the shape is
+the same: `ProjectStatusHandler` answers for a project already on disk
+with the function the command's own front door refuses by, and a form
+reads the answer before the click. `canAddModule` greys the bounded
+context control out, with `moduleRefusal` saying why. Two rules say
+the same sentence about two doors, because two different pieces own
+them — `walking-skeleton/peer-context-needs-modulith` for the second
+context `keel new --with-peer-context` scaffolds, and
 `bounded-context/context-needs-modulith` for the one `keel add module`
-adds later.
+adds later. Each `keel add` card carries the planner's readiness —
+ready, needs others first, or unavailable with the very refusal the
+add gives — and a rule reads there as it does at the front door: over
+what is installed and what comes in together. A rule an installed
+vertical declares binds a newcomer whose tags would break it, exactly
+as the newcomer's own rules do, and the install loop holds every such
+rule again after each vertical folds in the tags it really added.
 
 #### Three kinds of refusal, and only one of them is a conflict
 

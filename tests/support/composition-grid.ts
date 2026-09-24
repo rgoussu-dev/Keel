@@ -55,7 +55,14 @@ import type { Vertical } from '../../src/domain/contract/composition.js';
 import type { NewProjectTarget } from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
 import type { Tree } from '../../src/domain/contract/ports/tree.js';
-import { dialsQuery, type DialOptions } from '../../src/domain/contract/queries.js';
+import {
+  dialsQuery,
+  previewQuery,
+  type AvailableVerticalDescriptor,
+  type DialOptions,
+  type InstallPreview,
+  type ProjectStatus,
+} from '../../src/domain/contract/queries.js';
 import { matchesPattern } from '../../src/domain/core/predicate.js';
 import { shippedRegistry } from '../../src/domain/core/registry.js';
 import { FakeProcessRunner } from '../../src/infrastructure/process/fake.js';
@@ -70,7 +77,7 @@ export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
   I2: 'every extra keel.dials offers, posted with its prerequisites, previews Ok',
   I3: 'every extras set the CLI accepts is reachable from the menu',
-  I4: 'a vertical keel.project-status lists as available previews Ok',
+  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code and sentence',
   I5: 'keel new --with v and keel add v on the same stack reach the same outcome, code and sentence',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
@@ -344,6 +351,74 @@ export async function settle(
         .map((vertical) => vertical.id),
     ),
   };
+}
+
+/**
+ * Holds a project's cards to the add each stands for (I4), in the
+ * directory `status` was read from: every vertical of `verticals` is
+ * either installed there or a card, and a card agrees with the preview
+ * of `keel add <id>` — `outcome`, the cell already swept for it.
+ *
+ * - `ready` previews Ok;
+ * - `needs` previews Ok, and stages exactly what naming its
+ *   prerequisites with it stages ({@link Grid.twin}, which records
+ *   nothing): the closure the card shows is the one the add installs;
+ * - a card carrying a refusal previews as that refusal, under the same
+ *   code, in the same sentence — whatever its readiness says, since a
+ *   tied `needs` is refused too.
+ *
+ * An `unavailable` card with no refusal to show is a violation of its
+ * own. Records the cell `cell` under I4 when the card, or its absence,
+ * disagrees.
+ */
+export async function holdCard(
+  grid: Grid,
+  cell: string,
+  status: ProjectStatus,
+  vertical: string,
+  cwd: string,
+  outcome: Outcome<InstallPreview>,
+): Promise<void> {
+  const card: AvailableVerticalDescriptor | undefined = status.available.find(
+    (candidate) => candidate.id === vertical,
+  );
+  if (card === undefined) {
+    if (!status.installed.some((installed) => installed.id === vertical)) grid.violate('I4', cell);
+    return;
+  }
+  if (!(await agrees(grid, card, cwd, outcome))) grid.violate('I4', cell);
+}
+
+async function agrees(
+  grid: Grid,
+  card: AvailableVerticalDescriptor,
+  cwd: string,
+  outcome: Outcome<InstallPreview>,
+): Promise<boolean> {
+  if (card.refusal !== undefined) {
+    return outcome.verdict === card.refusal.code && outcome.message === card.refusal.message;
+  }
+  if (outcome.verdict !== OK) return false;
+  switch (card.readiness) {
+    case 'ready':
+      return true;
+    case 'needs': {
+      if (card.requires.length === 0) return false;
+      const closure = await grid.twin(
+        previewQuery({
+          cwd,
+          target: { kind: 'add-vertical', verticals: [...card.requires, card.id] },
+          answers: {},
+        }),
+      );
+      return (
+        closure.verdict === OK &&
+        JSON.stringify(closure.value?.changes) === JSON.stringify(outcome.value?.changes)
+      );
+    }
+    case 'unavailable':
+      return false;
+  }
 }
 
 /**

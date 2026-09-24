@@ -41,6 +41,11 @@
  * what is pinned without a browser (`tests/application/web/target.test.ts`);
  * that a card click actually takes it is the page-level half.
  *
+ * **A project from another harness generation is the third**: every
+ * card is refused alike, so the page says so once, above them, from
+ * the project status — the last case drops the manifest's marker for
+ * its own length and puts it back.
+ *
  * **The project is seeded in-process, with every deferred action
  * faked** — the same trick `dev-compose` uses. The page only needs a
  * manifest whose tags cannot carry `containerization`; running `npm
@@ -55,10 +60,12 @@
  * carries the browser guard because `beforeAll` launches one.
  */
 
+import path from 'node:path';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import { MANIFEST_FILENAME, projectScopeRoot } from '../../src/domain/contract/manifest.js';
 import type { RunActionsInputs } from '../../src/domain/core/actions.js';
 import { expectOk, installMediator } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
@@ -325,6 +332,41 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
         async () => (await command(page)) === `keel add ${INSTALLED} --reapply --yes`,
         'a command with no answer on it',
       );
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'says once, above the cards, that a project from another harness generation refuses them',
+    async () => {
+      // Picking card after card to meet the same refusal is what the
+      // status's one field spares: the page reads it before any pick.
+      await goToStep(traffic, page, 'target');
+      expect(await page.locator('[data-role="harness-generation"]').count()).toBe(0);
+
+      const file = path.join(projectScopeRoot(cwd), MANIFEST_FILENAME);
+      const original = await fs.readFile(file, 'utf8');
+      const { harnessGeneration: _dropped, ...unmarked } = JSON.parse(original) as Record<
+        string,
+        unknown
+      >;
+      await fs.writeFile(file, JSON.stringify(unmarked));
+      try {
+        // Opened afresh from the URL: the page claims its token off the
+        // address bar on load, and a reload would have none to claim.
+        await page.goto(ui.url, { waitUntil: 'domcontentloaded' });
+        await until(
+          async () => (await page.locator('keel-stepper button[data-step="target"]').count()) > 0,
+          'the brownfield rail',
+        );
+        await goToStep(traffic, page, 'target');
+        const notice = page.locator('[data-role="harness-generation"]');
+        await until(async () => (await notice.count()) === 1, 'one generation notice');
+        expect(await notice.getAttribute('role')).toBe('status');
+        expect(await notice.textContent()).toContain('every card but Agent harness is refused');
+      } finally {
+        await fs.writeFile(file, original);
+      }
     },
     E2E_TIMEOUT_MS,
   );

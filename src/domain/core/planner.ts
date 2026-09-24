@@ -22,7 +22,9 @@
  * which is what stops `distribution` on a Quarkus CLI (native binaries
  * only) from being read as supplying the image `iac` is keyed on; each
  * vertical's {@link Vertical.reads}, to put a reader after what it
- * reads; and each vertical's own conflicts. A promotion is read as
+ * reads; each vertical's own conflicts; and the conflicts of the pieces
+ * already on the scope ({@link PlanScope.rules}), which what a plan adds
+ * must not newly break. A promotion is read as
  * certain once its adapter matches: planning cannot know an answer
  * that has not been given, so a JVM image counts as both flavours.
  *
@@ -51,10 +53,10 @@
  */
 
 import type { RefreshProposal } from '../contract/commands.js';
-import type { Adapter, Tag, Vertical } from '../contract/composition.js';
+import type { Adapter, Conflict, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { Readiness, ReadinessGap } from '../contract/queries.js';
-import { assemblyRefusal, conflictsOf, violatedBy } from './compatibility.js';
+import { assemblyRefusal, conflictsOf, violatedBy, wouldViolate } from './compatibility.js';
 import { matches, matchesPattern } from './predicate.js';
 import { IDENTITY_NAMESPACES } from './refusals.js';
 import { assemblableStacks } from './registry.js';
@@ -80,6 +82,17 @@ export interface PlanScope {
   readonly tags: readonly Tag[];
   /** Ids of the verticals already there: installed, or the preset's own. */
   readonly installed: readonly string[];
+  /**
+   * The rules the pieces already there declare — the installed
+   * verticals, and before `keel new` writes anything the preset too.
+   * A plan must not newly break one: a vertical whose tags would is
+   * not ready here, however well it covers — an installed piece's rule
+   * binds what comes after it, exactly as the incoming piece's own
+   * rules do. One the scope breaks already is not held against what
+   * comes next: that assembly is broken on its own, and a menu over it
+   * must still answer. Absent, none.
+   */
+  readonly rules?: readonly Conflict[];
 }
 
 /** One vertical of a planned order, and why it is in it. */
@@ -220,7 +233,7 @@ function unionPlan(
     for (const id of settled[0] ?? []) if (!requested.has(id)) extra.add(id);
   }
   const providers = registry.verticals().filter((vertical) => extra.has(vertical.id));
-  const placed = orderOf([...providers, ...wanted], scope.tags);
+  const placed = orderOf([...providers, ...wanted], scope);
   return placed === null ? null : { kind: 'planned', order: stepsOf(placed, wanted), included };
 }
 
@@ -367,7 +380,7 @@ function closureOf(
   for (let size = 0; size <= Math.min(MAX_PREREQUISITES, pool.length); size++) {
     const found: (readonly Placed[])[] = [];
     for (const extra of subsets(pool, size)) {
-      const placed = orderOf([...extra, ...requested], scope.tags);
+      const placed = orderOf([...extra, ...requested], scope);
       if (placed !== null) found.push(placed);
     }
     const [first, ...others] = found;
@@ -412,18 +425,20 @@ function providersOf(
 }
 
 /**
- * An install order for `set` onto `tags`, or null when there is none.
+ * An install order for `set` onto `scope`, or null when there is none.
  *
  * A depth-first search: at each step, the verticals that resolve
  * against the tags so far and whose rules hold are tried — first those
  * nothing left in the set feeds, then those reading nothing left in
  * it, then in the order given — and a step that leaves any placed
  * vertical matching an adapter its new tags exclude, or breaking one
- * of its rules, is taken back. So an order is only ever one the
- * install would run cleanly start to finish, and where several would,
- * the one the edges and the reads prefer.
+ * of its rules or one of the scope's own ({@link PlanScope.rules}), is
+ * taken back. So an order is only ever one the install would run
+ * cleanly start to finish, and where several would, the one the edges
+ * and the reads prefer.
  */
-function orderOf(set: readonly Vertical[], tags: readonly Tag[]): readonly Placed[] | null {
+function orderOf(set: readonly Vertical[], scope: PlanScope): readonly Placed[] | null {
+  const standing = standsOn(scope);
   const rank = new Map(set.map((vertical, index) => [vertical.id, index]));
   const search = (
     remaining: readonly Vertical[],
@@ -452,7 +467,7 @@ function orderOf(set: readonly Vertical[], tags: readonly Tag[]): readonly Place
         added.push(tag);
       }
       const all = [...placed, { vertical, adapters, added }];
-      if (!all.every((step) => holds(step, next))) continue;
+      if (!all.every((step) => holds(step, next)) || !standing(next)) continue;
       const found = search(
         remaining.filter((other) => other !== vertical),
         next,
@@ -462,7 +477,18 @@ function orderOf(set: readonly Vertical[], tags: readonly Tag[]): readonly Place
     }
     return null;
   };
-  return search(set, asSet(tags), []);
+  return search(set, asSet(scope.tags), []);
+}
+
+/**
+ * Whether a tag set still honours the scope's own rules — none broken
+ * that the scope did not break already. @see PlanScope.rules
+ */
+function standsOn(scope: PlanScope): (tags: ReadonlySet<Tag>) => boolean {
+  const rules = scope.rules ?? [];
+  if (rules.length === 0) return () => true;
+  const already = new Set(violatedBy(rules, scope.tags).map((conflict) => conflict.id));
+  return (tags) => violatedBy(rules, tags).every((conflict) => already.has(conflict.id));
 }
 
 /** Whether `vertical` can be placed on `tags`: it applies, and its rules hold. */
@@ -553,7 +579,9 @@ function stepsOf(
  * nearest adapter, each traced back — a capability some vertical
  * could add is replaced by what that vertical's nearest adapter lacks
  * here, to the same depth the planner searches — and sorted into what
- * would change the answer, with the nearest stacks that carry it.
+ * would change the answer, with the nearest stacks that carry it; and
+ * the rules it breaks — its own, against the scope's tags, and the
+ * scope's, against what it would add.
  */
 function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): ReadinessGap {
   const tags = asSet(scope.tags);
@@ -580,7 +608,14 @@ function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): Readin
     entrypoint: [...entrypoint].sort(),
     peer: [...peer].sort(),
     identity: [...identity].sort(),
-    rules: violatedBy(conflictsOf([vertical]), tags).map((conflict) => conflict.id),
+    rules: [
+      ...new Set(
+        [
+          ...violatedBy(conflictsOf([vertical]), tags),
+          ...wouldViolate(scope.rules ?? [], tags, promotionsOn(vertical, tags)),
+        ].map((conflict) => conflict.id),
+      ),
+    ],
     nearestStacks: nearestStacks(registry, scope, vertical),
   };
 }
@@ -739,6 +774,7 @@ function carries(
   const scope: PlanScope = {
     tags: seedFor(stack, tags),
     installed: stack.verticals.map((own) => own.id),
+    rules: conflictsOf([stack, ...stack.verticals]),
   };
   return closureOf(registry, scope, [vertical]) !== null;
 }
@@ -754,6 +790,7 @@ export function defaultScope(stack: Stack, extras: readonly string[] = []): Plan
   return {
     tags: seedFor(stack, defaultTags(stack)),
     installed: [...stack.verticals.map((own) => own.id), ...extras],
+    rules: conflictsOf([stack, ...stack.verticals]),
   };
 }
 

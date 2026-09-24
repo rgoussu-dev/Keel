@@ -19,6 +19,9 @@
  * one line on what installing it gets you — all three from the
  * catalog, so a plugin's vertical reads the same way keel's own do.
  *
+ * A project written by another harness generation says so once, at
+ * the top (`../project.js`), rather than on every card it refuses.
+ *
  * Status + target in as properties, `target-changed` out — always
  * with the **whole** target, never the fields that moved. A card pick
  * is a new run, and a patch merged into the old one is how a
@@ -26,7 +29,8 @@
  * `../target.js`).
  */
 
-import { cards } from '../dom.js';
+import { cards, el } from '../dom.js';
+import { harnessNotice } from '../project.js';
 import { pickVertical } from '../target.js';
 
 export class KeelAddForm extends HTMLElement {
@@ -57,6 +61,20 @@ export class KeelAddForm extends HTMLElement {
     if (!this.isConnected || !this.#status || !this.#target) return;
     const form = document.createElement('stack-pk');
     form.setAttribute('space', 'var(--s0)');
+    // Once, above everything it stops: a project from another harness
+    // generation refuses every card but the harness's own. A status,
+    // not an alert: the form is rebuilt on every pick, and an alert
+    // would interrupt each one to repeat a fact that has not changed.
+    const stale = harnessNotice(this.#status);
+    if (stale !== null) {
+      form.append(
+        el('p', {
+          class: 'error',
+          text: stale,
+          attrs: { role: 'status', 'data-role': 'harness-generation' },
+        }),
+      );
+    }
     form.append(this.#kindField());
     form.append(this.#target.kind === 'add-module' ? this.#moduleFields() : this.#verticalFields());
     this.replaceChildren(form);

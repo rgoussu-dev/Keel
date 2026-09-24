@@ -20,7 +20,12 @@ import {
   type InstallReport,
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
-import { docsCheckQuery } from '../../../domain/contract/queries.js';
+import {
+  docsCheckQuery,
+  projectStatusQuery,
+  type HarnessGenerationStatus,
+  type ProjectStatus,
+} from '../../../domain/contract/queries.js';
 import { RefusalError } from '../../../domain/contract/refusal.js';
 import type { ServeUi } from '../../web/contract/server.js';
 import { refusalHint, type HintedCommand } from './hint.js';
@@ -38,7 +43,10 @@ export interface StackOption {
   readonly description: string;
 }
 
-/** One `keel add --list` entry: a vertical id + its one-line description. */
+/**
+ * One `keel add --list` entry outside a project: a vertical id + its
+ * one-line description. Inside one, the list is the project's status.
+ */
 export interface VerticalOption {
   readonly id: string;
   readonly description: string;
@@ -52,7 +60,10 @@ export interface CliDeps {
   readonly version: string;
   /** Stacks listed in `keel new`'s help text and `keel new --list`. */
   readonly availableStacks: readonly StackOption[];
-  /** Verticals listed in `keel add`'s help text and `keel add --list`. */
+  /**
+   * Verticals listed in `keel add`'s help text, and by `keel add
+   * --list` where there is no project to ask about them.
+   */
   readonly availableVerticals: readonly VerticalOption[];
   /** Working directory commands run against; defaults to `process.cwd()`. */
   readonly cwd?: () => string;
@@ -177,7 +188,11 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
-    .option('--list', 'list available verticals with their descriptions, then exit', false)
+    .option(
+      '--list',
+      'list the verticals and whether each can be added here — ready, with what it needs first, or why not — then exit',
+      false,
+    )
     .option(
       '--reapply',
       're-render already-installed verticals from their recorded answers, showing a diff against the working tree; refuses on conflict',
@@ -210,7 +225,9 @@ export function buildProgram(deps: CliDeps): Command {
         },
       ): Promise<void> => {
         if (opts.list) {
-          printOptionList('Available verticals', deps.availableVerticals, deps.logger);
+          const status = unwrap(await deps.mediator.dispatch(projectStatusQuery({ cwd: cwd() })));
+          if (status.initialised) printReadiness(status, deps.logger);
+          else printOptionList('Available verticals', deps.availableVerticals, deps.logger);
           return;
         }
         const [first, ...rest] = targets;
@@ -504,6 +521,61 @@ function printOptionList(
   for (const option of options) {
     log.info(`  ${option.id.padEnd(width)}  ${option.description}`);
   }
+}
+
+/**
+ * `keel add --list` inside a project: every vertical not installed,
+ * grouped by what `keel add <id>` would do with it — install it, install
+ * it with what it needs first, or refuse it, in the refusal's own
+ * sentence — then what is installed. A vertical two sets of
+ * prerequisites tie on is refused until one is named, but it is no
+ * less for this project: it is listed with the others that need
+ * something first, in the sentence that names the choice. It prints
+ * the project's status, which is computed by the function the add
+ * front door refuses by, so the list and the command cannot disagree.
+ * A harness from another generation, which stops every add but the
+ * harness's own, is said once, first.
+ */
+function printReadiness(status: ProjectStatus, log: Logger): void {
+  const generation = status.harnessGeneration;
+  if (generation !== undefined && generation.found !== generation.expected) {
+    log.warn(generationLine(generation));
+  }
+  const width = Math.max(0, ...status.available.map((vertical) => vertical.id.length));
+  const row = (id: string, text: string): string => `  ${id.padEnd(width)}  ${text}`;
+  const ready = status.available.filter((v) => v.readiness === 'ready');
+  const needs = status.available.filter((v) => v.readiness === 'needs');
+  const refused = status.available.filter((v) => v.readiness === 'unavailable');
+  if (ready.length > 0) {
+    log.info('Ready to add here:');
+    for (const v of ready) log.info(row(v.id, `${v.title} — ${v.description}`));
+  }
+  if (needs.length > 0) {
+    log.info('Ready, with what each needs installed first:');
+    for (const v of needs) {
+      const after = `${v.title}, after ${v.requires.join(', ')} — ${v.description}`;
+      log.info(row(v.id, v.refusal?.message ?? after));
+    }
+  }
+  if (refused.length > 0) {
+    log.info('Not for this project:');
+    for (const v of refused) log.info(row(v.id, v.refusal?.message ?? ''));
+  }
+  if (status.installed.length > 0) {
+    log.info(
+      `Installed: ${status.installed.map((v) => v.id).join(', ')} — 'keel add <id> --reapply' re-renders one`,
+    );
+  }
+}
+
+/** The line `keel add --list` opens with on a project from another harness generation. */
+function generationLine(generation: HarnessGenerationStatus): string {
+  const { found, expected } = generation;
+  if (found !== null && found > expected) {
+    return `this project's harness is generation ${String(found)}, newer than the generation ${String(expected)} this keel writes — upgrade keel before adding to it`;
+  }
+  const marker = found === null ? 'carries no generation marker' : `is generation ${String(found)}`;
+  return `this project's harness ${marker}, and this keel writes generation ${String(expected)} — 'keel add' refuses everything but 'keel add agent-harness' until the harness is brought forward; any other 'keel add' says how`;
 }
 
 /**

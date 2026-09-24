@@ -23,7 +23,6 @@
  */
 
 import { DomainError } from '../kernel/result.js';
-import type { Readiness } from './queries.js';
 import type { Tag } from './tags.js';
 
 /**
@@ -97,12 +96,13 @@ export interface UnavailableRefusal {
    */
   readonly carriedBy: readonly string[];
   /**
-   * A reason the vertical declares for itself — the sentence of one of
-   * its own rules this project breaks — standing in for the gap when
-   * there is one.
+   * The reason a rule gives — one of the vertical's own this project
+   * breaks, or one a piece already installed here declares that the
+   * vertical's tags would break — standing in for the gap when there
+   * is one.
    */
   readonly because?: string;
-  /** Ids of the vertical's own rules (`Conflict`s) this project breaks, when any. */
+  /** Ids of those rules (`Conflict`s), when any. */
   readonly rules?: readonly string[];
 }
 
@@ -120,8 +120,12 @@ export interface ElsewhereService {
   readonly path: string;
   /** Stack preset the service is scaffolded from. */
   readonly stack: string;
-  /** How ready the vertical is in that service (`Readiness.kind`). */
-  readonly readiness: Readiness['kind'];
+  /**
+   * How ready the vertical is in that service — a `Readiness` kind
+   * (`./queries.ts`), spelled out here because the status that
+   * reports a {@link Refusal} is itself declared there.
+   */
+  readonly readiness: 'included' | 'ready' | 'needs' | 'unavailable';
 }
 
 /** {@link Refusal} for verticals no order installs together. */

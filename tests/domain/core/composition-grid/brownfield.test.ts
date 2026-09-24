@@ -10,10 +10,13 @@
  *     own `Dockerfile` or `.github/workflows/ci.yml`, seeded only
  *     beside a vertical whose pristine preview creates that path — a
  *     vertical that never writes a path cannot collide with it.
- *   - **A card that is offered works** (I4, counted): a vertical
- *     `keel.project-status` lists as available should preview Ok. It
- *     is the page's list of cards, so every one that refuses is a
- *     click that ends in a banner.
+ *   - **A card says what the click will do** (I4): every vertical is
+ *     installed or a `keel.project-status` card, and each card agrees
+ *     with the preview of its add — `ready` previews Ok, `needs`
+ *     previews Ok with the prerequisites it names in the plan, and a
+ *     refusal shown on the card is the one the add gives, code and
+ *     sentence. The card is read before the click; the preview is the
+ *     click.
  *   - **Both phases agree** (I5): `keel add v` on a fresh scaffold
  *     reaches the same outcome as `keel new --with v` on the same
  *     stack — Ok on both sides, or refused on both under one code and
@@ -38,6 +41,7 @@ import {
   SEEDED_BEFORE_ADD,
   eachStack,
   goldenOf,
+  holdCard,
   seed,
   settle,
   sweepGrid,
@@ -64,7 +68,6 @@ describe('composition grid: brownfield', () => {
         if (scaffold.verdict !== OK) return;
 
         const status = await grid.read(projectStatusQuery({ cwd }));
-        const available = new Set(status.available.map((vertical) => vertical.id));
         for (const vertical of verticals) {
           const cell = `add:${stack}+${vertical}`;
           const add = previewQuery({
@@ -73,7 +76,7 @@ describe('composition grid: brownfield', () => {
             answers: {},
           });
           const outcome = await grid.cell(cell, add);
-          if (available.has(vertical) && outcome.verdict !== OK) grid.violate('I4', cell);
+          await holdCard(grid, cell, status, vertical, cwd, outcome);
           const twin = greenfield[`new:${stack}+${vertical}`];
           if (twin !== undefined && (twin !== OK || outcome.verdict !== OK)) {
             const mirrored = await grid.twin(

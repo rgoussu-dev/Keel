@@ -578,7 +578,7 @@ describe('brownfield: keel link + keel add gateway', () => {
     expect(properties).toContain('%dev.quarkus.http.cors.enabled=true');
   });
 
-  it('refuses the gateway where no project is linked, and offers no card for it', async () => {
+  it('refuses the gateway where no project is linked, and its card says so first', async () => {
     // It used to "install" here: zero files, recorded as installed —
     // which then blocked the real install after `keel link`.
     const { runDeferred } = recordActions();
@@ -615,7 +615,54 @@ describe('brownfield: keel link + keel add gateway', () => {
     expect(manifest?.verticals.map((v) => v.id)).not.toContain('gateway');
 
     const status = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: appDir })));
-    expect(status.available.map((v) => v.id)).not.toContain('gateway');
+    expect(status.available.find((v) => v.id === 'gateway')).toMatchObject({
+      readiness: 'unavailable',
+      refusal: { code: error.code, message: error.message },
+    });
+  });
+
+  it('installs the gateway on a lone go-http once a project is linked, with no --reapply', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    const apiDir = path.join(cwd, 'api');
+    const appDir = path.join(cwd, 'app');
+    for (const [dir, stack] of [
+      [apiDir, 'go-http'],
+      [appDir, 'web-components'],
+    ] as const) {
+      await fs.ensureDir(dir);
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({ cwd: dir, stack, answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+    }
+    const gateway = () =>
+      mediator.dispatch(
+        addVerticalCommand({
+          cwd: apiDir,
+          verticals: ['gateway'],
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      );
+    const card = async () =>
+      expectOk(await mediator.dispatch(projectStatusQuery({ cwd: apiDir }))).available.find(
+        (v) => v.id === 'gateway',
+      );
+
+    // Alone, it is refused, and nothing is recorded that would stand in
+    // the way later.
+    expect((await card())?.readiness).toBe('unavailable');
+    expect(expectErr(await gateway()).code).toBe('keel.uncoverable-vertical');
+
+    expectOk(await mediator.dispatch(linkPeerCommand({ cwd: apiDir, ref: '../app' })));
+    expect(await card()).toMatchObject({ readiness: 'ready', requires: [] });
+    const report = expectOk(await gateway());
+    expect(report.changes.length).toBeGreaterThan(0);
+    const manifest = await fsManifestStore.read(projectScopeRoot(apiDir));
+    expect(manifest?.verticals.map((v) => v.id)).toContain('gateway');
   });
 
   it('link refuses an uninitialised peer', async () => {

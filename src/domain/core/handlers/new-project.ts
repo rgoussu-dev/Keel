@@ -840,6 +840,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       : inputs.stack.verticals;
     const result = await installVerticals({
       verticals: [...own, ...(inputs.extraVerticals ?? [])],
+      // The preset's own rules, held with its verticals' over every
+      // tag the run folds in, as `assemblyIsLegal` held them over the
+      // tags the dials settled.
+      rules: inputs.stack.conflicts ?? [],
       manifest,
       supplied: inputs.command.answers,
       tree,

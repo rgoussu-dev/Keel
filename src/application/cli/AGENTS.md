@@ -22,6 +22,10 @@ no logic.
   `--with` example out of the program, plans it on two stacks and
   holds `docs/cli.md` to it; `persistence,iac` sat in the help,
   refused on every stack, until it did.
+- `keel add --list` inside a project prints `keel.project-status` —
+  one dispatch, the readiness the add front door plans by — never a
+  list of its own; `availableVerticals` is only the catalog it prints
+  where there is no project.
 - A refusal's sentence is the domain's and the same in both phases;
   what to type next is the CLI's. `contract/hint.ts` builds the
   `hint:` line `unwrap` prints under a `RefusalError` from its fields,

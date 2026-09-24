@@ -11,6 +11,14 @@
  * run's harness declarations once — unless the caller supplied the
  * buffer, and finalizes it itself.
  *
+ * After each vertical it holds the run to the assembly rules: every
+ * rule the pieces coming together declare — the verticals it installs,
+ * the ones the project has installed already, and any the caller adds
+ * (a preset's own) — against the tags the vertical just folded in. A
+ * rule its tags newly break refuses the run, naming the rule, before
+ * anything is committed: the front doors plan against the promotions
+ * a vertical *may* add, and this is the check against the ones it did.
+ *
  * `installVertical` installs one of them. Pipeline:
  *   1. `resolveVertical` — predicate match → topo sort → coverage check.
  *   2. For each adapter in order:
@@ -57,9 +65,13 @@ import {
   type ApplyResult,
   type StagedSkill,
 } from './apply.js';
+import { conflictsOf, violatedBy } from './compatibility.js';
+import { brokenRulesRefusal, type RefusalNames } from './refusals.js';
+import { installedVertical } from './registry.js';
 import { resolveVertical } from './resolver.js';
 import type {
   Adapter,
+  Conflict,
   DeferredAction,
   InstalledVertical,
   ManifestEntry,
@@ -161,6 +173,12 @@ export interface InstallVerticalsInputs extends Omit<
    * installs. Absent, none.
    */
   readonly rerender?: readonly string[];
+  /**
+   * Rules of pieces around the run that are none of its verticals —
+   * `keel new` passes its preset's own — held with theirs and the
+   * installed verticals' after every vertical. Absent, none.
+   */
+  readonly rules?: readonly Conflict[];
 }
 
 /**
@@ -181,13 +199,15 @@ export interface InstallVerticalsInputs extends Omit<
 export async function installVerticals(
   inputs: InstallVerticalsInputs,
 ): Promise<InstallVerticalResult> {
-  const { verticals, rerender = [], ...run } = inputs;
+  const { verticals, rerender = [], rules: around = [], ...run } = inputs;
   const owners = inputs.owners ?? newOwnership();
   const harness = inputs.harness ?? [];
   let manifest = inputs.manifest;
   const tagsAdded = new Set<Tag>();
   const actions: DeferredAction[] = [];
   const adapters: Adapter[] = [];
+  const rules = runRules(inputs, around);
+  const broken = new Set(violatedBy(rules, effectiveTags(manifest)).map((rule) => rule.id));
 
   for (const vertical of verticals) {
     const result = await installVertical({
@@ -199,6 +219,8 @@ export async function installVerticals(
       ...(rerender.includes(vertical.id) ? { apply: 'reapply' as const } : {}),
     });
     manifest = result.manifest;
+    const newly = violatedBy(rules, effectiveTags(manifest)).filter((rule) => !broken.has(rule.id));
+    if (newly.length > 0) throw brokenRulesRefusal(namesOf(inputs), vertical, newly);
     for (const tag of result.applyResult.tagsAdded) tagsAdded.add(tag);
     actions.push(...result.applyResult.actions);
     adapters.push(...result.adapters);
@@ -217,6 +239,34 @@ export async function installVerticals(
       ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
     },
     adapters,
+  };
+}
+
+/**
+ * Every rule the pieces of a run declare: its verticals', the
+ * project's installed verticals' — found through the registry, when
+ * the run was handed one — and `around`, the caller's.
+ */
+function runRules(
+  inputs: InstallVerticalsInputs,
+  around: readonly Conflict[],
+): readonly Conflict[] {
+  const registry = inputs.registry;
+  const installed =
+    registry === undefined
+      ? []
+      : inputs.manifest.verticals.flatMap(({ id }) => installedVertical(registry, id) ?? []);
+  return conflictsOf([...installed, ...inputs.verticals, { conflicts: around }]);
+}
+
+/** Where a run's refusal finds a vertical's title: its own verticals, then the registry. */
+function namesOf(inputs: InstallVerticalsInputs): RefusalNames {
+  return {
+    vertical: (id) =>
+      inputs.verticals.find((vertical) => vertical.id === id) ??
+      inputs.registry?.vertical(id) ??
+      null,
+    verticals: () => inputs.registry?.verticals() ?? inputs.verticals,
   };
 }
 

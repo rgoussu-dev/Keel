@@ -183,10 +183,11 @@ export class KeelApp extends HTMLElement {
    * Picking one for the user was defensible when the control was a
    * `<select>`, which has to show something. A card group does not,
    * and the pre-pick was never free: `available` is every registered
-   * vertical not yet installed, coverage not consulted, so whichever
-   * one sorted first could be one this project's shape cannot carry —
-   * and the page opened on a refusal nobody had asked for. An
-   * unanswered question is the honest state, and the plan says so.
+   * vertical not yet installed — the ones this project cannot carry
+   * included, each with its refusal — so whichever one sorted first
+   * could be one of those, and the page opened on a refusal nobody had
+   * asked for. An unanswered question is the honest state, and the
+   * plan says so.
    */
   #defaultAddTarget() {
     return { kind: 'add-vertical', vertical: '' };

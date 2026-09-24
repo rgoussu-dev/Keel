@@ -44,6 +44,7 @@ import { installCommandFor, type NewProjectTarget } from '../../../src/domain/co
 import { catalogQuery, previewQuery } from '../../../src/domain/contract/queries.js';
 import type {
   AnswerBinding,
+  AvailableVerticalDescriptor,
   Catalog,
   DialOptions,
   InstalledVerticalDescriptor,
@@ -102,10 +103,16 @@ const installed = (id: string): InstalledVerticalDescriptor => ({
   installedAt: '2026-04-26T12:00:00Z',
 });
 
+const ready = (id: string): AvailableVerticalDescriptor => ({
+  ...vertical(id),
+  readiness: 'ready',
+  requires: [],
+});
+
 /** A project `keel new` scaffolded: `vcs` is in, `ci` and `dev-env` are not. */
 const status: Pick<ProjectStatus, 'installed' | 'available'> = {
   installed: [installed('vcs'), installed('walking-skeleton')],
-  available: [vertical('ci'), vertical('dev-env')],
+  available: [ready('ci'), ready('dev-env')],
 };
 
 /** The question `ci` asks on a TypeScript project, as a preview binds it. */

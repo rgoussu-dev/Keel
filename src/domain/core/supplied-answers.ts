@@ -38,6 +38,7 @@ import {
   unknownAnswerSentence,
   unknownQuestionSentence,
 } from './refusals.js';
+import { installedVertical } from './registry.js';
 
 /** The code an answer no adapter of the run's plan reads is refused with. */
 export const UNKNOWN_ANSWER_CODE = 'keel.unknown-answer';
@@ -118,17 +119,7 @@ export function strayAnswerRefusal(
  * offers (a product root's glue), among the stacks' own.
  */
 export function installedOwnerOf(registry: Registry, manifest: ManifestV2): InstalledOwner {
-  const installed = manifest.verticals
-    .map(
-      ({ id }) =>
-        registry.vertical(id) ??
-        registry
-          .stacks()
-          .flatMap((stack) => stack.verticals)
-          .find((vertical) => vertical.id === id) ??
-        null,
-    )
-    .filter((vertical): vertical is Vertical => vertical !== null);
+  const installed = manifest.verticals.flatMap(({ id }) => installedVertical(registry, id) ?? []);
   return (adapterId) =>
     installed.find((vertical) => vertical.adapters.some((adapter) => adapter.id === adapterId)) ??
     null;

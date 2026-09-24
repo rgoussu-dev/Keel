@@ -7,17 +7,18 @@
  * **Scenario.** A fixture registry the way a plugin's would be: an
  * image a release builds on, two caches either of which serves a
  * session store, a signer a fat bundle rules out, a vertical selected
- * by a peer's tag alone, and one whose own rule the scope breaks.
+ * by a peer's tag alone, one whose own rule the scope breaks, and one
+ * whose tag breaks that rule from outside.
  *
  * **Factory.** `registryOf`, the one door any piece comes in by.
  *
- * **Port.** `admit`, a pure function; the handlers' own suites drive
- * it through the mediator on the shipped registry.
+ * **Port.** `admit` and `foresee`, pure functions; the handlers' own
+ * suites drive them through the mediator on the shipped registry.
  */
 
 import { describe, expect, it } from 'vitest';
 import type { Adapter, Tag, Vertical } from '../../../src/domain/contract/composition.js';
-import { admissionNotes, admit } from '../../../src/domain/core/plan-refusal.js';
+import { admissionNotes, admit, foresee } from '../../../src/domain/core/plan-refusal.js';
 import type { PlanScope } from '../../../src/domain/core/planner.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
 import { DomainError, type Result } from '../../../src/domain/kernel/result.js';
@@ -78,13 +79,16 @@ const strict = vertical('acme-strict', 'Strict', [adapter('acme-strict', ['lang.
     { id: 'acme-strict/not-loose', when: ['acme.loose'], reason: 'strict will not run loose' },
   ],
 });
+const loosen = vertical('acme-loosen', 'Loosen', [adapter('acme-loosen', ['lang.acme'])], {
+  promotes: ['acme.loose'],
+});
 
 /* ---- Factory ----------------------------------------------------- */
 
 const registry = registryOf([
   {
     origin: pluginOrigin('acme'),
-    verticals: [image, release, deploy, redis, session, fat, sign, bridge, strict],
+    verticals: [image, release, deploy, redis, session, fat, sign, bridge, strict, loosen],
   },
   { origin: pluginOrigin('other'), verticals: [memcached] },
 ]);
@@ -210,5 +214,48 @@ describe('admit', () => {
     expect(error.message).toBe(
       'Fat bundle and Signing cannot be installed together here — each installs on its own, but no order installs them all; drop one',
     );
+  });
+
+  it('refuses a vertical whose tags break a rule of what the scope has, in that rule’s words', () => {
+    const guarded: PlanScope = {
+      tags: ['lang.acme'],
+      installed: ['acme-strict'],
+      rules: strict.conflicts ?? [],
+    };
+    const error = refusal(admit(registry, guarded, [loosen]));
+    expect(error.code).toBe('keel.incompatible');
+    expect(error.message).toBe(
+      "Loosen cannot be installed here: strict will not run loose (rule 'acme-strict/not-loose')",
+    );
+  });
+});
+
+describe('foresee', () => {
+  it('reads one vertical as admit refuses it asked alone: the same code, the same sentence', () => {
+    const cases: readonly [PlanScope, Vertical][] = [
+      [scope(['lang.beta']), image],
+      [scope(), bridge],
+      [scope(['lang.acme', 'acme.loose']), strict],
+      [scope(), session],
+      [{ tags: ['lang.acme'], installed: ['acme-strict'], rules: strict.conflicts ?? [] }, loosen],
+    ];
+    for (const [where, vertical] of cases) {
+      const admitted = refusal(admit(registry, where, [vertical]));
+      const foreseen = foresee(registry, where, vertical).refusal;
+      expect(foreseen?.code).toBe(admitted.code);
+      expect(foreseen?.message).toBe(admitted.message);
+      expect(foreseen?.refusal).toEqual((admitted as RefusalError).refusal);
+    }
+  });
+
+  it('carries no refusal where admit admits: ready alone, or needing others first', () => {
+    expect(foresee(registry, scope(), image)).toEqual({
+      readiness: { kind: 'ready' },
+      refusal: null,
+    });
+    expect(foresee(registry, scope(), deploy)).toEqual({
+      readiness: { kind: 'needs', prerequisites: ['acme-image', 'acme-release'] },
+      refusal: null,
+    });
   });
 });

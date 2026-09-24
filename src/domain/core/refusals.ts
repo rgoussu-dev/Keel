@@ -60,7 +60,7 @@
  * proposes.
  */
 
-import type { Tag, Vertical } from '../contract/composition.js';
+import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { ReadinessGap } from '../contract/queries.js';
 import {
@@ -159,16 +159,21 @@ export function refusalError(refusal: Refusal, code: string, names: RefusalNames
 
 /**
  * The refusal of a vertical the planner reads as unavailable here,
- * from its {@link ReadinessGap}. A gap that is one of the vertical's
- * own rules is refused as that rule (`keel.incompatible`), in its own
- * sentence and under its id; any other as {@link UNCOVERED_CODE}.
+ * from its {@link ReadinessGap}. A gap that is a rule is refused as
+ * that rule (`keel.incompatible`), in its own sentence and under its
+ * id — one of the vertical's own, or one of `rules`, those the pieces
+ * already on the project declare (`PlanScope.rules`), which its tags
+ * would break; any other gap as {@link UNCOVERED_CODE}.
  */
 export function unavailableRefusal(
   names: RefusalNames,
   vertical: Vertical,
   gap: ReadinessGap,
+  rules: readonly Conflict[] = [],
 ): RefusalError {
-  const broken = conflictsOf([vertical]).filter((conflict) => gap.rules.includes(conflict.id));
+  const broken = conflictsOf([vertical, { conflicts: rules }]).filter((conflict) =>
+    gap.rules.includes(conflict.id),
+  );
   const refusal: UnavailableRefusal = {
     kind: 'unavailable',
     vertical: vertical.id,
@@ -192,7 +197,20 @@ export function ruleRefusal(
   tags: readonly Tag[],
 ): RefusalError | null {
   const broken = violatedBy(conflictsOf([vertical]), tags);
-  if (broken.length === 0) return null;
+  return broken.length === 0 ? null : brokenRulesRefusal(names, vertical, broken);
+}
+
+/**
+ * The refusal of `vertical` for `broken`, the rules installing it
+ * breaks — its own, or one a piece already there declares that the
+ * tags it adds trip — each in its own sentence and under its id, as
+ * `keel.incompatible`.
+ */
+export function brokenRulesRefusal(
+  names: RefusalNames,
+  vertical: Vertical,
+  broken: readonly Conflict[],
+): RefusalError {
   return refusalError(
     {
       kind: 'unavailable',

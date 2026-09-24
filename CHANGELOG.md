@@ -14,6 +14,19 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A plugin's rule binds what comes after its piece.** A `Conflict`
+  was read, on a project already on disk, only for the vertical being
+  added and only against the tags the manifest recorded — so a rule an
+  installed vertical declares, broken by a newcomer's tags, went
+  unread, and so did any rule broken by a tag a vertical promotes as it
+  installs, in `keel new` too. Every rule of the pieces coming together
+  now holds over every tag the run would add: such a vertical is
+  unavailable on the project's card and refused by `keel add` and
+  `keel new --with` alike, in the rule's own sentence
+  (`keel.incompatible`), and the install loop holds the rules again
+  after each vertical, before anything is written. No shipped rule is
+  of that kind.
+
 - **`keel ui`'s extras are a control that stays.** They were a
   question the preview asked, and the install stops asking a question
   once it is answered — so the list vanished after the first tick: one
@@ -210,6 +223,17 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`keel add --list` says what `keel add` would do here.** Inside a
+  project it no longer prints the catalog: every vertical not
+  installed is listed under _Ready to add here_, _Ready, with what each
+  needs installed first_ (naming them, or the choice between two sets
+  of them), or _Not for this project_ — in the very sentence
+  `keel add <id>` would refuse it with — then what is installed, and a
+  project from another harness generation is said once, first. It
+  asks the project status the add front door plans by,
+  so the list and the command cannot disagree. Outside a project it
+  prints the catalog, as before.
 
 - **One refusal vocabulary, the same in both phases.** `keel new
 --with v` on a preset and `keel add v` on the project it scaffolds
@@ -440,6 +464,20 @@ new` the terminal adds the way past it (move it aside, or start in
   and refuses a stance leaking across families.
 
 ### Added
+
+- **The project status answers before the click.**
+  `keel.project-status` (`GET /api/project`) gives every vertical not
+  installed its readiness — `ready`, `needs` with what installs first
+  (`requires`), or `unavailable` with the `refusal` `keel add` would
+  give, code, sentence and data exactly as its 422 body carries them —
+  read by the same planner `keel add` plans by, over the project's
+  tags, installed verticals and their rules. The gateway with nothing
+  linked is listed again, as unavailable with its sentence, rather than
+  hidden. The status also reports `harnessGeneration` (the manifest's
+  marker beside the generation this keel writes) once, rather than as
+  the same refusal on every card — `keel ui` says so above the cards —
+  and `moduleRefusal`, why `keel add module` would be refused, whenever
+  `canAddModule` is false. See `docs/ui.md` → The API.
 
 - **Plugin adapters can refuse a file in their way.** `PathConflictError`
   and `PathMissingError` are exported from `@rgoussu.dev/keel/plugin`:

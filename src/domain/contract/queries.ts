@@ -27,6 +27,7 @@ import type { DocsReport, InstallTarget, PresetAnswers } from './commands.js';
 import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
+import type { Refusal } from './refusal.js';
 import type { Tag } from './tags.js';
 
 /* ------------------------------------------------------------------ *
@@ -431,7 +432,11 @@ export interface ReadinessGap {
    * ruled out by what the scope does have.
    */
   readonly identity: readonly Tag[];
-  /** Ids of the vertical's own rules (`Conflict`s) the scope breaks. */
+  /**
+   * Ids of the rules (`Conflict`s) it breaks: its own, against the
+   * scope's tags, and those the scope's pieces declare, against what
+   * installing it would add.
+   */
   readonly rules: readonly string[];
   /**
    * The single-service stacks nearest this scope that carry the
@@ -561,9 +566,74 @@ export interface InstalledVerticalDescriptor extends VerticalDescriptor {
 }
 
 /**
+ * A vertical `keel add` could install here and has not yet — with how
+ * ready it is, read before anything is clicked.
+ *
+ * `readiness` is the planner's (`domain/core/planner.ts`), over this
+ * project's effective tags, what it has installed and the rules those
+ * pieces declare: the reading `keel.dials` offers extras by, and the
+ * one the add front door plans by, through the same function
+ * (`domain/core/add-readiness.ts`). So a card, a menu and a refusal
+ * cannot disagree:
+ *
+ * - `ready` — `keel add <id>` installs it on its own;
+ * - `needs` — `keel add <id>` installs it, and {@link requires} first;
+ * - `unavailable` — `keel add <id>` refuses it, and {@link refusal} is
+ *   what it says.
+ *
+ * The composition grid holds every card to `keel.preview` of its add:
+ * `ready` previews Ok, `needs` previews Ok with its prerequisites in
+ * the plan, and a card carrying a refusal previews as that refusal,
+ * code and sentence.
+ */
+export interface AvailableVerticalDescriptor extends VerticalDescriptor {
+  readonly readiness: 'ready' | 'needs' | 'unavailable';
+  /**
+   * Vertical ids `keel add <id>` installs first, in the order they
+   * install. Empty unless `needs`, and empty for a `needs` that two
+   * sets of prerequisites would each satisfy: choosing between them is
+   * the user's, and {@link refusal} says so.
+   */
+  readonly requires: readonly string[];
+  /**
+   * What `keel add <id>` would answer, word for word: on every
+   * `unavailable` card, and on a `needs` whose prerequisites are tied
+   * — the one `needs` the front door refuses. Absent where the add is
+   * accepted.
+   */
+  readonly refusal?: RefusalDescriptor;
+}
+
+/**
+ * A refusal reported ahead of the command it would stop: the error
+ * that command returns, as data — its stable code, its sentence, and,
+ * for a refusal the engine raises as data, the {@link Refusal} the
+ * sentence was written from (the fields a 422 body carries as
+ * `error.refusal`).
+ */
+export interface RefusalDescriptor {
+  readonly code: string;
+  readonly message: string;
+  readonly refusal?: Refusal;
+}
+
+/**
+ * The harness generation a project was written at, beside the one
+ * this keel writes. @see ProjectStatus.harnessGeneration
+ */
+export interface HarnessGenerationStatus {
+  /** The manifest's marker; null when it carries none (a manifest older than the marker). */
+  readonly found: number | null;
+  /** The generation this keel writes. */
+  readonly expected: number;
+}
+
+/**
  * What a directory holds, as far as keel is concerned: whether it is
  * a keel project at all and, if so, which of the brownfield commands
- * apply to it.
+ * apply to it — each answer computed by the function the command's
+ * own front door refuses by, so a front end can say what a command
+ * would do before it is run.
  */
 export interface ProjectStatus {
   /** The scope root inspected, i.e. `<cwd>/.claude`. */
@@ -572,8 +642,15 @@ export interface ProjectStatus {
   readonly initialised: boolean;
   readonly tags: readonly Tag[];
   readonly installed: readonly InstalledVerticalDescriptor[];
-  /** Registered verticals not yet installed here. */
-  readonly available: readonly VerticalDescriptor[];
+  /**
+   * Every registered vertical not installed here, each with how ready
+   * it is and, where `keel add` would refuse it, the refusal — one
+   * this project cannot carry included, so what it cannot carry is
+   * said before the click rather than after it. The harness-generation
+   * gate is left out: it refuses every card alike, so it is reported
+   * once, in {@link harnessGeneration}.
+   */
+  readonly available: readonly AvailableVerticalDescriptor[];
   readonly modules: readonly InstalledModule[];
   /** Services, when this is a composite product root. */
   readonly services: readonly ServiceRef[];
@@ -586,6 +663,24 @@ export interface ProjectStatus {
    * action that is going to be refused.
    */
   readonly canAddModule: boolean;
+  /**
+   * Why `keel add module` would be refused before it reads a name: the
+   * refusal its front door gives for the first of those gates this
+   * project fails (not a keel project, a product root, the flat
+   * layout, no context adapter for this stack). Present exactly when
+   * {@link canAddModule} is false, so a front end can say why the
+   * control is off rather than only that it is.
+   */
+  readonly moduleRefusal?: RefusalDescriptor;
+  /**
+   * The harness generation the manifest was stamped at, and the one
+   * this keel writes. Where they differ, `keel add` refuses every
+   * vertical but `agent-harness` — and `keel add module` — until the
+   * harness is brought forward: one fact, reported once here rather
+   * than as the same refusal on every card. Absent when the directory
+   * is not a keel project.
+   */
+  readonly harnessGeneration?: HarnessGenerationStatus;
 }
 
 /** Reports what keel knows about the project rooted at `cwd`. */

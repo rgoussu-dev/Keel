@@ -306,13 +306,39 @@ verticals that would each supply what one needs
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-y, --yes`       | Non-interactive — defaults for every question.                                                                                               |
 | `--dry-run`       | Print the plan; write nothing.                                                                                                               |
-| `--list`          | List every vertical id with its one-line description, then exit.                                                                             |
+| `--list`          | List the verticals and what `keel add` would do with each here — ready, with what it needs first, or why not — then exit.                    |
 | `--reapply`       | Re-render installed verticals from their recorded answers.                                                                                   |
 | `--refresh <ids>` | Installed verticals to re-render in the same run, comma-separated — the ones the run proposes refreshing. See below.                         |
 | `--set <k=v>`     | Preset an answer for a vertical being added (same shape as `keel new`). A re-rendered adapter's recorded answers cannot be changed this way. |
 
-`keel add --list` needs no existing project — it just prints the
-catalog.
+`keel add --list` reads the project it runs in and says, for every
+vertical not installed, what `keel add <id>` would do — before you run
+it. It asks the same question the add itself asks
+(`keel.project-status`, one dispatch), so the list and the command
+cannot disagree:
+
+```
+$ keel add --list          # in a go-http project
+Ready to add here:
+  ci                Continuous integration — The pipeline every push has to pass: …
+  containerization  Container image — A runtime image for the service: …
+Ready, with what each needs installed first:
+  distribution      Distribution, after containerization — The release path on a tag push: …
+  iac               Infrastructure as code, after containerization, distribution — Where this project runs — …
+Not for this project:
+  gateway           Service gateway wires linked projects, and no linked project serves it here — link one that does first
+Installed: vcs, walking-skeleton, agent-harness, … — 'keel add <id> --reapply' re-renders one
+```
+
+A refusal is printed in the words `keel add <id>` would refuse it
+with. A vertical that two sets of prerequisites would each serve is
+refused until you name one, but it is listed with the verticals that
+need something first, in the sentence that names the choice. A project
+from another harness generation — which `keel add` refuses everything
+but `agent-harness` on until it is brought forward — is said once,
+first, rather than on every line. Outside a keel project there is
+nothing to ask about, and it prints the catalog: every id with its
+one-line description.
 
 Adding a vertical that is already installed is not an error: there
 is nothing to install, so the plan is empty, the project is left as

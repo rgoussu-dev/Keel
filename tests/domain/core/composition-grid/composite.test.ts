@@ -14,9 +14,13 @@
  *   - **Nothing throws** (I1). Under the monorepo layout the root
  *     writes each service's image files without telling the service,
  *     which is where a collision surfaces as a crash.
- *   - **A card that is offered works** (I4, counted), at the root and
- *     in every service: a vertical `keel.project-status` lists as
- *     available there should preview Ok.
+ *   - **A card says what the click will do** (I4), at the root and in
+ *     every service that is a keel project: every vertical is
+ *     installed there or a `keel.project-status` card, and the card
+ *     agrees with the preview of its add — `ready` Ok, `needs` Ok with
+ *     its prerequisites in the plan, a refusal the add's own, code and
+ *     sentence. A polyrepo product's root is no project at all, and
+ *     shows no cards.
  *
  * Holds I6 over every refusal on the way. I7 — every service cell Ok
  * or a scope-aware refusal — reads these same cells, and lands with
@@ -32,7 +36,14 @@ import {
   previewQuery,
   projectStatusQuery,
 } from '../../../../src/domain/contract/queries.js';
-import { OK, eachStack, settle, sweepGrid, type Grid } from '../../../support/composition-grid.js';
+import {
+  OK,
+  eachStack,
+  holdCard,
+  settle,
+  sweepGrid,
+  type Grid,
+} from '../../../support/composition-grid.js';
 
 describe('composition grid: composite', () => {
   sweepGrid({
@@ -61,7 +72,6 @@ describe('composition grid: composite', () => {
           ];
           for (const { scope, dir } of scopes) {
             const status = await grid.read(projectStatusQuery({ cwd: dir }));
-            const available = new Set(status.available.map((vertical) => vertical.id));
             for (const vertical of verticals) {
               const cell = `add:${scope}+${vertical}`;
               const outcome = await grid.cell(
@@ -72,7 +82,7 @@ describe('composition grid: composite', () => {
                   answers: {},
                 }),
               );
-              if (available.has(vertical) && outcome.verdict !== OK) grid.violate('I4', cell);
+              if (status.initialised) await holdCard(grid, cell, status, vertical, dir, outcome);
             }
           }
         }

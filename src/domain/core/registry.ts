@@ -334,6 +334,24 @@ export function verticalTitle(vertical: Vertical): string {
   return spelled.charAt(0).toUpperCase() + spelled.slice(1);
 }
 
+/**
+ * The vertical an id a manifest records as installed names: the one
+ * registered under it, or — for a stack's own vertical no source
+ * registers on its own, a product's glue — the one a stack carries.
+ * Null when neither knows it: a vertical from a plugin no longer
+ * loaded, or one this keel has since renamed.
+ */
+export function installedVertical(registry: Registry, id: string): Vertical | null {
+  return (
+    registry.vertical(id) ??
+    registry
+      .stacks()
+      .flatMap((stack) => stack.verticals)
+      .find((vertical) => vertical.id === id) ??
+    null
+  );
+}
+
 /** Registered stack ids in deterministic order. */
 export function listStackIds(registry: Registry): readonly string[] {
   return registry

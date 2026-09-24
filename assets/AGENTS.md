@@ -23,8 +23,10 @@ it compiled.
   which dials a new preset carries, what the line under the preset
   picker says a move could not keep, and which boxes an "Also
   scaffold" tick moves (`toggleExtra`: a tick brings what the vertical
-  needs, an untick takes what needs it) — and `src/extras.js` sorts
-  that group into its parts from the `keel.dials` reply.
+  needs, an untick takes what needs it) — `src/extras.js` sorts
+  that group into its parts from the `keel.dials` reply, and
+  `src/project.js` says what the project status reports once for every
+  card (a harness from another generation).
   All pure, all unit-tested without a browser. Linted with `src` and
   `tests`, unlike the ejs template trees.
 

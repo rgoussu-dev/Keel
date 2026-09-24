@@ -30,10 +30,11 @@
  */
 
 import { err, ok, type Result } from '../kernel/result.js';
-import type { Vertical } from '../contract/composition.js';
+import type { Conflict, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
+import type { Readiness } from '../contract/queries.js';
 import type { RefusalError } from '../contract/refusal.js';
-import { plan, type Plan, type PlanScope, type PlannedVertical } from './planner.js';
+import { plan, readiness, type Plan, type PlanScope, type PlannedVertical } from './planner.js';
 import {
   addedPrerequisitesNote,
   dependencyOrderNote,
@@ -127,20 +128,72 @@ export function admit(
     case 'unknown':
       throw new Error(`admit: '${planned.vertical}' is not registered — refuse it before planning`);
     default:
-      return err(planRefusal(registry, set, planned));
+      return err(planRefusal(registry, set, planned, scope.rules));
+  }
+}
+
+/** {@link foresee}'s answer: the planner's readiness, and the refusal it earns. */
+export interface Foreseen {
+  readonly readiness: Readiness;
+  /**
+   * What {@link admit} refuses the vertical with, asked alone: set on
+   * `unavailable`, and on a `needs` whose prerequisites are tied;
+   * null wherever it is admitted.
+   */
+  readonly refusal: RefusalError | null;
+}
+
+/**
+ * How ready `vertical` is on `scope`, with the refusal a front door
+ * would give it — the planner's {@link readiness}, worded as
+ * {@link admit} words the plan of that one vertical, so a card or a
+ * menu read ahead of time and the refusal met on the click are one
+ * sentence under one code. `vertical` is registered and not on the
+ * scope already.
+ */
+export function foresee(registry: Registry, scope: PlanScope, vertical: Vertical): Foreseen {
+  const ready = readiness(registry, scope, vertical.id);
+  switch (ready.kind) {
+    case 'unavailable':
+      return {
+        readiness: ready,
+        refusal: planRefusal(
+          registry,
+          [vertical],
+          { kind: 'unavailable', vertical: vertical.id, gap: ready.gap },
+          scope.rules,
+        ),
+      };
+    case 'needs':
+      return {
+        readiness: ready,
+        refusal:
+          ready.alternatives === undefined
+            ? null
+            : planRefusal(
+                registry,
+                [vertical],
+                { kind: 'tied', closures: [ready.prerequisites, ...ready.alternatives] },
+                scope.rules,
+              ),
+      };
+    default:
+      return { readiness: ready, refusal: null };
   }
 }
 
 /**
  * The refusal a plan that is not `planned` is written as, for
- * `requested` — the set it was asked of, by id. What `keel.dials` drops
- * an extra with too, so a page's reason and a front door's refusal are
- * one sentence.
+ * `requested` — the set it was asked of, by id — on a scope whose
+ * pieces declare `rules` (`PlanScope.rules`), which a gap may name.
+ * What `keel.dials` drops an extra with too, so a page's reason and a
+ * front door's refusal are one sentence.
  */
 export function planRefusal(
   registry: Registry,
   requested: readonly Vertical[],
   planned: Exclude<Plan, { readonly kind: 'planned' } | { readonly kind: 'unknown' }>,
+  rules: readonly Conflict[] = [],
 ): RefusalError {
   const byId = (id: string): Vertical => {
     const found = registry.vertical(id);
@@ -151,7 +204,7 @@ export function planRefusal(
   };
   switch (planned.kind) {
     case 'unavailable':
-      return unavailableRefusal(registry, byId(planned.vertical), planned.gap);
+      return unavailableRefusal(registry, byId(planned.vertical), planned.gap, rules);
     case 'tied':
       return tiedRefusal(
         registry,

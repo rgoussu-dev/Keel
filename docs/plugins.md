@@ -298,7 +298,12 @@ A plugin's `Conflict` is read exactly as a shipped piece's:
 [once to refuse an assembly, once to keep the choice off the
 menu](composition.md#conflicts). Declare it on the piece whose
 capability is constrained — the vertical, or the stack whose
-combination of dials is — never centrally.
+combination of dials is — never centrally. It binds whatever comes
+after its piece, too: a vertical whose tags would break a rule an
+installed vertical declares is read as unavailable on that project's
+card, refused by `keel add` in the rule's own sentence, and — should a
+tag slip past the plan — refused by the install loop once it is
+folded in, before anything is written.
 
 ### Answer choices
 

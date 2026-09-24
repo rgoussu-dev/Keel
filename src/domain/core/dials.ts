@@ -162,13 +162,15 @@ export function peerContextOffered(
 /**
  * The scope a preset's extras are planned onto, before anything is
  * written: the tags its dials settled plus what its own verticals
- * promote on the way past ({@link seedFor}), and its own verticals as
- * already there.
+ * promote on the way past ({@link seedFor}), its own verticals as
+ * already there, and the rules the preset and they declare — which an
+ * extra's tags must not break.
  */
 export function presetScope(stack: Stack, tags: readonly Tag[]): PlanScope {
   return {
     tags: seedFor(stack, tags),
     installed: stack.verticals.map((vertical) => vertical.id),
+    rules: conflictsOf(piecesOf(stack)),
   };
 }
 
@@ -265,7 +267,7 @@ export function snapExtras(
     const tried = plan(registry, scope, [...kept, vertical.id]);
     if (tried.kind === 'planned') kept.push(vertical.id);
     else if (tried.kind === 'tied' && retry) tied.push(vertical);
-    else drop(vertical.id, refusalOf(registry, vertical, tried));
+    else drop(vertical.id, refusalOf(registry, scope, vertical, tried));
   };
   for (const vertical of candidates) keep(vertical, true);
   for (const vertical of tied) keep(vertical, false);
@@ -291,14 +293,14 @@ export function snapExtras(
  * plan that refused it — the refusal a front door would give it
  * (`./plan-refusal.ts`), word for word.
  */
-function refusalOf(registry: Registry, vertical: Vertical, tried: Plan): string {
+function refusalOf(registry: Registry, scope: PlanScope, vertical: Vertical, tried: Plan): string {
   switch (tried.kind) {
     case 'unknown':
       return `no vertical '${tried.vertical}' is registered`;
     case 'planned':
       throw new Error(`refusalOf: '${vertical.id}' planned`);
     default:
-      return planRefusal(registry, [vertical], tried).message;
+      return planRefusal(registry, [vertical], tried, scope.rules).message;
   }
 }
 

@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`compatibility`, `planner`, `plan-refusal`, `dials`, `answers`, `supplied-answers`,
+`compatibility`, `planner`, `plan-refusal`, `add-readiness`, `dials`, `answers`, `supplied-answers`,
 `apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
@@ -56,7 +56,12 @@ ends), `keel.dials`' snap of a page's extras to their closure, and both
 front doors through `plan-refusal.ts` (both set a vertical already
 there aside with a note — never a refusal — install the rest closed
 over its prerequisites, in plan order, and refuse an unavailable
-vertical or a tie, before a file moves); after a `keel add`,
+vertical or a tie, before a file moves), and the brownfield cards
+(`keel.project-status`, `keel add --list`) through `add-readiness.ts`,
+which composes the add front door's own pieces — the product-root
+redirect, then the planner over the project's tags, installed
+verticals and their rules — so a card carries the refusal the click
+would get, word for word (grid I4); after a `keel add`,
 `refreshProposals` names the installed verticals the run changed and
 did not re-render — proposed, never done. A new surface asks it too, rather
 than re-deriving readiness from `coversFor` or a `promotes` union —

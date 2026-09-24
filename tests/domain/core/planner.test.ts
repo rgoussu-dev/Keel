@@ -483,6 +483,28 @@ describe('plan', () => {
     expect(order(['acme-enrich', 'acme-report'])).toEqual(['acme-enrich', 'acme-report']);
   });
 
+  it('holds what a plan adds to the rules of what the scope has installed', () => {
+    const guarded: PlanScope = {
+      tags: ACME.tags,
+      installed: ['acme-strict'],
+      rules: strict.conflicts ?? [],
+    };
+    expect(readiness(registry, ACME, 'acme-loosen')).toEqual({ kind: 'ready' });
+    const ready = readiness(registry, guarded, 'acme-loosen');
+    expect(ready.kind).toBe('unavailable');
+    expect(ready.kind === 'unavailable' ? ready.gap.rules : null).toEqual([
+      'acme-strict/not-loose',
+    ]);
+    expect(plan(registry, guarded, ['acme-loosen'])).toMatchObject({
+      kind: 'unavailable',
+      vertical: 'acme-loosen',
+    });
+    // A rule the scope breaks already is the scope's to answer for, not
+    // what comes next: the menu over a broken assembly still answers.
+    const broken: PlanScope = { ...guarded, tags: [...ACME.tags, 'acme.loose'] };
+    expect(readiness(registry, broken, 'acme-image')).toEqual({ kind: 'ready' });
+  });
+
   it('takes back a step whose tags break a rule of a vertical placed before it', () => {
     expect(readiness(registry, ACME, 'acme-strict')).toEqual({ kind: 'ready' });
     expect(plan(registry, ACME, ['acme-strict', 'acme-loosen'])).toEqual({
