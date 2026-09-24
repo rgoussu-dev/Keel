@@ -8,7 +8,8 @@
  *        a. resolve its questions against its sticky memory — the
  *           running manifest's answers, overlaid by the ones supplied
  *           for this run that are keyed to it or to a sibling it
- *           borrows from — or prompt / default;
+ *           borrows from — or prompt / default, each question offering
+ *           only the choices whose predicate the running tags match;
  *        b. fold the resolved answers and any tags promoted by
  *           prior adapters into a *running manifest snapshot* —
  *           every subsequent adapter's `ctx.manifest` reflects this
@@ -69,7 +70,8 @@ export interface InstallVerticalInputs {
    * it or to a {@link Adapter.sharesAnswersWith} sibling, over its
    * recorded memory, and records what it resolved — so an answer no
    * adapter here reads is written nowhere. Supplied values are held to
-   * their question's choices; recorded ones are not. Absent, none.
+   * the choices their question offers this scope; recorded ones are
+   * not. Absent, none.
    */
   readonly supplied?: PresetAnswers;
   readonly tree: Tree;
@@ -130,12 +132,14 @@ export async function installVertical(
   let skipped = 0;
 
   for (const adapter of ordered) {
-    const stored = memoryOf(running, inputs.supplied ?? {}, adapter);
+    const tags = effectiveTags(running);
+    const stored = memoryOf(running, inputs.supplied ?? {}, adapter, tags);
     const resolution = await resolveAdapterAnswers(
       adapter,
       stored,
       inputs.mode,
       inputs.prompt,
+      tags,
       inputs.harnessOnly === true,
     );
 
@@ -316,25 +320,34 @@ function memoryOf(
   manifest: ManifestV2,
   supplied: PresetAnswers,
   adapter: Adapter,
+  tags: readonly Tag[],
 ): Record<string, string> {
   const memory: Record<string, string> = {};
   for (const id of [...(adapter.sharesAnswersWith ?? []), adapter.id]) {
-    Object.assign(memory, manifest.answers[id] ?? {}, suppliedTo(adapter, id, supplied[id] ?? {}));
+    Object.assign(
+      memory,
+      manifest.answers[id] ?? {},
+      suppliedTo(adapter, id, supplied[id] ?? {}, tags),
+    );
   }
   return memory;
 }
 
-/** The answers supplied under `id` that `adapter` asks for, each held to its choices. */
+/**
+ * The answers supplied under `id` that `adapter` asks for, each held
+ * to the choices its question offers a scope with `tags`.
+ */
 function suppliedTo(
   adapter: Adapter,
   id: string,
   byQuestion: Readonly<Record<string, string>>,
+  tags: readonly Tag[],
 ): Record<string, string> {
   const taken: Record<string, string> = {};
   for (const question of adapter.questions ?? []) {
     const value = byQuestion[question.id];
     if (value === undefined) continue;
-    checkSuppliedAnswer(question, value, id);
+    checkSuppliedAnswer(question, value, id, tags);
     taken[question.id] = value;
   }
   return taken;

@@ -44,8 +44,11 @@ every dial at once — so the three answers cannot disagree. A branch in a
 handler gets only the first, which is how `--with-peer-context` came to
 be offered under the flat layout and then rejected. The menu filters
 live in `dials.ts` and both front ends call them; a copy in a page is
-the same defect one layer out. See `docs/composition.md` → Conflicts and
-`docs/ui.md`.
+the same defect one layer out. An adapter question's choice follows the
+same rule one level down: it carries its own `predicate`, and
+`offeredIn` (`answers.ts`) is the one list the prompt, the preview and
+the supplied-answer check read — never a guard in `contribute()`. See
+`docs/composition.md` → Conflicts and `docs/ui.md`.
 
 **Drill-down.** The stack finder is **shape → language → framework →
 user-side adapters**, widest first, and both front ends walk the same

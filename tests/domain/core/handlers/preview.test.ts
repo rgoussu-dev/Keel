@@ -21,11 +21,11 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Vertical } from '../../../../src/domain/contract/composition.js';
-import { registryOf } from '../../../../src/domain/core/registry.js';
+import { registryOf, shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
-import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { previewQuery } from '../../../../src/domain/contract/queries.js';
-import type { InstallPreview } from '../../../../src/domain/contract/queries.js';
+import { installCommandFor, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { catalogQuery, dialsQuery, previewQuery } from '../../../../src/domain/contract/queries.js';
+import type { InstallPreview, PendingQuestion } from '../../../../src/domain/contract/queries.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 
@@ -395,16 +395,6 @@ describe('keel.preview — refusals from inside an adapter', () => {
     expect(error.message).not.toContain('keel add');
   });
 
-  it('refuses a listed engine this stack cannot serve as an unsupported answer', async () => {
-    const error = expectErr(
-      await previewGoHttp(['persistence'], {
-        'persistence/database-compose': { engine: 'mariadb' },
-      }),
-    );
-    expect(error.code).toBe('keel.unsupported-answer');
-    expect(error.message).toContain("Pick 'postgres'");
-  });
-
   it('refuses a value the question does not list as an invalid answer', async () => {
     const error = expectErr(
       await previewGoHttp(['persistence'], {
@@ -413,5 +403,136 @@ describe('keel.preview — refusals from inside an adapter', () => {
     );
     expect(error.code).toBe('keel.invalid-answer');
     expect(error.message).toContain('persistence/database-compose:engine');
+  });
+});
+
+/**
+ * A choice declares where it applies (`QuestionChoice.predicate`), and
+ * the preview offers it exactly there — the list a form renders, and
+ * the list a posted answer is held to, are one list. Before, the
+ * persistence dials offered `mariadb` and `liquibase` everywhere, and a
+ * guard deep in the install refused the stacks that could not serve
+ * them: a choice the page offered, answered with a refusal.
+ */
+describe('keel.preview — a choice is offered where it is taken', () => {
+  const DIALS = 'persistence/database-compose';
+
+  const previewPersistence = (stack: string, answers: Record<string, string> = {}) =>
+    installMediator().dispatch(
+      previewQuery({
+        cwd,
+        target: { kind: 'new-project', stack, extraVerticals: ['persistence'] },
+        answers: Object.keys(answers).length === 0 ? {} : { [DIALS]: answers },
+      }),
+    );
+
+  const offered = (preview: InstallPreview, question: string): readonly string[] =>
+    (
+      preview.questions.find(
+        (pending) =>
+          pending.binding.kind === 'answer' &&
+          pending.binding.adapter === DIALS &&
+          pending.binding.question === question,
+      )?.choices ?? []
+    ).map((choice) => choice.value);
+
+  it('does not offer mariadb on go-http, and refuses it supplied as an invalid answer', async () => {
+    const preview = expectOk(await previewPersistence('go-http'));
+    expect(offered(preview, 'engine')).toEqual(['postgres']);
+    expect(offered(preview, 'migrations')).toEqual(['flyway', 'liquibase']);
+
+    const error = expectErr(await previewPersistence('go-http', { engine: 'mariadb' }));
+    expect(error.code).toBe('keel.invalid-answer');
+    expect(error.message).toBe(
+      "'mariadb' is not a choice for persistence/database-compose:engine; choices: postgres",
+    );
+  });
+
+  it('offers mariadb on a JVM stack, and not liquibase', async () => {
+    const preview = expectOk(await previewPersistence('quarkus-rest'));
+    expect(offered(preview, 'engine')).toEqual(['postgres', 'mariadb']);
+    expect(offered(preview, 'migrations')).toEqual(['flyway']);
+    // The list arrives applied: no choice carries its predicate, and so
+    // no tag, to the page.
+    expect(
+      preview.questions.flatMap((pending) => pending.choices ?? []).filter((c) => 'predicate' in c),
+    ).toEqual([]);
+
+    const error = expectErr(await previewPersistence('quarkus-rest', { migrations: 'liquibase' }));
+    expect(error.code).toBe('keel.invalid-answer');
+  });
+
+  it('takes every persistence choice a stack is offered, and refuses every one it is not', async () => {
+    // The class the default-answer grid cannot see: it posts no
+    // answers. Every stack whose menu offers persistence, every choice
+    // the dials declare — offered must preview and install Ok, hidden
+    // must be refused by both as outside the choices, never deeper in
+    // the install. The preview holds a posted answer to the list at
+    // the prompt, the install holds a `--set` to it where the answer
+    // reaches its adapter: two doors, one list.
+    const mediator = installMediator();
+    // Defaults are left out: the preview posting no answers resolves
+    // to them, and it must be Ok for the stack to be swept at all.
+    const declared = (shippedRegistry.vertical('persistence')?.adapters ?? []).flatMap((adapter) =>
+      (adapter.questions ?? []).flatMap((question) =>
+        (question.choices ?? [])
+          .filter((choice) => choice.value !== question.default)
+          .map((choice) => ({ adapter: adapter.id, question: question.id, value: choice.value })),
+      ),
+    );
+    expect(declared.length).toBeGreaterThan(0);
+    const verdicts: Record<string, string> = {};
+    const hidden: string[] = [];
+    const catalog = expectOk(await mediator.dispatch(catalogQuery()));
+    // Stacks share nothing, and dry runs write nothing, so they overlap.
+    await Promise.all(
+      catalog.stacks.map(async ({ id: stack }) => {
+        const dials = expectOk(
+          await mediator.dispatch(dialsQuery({ target: { kind: 'new-project', stack } })),
+        );
+        if (!dials.extraVerticals.some((extra) => extra.id === 'persistence')) return;
+        if (dials.target.kind !== 'new-project') throw new Error(`${stack} settled elsewhere`);
+        const target = { ...dials.target, extraVerticals: ['persistence'] };
+        const asked = expectOk(
+          await mediator.dispatch(previewQuery({ cwd, target, answers: {} })),
+        ).questions;
+        for (const choice of declared) {
+          const pending = asked.find(
+            (question: PendingQuestion) =>
+              question.binding.kind === 'answer' &&
+              question.binding.adapter === choice.adapter &&
+              question.binding.question === choice.question,
+          );
+          if (pending === undefined) continue;
+          const key = `${stack} ${choice.question}=${choice.value}`;
+          const shown = (pending.choices ?? []).some((c) => c.value === choice.value);
+          if (!shown) hidden.push(key);
+          const answers = { [choice.adapter]: { [choice.question]: choice.value } };
+          const results = [
+            await mediator.dispatch(previewQuery({ cwd, target, answers })),
+            await mediator.dispatch(
+              installCommandFor(target, { cwd, answers, interactive: false, dryRun: true }),
+            ),
+          ];
+          const [previewed, installed] = results.map((result) =>
+            result.ok ? 'ok' : result.error.code,
+          );
+          const expected = shown ? 'ok' : 'keel.invalid-answer';
+          verdicts[key] =
+            previewed === expected && installed === expected
+              ? 'as offered'
+              : `${shown ? 'offered' : 'not offered'}, yet preview ${previewed}, install ${installed}`;
+        }
+      }),
+    );
+    // Both halves of the class, so neither can pass by sweeping nothing
+    // — or by offering everything everywhere.
+    expect(hidden).toEqual(
+      expect.arrayContaining(['go-http engine=mariadb', 'quarkus-rest migrations=liquibase']),
+    );
+    expect(Object.keys(verdicts)).toEqual(
+      expect.arrayContaining(['quarkus-rest engine=mariadb', 'go-http migrations=liquibase']),
+    );
+    expect(Object.entries(verdicts).filter(([, verdict]) => verdict !== 'as offered')).toEqual([]);
   });
 });

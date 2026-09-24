@@ -44,8 +44,8 @@ export interface FileDiff {
  * question with it (`Adapter.sharesAnswersWith`), and is recorded only
  * by the adapter that read it. An install refuses a key no adapter of
  * its plan reads (`keel.unknown-answer`), one for an installed
- * vertical's adapter (`keel.frozen-answer`), and a value outside its
- * question's choices (`keel.invalid-answer`).
+ * vertical's adapter (`keel.frozen-answer`), and a value outside the
+ * choices its question offers the project (`keel.invalid-answer`).
  */
 export type PresetAnswers = Readonly<Record<string, Readonly<Record<string, string>>>>;
 

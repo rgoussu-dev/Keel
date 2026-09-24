@@ -27,6 +27,18 @@ The single composable unit. Each adapter declares:
 - a `contribute()` function returning files, patches, deferred
   actions, [skills](#harness-contributions), and tags to add.
 
+A question's **choices** may carry a `predicate` of their own, in the
+same grammar, when only some projects can take them: the persistence
+engine's `mariadb` requires `runtime.jvm`, and the migrations tool's
+`liquibase` excludes it. A choice is offered exactly where its
+predicate matches the tags of the project being asked — the terminal
+prompt and `keel.preview` list only those, and a `--set` or an install
+body naming another is refused as outside the question's choices
+(`keel.invalid-answer`) before anything is written. One function
+computes that list (`offeredIn`, in `domain/core/answers.ts`), so what
+is offered and what is taken cannot disagree. A choice without a
+predicate is offered wherever its adapter runs.
+
 > Naming note: a _composition adapter_ (`git-init`,
 > `quarkus-cli-bootstrap`, …) is keel **domain content** — a unit
 > contributing files to a scaffolded project — not a hexagonal adapter

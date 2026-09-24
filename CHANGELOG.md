@@ -98,17 +98,15 @@ use to keep a long-lived changelog scannable — and the root keeps
   still reset on a preset move. The catalog's language nodes
   (`Catalog.finder`) gain `runtime`, which is what the page compares.
 
-- **Distribution without an image, and an answer a stack cannot
-  take, are refusals rather than crashes.** `distribution` on a
-  server-shaped project with no container image yet threw a plain
-  error — a 500 in `keel ui` — whose sentence told a `keel new` user
-  to run `keel add containerization`. It is now refused as
-  `keel.missing-prerequisites`, with a sentence that holds in both
-  commands: add `containerization` as well, ahead of `distribution`.
-  The persistence dial guards (`mariadb` off the JVM, `liquibase` on
-  it) are refused as `keel.unsupported-answer`, keeping their
-  sentences, and an answer a prompt hands back — the page's preview, a
-  terminal — that is none of its question's choices as
+- **Distribution without an image, and an answer outside its
+  question's choices, are refusals rather than crashes.**
+  `distribution` on a server-shaped project with no container image
+  yet threw a plain error — a 500 in `keel ui` — whose sentence told a
+  `keel new` user to run `keel add containerization`. It is now
+  refused as `keel.missing-prerequisites`, with a sentence that holds
+  in both commands: add `containerization` as well, ahead of
+  `distribution`. An answer a prompt hands back — the page's preview,
+  a terminal — that is none of its question's choices is refused as
   `keel.invalid-answer`, naming the `adapterId:questionId` it was for.
   A default outside its own choices is an adapter bug and still
   throws. Scripts matching the distribution refusal's old text should
@@ -182,6 +180,23 @@ use to keep a long-lived changelog scannable — and the root keeps
   today's choices, so `--reapply` is unaffected. `keel ui` drops an
   answer once its preview stops asking for it, so an extra unticked
   after its question was answered no longer posts that answer.
+
+- **A persistence choice a stack cannot serve is no longer offered.**
+  The `engine` and `migrations` dials offered `mariadb` and
+  `liquibase` on every HTTP stack, and an install deep in
+  `persistence` then threw on the ones that could not serve them —
+  `mariadb` off the JVM, whose Go/Rust/TS drivers speak only
+  PostgreSQL, and `liquibase` on it, whose dev/test replay is
+  Flyway-wired: a choice the prompt and `keel ui` listed, answered with
+  a crash (a 500 in the page). Each choice now declares where it
+  applies, and a stack is offered only the ones it can serve —
+  `go-http`'s engines are `postgres`, a JVM stack's migrations tools
+  `flyway`. A `--set` or an install body naming another is refused as
+  `keel.invalid-answer` ("choices: postgres") before anything is
+  written. Plugin authors get the same field: a `QuestionChoice` takes
+  an optional `predicate`, read like an adapter's against the
+  project's tags; a choice without one is offered everywhere, as
+  before.
 
 - **`keel new` asks two more questions**, `changelog` and `commitHook`,
   both sticky and both defaulting to yes (#143). They come before the

@@ -18,10 +18,10 @@
  * Served on the stacks whose emitted dev/test replay is
  * tool-agnostic — Go, Rust and TS apply `migrations/sql/*.sql`
  * directly in their contract tests. The JVM stacks replay through
- * their framework's Flyway integration, so the dial refuses
- * `liquibase` there (the guard lives in `database-compose`); wiring
- * quarkus/spring/micronaut Liquibase replay is a roadmap item. When
- * the dial picks Flyway this adapter contributes nothing.
+ * their framework's Flyway integration, so the dial does not offer
+ * `liquibase` there (the choice's predicate excludes `runtime.jvm`);
+ * wiring quarkus/spring/micronaut Liquibase replay is a roadmap
+ * item. When the dial picks Flyway this adapter contributes nothing.
  */
 
 import { DATABASE_COMPOSE_ID } from './database-compose.js';

@@ -360,16 +360,19 @@ naming the service directories it belongs in.
 
 The refusals an adapter raises while it runs travel the same way:
 distribution on a project with no container image yet
-(`keel.missing-prerequisites`), a listed choice this stack cannot
-serve, such as `mariadb` on `go-http` (`keel.unsupported-answer`), and
-an answer that is none of its question's choices, sent to a preview
-or an install (`keel.invalid-answer`). So do the ones about the
-directory itself: a file keel would write that is already there
-(`keel.path-conflict`) — a hosted repository's `README.md` before a
-new project, your own `Dockerfile` before containerization — and a
-file keel patches that has been deleted (`keel.path-missing`). Each names the file, so the
-live preview shows what is in the way before Review. Each used to be a
-plain throw, and so a 500.
+(`keel.missing-prerequisites`), and an answer that is none of the
+choices its question offers this project, sent to a preview or an
+install (`keel.invalid-answer`). A choice declares where it applies,
+so the preview never lists one the stack cannot serve — `mariadb` is
+not among `go-http`'s engines, nor `liquibase` among a JVM stack's
+migrations tools — and the same list is what a posted answer is held
+to. So do the ones about the directory itself: a file keel would write
+that is already there (`keel.path-conflict`) — a hosted repository's
+`README.md` before a new project, your own `Dockerfile` before
+containerization — and a file keel patches that has been deleted
+(`keel.path-missing`). Each names the file, so the live preview shows
+what is in the way before Review. Each used to be a plain throw, and so
+a 500.
 
 A malformed request is a **400**, a missing or wrong token a **401**,
 and a failed `Host`/`Origin` guard a **403**.

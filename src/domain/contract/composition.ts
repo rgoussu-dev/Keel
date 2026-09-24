@@ -150,6 +150,22 @@ export interface QuestionChoice {
   readonly value: string;
   readonly label: string;
   readonly doc: string;
+  /**
+   * Where the choice applies — the same shape, and the same reading,
+   * as {@link Adapter.predicate}, matched against the tags of the
+   * scope an adapter's question is asked in. Where it does not match,
+   * the choice is not offered: the prompt and the preview leave it
+   * out, and a supplied answer naming it is refused as outside the
+   * question's choices (`keel.invalid-answer`), before anything is
+   * written. Absent, the choice is offered everywhere its adapter runs.
+   *
+   * It is how a choice only some stacks can serve says so —
+   * `mariadb` requires `runtime.jvm` — instead of a check in
+   * `contribute()` refusing what the menu offered. The question's
+   * `default` must be offered wherever its adapter runs: a
+   * non-interactive run resolves to it.
+   */
+  readonly predicate?: Predicate;
 }
 
 /**

@@ -356,6 +356,12 @@ export interface PendingQuestion {
    * reported rather than left to be inferred.
    */
   readonly kind?: 'select' | 'multi-select';
+  /**
+   * The choices the question offers this project — only those whose
+   * `QuestionChoice.predicate` its tags match, the same list an
+   * answer sent back is held to. Each arrives without its predicate,
+   * already applied here.
+   */
   readonly choices?: readonly QuestionChoice[];
   readonly default: string;
   /** What this preview resolved the question to. */

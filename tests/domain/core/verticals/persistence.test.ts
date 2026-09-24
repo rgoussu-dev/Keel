@@ -125,7 +125,11 @@ const installChain = async (
     observability?: boolean;
     /** Install the agent harness after the skeleton, so harness declarations realize. */
     harness?: boolean;
-    /** Sticky answers preset before any install, as `--set` would. */
+    /**
+     * Answers supplied to every install of the chain, as `--set` gives
+     * them: each reaches only the adapter it is keyed to, held to the
+     * choices its question offers these tags.
+     */
     answers?: Record<string, Record<string, string>>;
   } = {},
 ): Promise<{ tree: FsTree; cwd: string; manifest: ManifestV2 }> => {
@@ -135,9 +139,9 @@ const installChain = async (
   let manifest: ManifestV2 = {
     ...emptyManifestV2('2026-08-11T00:00:00Z', '0.0.0-test'),
     tags,
-    answers,
   };
   const deps = {
+    supplied: answers,
     tree,
     mode: 'non-interactive' as const,
     prompt: rejectingPrompt,
@@ -1054,14 +1058,18 @@ describe('the persistence dials (engine + migrations tool)', () => {
     expect(jdbcAdapter).not.toContain('OffsetDateTime');
   });
 
-  it('refuses a non-postgres engine where the driver is postgres-only', async () => {
+  it('does not take a non-postgres engine where the driver is postgres-only', async () => {
+    // `mariadb` declares `runtime.jvm`, so off the JVM it is not one of
+    // the question's choices at all — refused where the answer reaches
+    // the dials' adapter, before it contributes a file.
     await expect(
       installChain(['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'], {
         answers: { [DATABASE_COMPOSE_ID]: { engine: 'mariadb' } },
       }),
     ).rejects.toMatchObject({
-      code: 'keel.unsupported-answer',
-      message: expect.stringMatching(/served on the JVM stacks only.*Pick 'postgres'/),
+      code: 'keel.invalid-answer',
+      message:
+        "'mariadb' is not a choice for persistence/database-compose:engine; choices: postgres",
     });
   });
 
@@ -1099,14 +1107,15 @@ describe('the persistence dials (engine + migrations tool)', () => {
     expect(manifest.answers[DATABASE_COMPOSE_ID]?.['migrations']).toBe('liquibase');
   });
 
-  it('refuses liquibase on a JVM stack, naming the Flyway-wired replay', async () => {
+  it('does not take liquibase on a JVM stack, whose replay is Flyway-wired', async () => {
     await expect(
       installChain([...QUARKUS_JAVA, 'pkg.gradle'], {
         answers: { [DATABASE_COMPOSE_ID]: { migrations: 'liquibase' } },
       }),
     ).rejects.toMatchObject({
-      code: 'keel.unsupported-answer',
-      message: expect.stringMatching(/Flyway integration.*Pick 'flyway'/),
+      code: 'keel.invalid-answer',
+      message:
+        "'liquibase' is not a choice for persistence/database-compose:migrations; choices: flyway",
     });
   });
 

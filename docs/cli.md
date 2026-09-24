@@ -718,7 +718,11 @@ written, and under `--dry-run` alike, a run refuses:
 - under `keel add`, a key for a vertical already installed with
   `keel.frozen-answer`: its answers are frozen, and reconfiguring one
   is not supported yet;
-- a value outside its question's choices with `keel.invalid-answer`.
+- a value outside its question's choices with `keel.invalid-answer` —
+  the choices it offers this project, since a choice may declare where
+  it applies: `persistence/database-compose:engine=mariadb` is taken on
+  a JVM stack and refused on `go-http`, whose driver speaks only
+  PostgreSQL. The prompt offers the same list.
 
 Answers already recorded in a manifest are never held to today's
 choices, so `--reapply` keeps working after a choice is renamed.

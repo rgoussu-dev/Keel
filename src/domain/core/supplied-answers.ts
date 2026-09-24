@@ -23,9 +23,9 @@
  *   - naming a question its adapter does not ask — the same code,
  *     naming the questions it does.
  *
- * A value outside its question's choices is refused where it reaches
- * its adapter (`checkSuppliedAnswer` in `./answers.ts`), which is
- * before that adapter contributes anything.
+ * A value outside the choices its question offers the project is
+ * refused where it reaches its adapter (`checkSuppliedAnswer` in
+ * `./answers.ts`), which is before that adapter contributes anything.
  */
 
 import { DomainError } from '../kernel/result.js';

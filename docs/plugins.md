@@ -298,6 +298,32 @@ menu](composition.md#conflicts). Declare it on the piece whose
 capability is constrained — the vertical, or the stack whose
 combination of dials is — never centrally.
 
+### Answer choices
+
+A choice only some projects can take says where it applies with a
+`predicate` of its own — the shape an adapter's is, matched against
+the tags of the project being asked:
+
+```js
+choices: [
+  { value: 'sqlite', label: 'SQLite', doc: '…' },
+  { value: 'duckdb', label: 'DuckDB', doc: '…', predicate: { requires: ['runtime.jvm'] } },
+],
+```
+
+Where the predicate does not match, the choice is not offered: the
+terminal prompt and `keel ui` leave it out, and a `--set` naming it is
+refused as outside the question's choices (`keel.invalid-answer`)
+before anything is written. That is the whole of the check — do not
+refuse the choice again inside `contribute()`, where it would reach a
+user who picked it from the list. Two things to hold to:
+
+- **A choice without a predicate is offered everywhere** its adapter
+  runs, as every choice was before the field existed.
+- **The `default` must be offered wherever the adapter runs**: `--yes`
+  resolves to it, and a default the project is not offered is reported
+  as the plugin's bug, not the user's.
+
 ---
 
 ## Trust — read this

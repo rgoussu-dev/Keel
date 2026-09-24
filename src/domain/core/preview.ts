@@ -85,7 +85,12 @@ export function recordingPrompt(answers: PresetAnswers): RecordingPrompt {
         prompt: question.prompt,
         doc: question.doc,
         ...(question.kind === undefined ? {} : { kind: question.kind }),
-        ...(question.choices === undefined ? {} : { choices: question.choices }),
+        // Each without its predicate: the prompt was handed only the
+        // choices it matched, and a front end has no tags to read one
+        // against.
+        ...(question.choices === undefined
+          ? {}
+          : { choices: question.choices.map(({ value, label, doc }) => ({ value, label, doc })) }),
         default: question.default,
         value,
         memory: question.memory,

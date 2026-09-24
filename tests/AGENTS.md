@@ -90,6 +90,14 @@ the record can only shrink. Beside each suite:
 
 About 7 s wall on its own, greenfield the longest at ~5 s.
 
+The grid posts no answers, so every question resolves to its default
+and an answer choice offered where it is refused is invisible to it.
+That class has a focused sweep instead, in `handlers/preview.test.ts`:
+every stack whose menu offers `persistence`, every non-default choice
+its dials declare, posted to a preview and to a dry-run install — Ok
+from both where the preview offers it, `keel.invalid-answer` from both
+where it does not.
+
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial
 menu, the extras list, a brownfield card — dispatches `keel.preview` (or

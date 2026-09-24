@@ -11,9 +11,11 @@
  * and it fires **first** (the per-stack and migrations adapters
  * declare `after` edges on it), which makes it the home of the
  * vertical's two project-wide sticky dials: the SQL `engine` and the
- * `migrations` tool. It asks both, validates them against the stack
- * before anything is written, and every later adapter reads them
- * through `sqlEngine()` / `migrationsTool()`.
+ * `migrations` tool. It asks both, and every later adapter reads them
+ * through `sqlEngine()` / `migrationsTool()`. Which choices a stack is
+ * offered is each choice's own declaration (`mariadb` requires
+ * `runtime.jvm`, `liquibase` excludes it), so no combination this
+ * stack cannot serve reaches here.
  *
  * Dev-only by doctrine — the production database is provisioned by
  * IaC; these credentials never leave the laptop. The container gets
@@ -33,7 +35,7 @@ import {
   devComposeSeed,
   DEV_COMPOSE_TARGET,
 } from './dev-env-compose.js';
-import { MIGRATIONS_TOOL_QUESTION, migrationsToolById } from './migrations-tool.js';
+import { MIGRATIONS_TOOL_QUESTION } from './migrations-tool.js';
 import {
   databaseName,
   PERSISTENCE_DIALS_ID,
@@ -42,18 +44,9 @@ import {
   type SqlEngineSpec,
 } from './persistence-engine.js';
 import { eolAware } from '../util.js';
-import { DomainError } from '../../kernel/result.js';
 import type { Adapter } from '../../contract/composition.js';
 
 export const DATABASE_COMPOSE_ID = PERSISTENCE_DIALS_ID;
-
-/**
- * The code the dial guards below refuse with: the answer is one of the
- * question's own choices, but not one this stack can serve. A
- * {@link DomainError}, because the user picked it from a list keel
- * offered — thrown as a plain `Error`, it reached `keel ui` as a 500.
- */
-export const UNSUPPORTED_ANSWER_CODE = 'keel.unsupported-answer';
 
 const SERVICE_MARKER = '--- database (persistence vertical)';
 
@@ -90,22 +83,6 @@ export const databaseComposeAdapter: Adapter = {
   questions: [SQL_ENGINE_QUESTION, MIGRATIONS_TOOL_QUESTION],
   async contribute(ctx) {
     const engine = sqlEngineById(ctx.answer('engine'), DATABASE_COMPOSE_ID);
-    const tool = migrationsToolById(ctx.answer('migrations'), DATABASE_COMPOSE_ID);
-    // The dial guards live here, on the first adapter to run, so an
-    // unsupported combination fails before a single file is written.
-    const jvm = ctx.manifest.tags.includes('runtime.jvm');
-    if (engine.id !== 'postgres' && !jvm) {
-      throw new DomainError(
-        `${DATABASE_COMPOSE_ID}: engine '${engine.id}' is served on the JVM stacks only — this stack's driver (pgx / the sync postgres crate / pg) speaks the PostgreSQL wire protocol. Pick 'postgres', or see docs/roadmap.md.`,
-        UNSUPPORTED_ANSWER_CODE,
-      );
-    }
-    if (tool === 'liquibase' && jvm) {
-      throw new DomainError(
-        `${DATABASE_COMPOSE_ID}: migrations tool 'liquibase' is served on the Go/Rust/TS stacks today — the JVM %dev/%test replay is wired through the framework's Flyway integration. Pick 'flyway', or see docs/roadmap.md.`,
-        UNSUPPORTED_ANSWER_CODE,
-      );
-    }
     const seed = await devComposeSeed(ctx);
     const database = databaseName(ctx.manifest);
     return {

@@ -2575,11 +2575,29 @@ does not build. Monorepo products still get no per-service release
 pipeline or IaC; that is now said, and handed to **U**. `keel new`
 inside a product's unlisted subdirectory is refused.
 
-#### Q1.11 — Answer choices declare where they apply (S)
+#### Q1.11 — Answer choices declare where they apply (S) ✅
 
 `QuestionChoice.predicate?`: `mariadb` requires `runtime.jvm`,
 `liquibase` excludes it; the preview and the prompt offer only
 matching choices, and the `database-compose` guards go.
+
+Landed as one function, `offeredIn` (`answers.ts`): the question with
+only the choices whose predicate matches the scope's effective tags
+where the adapter runs. `resolveAdapterAnswers` hands that question to
+the prompt — so the terminal and the preview's recording prompt list
+the same choices — and `validateChoice` holds the reply to it;
+`checkSuppliedAnswer`, the check a `--set` or an install body meets
+where it reaches its adapter, holds the value to the same list. So
+`engine=mariadb` on `go-http` is `keel.invalid-answer` ("choices:
+postgres") from the preview, `--set` and the page alike, and
+`keel.unsupported-answer` is gone with the guards. Recorded memory is
+still not held to the list. The default-answer grid cannot see this
+class (it posts no answers), so it did not move; a focused sweep in
+`preview.test.ts` holds it instead — on every stack whose menu offers
+persistence, each non-default persistence choice previews and installs
+(dry run, as `--set`) Ok where it is offered, and is refused by both as
+`keel.invalid-answer` where it is not: 18 such cells. The preview
+reports each offered choice without its predicate.
 
 ### Phase 2 — presets that bend
 
@@ -2746,12 +2764,13 @@ rather than remembered-in-a-file.
   keeps it a spec record) and a Liquibase (YAML) alternative behind
   the sticky `migrations` question (served on Go/Rust/TS, whose
   emitted replay paths are tool-agnostic). What remains, each a
-  loud install-time error today: MariaDB on Go/Rust/TS (their
-  drivers speak the PostgreSQL wire protocol — a second driver per
-  stack, not a spec record) and Liquibase on the JVM (the
-  `%dev`/`%test` replay is wired through each framework's Flyway
-  integration; Quarkus's Liquibase extension reads classpath-only
-  changelogs, so this needs design, not just config).
+  choice its predicate keeps off the menu today (Q1.11): MariaDB on
+  Go/Rust/TS (their drivers speak the PostgreSQL wire protocol — a
+  second driver per stack, not a spec record) and Liquibase on the
+  JVM (the `%dev`/`%test` replay is wired through each framework's
+  Flyway integration; Quarkus's Liquibase extension reads
+  classpath-only changelogs, so this needs design, not just config).
+  Serving one is dropping or widening that predicate.
 - ~~**Per-service build systems in composite stacks**~~
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — **shipped**:
   composites ask the build-system question per service (pin with

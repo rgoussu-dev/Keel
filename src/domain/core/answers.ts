@@ -21,11 +21,18 @@
  * Repeat questions are never persisted; sticky questions are always
  * persisted on first ask but not re-persisted on subsequent runs
  * (since they're already in the manifest).
+ *
+ * A question is put to a scope as {@link offeredIn} shapes it: only
+ * the choices whose predicate matches that scope's tags. The prompt
+ * (and so the preview, which records what a prompt was asked) sees
+ * that list, and every check on a value holds it to that list, so a
+ * choice is either offered and taken or neither.
  */
 
 import { DomainError } from '../kernel/result.js';
-import { decodeSelection, type Adapter, type Question } from '../contract/composition.js';
+import { decodeSelection, type Adapter, type Question, type Tag } from '../contract/composition.js';
 import type { AnswerMode, Asker, Prompt } from '../contract/ports/prompt.js';
+import { matches } from './predicate.js';
 
 /**
  * The code a supplied answer outside its question's choices is
@@ -71,15 +78,20 @@ export async function resolveAnswer(
 }
 
 /**
- * Resolves every question of an adapter in declaration order.
+ * Resolves every question of an adapter in declaration order, each as
+ * {@link offeredIn} puts it to the scope whose tags are `tags`.
  * Harness replay reuses recorded values even for repeat questions;
  * questions absent from the snapshot still resolve through their defaults.
+ *
+ * @param tags - the tags of the scope the adapter runs in, as its
+ *               predicate was matched against them.
  */
 export async function resolveAdapterAnswers(
   adapter: Adapter,
   storedForAdapter: Readonly<Record<string, string>>,
   mode: AnswerMode,
   prompt: Prompt,
+  tags: readonly Tag[],
   replayRecorded = false,
 ): Promise<{
   answers: Record<string, string>;
@@ -96,7 +108,7 @@ export async function resolveAdapterAnswers(
     const recorded = replayRecorded ? storedForAdapter[q.id] : undefined;
     const r =
       recorded === undefined
-        ? await resolveAnswer(q, storedForAdapter, mode, prompt, {
+        ? await resolveAnswer(offeredIn(q, tags), storedForAdapter, mode, prompt, {
             kind: 'adapter',
             id: adapter.id,
           })
@@ -109,16 +121,41 @@ export async function resolveAdapterAnswers(
 
 /**
  * Holds an answer supplied up front — a `--set`, an install body's
- * `answers` — to its question's choices, refusing one outside them
- * with {@link INVALID_ANSWER_CODE} under the key it was supplied as.
+ * `answers` — to the choices its question offers the scope whose tags
+ * are `tags`, refusing one outside them with {@link INVALID_ANSWER_CODE}
+ * under the key it was supplied as. A choice the question declares but
+ * does not offer there is outside them, exactly as it is at the prompt.
  *
  * The install loop calls it where a supplied value first reaches the
  * adapter that reads it, before that adapter contributes anything;
  * recorded memory never comes through here, for the reason
  * {@link validateChoice} gives.
  */
-export function checkSuppliedAnswer(question: Question, value: string, suppliedAs: string): void {
-  validateChoice(question, value, { kind: 'adapter', id: suppliedAs });
+export function checkSuppliedAnswer(
+  question: Question,
+  value: string,
+  suppliedAs: string,
+  tags: readonly Tag[],
+): void {
+  validateChoice(offeredIn(question, tags), value, { kind: 'adapter', id: suppliedAs });
+}
+
+/**
+ * The question as it is put to the scope whose tags are `tags`: only
+ * the choices whose `QuestionChoice.predicate` matches them, in
+ * declaration order. The one place that list is computed — the prompt
+ * offers it, the preview reports it, and a value is held to it.
+ *
+ * Returns `question` itself when every choice is offered, so a
+ * question without predicates reaches the prompt exactly as declared.
+ */
+export function offeredIn(question: Question, tags: readonly Tag[]): Question {
+  if (question.choices === undefined) return question;
+  const tagSet = new Set(tags);
+  const offered = question.choices.filter(
+    (choice) => choice.predicate === undefined || matches(choice.predicate, tagSet),
+  );
+  return offered.length === question.choices.length ? question : { ...question, choices: offered };
 }
 
 /**

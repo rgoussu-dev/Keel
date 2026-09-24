@@ -11,9 +11,9 @@
  * depends on the tool: the Go/Rust/TS stacks, whose emitted contract
  * tests replay `migrations/sql/*.sql` directly. The JVM stacks'
  * `%dev`/`%test` replay is wired through each framework's Flyway
- * integration today, so `liquibase` there fails loudly at install —
- * `database-compose` owns that guard; wiring the frameworks'
- * Liquibase integrations is a roadmap item.
+ * integration today, so the `liquibase` choice excludes `runtime.jvm`
+ * and is not offered there; wiring the frameworks' Liquibase
+ * integrations is a roadmap item.
  *
  * The question is asked by `persistence/database-compose` alongside
  * the engine question; the migrations adapters read the resolved
@@ -54,6 +54,7 @@ export const MIGRATIONS_TOOL_QUESTION: Question = {
       value: 'liquibase',
       label: 'Liquibase — a YAML changelog over the same plain SQL',
       doc: 'Go/Rust/TS today — the JVM dev/test replay is Flyway-wired; see the roadmap.',
+      predicate: { excludes: ['runtime.jvm'] },
     },
   ],
 };
