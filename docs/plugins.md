@@ -510,7 +510,11 @@ const productGlueAdapter = {
   vertical then reads as already there, and `keel add` of it adds
   nothing rather than meeting your files as `keel.path-conflict`; in
   one whose stack is not listed it stays to add, and the product's
-  `keel new` report says so.
+  `keel new` report says so. A preset that installs that vertical in a
+  monorepo service anyway (its `services[].extraVerticals`) would have
+  two scopes write one file: `keel new` refuses it before it reports
+  the plan, as `keel.cross-scope-write`, naming both adapters and where
+  each runs — a preview and an install alike.
 
 ---
 

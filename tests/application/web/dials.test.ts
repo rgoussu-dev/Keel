@@ -45,9 +45,15 @@ import type { DirectoryReader } from '../../../src/application/web/contract/api.
 import type { UiRequest, UiResponse } from '../../../src/application/web/contract/http.js';
 import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
 import { pickShape, locate } from '../../../assets/web/src/finder.js';
-import { extrasOf, retarget, settle, toggleExtra } from '../../../assets/web/src/target.js';
+import {
+  extrasOf,
+  retarget,
+  serviceExtrasOf,
+  settle,
+  toggleExtra,
+} from '../../../assets/web/src/target.js';
 import { catalogQuery, dialsQuery } from '../../../src/domain/contract/queries.js';
-import type { Catalog, DialOptions } from '../../../src/domain/contract/queries.js';
+import type { Catalog, DialOptions, VerticalOption } from '../../../src/domain/contract/queries.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
@@ -179,21 +185,39 @@ async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
     );
   }
   const blank = settledRun(opening);
-  for (const extra of opening.extraVerticals) {
-    const moved = toggleExtra(blank, extra.id, true);
-    const tickedDials = await dialsFor(mediator, moved.target as unknown as NewProjectTarget);
-    keep(tickedDials);
-    gestures.set(`+${extra.id}`, tickedDials);
-    const ticked = settle(moved, tickedDials);
-    for (const id of extrasOf(ticked.target)) {
-      const back = toggleExtra(ticked, id, false);
-      const untickedDials = await dialsFor(mediator, back.target as unknown as NewProjectTarget);
-      keep(untickedDials);
-      gestures.set(`+${extra.id}-${id}`, untickedDials);
+  // A product's groups are its services', one per service: the boxes
+  // the page draws, and the gestures it makes, are those.
+  const groups =
+    opening.services.length === 0
+      ? [{ service: null, offered: opening.extraVerticals.map((extra) => extra.id) }]
+      : opening.services.map((service) => ({
+          service: service.path,
+          offered: service.verticals.filter(offeredAsExtra).map((vertical) => vertical.id),
+        }));
+  for (const { service, offered } of groups) {
+    const named = (id: string): string => (service === null ? id : `${service}:${id}`);
+    const selection = (target: object): readonly string[] =>
+      service === null ? extrasOf(target) : serviceExtrasOf(target, service);
+    for (const extra of offered) {
+      const moved = toggleExtra(blank, extra, true, service);
+      const tickedDials = await dialsFor(mediator, moved.target as unknown as NewProjectTarget);
+      keep(tickedDials);
+      gestures.set(`+${named(extra)}`, tickedDials);
+      const ticked = settle(moved, tickedDials);
+      for (const id of selection(ticked.target)) {
+        const back = toggleExtra(ticked, id, false, service);
+        const untickedDials = await dialsFor(mediator, back.target as unknown as NewProjectTarget);
+        keep(untickedDials);
+        gestures.set(`+${named(extra)}-${id}`, untickedDials);
+      }
     }
   }
   return { bodies: [...bodies.values()], gestures };
 }
+
+/** Whether a menu entry is a box the page draws: ready, or ready once others are. */
+const offeredAsExtra = (vertical: VerticalOption): boolean =>
+  vertical.readiness === 'ready' || vertical.readiness === 'needs';
 
 /**
  * The walk for each stack, made once and shared by the cases that
@@ -328,10 +352,11 @@ describe('every body keel ui can post', () => {
   );
 
   it('never posts a composite dial the install refuses outright', async () => {
-    // `--module-layout`, `--with-peer-context`, `--with` and
-    // `--no-agent-harness` are hard errors on a composite, so a
-    // settled product target must carry none of them however the
-    // caller asks.
+    // `--module-layout`, `--with-peer-context` and `--no-agent-harness`
+    // are hard errors on a composite, and so is a vertical named
+    // without a service that no service of it can take — a pipeline
+    // has no place in a monorepo service — so a settled product target
+    // must carry none of them however the caller asks.
     const mediator = installMediator();
     const settled = await dialsFor(mediator, {
       kind: 'new-project',
@@ -347,6 +372,103 @@ describe('every body keel ui can post', () => {
       layout: 'monorepo',
       buildSystem: 'backend=gradle,frontend=npm',
     });
+  });
+});
+
+describe("a product's extras are its services'", () => {
+  it('gives each service its own menu, read over the scope it is scaffolded in', async () => {
+    const monorepo = await dialsFor(sharedMediator, { kind: 'new-project', stack: 'fullstack' });
+    const menu = (dials: DialOptions, path: string): Record<string, string> =>
+      Object.fromEntries(
+        (dials.services.find((service) => service.path === path)?.verticals ?? []).map(
+          (vertical) => [vertical.id, vertical.readiness],
+        ),
+      );
+    // The backend takes persistence; the front end cannot. A pipeline
+    // goes at the product root of a monorepo, and each service has the
+    // image the root builds for it.
+    expect(menu(monorepo, 'backend')).toMatchObject({
+      persistence: 'ready',
+      ci: 'unavailable',
+      containerization: 'included',
+      gateway: 'included',
+    });
+    expect(menu(monorepo, 'frontend')).toMatchObject({
+      persistence: 'unavailable',
+      'dev-env': 'ready',
+      ci: 'unavailable',
+    });
+    // Under the polyrepo layout each service is a repository of its
+    // own, with a pipeline, an image and a release to take.
+    const polyrepo = await dialsFor(sharedMediator, {
+      kind: 'new-project',
+      stack: 'fullstack',
+      layout: 'polyrepo',
+    });
+    expect(menu(polyrepo, 'backend')).toMatchObject({
+      ci: 'ready',
+      containerization: 'ready',
+      iac: 'needs',
+    });
+    // What a service's menu offers, the preview of it takes.
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-services-'));
+    try {
+      for (const dials of [monorepo, polyrepo]) {
+        for (const service of dials.services) {
+          for (const vertical of service.verticals.filter(offeredAsExtra)) {
+            const target = {
+              ...(dials.target as NewProjectTarget),
+              services: { [service.path]: { extraVerticals: [...vertical.requires, vertical.id] } },
+            };
+            expect(await previewOf(sharedMediator, cwd, target), JSON.stringify(target)).toBe(
+              '200',
+            );
+          }
+        }
+      }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('sends an extra named without a service to the one service that takes it', async () => {
+    // What a single preset's selection becomes on a product: each
+    // extra in the one service that can take it, said so; the rest
+    // dropped with the sentence `keel new --with` refuses them in.
+    const settled = await dialsFor(sharedMediator, {
+      kind: 'new-project',
+      stack: 'fullstack',
+      extraVerticals: ['persistence', 'toolchain'],
+    });
+    expect(settled.target).toEqual({
+      kind: 'new-project',
+      stack: 'fullstack',
+      layout: 'monorepo',
+      buildSystem: 'backend=gradle,frontend=npm',
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+    expect(settled.adjustments).toEqual([
+      {
+        id: 'persistence',
+        change: 'added',
+        service: 'backend',
+        because: 'Persistence goes in backend/, the one service of fullstack that can take it',
+      },
+      {
+        id: 'toolchain',
+        change: 'dropped',
+        because:
+          'Toolchain belongs to a service, not to the product root — it goes in backend/ or frontend/',
+      },
+    ]);
+    // Back on a single preset, a product's service extras are its own.
+    const single = await dialsFor(sharedMediator, {
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+    expect(single.target).toMatchObject({ extraVerticals: ['persistence'] });
+    expect(single.target).not.toHaveProperty('services');
   });
 });
 

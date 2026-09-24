@@ -7,7 +7,11 @@
  * **Scenario.** Real products scaffolded into a temporary directory —
  * `fullstack` under both repository layouts, and a plugin's product
  * whose backend the product glue has no image for — then asked from
- * the root, from a service, and from a directory beside them.
+ * the root, from a service, and from a directory beside them. And
+ * `keel new` asked for a service's own extras (`--with
+ * backend:persistence`), held to scaffolding then adding them there,
+ * and a preset whose monorepo backend installs the image its root
+ * already builds: two scopes, one file.
  *
  * **Factory.** `installMediator` over the real templates and
  * filesystem, deferred actions recorded rather than run.
@@ -27,6 +31,7 @@ import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/co
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
 import {
+  previewQuery,
   projectStatusQuery,
   type AvailableVerticalDescriptor,
   type ProjectStatus,
@@ -403,5 +408,168 @@ describe('a plugin product whose glue builds no image for its backend', () => {
     await scaffold(mediator, 'acme-product', 'polyrepo');
     expect(await fs.pathExists(at('backend', '.github', 'workflows', 'ci.yml'))).toBe(true);
     expect(await fs.pathExists(at('backend', '.githooks'))).toBe(true);
+  });
+});
+
+describe("keel new: a product's extras, each in its service", () => {
+  /** Every file under `root`, by its path from there, with its bytes. */
+  async function filesUnder(root: string): Promise<ReadonlyMap<string, Buffer>> {
+    const files = new Map<string, Buffer>();
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) await walk(full);
+        else files.set(path.relative(root, full), await fs.readFile(full));
+      }
+    };
+    await walk(root);
+    return files;
+  }
+
+  /**
+   * What a manifest records of the project — its verticals, tags,
+   * answers, peers and which harness files each contributor owns —
+   * leaving out the provenance hash an owned file is recorded with,
+   * which is the file as the run that recorded it left it: one run
+   * or two write the same file, and hash it at different moments.
+   */
+  const recorded = async (dir: string) => {
+    const manifest = await fsManifestStore.read(projectScopeRoot(dir));
+    return {
+      verticals: manifest?.verticals,
+      tags: manifest?.tags,
+      answers: manifest?.answers,
+      peers: manifest?.peers,
+      services: manifest?.services,
+      entries: (manifest?.entries ?? []).map((entry) => `${entry.source} → ${entry.target}`).sort(),
+    };
+  };
+
+  it.each(['monorepo', 'polyrepo'] as const)(
+    'installs --with backend:persistence as scaffolding and then adding it in backend/ does (%s)',
+    async (layout) => {
+      const mediator = mediatorOver();
+      const named = at('named');
+      const added = at('added');
+      const scaffoldIn = (dir: string, services?: { backend: { extraVerticals: string[] } }) =>
+        mediator.dispatch(
+          newProjectCommand({
+            cwd: dir,
+            stack: 'fullstack',
+            layout,
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            ...(services === undefined ? {} : { services }),
+          }),
+        );
+      await fs.ensureDir(named);
+      await fs.ensureDir(added);
+      expectOk(await scaffoldIn(named, { backend: { extraVerticals: ['persistence'] } }));
+      expectOk(await scaffoldIn(added));
+      expectOk(await add(mediator, path.join(added, 'backend'), ['persistence'], false));
+
+      const manifest = path.join('.claude', '.keel-manifest.json');
+      const project = (files: ReadonlyMap<string, Buffer>) =>
+        new Map([...files].filter(([file]) => !file.endsWith(manifest)));
+      const one = project(await filesUnder(named));
+      const two = project(await filesUnder(added));
+      expect([...one.keys()].sort()).toEqual([...two.keys()].sort());
+      for (const [file, bytes] of one) expect(two.get(file)?.equals(bytes), file).toBe(true);
+      expect([...one.keys()]).toContain(path.join('backend', 'migrations', 'Dockerfile'));
+      for (const dir of ['', 'backend', 'frontend']) {
+        if (layout === 'polyrepo' && dir === '') continue;
+        expect(await recorded(path.join(named, dir))).toEqual(
+          await recorded(path.join(added, dir)),
+        );
+      }
+    },
+  );
+
+  it('refuses a pipeline in a monorepo service before a file is written', async () => {
+    const mediator = mediatorOver();
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          services: { backend: { extraVerticals: ['ci'] } },
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.wrong-scope');
+    expect(error.message).toMatch(/^Continuous integration cannot go in a monorepo service: /);
+    expect(await fs.readdir(cwd)).toEqual([]);
+    expect(ran).toEqual([]);
+  });
+
+  it('refuses a product two of whose scopes write one file, in its preview and its dry run alike', async () => {
+    // A preset that installs the image in its monorepo backend as well
+    // as building one there from the root: two Trees, one Dockerfile.
+    // Each scope staged alone would take it; together the last commit
+    // would win, so neither a plan nor an install gets past the check.
+    const fullstack = STACKS['fullstack'] as Stack;
+    const image = shippedRegistry.vertical('containerization');
+    if (image === null) throw new Error('the shipped registry lost containerization');
+    const registry = registryOf([
+      shippedSource,
+      {
+        origin: "plugin 'acme'",
+        stacks: [
+          {
+            ...fullstack,
+            id: 'acme-imaged',
+            services: (fullstack.services ?? []).map((service) =>
+              service.path === 'backend'
+                ? { ...service, extraVerticals: [...(service.extraVerticals ?? []), image] }
+                : service,
+            ),
+          },
+        ],
+      },
+    ]);
+    const mediator = mediatorOver(registry);
+    const target = {
+      kind: 'new-project' as const,
+      stack: 'acme-imaged',
+      layout: 'monorepo' as const,
+    };
+    const preview = expectErr(await mediator.dispatch(previewQuery({ cwd, target, answers: {} })));
+    const install = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'acme-imaged',
+          layout: 'monorepo',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(preview.code).toBe('keel.cross-scope-write');
+    expect(install.code).toBe(preview.code);
+    expect(install.message).toBe(preview.message);
+    expect(preview.message).toBe(
+      "backend/.dockerignore would be written by two scopes of this product — by fullstack/product-compose at the product root, and by containerization/quarkus-rest-image in backend/ — and the one written last would silently replace the other; one of the product's pieces has to leave the file to the other",
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
+
+    // A polyrepo product has no root writing into its services.
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'acme-imaged',
+          layout: 'polyrepo',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
   });
 });

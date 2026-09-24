@@ -165,7 +165,8 @@ Rust or Go context has no container to lose a handler in.
   shown before the click, a refusal only the click meets, shown in the
   plan column, and the re-render state) and `ui-compose` (an empty
   directory, two scaffolded projects and a TypeScript product; the
-  Options step's "Also scaffold" group, a preset move keeping the
+  Options step's "Also scaffold" group — a product's, one per
+  service — a preset move keeping the
   dials, the extras and a package, the "What to add" cards ticked
   into one run, the bodies the page posts for them — `watchTraffic`
   keeps what went out — and a product root's **Open backend/** button

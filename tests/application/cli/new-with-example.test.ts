@@ -20,7 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildProgram } from '../../../src/application/cli/contract/program.js';
+import { buildProgram, parseWith } from '../../../src/application/cli/contract/program.js';
 import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 import { installMediator } from '../../support/factory.js';
@@ -51,14 +51,23 @@ function program(logger: FakeLogger) {
   });
 }
 
-/** The `e.g. '…'` example in `keel new --with`'s help line. */
-function helpExample(): string {
+/**
+ * The `e.g. '…'` examples in `keel new --with`'s help line: a single
+ * stack's first, then a product's, whose ids name their service.
+ */
+function helpExamples(): readonly string[] {
   const command = program(new FakeLogger()).commands.find((c) => c.name() === 'new');
   const description = command?.options.find((o) => o.long === '--with')?.description ?? '';
-  const example = /e\.g\. '([^']+)'/.exec(description)?.[1];
-  if (example === undefined) throw new Error(`no example in --with help: ${description}`);
-  return example;
+  const examples = [...description.matchAll(/e\.g\. '([^']+)'/g)].map((match) => match[1] ?? '');
+  if (examples.length !== 2) throw new Error(`not two examples in --with help: ${description}`);
+  return examples;
 }
+
+/** The single stack's example. */
+const helpExample = (): string => helpExamples()[0] ?? '';
+
+/** The product's example, each id named with its service. */
+const productExample = (): string => helpExamples()[1] ?? '';
 
 describe('keel new --with, the example in --help', () => {
   it.each(['quarkus-rest', 'go-http'])('plans on %s exactly as printed', async (stack) => {
@@ -90,9 +99,69 @@ describe('keel new --with, the example in --help', () => {
     );
   });
 
-  it('is the example docs/cli.md shows for the flag', async () => {
+  it.each(['monorepo', 'polyrepo'])(
+    'plans the product example on fullstack exactly as printed (%s)',
+    async (layout) => {
+      const logger = new FakeLogger();
+      await program(logger).parseAsync(
+        [
+          'new',
+          '--stack=fullstack',
+          `--layout=${layout}`,
+          '--with',
+          productExample(),
+          '--yes',
+          '--dry-run',
+        ],
+        { from: 'user' },
+      );
+      expect(logger.messages('info')).toContain('dry run — nothing committed');
+      expect(await fs.readdir(cwd)).toEqual([]);
+    },
+  );
+
+  it('are the examples docs/cli.md shows for the flag', async () => {
     const page = await fs.readFile(path.resolve('docs/cli.md'), 'utf8');
     const row = page.split('\n').find((line) => line.startsWith('| `--with <ids>`'));
     expect(row).toContain(`\`--with ${helpExample()}\``);
+    expect(row).toContain(`\`--with ${productExample()}\``);
+  });
+});
+
+describe('keel new --with, read into the command', () => {
+  it('takes bare ids as the extras and path:id pairs as each service’s', () => {
+    expect(parseWith('persistence, ci')).toEqual({ extraVerticals: ['persistence', 'ci'] });
+    expect(parseWith('')).toEqual({ extraVerticals: [] });
+    expect(parseWith('backend:persistence,frontend:dev-env,backend:toolchain')).toEqual({
+      services: {
+        backend: { extraVerticals: ['persistence', 'toolchain'] },
+        frontend: { extraVerticals: ['dev-env'] },
+      },
+    });
+    // A service named with nothing for it names none, and the two
+    // forms together are passed on for `keel new` to refuse.
+    expect(parseWith('backend:')).toEqual({ services: { backend: { extraVerticals: [] } } });
+    expect(parseWith('ci,backend:persistence')).toEqual({
+      extraVerticals: ['ci'],
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+  });
+
+  it('refuses the two forms mixed, and a service the product does not list', async () => {
+    const logger = new FakeLogger();
+    const run = (withs: string) =>
+      program(logger).parseAsync(
+        ['new', '--stack=fullstack', '--with', withs, '--yes', '--dry-run'],
+        { from: 'user' },
+      );
+    await expect(run('toolchain,backend:persistence')).rejects.toThrow(
+      /names some verticals with a service and some without/,
+    );
+    await expect(run('worker:persistence')).rejects.toThrow(/has no service 'worker'/);
+    // Named without a service, one two services could each take is
+    // theirs to choose between, and the hint spells both.
+    await expect(run('toolchain')).rejects.toThrow(
+      "hint: name the service it goes in: '--with backend:toolchain' or '--with frontend:toolchain'",
+    );
   });
 });

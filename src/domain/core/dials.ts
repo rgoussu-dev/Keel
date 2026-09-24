@@ -32,15 +32,21 @@
  * the install gate, which says so in the rule's own words.
  */
 
-import type { InstallTarget, NewProjectTarget, RepoLayout } from '../contract/commands.js';
+import type {
+  InstallTarget,
+  NewProjectTarget,
+  RepoLayout,
+  ServiceExtras,
+} from '../contract/commands.js';
 import { AGENT_HARNESS_TAG, type Tag, type Vertical } from '../contract/composition.js';
 import type {
   ChoiceDescriptor,
   DialAdjustment,
   DialOptions,
-  ServiceDescriptor,
+  ServiceDialOptions,
   VerticalOption,
 } from '../contract/queries.js';
+import type { RefusalError } from '../contract/refusal.js';
 import { emitsFor } from './adapters/context-support.js';
 import {
   MODULITH_LAYOUT_TAG,
@@ -48,9 +54,15 @@ import {
   type ModuleLayoutOption,
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
-import { plan, seedFor, type Plan, type PlanScope } from './planner.js';
+import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
 import { foresee, planRefusal } from './plan-refusal.js';
-import { alreadyIncludedNote } from './refusals.js';
+import {
+  alreadyIncludedNote,
+  elsewhereRefusal,
+  productRootPlacementRefusal,
+  routedExtraNote,
+} from './refusals.js';
+import { presetServiceScope, presetServiceTags, type PresetService } from './scope.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
@@ -203,7 +215,16 @@ export function verticalOptions(
   stack: Stack,
   tags: readonly Tag[],
 ): readonly VerticalOption[] {
-  const scope = presetScope(stack, tags);
+  return scopeOptions(registry, presetScope(stack, tags));
+}
+
+/**
+ * Every registered vertical as an extras control shows it on `scope` —
+ * {@link verticalOptions}' reading, over a scope already in hand: a
+ * service of a product ({@link presetServiceScope}) as much as a
+ * preset.
+ */
+export function scopeOptions(registry: Registry, scope: PlanScope): readonly VerticalOption[] {
   const options: VerticalOption[] = [];
   for (const summary of listVerticals(registry)) {
     const vertical = registry.vertical(summary.id);
@@ -380,8 +401,34 @@ export function snapExtras(
   tags: readonly Tag[],
   requested: readonly string[],
   agentHarness = true,
-): { readonly extras: readonly string[]; readonly adjustments: readonly DialAdjustment[] } {
-  const scope = presetScope(stack, tags);
+): SnappedExtras {
+  return snapOnto(
+    registry,
+    presetScope(stack, tags),
+    requested,
+    (vertical) => alreadyIncludedNote(vertical, stack.id),
+    agentHarness,
+  );
+}
+
+/** What {@link snapExtras} settles a selection at, and what it moved. */
+export interface SnappedExtras {
+  readonly extras: readonly string[];
+  readonly adjustments: readonly DialAdjustment[];
+}
+
+/**
+ * {@link snapExtras} over a scope already in hand — a service of a
+ * product as much as a preset — with `included` the sentence a
+ * vertical already on it is dropped in.
+ */
+export function snapOnto(
+  registry: Registry,
+  scope: PlanScope,
+  requested: readonly string[],
+  included: (vertical: Vertical) => string,
+  agentHarness = true,
+): SnappedExtras {
   const kept: string[] = [];
   const adjustments: DialAdjustment[] = [];
   const drop = (id: string, because: string): void => {
@@ -392,7 +439,7 @@ export function snapExtras(
   for (const id of [...new Set(requested)].sort()) {
     const vertical = registry.vertical(id);
     if (vertical === null) drop(id, unregistered(id));
-    else if (scope.installed.includes(id)) drop(id, alreadyIncludedNote(vertical, stack.id));
+    else if (scope.installed.includes(id)) drop(id, included(vertical));
     else if (!agentHarness && switchesHarnessOn(registry, scope, vertical)) {
       drop(id, harnessOptOutSentence(id));
     } else candidates.push(vertical);
@@ -514,7 +561,17 @@ function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget
   ];
   const options = verticalOptions(registry, stack, tags);
   const verticals = harnessOff ? harnessLeftOut(registry, options) : options;
-  const snapped = snapExtras(registry, stack, tags, target.extraVerticals ?? [], !harnessOff);
+  // A product's per-service extras, carried onto a single preset by a
+  // front end moving between them, are this preset's extras here: a
+  // single project is every service at once, and `keel new` refuses a
+  // service's path on it, so the settled target must not carry one.
+  const snapped = snapExtras(
+    registry,
+    stack,
+    tags,
+    [...(target.extraVerticals ?? []), ...serviceExtrasOf(target)],
+    !harnessOff,
+  );
 
   return {
     target: {
@@ -552,55 +609,270 @@ function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget
 }
 
 /**
- * A composite product's dials: the repository layout and one build
- * system per service.
+ * A composite product's dials: the repository layout, and each
+ * service's build system and extras.
  *
- * No rule can reach them, and saying so is the point of the empty
+ * No rule spans the services, and saying so is the point of the empty
  * `moduleLayouts`. The repository layout seeds no tag at all, and a
  * service is a full install of its own stack in its own scope — the
  * product root never assembles their tags together, so there is no
  * combination for a {@link Conflict} to bite on. The module layout,
- * the peer context, the extras and the harness are not dials here
- * either: the install refuses all four on a composite, so a settled
- * target must not carry them — but for the product's own verticals,
- * which it reports as `included`, since naming one of those is set
- * aside.
+ * the peer context and the harness are not dials here: the install
+ * refuses all three on a composite, so a settled target must not
+ * carry them.
+ *
+ * The extras are each service's: a menu per service
+ * (`ServiceDialOptions.verticals`) read over the scope `keel new`
+ * plans that service's extras onto — on the build system settled for
+ * it, and under the monorepo layout with what the product root gives
+ * it — and the service's selection (`target.services`) snapped to
+ * that scope as a single preset's is, each adjustment naming the
+ * service. Extras named without a service — `keel new --with`'s bare
+ * ids, or a single preset's selection carried onto the product — go
+ * to the one service that can take each ({@link routeExtra}), as the
+ * install sends them, and are dropped with the install's refusal where
+ * none or several can; the settled target carries them in that
+ * service's selection, never bare. The top-level `extraVerticals` and
+ * `verticals` read what a bare id does here.
  */
 function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
+  const layout = target.layout ?? DEFAULT_REPO_LAYOUT;
+  const monorepo = layout === 'monorepo';
   const chosen = readServiceBuildSystems(target.buildSystem);
-  const services: ServiceDescriptor[] = [];
-  const pairs: string[] = [];
+  const builds = new Map<string, BuildSystemOption | null>();
   for (const service of stack.services ?? []) {
-    const serviceStack = registry.stack(service.stack);
-    const options = serviceStack?.buildSystems ?? [];
+    const options = registry.stack(service.stack)?.buildSystems ?? [];
+    builds.set(service.path, prefer(options, chosen.get(service.path)));
+  }
+  const scopes = productScopes(
+    registry,
+    stack,
+    presetServicesOf(registry, stack),
+    (path) => builds.get(path)?.tag ?? null,
+    monorepo,
+  );
+
+  const adjustments: DialAdjustment[] = [];
+  const requested = new Map(
+    scopes.map(({ service }) => [
+      service.path,
+      [...(target.services?.[service.path]?.extraVerticals ?? [])],
+    ]),
+  );
+  for (const [path, extras] of Object.entries(target.services ?? {})) {
+    if (requested.has(path)) continue;
+    for (const id of extras.extraVerticals) {
+      adjustments.push({
+        id,
+        change: 'dropped',
+        because: `${stack.id} has no service at ${path}/`,
+      });
+    }
+  }
+  for (const id of [...new Set(target.extraVerticals ?? [])].sort()) {
+    const vertical = registry.vertical(id);
+    if (vertical === null) {
+      adjustments.push({ id, change: 'dropped', because: `no vertical '${id}' is registered` });
+      continue;
+    }
+    if (stack.verticals.some((own) => own.id === id)) {
+      adjustments.push({ id, change: 'dropped', because: alreadyIncludedNote(vertical, stack.id) });
+      continue;
+    }
+    const routed = routeExtra(registry, scopes, vertical, monorepo);
+    if (routed.kind === 'refused') {
+      adjustments.push({ id, change: 'dropped', because: routed.refusal.message });
+      continue;
+    }
+    requested.get(routed.path)?.push(id);
+    adjustments.push({
+      id,
+      change: 'added',
+      service: routed.path,
+      because: routedExtraNote(vertical, routed.path, stack.id),
+    });
+  }
+
+  const services: ServiceDialOptions[] = [];
+  const extras: Record<string, ServiceExtras> = {};
+  for (const { service, scope } of scopes) {
+    const snapped = snapOnto(
+      registry,
+      scope,
+      requested.get(service.path) ?? [],
+      serviceIncludedNote(stack, service),
+    );
+    adjustments.push(
+      ...snapped.adjustments.map((adjustment) => ({ ...adjustment, service: service.path })),
+    );
+    if (snapped.extras.length > 0) extras[service.path] = { extraVerticals: snapped.extras };
     services.push({
       path: service.path,
-      stack: service.stack,
-      buildSystems: options.map(asChoice),
+      stack: service.stack.id,
+      buildSystems: (service.stack.buildSystems ?? []).map(asChoice),
+      verticals: scopeOptions(registry, scope),
     });
-    const build = prefer(options, chosen.get(service.path));
-    if (build !== null) pairs.push(`${service.path}=${build.id}`);
   }
+  const pairs = [...builds].flatMap(([path, build]) =>
+    build === null ? [] : [`${path}=${build.id}`],
+  );
+  const verticals = productOptions(registry, stack, scopes, monorepo);
   return {
     target: {
       kind: 'new-project',
       stack: stack.id,
-      layout: target.layout ?? DEFAULT_REPO_LAYOUT,
+      layout,
       ...(pairs.length === 0 ? {} : { buildSystem: pairs.join(',') }),
+      ...(Object.keys(extras).length === 0 ? {} : { services: extras }),
     },
     buildSystems: [],
     moduleLayouts: [],
     services,
     peerContext: false,
     agentHarness: false,
-    extraVerticals: [],
-    // What `--with` sets aside with a note rather than refusing: the
-    // product's own, which the product installs whatever is named.
-    verticals: listVerticals(registry)
-      .filter((summary) => stack.verticals.some((own) => own.id === summary.id))
-      .map((summary) => ({ ...summary, readiness: 'included', requires: [] })),
-    adjustments: [],
+    extraVerticals: verticals.filter(offeredAsExtra).map(verticalChoice),
+    verticals,
+    adjustments,
   };
+}
+
+/** One service of a product, and the scope its extras plan onto. */
+export interface ServicePlanScope {
+  readonly service: PresetService;
+  readonly scope: PlanScope;
+}
+
+/**
+ * The services of the product preset `product` a registry can
+ * scaffold, in the product's order: each naming a registered
+ * single-service preset. The install refuses a product naming any
+ * other; a menu leaves it out.
+ */
+export function presetServicesOf(registry: Registry, product: Stack): readonly PresetService[] {
+  return (product.services ?? []).flatMap((service) => {
+    const stack = registry.stack(service.stack);
+    return stack === null || stack.services !== undefined
+      ? []
+      : [{ path: service.path, stack, extraVerticals: service.extraVerticals ?? [] }];
+  });
+}
+
+/**
+ * Each of `services` with the scope its extras plan onto
+ * ({@link presetServiceScope}), on the build system `buildTagOf` says
+ * was chosen for it and the repository layout.
+ */
+export function productScopes(
+  registry: Registry,
+  product: Stack,
+  services: readonly PresetService[],
+  buildTagOf: (path: string) => Tag | null,
+  monorepo: boolean,
+): readonly ServicePlanScope[] {
+  return services.map((service) => ({
+    service,
+    scope: presetServiceScope(
+      registry,
+      product,
+      service,
+      presetServiceTags(service, buildTagOf(service.path), services),
+      monorepo,
+    ),
+  }));
+}
+
+/** Where {@link routeExtra} sends a vertical, or why it sends it nowhere. */
+export type Routed =
+  | { readonly kind: 'routed'; readonly path: string }
+  | { readonly kind: 'refused'; readonly refusal: RefusalError };
+
+/**
+ * Where `vertical`, named for a composite product without a service,
+ * goes: to the one service whose scope admits it — ready, or ready
+ * once its prerequisites are in. Where none does, or several, it goes
+ * nowhere, and the refusal is the one `keel add` gives it at the
+ * product root: a vertical whose place is a repository root, asked of
+ * a monorepo product, cannot go in any of its services
+ * (`keel.uncoverable-vertical`); any other belongs to a service, and
+ * the refusal names each with its readiness there
+ * (`keel.wrong-scope`) — so a vertical two services could each take
+ * is the user's to place. `vertical` is not the product's own.
+ */
+export function routeExtra(
+  registry: Registry,
+  scopes: readonly ServicePlanScope[],
+  vertical: Vertical,
+  monorepo: boolean,
+): Routed {
+  const read = scopes.map(({ service, scope }) => ({
+    path: service.path,
+    stack: service.stack.id,
+    readiness: readiness(registry, scope, vertical.id).kind,
+  }));
+  const admitting = read.filter(
+    (service) => service.readiness === 'ready' || service.readiness === 'needs',
+  );
+  const [only] = admitting;
+  if (admitting.length === 1 && only !== undefined) return { kind: 'routed', path: only.path };
+  if (monorepo && vertical.placement?.scope === 'repository') {
+    return { kind: 'refused', refusal: productRootPlacementRefusal(registry, vertical) };
+  }
+  return { kind: 'refused', refusal: elsewhereRefusal(registry, vertical, read) };
+}
+
+/**
+ * The sentence a vertical already on a product's service is set aside
+ * in: it comes with the service's preset, or with the product — the
+ * verticals the product installs in it, and under the monorepo layout
+ * what its root gives it.
+ */
+export function serviceIncludedNote(
+  product: Stack,
+  service: PresetService,
+): (vertical: Vertical) => string {
+  return (vertical) =>
+    alreadyIncludedNote(
+      vertical,
+      service.stack.verticals.some((own) => own.id === vertical.id) ? service.stack.id : product.id,
+    );
+}
+
+/**
+ * Every registered vertical as `keel new --with` reads it on a product
+ * named without a service: the product's own `included`; one a single
+ * service can take, as that service reads it; and the rest
+ * `unavailable`, with the refusal {@link routeExtra} gives it.
+ */
+function productOptions(
+  registry: Registry,
+  product: Stack,
+  scopes: readonly ServicePlanScope[],
+  monorepo: boolean,
+): readonly VerticalOption[] {
+  return listVerticals(registry).flatMap((summary): VerticalOption[] => {
+    const vertical = registry.vertical(summary.id);
+    if (vertical === null) return [];
+    if (product.verticals.some((own) => own.id === summary.id)) {
+      return [{ ...summary, readiness: 'included', requires: [] }];
+    }
+    const routed = routeExtra(registry, scopes, vertical, monorepo);
+    if (routed.kind === 'refused') {
+      const { code, message, refusal } = routed.refusal;
+      return [
+        { ...summary, readiness: 'unavailable', requires: [], refusal: { code, message, refusal } },
+      ];
+    }
+    const scope = scopes.find(({ service }) => service.path === routed.path)?.scope;
+    if (scope === undefined) return [];
+    return scopeOptions(registry, scope).filter((option) => option.id === summary.id);
+  });
+}
+
+/** Every extra a target names for a product's services, in their order, each once. */
+function serviceExtrasOf(target: NewProjectTarget): readonly string[] {
+  return [
+    ...new Set(Object.values(target.services ?? {}).flatMap((service) => service.extraVerticals)),
+  ];
 }
 
 /**

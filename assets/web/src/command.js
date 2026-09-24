@@ -36,9 +36,17 @@ export function commandFor({ target, answers }) {
     flag(tokens, '--build-system', target.buildSystem);
     flag(tokens, '--module-layout', target.moduleLayout);
     if (target.withPeerContext === true) tokens.push({ kind: 'flag', text: '--with-peer-context' });
-    if (Array.isArray(target.extraVerticals) && target.extraVerticals.length > 0) {
-      flag(tokens, '--with', target.extraVerticals.join(','));
-    }
+    // A product's extras are each service's, spelled `path:id` — the
+    // form `--with` names a service in.
+    const extras = [
+      ...(Array.isArray(target.extraVerticals) ? target.extraVerticals : []),
+      ...Object.entries(target.services ?? {}).flatMap(([path, service]) =>
+        (Array.isArray(service?.extraVerticals) ? service.extraVerticals : []).map(
+          (id) => `${path}:${id}`,
+        ),
+      ),
+    ];
+    if (extras.length > 0) flag(tokens, '--with', extras.join(','));
     // Only the opt-out has a flag: the harness is on unless left out.
     if (target.agentHarness === false) tokens.push({ kind: 'flag', text: '--no-agent-harness' });
   } else if (target.kind === 'add-vertical') {

@@ -31,6 +31,11 @@
  *     it out, and a missing box answered "why can I not have
  *     persistence?" with nothing.
  *
+ * A product has one such group per service ({@link serviceExtrasGroup}),
+ * each read off that service's own menu in the reply
+ * (`services[].verticals`): a service's extras are its own, planned in
+ * its scope, and `keel new --with backend:persistence` names them so.
+ *
  * Pure, and separate from any element, so the grouping is testable
  * without a DOM — the same split `steps.js` and `target.js` live
  * under.
@@ -44,7 +49,7 @@
  */
 
 import { needsBadge, refusedOf, titles } from './readiness.js';
-import { extrasOf } from './target.js';
+import { extrasOf, serviceExtrasOf } from './target.js';
 
 /**
  * The one vertical a preset comes with that a target can leave out —
@@ -54,9 +59,8 @@ const HARNESS = 'agent-harness';
 
 /**
  * The group for this dials reply and target, or null where there is
- * none — before the first reply lands, and on a product, whose
- * services each carry their own extras (its reply lists only what the
- * product installs of its own, which is nothing to tick).
+ * none — before the first reply lands, and on a product, whose extras
+ * are each service's ({@link serviceExtrasGroup}).
  *
  * The agent harness's chip carries `on` where the reply lets the
  * target leave it out: whether the target keeps it, as the install
@@ -70,6 +74,42 @@ export function extrasGroup(dials, target) {
   const verticals = dials?.verticals ?? [];
   if (verticals.length === 0 || (dials?.services ?? []).length > 0) return null;
   const titleOf = titles(verticals);
+  return groupOf(verticals, extrasOf(target), dials?.adjustments ?? [], titleOf, (vertical) =>
+    vertical.id === HARNESS && dials?.agentHarness === true
+      ? { id: vertical.id, title: vertical.title, on: target?.agentHarness !== false }
+      : { id: vertical.id, title: vertical.title },
+  );
+}
+
+/**
+ * The group of one service of a product — `path`, as the reply's
+ * `services` lists it — or null where the reply has no menu for it:
+ * before the first reply lands, and on a single preset. Its parts are
+ * {@link extrasGroup}'s, read off the service's own menu; its chosen
+ * boxes are the service's extras in the target (`services[path]`); its
+ * line is the reply's adjustments made in that service. No chip is a
+ * switch: a product's harness is not a dial.
+ *
+ * @param {{ services?: ReadonlyArray<{ path: string, verticals?: ReadonlyArray<VerticalOption> }>, adjustments?: ReadonlyArray<Adjustment> } | null} dials
+ * @param {object | null} target
+ * @param {string} path
+ * @returns {ExtrasGroup | null}
+ */
+export function serviceExtrasGroup(dials, target, path) {
+  const service = (dials?.services ?? []).find((candidate) => candidate.path === path);
+  const verticals = service?.verticals ?? [];
+  if (verticals.length === 0) return null;
+  return groupOf(
+    verticals,
+    serviceExtrasOf(target, path),
+    (dials?.adjustments ?? []).filter((adjustment) => adjustment.service === path),
+    titles(verticals),
+    (vertical) => ({ id: vertical.id, title: vertical.title }),
+  );
+}
+
+/** The parts of a group, over one menu and the selection and adjustments that go with it. */
+function groupOf(verticals, chosen, adjustments, titleOf, chip) {
   const card = (vertical) => ({
     value: vertical.id,
     label: vertical.title,
@@ -80,16 +120,10 @@ export function extrasGroup(dials, target) {
     needs: verticals
       .filter((vertical) => vertical.readiness === 'needs')
       .map((vertical) => ({ ...card(vertical), badge: needsBadge(vertical, titleOf) })),
-    included: verticals
-      .filter((vertical) => vertical.readiness === 'included')
-      .map((vertical) =>
-        vertical.id === HARNESS && dials?.agentHarness === true
-          ? { id: vertical.id, title: vertical.title, on: target?.agentHarness !== false }
-          : { id: vertical.id, title: vertical.title },
-      ),
+    included: verticals.filter((vertical) => vertical.readiness === 'included').map(chip),
     refused: refusedOf(verticals),
-    chosen: extrasOf(target),
-    line: adjustmentLine(dials, titleOf),
+    chosen,
+    line: adjustmentLine(adjustments, titleOf),
   };
 }
 
@@ -108,14 +142,34 @@ export function extrasSummary(dials, target) {
 }
 
 /**
+ * A product's extras, spelled for the review: each service's titles
+ * and where they go — `Persistence in backend/; Development
+ * environment in frontend/` — in the order the reply lists the
+ * services, or a plain "nothing extra".
+ *
+ * @param {{ services?: ReadonlyArray<{ path: string, verticals?: ReadonlyArray<VerticalOption> }> } | null} dials
+ * @param {object | null} target
+ * @returns {string}
+ */
+export function servicesExtrasSummary(dials, target) {
+  const parts = (dials?.services ?? []).flatMap((service) => {
+    const chosen = serviceExtrasOf(target, service.path);
+    if (chosen.length === 0) return [];
+    const titleOf = titles(service.verticals ?? []);
+    return [`${chosen.map(titleOf).join(', ')} in ${service.path}/`];
+  });
+  return parts.length === 0 ? 'nothing extra' : parts.join('; ');
+}
+
+/**
  * Everything the last `keel.dials` reply added to the selection or
  * left out of it, as one line — each with its reason, since nothing
  * should join or leave a set of checkboxes silently. Empty when
  * nothing moved, which is the usual case: the page ticks a vertical's
  * prerequisites with it, so the reply has nothing to add.
  */
-function adjustmentLine(dials, titleOf) {
-  const parts = (dials?.adjustments ?? []).map(
+function adjustmentLine(adjustments, titleOf) {
+  const parts = adjustments.map(
     (adjustment) =>
       `${adjustment.change === 'added' ? 'added' : 'left out'} ${titleOf(adjustment.id)} — ${adjustment.because}`,
   );

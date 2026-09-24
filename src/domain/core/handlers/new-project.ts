@@ -41,11 +41,17 @@
  * once at the product root, together with the composite stack's own
  * glue verticals; under **polyrepo** every service is a repository of
  * its own, keeps its own `vcs` run, and no shared root artifacts
- * exist. A directory inside an existing product that it lists no
- * service in is refused before anything is asked
- * (`keel.inside-product`). Commit order matches the single flow, per
- * scope: trees, then manifests, then deferred actions (root first,
- * then services in declaration order).
+ * exist. Each service's extras — `--with backend:persistence`, or one
+ * named without a service that one service alone can take — are
+ * planned onto that service's scope once the layout and its build
+ * system are settled, as a single stack's are onto the preset. A
+ * directory inside an existing product that it lists no service in is
+ * refused before anything is asked (`keel.inside-product`), and a file
+ * two scopes would both write is refused once every scope is staged,
+ * before the plan is reported (`keel.cross-scope-write`). Commit
+ * order matches the single flow, per scope: trees, then manifests,
+ * then deferred actions (root first, then services in declaration
+ * order).
  *
  * **Interactive pipeline** wraps either of the above in a wizard
  * rather than replacing them: `handle()` stages the full plan (every
@@ -114,11 +120,16 @@ import {
   offeredAsExtra,
   peerContextOffered,
   presetScope,
+  productScopes,
+  routeExtra,
+  serviceIncludedNote,
   switchesHarnessOn,
   verticalOptions,
   withoutHarness,
+  type ServicePlanScope,
 } from '../dials.js';
 import type { AnswerRead } from '../answers.js';
+import { newOwnership } from '../apply.js';
 import { installVerticals } from '../install.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
@@ -149,9 +160,10 @@ import {
 } from '../stack-wizard.js';
 import {
   alreadyIncludedNote,
-  elsewhereRefusal,
-  productRootPlacementRefusal,
+  crossScopeWriteError,
+  routedExtraNote,
   unbuiltInServiceNote,
+  type ScopeWriter,
 } from '../refusals.js';
 import { readiness } from '../planner.js';
 import { PathConflictError, PathMissingError } from '../../contract/refusal.js';
@@ -159,9 +171,9 @@ import { NOTHING_INSTALLED, resolvedAdapters, strayAnswerRefusal } from '../supp
 import {
   enclosingProduct,
   memberScope,
-  presetServiceScope,
   projectScope,
   provisionsFor,
+  type PresetService,
 } from '../scope.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -283,12 +295,6 @@ const LAYOUT_QUESTION: Question = {
   memory: 'repeat',
 };
 
-interface ResolvedService {
-  readonly path: string;
-  readonly stack: Stack;
-  readonly extraVerticals: readonly Vertical[];
-}
-
 /** One scope (product root or service) staged by a composite install. */
 interface StagedScope {
   /** Path prefix for report changes; '' for the product root. */
@@ -302,6 +308,8 @@ interface StagedScope {
   readonly adapters: readonly Adapter[];
   /** The supplied answers the scope's adapters read. */
   readonly reads: readonly AnswerRead[];
+  /** Path (relative to {@link cwd}) → the adapter that last wrote it. */
+  readonly writers: ReadonlyMap<string, string>;
 }
 
 /**
@@ -572,60 +580,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     for (const a of report.actions) this.deps.logger.info(`  ! ${a}`);
   }
 
-  /**
-   * The refusal of `--with` on a composite stack: each service declares
-   * its own extra verticals, and `--with` names no service. Spoken as
-   * the product-root refusal `keel add` gives the same vertical — it
-   * belongs to a service (`keel.wrong-scope`), and here is which can
-   * take it, from each service's preset as the layout asked for places
-   * it (the default layout when none was: the question comes later) —
-   * so the product-level fact reads the same in both phases. A vertical
-   * placed at a repository root, asked of a monorepo product, is the
-   * one not sent anywhere, as at a product root on disk. An id no
-   * vertical is registered under is refused as one, as it is on a
-   * single-service stack.
-   */
-  private compositeExtraRefusal(
-    command: NewProjectCommand,
-    product: Stack,
-    services: readonly ResolvedService[],
-    asked: string,
-  ): DomainError {
-    const registry = this.deps.registry;
-    const vertical = registry.vertical(asked);
-    if (vertical === null) {
-      return new DomainError(
-        `unknown vertical '${asked}'; available: ${listVerticals(registry)
-          .map((v) => v.id)
-          .join(', ')}`,
-        'keel.unknown-vertical',
-      );
-    }
-    const monorepo = command.layout !== 'polyrepo';
-    if (monorepo && vertical.placement?.scope === 'repository') {
-      return productRootPlacementRefusal(registry, vertical);
-    }
-    return elsewhereRefusal(
-      registry,
-      vertical,
-      services.map((service) => ({
-        path: service.path,
-        stack: service.stack.id,
-        readiness: readiness(
-          registry,
-          presetServiceScope(
-            registry,
-            product,
-            service.stack,
-            service.extraVerticals.map((extra) => extra.id),
-            monorepo,
-          ),
-          vertical.id,
-        ).kind,
-      })),
-    );
-  }
-
   private async stageSingle(
     command: NewProjectCommand,
     stack: Stack,
@@ -634,6 +588,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const scopeRoot = projectScopeRoot(command.cwd);
     if ((await this.deps.manifests.read(scopeRoot)) !== null) {
       return err(alreadyInitialised(scopeRoot));
+    }
+    const named = Object.keys(command.services ?? {});
+    if (named.length > 0) {
+      return err(
+        new DomainError(
+          `stack '${stack.id}' has no services — name its extras in --with without a service path (got '${named[0] ?? ''}:…')`,
+          INVALID_EXTRAS_CODE,
+        ),
+      );
     }
 
     const buildTag = await this.resolveBuildSystem(command, stack, prompt);
@@ -707,7 +670,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     stack: Stack,
     prompt: Prompt,
   ): Promise<Result<StagedPlan>> {
-    const resolved: ResolvedService[] = [];
+    const resolved: PresetService[] = [];
     for (const service of stack.services ?? []) {
       const serviceStack = this.deps.registry.stack(service.stack);
       if (!serviceStack) {
@@ -751,16 +714,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
-    // What the product preset installs of its own — version control,
-    // at the root of a monorepo or in each polyrepo service — is set
-    // aside with a note, as on a single-service stack; anything else
-    // named belongs to a service, which `--with` does not name.
-    const extras = command.extraVerticals ?? [];
-    const present = stack.verticals.filter((vertical) => extras.includes(vertical.id));
-    const asked = extras.find((id) => !present.some((vertical) => vertical.id === id));
-    if (asked !== undefined) {
-      return err(this.compositeExtraRefusal(command, stack, resolved, asked));
-    }
+    // What `--with` names, read before a question is asked: the form
+    // of each entry and the ids it names say nothing about the dials.
+    const named = this.namedExtras(command, stack, resolved);
+    if (!named.ok) return named;
+    const { present, bare } = named.value;
 
     const layout = await this.resolveLayout(command, stack, prompt);
     if (!layout.ok) return layout;
@@ -781,6 +739,25 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
     const now = this.deps.clock.nowIso();
     const monorepo = layout.value === 'monorepo';
+
+    // Last of the dials, as on a single stack: each service's extras
+    // are planned onto the scope its build system and the layout
+    // settle, before a single adapter question.
+    const extras = this.resolveServiceExtras(
+      command,
+      stack,
+      productScopes(
+        this.deps.registry,
+        stack,
+        resolved,
+        (servicePath) => builds.value.get(servicePath)?.tag ?? null,
+        monorepo,
+      ),
+      bare,
+      monorepo,
+    );
+    if (!extras.ok) return extras;
+
     const scopes: StagedScope[] = [];
 
     if (monorepo) {
@@ -819,13 +796,23 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           peers: peersFor(service, resolved),
           services: [],
           member: monorepo,
-          extraVerticals: service.extraVerticals,
+          extraVerticals: [
+            ...service.extraVerticals,
+            ...(extras.value.admitted.get(service.path)?.order ?? []),
+          ],
           command,
           now,
           prompt,
         }),
       );
     }
+
+    // Each scope staged into a Tree of its own, so a file two of them
+    // write is nobody's conflict until this: without it, the one
+    // committed last would win. Here, and not at commit, so a preview
+    // and a dry run refuse it as the install does.
+    const clash = crossScopeWrite(scopes);
+    if (clash !== null) return err(clash);
 
     const changes: TreeChange[] = scopes.flatMap((scope) =>
       scope.tree
@@ -840,6 +827,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const skipped = scopes.reduce((total, scope) => total + scope.skippedHarnessElements, 0);
     const notes = [
       ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
+      ...extras.value.notes,
       ...(monorepo ? this.unbuiltNotes(scopes) : []),
     ];
     const report: InstallReport = {
@@ -852,6 +840,134 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     };
 
     return ok({ report, scopes });
+  }
+
+  /**
+   * What `--with` names on a composite product, checked for its form
+   * before any question is asked: each service path the product lists
+   * one at (`services`), every id registered, none named twice for one
+   * service or twice bare, and the two forms not mixed — one command
+   * names its extras with a service each or with none. Of the bare
+   * ids, the product's own are set aside (`present`, a note each, as
+   * on a single stack) and the rest are sent to a service once the
+   * dials are settled (`bare`).
+   */
+  private namedExtras(
+    command: NewProjectCommand,
+    stack: Stack,
+    services: readonly PresetService[],
+  ): Result<{ readonly present: readonly Vertical[]; readonly bare: readonly Vertical[] }> {
+    const registry = this.deps.registry;
+    const paths = services.map((service) => service.path);
+    const perService = Object.entries(command.services ?? {});
+    for (const [servicePath, extras] of perService) {
+      if (!paths.includes(servicePath)) {
+        return err(
+          new DomainError(
+            `stack '${stack.id}' has no service '${servicePath}' — services: ${paths.join(', ')}`,
+            INVALID_EXTRAS_CODE,
+          ),
+        );
+      }
+      const twice = extras.extraVerticals.find(
+        (id, index) => extras.extraVerticals.indexOf(id) !== index,
+      );
+      if (twice !== undefined) {
+        return err(
+          new DomainError(
+            `--with names vertical '${twice}' twice for ${servicePath}`,
+            INVALID_EXTRAS_CODE,
+          ),
+        );
+      }
+    }
+    const requested = command.extraVerticals ?? [];
+    if (requested.length > 0 && perService.some(([, extras]) => extras.extraVerticals.length > 0)) {
+      return err(
+        new DomainError(
+          `--with names some verticals with a service and some without — on stack '${stack.id}' name each with its service, as 'path:id' pairs (e.g. --with ${paths[0] ?? 'backend'}:persistence), or none with one`,
+          INVALID_EXTRAS_CODE,
+        ),
+      );
+    }
+    const twice = requested.find((id, index) => requested.indexOf(id) !== index);
+    if (twice !== undefined) {
+      return err(new DomainError(`--with names vertical '${twice}' twice`, INVALID_EXTRAS_CODE));
+    }
+    const present: Vertical[] = [];
+    const bare: Vertical[] = [];
+    for (const id of [...requested, ...perService.flatMap(([, extras]) => extras.extraVerticals)]) {
+      const vertical = registry.vertical(id);
+      if (vertical === null) {
+        return err(
+          new DomainError(
+            `unknown vertical '${id}'; available: ${listVerticals(registry)
+              .map((v) => v.id)
+              .join(', ')}`,
+            'keel.unknown-vertical',
+          ),
+        );
+      }
+      if (!requested.includes(id)) continue;
+      if (stack.verticals.some((own) => own.id === id)) present.push(vertical);
+      else bare.push(vertical);
+    }
+    return ok({ present, bare });
+  }
+
+  /**
+   * Each service's extras, planned onto the scope its dials settled
+   * (`scopes`): the ones `--with` named for it, and each named without
+   * a service that it alone can take (`routeExtra` — refused, naming
+   * the services, where none or several can). Planned as a single
+   * stack's are: one already there set aside with a note, the rest
+   * closed over their prerequisites in plan order, or refused in the
+   * sentence `keel add` there would give (`keel.wrong-scope` for a
+   * pipeline in a monorepo service). The notes are prefixed with the
+   * service, as its deferred actions are in the report.
+   */
+  private resolveServiceExtras(
+    command: NewProjectCommand,
+    stack: Stack,
+    scopes: readonly ServicePlanScope[],
+    bare: readonly Vertical[],
+    monorepo: boolean,
+  ): Result<{
+    readonly admitted: ReadonlyMap<string, AdmittedSet>;
+    readonly notes: readonly string[];
+  }> {
+    const registry = this.deps.registry;
+    const requested = new Map<string, Vertical[]>();
+    const notes: string[] = [];
+    for (const vertical of [...bare].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+      const routed = routeExtra(registry, scopes, vertical, monorepo);
+      if (routed.kind === 'refused') return err(routed.refusal);
+      requested.set(routed.path, [...(requested.get(routed.path) ?? []), vertical]);
+      notes.push(routedExtraNote(vertical, routed.path, stack.id));
+    }
+    const admitted = new Map<string, AdmittedSet>();
+    for (const { service, scope } of scopes) {
+      const chosen = [
+        ...(requested.get(service.path) ?? []),
+        ...(command.services?.[service.path]?.extraVerticals ?? []).flatMap(
+          (id) => registry.vertical(id) ?? [],
+        ),
+      ];
+      if (chosen.length === 0) continue;
+      const already = serviceIncludedNote(stack, service);
+      const incoming: Vertical[] = [];
+      for (const vertical of chosen) {
+        if (scope.installed.includes(vertical.id)) {
+          notes.push(`${service.path}: ${already(vertical)}`);
+        } else incoming.push(vertical);
+      }
+      if (incoming.length === 0) continue;
+      const set = admit(registry, scope, incoming);
+      if (!set.ok) return set;
+      admitted.set(service.path, set.value);
+      notes.push(...admissionNotes(set.value).map((note) => `${service.path}: ${note}`));
+    }
+    return ok({ admitted, notes });
   }
 
   /**
@@ -941,10 +1057,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // read here too, so what a monorepo service is scaffolded without
     // and what `keel add` there refuses cannot drift apart.
     const placed = (v: Vertical) => inputs.member && v.placement?.scope === 'repository';
+    // One per scope, read back for who wrote what (`crossScopeWrite`).
+    const owners = newOwnership();
     const result = await installVerticals({
       verticals: [...inputs.stack.verticals, ...(inputs.extraVerticals ?? [])].filter(
         (v) => !placed(v),
       ),
+      owners,
       // The preset's own rules, held with its verticals' over every
       // tag the run folds in, as `assemblyIsLegal` held them over the
       // tags the dials settled.
@@ -978,6 +1097,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       adapters: result.adapters,
       reads: result.reads,
       skippedHarnessElements: result.applyResult.skippedHarnessElements ?? 0,
+      writers: owners.writers,
     };
   }
 
@@ -1057,7 +1177,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   private async resolveServiceBuildSystems(
     command: NewProjectCommand,
     stack: Stack,
-    services: readonly ResolvedService[],
+    services: readonly PresetService[],
     prompt: Prompt,
   ): Promise<Result<ReadonlyMap<string, BuildSystemOption | null>>> {
     const explicit = parseServiceBuildSystems(command.buildSystem, stack, services);
@@ -1239,9 +1359,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const present: Vertical[] = [];
     for (const id of requested) {
       if ([...present, ...chosen].some((v) => v.id === id)) {
-        return err(
-          new DomainError(`--with names vertical '${id}' twice`, 'keel.invalid-extra-verticals'),
-        );
+        return err(new DomainError(`--with names vertical '${id}' twice`, INVALID_EXTRAS_CODE));
       }
       const own = stack.verticals.find((v) => v.id === id);
       if (own !== undefined) {
@@ -1576,7 +1694,7 @@ function buildSystemQuestion(
  * distinguishable to the user and to scripted prompts alike.
  */
 function serviceBuildSystemQuestion(
-  service: ResolvedService,
+  service: PresetService,
   options: readonly BuildSystemOption[],
   fallback: BuildSystemOption,
 ): Question {
@@ -1597,7 +1715,7 @@ function serviceBuildSystemQuestion(
 function parseServiceBuildSystems(
   raw: string | undefined,
   stack: Stack,
-  services: readonly ResolvedService[],
+  services: readonly PresetService[],
 ): Result<ReadonlyMap<string, string>> {
   const parsed = new Map<string, string>();
   if (raw === undefined) return ok(parsed);
@@ -1808,10 +1926,48 @@ function underService(thrown: unknown, prefix: string): unknown {
   return thrown;
 }
 
+/**
+ * The refusal of a composite plan two of whose scopes stage one file —
+ * the same absolute path, from the product root and a service, or from
+ * two services — naming the adapter that wrote it in each, and where
+ * it ran (`../refusals.ts`); null when every file has one scope.
+ */
+function crossScopeWrite(scopes: readonly StagedScope[]): DomainError | null {
+  const staged = new Map<string, { readonly scope: StagedScope; readonly path: string }>();
+  for (const scope of scopes) {
+    for (const change of scope.tree.changes()) {
+      const absolute = path.join(scope.cwd, change.path);
+      const first = staged.get(absolute);
+      if (first === undefined) {
+        staged.set(absolute, { scope, path: change.path });
+        continue;
+      }
+      return crossScopeWriteError(
+        scope.prefix === '' ? change.path : path.posix.join(scope.prefix, change.path),
+        writerIn(first.scope, first.path),
+        writerIn(scope, change.path),
+      );
+    }
+  }
+  return null;
+}
+
+/** Who wrote `file` in `scope`: the adapter, by its `<vertical>/<adapter>` id. */
+function writerIn(scope: StagedScope, file: string): ScopeWriter {
+  return { by: scope.writers.get(file) ?? null, scope: scope.prefix };
+}
+
 /** The default module-layout tag of a service stack, if it declares a choice. */
 function defaultLayoutTag(stack: Stack): Tag | null {
   return stack.moduleLayouts?.[0]?.tag ?? null;
 }
+
+/**
+ * The code `--with` is refused with for its form rather than for what
+ * it names: an id twice, a service path the product does not list, a
+ * path on a single-service stack, or the two forms mixed.
+ */
+const INVALID_EXTRAS_CODE = 'keel.invalid-extra-verticals';
 
 /** The code `keel new` inside a product, in a directory it does not list, is refused with. */
 export const INSIDE_PRODUCT_CODE = 'keel.inside-product';
@@ -1850,7 +2006,7 @@ export function peerRef(fromServicePath: string, toServicePath: string): string 
  * The peers a service sees: every sibling's declared projections,
  * ref'd relative to the service's own directory.
  */
-function peersFor(service: ResolvedService, all: readonly ResolvedService[]): PeerLink[] {
+function peersFor(service: PresetService, all: readonly PresetService[]): PeerLink[] {
   return all
     .filter((other) => other.path !== service.path)
     .map((other) => ({

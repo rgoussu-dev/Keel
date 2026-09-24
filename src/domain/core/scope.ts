@@ -47,7 +47,7 @@ import { conflictsOf } from './compatibility.js';
 import { defaultScope, seedFor, type PlanScope } from './planner.js';
 import { matches } from './predicate.js';
 import { installedVertical } from './registry.js';
-import type { Stack } from './stacks.js';
+import { stackTagsFor, type Stack } from './stacks.js';
 
 /** The ports reading a project on disk takes. */
 export interface ProjectReadDeps {
@@ -234,26 +234,82 @@ export function serviceScopeOf(
 }
 
 /**
+ * One service of a product preset as `keel new` scaffolds it: its
+ * directory, its preset, and the verticals the product installs in it
+ * of its own accord (the preset's `services[].extraVerticals`).
+ */
+export interface PresetService {
+  readonly path: string;
+  readonly stack: Stack;
+  readonly extraVerticals: readonly Vertical[];
+}
+
+/**
+ * The verticals a service of a product installs before any extra is
+ * named: its preset's own, then the product's for it — less, under the
+ * monorepo layout, those whose place is a repository root, which the
+ * product root carries instead (`Vertical.placement`). The list `keel
+ * new` installs there, and the one {@link presetServiceScope} reads as
+ * there already.
+ */
+export function presetServiceVerticals(
+  service: PresetService,
+  monorepo: boolean,
+): readonly Vertical[] {
+  return [...service.stack.verticals, ...service.extraVerticals].filter(
+    (vertical) => !(monorepo && vertical.placement?.scope === 'repository'),
+  );
+}
+
+/**
+ * The tags a service of a product seeds as `keel new` scaffolds it:
+ * its preset's, the build system chosen for it (`buildTag`, null where
+ * the preset pins one), its preset's default module layout — a product
+ * offers no other — and what each of its sibling services projects
+ * there, as the peers its manifest records.
+ */
+export function presetServiceTags(
+  service: PresetService,
+  buildTag: Tag | null,
+  services: readonly PresetService[],
+): readonly Tag[] {
+  return [
+    ...stackTagsFor(service.stack, buildTag, service.stack.moduleLayouts?.[0]?.tag ?? null),
+    ...services
+      .filter((other) => other.path !== service.path)
+      .flatMap((other) => other.stack.projects ?? []),
+  ];
+}
+
+/**
  * The scope a service of the product preset `product` plans onto
- * before `keel new` writes anything: the service preset's default
- * scope with `extras` — the verticals the product installs in it of
- * its own accord — and, under the monorepo layout, what the product
- * root the same run scaffolds gives it.
+ * before `keel new` writes anything: its tags (`tags`,
+ * {@link presetServiceTags}) as {@link presetServiceVerticals} leave
+ * them, those verticals as there already with the rules they and the
+ * service's preset declare — and, under the monorepo layout, what the
+ * product root the same run scaffolds gives it. What a service's extras
+ * menu, a product's `--with` and a service's own extras all plan onto,
+ * so the three read one scope.
  */
 export function presetServiceScope(
   registry: Registry,
   product: Stack,
-  service: Stack,
-  extras: readonly string[],
+  service: PresetService,
+  tags: readonly Tag[],
   monorepo: boolean,
 ): PlanScope {
-  const own = defaultScope(service, extras);
+  const verticals = presetServiceVerticals(service, monorepo);
+  const own: PlanScope = {
+    tags: seedFor({ ...service.stack, verticals: [...verticals] }, tags),
+    installed: verticals.map((vertical) => vertical.id),
+    rules: conflictsOf([service.stack, ...verticals]),
+  };
   if (!monorepo) return own;
   const root = {
     installed: product.verticals.map((vertical) => vertical.id),
     tags: seedFor(product, product.tags),
   };
-  return memberScope(own, provisionsFor(registry, root, service.id));
+  return memberScope(own, provisionsFor(registry, root, service.stack.id));
 }
 
 /**

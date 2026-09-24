@@ -114,6 +114,7 @@ const targetSchema = z
       moduleLayout: z.string().min(1).optional(),
       withPeerContext: z.boolean().optional(),
       extraVerticals: z.array(z.string().min(1)).optional(),
+      services: z.record(z.object({ extraVerticals: z.array(z.string().min(1)) })).optional(),
       agentHarness: z.boolean().optional(),
     }),
     z.object({
@@ -267,6 +268,7 @@ function narrow(target: z.infer<typeof targetSchema>): InstallTarget {
           ? {}
           : { withPeerContext: target.withPeerContext }),
         ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
+        ...(target.services === undefined ? {} : { services: target.services }),
         ...(target.agentHarness === undefined ? {} : { agentHarness: target.agentHarness }),
       };
     case 'add-vertical':

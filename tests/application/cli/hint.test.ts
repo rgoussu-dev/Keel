@@ -120,7 +120,7 @@ const TABLE: readonly {
     hint: "'cd backend && keel add persistence'",
   },
   {
-    why: 'a composite keel new says to add it in the service afterwards',
+    why: 'a composite keel new two services could take says to name one',
     refusal: {
       kind: 'elsewhere',
       vertical: 'ci',
@@ -130,7 +130,20 @@ const TABLE: readonly {
       ],
     },
     command: 'new',
-    hint: "scaffold the product, then 'keel add ci' inside backend/ or frontend/",
+    hint: "name the service it goes in: '--with backend:ci' or '--with frontend:ci'",
+  },
+  {
+    why: 'a composite keel new no service can take says to drop it',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'gateway',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'included' },
+        { path: 'frontend', stack: 'web-components', readiness: 'included' },
+      ],
+    },
+    command: 'new',
+    hint: "drop 'gateway' from --with",
   },
   {
     why: 'a product root whose services have it already has nothing to add',
@@ -165,6 +178,30 @@ const TABLE: readonly {
 describe('refusalHint', () => {
   it.each(TABLE)('$why', ({ refusal, command, hint }) => {
     expect(refusalHint(refusal, command)).toBe(hint);
+  });
+
+  it("spells a remedy for a product's service in the pair it was named in, and offers no other stack", () => {
+    const named = {
+      backend: { extraVerticals: ['iac'] },
+      frontend: { extraVerticals: ['persistence'] },
+    };
+    // Another stack to scaffold would be another product.
+    expect(refusalHint(persistenceOnCli, 'new', named)).toBe(
+      "drop 'frontend:persistence' from --with",
+    );
+    expect(
+      refusalHint(
+        { kind: 'needs', verticals: ['iac'], prerequisites: [['a'], ['b']] },
+        'new',
+        named,
+      ),
+    ).toBe(
+      "name the one you want: '--with backend:a,backend:iac' or '--with backend:b,backend:iac'",
+    );
+    // `keel add` names no service: it runs in one.
+    expect(refusalHint(persistenceOnCli, 'add', named)).toBe(
+      "quarkus-cli-rest carries both this project's entrypoints and persistence; a project's entrypoints are fixed at 'keel new'",
+    );
   });
 });
 
@@ -217,6 +254,29 @@ describe('a refusal at the command line', () => {
       await expect(run(['add', 'persistence', '--yes', '--dry-run'])).rejects.toThrow(
         `${sentence}\n  hint: go-cli-http carries both this project's entrypoints and persistence; a project's entrypoints are fixed at 'keel new'`,
       );
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+
+  it("names the service back in a product's --with pair, not a stack to scaffold instead", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-hint-'));
+    try {
+      const { run } = program(cwd);
+      await expect(
+        run([
+          'new',
+          '--stack',
+          'fullstack',
+          '--with',
+          'frontend:persistence',
+          '--yes',
+          '--dry-run',
+        ]),
+      ).rejects.toThrow(/\n {2}hint: drop 'frontend:persistence' from --with$/);
+      await expect(
+        run(['new', '--stack', 'fullstack', '--with', 'backend:ci', '--yes', '--dry-run']),
+      ).rejects.toThrow(/\n {2}hint: drop 'backend:ci' from --with$/);
     } finally {
       await fs.remove(cwd);
     }

@@ -82,7 +82,7 @@
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
 import { additionsSummary } from '../additions.js';
-import { extrasSummary } from '../extras.js';
+import { extrasSummary, servicesExtrasSummary } from '../extras.js';
 import { failureOf } from '../response.js';
 import { plansNothing } from '../tree.js';
 import {
@@ -155,7 +155,14 @@ export class KeelApp extends HTMLElement {
     this.addEventListener('service-opened', (event) => void this.#goTo(event.detail.path, TARGET));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
     this.addEventListener('extra-toggled', (event) =>
-      this.#move(toggleExtra(this.#run(), event.detail.id, event.detail.ticked)),
+      this.#move(
+        toggleExtra(
+          this.#run(),
+          event.detail.id,
+          event.detail.ticked,
+          event.detail.service ?? null,
+        ),
+      ),
     );
     this.addEventListener('vertical-toggled', (event) =>
       this.#move(toggleVertical(this.#run(), this.#status, event.detail.id, event.detail.ticked)),
@@ -465,13 +472,14 @@ export class KeelApp extends HTMLElement {
       if (this.#target.agentHarness === false) {
         rows.push({ step: OPTIONS, label: 'Agent harness', value: 'left out' });
       }
-      if (stack.services.length === 0) {
-        rows.push({
-          step: OPTIONS,
-          label: 'Also scaffold',
-          value: extrasSummary(this.#dials, this.#target),
-        });
-      }
+      rows.push({
+        step: OPTIONS,
+        label: 'Also scaffold',
+        value:
+          stack.services.length === 0
+            ? extrasSummary(this.#dials, this.#target)
+            : servicesExtrasSummary(this.#dials, this.#target),
+      });
     }
     // What the user set, not what the preview asked: every question
     // has a default, and a row calling the defaults "answered" said a

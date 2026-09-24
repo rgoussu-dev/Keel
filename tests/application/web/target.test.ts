@@ -71,6 +71,7 @@ import {
   restart,
   retarget,
   settle,
+  serviceExtrasOf,
   toggleExtra,
   toggleRefresh,
   toggleVertical,
@@ -597,6 +598,81 @@ describe('an "Also scaffold" box', () => {
     expect(extrasOf(toggleExtra(blank, 'iac', true).target)).toEqual(['iac']);
     expect(extrasOf(blank.target)).toEqual([]);
   });
+
+  /**
+   * A polyrepo `fullstack` as `keel.dials` reports it: each service
+   * with its own menu, the backend's image chain as `quarkus-rest`'s.
+   */
+  const product = (services: Record<string, { extraVerticals: string[] }>): Run => {
+    const target = {
+      kind: 'new-project',
+      stack: 'fullstack',
+      layout: 'polyrepo',
+      services,
+    } as const;
+    return {
+      ...greenfield(),
+      target,
+      dials: reply({
+        target,
+        buildSystems: [],
+        moduleLayouts: [],
+        services: [
+          {
+            path: 'backend',
+            stack: 'quarkus-rest',
+            buildSystems: [choice('gradle')],
+            verticals: [
+              option('containerization', 'ready'),
+              option('distribution', 'needs', ['containerization']),
+              option('iac', 'needs', ['containerization', 'distribution']),
+            ],
+          },
+          {
+            path: 'frontend',
+            stack: 'web-components',
+            buildSystems: [choice('npm')],
+            verticals: [option('dev-env', 'ready')],
+          },
+        ],
+        peerContext: false,
+        agentHarness: false,
+        extraVerticals: [],
+        verticals: [],
+        adjustments: [],
+      }),
+    };
+  };
+
+  it('moves only its own service’s selection on a product, reading that service’s menu', () => {
+    const ticked = toggleExtra(
+      product({ frontend: { extraVerticals: ['dev-env'] } }),
+      'iac',
+      true,
+      'backend',
+    );
+    expect(serviceExtrasOf(ticked.target, 'backend')).toEqual([
+      'containerization',
+      'distribution',
+      'iac',
+    ]);
+    expect(serviceExtrasOf(ticked.target, 'frontend')).toEqual(['dev-env']);
+    expect(extrasOf(ticked.target)).toEqual([]);
+    // Unticking what the rest needs empties the service, and its key
+    // goes with it: no service is named with nothing.
+    const unticked = toggleExtra(
+      { ...ticked, dials: product({}).dials },
+      'containerization',
+      false,
+      'backend',
+    );
+    expect(unticked.target).toEqual({
+      kind: 'new-project',
+      stack: 'fullstack',
+      layout: 'polyrepo',
+      services: { frontend: { extraVerticals: ['dev-env'] } },
+    });
+  });
 });
 
 describe('what a preset move could not keep', () => {
@@ -624,8 +700,18 @@ describe('what a preset move could not keep', () => {
         buildSystems: [],
         moduleLayouts: [],
         services: [
-          { path: 'backend', stack: 'quarkus-rest', buildSystems: [choice('gradle')] },
-          { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
+          {
+            path: 'backend',
+            stack: 'quarkus-rest',
+            buildSystems: [choice('gradle')],
+            verticals: [],
+          },
+          {
+            path: 'frontend',
+            stack: 'web-components',
+            buildSystems: [choice('npm')],
+            verticals: [],
+          },
         ],
         peerContext: false,
         agentHarness: false,
@@ -668,8 +754,18 @@ describe('what a preset move could not keep', () => {
         buildSystems: [],
         moduleLayouts: [],
         services: [
-          { path: 'backend', stack: 'quarkus-rest', buildSystems: [choice('gradle')] },
-          { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
+          {
+            path: 'backend',
+            stack: 'quarkus-rest',
+            buildSystems: [choice('gradle')],
+            verticals: [],
+          },
+          {
+            path: 'frontend',
+            stack: 'web-components',
+            buildSystems: [choice('npm')],
+            verticals: [],
+          },
         ],
         peerContext: false,
         agentHarness: false,
@@ -716,8 +812,18 @@ describe('what a preset move could not keep', () => {
         buildSystems: [],
         moduleLayouts: [],
         services: [
-          { path: 'backend', stack: 'quarkus-rest', buildSystems: [choice('gradle')] },
-          { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
+          {
+            path: 'backend',
+            stack: 'quarkus-rest',
+            buildSystems: [choice('gradle')],
+            verticals: [],
+          },
+          {
+            path: 'frontend',
+            stack: 'web-components',
+            buildSystems: [choice('npm')],
+            verticals: [],
+          },
         ],
         peerContext: false,
         agentHarness: false,
@@ -826,6 +932,7 @@ describe('what a preset move could not keep', () => {
       path,
       stack,
       buildSystems: ids.map(choice),
+      verticals: [],
     });
     const product = (stack: string, ...services: DialOptions['services']): DialOptions => ({
       target: { kind: 'new-project', stack },
@@ -947,9 +1054,10 @@ describe('what a preset move could not keep', () => {
     expect(settled.notice).toBe('');
   });
 
-  it('names an extra a product left behind by the title the old menu gave it', () => {
-    // A product takes no extras of its own, and its reply neither lists
-    // a single project's nor says why it dropped them.
+  it('names an extra a reply dropped without a reason by the title the old menu gave it', () => {
+    // `keel.dials` gives a reason for every extra it drops; a reply
+    // that gives none, and lists nothing to title it by, still names
+    // it rather than let it go without a word.
     const moved = retarget(withExtras('ci'), { stack: 'fullstack' });
     const settled = settle(
       moved,
@@ -963,8 +1071,18 @@ describe('what a preset move could not keep', () => {
         buildSystems: [],
         moduleLayouts: [],
         services: [
-          { path: 'backend', stack: 'quarkus-rest', buildSystems: [choice('gradle')] },
-          { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
+          {
+            path: 'backend',
+            stack: 'quarkus-rest',
+            buildSystems: [choice('gradle')],
+            verticals: [],
+          },
+          {
+            path: 'frontend',
+            stack: 'web-components',
+            buildSystems: [choice('npm')],
+            verticals: [],
+          },
         ],
         peerContext: false,
         agentHarness: false,
@@ -976,6 +1094,54 @@ describe('what a preset move could not keep', () => {
     expect(settled.notice).toBe(
       'Moving to fullstack did not keep build system maven, module layout modulith, the peer context or Continuous integration.',
     );
+  });
+
+  it('sends a single preset’s extras to the one service of a product that takes each', async () => {
+    const mediator = installMediator();
+    const moved = retarget(withExtras('ci', 'containerization', 'dev-env'), {
+      stack: 'fullstack',
+    });
+    expect(moved.target).toMatchObject({ extraVerticals: ['ci', 'containerization', 'dev-env'] });
+    const dials: DialOptions = expectOk(
+      await mediator.dispatch(dialsQuery({ target: moved.target as NewProjectTarget })),
+    );
+    const settled = settle(moved, dials);
+    // The development environment goes in the one service that can
+    // take it; the image each service already has from the monorepo
+    // root is kept by them; the pipeline has nowhere to go, and says
+    // why.
+    expect(settled.target).toMatchObject({
+      services: { frontend: { extraVerticals: ['dev-env'] } },
+    });
+    expect(settled.target).not.toHaveProperty('extraVerticals');
+    expect(settled.notice).toBe(
+      'Moving to fullstack did not keep build system maven, module layout modulith or the peer context. ' +
+        "Continuous integration dropped: Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead.",
+    );
+  });
+
+  it('carries a product’s service extras onto a single preset as its own', async () => {
+    const mediator = installMediator();
+    const onProduct: Run = {
+      ...greenfield(),
+      target: {
+        kind: 'new-project',
+        stack: 'fullstack',
+        layout: 'monorepo',
+        services: { backend: { extraVerticals: ['persistence'] } },
+      },
+    };
+    const productDials: DialOptions = expectOk(
+      await mediator.dispatch(dialsQuery({ target: onProduct.target as NewProjectTarget })),
+    );
+    const moved = retarget(settle(onProduct, productDials), { stack: 'quarkus-rest' });
+    const dials: DialOptions = expectOk(
+      await mediator.dispatch(dialsQuery({ target: moved.target as NewProjectTarget })),
+    );
+    const settled = settle(moved, dials);
+    expect(extrasOf(settled.target)).toEqual(['persistence']);
+    expect(settled.target).not.toHaveProperty('services');
+    expect(settled.notice).toBe('');
   });
 
   it('forgets the extras ticked by hand before the reply landed', () => {

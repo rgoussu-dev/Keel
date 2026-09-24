@@ -359,10 +359,13 @@ the next reader does not re-run the audit:
 not, because the thing they turn on is not a tag:
 
 - `stack.services` being non-empty is what makes a preset composite,
-  and it is why `keel new` refuses `--module-layout`,
-  `--with-peer-context` and `--with` on one. Those are refusals about
-  _flags that do not apply at a product root_, not about capabilities
-  — a composite's services can perfectly well each be a modulith.
+  and it is why `keel new` refuses `--module-layout` and
+  `--with-peer-context` on one, and sends each `--with` extra into a
+  service — the one named (`--with backend:persistence`), or the one
+  service that can take it — rather than the product root. Those are
+  refusals about _flags that do not apply at a product root_, not
+  about capabilities — a composite's services can perfectly well each
+  be a modulith.
 - `manifest.services` being non-empty is the same fact brownfield, and
   why `keel add module` sends the user into a service directory — and
   `keel add` too, for any vertical the planner reads the root as unable
@@ -906,6 +909,19 @@ product root because it declares the repository root as its place.
 `keel new` in a directory inside a product that lists no service there
 is refused (`keel.inside-product`): adding a service to a product is
 not supported yet.
+
+A service's extras (`--with backend:persistence`) are planned on one
+scope before anything is written (`scope.ts`'s `presetServiceScope`):
+its preset's verticals and the product's for it, on the build system
+chosen for it and its siblings' projections, and under monorepo what
+the product root gives it. The service's extras menu (`keel.dials`),
+the routing of an extra named without a service, and the install all
+read that scope. Each scope stages into a tree of its own, so a file
+two of them would write is found only by comparing them:
+`keel new` does, after staging and before it reports the plan, and
+refuses the product (`keel.cross-scope-write`) naming the adapter that
+wrote it in each — a preview and an install alike, rather than the
+scope committed last silently replacing the other's file.
 
 ## The toolchain block
 

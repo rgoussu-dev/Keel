@@ -29,6 +29,13 @@
  * plan no `AGENTS.md` and the review a row saying so; pressed back on,
  * all of it goes again.
  *
+ * **A product's are its services'.** On `fullstack` each service has a
+ * group of its own, read over the scope the product scaffolds it in —
+ * persistence ticks in the backend's, is refused in the front end's,
+ * and a pipeline is not for either monorepo service — and a tick goes
+ * out as that service's (`services`), `--with backend:persistence` on
+ * the command line. Never generated: the backend is a JVM one.
+ *
  * **A preset move keeps them.** Ticking HTTP on a tuned CLI preset
  * lands on the composed one with the build system, the module layout,
  * the extras and the package still set — the plan redrawn under
@@ -302,6 +309,46 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       await act(traffic, () => row.getByRole('button').click());
       expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Options');
       for (const id of CHAIN) expect(await ticked(page, id), id).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'gives each service of a product its own group, and posts a tick under that service',
+    async () => {
+      await act(traffic, () => control(page, 'stack').selectOption('fullstack'));
+      await stackIs(page, 'fullstack');
+      await goToStep(traffic, page, 'options');
+      const backend = (id: string): Locator => page.locator(`#extras-backend input[value="${id}"]`);
+      await until(async () => (await backend('persistence').count()) > 0, 'the backend group');
+      // The front end cannot take persistence, and says so in its own
+      // group; neither service offers a pipeline in a monorepo, whose
+      // place is the product root.
+      expect(await page.locator('#extras-frontend input[value="persistence"]').count()).toBe(0);
+      expect(await page.locator('#extras-frontend-refused li[data-id="persistence"]').count()).toBe(
+        1,
+      );
+      expect(
+        await page.locator('#extras-backend-refused li[data-id="ci"]').textContent(),
+      ).toContain('cannot go in a monorepo service');
+      expect(
+        await page.locator('#extras-backend-included li[data-id="containerization"]').count(),
+      ).toBe(1);
+
+      await act(traffic, () => backend('persistence').click());
+      expect(await backend('persistence').isChecked()).toBe(true);
+      // The body that went out names the service, and the command the
+      // pair `--with` takes it as.
+      const target = lastBody(traffic)?.target as { services?: unknown; extraVerticals?: unknown };
+      expect(target.services).toEqual({ backend: { extraVerticals: ['persistence'] } });
+      expect(target.extraVerticals).toBeUndefined();
+      expect(await command(page)).toContain('--with backend:persistence');
+      await until(() => plansUnder(page, 'migrations'), 'the plan to list the migrations');
+
+      await goToStep(traffic, page, 'review');
+      expect(
+        await page.locator('keel-review dd', { hasText: 'Persistence in backend/' }).count(),
+      ).toBe(1);
     },
     E2E_TIMEOUT_MS,
   );

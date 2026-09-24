@@ -52,17 +52,17 @@ the plan column scroll independently, so the plan holds its own screen
 however long the step beside it runs. Under 62rem the two collapse
 into one and the page scrolls as an ordinary document.
 
-| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                                                                                                             |
-| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                             |
-| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                     |
-| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                        |
-| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                              |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`), and the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                           |
-| **What to add**   | _(brownfield only)_ Capabilities to layer on — several at once — or a bounded context. A card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys, sorted into _Ready_, _Needs another capability first_, _Not for this project_ (collapsed, with the reason) and _Installed_ (each with a **Re-render**). See [What to add](#what-to-add). |
-| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                |
-| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                    |
+| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                                                                                                                                                    |
+| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                                                                    |
+| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                                                            |
+| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                                                               |
+| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                                                                     |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
+| **What to add**   | _(brownfield only)_ Capabilities to layer on — several at once — or a bounded context. A card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys, sorted into _Ready_, _Needs another capability first_, _Not for this project_ (collapsed, with the reason) and _Installed_ (each with a **Re-render**). See [What to add](#what-to-add).                                        |
+| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                       |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                                                           |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
@@ -229,10 +229,14 @@ line. An extra the new preset cannot carry is named with the reason
 moved to `quarkus-cli`, reads _Container image dropped: Container
 image needs an entrypoint this project does not have: HTTP server — a
 REST endpoint._ — and one the new preset comes with is not named at
-all: it is kept, by the preset now rather than by the box. A product
-puts a harness left out back — every one of its services carries one
-— and says so: _Moving to fullstack-go did not keep the agent harness
-off._
+all: it is kept, by the preset now rather than by the box. Onto a
+product, an extra goes to the one service that can take it —
+Persistence ticked on `quarkus-rest` is ticked in the backend's group
+of `fullstack` — and one no service can take, or two could, is named
+with the reason, as `keel new --with` refuses it; off a product, each
+service's extras are the single preset's. A product puts a harness
+left out back — every one of its services carries one — and says so:
+_Moving to fullstack-go did not keep the agent harness off._
 
 The answers go along too. Most are asked by the same adapter on every
 preset — `vcs/git-init`'s default branch, a database engine — and
@@ -342,6 +346,26 @@ itself or needs it installed first — is under _Not for this project_,
 in the sentence `keel new` refuses the pair with, and is dropped from
 a selection that held it, as the terminal's extras question leaves it
 off and `--with` refuses it.
+
+**A product has an Also scaffold per service** — _Also scaffold in
+backend/_, _Also scaffold in frontend/_ — since each service is a
+project of its own and its extras go in it. `keel.dials` reads each
+service's menu (`services[].verticals`) over the scope the product
+scaffolds it in: its build system, its preset's verticals and the
+product's extras for it (the service gateway) as _Comes with backend/_
+chips, and under the monorepo layout what the product root gives it —
+its version control, the image the root builds — as well; a pipeline
+or a release, whose place is the repository root, is under _Not for
+backend/_, in the sentence `keel add ci` there refuses it with. Ticks
+move that service's selection (`target.services`, keyed by path) and
+nothing else; the command under the plan spells them as `path:id`
+pairs (`--with backend:persistence,frontend:dev-env`), the review row
+_Also scaffold_ as _Persistence in backend/; Development environment
+in frontend/_, and each group's line says what `keel.dials` changed in
+that service (`adjustments` naming it by `service`). The top-level
+`extraVerticals` and `verticals` of a product's reply read what an id
+named without a service does there: the one service that takes it, or
+the refusal.
 
 `keel.dials` **pins `extraVerticals` on every target it settles**,
 to `[]` when none are named, exactly as it pins every other dial — so
@@ -472,6 +496,8 @@ the target is broken is a menu that cannot be used to fix it.
 { "kind": "new-project", "stack": "quarkus-rest",
   "buildSystem": "maven", "moduleLayout": "modulith", "withPeerContext": true }
 { "kind": "new-project", "stack": "go-cli", "extraVerticals": ["ci"], "agentHarness": false }
+{ "kind": "new-project", "stack": "fullstack", "layout": "monorepo",
+  "services": { "backend": { "extraVerticals": ["persistence"] } } }
 { "kind": "add-vertical", "verticals": ["persistence", "ci"], "refresh": ["distribution"] }
 { "kind": "add-vertical", "vertical": "ci", "reapply": false }
 { "kind": "add-module", "module": "billing", "consumes": "greeting" }

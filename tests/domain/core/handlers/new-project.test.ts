@@ -1804,7 +1804,7 @@ describe('keel.new-project extra verticals', () => {
     expect(labels).toContain('Change: Additional verticals = (none)');
   });
 
-  it('rejects --with on a composite stack, whose services declare their own', async () => {
+  it('sends --with on a composite stack to the one service that takes it, and refuses where several or none do', async () => {
     const composite = (extra: string, layout?: 'monorepo' | 'polyrepo') =>
       installMediator().dispatch(
         newProjectCommand({
@@ -1817,24 +1817,33 @@ describe('keel.new-project extra verticals', () => {
           ...(layout === undefined ? {} : { layout }),
         }),
       );
-    // Spoken as `keel add persistence` at the product root is: it
-    // belongs to a service, and here is which preset can take it.
-    const error = expectErr(await composite('persistence'));
-    expect(error.code).toBe('keel.wrong-scope');
-    expect(error.message).toBe(
-      'Persistence belongs to a service, not to the product root — it goes in backend/',
+    // One service can take persistence — the backend — so that is
+    // where it goes, and the plan says so first.
+    const routed = expectOk(await composite('persistence'));
+    expect(routed.notes).toEqual([
+      'Persistence goes in backend/, the one service of fullstack that can take it',
+    ]);
+    expect(routed.changes.map((change) => change.path)).toContain('backend/migrations/Dockerfile');
+
+    // Both services take a toolchain: which one is the user's to say,
+    // and the refusal names both, as `keel add toolchain` at the
+    // product root does.
+    const both = expectErr(await composite('toolchain'));
+    expect(both.code).toBe('keel.wrong-scope');
+    expect(both.message).toBe(
+      'Toolchain belongs to a service, not to the product root — it goes in backend/ or frontend/',
     );
-    expect((error as RefusalError).refusal).toEqual({
+    expect((both as RefusalError).refusal).toEqual({
       kind: 'elsewhere',
-      vertical: 'persistence',
+      vertical: 'toolchain',
       services: [
         { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
-        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+        { path: 'frontend', stack: 'web-components', readiness: 'ready' },
       ],
     });
 
     // A pipeline goes at a repository root. Each polyrepo service is
-    // one, so it is sent there; a monorepo's is the product root's,
+    // one, so both could take it; a monorepo's is the product root's,
     // which no adapter serves yet — so it is sent nowhere, as `keel add
     // ci` at a monorepo product root is not.
     const polyrepo = expectErr(await composite('ci', 'polyrepo'));
@@ -1847,6 +1856,99 @@ describe('keel.new-project extra verticals', () => {
     expect(monorepo.message).toBe(
       "Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
     );
+  });
+
+  it('installs the extras --with names for each service in that service, as keel add there would', async () => {
+    const product = (
+      services: Readonly<Record<string, { extraVerticals: readonly string[] }>>,
+      layout: 'monorepo' | 'polyrepo' = 'monorepo',
+    ) =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          layout,
+          services,
+        }),
+      );
+    // Closed over its prerequisites in the backend's own scope, said
+    // with the service's name.
+    const iac = expectOk(await product({ backend: { extraVerticals: ['iac'] } }, 'polyrepo'));
+    expect(iac.notes).toEqual([
+      'backend: added Container image, Distribution — needed by Infrastructure as code',
+    ]);
+    expect(iac.changes.map((change) => change.path)).toContain(
+      'backend/.github/workflows/release-image.yml',
+    );
+    // What the service already has is set aside, from its preset or
+    // from the product.
+    const already = expectOk(
+      await product({
+        backend: { extraVerticals: ['dev-env', 'containerization'] },
+      }),
+    );
+    expect(already.notes).toEqual([
+      'backend: Development environment already comes with quarkus-rest',
+      'backend: Container image already comes with fullstack',
+    ]);
+    // A pipeline in a monorepo service is refused before a file is
+    // staged, in the words `keel add ci` there gives it.
+    const ci = expectErr(await product({ backend: { extraVerticals: ['ci'] } }));
+    expect(ci.code).toBe('keel.wrong-scope');
+    expect(ci.message).toBe(
+      'Continuous integration cannot go in a monorepo service: its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout',
+    );
+    // What a service cannot carry, in the sentence it would get there.
+    const frontend = expectErr(await product({ frontend: { extraVerticals: ['persistence'] } }));
+    expect(frontend.code).toBe('keel.uncoverable-vertical');
+  });
+
+  it('refuses a --with that names a service the product lacks, one twice, or both forms', async () => {
+    const refused = async (extras: {
+      extraVerticals?: readonly string[];
+      services?: Readonly<Record<string, { extraVerticals: readonly string[] }>>;
+      stack?: string;
+    }) => {
+      const { stack = 'fullstack', ...named } = extras;
+      return expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack,
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            ...named,
+          }),
+        ),
+      );
+    };
+    const worker = await refused({ services: { worker: { extraVerticals: ['persistence'] } } });
+    expect(worker.code).toBe('keel.invalid-extra-verticals');
+    expect(worker.message).toBe(
+      "stack 'fullstack' has no service 'worker' — services: backend, frontend",
+    );
+    const twice = await refused({
+      services: { backend: { extraVerticals: ['persistence', 'persistence'] } },
+    });
+    expect(twice.message).toBe("--with names vertical 'persistence' twice for backend");
+    const mixed = await refused({
+      extraVerticals: ['toolchain'],
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+    expect(mixed.code).toBe('keel.invalid-extra-verticals');
+    expect(mixed.message).toMatch(/^--with names some verticals with a service and some without/);
+    const single = await refused({
+      stack: 'go-http',
+      services: { backend: { extraVerticals: ['persistence'] } },
+    });
+    expect(single.code).toBe('keel.invalid-extra-verticals');
+    expect(single.message).toMatch(/^stack 'go-http' has no services/);
+    const unknown = await refused({ services: { backend: { extraVerticals: ['nope'] } } });
+    expect(unknown.code).toBe('keel.unknown-vertical');
   });
 
   it('sets aside a vertical the product preset installs of its own, as a single stack does', async () => {

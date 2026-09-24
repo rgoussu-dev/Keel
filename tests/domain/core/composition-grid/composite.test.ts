@@ -31,17 +31,36 @@
  *     builds for it reads as there already, and what only a
  *     repository root reads (a pipeline, a release) as not for it.
  *
+ * And before anything is scaffolded, each service's own extras menu —
+ * what `keel new --with <path>:<id>` takes, as `keel.dials` reads it
+ * per service — against the preview of the product naming it there:
+ *
+ *   - **Offered ⇒ Ok** (I2): every vertical a service's menu offers,
+ *     named with what it needs first, previews Ok.
+ *   - **Accepted ⇒ offered** (I3): a vertical the menu has as neither
+ *     offered nor the service's own previews as refused — an
+ *     `unavailable` entry is one no set of prerequisites makes
+ *     installable, so naming it alone is the whole question.
+ *   - **Refused for its scope, never for a file** (I7), as a service's
+ *     add is: Ok or `keel.wrong-scope` under the monorepo layout
+ *     wherever the polyrepo twin is Ok.
+ *
  * Holds I6 over every refusal on the way.
  */
 
 import path from 'node:path';
 import { describe } from 'vitest';
-import { installCommandFor } from '../../../../src/domain/contract/commands.js';
-import type { RepoLayout } from '../../../../src/domain/contract/commands.js';
+import {
+  installCommandFor,
+  type NewProjectTarget,
+  type RepoLayout,
+} from '../../../../src/domain/contract/commands.js';
 import {
   catalogQuery,
+  dialsQuery,
   previewQuery,
   projectStatusQuery,
+  type DialOptions,
 } from '../../../../src/domain/contract/queries.js';
 import { WRONG_SCOPE_CODE } from '../../../../src/domain/core/refusals.js';
 import {
@@ -58,7 +77,7 @@ describe('composition grid: composite', () => {
   sweepGrid({
     name: 'composite',
     here: import.meta.url,
-    holds: ['I1', 'I4', 'I6', 'I7'],
+    holds: ['I1', 'I2', 'I3', 'I4', 'I6', 'I7'],
     sweep: async (grid) => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
@@ -67,8 +86,13 @@ describe('composition grid: composite', () => {
         // Each service cell's verdict, by `<layout>/<service>+<vertical>`,
         // for I7's comparison of a layout against the polyrepo one.
         const served = new Map<string, string>();
+        // The same, for each service's extras as `keel new` names them.
+        const named = new Map<string, string>();
         for (const layout of await layoutsOf(grid, stack)) {
           const product = `${stack}/${layout}`;
+          for (const [key, cell] of await holdServiceMenus(grid, product, stack, layout)) {
+            named.set(`${layout}/${key}`, cell);
+          }
           const cwd = await grid.scratch();
           const { target } = await settle(grid, stack, { layout });
           const run = { cwd, answers: {}, interactive: false, dryRun: false };
@@ -102,6 +126,7 @@ describe('composition grid: composite', () => {
           }
         }
         holdScopes(grid, stack, served);
+        holdScopes(grid, stack, named);
       });
     },
   });
@@ -133,6 +158,53 @@ function holdScopes(grid: Grid, stack: string, served: ReadonlyMap<string, strin
       grid.violate('I7', cell);
     }
   }
+}
+
+/**
+ * Holds each service's extras menu on `stack` under `layout` to the
+ * preview of the product naming the vertical for that service (I2,
+ * I3): an offered one, named after what it needs, is Ok; one neither
+ * offered nor the service's own is not. `product` names the cells,
+ * `new:<product>/<service>+<vertical>`; they are returned keyed
+ * `<service>+<vertical>`, for {@link holdScopes}.
+ */
+async function holdServiceMenus(
+  grid: Grid,
+  product: string,
+  stack: string,
+  layout: RepoLayout,
+): Promise<ReadonlyMap<string, string>> {
+  const swept = new Map<string, string>();
+  const dials: DialOptions = await grid.read(
+    dialsQuery({ target: { kind: 'new-project', stack, layout } }),
+  );
+  const cwd = await grid.scratch();
+  for (const service of dials.services) {
+    for (const vertical of service.verticals) {
+      if (vertical.readiness === 'included') continue;
+      const offered = vertical.readiness === 'ready' || vertical.readiness === 'needs';
+      const cell = `new:${product}/${service.path}+${vertical.id}`;
+      const outcome = await grid.cell(
+        cell,
+        previewQuery({
+          cwd,
+          target: {
+            ...(dials.target as NewProjectTarget),
+            services: {
+              [service.path]: {
+                extraVerticals: offered ? [...vertical.requires, vertical.id] : [vertical.id],
+              },
+            },
+          },
+          answers: {},
+        }),
+      );
+      swept.set(`${service.path}+${vertical.id}`, cell);
+      if (offered && outcome.verdict !== OK) grid.violate('I2', cell);
+      if (!offered && outcome.verdict === OK) grid.violate('I3', cell);
+    }
+  }
+  return swept;
 }
 
 /**

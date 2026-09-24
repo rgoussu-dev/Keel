@@ -208,11 +208,40 @@ export interface NewProjectCommand extends Command<InstallReport> {
    * four.
    *
    * When absent, interactive single-service installs prompt for it
-   * and non-interactive ones install none. Rejected on composite
-   * stacks, whose services declare their own extras — "which service
-   * gets it?" has no defensible default.
+   * and non-interactive ones install none.
+   *
+   * On a composite product each id goes to a service: a vertical the
+   * product installs of its own is set aside with a note, and any other
+   * to the one service whose readiness admits it (ready, or ready once
+   * its prerequisites are in), with a note naming it. Where several
+   * services would take it, or none, it is refused, naming each
+   * service and whether it can take it (`keel.wrong-scope`) — naming
+   * the service is then the user's, through {@link services}. Refused
+   * beside {@link services}: one command names its extras one way.
    */
   readonly extraVerticals?: readonly string[];
+  /**
+   * The extras of each service of a composite product, by service
+   * path — `keel new --with backend:persistence` — installed on top of
+   * what the product's preset gives that service, planned in that
+   * service's scope exactly as {@link extraVerticals} is planned on a
+   * single stack (a set, closed over its prerequisites; one already
+   * there set aside with a note). A path the product lists no service
+   * at, an id named twice for one service, and any use beside
+   * {@link extraVerticals} or on a single-service stack are refused
+   * (`keel.invalid-extra-verticals`). Absent, no service gets extras
+   * beyond its preset's.
+   */
+  readonly services?: Readonly<Record<string, ServiceExtras>>;
+}
+
+/**
+ * What one service of a composite product installs on top of its
+ * preset's verticals. @see NewProjectCommand.services
+ */
+export interface ServiceExtras {
+  /** Vertical ids, as {@link NewProjectCommand.extraVerticals} takes them. */
+  readonly extraVerticals: readonly string[];
 }
 
 /** Layer additional verticals onto an initialised project. */
@@ -443,6 +472,8 @@ export interface NewProjectTarget {
   readonly moduleLayout?: string;
   readonly withPeerContext?: boolean;
   readonly extraVerticals?: readonly string[];
+  /** Each service's extras, by path. See {@link NewProjectCommand.services}. */
+  readonly services?: Readonly<Record<string, ServiceExtras>>;
   /**
    * `false` leaves the preset's agent harness out — `keel new
    * --no-agent-harness`. See {@link NewProjectCommand.agentHarness}.
@@ -505,6 +536,7 @@ export function installCommandFor(target: InstallTarget, run: InstallRun): Insta
         // means "ask", and a front end that has already offered the
         // list must be able to say "none".
         ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
+        ...(target.services === undefined ? {} : { services: target.services }),
         ...(target.agentHarness === undefined ? {} : { agentHarness: target.agentHarness }),
       });
     case 'add-vertical':

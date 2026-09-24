@@ -224,6 +224,16 @@ export interface Ownership {
   /** {@link regionKey} → owning contributor id. */
   readonly regions: Map<string, string>;
   /**
+   * Canonical path → the adapter whose contribution last wrote it: a
+   * whole file, a patch, a skill's file or a hook script. Not a claim —
+   * a later patch of another adapter's file is the rule, not a
+   * collision — but what a caller reads to name who wrote a path:
+   * `keel new` refusing a path two scopes of one product both stage.
+   * What the engine writes of its own (the hook wiring, the doc
+   * pointers, the docs index) is not recorded.
+   */
+  readonly writers: Map<string, string>;
+  /**
    * The engine's pre-owned region keys it has not yet re-rendered
    * this run: its one claim on each goes through, a second is a
    * region declared twice like any adapter's.
@@ -252,6 +262,7 @@ export function newOwnership(): Ownership {
     skills: new Map(),
     hooks: new Map(),
     regions,
+    writers: new Map(),
     engineSlots: new Set(regions.keys()),
   };
 }
@@ -457,7 +468,9 @@ export function realizeHarness(
       files.push(...skill.files.map((file) => ({ ...file, adapterId: skill.adapterId })));
     }
     for (const hook of contribution.hooks) {
-      files.push(stageHook(contribution.adapter, hook, tree, contribution.mode, owners.hooks));
+      const staged = stageHook(contribution.adapter, hook, tree, contribution.mode, owners.hooks);
+      owners.writers.set(staged.path, staged.adapterId);
+      files.push(staged);
     }
   }
   const wired = contributions.flatMap((c) => c.hooks);
@@ -693,6 +706,7 @@ export function applyContribution(
 ): readonly StagedSkill[] {
   for (const f of contribution.files ?? []) {
     writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
+    owners.writers.set(canonicalTarget(f.path), adapter.id);
   }
   for (const p of contribution.patches ?? []) {
     const regions = claimRegions(adapter, p, owners);
@@ -732,10 +746,13 @@ export function applyContribution(
       }
     }
     tree.write(p.target, next, p.mode !== undefined ? { mode: p.mode } : undefined);
+    owners.writers.set(canonicalTarget(p.target), adapter.id);
   }
   const staged: StagedSkill[] = [];
   for (const raw of contribution.skills ?? []) {
-    staged.push(stageSkill(adapter, raw, tree, mode, owners.skills));
+    const skill = stageSkill(adapter, raw, tree, mode, owners.skills);
+    for (const file of skill.files) owners.writers.set(canonicalTarget(file.path), adapter.id);
+    staged.push(skill);
   }
   return staged;
 }

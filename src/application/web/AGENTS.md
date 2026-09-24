@@ -56,7 +56,8 @@ socket, the per-run token and the asset roots. The page it serves is
   previews again rather than draw it) — and every change moves the
   generation on so a reply in flight is dropped. A new control adds its transition
   there, with a case in `tests/application/web/target.test.ts` — as
-  the "Also scaffold" boxes did (`toggleExtra`) and the "What to add"
+  the "Also scaffold" boxes did (`toggleExtra`, a product's moving one
+  service's selection) and the "What to add"
   cards (`toggleVertical`, `rerender`, `toggleRefresh`), since one tick
   can move several boxes and the element only says which one it was.
   What a card shows is read off the project status by a pure module

@@ -17,6 +17,7 @@ import {
   linkPeerCommand,
   newProjectCommand,
   type DocsReport,
+  type ServiceExtras,
   type InstallReport,
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
@@ -133,7 +134,7 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .option(
       '--with <ids>',
-      `verticals to install on top of the stack's own, comma-separated, in any order (e.g. 'containerization,distribution,iac'); prompted when omitted and interactive, none otherwise. Single-service stacks only`,
+      `verticals to install on top of the stack's own, comma-separated, in any order (e.g. 'containerization,distribution,iac'); prompted when omitted and interactive, none otherwise. On composite stacks name each service's as 'path:id' pairs (e.g. 'backend:persistence,frontend:dev-env'), or name none and each goes to the one service that can take it`,
     )
     .option(
       '--set <kv...>',
@@ -159,6 +160,7 @@ export function buildProgram(deps: CliDeps): Command {
           return;
         }
         const dir = cwd();
+        const extras = opts.with === undefined ? {} : parseWith(opts.with);
         const result = await deps.mediator.dispatch(
           newProjectCommand({
             cwd: dir,
@@ -171,10 +173,10 @@ export function buildProgram(deps: CliDeps): Command {
             ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
             ...(opts.moduleLayout !== undefined ? { moduleLayout: opts.moduleLayout } : {}),
             ...(opts.withPeerContext ? { withPeerContext: true } : {}),
-            ...(opts.with === undefined ? {} : { extraVerticals: parseVerticalList(opts.with) }),
+            ...extras,
           }),
         );
-        const report = unwrap(result, 'new');
+        const report = unwrap(result, 'new', extras.services);
         printReport(`keel new ${report.subject}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
         else deps.logger.success(`keel new ${report.subject}: ready in ${dir}`);
@@ -603,14 +605,19 @@ function generationLine(generation: HarnessGenerationStatus): string {
  * the executable turns into stderr + exit code 1. A refusal raised as
  * data gets the remedy `command` has for it on a line of its own
  * (`./hint.ts`) — the sentence above it is the same in both phases,
- * and what to type next is not.
+ * and what to type next is not. `services` is what `keel new --with`
+ * named for each service of a product, which the remedy names too.
  */
-function unwrap<T>(result: Result<T>, command?: HintedCommand): T {
+function unwrap<T>(
+  result: Result<T>,
+  command?: HintedCommand,
+  services?: Readonly<Record<string, ServiceExtras>>,
+): T {
   if (result.ok) return result.value;
   const { error } = result;
   const hint =
     command !== undefined && error instanceof RefusalError
-      ? refusalHint(error.refusal, command)
+      ? refusalHint(error.refusal, command, services)
       : null;
   throw new Error(hint === null ? error.message : `${error.message}\n  hint: ${hint}`);
 }
@@ -660,6 +667,49 @@ export function parseVerticalList(raw: string): readonly string[] {
     .split(',')
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
+}
+
+/**
+ * Parses `keel new --with` into the command fields it fills: bare ids
+ * (`persistence`) as `extraVerticals`, and `path:id` pairs
+ * (`backend:persistence`) as each service's `services` entry, in the
+ * order named — the `path=id` form `--build-system` takes on a
+ * composite, with `:` because an id is what is named here. A pair with
+ * no id names the service and nothing for it. Both forms at once are
+ * passed on as they are, for `keel new` to refuse: which services a
+ * stack has, and whether mixing is allowed, is the engine's to say.
+ */
+export function parseWith(raw: string): {
+  readonly extraVerticals?: readonly string[];
+  readonly services?: Readonly<Record<string, ServiceExtras>>;
+} {
+  const bare: string[] = [];
+  const services: Record<string, string[]> = {};
+  for (const entry of parseVerticalList(raw)) {
+    const separator = entry.indexOf(':');
+    if (separator < 0) {
+      bare.push(entry);
+      continue;
+    }
+    const servicePath = entry.slice(0, separator).trim();
+    const id = entry.slice(separator + 1).trim();
+    const named = (services[servicePath] ??= []);
+    if (id !== '') named.push(id);
+  }
+  const paths = Object.keys(services);
+  return {
+    ...(bare.length > 0 || paths.length === 0 ? { extraVerticals: bare } : {}),
+    ...(paths.length === 0
+      ? {}
+      : {
+          services: Object.fromEntries(
+            paths.map((servicePath) => [
+              servicePath,
+              { extraVerticals: services[servicePath] ?? [] },
+            ]),
+          ),
+        }),
+  };
 }
 
 /**

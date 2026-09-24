@@ -30,9 +30,10 @@
  * a control driven by the preview would vanish the moment it was
  * used. That is exactly what the extras did while they were a
  * preview question: one tick, and the list was gone. They are the
- * "Also scaffold" group here now, drawn from `dials.verticals`
- * (`../extras.js`), and `keel.dials` pins them on every target it
- * settles so the preview never asks them again. Everything
+ * "Also scaffold" group here now, drawn from `dials.verticals` — on a
+ * product one group per service, from that service's menu in
+ * `dials.services` (`../extras.js`) — and `keel.dials` pins them on
+ * every target it settles so the preview never asks them again. Everything
  * conditional still comes back from the preview and is rendered by
  * `<keel-question-list>`.
  *
@@ -44,8 +45,9 @@
  * Catalog, dials, target and step in as properties; `target-changed`
  * out with the fields that moved — the agent harness pressed off or
  * back on among them, `agentHarness` — and `extra-toggled` out with
- * the vertical an "Also scaffold" box stands for and whether it is now
- * ticked — what else that tick moves is `../target.js`'s answer.
+ * the vertical an "Also scaffold" box stands for, whether it is now
+ * ticked and, on a product, the service whose group it is in — what
+ * else that tick moves is `../target.js`'s answer.
  */
 
 import {
@@ -69,7 +71,7 @@ import {
   refocus,
   refusedList,
 } from '../dom.js';
-import { extrasGroup } from '../extras.js';
+import { extrasGroup, serviceExtrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
 export class KeelNewForm extends HTMLElement {
@@ -77,8 +79,11 @@ export class KeelNewForm extends HTMLElement {
   #dials = null;
   #target = null;
   #step = SHAPE;
-  /** Whether "Not for this project" is open — the reader's, kept across redraws. */
-  #refusedOpen = false;
+  /**
+   * Which groups' "Not for this project" lists are open, by the group's
+   * id — the reader's, kept across redraws.
+   */
+  #refusedOpen = new Set();
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -243,6 +248,12 @@ export class KeelNewForm extends HTMLElement {
           fields.push(this.#serviceBuildField(service, this.#serviceOptions(service)));
         }
       }
+      // Each service's own "Also scaffold", once the reply has read
+      // its menu: its extras are planned in its scope, not the root's.
+      for (const service of stack.services) {
+        const extras = serviceExtrasGroup(this.#dials, this.#target, service.path);
+        if (extras !== null) fields.push(this.#serviceExtrasField(service, extras));
+      }
       return fields;
     }
     const fields = [];
@@ -277,6 +288,36 @@ export class KeelNewForm extends HTMLElement {
    * and `<keel-app>` asks `../target.js` for the rest.
    */
   #extrasField(stack, extras) {
+    return this.#extrasSection({
+      id: 'extras',
+      title: 'Also scaffold',
+      help: `Installed in the same run, on top of what \`${stack.id}\` brings, in the order they build on one another. Everything here is also available later with \`keel add\`.`,
+      comesWith: `Comes with ${stack.id}`,
+      extras,
+      service: null,
+    });
+  }
+
+  /**
+   * One service's "Also scaffold" on a product: the same parts as a
+   * preset's, from that service's own menu, under the service's name,
+   * its ids prefixed so two services' groups never share one — and a
+   * box names its service when it emits, since the set it moves is
+   * that service's.
+   */
+  #serviceExtrasField(service, extras) {
+    const slug = service.path.replace(/[^A-Za-z0-9_-]/g, '-');
+    return this.#extrasSection({
+      id: `extras-${slug}`,
+      title: `Also scaffold in ${service.path}/`,
+      help: `Installed in \`${service.path}/\` in the same run, on top of what \`${service.stack}\` and the product bring there — \`--with ${service.path}:<id>\`. Everything here is also available later with \`keel add\` inside \`${service.path}/\`.`,
+      comesWith: `Comes with ${service.path}/`,
+      extras,
+      service: service.path,
+    });
+  }
+
+  #extrasSection({ id: prefix, title, help: helpText, comesWith, extras, service }) {
     const chosen = extras.chosen;
     const part = (id, title, choices) => {
       const heading = el('h4', { id: `${id}-title`, text: title });
@@ -289,7 +330,7 @@ export class KeelNewForm extends HTMLElement {
           const moved = choices.find(
             (choice) => now.has(choice.value) !== chosen.includes(choice.value),
           );
-          if (moved) this.#toggle(moved.value, now.has(moved.value));
+          if (moved) this.#toggle(moved.value, now.has(moved.value), service);
         },
       });
       group.setAttribute('role', 'group');
@@ -303,13 +344,13 @@ export class KeelNewForm extends HTMLElement {
         : el(
             'div',
             {},
-            el('h4', { id: 'extras-included-title', text: `Comes with ${stack.id}` }),
+            el('h4', { id: `${prefix}-included-title`, text: comesWith }),
             el(
               'ul',
               {
-                id: 'extras-included',
+                id: `${prefix}-included`,
                 class: 'plain chips',
-                attrs: { 'aria-labelledby': 'extras-included-title' },
+                attrs: { 'aria-labelledby': `${prefix}-included-title` },
               },
               ...extras.included.map((vertical) =>
                 vertical.on === undefined
@@ -325,19 +366,17 @@ export class KeelNewForm extends HTMLElement {
           );
     return el(
       'section',
-      { id: 'extras', class: 'extras', attrs: { 'aria-labelledby': 'extras-title' } },
+      { id: prefix, class: 'extras', attrs: { 'aria-labelledby': `${prefix}-title` } },
       el(
         'div',
         { class: 'section-head' },
-        el('h3', { id: 'extras-title', text: 'Also scaffold' }),
+        el('h3', { id: `${prefix}-title`, text: title }),
         el('span', {
           class: chosen.length > 0 ? 'chip accent' : 'chip',
           text: `${chosen.length} chosen`,
         }),
       ),
-      help(
-        `Installed in the same run, on top of what \`${stack.id}\` brings, in the order they build on one another. Everything here is also available later with \`keel add\`.`,
-      ),
+      help(helpText),
       extras.line === ''
         ? null
         : el('p', {
@@ -345,25 +384,33 @@ export class KeelNewForm extends HTMLElement {
             text: extras.line,
             attrs: { role: 'status', 'data-role': 'extras-line' },
           }),
-      extras.ready.length === 0 ? null : part('extras-ready', 'Ready', extras.ready),
+      extras.ready.length === 0 ? null : part(`${prefix}-ready`, 'Ready', extras.ready),
       extras.needs.length === 0
         ? null
-        : part('extras-needs', 'Needs another capability first', extras.needs),
+        : part(`${prefix}-needs`, 'Needs another capability first', extras.needs),
       included,
       extras.refused.length === 0
         ? null
         : refusedList({
-            id: 'extras-refused',
-            title: 'Not for this project',
+            id: `${prefix}-refused`,
+            title: service === null ? 'Not for this project' : `Not for ${service}/`,
             items: extras.refused,
-            open: this.#refusedOpen,
-            onToggle: (open) => (this.#refusedOpen = open),
+            open: this.#refusedOpen.has(prefix),
+            onToggle: (open) => {
+              if (open) this.#refusedOpen.add(prefix);
+              else this.#refusedOpen.delete(prefix);
+            },
           }),
     );
   }
 
-  #toggle(id, ticked) {
-    this.dispatchEvent(new CustomEvent('extra-toggled', { bubbles: true, detail: { id, ticked } }));
+  #toggle(id, ticked, service) {
+    this.dispatchEvent(
+      new CustomEvent('extra-toggled', {
+        bubbles: true,
+        detail: service === null ? { id, ticked } : { id, ticked, service },
+      }),
+    );
   }
 
   /**

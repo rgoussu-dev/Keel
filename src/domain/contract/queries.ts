@@ -192,6 +192,25 @@ export interface ServiceDescriptor {
   readonly buildSystems: readonly ChoiceDescriptor[];
 }
 
+/**
+ * One service of a composite product as `keel.dials` reads it: its
+ * build-system dial, and its own extras menu.
+ */
+export interface ServiceDialOptions extends ServiceDescriptor {
+  /**
+   * The verticals of this service as its extras control shows them —
+   * {@link DialOptions.verticals}' reading, over the service's scope
+   * as the product scaffolds it on the settled dials: its preset's own
+   * verticals and those the product installs in it (`included`, and
+   * under the monorepo layout what the product root gives it too),
+   * what installs there on its own (`ready`) or once others have
+   * (`needs`), and what cannot go there (`unavailable`, with the
+   * refusal `keel new --with <path>:<id>` gives it — a pipeline in a
+   * monorepo service among them).
+   */
+  readonly verticals: readonly VerticalOption[];
+}
+
 /** A vertical `keel add` can install. */
 export interface VerticalDescriptor {
   readonly id: string;
@@ -269,7 +288,11 @@ export interface DialOptions {
    * prerequisites of what it names added, what cannot go on this
    * preset dropped, in the order the install will run them. Every
    * such change is in {@link DialOptions.adjustments}. The list to
-   * choose from is {@link DialOptions.verticals}. `agentHarness` is
+   * choose from is {@link DialOptions.verticals}. A product's extras
+   * are its services': snapped per service in `services`, each list
+   * to choose from on {@link DialOptions.services}, and never left
+   * bare — one named without a service is moved into the one service
+   * that takes it, or dropped. `agentHarness` is
    * the exception the other way: carried only as `false`, where
    * {@link DialOptions.agentHarness} lets the harness be left out —
    * on is what an absent field means, the install asks nothing about
@@ -280,8 +303,11 @@ export interface DialOptions {
   readonly buildSystems: readonly ChoiceDescriptor[];
   /** Module layouts still legal under the settled build system. */
   readonly moduleLayouts: readonly ChoiceDescriptor[];
-  /** Services of a composite, with their own build systems; empty otherwise. */
-  readonly services: readonly ServiceDescriptor[];
+  /**
+   * Services of a composite, each with its own build systems and extras
+   * menu; empty otherwise.
+   */
+  readonly services: readonly ServiceDialOptions[];
   /**
    * Whether the peer context may be switched on as the dials stand —
    * the capability probe {@link StackDescriptor.peerContext} reports
@@ -302,7 +328,9 @@ export interface DialOptions {
    * Verticals that may still be layered on top, labelled by title:
    * those that install here on their own, and those that install once
    * others have (see {@link DialOptions.verticals} for which). Pruned
-   * as the dials move.
+   * as the dials move. On a composite product, those `keel new --with`
+   * takes without a service, each going to the one service that can
+   * take it; each service's own menu is on {@link DialOptions.services}.
    */
   readonly extraVerticals: readonly ChoiceDescriptor[];
   /**
@@ -311,11 +339,13 @@ export interface DialOptions {
    * own (`included`), and every other registered vertical, which it
    * cannot carry (`unavailable`, with the refusal `keel new --with`
    * gives it) — each with its readiness and what it needs installed
-   * first. A composite product has no extras of its own, so it lists
-   * only its own verticals, `included` — naming one to `keel new
-   * --with` sets it aside with a note, as on a single preset, and
-   * anything else named is refused as belonging to a service. Empty on
-   * a brownfield target.
+   * first. On a composite product, as `keel new --with` reads an id
+   * named without a service: the product's own `included` — naming one
+   * sets it aside with a note, as on a single preset — one service
+   * alone can take with that service's readiness, and the rest
+   * `unavailable`, refused as belonging to a service (naming which can
+   * take it) or as nowhere to go. Each service's own menu is on
+   * {@link DialOptions.services}. Empty on a brownfield target.
    */
   readonly verticals: readonly VerticalOption[];
   /**
@@ -324,7 +354,11 @@ export interface DialOptions {
    * prerequisite `added` (in install order) — each with the reason, so
    * nothing leaves or joins the caller's selection silently. Empty when
    * nothing moved. The extras are a set: the order they were named in
-   * changes neither what is kept nor the order it comes back in.
+   * changes neither what is kept nor the order it comes back in. On a
+   * composite product, the same for each service's extras
+   * (`target.services`), each adjustment naming its service — and a
+   * vertical named without a service `added` to the one service that
+   * takes it, or `dropped` where none or several would.
    */
   readonly adjustments: readonly DialAdjustment[];
 }
@@ -371,6 +405,14 @@ export interface DialAdjustment {
   /** The vertical id added or dropped. */
   readonly id: string;
   readonly change: 'added' | 'dropped';
+  /**
+   * On a composite product, the path of the service whose extras
+   * changed — the vertical `added` to it, which a vertical named
+   * without a service is when that service alone can take it, or
+   * `dropped` from it. Absent for a product's extras named without a
+   * service that no service took, and on a single preset.
+   */
+  readonly service?: string;
   /** Why, as one sentence a page can show as it stands. */
   readonly because: string;
 }

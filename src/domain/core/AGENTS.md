@@ -82,7 +82,11 @@ gives it (`Vertical.placement` on `vcs`/`ci`/`distribution`,
 `Adapter.providesInServices` on the product glue) and that it is no
 repository root (`PlanScope.member`) — never a list of ids in a
 handler: `keel new` reads the same placement to leave those verticals
-out of a monorepo service (grid I7); after a `keel add`,
+out of a monorepo service (grid I7), and before it writes anything a
+product's service is one scope too, `presetServiceScope` — read by that
+service's extras menu (`keel.dials`), by a bare `--with`'s routing to
+the one service that takes it (`routeExtra`) and by the install of its
+`--with path:id` extras alike; after a `keel add`,
 `refreshProposals` names the installed verticals the run changed and
 did not re-render — proposed, never done. A new surface asks it too, rather
 than re-deriving readiness from `coversFor` or a `promotes` union —

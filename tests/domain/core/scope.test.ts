@@ -16,7 +16,8 @@
  * directory, the way the filesystem adapter throws on a broken file.
  *
  * **Port.** `scopeOf`, `enclosingProduct`, `planScopeOf`,
- * `provisionsFor`.
+ * `provisionsFor` — and, before `keel new` has written a manifest,
+ * `presetServiceScope` over the shipped `fullstack` preset's services.
  */
 
 import path from 'node:path';
@@ -33,8 +34,11 @@ import { registryOf, shippedRegistry, shippedSource } from '../../../src/domain/
 import {
   enclosingProduct,
   planScopeOf,
+  presetServiceScope,
+  presetServiceTags,
   provisionsFor,
   scopeOf,
+  type PresetService,
 } from '../../../src/domain/core/scope.js';
 import { STACKS } from '../../../src/domain/core/stacks.js';
 import { FakeManifestStore } from '../../../src/infrastructure/manifest/fake.js';
@@ -202,6 +206,51 @@ describe('provisionsFor', () => {
         ({ vertical }) => vertical.id,
       ),
     ).toEqual(['containerization']);
+  });
+});
+
+describe('presetServiceScope', () => {
+  const product = STACKS['fullstack'] as Stack;
+  const quarkusRest = STACKS['quarkus-rest'] as Stack;
+  const webComponents = STACKS['web-components'] as Stack;
+  const gateway = shippedRegistry.vertical('gateway');
+  const ci = shippedRegistry.vertical('ci');
+  if (gateway === null || ci === null) throw new Error('the shipped registry lost a vertical');
+  const backend: PresetService = {
+    path: 'backend',
+    stack: quarkusRest,
+    extraVerticals: [gateway],
+  };
+  const services: readonly PresetService[] = [
+    backend,
+    { path: 'frontend', stack: webComponents, extraVerticals: [gateway] },
+  ];
+
+  it('reads a service on the build system chosen for it, with what its siblings project', () => {
+    const tags = presetServiceTags(backend, 'pkg.maven', services);
+    expect(tags).toContain('pkg.maven');
+    expect(tags).not.toContain('pkg.gradle');
+    expect(tags).toEqual(expect.arrayContaining([...(webComponents.projects ?? [])]));
+  });
+
+  it("has the product's extras for the service as there already, and its root's gifts under monorepo", () => {
+    const tags = presetServiceTags(backend, 'pkg.gradle', services);
+    const polyrepo = presetServiceScope(shippedRegistry, product, backend, tags, false);
+    expect(polyrepo.installed).toContain('gateway');
+    expect(polyrepo.member).toBeUndefined();
+    const monorepo = presetServiceScope(shippedRegistry, product, backend, tags, true);
+    expect(monorepo.member?.provided).toEqual(['vcs', 'containerization']);
+  });
+
+  it('leaves a placed extra of the product out of a monorepo service, as keel new does', () => {
+    const piped: PresetService = { ...backend, extraVerticals: [gateway, ci] };
+    const tags = presetServiceTags(piped, null, services);
+    expect(presetServiceScope(shippedRegistry, product, piped, tags, false).installed).toContain(
+      'ci',
+    );
+    expect(presetServiceScope(shippedRegistry, product, piped, tags, true).installed).not.toContain(
+      'ci',
+    );
   });
 });
 

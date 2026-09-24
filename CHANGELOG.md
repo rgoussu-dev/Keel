@@ -14,6 +14,21 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **Two scopes of a product writing one file are refused, not
+  silently overwritten.** A composite product stages its root and
+  each service into trees of their own, so a file two of them wrote —
+  a preset installing an image in a monorepo service whose Dockerfile
+  the product root already writes — was listed twice in the plan, and
+  on install the scope committed last silently replaced the other's.
+  `keel new` now refuses it before the plan is reported
+  (`keel.cross-scope-write`), naming the file and both adapters with
+  where each runs — _backend/.dockerignore would be written by two
+  scopes of this product — by fullstack/product-compose at the product
+  root, and by containerization/quarkus-rest-image in backend/ — …_ —
+  so `--dry-run`, the `keel ui` preview and the install refuse it
+  alike. No shipped product does this; a preset or a plugin's product
+  could.
+
 - **`keel new --no-agent-harness` no longer installs the harness as a
   prerequisite.** A `--with` vertical that needs the agent harness —
   a plugin's; keel ships none — was planned with its prerequisites, so
@@ -304,6 +319,25 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`keel new --with` on a product sends each vertical to the one
+  service that can take it.** `--with persistence` on `fullstack` was
+  refused as belonging to a service (`keel.wrong-scope`); it now goes
+  in `backend/`, the one service that can take it, and the plan's
+  first note says so — _Persistence goes in backend/, the one service
+  of fullstack that can take it_. Where two services could each take
+  it (a toolchain, a pipeline under the polyrepo layout) or none can,
+  it is still refused as `keel.wrong-scope`, naming each service and
+  whether it can take it, and the hint names the pairs to type
+  instead: `'--with backend:toolchain' or '--with frontend:toolchain'`.
+  Each service's readiness is now read on the build system chosen for
+  it and with the product's own extras for it (the service gateway)
+  in place, where it used to be read on the defaults. `keel.dials`
+  sends a single preset's extras onto a product the same way — in
+  `keel ui`, Persistence ticked on `quarkus-rest` is ticked in the
+  backend's group of `fullstack` — and names the ones it drops with
+  the refusal's sentence; a product's service extras carried back onto
+  a single preset are that preset's own.
 
 - **`keel new` keeps your `README.md` and `.gitignore`, on every
   stack.** Create a repository with a README on a hosting service,
@@ -651,6 +685,35 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **A product's services take extras of their own when it is
+  created.**
+  `keel new --stack=fullstack --with backend:persistence,frontend:dev-env`
+  names each extra with its service, as `--build-system backend=maven`
+  names a build system; each service's extras are planned in that
+  service as a single stack's are — what one needs first is added,
+  what the service already has is set aside, both said in the plan's
+  notes under the service's name — so `--with backend:persistence`
+  writes what `keel new` and then `keel add persistence` in `backend/`
+  would. A pipeline or a release in a monorepo service is refused as
+  `keel.wrong-scope`, before anything is written, as `keel add ci`
+  there is, and the hint under a service's refusal names the pair to
+  drop (`drop 'backend:ci' from --with`), never another stack to
+  scaffold instead. A path the product lists no service at, an id named twice
+  for one service, the two forms mixed, and a `path:id` pair on a
+  single-service stack are refused as
+  `keel.invalid-extra-verticals`. `NewProjectTarget` and the web
+  target take the same as `services`, keyed by service path
+  (`{ "backend": { "extraVerticals": ["persistence"] } }`).
+  `keel.dials` reads each service's own menu (`services[].verticals`,
+  over the scope the product scaffolds it in: its build system, the
+  product's extras for it and, under the monorepo layout, what the
+  product root gives it), snaps each service's selection to its
+  closure, and says what it moved, naming the service
+  (`adjustments[].service`). In `keel ui` the Options step of a
+  product has an **Also scaffold in backend/** group per service, the
+  command line under the plan spells the pairs, and the review lists
+  _Persistence in backend/_.
 
 - **`keel ui` can leave the agent harness out.** `--no-agent-harness`
   was the one `keel new` flag the page could not express. On every

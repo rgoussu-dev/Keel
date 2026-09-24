@@ -3018,11 +3018,80 @@ and MariaDB let go on Go without a refusal — by
 reason; a development environment quiet onto the preset that includes
 one) and by `ui-compose`, without Generate. No grid verdict moved.
 
-- **Q2.3 — Per-service extras when creating a product (L).**
-  `--with backend:persistence`, mirroring `--build-system path=id`;
-  per-service menus from `compositeDials`; a bare `--with` routes to
-  the one service that admits it (D7). Two scopes staging the same
-  path are refused before the report, so preview and install agree.
+#### Q2.3 — Per-service extras when creating a product (L) ✅
+
+`--with backend:persistence`, mirroring `--build-system path=id`;
+per-service menus from `compositeDials`; a bare `--with` routes to
+the one service that admits it (D7). Two scopes staging the same
+path are refused before the report, so preview and install agree.
+
+Landed as `NewProjectCommand.services` / `NewProjectTarget.services`
+(`Record<path, { extraVerticals }>`, the web schema's too), which the
+CLI fills from `--with` entries of the form `path:id` (`parseWith`,
+bare ids staying `extraVerticals`; which paths exist and whether the
+forms mix is the engine's to refuse, `keel.invalid-extra-verticals`,
+as are an id twice for one service and a pair on a single stack).
+One scope serves the three readers of a service: `scope.ts`'s
+`presetServiceScope`, now over the preset's verticals **and** the
+product's extras for it (their promotions folded in, a placed one left
+out under the monorepo layout, as `stageStack` leaves it out), on
+`presetServiceTags` — the build system chosen for it, its default
+module layout and its siblings' projections — plus the monorepo
+provisions of Q1.10. `stageComposite` checks the form before any
+question, then, after the layout and build systems and before a file
+is staged, routes each bare id (`dials.ts`'s `routeExtra`: the one
+service whose readiness is ready or needs, else the product-root
+placement refusal or the `elsewhere` refusal naming each service's
+readiness) and admits each service's extras on that scope through
+`plan-refusal.ts`'s `admit` — set aside already-there ones with a note
+(_backend: Container image already comes with fullstack_), close the
+rest, notes prefixed with the service. The routed note is
+_Persistence goes in backend/, the one service of fullstack that can
+take it_; the CLI hint for a refusal several services could take
+names the pairs (`'--with backend:toolchain' or '--with
+frontend:toolchain'`), and one under a service's own refusal the pair
+to drop (`drop 'frontend:persistence' from --with`), never another
+stack to scaffold. `compositeDials` returns
+`ServiceDialOptions.verticals` per service (`scopeOptions` over that
+scope), snaps `target.services` per service (`snapOnto`, adjustments
+carrying `service`), moves bare `extraVerticals` onto the routed
+service (an `added` adjustment in the routed note's words) or drops
+them with the refusal, and reports top-level `extraVerticals` /
+`verticals` as a bare id reads — which is what keeps greenfield I3
+hard now that `--with persistence` on a product is Ok. `singleDials`
+reads a product's `services` extras as its own, so a move off a
+product keeps them. `agentHarness` stays false on products, and the
+composite `--no-agent-harness` refusal is unchanged.
+
+Cross-scope writes: `Ownership` gained `writers` (path → the adapter
+that last wrote it, recorded in `applyContribution` and for hook
+scripts), each composite scope stages with its own, and
+`stageComposite` refuses a path two scopes stage
+(`keel.cross-scope-write`, `refusals.ts`'s `crossScopeWriteError`)
+after staging and before the report — the Option A preset
+(containerization among a monorepo backend's extras) is refused by
+preview and dry run in one sentence naming `fullstack/product-compose`
+and `containerization/quarkus-rest-image`. No manifest schema changed.
+The page (`extras.js`' `serviceExtrasGroup` and
+`servicesExtrasSummary`, `target.js`' `toggleExtra(…, service)` and
+`serviceExtrasOf`, `services` carried across a preset move and its
+extras counted kept or lost by id; `command.js` spelling the pairs)
+draws an **Also scaffold in backend/** group per service. Held by
+`new-project.test.ts`, `composite-scope.test.ts` (`fullstack --with
+backend:persistence` byte for byte `keel new` then `keel add
+persistence` in `backend/`, under both layouts, the manifest's owned
+entries by source and target; `backend:ci` refused before a file; the
+Option A preset), `new-with-example.test.ts` (the help's product
+example planned on both layouts), the web `dials`, `extras`,
+`target` and `command` suites and `ui-compose`. Grid: the greenfield
+golden moved 12 product cells from `keel.wrong-scope` to Ok (each
+product's `persistence` and `dev-env`, now routed) and gained their
+I8 orderings; the composite axis now also previews every product ×
+layout × service × vertical of each service's menu (156 cells), held
+to I2 (offered ⇒ Ok), I3 (neither offered nor its own ⇒ refused) and
+I7 against its polyrepo twin. The known files stayed empty. Not done:
+the terminal wizard asks no per-service extras question — interactive
+runs name them with `--with path:id` or take none, as before.
 
 #### Q2.4 — `--no-agent-harness` reaches the page (S) ✅
 

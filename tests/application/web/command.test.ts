@@ -68,6 +68,25 @@ describe('commandFor', () => {
     ).toBe('keel new --stack fullstack --build-system backend=maven,frontend=pnpm --yes');
   });
 
+  it('names each service of a product with its extras, as --with path:id pairs', () => {
+    expect(
+      line({
+        kind: 'new-project',
+        stack: 'fullstack',
+        layout: 'polyrepo',
+        services: {
+          backend: { extraVerticals: ['containerization', 'distribution'] },
+          frontend: { extraVerticals: ['dev-env'] },
+        },
+      }),
+    ).toBe(
+      'keel new --stack fullstack --layout polyrepo --with backend:containerization,backend:distribution,frontend:dev-env --yes',
+    );
+    expect(line({ kind: 'new-project', stack: 'fullstack', services: {} })).toBe(
+      'keel new --stack fullstack --yes',
+    );
+  });
+
   it('spells a vertical, and marks a re-render as one', () => {
     expect(line({ kind: 'add-vertical', verticals: ['ci'] })).toBe('keel add ci --yes');
     expect(line({ kind: 'add-vertical', verticals: ['ci'], reapply: true })).toBe(

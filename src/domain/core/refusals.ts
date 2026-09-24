@@ -61,6 +61,7 @@
  * proposes.
  */
 
+import { DomainError } from '../kernel/result.js';
 import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { ReadinessGap } from '../contract/queries.js';
@@ -113,6 +114,16 @@ export const INCOMPATIBLE_CODE = 'keel.incompatible';
  * "not in this project".
  */
 export const WRONG_SCOPE_CODE = 'keel.wrong-scope';
+
+/**
+ * The code `keel new` refuses a composite product with when two of its
+ * scopes — the product root and a service, or two services — would
+ * write one file: each scope stages into a Tree of its own, so without
+ * this the one committed last would win, silently. A defect of the
+ * pieces put together (a preset, a plugin's product glue), never of a
+ * file the user keeps — that is `keel.path-conflict`.
+ */
+export const CROSS_SCOPE_WRITE_CODE = 'keel.cross-scope-write';
 
 /**
  * Tag namespaces a preset fixes at `keel new`. An adapter that needs
@@ -445,6 +456,43 @@ export function reapplyFrozenSentence(adapterId: string, vertical: Vertical): st
  */
 export function alreadyIncludedNote(vertical: Vertical, stackId: string): string {
   return `${verticalTitle(vertical)} already comes with ${stackId}`;
+}
+
+/**
+ * The note `keel new` gives for a vertical named for a composite
+ * product without a service, which one of its services alone can take
+ * — so it goes there, and the run says where. `keel.dials` moves it
+ * into that service's extras in the same words.
+ */
+export function routedExtraNote(vertical: Vertical, servicePath: string, product: string): string {
+  return `${verticalTitle(vertical)} goes in ${servicePath}/, the one service of ${product} that can take it`;
+}
+
+/** Who wrote a file, for {@link crossScopeWriteError}. */
+export interface ScopeWriter {
+  /** The writing adapter's id (`<vertical>/<adapter>`); null for keel's own harness files. */
+  readonly by: string | null;
+  /** The scope's path under the product root; `''` for the root itself. */
+  readonly scope: string;
+}
+
+/**
+ * The refusal of a composite product two of whose scopes would both
+ * write `path` (from the product root), naming each writer and where
+ * it runs — {@link CROSS_SCOPE_WRITE_CODE}. Raised before the plan is
+ * reported, so a preview and an install refuse it alike.
+ */
+export function crossScopeWriteError(
+  path: string,
+  first: ScopeWriter,
+  second: ScopeWriter,
+): DomainError {
+  const who = (writer: ScopeWriter): string =>
+    `${writer.by ?? "keel's own harness"} ${writer.scope === '' ? 'at the product root' : `in ${writer.scope}/`}`;
+  return new DomainError(
+    `${path} would be written by two scopes of this product — by ${who(first)}, and by ${who(second)} — and the one written last would silently replace the other; one of the product's pieces has to leave the file to the other`,
+    CROSS_SCOPE_WRITE_CODE,
+  );
 }
 
 /**

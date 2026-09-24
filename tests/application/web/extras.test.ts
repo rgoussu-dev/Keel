@@ -13,7 +13,12 @@
 import { describe, expect, it } from 'vitest';
 import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
 import { dialsQuery, type DialOptions } from '../../../src/domain/contract/queries.js';
-import { extrasGroup, extrasSummary } from '../../../assets/web/src/extras.js';
+import {
+  extrasGroup,
+  extrasSummary,
+  serviceExtrasGroup,
+  servicesExtrasSummary,
+} from '../../../assets/web/src/extras.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
 /** The `keel.dials` reply for `stack`, with `extraVerticals` as the page would post them. */
@@ -163,5 +168,38 @@ describe('the "Also scaffold" group', () => {
   it('spells an empty selection for the review, rather than a blank', async () => {
     const reply = await dials('go-cli');
     expect(extrasSummary(reply, reply.target)).toBe('nothing extra');
+  });
+});
+
+describe('a product’s "Also scaffold", one per service', () => {
+  it('sorts each service’s verticals as its own scope reads them', async () => {
+    const reply = await dials('fullstack');
+    const backend = serviceExtrasGroup(reply, reply.target, 'backend');
+    const frontend = serviceExtrasGroup(reply, reply.target, 'frontend');
+    expect(values(backend?.ready ?? [])).toEqual(['persistence', 'toolchain']);
+    expect(values(frontend?.ready ?? [])).toEqual(['dev-env', 'toolchain']);
+    // What the monorepo root gives a service comes with it; what only
+    // a repository root reads is not for it, in `keel add`'s words.
+    expect(backend?.included.map((vertical) => vertical.id)).toContain('containerization');
+    expect(backend?.refused.find((line) => line.id === 'ci')?.sentence).toMatch(
+      /^Continuous integration cannot go in a monorepo service: /,
+    );
+    // No chip is a switch on a product.
+    expect(backend?.included.every((vertical) => vertical.on === undefined)).toBe(true);
+    expect(serviceExtrasGroup(reply, reply.target, 'worker')).toBeNull();
+    expect(serviceExtrasGroup(null, reply.target, 'backend')).toBeNull();
+  });
+
+  it('holds each service’s selection, and says what the reply moved in it', async () => {
+    const reply = await dials('fullstack', ['persistence'], { layout: 'polyrepo' });
+    const backend = serviceExtrasGroup(reply, reply.target, 'backend');
+    expect(backend?.chosen).toEqual(['persistence']);
+    expect(backend?.line).toBe(
+      'Added Persistence — Persistence goes in backend/, the one service of fullstack that can take it.',
+    );
+    expect(serviceExtrasGroup(reply, reply.target, 'frontend')?.line).toBe('');
+    expect(servicesExtrasSummary(reply, reply.target)).toBe('Persistence in backend/');
+    const none = await dials('fullstack');
+    expect(servicesExtrasSummary(none, none.target)).toBe('nothing extra');
   });
 });

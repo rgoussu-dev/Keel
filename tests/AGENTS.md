@@ -83,8 +83,12 @@ holds. Three suites, split so vitest runs them in parallel:
   or `.github/workflows/ci.yml` seeded wherever the add would create
   it.
 - `composite` — every product under every repository layout its install
-  offers, at the root and in each service, its cards held to I4 as
-  brownfield's are — a vertical a monorepo service has from its product
+  offers: first each service's own extras menu (`keel.dials`'
+  `services[].verticals`), every vertical of it named for that service
+  in a `keel new` preview — offered ⇒ Ok (I2), neither offered nor the
+  service's own ⇒ refused (I3), and I7 against its polyrepo twin as
+  below — then scaffolded, at the root and in each service, its cards
+  held to I4 as brownfield's are — a vertical a monorepo service has from its product
   (`ProjectStatus.provided`) held to an add that stages nothing and says
   the card's note — and every service cell to I7: never refused for a
   file in the way, and Ok or `keel.wrong-scope` under the monorepo

@@ -36,11 +36,13 @@
  *
  * **A new preset is the exception, and keeps everything.** A build
  * system, a module layout, the peer context, a product's repository
- * layout, the extras and a harness left out are settings of the
- * preset rather than questions of an adapter, most presets share
- * them, and `keel.dials` already snaps a value the new preset cannot
- * take to one it can — the extras to what it can carry, saying why
- * for each it drops. Most answers are shared too: `vcs/git-init` asks
+ * layout, the extras — a product's per service — and a harness left
+ * out are settings of the preset rather than questions of an adapter,
+ * most presets share them, and `keel.dials` already snaps a value the
+ * new preset cannot take to one it can — the extras to what it can
+ * carry, saying why for each it drops, a single preset's onto the one
+ * service of a product that can take each, and a product's onto a
+ * single preset as its own. Most answers are shared too: `vcs/git-init` asks
  * for a default branch on every preset, by the same id. So resetting
  * them was only ever throwing away work — toggling an adapter on the
  * way to `quarkus-cli-rest` cost you the Maven, the modulith, the
@@ -71,8 +73,9 @@
  * @typedef {{ id: string }} Option
  * @typedef {{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string } }} VerticalOption
  * @typedef {{ installed: ReadonlyArray<{ id: string }>, available: ReadonlyArray<{ id: string, requires: ReadonlyArray<string> }> }} Status
- * @typedef {{ id: string, change: string, because: string }} Adjustment
- * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<{ path: string, buildSystems: ReadonlyArray<Option> }>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
+ * @typedef {{ id: string, change: string, because: string, service?: string }} Adjustment
+ * @typedef {{ path: string, buildSystems: ReadonlyArray<Option>, verticals?: ReadonlyArray<VerticalOption> }} ServiceDials
+ * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<ServiceDials>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
  * @typedef {{ from: string, dials: Record<string, unknown> }} Carried
  * @typedef {{ adapter: string, question: string, value: string, identity: boolean }} Held
  * @typedef {{ target: Target, answers: Answers, dials: Dials | null, generation: number, carried: Carried | null, notice: string, held: ReadonlyArray<Held>, identity: ReadonlyArray<string> }} Run
@@ -93,6 +96,7 @@ const CARRIED = [
   'moduleLayout',
   'withPeerContext',
   'extraVerticals',
+  'services',
   'agentHarness',
 ];
 
@@ -342,20 +346,33 @@ export function answer(run, { binding, value }) {
  * answers stay, and the next preview drops the ones an unticked
  * extra's adapters had been asked ({@link previewed}).
  *
+ * On a product the group is a service's, and so is the set: `service`
+ * names it, its `requires` are read off that service's menu, and the
+ * move is to `services[service]` — the rest of the product's extras
+ * are left as they are.
+ *
  * @param {Run} run
  * @param {string} id the vertical the box stands for
  * @param {boolean} ticked whether the box is now ticked
+ * @param {string | null} [service] the product's service whose group it is in
  * @returns {Run}
  */
-export function toggleExtra(run, id, ticked) {
-  const requires = new Map(
-    (run.dials?.verticals ?? []).map((vertical) => [vertical.id, vertical.requires]),
-  );
-  const selected = extrasOf(run.target);
+export function toggleExtra(run, id, ticked, service = null) {
+  const menu =
+    service === null
+      ? (run.dials?.verticals ?? [])
+      : ((run.dials?.services ?? []).find((candidate) => candidate.path === service)?.verticals ??
+        []);
+  const requires = new Map(menu.map((vertical) => [vertical.id, vertical.requires]));
+  const selected = service === null ? extrasOf(run.target) : serviceExtrasOf(run.target, service);
   const next = ticked
     ? [...new Set([...selected, ...(requires.get(id) ?? []), id])]
     : withoutDependants(selected, requires, id);
-  return retarget(run, { extraVerticals: next });
+  if (service === null) return retarget(run, { extraVerticals: next });
+  const services = { ...(run.target?.services ?? {}) };
+  if (next.length > 0) services[service] = { extraVerticals: next };
+  else delete services[service];
+  return retarget(run, { services });
 }
 
 /**
@@ -368,6 +385,35 @@ export function toggleExtra(run, id, ticked) {
 export function extrasOf(target) {
   const extras = target?.extraVerticals;
   return Array.isArray(extras) ? extras.map(String) : [];
+}
+
+/**
+ * The extras a product's target holds for its service at `path` — `[]`
+ * where it names none.
+ *
+ * @param {object | null} target
+ * @param {string} path
+ * @returns {string[]}
+ */
+export function serviceExtrasOf(target, path) {
+  const extras = target?.services?.[path]?.extraVerticals;
+  return Array.isArray(extras) ? extras.map(String) : [];
+}
+
+/** Every extra a target holds: its own, then each service's, each once. */
+function allExtrasOf(target) {
+  const services = Object.keys(target?.services ?? {});
+  return [
+    ...new Set([...extrasOf(target), ...services.flatMap((path) => serviceExtrasOf(target, path))]),
+  ];
+}
+
+/** Every vertical a reply's menus list, a product's services' included. */
+function menusOf(dials) {
+  return [
+    ...(dials.verticals ?? []),
+    ...(dials.services ?? []).flatMap((service) => service.verticals ?? []),
+  ];
 }
 
 /**
@@ -577,7 +623,7 @@ function chosen(target, dials) {
     moduleLayout: differs(target.moduleLayout, dials.moduleLayouts[0]?.id),
     withPeerContext: differs(target.withPeerContext, false),
     agentHarness: differs(target.agentHarness, true),
-    extraVerticals: titled(extrasOf(target), dials),
+    extraVerticals: titled(allExtrasOf(target), dials),
   };
   return Object.fromEntries(Object.entries(moved).filter(([, value]) => value !== undefined));
 }
@@ -604,12 +650,12 @@ function servicesMoved(raw, dials) {
 
 /**
  * `extras`, each with the title the menus that offered it gave it —
- * the reply settling the move may not list it at all, a product's
- * listing only its own verticals. Undefined for none.
+ * the reply settling the move may not list it at all. Undefined for
+ * none.
  */
 function titled(extras, dials) {
   if (extras.length === 0) return undefined;
-  const titles = new Map((dials.verticals ?? []).map((vertical) => [vertical.id, vertical.title]));
+  const titles = new Map(menusOf(dials).map((vertical) => [vertical.id, vertical.title]));
   return extras.map((id) => ({ id, title: titles.get(id) ?? id }));
 }
 
@@ -627,13 +673,15 @@ function pairsOf(raw) {
 
 /**
  * `carried`, less the dials a patch has just set by hand — a value
- * picked before the reply lands is not one the move could lose.
+ * picked before the reply lands is not one the move could lose. A
+ * product's service extras are the extras, as far as that goes.
  */
 function unpatched(carried, patch) {
   if (carried === null) return null;
+  const touched = (field) => field in patch || (field === 'extraVerticals' && 'services' in patch);
   return {
     ...carried,
-    dials: Object.fromEntries(Object.entries(carried.dials).filter(([field]) => !(field in patch))),
+    dials: Object.fromEntries(Object.entries(carried.dials).filter(([field]) => !touched(field))),
   };
 }
 
@@ -671,12 +719,14 @@ function noticeOf(carried, dials, finder) {
  * The carried extras the settled reply does not hold, each with the
  * reason the reply gave for dropping it where it gave one. One the new
  * preset comes with is not among them: that one is kept — by the
- * preset now rather than by a box.
+ * preset now rather than by a box. On a product, one a service holds
+ * is kept, whichever service, and one a service comes with is kept by
+ * it.
  */
 function extrasLost(carried, dials) {
-  const kept = new Set(extrasOf(dials.target));
+  const kept = new Set(allExtrasOf(dials.target));
   const included = new Set(
-    (dials.verticals ?? [])
+    menusOf(dials)
       .filter((vertical) => vertical.readiness === 'included')
       .map((vertical) => vertical.id),
   );
