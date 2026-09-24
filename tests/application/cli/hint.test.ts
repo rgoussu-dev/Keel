@@ -88,6 +88,18 @@ const TABLE: readonly {
     hint: null,
   },
   {
+    why: 'an installed vertical to re-render on keel add names the run that re-renders it',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'iac',
+      missing: {},
+      carriedBy: [],
+      refresh: { verticals: ['distribution'], prerequisites: ['containerization'] },
+    },
+    command: 'add',
+    hint: "re-render it in the same run: 'keel add iac --refresh distribution'",
+  },
+  {
     why: 'a tie names each full line to run',
     refusal: {
       kind: 'needs',

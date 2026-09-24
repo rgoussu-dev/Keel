@@ -506,6 +506,17 @@ are asked (and shown in `keel ui`'s preview), and `--set` reaches it.
 Refreshing a vertical that is not installed is refused as
 `keel.vertical-not-installed`.
 
+Where an installed vertical, as it was rendered, is all that stands in
+the way of one you ask for, the add is refused as `keel.needs-refresh`,
+naming the re-render, and the hint spells the run that takes it — on
+`quarkus-cli-rest` whose distribution shipped native binaries:
+
+```
+$ keel add iac
+err  Infrastructure as code needs Container image, then Distribution re-rendered — as it was rendered, Distribution does not add what Infrastructure as code needs
+  hint: re-render it in the same run: 'keel add iac --refresh distribution'
+```
+
 **keel does not overwrite your files, nor recreate its own.** A file
 the vertical would write that the project already holds — your own
 `Dockerfile` before `keel add containerization`, a

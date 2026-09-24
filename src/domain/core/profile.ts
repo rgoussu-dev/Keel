@@ -25,6 +25,7 @@ import type { ServiceRef } from '../contract/manifest.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { ProfileFact, ProjectProfile } from '../contract/queries.js';
 import { MODULE_LAYOUTS } from './adapters/module-layout.js';
+import { acquirableIn } from './planner.js';
 import { assemblableStacks } from './registry.js';
 import {
   axesOf,
@@ -60,7 +61,12 @@ export function projectProfile(
     const placed = product === null ? null : pathOf(paths, product);
     return { preset: product, facts: placed === null ? [] : axesFacts(placed) };
   }
-  const axes = axesOf(tags);
+  // Read over what the preset seeded, not over what a vertical added
+  // since: a native-binary release promotes `runtime.graalvm-native`,
+  // which sorts ahead of the preset's `runtime.jvm` and would read as
+  // the language — and place no preset.
+  const acquirable = acquirableIn(registry);
+  const axes = axesOf(tags.filter((tag) => !acquirable.has(tag)));
   if (axes === null) return { preset: null, facts: dialFacts(tags) };
   const placed = pathFor(paths, axes.shape, axes.language, axes.framework ?? '', axes.entrypoints);
   return { preset: placed?.stackId ?? null, facts: [...axesFacts(axes), ...dialFacts(tags)] };

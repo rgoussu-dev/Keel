@@ -351,7 +351,10 @@ export function provisionsFor(
  * and what linked projects project here), the verticals it has
  * installed — less `except`, the ones a run re-renders and so plans as
  * if they were not there yet — and the rules those installed pieces
- * declare, which nothing the run adds may newly break.
+ * declare, which nothing the run adds may newly break. Each of those
+ * installed verticals is one a run may re-render
+ * (`PlanScope.refreshable`); what a product gives a monorepo service
+ * is not, since the service has nothing of it to re-render.
  *
  * An installed vertical this keel does not know (a plugin no longer
  * loaded) still counts as installed; it only brings no rules, since
@@ -367,6 +370,7 @@ export function projectScope(
     tags: effectiveTags(manifest),
     installed,
     rules: conflictsOf(installed.flatMap((id) => installedVertical(registry, id) ?? [])),
+    refreshable: installed,
   };
 }
 

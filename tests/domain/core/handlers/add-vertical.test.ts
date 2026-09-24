@@ -16,7 +16,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { previewQuery } from '../../../../src/domain/contract/queries.js';
+import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
@@ -755,17 +755,63 @@ describe('keel.add-vertical (keel add)', () => {
       expectOk(await add(cwd, ['distribution']));
       expectOk(await add(cwd, ['containerization']));
       const refused = expectErr(await add(cwd, ['iac']));
-      expect(refused.code).toBe('keel.uncoverable-vertical');
-      // The image is a capability, named by the vertical that adds it —
-      // installed here, without it — never as the tag iac is keyed on.
+      // Something keel has — the installed Distribution, re-rendered —
+      // makes it install, so it is not "nothing can": the refusal says
+      // what, and a re-render stays the user's to ask for.
+      expect(refused.code).toBe('keel.needs-refresh');
       expect(refused.message).toBe(
-        'Infrastructure as code needs what Distribution adds, which this project does not have yet',
+        'Infrastructure as code needs Distribution re-rendered — as it was rendered, Distribution does not add what Infrastructure as code needs',
       );
+      expect((refused as RefusalError).refusal).toMatchObject({
+        kind: 'unavailable',
+        vertical: 'iac',
+        refresh: { verticals: ['distribution'], prerequisites: [] },
+      });
 
       // `--refresh` names no order, so going first is no move to report.
       const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] }));
       expect(report.notes).toBeUndefined();
       expect(await fs.pathExists(path.join(cwd, 'deploy/compose.yaml'))).toBe(true);
+    });
+
+    it('reads a native-only distribution as a re-render away from iac, on the card and the click alike', async () => {
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      const status = expectOk(await mediator().dispatch(projectStatusQuery({ cwd })));
+      const card = status.available.find((vertical) => vertical.id === 'iac');
+      const sentence =
+        'Infrastructure as code needs Container image, then Distribution re-rendered — as it was rendered, Distribution does not add what Infrastructure as code needs';
+      expect(card).toMatchObject({
+        readiness: 'unavailable',
+        refusal: { code: 'keel.needs-refresh', message: sentence },
+      });
+      const refused = expectErr(await add(cwd, ['iac'], { dryRun: true }));
+      expect([refused.code, refused.message]).toEqual(['keel.needs-refresh', sentence]);
+      // Naming the image it lacks leaves the re-render alone to ask for.
+      const named = expectErr(await add(cwd, ['containerization', 'iac'], { dryRun: true }));
+      expect(named.code).toBe('keel.needs-refresh');
+      expect((named as RefusalError).refusal).toMatchObject({
+        refresh: { verticals: ['distribution'], prerequisites: [] },
+      });
+      // And the re-render it names is what installs it, the image first.
+      const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'], dryRun: true }));
+      expect(report.notes).toEqual(['added Container image — needed by Distribution']);
+    });
+
+    it('releases the JVM image a refreshed distribution now ships, not the native binaries it shipped', async () => {
+      // Distribution alone went native, and left its native-runtime tag
+      // behind; re-rendered beside a JVM image, its pipeline builds the
+      // fast-jar that image's Dockerfile copies, as a fresh project's does.
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      expectOk(await add(cwd, ['containerization'], { refresh: ['distribution'] }));
+      const release = await fs.readFile(
+        path.join(cwd, '.github/workflows/release-image.yml'),
+        'utf8',
+      );
+      expect(release).toContain('actions/setup-java');
+      expect(release).not.toContain('graalvm');
+      expect(release).not.toContain('quarkus.native.enabled');
     });
 
     it('reports a move among the verticals named, and never a refreshed one as installed', async () => {

@@ -94,6 +94,14 @@ function unavailableHint(
     (missing.peer ?? []).length > 0 &&
     (missing.entrypoint ?? []).length === 0 &&
     (missing.identity ?? []).length === 0;
+  if (refusal.refresh !== undefined) {
+    // Only a project on disk has something to re-render, and only
+    // `keel add` re-renders beside what it installs.
+    const again = refusal.refresh.verticals.join(',');
+    return command === 'add'
+      ? `re-render it in the same run: 'keel add ${vertical} --refresh ${again}'`
+      : `drop '${vertical}' from --with`;
+  }
   if (command === 'add') {
     if (refusal.because !== undefined) return null;
     if (peerOnly) return `link a project it can wire first — 'keel link <path>' — then add it`;

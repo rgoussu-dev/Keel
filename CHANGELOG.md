@@ -381,9 +381,10 @@ new` the terminal adds the way past it (move it aside, or start in
   two. `keel ui` started in a keel project opens on its Options, and so
   do Generate and a product root's **Open backend/**. The
   `/api/project` status gains `profile`: the preset the manifest reads
-  as — the drill-down run back over the tags it records, or at a
-  product root the product with exactly its services — and the choices
-  that made it, as labelled lines rather than tags.
+  as — the drill-down run back over the tags its preset seeded, passing
+  over what a vertical added since (a native release's runtime), or at
+  a product root the product with exactly its services — and the
+  choices that made it, as labelled lines rather than tags.
 
 - **The verticals compatibility matrix says what keel does.** The
   table in `docs/verticals/README.md` is now generated from the
@@ -927,8 +928,15 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   `InstallReport.refreshProposals`) and re-renders nothing on its own.
   `--refresh <ids>` takes a proposal up in the same run, after what
   the re-rendered vertical reads, under `--reapply`'s posture, with a
-  diff for every file it rewrites. The web API's install target takes
-  `verticals` and `refresh` too. See `docs/cli.md` → `keel add`.
+  diff for every file it rewrites; a native-only distribution
+  re-rendered beside a JVM image then ships that image's fast-jar. Where
+  such a re-render is all that stands in the way of a vertical asked
+  for — `iac` after a native-only distribution — the add is refused as
+  `keel.needs-refresh`, naming it (_"Infrastructure as code needs
+  Container image, then Distribution re-rendered — …"_), and the
+  terminal's hint spells the run: `keel add iac --refresh
+distribution`. The web API's install target takes `verticals` and
+  `refresh` too. See `docs/cli.md` → `keel add`.
 
 - **Plugins can say what each adapter adds, and what a vertical
   reads.** Two optional fields, for the planner keel's menus and front

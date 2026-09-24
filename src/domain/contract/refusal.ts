@@ -117,6 +117,15 @@ export interface UnavailableRefusal {
    * reason (`Vertical.placement`).
    */
   readonly repositoryOnly?: readonly string[];
+  /**
+   * Installed verticals whose re-render in the same run would let it
+   * install (`keel add --refresh`), with what that run would install
+   * besides, first. Standing in for the gap when present.
+   */
+  readonly refresh?: {
+    readonly verticals: readonly string[];
+    readonly prerequisites: readonly string[];
+  };
 }
 
 /** {@link Refusal} for a vertical asked of a product root rather than a service. */

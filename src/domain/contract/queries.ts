@@ -531,6 +531,30 @@ export interface ReadinessGap {
    * empty: a stack, an entrypoint or a link would change nothing.
    */
   readonly repositoryOnly?: readonly string[];
+  /**
+   * Installed verticals which, re-rendered in the same run (`keel add
+   * --refresh`), would let it install: each was rendered through an
+   * adapter that does not add what it needs, and would render through
+   * one that does once the run's other verticals are in —
+   * Distribution, shipped as native binaries before the project had a
+   * container image, builds no image for Infrastructure as code to
+   * deploy. Present only where that is what stops it, and then the
+   * rest of the gap is empty: a re-render is the user's to ask for,
+   * never one a plan makes of its own accord.
+   */
+  readonly refresh?: RefreshGap;
+}
+
+/** What {@link ReadinessGap.refresh} names: what to re-render, and what installs with it. */
+export interface RefreshGap {
+  /** The installed verticals to re-render, in the order the project installed them. */
+  readonly verticals: readonly string[];
+  /**
+   * What the run would install with it besides, first — as a `needs`
+   * names them; empty when the project has all of it, or the run
+   * names it already.
+   */
+  readonly prerequisites: readonly string[];
 }
 
 /* ------------------------------------------------------------------ *

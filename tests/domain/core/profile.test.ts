@@ -16,6 +16,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { ServiceRef } from '../../../src/domain/contract/manifest.js';
+import { acquirableIn } from '../../../src/domain/core/planner.js';
 import { projectProfile, serviceLabel } from '../../../src/domain/core/profile.js';
 import { assemblableStacks, shippedRegistry } from '../../../src/domain/core/registry.js';
 import { stackTagsFor } from '../../../src/domain/core/stacks.js';
@@ -45,6 +46,20 @@ describe('projectProfile', () => {
           }
         }
       }
+    }
+  });
+
+  it('reads every single preset back as itself whatever a vertical may add to it', () => {
+    // A vertical folds tags into the manifest — a native-binary release
+    // `runtime.graalvm-native`, a native image the same — and the
+    // reading is of what the preset seeded, so none of them moves it.
+    const acquirable = [...acquirableIn(shippedRegistry)];
+    for (const stack of singles) {
+      const tags = stackTagsFor(stack, null, null);
+      const grown = [...new Set([...tags, ...acquirable])].sort();
+      expect(projectProfile(shippedRegistry, grown, []), stack.id).toEqual(
+        projectProfile(shippedRegistry, tags, []),
+      );
     }
   });
 

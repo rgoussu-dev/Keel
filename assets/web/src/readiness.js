@@ -14,9 +14,11 @@
  *   - **Ready** — installs on its own.
  *   - **Needs another capability first** — installs once others have;
  *     the badge names them by title, and ticking the card ticks them.
- *   - **Not for this project** — nothing keel can add makes it
- *     install here. Kept on screen, collapsed, with the sentence the
- *     command would refuse it with, because "does it take
+ *   - **Not for this project** — nothing keel adds of its own accord
+ *     makes it install here: what it lacks is the project's to be, or
+ *     a re-render only the user may ask for (`keel.needs-refresh`,
+ *     whose sentence names it). Kept on screen, collapsed, with the
+ *     sentence the command would refuse it with, because "does it take
  *     persistence?" deserves an answer where it is asked rather than
  *     an absence to puzzle over.
  *

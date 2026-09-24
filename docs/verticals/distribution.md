@@ -53,14 +53,22 @@ such a project later does not touch the native release already there:
 the run proposes re-rendering distribution, and `keel add
 containerization --refresh distribution` (or `keel add distribution
 --reapply` afterwards) takes it up — asking the image pipeline's
-questions, which the native release never had.
+questions, which the native release never had. The pipeline it then
+renders builds the JVM image's fast-jar, as a fresh project's does.
+Until distribution is re-rendered it publishes no image, so `keel add
+iac` there is refused as `keel.needs-refresh`, naming the re-render
+(_"Infrastructure as code needs Container image, then Distribution
+re-rendered — …"_), with `keel add iac --refresh distribution` as its
+hint: that one run installs the image, re-renders distribution after
+it, and installs `iac`.
 
 What each family's pipeline does on a `v*` tag:
 
 - **JVM** — provisions JDK 25 (or GraalVM, when the containerization
   install recorded the native flavor — the dial is read from the
-  manifest, never re-asked, so the pipeline always builds the
-  artifact the Dockerfile copies), runs the recorded build system's
+  manifest, never re-asked, and a JVM image's own record wins over the
+  native runtime a native-binary release left behind, so the pipeline
+  always builds the artifact the Dockerfile copies), runs the recorded build system's
   package command, then `docker build` + push.
 - **Go** — a static Linux binary pinned to the project's own
   `go.mod` toolchain, then the distroless image.

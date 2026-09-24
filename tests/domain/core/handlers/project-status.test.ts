@@ -132,6 +132,17 @@ describe('keel.project-status', () => {
     });
   });
 
+  it('reads the preset a project was scaffolded from, whatever a vertical added since', async () => {
+    // Distribution alone ships a Quarkus CLI as native binaries, and
+    // folds a native-runtime tag in beside the JVM one: the project is
+    // still quarkus-cli, written in Java.
+    await scaffold({ stack: 'quarkus-cli' });
+    const before = (await status()).profile;
+    expect(before.preset).toBe('quarkus-cli');
+    expectOk(await add('distribution', false));
+    expect((await status()).profile).toEqual(before);
+  });
+
   it('reads each card as keel add would: ready, needing others first, or refused in its words', async () => {
     await scaffold({ stack: 'go-http' });
     const reported = await status();

@@ -10,10 +10,16 @@
  *
  * The JVM-vs-native flavor is **not re-asked**: `containerization`
  * already asked it and rendered the Dockerfile in one flavor, so the
- * pipeline reads the recorded dial — the `runtime.graalvm-native`
- * tag that answer promoted — and builds the artifact that Dockerfile
- * copies. A second question could disagree with the image and break
- * the build.
+ * pipeline reads the recorded dial — the tag that answer promoted —
+ * and builds the artifact that Dockerfile copies. A second question
+ * could disagree with the image and break the build.
+ *
+ * The JVM flavor's own tag (`runtime.jvm-image`) decides it, not the
+ * absence of the native one: `runtime.graalvm-native` is also what a
+ * native-binary release (`quarkus-cli-native`) promoted, and a tag
+ * stays in the manifest once folded, so a project whose Distribution
+ * shipped native binaries before it had an image carries it beside a
+ * JVM image — whose Dockerfile copies the fast-jar.
  */
 
 import type { Adapter } from '../../contract/composition.js';
@@ -21,6 +27,7 @@ import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import {
   CONTAINER_IMAGE_TAG,
   GRAALVM_NATIVE_TAG,
+  JVM_IMAGE_TAG,
   jvmBuildSystem,
   jvmRestArtifact,
   jvmRestFramework,
@@ -46,7 +53,8 @@ export const jvmContainerAdapter: Adapter = {
   contribute(ctx) {
     const framework = jvmRestFramework(ctx.manifest, JVM_CONTAINER_ID);
     const build = jvmBuildSystem(ctx.manifest, JVM_CONTAINER_ID);
-    const native = ctx.manifest.tags.includes(GRAALVM_NATIVE_TAG);
+    const native =
+      ctx.manifest.tags.includes(GRAALVM_NATIVE_TAG) && !ctx.manifest.tags.includes(JVM_IMAGE_TAG);
     const unit = jvmLayout(ctx.manifest.tags).restRuntime;
     const artifact = jvmRestArtifact(framework, build, native ? 'native' : 'jvm', unit);
     return containerDistribution(ctx, {

@@ -99,6 +99,18 @@ export const MISSING_PREREQUISITES_CODE = 'keel.missing-prerequisites';
 export const UNCOVERED_CODE = 'keel.uncoverable-vertical';
 
 /**
+ * The code a vertical is refused with, by `keel add`, when what stops
+ * it is an installed vertical rendered through an adapter that does
+ * not add what it needs — one a re-render in the same run would swap:
+ * Distribution shipped as native binaries before the project had a
+ * container image, and Infrastructure as code asked after. Not
+ * `keel.uncoverable-vertical`, since something keel has would make it
+ * install; not included on its own accord, since a re-render rewrites
+ * files the user may have edited, and is theirs to ask for.
+ */
+export const NEEDS_REFRESH_CODE = 'keel.needs-refresh';
+
+/**
  * The code a vertical is refused with when one of its own rules
  * forbids this project, and a set when no order installs it together.
  */
@@ -235,6 +247,19 @@ export function unavailableRefusal(
         repositoryOnly: placed,
       },
       WRONG_SCOPE_CODE,
+      names,
+    );
+  }
+  if (gap.refresh !== undefined) {
+    return refusalError(
+      {
+        kind: 'unavailable',
+        vertical: vertical.id,
+        missing: {},
+        carriedBy: [],
+        refresh: gap.refresh,
+      },
+      NEEDS_REFRESH_CODE,
       names,
     );
   }
@@ -645,6 +670,7 @@ function unavailableSentence(refusal: UnavailableRefusal, names: RefusalNames): 
   const title = titleOf(names, refusal.vertical);
   const placed = refusal.repositoryOnly ?? [];
   if (placed.length > 0) return placementSentence(title, refusal.vertical, placed, names);
+  if (refusal.refresh !== undefined) return refreshSentence(title, refusal.refresh, names);
   if (refusal.because !== undefined) return `${title} cannot be installed here: ${refusal.because}`;
   const entrypoint = refusal.missing.entrypoint ?? [];
   const peer = refusal.missing.peer ?? [];
@@ -702,6 +728,25 @@ function placementSentence(
   if (placed.includes(id)) return `${title} cannot go in a monorepo service: ${because}`;
   const needed = listed(placed.map((other) => titleOf(names, other)));
   return `${title} needs ${needed}, which cannot go in a monorepo service: ${because}`;
+}
+
+/**
+ * A vertical stopped by how an installed one was rendered: "Infrastructure
+ * as code needs Container image, then Distribution re-rendered — as it
+ * was rendered, Distribution does not add what Infrastructure as code
+ * needs". No command is named: re-rendering in the same run is
+ * `keel add`'s `--refresh`, and the front end's to spell.
+ */
+function refreshSentence(
+  title: string,
+  refresh: NonNullable<UnavailableRefusal['refresh']>,
+  names: RefusalNames,
+): string {
+  const again = listed(refresh.verticals.map((id) => titleOf(names, id)));
+  const first = listed(refresh.prerequisites.map((id) => titleOf(names, id)));
+  const [as, verb] = refresh.verticals.length === 1 ? ['it was', 'does'] : ['they were', 'do'];
+  const needs = first === '' ? `${again} re-rendered` : `${first}, then ${again} re-rendered`;
+  return `${title} needs ${needs} — as ${as} rendered, ${again} ${verb} not add what ${title} needs`;
 }
 
 /** The nearest-stacks tail of an identity sentence; empty when none carries it. */

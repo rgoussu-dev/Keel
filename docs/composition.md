@@ -208,6 +208,19 @@ add. So the sentence sorts it first, naming the vertical by its title:
   vertical — _"Distribution needs what Continuous integration adds,
   which this project does not have yet"_.
 
+One gap is not about the project at all but about how an installed
+vertical was rendered: a Distribution that shipped a Quarkus CLI as
+native binaries, before the project had an image, builds none for
+Infrastructure as code to deploy, and re-rendered beside a JVM image
+it would. `keel add` refuses that as `keel.needs-refresh` — _"Infrastructure
+as code needs Container image, then Distribution re-rendered — as it
+was rendered, Distribution does not add what Infrastructure as code
+needs"_ — rather than as a capability nothing can add, and its hint
+names the run that re-renders it: `keel add iac --refresh
+distribution`. A re-render rewrites files the user may have edited,
+so it is never planned on its own accord (the refusal's `refresh`
+field names it).
+
 The tags travel in the refusal's `missing` field, for a front end or an
 adapter author that wants the engine's view. When one adapter is a
 framework away and another an entrypoint away, the gap is the

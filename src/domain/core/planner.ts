@@ -59,7 +59,7 @@
 import type { RefreshProposal } from '../contract/commands.js';
 import type { Adapter, Conflict, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
-import type { Readiness, ReadinessGap } from '../contract/queries.js';
+import type { Readiness, ReadinessGap, RefreshGap } from '../contract/queries.js';
 import { assemblyRefusal, conflictsOf, violatedBy, wouldViolate } from './compatibility.js';
 import { matches, matchesPattern } from './predicate.js';
 import { IDENTITY_NAMESPACES } from './refusals.js';
@@ -110,6 +110,16 @@ export interface PlanScope {
    * the scope is a repository root.
    */
   readonly member?: { readonly provided: readonly string[] };
+  /**
+   * Ids of {@link installed} a run may re-render beside what it
+   * installs — a project on disk's own verticals (`keel add
+   * --refresh`), in the order it installed them. Where one of them is
+   * all that stops a vertical, the gap says so
+   * ({@link ReadinessGap.refresh}) rather than reading as a capability
+   * nothing can add. Absent before `keel new` writes anything: a
+   * preset's verticals render in that very run.
+   */
+  readonly refreshable?: readonly string[];
 }
 
 /** One vertical of a planned order, and why it is in it. */
@@ -163,7 +173,7 @@ export function readiness(registry: Registry, scope: PlanScope, id: string): Rea
   if (misplaced(scope, vertical)) return { kind: 'unavailable', gap: placementGap([id]) };
   const closure = closureOf(registry, scope, [vertical]);
   if (closure === null) {
-    return { kind: 'unavailable', gap: gapOf(registry, scope, vertical) };
+    return { kind: 'unavailable', gap: gapOf(registry, scope, vertical, [vertical]) };
   }
   const prerequisites = prerequisitesIn(closure.placed, [vertical]);
   if (prerequisites.length === 0) return { kind: 'ready' };
@@ -212,7 +222,11 @@ export function plan(registry: Registry, scope: PlanScope, requested: readonly s
   for (const vertical of wanted) {
     const own = closureOf(registry, scope, [vertical]);
     if (own === null) {
-      return { kind: 'unavailable', vertical: vertical.id, gap: gapOf(registry, scope, vertical) };
+      return {
+        kind: 'unavailable',
+        vertical: vertical.id,
+        gap: gapOf(registry, scope, vertical, wanted),
+      };
     }
     alone.push(own);
   }
@@ -606,9 +620,19 @@ function stepsOf(
  * here, to the same depth the planner searches — and sorted into what
  * would change the answer, with the nearest stacks that carry it; and
  * the rules it breaks — its own, against the scope's tags, and the
- * scope's, against what it would add.
+ * scope's, against what it would add. `alongside` is the request it
+ * was asked in (itself included), which a re-render would plan with.
  */
-function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): ReadinessGap {
+function gapOf(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+  alongside: readonly Vertical[],
+): ReadinessGap {
+  const refresh = refreshGap(registry, scope, vertical, alongside);
+  if (refresh !== null) {
+    return { entrypoint: [], peer: [], identity: [], rules: [], nearestStacks: [], refresh };
+  }
   if (scope.member !== undefined) {
     // What stops it may be only where it was asked: planned on a
     // repository of its own, it would come with a vertical whose place
@@ -655,6 +679,41 @@ function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): Readin
     ],
     nearestStacks: nearestStacks(registry, scope, vertical),
   };
+}
+
+/**
+ * The installed vertical whose re-render, beside `alongside`, would let
+ * `vertical` install — see {@link ReadinessGap.refresh} — or null when
+ * none would. Only one that promotes a capability `vertical` requires
+ * and the scope lacks is tried, one at a time: planned as if it were
+ * not there yet, as `keel add --refresh` plans it, with the rest of the
+ * request. A re-render changes only which adapters a vertical renders
+ * through, so one that could never supply what is missing is no
+ * answer, and the first that plans is — in the order the project
+ * installed them.
+ */
+function refreshGap(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+  alongside: readonly Vertical[],
+): RefreshGap | null {
+  const tags = asSet(scope.tags);
+  const wanted = requiresOf(vertical).filter((pattern) => !matchesPattern(pattern, tags));
+  for (const id of scope.refreshable ?? []) {
+    const installed = registry.vertical(id);
+    if (installed === null || !promotesAny(installed, wanted)) continue;
+    const without: PlanScope = {
+      ...scope,
+      installed: scope.installed.filter((other) => other !== id),
+      refreshable: [],
+    };
+    const request = [...alongside.filter((other) => other.id !== id), installed];
+    const closure = closureOf(registry, without, request);
+    if (closure === null) continue;
+    return { verticals: [id], prerequisites: prerequisitesIn(closure.placed, request) };
+  }
+  return null;
 }
 
 /**
@@ -764,8 +823,11 @@ function nearestUnmet(
   return nearest?.unmet ?? null;
 }
 
-/** Every tag some registered vertical's adapters may promote. */
-function acquirableIn(registry: Registry): ReadonlySet<Tag> {
+/**
+ * Every tag some registered vertical's adapters may promote — what an
+ * install can add to a project, as opposed to what its preset seeded.
+ */
+export function acquirableIn(registry: Registry): ReadonlySet<Tag> {
   return new Set(
     registry
       .verticals()
