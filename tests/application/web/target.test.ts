@@ -1043,7 +1043,9 @@ describe('what a preset move could not keep', () => {
       ...jvmDials({ ...moved.target, kind: 'new-project', extraVerticals: ['ci'] }),
       adjustments: [{ id: 'containerization', change: 'dropped', because }],
     });
-    expect(settled.notice).toBe(`Container image dropped: ${because}.`);
+    expect(settled.notice).toBe(
+      'Container image dropped: it needs an entrypoint this project does not have: HTTP server — a REST endpoint.',
+    );
   });
 
   it('keeps quiet about an extra the new preset comes with, which it keeps', () => {
@@ -1132,7 +1134,7 @@ describe('what a preset move could not keep', () => {
     expect(settled.target).not.toHaveProperty('extraVerticals');
     expect(settled.notice).toBe(
       'Moving to fullstack did not keep build system maven, module layout modulith or the peer context. ' +
-        "Continuous integration dropped: Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead.",
+        "Continuous integration dropped: it cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead.",
     );
   });
 

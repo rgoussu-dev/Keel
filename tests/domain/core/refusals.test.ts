@@ -271,6 +271,41 @@ const TABLE: readonly {
       'Observability belongs to a service, not to the product root — none of its services can carry it',
   },
   {
+    why: 'a monorepo product root none of whose services can take it, with the way forward',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'iac',
+      services: [
+        {
+          path: 'backend',
+          stack: 'quarkus-rest',
+          readiness: 'unavailable',
+          repositoryOnly: ['distribution'],
+        },
+        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+      ],
+    },
+    sentence:
+      'Infrastructure as code belongs to a service, not to the product root — none of its services can carry it, since it needs Distribution, which cannot go in a monorepo service: its release workflows are read at the repository root only',
+  },
+  {
+    why: 'a monorepo product root none of whose services can take what is placed at a root itself',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'distribution',
+      services: [
+        {
+          path: 'backend',
+          stack: 'quarkus-rest',
+          readiness: 'unavailable',
+          repositoryOnly: ['distribution'],
+        },
+      ],
+    },
+    sentence:
+      'Distribution belongs to a service, not to the product root — none of its services can carry it, since it cannot go in a monorepo service: its release workflows are read at the repository root only',
+  },
+  {
     why: 'a monorepo service asked for what only a repository root reads, in its own words',
     refusal: {
       kind: 'unavailable',

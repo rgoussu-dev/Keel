@@ -48,6 +48,23 @@ export function titles(...lists) {
 }
 
 /**
+ * A reason `keel.dials` gave for adding or dropping a vertical, worded
+ * to follow the vertical's title. A sentence whose subject is the
+ * vertical itself — "Version control already comes with go-cli", or a
+ * refusal's — goes on from "it", since the line has just said the
+ * title ("left out Version control — it already comes with go-cli");
+ * any other reason ("Infrastructure as code needs it installed first")
+ * stands as it is.
+ *
+ * @param {string} title
+ * @param {string} because
+ * @returns {string}
+ */
+export function reasonAfter(title, because) {
+  return because.startsWith(`${title} `) ? `it ${because.slice(title.length + 1)}` : because;
+}
+
+/**
  * What a "needs" card says it needs, by title: the verticals ticking
  * it brings along, or — where two different sets would each do — that
  * the choice between them is the user's to make first.

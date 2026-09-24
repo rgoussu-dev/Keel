@@ -360,7 +360,10 @@ describe('labels and encodings', () => {
 
   it('names every shape, and spells one the way a message names it', () => {
     expect(SHAPES.map((s) => s.id)).toEqual(['fullstack', 'backend', 'frontend']);
-    expect(shapeLabel('backend')).toContain('Backend');
+    // A command-line tool is found under the backend, so its label says so.
+    expect(shapeLabel('backend')).toBe(
+      'Backend or tool — no front end (command line, HTTP service, or both)',
+    );
     expect(shapeLabel('nonsense' as ProjectShape)).toBe('nonsense');
   });
 });

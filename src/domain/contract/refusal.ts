@@ -139,6 +139,14 @@ export interface ElsewhereService {
    * reports a {@link Refusal} is itself declared there.
    */
   readonly readiness: 'included' | 'ready' | 'needs' | 'unavailable';
+  /**
+   * Where the vertical is `unavailable` in the service because the
+   * service is part of a monorepo and the vertical — or one it needs —
+   * has its place at a repository root: those verticals' ids
+   * (`Vertical.placement`), which is what gives the sentence its way
+   * forward. Absent otherwise.
+   */
+  readonly repositoryOnly?: readonly string[];
 }
 
 /** {@link Refusal} for verticals no order installs together. */

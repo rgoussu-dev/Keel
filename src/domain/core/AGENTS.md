@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `dials`, `answers`,
+`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,

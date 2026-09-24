@@ -111,6 +111,7 @@ import {
   ruleRefusal,
 } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
+import { nearestVertical, unknownIdSentence } from '../nearest-id.js';
 import { planScopeOf, provisionsHere, scopeOf } from '../scope.js';
 import {
   historyOf,
@@ -462,7 +463,12 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       if (!vertical) {
         return err(
           new DomainError(
-            `unknown vertical '${id}'; available: ${available()}`,
+            unknownIdSentence(
+              'vertical',
+              id,
+              nearestVertical(this.deps.registry.verticals(), id),
+              `available: ${available()}`,
+            ),
             'keel.unknown-vertical',
           ),
         );

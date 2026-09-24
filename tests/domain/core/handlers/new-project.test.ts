@@ -18,6 +18,7 @@ import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
 import { fsTreeFactory } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -358,6 +359,29 @@ describe('keel.new-project (keel new)', () => {
     );
     expect(error.code).toBe('keel.unknown-stack');
     expect(error.message).toMatch(/unknown stack/);
+  });
+
+  /**
+   * The spellings users guess are real facets in the family's other
+   * word — `-http` where the JVM presets say `-rest`, a product named by
+   * its engine — so the refusal names the preset they meant before the
+   * list of every id, and writes nothing.
+   */
+  it.each([
+    ['quarkus-cli-http', 'quarkus-cli-rest'],
+    ['fullstack-quarkus', 'fullstack'],
+    ['go-rest', 'go-http'],
+  ])('suggests the nearest stack for --stack=%s', async (typed, meant) => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({ cwd, stack: typed, answers: {}, interactive: false, dryRun: false }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toMatch(
+      new RegExp(`^unknown stack '${typed}' — did you mean '${meant}'\\? Available: .*go-cli`),
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
   });
 });
 
@@ -896,8 +920,10 @@ describe('keel.new-project stack selection', () => {
       extraVerticals: '',
       'keel.review': 'proceed',
     });
+    const logger = new FakeLogger();
     const mediator = installMediator({
       prompt,
+      logger,
       runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
     });
     const report = expectOk(
@@ -913,7 +939,33 @@ describe('keel.new-project stack selection', () => {
     expect(report.subject).toBe('quarkus-cli');
     expect(prompt.asked.slice(0, 4)).toEqual(['shape', 'language', 'framework', 'entrypoints']);
     expect(prompt.asked).not.toContain('stack');
+    // The line it resolves on says each answer by name — the shape's,
+    // not its gloss, and the framework as the product it is.
+    expect(logger.messages('info')).toContain(
+      'keel new: Backend or tool · Java · Quarkus · CLI → quarkus-cli',
+    );
     expect(await fs.pathExists(path.join(cwd, 'build.gradle.kts'))).toBe(true);
+  });
+
+  it('refuses a combination no preset scaffolds in the words its menus give each answer', async () => {
+    // A scripted prompt can answer what no menu offered: a browser SPA
+    // on a Quarkus backend.
+    const prompt = new FakePrompt({
+      shape: 'backend',
+      language: 'java@jvm',
+      framework: 'quarkus',
+      entrypoints: 'spa',
+    });
+    const error = expectErr(
+      await installMediator({ prompt }).dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: false }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toMatch(
+      /^no backend or tool preset scaffolds Java with .+ on Quarkus — /,
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
   });
 
   it('resolves both user-side adapters to the composed preset, not a product', async () => {
@@ -1350,6 +1402,25 @@ describe('keel.new-project extra verticals', () => {
     );
     expect(error.code).toBe('keel.unknown-vertical');
     expect(error.message).toContain('ci');
+  });
+
+  it('suggests the nearest vertical this stack can take', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['persistance'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-vertical');
+    expect(error.message).toMatch(
+      /^unknown vertical 'persistance' — did you mean 'persistence'\? Available on top of stack 'quarkus-rest': /,
+    );
   });
 
   it('drops a vertical the stack already installs, and says so, installing the rest', async () => {
@@ -1982,6 +2053,36 @@ describe('keel.new-project extra verticals', () => {
     );
     expect(error.code).toBe('keel.unknown-vertical');
     expect(error.message).toMatch(/^unknown vertical 'nope'; available: /);
+  });
+
+  it('names the vertical a slip on a composite stack most likely meant, bare or per service', async () => {
+    const refusedWith = async (with_: {
+      extraVerticals?: readonly string[];
+      services?: Record<string, { extraVerticals: readonly string[] }>;
+    }) =>
+      expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            ...with_,
+          }),
+        ),
+      );
+    const bare = await refusedWith({ extraVerticals: ['observabilty'] });
+    expect(bare.code).toBe('keel.unknown-vertical');
+    expect(bare.message).toMatch(
+      /^unknown vertical 'observabilty' — did you mean 'observability'\? Available: /,
+    );
+    const placed = await refusedWith({
+      services: { backend: { extraVerticals: ['persistance'] } },
+    });
+    expect(placed.message).toMatch(
+      /^unknown vertical 'persistance' — did you mean 'persistence'\? Available: /,
+    );
   });
 });
 

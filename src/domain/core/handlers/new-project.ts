@@ -132,6 +132,7 @@ import type { AnswerRead } from '../answers.js';
 import { newOwnership } from '../apply.js';
 import { installVerticals } from '../install.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
+import { nearestStack, nearestVertical, unknownIdSentence } from '../nearest-id.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
@@ -146,6 +147,7 @@ import {
   entrypointStep,
   entrypointsLabel,
   frameworkChoices,
+  frameworkLabel,
   languageChoices,
   languageLabel,
   normaliseEntrypoints,
@@ -522,7 +524,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       `keel new: ${[
         shapeLabel(chosen.shape).split(' — ')[0],
         languageLabel(language),
-        chosen.framework === null || chosen.framework === '' ? null : chosen.framework,
+        chosen.framework === null || chosen.framework === ''
+          ? null
+          : frameworkLabel(chosen.framework),
         entrypointsLabel(entrypoints),
       ]
         .filter((part) => part !== null && part !== '')
@@ -901,9 +905,14 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       if (vertical === null) {
         return err(
           new DomainError(
-            `unknown vertical '${id}'; available: ${listVerticals(registry)
-              .map((v) => v.id)
-              .join(', ')}`,
+            unknownIdSentence(
+              'vertical',
+              id,
+              nearestVertical(registry.verticals(), id),
+              `available: ${listVerticals(registry)
+                .map((v) => v.id)
+                .join(', ')}`,
+            ),
             'keel.unknown-vertical',
           ),
         );
@@ -1370,9 +1379,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       if (!vertical) {
         return err(
           new DomainError(
-            `unknown vertical '${id}'; available on top of stack '${stack.id}': ${candidates
-              .map((v) => v.id)
-              .join(', ')}`,
+            unknownIdSentence(
+              'vertical',
+              id,
+              nearestVertical(candidates, id),
+              `available on top of stack '${stack.id}': ${candidates.map((v) => v.id).join(', ')}`,
+            ),
             'keel.unknown-vertical',
           ),
         );
@@ -1558,8 +1570,8 @@ function defaultFramework(
 /**
  * A combination the menus should never have offered. Reachable only
  * from an answer the menus did not produce — a scripted prompt, or a
- * front end posting its own — so it names what it was given rather
- * than guessing at a near miss.
+ * front end posting its own — so it names what it was given, in the
+ * words the menus give it, rather than guessing at a near miss.
  */
 function noSuchCombination(
   shape: string,
@@ -1567,9 +1579,10 @@ function noSuchCombination(
   framework: string | null,
   entrypoints: readonly string[],
 ): DomainError {
-  const named = framework === null || framework === '' ? '' : ` on ${framework}`;
+  const named = framework === null || framework === '' ? '' : ` on ${frameworkLabel(framework)}`;
+  const kind = (shapeLabel(shape as ProjectShape).split(' — ')[0] ?? shape).toLowerCase();
   return new DomainError(
-    `no ${shape} preset scaffolds ${languageLabel(language)} with ${
+    `no ${kind} preset scaffolds ${languageLabel(language)} with ${
       entrypoints.length === 0 ? 'no user-side adapter' : entrypointsLabel(entrypoints)
     }${named} — pick a preset by id with --stack, or 'keel new --list' to see them all`,
     'keel.unknown-stack',
@@ -1666,9 +1679,19 @@ function cancelledError(): DomainError {
   return new DomainError('cancelled by user — nothing written', 'keel.cancelled');
 }
 
+/**
+ * The refusal of a `--stack` no preset is registered under: the id it
+ * most likely meant, where one is near enough to name, and every id
+ * there is.
+ */
 function unknownStackError(registry: Registry, id: string): DomainError {
   return new DomainError(
-    `unknown stack '${id}'; available: ${listStackIds(registry).join(', ')}`,
+    unknownIdSentence(
+      'stack',
+      id,
+      nearestStack(registry, id),
+      `available: ${listStackIds(registry).join(', ')}`,
+    ),
     'keel.unknown-stack',
   );
 }

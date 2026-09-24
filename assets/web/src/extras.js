@@ -50,7 +50,7 @@
  * @typedef {{ ready: ExtraCard[], needs: ExtraCard[], included: IncludedChip[], refused: Refused[], chosen: string[], line: string }} ExtrasGroup
  */
 
-import { needsBadge, refusedOf, titles } from './readiness.js';
+import { needsBadge, reasonAfter, refusedOf, titles } from './readiness.js';
 import { extrasOf, serviceExtrasOf } from './target.js';
 
 /**
@@ -171,10 +171,11 @@ export function servicesExtrasSummary(dials, target) {
  * prerequisites with it, so the reply has nothing to add.
  */
 function adjustmentLine(adjustments, titleOf) {
-  const parts = adjustments.map(
-    (adjustment) =>
-      `${adjustment.change === 'added' ? 'added' : 'left out'} ${titleOf(adjustment.id)} — ${adjustment.because}`,
-  );
+  const parts = adjustments.map((adjustment) => {
+    const title = titleOf(adjustment.id);
+    const verb = adjustment.change === 'added' ? 'added' : 'left out';
+    return `${verb} ${title} — ${reasonAfter(title, adjustment.because)}`;
+  });
   if (parts.length === 0) return '';
   const line = parts.join('; ');
   return `${line.charAt(0).toUpperCase()}${line.slice(1)}.`;

@@ -646,7 +646,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
       ]);
       expect(await profile.locator('dd').allTextContents()).toEqual([
         'ts-http',
-        'Backend',
+        'Backend or tool',
         'TypeScript (Node)',
         'HTTP server',
         'npm',
@@ -803,6 +803,11 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
       ]);
       expect(await elsewhere.locator('li[data-id="persistence"]').textContent()).toContain(
         'Persistence belongs to a service, not to the product root — it goes in backend/',
+      );
+      // What no service of a monorepo can carry says so, and the way
+      // forward: the release it needs is per-service only in a polyrepo.
+      expect(await elsewhere.locator('li[data-id="iac"]').textContent()).toMatch(
+        /none of its services can carry it, since it needs Distribution, .*per-service releases need the polyrepo layout$/,
       );
 
       await act(seen, () => services.first().click());

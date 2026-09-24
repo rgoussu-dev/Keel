@@ -16,6 +16,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addModuleCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { expectErr, installMediator } from '../../../support/factory.js';
 
@@ -88,20 +89,26 @@ describe('keel add module front door', () => {
 
   /**
    * The one refusal here that is a declaration rather than a branch,
-   * so it is asserted the way every other violated rule is: the
-   * shared code, the rule's own sentence and its id — and no tag. The
-   * page shows this sentence beside the tab it disables, and a tag is
-   * a word no command takes. `canAddModule` filters on the same
+   * so it is asserted as a violated rule: the shared code and the
+   * rule's own reason — and no tag. The page shows this sentence under
+   * the tab it disables, so it reads as a sentence: capitalised, and
+   * with the rule's id in the refusal's data rather than its words. A
+   * tag is a word no command takes. `canAddModule` filters on the same
    * declaration — see the project-status suite.
    */
-  it('rejects the flat layout, naming the rule that says so', async () => {
+  it('rejects the flat layout in the rule’s own words, its id kept as data', async () => {
     await scaffold({ moduleLayout: 'basic' });
     const error = expectErr(await addModule('ordering'));
     expect(error.code).toBe('keel.incompatible');
-    expect(error.message).toMatch(/needs the modulith layout/);
-    expect(error.message).toMatch(/--module-layout=modulith/);
-    expect(error.message).toMatch(/\(rule 'bounded-context\/context-needs-modulith'\)$/);
-    expect(error.message).not.toMatch(/modules\.context|layout\.basic/);
+    expect(error.message).toMatch(/^A bounded context needs the modulith layout/);
+    expect(error.message).toMatch(/--module-layout=modulith$/);
+    expect(error.message).not.toMatch(/rule '|modules\.context|layout\.basic/);
+    expect(error).toBeInstanceOf(RefusalError);
+    expect((error as RefusalError).refusal).toMatchObject({
+      kind: 'unavailable',
+      vertical: 'bounded-context',
+      rules: ['bounded-context/context-needs-modulith'],
+    });
   });
 
   it('rejects a composite product root, pointing at the service directory', async () => {

@@ -144,6 +144,13 @@ interface ShapeRecord {
  * is derived is **membership**: which presets land under which shape
  * is {@link shapeOf} counting entrypoint sides, so a stack gaining an
  * `arch.spa` moves shape on its own.
+ *
+ * The backend is labelled "or tool", and names both ways in, because
+ * a command-line tool is built under it as often as a service is, and
+ * a label saying only "a service" left someone looking for a CLI to
+ * read past it. Each label is written `name — gloss`: a summary line
+ * (the terminal's resolution line, the page's masthead and Project
+ * step, a language-jump notice) shows the name alone.
  */
 export const SHAPES: readonly ShapeRecord[] = [
   {
@@ -153,8 +160,8 @@ export const SHAPES: readonly ShapeRecord[] = [
   },
   {
     id: 'backend',
-    label: 'Backend — a service with no front end of its own',
-    doc: 'One project, one hexagon, driven from the back: a command line, an HTTP endpoint, or both in the same project.',
+    label: 'Backend or tool — no front end (command line, HTTP service, or both)',
+    doc: 'One project, one hexagon, driven from the back: a command-line tool, an HTTP service, or both in the same project.',
   },
   {
     id: 'frontend',
@@ -175,6 +182,20 @@ const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   rust: 'Rust',
   'typescript@node': 'TypeScript (Node)',
   'typescript@browser': 'TypeScript (browser)',
+};
+
+/**
+ * Display names for the framework nodes, the way {@link LANGUAGE_LABELS}
+ * names languages: a framework is a product name, and the menus, the
+ * resolution line and a project's profile used to print the tag's
+ * lowercase segment. A framework nobody named here is spelled as its
+ * tag has it.
+ */
+const FRAMEWORK_LABELS: Readonly<Record<string, string>> = {
+  quarkus: 'Quarkus',
+  spring: 'Spring',
+  micronaut: 'Micronaut',
+  'web-components': 'Web Components',
 };
 
 /**
@@ -349,9 +370,10 @@ export function frameworkChoices(
   }));
 }
 
-/** Human-readable label of a framework node. */
+/** Human-readable label of a framework node: its product name, or its id where it has none. */
 export function frameworkLabel(framework: string): string {
-  return framework === '' ? 'none — the language’s own runtime, no framework' : framework;
+  if (framework === '') return 'none — the language’s own runtime, no framework';
+  return FRAMEWORK_LABELS[framework] ?? framework;
 }
 
 /** Human-readable label of a shape node. */

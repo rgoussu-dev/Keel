@@ -84,6 +84,7 @@
  */
 
 import { languageJump } from './finder.js';
+import { reasonAfter } from './readiness.js';
 
 /**
  * The fields of a `new-project` target a new preset keeps. `keel.dials`
@@ -723,7 +724,9 @@ function noticeOf(carried, dials, finder) {
   ];
   if (lost.length > 0) lines.push(`Moving to ${target.stack} did not keep ${series(lost)}.`);
   for (const extra of dropped) {
-    if (extra.because !== undefined) lines.push(`${extra.title} dropped: ${extra.because}.`);
+    if (extra.because !== undefined) {
+      lines.push(`${extra.title} dropped: ${reasonAfter(extra.title, extra.because)}.`);
+    }
   }
   return lines.join(' ');
 }

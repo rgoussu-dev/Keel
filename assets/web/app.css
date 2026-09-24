@@ -290,6 +290,12 @@ code,
   font-size: 0.9em;
 }
 
+/* A flag named in a sentence (dom.js `sentence`): one literal, never
+ * broken after its `--` or at a hyphen inside it. */
+code.flag {
+  white-space: nowrap;
+}
+
 p.help code,
 .banner code {
   padding: 0.05em 0.35em;

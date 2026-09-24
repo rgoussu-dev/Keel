@@ -50,6 +50,23 @@ keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a R
 keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in the same run
 ```
 
+**An id keel does not know.** An unknown `--stack` is refused as
+`keel.unknown-stack` with every id there is — and, first, the one it
+most likely meant: _"unknown stack 'quarkus-cli-http' — did you mean
+'quarkus-cli-rest'? Available: …"_. Preset ids grew family by family,
+so the guess is usually a real facet in the family's other word: the
+JVM presets say `rest` where Go, Rust and TypeScript say `http`, and
+the Quarkus product is plain `fullstack`. So the nearest id is read by
+**facet words first** — what an id spells, then what its tags and the
+entrypoint's words say (`go-rest` finds `go-http`), then what a
+product's services say (`fullstack-quarkus` finds `fullstack`) — and
+by edit distance only where no word matches (`quarkuscli`). An id
+near nothing is refused with the list alone. An unknown vertical, in
+`--with` or `keel add`, is answered the same way under
+`keel.unknown-vertical`, read by its id and its title's words
+(`container` finds `containerization`, the Container image;
+`persistance` finds `persistence`).
+
 **A directory that is not empty.** `keel new` needs only the absence
 of a keel manifest, and it never overwrites a file it did not write.
 Two files are adopted instead, on every stack keel ships, because a
@@ -157,8 +174,9 @@ instead of one wide one, widest first, and it says so before it
 starts:
 
 1. **What are you building?** — a **fullstack** product (a backend
-   and a browser front end, scaffolded side by side), a **backend**
-   service (no front end of its own), or a **frontend** app. This is
+   and a browser front end, scaffolded side by side), a **backend or
+   tool** with no front end — a command line, an HTTP service, or both
+   in one project — or a **frontend** app. This is
    read off the presets themselves: which end each `arch.*`
    entrypoint is driven from decides where a preset lands, so a stack
    is never listed under a shape by hand. The last entry, _Other —
@@ -205,11 +223,11 @@ the preset it resolved to before staging it:
 
 ```
 keel new: no --stack, so let us find one — what you are building, then the language, the framework, and the way in. Each answer narrows the next, and a step with one answer is skipped.
-? Step 1 · What are you building? Backend — a service with no front end of its own
+? Step 1 · What are you building? Backend or tool — no front end (command line, HTTP service, or both)
 ? Step 2 · Language Java
-? Step 3 · Framework quarkus
+? Step 3 · Framework Quarkus
 ? Step 4 · User-side adapters (Java) CLI, HTTP server
-keel new: Backend · Java · quarkus · CLI + HTTP server → quarkus-cli-rest
+keel new: Backend or tool · Java · Quarkus · CLI + HTTP server → quarkus-cli-rest
 ```
 
 The step numbers count what is actually asked, not what the four axes
@@ -375,8 +393,13 @@ there under `keel.wrong-scope`, and so is what needs it:
 `keel add iac` reads _"Infrastructure as code needs Distribution,
 which cannot go in a monorepo service: its release workflows are read
 only at the repository root, which in a monorepo is the product root —
-per-service releases need the polyrepo layout"_. A polyrepo product's
-services are repositories of their own, and take all of them.
+per-service releases need the polyrepo layout"_. At the product root
+the same vertical is refused as belonging to a service, with that
+reason and the same way forward: _"Infrastructure as code belongs to a
+service, not to the product root — none of its services can carry it,
+since it needs Distribution, which cannot go in a monorepo service:
+…"_. A polyrepo product's services are repositories of their own, and
+take all of them.
 
 The verticals named are a **set**, planned exactly as `--with` plans
 one: closed over what they need, and installed in one run in the order
@@ -600,7 +623,9 @@ The front door refuses, with a reason, when: the name is not a
 lowercase word `[a-z][a-z0-9]*` or is a keyword in one of the target
 languages; there is no keel project here; the project uses the flat
 `basic` layout, which has no seam for a second context to meet the
-first at; this is a composite product root rather than one service;
+first at (the rule's own reason, as a sentence — _"A bounded context
+needs the modulith layout: …"_ — with its id,
+`bounded-context/context-needs-modulith`, in the refusal's data); this is a composite product root rather than one service;
 the name is already taken; `--consumes` names something that does not
 exist, is the context being added, or publishes no seam; or the
 project's stack has no bounded-context adapter, in which case the

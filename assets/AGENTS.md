@@ -41,7 +41,9 @@ it compiled.
   for every card (a harness from another generation) and what the
   project is, for the Project step (`projectSummary`, off the status's
   `profile`); `src/response.js` heads a failure as a refusal, a bug or
-  no answer.
+  no answer; `src/command.js` spells a run as its command line, and
+  finds the flags a sentence names so `dom.js`' `sentence` keeps each
+  on one line.
   All of these but `dom.js`, the DOM builder, are pure and unit-tested
   without a browser. Linted with `src` and `tests`, unlike the ejs
   template trees.

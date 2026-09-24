@@ -236,9 +236,24 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
       const tab = page.locator('#tab-module');
       expect(await tab.isDisabled()).toBe(true);
       expect(await tab.getAttribute('aria-describedby')).toBe('module-refusal');
-      expect(await page.locator('#module-refusal').textContent()).toContain(
-        'a bounded context needs the modulith layout',
-      );
+      // A sentence in the user's words: capitalised, the rule's id kept
+      // in the status's data, and the flag it names on one line.
+      const reason = page.locator('#module-refusal');
+      expect(await reason.textContent()).toMatch(/^A bounded context needs the modulith layout/);
+      expect(await reason.textContent()).not.toContain("rule '");
+      expect(await reason.locator('code.flag').allTextContents()).toEqual([
+        '--module-layout=modulith',
+      ]);
+      expect(
+        await reason.locator('code.flag').evaluate(
+          (node) =>
+            (
+              globalThis as unknown as {
+                getComputedStyle: (element: unknown) => { whiteSpace: string };
+              }
+            ).getComputedStyle(node).whiteSpace,
+        ),
+      ).toBe('nowrap');
     },
     E2E_TIMEOUT_MS,
   );

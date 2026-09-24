@@ -194,6 +194,24 @@ describe('a monorepo product root', () => {
     );
   });
 
+  it('says why no service can take what needs a repository root, and the way forward', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const root = await status(mediator, cwd);
+    const iac = await refusedAlike(mediator, cwd, root, 'iac');
+    expect(iac.code).toBe('keel.wrong-scope');
+    expect(iac.message).toBe(
+      'Infrastructure as code belongs to a service, not to the product root — none of its services can carry it, since it needs Distribution, which cannot go in a monorepo service: its release workflows are read only at the repository root, which in a monorepo is the product root — per-service releases need the polyrepo layout',
+    );
+    expect(iac.refusal).toMatchObject({
+      kind: 'elsewhere',
+      services: [
+        { path: 'backend', readiness: 'unavailable', repositoryOnly: ['distribution'] },
+        { path: 'frontend', readiness: 'unavailable' },
+      ],
+    });
+  });
+
   it('sends a pipeline nowhere: its place is this root, which no adapter serves yet', async () => {
     const mediator = mediatorOver();
     await scaffold(mediator, 'fullstack', 'monorepo');

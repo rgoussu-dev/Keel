@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { commandFor, commandText } from '../../../assets/web/src/command.js';
+import { commandFor, commandText, flagSpans } from '../../../assets/web/src/command.js';
 
 interface Token {
   kind: 'command' | 'flag' | 'value';
@@ -164,5 +164,30 @@ describe('commandFor', () => {
     expect(
       commandFor({ cwd: '/tmp', target: { kind: 'add-module', module: '' }, answers: {} }),
     ).toEqual([]);
+  });
+});
+
+/**
+ * A sentence keel wrote names a flag now and then — the bounded-context
+ * tab's reason names `--module-layout=modulith` — and a browser breaks
+ * a line after any hyphen, so the page sets each flag as one literal.
+ */
+describe('flagSpans', () => {
+  it('splits out each flag, its `=` value with it, and keeps every character', () => {
+    const text =
+      '"keel add module" needs a project scaffolded with --module-layout=modulith. Add --yes, or --with ci.';
+    const spans = flagSpans(text);
+    expect(spans.filter((span) => span.flag).map((span) => span.text)).toEqual([
+      '--module-layout=modulith',
+      '--yes',
+      '--with',
+    ]);
+    expect(spans.map((span) => span.text).join('')).toBe(text);
+  });
+
+  it('leaves a sentence naming no flag whole, and a dash in prose alone', () => {
+    const text = 'Continuous integration — per-service pipelines need the polyrepo layout';
+    expect(flagSpans(text)).toEqual([{ text, flag: false }]);
+    expect(flagSpans('')).toEqual([]);
   });
 });

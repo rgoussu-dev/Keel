@@ -320,13 +320,45 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **The backend shape says it holds tools too.** The drill-down's
+  first question offered _Backend — a service with no front end of its
+  own_, and someone after a command-line tool had to read past
+  "service" to find it there. It reads _Backend or tool — no front end
+  (command line, HTTP service, or both)_ in the terminal wizard, the
+  `keel ui` finder and a project's profile (_Building Backend or
+  tool_). Frameworks are named as products — _Quarkus_, _Spring_,
+  _Micronaut_, _Web Components_ — where the menus, the wizard's
+  resolution line and the profile printed the tag's lowercase id; a
+  scripted answer no preset scaffolds is refused in the same words
+  (_no backend or tool preset scaffolds Java with … on Quarkus_).
+
+- **A monorepo product root says the way forward for what no service
+  can carry.** `keel add iac` at the root of a monorepo product read
+  _… belongs to a service, not to the product root — none of its
+  services can carry it_, and stopped there. It now says why, in the
+  words the service itself would use, ending on what would change it:
+  _… none of its services can carry it, since it needs Distribution,
+  which cannot go in a monorepo service: its release workflows are
+  read only at the repository root, which in a monorepo is the product
+  root — per-service releases need the polyrepo layout_. `keel new
+--with iac` on the product says the same, and the refusal's
+  `services` carry each one's `repositoryOnly`.
+
+- **`keel ui` says what an extras move changed without saying the
+  vertical twice.** _Left out Version control — Version control
+  already comes with go-cli_ and _Container image dropped: Container
+  image needs an entrypoint …_ now read _Left out Version control — it
+  already comes with go-cli_ and _Container image dropped: it needs an
+  entrypoint …_. A flag a refusal names on the page is set as one
+  literal a line never breaks inside.
+
 - **`keel ui` is one page for both phases.** A keel project had a
   step of its own, _What to add_, where a new project has Options: two
   controls for one question, what else goes in. The directory now
   decides the flow. On a keel project the preset steps collapse into
   one read-only **Project** step — what the project is, in the words
-  the wizard asked it in: _Preset go-http · Building Backend · Language
-  Go · Adapters HTTP server · Module layout basic_, a product's
+  the wizard asked it in: _Preset go-http · Building Backend or tool ·
+  Language Go · Adapters HTTP server · Module layout basic_, a product's
   services, its bounded contexts and what it has installed — and
   Options shows the same **Also scaffold** group a new project gets,
   with what the project has ticked and locked, each installed vertical
@@ -473,13 +505,18 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   project_ part: what the preset cannot carry, with its reason, where
   it used to be left out.
 
-- **`keel add module` on the flat layout names its rule, not a tag.**
-  The refusal read `… (incompatible: modules.context; rule
-'bounded-context/context-needs-modulith')`; it now reads `… (rule
-'bounded-context/context-needs-modulith')`, the way every other
-  broken rule is worded — the sentence `keel ui` shows beside the tab
-  it disables. `keel add --list` lists the product glue and a bounded
-  context apart from what `--reapply` re-renders.
+- **`keel add module` on the flat layout says why in a sentence, not
+  a tag.** The refusal read `cannot add a bounded context here: …
+(incompatible: modules.context; rule
+'bounded-context/context-needs-modulith')`; it now reads as the
+  rule's own reason, capitalised — _A bounded context needs the
+  modulith layout: … "keel add module" needs a project scaffolded with
+  --module-layout=modulith_ — the sentence `keel ui` shows under the
+  tab it disables, where the flag it names no longer breaks across
+  lines. The rule's id travels in the refusal's data instead
+  (`refusal.rules`, in `/api/project`'s `moduleRefusal` too), still
+  `keel.incompatible`. `keel add --list` lists the product glue and a
+  bounded context apart from what `--reapply` re-renders.
 
 - **`keel add --list` says what `keel add` would do here.** Inside a
   project it no longer prints the catalog: every vertical not
@@ -721,6 +758,23 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **An unknown `--stack` or vertical id names the one it most likely
+  meant.** `keel new --stack=quarkus-cli-http` answered with the 34
+  ids there are and left the reader to spot `quarkus-cli-rest`. The
+  refusal now names it first — _unknown stack 'quarkus-cli-http' — did
+  you mean 'quarkus-cli-rest'? Available: …_ — still
+  `keel.unknown-stack`, still writing nothing. Preset ids grew family
+  by family, so a guess is usually a real facet in the family's other
+  word, and the nearest id is read by facet words before spelling:
+  what an id spells, then what its tags and entrypoint say
+  (`go-rest` → `go-http`), then what a product's services say
+  (`fullstack-quarkus` → `fullstack`), and edit distance only where no
+  word matches (`quarkuscli`); an id near nothing names nothing. An
+  unknown vertical in `--with` or `keel add` is answered the same way
+  (`keel.unknown-vertical`), by its id and its title (`container` →
+  `containerization`, `persistance` → `persistence`). The page shows
+  the same sentence in its 422.
 
 - **A product's services take extras of their own when it is
   created.**

@@ -59,6 +59,7 @@ import { foresee, planRefusal } from './plan-refusal.js';
 import {
   alreadyIncludedNote,
   elsewhereRefusal,
+  elsewhereService,
   productRootPlacementRefusal,
   routedExtraNote,
 } from './refusals.js';
@@ -804,11 +805,9 @@ export function routeExtra(
   vertical: Vertical,
   monorepo: boolean,
 ): Routed {
-  const read = scopes.map(({ service, scope }) => ({
-    path: service.path,
-    stack: service.stack.id,
-    readiness: readiness(registry, scope, vertical.id).kind,
-  }));
+  const read = scopes.map(({ service, scope }) =>
+    elsewhereService(service.path, service.stack.id, readiness(registry, scope, vertical.id)),
+  );
   const admitting = read.filter(
     (service) => service.readiness === 'ready' || service.readiness === 'needs',
   );

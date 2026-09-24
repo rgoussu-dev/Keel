@@ -710,7 +710,7 @@ describe('a preset move, the way the page makes it', () => {
     const after = await moveTo(mediator, before, 'quarkus-cli');
     expect(extrasOf(after.target)).toEqual(['ci', 'distribution']);
     expect(after.notice).toBe(
-      'Container image dropped: Container image needs an entrypoint this project does not have: ' +
+      'Container image dropped: it needs an entrypoint this project does not have: ' +
         'HTTP server — a REST endpoint.',
     );
     expect(

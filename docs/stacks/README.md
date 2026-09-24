@@ -12,7 +12,7 @@ they spare you naming every tag and vertical by hand, nothing more.
 
 ## The matrix
 
-| Language / framework   | CLI                    | HTTP service            | CLI + HTTP                  | SPA              | Fullstack product     | Docs                                |
+| Language / framework   | CLI                    | HTTP server             | CLI + HTTP server           | Browser SPA      | Fullstack product     | Docs                                |
 | ---------------------- | ---------------------- | ----------------------- | --------------------------- | ---------------- | --------------------- | ----------------------------------- |
 | Java · Quarkus 3       | `quarkus-cli`          | `quarkus-rest`          | `quarkus-cli-rest`          | —                | `fullstack`           | [JVM](jvm.md)                       |
 | Kotlin · Quarkus 3     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | `quarkus-cli-rest-kotlin`   | —                | —                     | [JVM](jvm.md)                       |
@@ -29,7 +29,7 @@ The domain trisection is byte-for-byte identical across frameworks per
 language — only the application layer and build wiring change. **The
 conventions, not the framework, are the product.**
 
-The **CLI + HTTP** column composes both entrypoints onto one hexagon
+The **CLI + HTTP server** column composes both entrypoints onto one hexagon
 instead of picking between them — the same domain, two ways in — and
 does so under **either module layout**. Under the modulith each
 entrypoint brings a driving adapter into the bounded context

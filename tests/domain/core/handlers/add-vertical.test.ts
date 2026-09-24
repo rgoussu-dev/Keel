@@ -174,6 +174,25 @@ describe('keel.add-vertical (keel add)', () => {
     expect(error.message).toMatch(/unknown vertical 'nonsense-vertical'.*distribution/);
   });
 
+  it('names the vertical a mistyped id most likely meant', async () => {
+    await seedQuarkusCli();
+    const error = expectErr(
+      await installMediator().dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals: ['container'],
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-vertical');
+    expect(error.message).toMatch(
+      /^unknown vertical 'container' — did you mean 'containerization'\? Available: .*distribution/,
+    );
+  });
+
   describe('what the planner reads before anything is written', () => {
     const add = (vertical: string) =>
       installMediator({ runDeferred: async () => {} }).dispatch(

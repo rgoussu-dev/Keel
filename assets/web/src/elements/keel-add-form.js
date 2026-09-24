@@ -71,6 +71,7 @@ import {
   note,
   refocus,
   refusedList,
+  sentence,
   tickPart,
 } from '../dom.js';
 import { additionsGroup, refreshChoices } from '../additions.js';
@@ -212,12 +213,11 @@ export class KeelAddForm extends HTMLElement {
     module.setAttribute('aria-describedby', 'module-refusal');
     return [
       row,
-      el('p', {
-        id: 'module-refusal',
-        class: 'muted',
-        text: refusal.message,
-        attrs: { 'data-role': 'module-refusal' },
-      }),
+      el(
+        'p',
+        { id: 'module-refusal', class: 'muted', attrs: { 'data-role': 'module-refusal' } },
+        sentence(refusal.message),
+      ),
     ];
   }
 
@@ -382,7 +382,7 @@ export class KeelAddForm extends HTMLElement {
                 'li',
                 { attrs: { 'data-id': item.id } },
                 el('span', { class: 'refused-title', text: item.title }),
-                el('span', { class: 'muted', text: item.sentence }),
+                el('span', { class: 'muted' }, sentence(item.sentence)),
               ),
             ),
           ),

@@ -64,7 +64,7 @@
 import { DomainError } from '../kernel/result.js';
 import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
-import type { ReadinessGap } from '../contract/queries.js';
+import type { Readiness, ReadinessGap } from '../contract/queries.js';
 import {
   pathSentence,
   RefusalError,
@@ -166,7 +166,7 @@ export function refusalSentence(refusal: Refusal, names: RefusalNames): string {
     case 'unavailable':
       return unavailableSentence(refusal, names);
     case 'elsewhere':
-      return `${titleOf(names, refusal.vertical)} belongs to a service, not to the product root — ${whereItGoes(refusal.services)}`;
+      return `${titleOf(names, refusal.vertical)} belongs to a service, not to the product root — ${whereItGoes(refusal.vertical, refusal.services, names)}`;
     case 'incompatible':
       return `${listed(refusal.verticals.map((id) => titleOf(names, id)))} cannot be installed together here — each installs on its own, but no order installs them all; drop one`;
     case 'path-conflict':
@@ -178,6 +178,36 @@ export function refusalSentence(refusal: Refusal, names: RefusalNames): string {
 /** A `RefusalError` for `refusal`, under `code`, in its {@link refusalSentence}. */
 export function refusalError(refusal: Refusal, code: string, names: RefusalNames): RefusalError {
   return new RefusalError(refusalSentence(refusal, names), code, refusal);
+}
+
+/**
+ * The refusal of `keel add module` where one of the bounded-context
+ * vertical's own rules stops it — the flat layout — before a name is
+ * read: `keel.incompatible`, as every broken rule is.
+ *
+ * Its sentence is the rules' own reasons, as a sentence of its own:
+ * the one `keel ui` shows under the tab it disables, where a clause
+ * that starts in lowercase and ends in a rule id reads as a log line —
+ * and not the `unavailable` sentence its data would read as ("Bounded
+ * context cannot be installed here: a bounded context needs …"),
+ * which names the context twice. The ids are not lost — they travel in
+ * the refusal's `rules`, for a script or an author who looks the rule
+ * up, and `because` holds the reasons alone.
+ */
+export function moduleRulesRefusal(vertical: Vertical, broken: readonly Conflict[]): RefusalError {
+  const because = broken.map((conflict) => conflict.reason).join('; ');
+  return new RefusalError(
+    `${because.charAt(0).toUpperCase()}${because.slice(1)}`,
+    INCOMPATIBLE_CODE,
+    {
+      kind: 'unavailable',
+      vertical: vertical.id,
+      missing: {},
+      carriedBy: [],
+      because,
+      rules: broken.map((conflict) => conflict.id),
+    },
+  );
 }
 
 /**
@@ -345,6 +375,23 @@ export function elsewhereRefusal(
     WRONG_SCOPE_CODE,
     names,
   );
+}
+
+/**
+ * One service of an {@link ElsewhereRefusal}: where it is, and how
+ * ready the vertical is there — with, where what stops it is the
+ * service being part of a monorepo, the verticals whose place is the
+ * repository root, which is what the sentence's way forward is read
+ * from.
+ */
+export function elsewhereService(path: string, stack: string, ready: Readiness): ElsewhereService {
+  const placed = ready.kind === 'unavailable' ? (ready.gap.repositoryOnly ?? []) : [];
+  return {
+    path,
+    stack,
+    readiness: ready.kind,
+    ...(placed.length > 0 ? { repositoryOnly: placed } : {}),
+  };
 }
 
 /**
@@ -665,8 +712,18 @@ function nearest(carriedBy: readonly string[]): string {
     : `; the nearest stacks that carry it: ${carriedBy.join(', ')}`;
 }
 
-/** Where an elsewhere-refused vertical goes, by its services' readiness. */
-function whereItGoes(services: readonly ElsewhereService[]): string {
+/**
+ * Where an elsewhere-refused vertical goes, by its services' readiness
+ * — and, where none can carry it because each is a monorepo service
+ * and it needs what only a repository root may carry, why, in that
+ * vertical's own words, which end in the way forward (the polyrepo
+ * layout), as the service's own refusal does.
+ */
+function whereItGoes(
+  id: string,
+  services: readonly ElsewhereService[],
+  names: RefusalNames,
+): string {
   const carriers = services.filter(
     (service) => service.readiness === 'ready' || service.readiness === 'needs',
   );
@@ -675,7 +732,15 @@ function whereItGoes(services: readonly ElsewhereService[]): string {
   if (having.length > 0) {
     return `${directories(having, 'and')} ${having.length === 1 ? 'has' : 'have'} it already`;
   }
-  return 'none of its services can carry it';
+  const placed = services.find((service) => (service.repositoryOnly ?? []).length > 0);
+  if (placed?.repositoryOnly === undefined) return 'none of its services can carry it';
+  const [first = id] = placed.repositoryOnly;
+  const because = names.vertical(first)?.placement?.because ?? 'its place is a repository root';
+  if (placed.repositoryOnly.includes(id)) {
+    return `none of its services can carry it, since it cannot go in a monorepo service: ${because}`;
+  }
+  const needed = listed(placed.repositoryOnly.map((other) => titleOf(names, other)));
+  return `none of its services can carry it, since it needs ${needed}, which cannot go in a monorepo service: ${because}`;
 }
 
 /** `backend/`, `backend/ or frontend/`, `a/, b/ and c/`. */
@@ -701,8 +766,7 @@ function missingOf(
 /**
  * Each broken rule's own sentence, with the id a user searches for —
  * never the tags that tripped it, which are in the rule for whoever
- * looks it up. What a refusal of something other than a vertical says
- * of a rule too: `keel add module` on the flat layout.
+ * looks it up.
  */
 export function rulesSentence(
   broken: readonly { readonly id: string; readonly reason: string }[],

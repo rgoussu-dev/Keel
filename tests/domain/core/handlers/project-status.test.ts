@@ -39,6 +39,7 @@ import {
   projectScopeRoot,
 } from '../../../../src/domain/contract/manifest.js';
 import { projectStatusQuery } from '../../../../src/domain/contract/queries.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type {
   AvailableVerticalDescriptor,
   ProjectStatus,
@@ -123,7 +124,7 @@ describe('keel.project-status', () => {
     expect((await status()).profile).toEqual({
       preset: 'go-http',
       facts: [
-        { label: 'Building', value: 'Backend' },
+        { label: 'Building', value: 'Backend or tool' },
         { label: 'Language', value: 'Go' },
         { label: 'Adapters', value: 'HTTP server' },
         { label: 'Module layout', value: 'modulith' },
@@ -210,7 +211,12 @@ describe('keel.project-status', () => {
       ),
     );
     expect(refused.code).toBe('keel.incompatible');
-    expect(reported.moduleRefusal).toEqual({ code: refused.code, message: refused.message });
+    expect(refused).toBeInstanceOf(RefusalError);
+    expect(reported.moduleRefusal).toEqual({
+      code: refused.code,
+      message: refused.message,
+      refusal: (refused as RefusalError).refusal,
+    });
   });
 
   it('allows a context on the modulith, and names the ones already taken', async () => {

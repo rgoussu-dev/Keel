@@ -83,7 +83,7 @@ Java, Kotlin, Go, Rust, or TypeScript. Pick a cell and run
 find the cell for you (`keel new --list` prints every id with its
 description):
 
-| Language / framework                                                    | CLI                    | HTTP service            | CLI + HTTP                  | SPA              | Fullstack product     |
+| Language / framework                                                    | CLI                    | HTTP server             | CLI + HTTP server           | Browser SPA      | Fullstack product     |
 | ----------------------------------------------------------------------- | ---------------------- | ----------------------- | --------------------------- | ---------------- | --------------------- |
 | **Java · Quarkus 3** ([docs](docs/stacks/jvm.md))                       | `quarkus-cli`          | `quarkus-rest`          | `quarkus-cli-rest`          | —                | `fullstack`           |
 | **Kotlin · Quarkus 3** ([docs](docs/stacks/jvm.md))                     | `quarkus-cli-kotlin`   | `quarkus-rest-kotlin`   | `quarkus-cli-rest-kotlin`   | —                | —                     |

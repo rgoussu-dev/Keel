@@ -55,9 +55,9 @@ describe('projectProfile', () => {
     expect(projectProfile(shippedRegistry, tags, [])).toEqual({
       preset: 'quarkus-cli-rest',
       facts: [
-        { label: 'Building', value: 'Backend' },
+        { label: 'Building', value: 'Backend or tool' },
         { label: 'Language', value: 'Java' },
-        { label: 'Framework', value: 'quarkus' },
+        { label: 'Framework', value: 'Quarkus' },
         { label: 'Adapters', value: 'CLI + HTTP server' },
         { label: 'Build system', value: 'Maven' },
         { label: 'Module layout', value: 'modulith' },

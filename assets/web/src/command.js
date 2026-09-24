@@ -93,6 +93,31 @@ export function commandText(tokens) {
   return tokens.map((token) => token.text).join(' ');
 }
 
+/**
+ * A sentence keel wrote, split where it names a command-line flag —
+ * `--module-layout=modulith` — so the page can set the flag as one
+ * unbreakable literal. A browser wraps a line after any hyphen, and a
+ * flag broken after its `--` is a flag nobody can read or copy.
+ *
+ * A value belongs to its flag when joined by `=`; a full stop after it
+ * ends the sentence, not the value.
+ *
+ * @param {string} text
+ * @returns {{ text: string, flag: boolean }[]} every character of `text`, in order
+ */
+export function flagSpans(text) {
+  const spans = [];
+  let from = 0;
+  for (const match of text.matchAll(/--[a-z][a-z0-9-]*(?:=[\w./:-]*[\w/-])?/g)) {
+    const at = match.index ?? 0;
+    if (at > from) spans.push({ text: text.slice(from, at), flag: false });
+    spans.push({ text: match[0], flag: true });
+    from = at + match[0].length;
+  }
+  if (from < text.length) spans.push({ text: text.slice(from), flag: false });
+  return spans;
+}
+
 function flag(tokens, name, value) {
   if (value === undefined || value === null || value === '') return;
   tokens.push({ kind: 'flag', text: name });

@@ -21,10 +21,12 @@ held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
 items below each carry an issue of their own.
 
-**Q** (supple composition) is proposed from an audit of how `keel
-new`, `keel add`, the presets and `keel ui` exercise the composition
-model; it is not yet sliced into issues or ordered against the
-backlog.
+**Q** (supple composition) has landed: proposed from an audit of how
+`keel new`, `keel add`, the presets and `keel ui` exercise the
+composition model, it was sliced into the steps its section lists and
+landed one commit per step. Its successors — **R**, **S**, **T** and
+**U** — are named there, not yet sliced into issues or ordered against
+the backlog.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -2174,11 +2176,14 @@ init` and a resolved toolchain, not a zip. A remote service would
 
 ---
 
-## Q — Supple composition: one answer, asked everywhere (proposed)
+## Q — Supple composition: one answer, asked everywhere ✅
 
-**Proposed 2026-09-23 from an audit; not yet sliced into issues.**
-Anchored on [#117] ("one declaration, read twice"), which it extends
-from the stack drill-down to every vertical, in both phases.
+**Proposed 2026-09-23 from an audit, and landed** — Phase 0 to Phase 2
+below, one commit per step, every decision taken as recommended
+(_Decisions on record_). **R**, **S**, **T** and **U** remain: named at
+the end of this section, not part of Q. Anchored on [#117] ("one
+declaration, read twice"), which it extends from the stack drill-down
+to every vertical, in both phases.
 
 [#117]: https://github.com/rgoussu-dev/keel/issues/117
 
@@ -3294,51 +3299,96 @@ changed only where the flow did (the rail's `project` step, Options
 for _What to add_, `#extras-*` for `#add-*`). No verdict moved: the
 goldens regenerate byte-identical and the known files stay empty.
 
-- **Q2.8 — Vocabulary (S).** An unknown `--stack` suggests the nearest
-  id; the Backend shape reads "Backend or tool — no front end".
+#### Q2.8 — Vocabulary: the nearest stack id, and the Backend shape relabelled (S) ✅
 
-### Decisions for the maintainer
+An unknown `--stack` suggests the nearest id — by facet tokens, then
+edit distance (`quarkus-cli-http` → `quarkus-cli-rest`,
+`fullstack-quarkus` → `fullstack`); the Backend shape reads "Backend
+or tool — no front end (command line, HTTP service, or both)". Aliases
+arrive with **T**.1.
 
-- **D1 — Include prerequisites automatically?** Recommended: yes,
-  everywhere, saying so first in the plan and report; refuse only on a
-  tie. Alternative: include in menus and prompts, require
-  `--with-prerequisites` under `--yes`. Gates Q1.3.
-- **D2 — How monorepo membership reaches the checks.** Recommended:
-  `placement` + `providesInServices`, each read by one structural
-  check. Rejected: a derived `repo.monorepo-member` tag (the "do not
-  invent a tag" rule), a hand list (drifts, misses plugins).
+Landed as one pure reading, `domain/core/nearest-id.ts`, that both
+front doors ask when an id names nothing: `keel.unknown-stack` and
+`keel.unknown-vertical` (`keel new --stack`, `--with`, `keel add`) put
+the nearest id first — _unknown stack 'go-rest' — did you mean
+'go-http'? Available: …_ — and keep the list. A typed word counts
+where it weighs most: what an id spells, then what its own tags and
+the finder's entrypoint labels say (`arch.server-http` is "an HTTP
+server — a REST endpoint", which is how `go-rest` finds `go-http`
+without an alias table), then what a product's services say; a word
+every candidate answers to (`hexagonal`) is not counted; edit distance
+breaks a tie, and is the whole reading only where no word matches,
+within a bound, so noise names nothing. A vertical is read by its id
+and its title (`container` → `containerization`). The relabel reads
+through every summary unchanged, since each takes the name before
+`—` (the terminal's resolution line, the masthead, the profile, the
+language-jump notice: _… has no backend or tool preset_). Folded in
+from the vocabulary notes the earlier steps left for this one:
+frameworks are named as products (_Quarkus_, _Web Components_) in the
+menus, the resolution line, the profile and the refusal of a
+combination no preset scaffolds; the stack matrices'
+hand-written headers use the finder's words (_HTTP server_, _CLI + HTTP
+server_, _Browser SPA_), as the generated tables do; an extras
+adjustment and a move's notice go on from the title (_Left out Version
+control — it already comes with go-cli_) rather than saying it twice.
+Sentences met in a real browser after Phase 1 were fixed too:
+`keel add module` on the flat layout now reads as the rule's own reason,
+capitalised — its id in the refusal's data (`rules`), no longer in the
+words the disabled tab shows — and a flag a sentence names is set on
+the page as one literal (`command.js`' `flagSpans`, `dom.js`'
+`sentence`), so `--module-layout=modulith` no longer breaks after its
+`--`; and a monorepo product root refusing a vertical no service can
+carry says why, ending on the way forward the service's own refusal
+gives — _… since it needs Distribution, which cannot go in a monorepo
+service: … per-service releases need the polyrepo layout_ — from each
+service's `repositoryOnly`, now carried in the `elsewhere` refusal.
+Held by `nearest-id.test.ts` (the audit's guesses, slips and noise,
+and the weighting on hand-made candidates), a `new-project` case per
+guessed stack and one per vertical front door, `stack-wizard.test.ts`
+for the label, `refusals.test.ts` and `composite-scope.test.ts` for
+the product-root sentence, `command.test.ts` for the flag spans, and
+the browser suites (`ui-refusal`: the tab's reason is capitalised,
+names no rule and keeps the flag on one line; `ui-compose`: the root's
+Infrastructure-as-code line ends on the polyrepo layout). No verdict
+moved: the goldens regenerate byte-identical and the known files stay
+as they were.
+
+### Decisions on record
+
+Each taken as the audit recommended; the step that carries it is named.
+
+- **D1 — Prerequisites are included automatically**, everywhere — the
+  menus, `--with`, `keel add` — and said first in the plan and report;
+  only a tie between equally small sets is refused (Q1.3, Q1.4).
+- **D2 — Monorepo membership reaches the checks as declarations:**
+  `Vertical.placement` and `Adapter.providesInServices`, each read by
+  one structural check — no derived tag, no hand list (Q1.10).
 - **D3 — Distribution alone on a composed CLI + HTTP JVM stack**
-  resolves to the native binary only. Recommended: accept and
-  document; Q1.4 proposes a refresh when Container image arrives.
-- **D4 — "Already there": Ok or error?** Recommended: Ok, exit 0,
-  CHANGELOG. `--strict` only if asked.
-- **D5 — Stray answer keys.** Recommended: refuse (they write split
-  packages today); from Q2.1 the preview reports them so the page
-  prunes them.
-- **D6 — Unavailable brownfield cards.** Recommended: keep them
-  visible, collapsed, with the sentence — and show the same group in
-  greenfield Options, so the halves follow one policy.
-- **D7 — A bare `--with` on a product.** Recommended: route to the one
-  service whose readiness admits it; refuse naming the services when
-  several do.
-- **D8 — The docs matrix.** Recommended: generated from the verdict
-  golden, with a regenerate-is-a-no-op guard.
-- **D9 — Plugin verticals as prerequisites.** Recommended: they take
-  part in the closure; on a tie refuse and name both, never pick by
-  registry order. Cost: a plugin adding a second image provider makes
-  `keel add iac` ask which.
-- **D10 — What follows Q's core.** Recommended: Q2.7 (one page) inside
-  Q, then **R**, then **S**. The alternative is R first, as the
-  largest remaining refusal class (30 CLI cells).
-- **D11 — Where identity answers live.** Recommended: no persisted
-  change (a `Question.shared` marker). The alternative, a persisted
-  `project` key, needs a migration and breaks down in composites,
-  which ask two project names.
-- **D12 — Refresh: propose or re-render automatically?** Recommended:
-  propose — a refresh overwrites template-owned files.
-- **D13 — `keel new` in a non-empty directory.** Recommended: adopt
-  `README.md` and `.gitignore` everywhere (Q2.6), refuse anything
-  else with its name (Q0.3).
+  resolves to the native binary only, documented (Q1.3); the refresh
+  Q1.4 proposes covers Container image arriving later.
+- **D4 — "Already there" is Ok**, exit 0, with a note and a CHANGELOG
+  entry; no `--strict` (Q1.6).
+- **D5 — Stray answer keys are refused** by every install front door,
+  and the preview reports them so the page prunes them (Q1.0, Q2.1).
+- **D6 — Unavailable cards stay visible**, collapsed, with the
+  sentence, and the same group is shown in greenfield Options, so the
+  halves follow one policy (Q1.5, Q1.9).
+- **D7 — A bare `--with` on a product** goes to the one service whose
+  readiness admits it, and is refused naming the services when several
+  do (Q2.3).
+- **D8 — The docs matrix is generated** from the grid's verdicts, with
+  a regenerate-is-a-no-op guard (Q2.5).
+- **D9 — Plugin verticals take part in the closure;** a tie is
+  refused naming both, never picked by registry order (Q1.2, Q1.4).
+- **D10 — Q2.7 (one page) was done inside Q;** **R**, then **S**, are
+  the successors.
+- **D11 — Identity answers change nothing persisted:** a
+  `Question.shared` marker (Q2.1, Q2.2).
+- **D12 — A refresh is proposed, never automatic** — a refresh
+  overwrites template-owned files (Q1.4).
+- **D13 — `keel new` in a non-empty directory** adopts `README.md` and
+  `.gitignore` everywhere (Q2.6) and refuses anything else by name
+  (Q0.3).
 
 ### Successors (named here, not part of Q)
 

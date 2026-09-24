@@ -13,7 +13,8 @@
  * Below the cards sit the smaller shapes the wizard's other halves
  * need — `el`, the builder everything else is written in; `icon`;
  * `prose`/`help` for the documentation strings keel writes for a
- * terminal; and `field`/`select` for the adapters' own questions,
+ * terminal, and `sentence` for the refusals it writes; and
+ * `field`/`select` for the adapters' own questions,
  * which are free text and one-of-many rather than decisions about
  * what gets scaffolded, and so are the one place a `<select>` is
  * still the right control.
@@ -24,6 +25,8 @@
  *
  * @typedef {{ value: string, label: string, doc?: string, meta?: string, badge?: string }} Choice
  */
+
+import { flagSpans } from './command.js';
 
 /**
  * A radio group drawn as cards: title, optional id line, optional
@@ -161,7 +164,7 @@ export function refusedList({ id, title, items, open, onToggle }) {
           'li',
           { attrs: { 'data-id': item.id } },
           el('span', { class: 'refused-title', text: item.title }),
-          el('span', { class: 'muted', text: item.sentence }),
+          el('span', { class: 'muted' }, sentence(item.sentence)),
         ),
       ),
     ),
@@ -438,6 +441,27 @@ export function prose(text) {
     if (part === '') return;
     fragment.append(index % 2 === 1 ? el('code', { text: part }) : document.createTextNode(part));
   });
+  return fragment;
+}
+
+/**
+ * A sentence the engine wrote — a refusal, a reason — with each
+ * command-line flag it names set as one literal that never breaks
+ * across lines (`command.js`' `flagSpans`). Text nodes, never
+ * `innerHTML`: the sentence comes off the wire.
+ *
+ * @param {string} text
+ * @returns {DocumentFragment}
+ */
+export function sentence(text) {
+  const fragment = document.createDocumentFragment();
+  for (const span of flagSpans(text)) {
+    fragment.append(
+      span.flag
+        ? el('code', { class: 'flag', text: span.text })
+        : document.createTextNode(span.text),
+    );
+  }
   return fragment;
 }
 

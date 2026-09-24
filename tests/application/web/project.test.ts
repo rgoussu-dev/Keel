@@ -115,7 +115,7 @@ describe('projectSummary', () => {
     // as the status words them — no tag reaches the page.
     expect(summary.rows).toEqual([
       { label: 'Preset', value: 'go-http' },
-      { label: 'Building', value: 'Backend' },
+      { label: 'Building', value: 'Backend or tool' },
       { label: 'Language', value: 'Go' },
       { label: 'Adapters', value: 'HTTP server' },
       { label: 'Module layout', value: 'modulith' },

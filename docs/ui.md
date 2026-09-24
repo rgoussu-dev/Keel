@@ -138,7 +138,7 @@ with the same words.
 A keel project's rail has no preset steps: `keel new` answered them,
 and the manifest remembers. They collapse into one read-only
 **Project** step, which says what the project is in the words the
-wizard asked it in — _Preset ts-http · Building Backend · Language
+wizard asked it in — _Preset ts-http · Building Backend or tool · Language
 TypeScript (Node) · Adapters HTTP server · Build system npm · Module
 layout basic_, a product root's services, the bounded contexts — and
 lists what it has installed. The manifest records tags, not a preset
@@ -183,7 +183,10 @@ Generate posts only what the ticks add — the delta — as `keel add`:
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
   points the page at that directory and opens its Options; then what
   goes in one of the services, each saying which — Container image and
-  the agent harness read as there already in both.
+  the agent harness read as there already in both. What no service can
+  take says why, and the way forward: in a monorepo, Infrastructure as
+  code needs Distribution, which only the repository root may carry, so
+  its line ends _per-service releases need the polyrepo layout_.
 
 An add can change what an installed vertical would render —
 Persistence arriving where Distribution's deploy descriptor was written
@@ -195,7 +198,11 @@ the group, rather than on each card it refuses.
 
 "Add a bounded context" is always there, and disabled — with the
 refusal `keel add module` would give — on the flat layout and at a
-product root.
+product root. On the flat layout that is the rule's own reason, as a
+sentence: _A bounded context needs the modulith layout: …_, its rule's
+id kept in the status's data rather than its words. A flag a sentence
+names, `--module-layout=modulith` here, is set as one literal the line
+never breaks inside.
 
 ## Finding a stack: the same drill-down, step for step
 
@@ -255,9 +262,10 @@ its default is named — a product's build systems service by service,
 _build system maven for backend_ — and the next change retires the
 line. An extra the new preset cannot carry is named with the reason
 `keel.dials` dropped it — a Container image ticked on `quarkus-rest`,
-moved to `quarkus-cli`, reads _Container image dropped: Container
-image needs an entrypoint this project does not have: HTTP server — a
-REST endpoint._ — and one the new preset comes with is not named at
+moved to `quarkus-cli`, reads _Container image dropped: it needs an
+entrypoint this project does not have: HTTP server — a REST
+endpoint._ — the reason going on from the title rather than saying it
+twice — and one the new preset comes with is not named at
 all: it is kept, by the preset now rather than by the box. Onto a
 product, an extra goes to the one service that can take it —
 Persistence ticked on `quarkus-rest` is ticked in the backend's group
@@ -404,7 +412,9 @@ order the install runs them — the page posts `containerization,
 distribution, iac` for the tick above, the plan the command line runs
 for `--with iac` — and `adjustments` says what the snap changed: each
 vertical `added` or `dropped`, with the reason as one sentence, shown
-under the group as one line. The page's own gestures leave it nothing
+under the group as one line — _Left out Version control — it already
+comes with go-cli_, _Added Distribution — Infrastructure as code needs
+it installed first_. The page's own gestures leave it nothing
 to add; a dial move that rules an extra out is what it reports.
 Nothing joins or leaves a selection silently.
 
@@ -542,7 +552,7 @@ give, asked before it is run:
   "profile": {
     "preset": "go-http",
     "facts": [
-      { "label": "Building", "value": "Backend" },
+      { "label": "Building", "value": "Backend or tool" },
       { "label": "Language", "value": "Go" },
       { "label": "Adapters", "value": "HTTP server" },
       { "label": "Module layout", "value": "basic" }
@@ -566,7 +576,11 @@ give, asked before it is run:
     }
   ],
   "canAddModule": false,
-  "moduleRefusal": { "code": "keel.incompatible", "message": "cannot add a bounded context here: …" },
+  "moduleRefusal": {
+    "code": "keel.incompatible",
+    "message": "A bounded context needs the modulith layout: …",
+    "refusal": { "kind": "unavailable", "vertical": "bounded-context", "rules": ["bounded-context/context-needs-modulith"], … }
+  },
   "harnessGeneration": { "found": 1, "expected": 1 }
 }
 ```
@@ -655,7 +669,12 @@ bootstrap's question of the same id.
 A refusal comes back as **422** with the domain's own error code:
 
 ```json
-{ "error": { "code": "keel.unknown-stack", "message": "unknown stack 'nope'; available: …" } }
+{
+  "error": {
+    "code": "keel.unknown-stack",
+    "message": "unknown stack 'go-rest' — did you mean 'go-http'? Available: …"
+  }
+}
 ```
 
 A refusal the engine raises as data — a vertical this project cannot

@@ -33,7 +33,7 @@ import type { Registry } from '../contract/ports/registry.js';
 import type { ElsewhereService, RefusalError } from '../contract/refusal.js';
 import { foresee } from './plan-refusal.js';
 import { readiness } from './planner.js';
-import { elsewhereRefusal, productRootPlacementRefusal } from './refusals.js';
+import { elsewhereRefusal, elsewhereService, productRootPlacementRefusal } from './refusals.js';
 import { planScopeOf, serviceScopeOf, type DirectoryScope } from './scope.js';
 
 /** How ready one vertical is for `keel add` here, as a card reads it. */
@@ -121,11 +121,13 @@ export function productRootRefusal(
   }
   const services: ElsewhereService[] = where.services.map((service) => {
     const scope = serviceScopeOf(registry, root, service);
-    return {
-      path: service.ref.path,
-      stack: service.ref.stack,
-      readiness: scope === null ? 'unavailable' : readiness(registry, scope, vertical.id).kind,
-    };
+    return scope === null
+      ? { path: service.ref.path, stack: service.ref.stack, readiness: 'unavailable' }
+      : elsewhereService(
+          service.ref.path,
+          service.ref.stack,
+          readiness(registry, scope, vertical.id),
+        );
   });
   return elsewhereRefusal(registry, vertical, services);
 }

@@ -111,7 +111,8 @@ describe('the "Also scaffold" group', () => {
     const reply = await dials('go-cli', ['persistence', 'ci', 'vcs']);
     const line = extrasGroup(reply, reply.target)?.line ?? '';
     expect(line.startsWith('Left out ')).toBe(true);
-    expect(line).toContain('Version control already comes with go-cli');
+    // The reason goes on from the title rather than saying it again.
+    expect(line).toContain('Version control — it already comes with go-cli');
     expect(line.endsWith('.')).toBe(true);
     // One line, however many moved.
     expect(line).not.toContain('\n');
@@ -195,7 +196,7 @@ describe('a product’s "Also scaffold", one per service', () => {
     const backend = serviceExtrasGroup(reply, reply.target, 'backend');
     expect(backend?.chosen).toEqual(['persistence']);
     expect(backend?.line).toBe(
-      'Added Persistence — Persistence goes in backend/, the one service of fullstack that can take it.',
+      'Added Persistence — it goes in backend/, the one service of fullstack that can take it.',
     );
     expect(serviceExtrasGroup(reply, reply.target, 'frontend')?.line).toBe('');
     expect(servicesExtrasSummary(reply, reply.target)).toBe('Persistence in backend/');

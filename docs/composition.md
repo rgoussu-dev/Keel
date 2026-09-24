@@ -161,7 +161,7 @@ Every refusal of a vertical or a file is **data first**: a `Refusal`
 | --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
 | `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle                                     |
-| `elsewhere`     | the vertical, and each service with how ready it is there                                                        | it is asked of a composite product rather than one of its services                                |
+| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry)     | it is asked of a composite product rather than one of its services                                |
 | `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together                                          |
 | `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way                                        |
 | `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                                                    |
@@ -227,7 +227,20 @@ repository root reads — _"Continuous integration cannot go in a
 monorepo service: its pipeline is read only at the repository root,
 which in a monorepo is the product root — per-service pipelines need
 the polyrepo layout"_ — are refused under `keel.wrong-scope`: not
-here, where `keel.uncoverable-vertical` is not in this project.
+here, where `keel.uncoverable-vertical` is not in this project. Where
+no service of a monorepo can take the vertical because it needs what
+only the repository root may carry, the root's sentence says so, and
+ends on the same way forward: _"Infrastructure as code belongs to a
+service, not to the product root — none of its services can carry it,
+since it needs Distribution, which cannot go in a monorepo service: …
+per-service releases need the polyrepo layout"_ (each such service's
+`repositoryOnly`, in the refusal's data).
+
+A broken rule reads as its reason with its id — _"… (rule
+'walking-skeleton/peer-context-needs-modulith')"_ — so it can be looked
+up. The one exception is `keel add module` on the flat layout, whose
+sentence `keel ui` shows under the tab it disables: the rule's reason
+alone, as a sentence of its own, its id in the refusal's `rules`.
 
 ### Stacks
 
