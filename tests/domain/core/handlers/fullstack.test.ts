@@ -106,7 +106,11 @@ describe('fullstack composite install (monorepo)', () => {
           }),
         ),
       );
-      expect(error.code).toBe('keel.invalid-agent-harness');
+      // Not a special case any more: the product glue declares the rule
+      // (`fullstack/one-harness`), so the planner reads a family kit as
+      // not for the root even where the root's tags match a family —
+      // and the root sends it to its services, which have it.
+      expect(error.code).toBe('keel.wrong-scope');
       expect(error.message).toBe(
         'Agent harness belongs to a service, not to the product root — backend/ and frontend/ have it already',
       );
@@ -163,13 +167,12 @@ describe('fullstack composite install (monorepo)', () => {
         }),
       ),
     );
-    // Same code as any coverage refusal, since it is one. The sentence
-    // is the difference: a root carries almost no tags, so the gap of
-    // the adapter nearest to it is advice for some other product, and
-    // where the capability belongs is the whole answer — read from
-    // each service's own manifest: the backend takes it, the frontend
-    // cannot.
-    expect(error.code).toBe('keel.uncoverable-vertical');
+    // A refusal of the scope, not of the project: a root carries almost
+    // no tags, so the gap of the adapter nearest to it is advice for
+    // some other product, and where the capability belongs is the whole
+    // answer — read from each service's own manifest: the backend takes
+    // it, the frontend cannot.
+    expect(error.code).toBe('keel.wrong-scope');
     expect(error.message).toBe(
       'Persistence belongs to a service, not to the product root — it goes in backend/',
     );
@@ -219,7 +222,7 @@ describe('fullstack composite install (monorepo)', () => {
       '{ broken',
     );
     const unread = expectErr(await mediator.dispatch(persistence(cwd)));
-    expect(unread.code).toBe('keel.uncoverable-vertical');
+    expect(unread.code).toBe('keel.wrong-scope');
     expect((unread as RefusalError).refusal).toMatchObject({
       services: [{ path: 'backend', readiness: 'ready' }, { path: 'frontend' }],
     });

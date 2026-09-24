@@ -297,8 +297,11 @@ export interface DialOptions {
    * own (`included`), and every other registered vertical, which it
    * cannot carry (`unavailable`, with the refusal `keel new --with`
    * gives it) — each with its readiness and what it needs installed
-   * first. Empty where there are no extras, a composite or a
-   * brownfield target.
+   * first. A composite product has no extras of its own, so it lists
+   * only its own verticals, `included` — naming one to `keel new
+   * --with` sets it aside with a note, as on a single preset, and
+   * anything else named is refused as belonging to a service. Empty on
+   * a brownfield target.
    */
   readonly verticals: readonly VerticalOption[];
   /**
@@ -460,6 +463,15 @@ export interface ReadinessGap {
    * selected by peer tags, which only a linked project projects.
    */
   readonly nearestStacks: readonly string[];
+  /**
+   * Ids of the verticals whose place is a repository root
+   * (`Vertical.placement`), which this scope — a service of a
+   * monorepo product — is not: the vertical itself, or the
+   * prerequisites it would be planned with anywhere else. Present
+   * only where they are what stops it, and then the rest of the gap is
+   * empty: a stack, an entrypoint or a link would change nothing.
+   */
+  readonly repositoryOnly?: readonly string[];
 }
 
 /* ------------------------------------------------------------------ *
@@ -643,6 +655,34 @@ export interface AvailableVerticalDescriptor extends VerticalDescriptor {
 }
 
 /**
+ * A vertical a directory has from the product it is part of rather
+ * than from an install of its own. @see ProjectStatus.provided
+ */
+export interface ProvidedVerticalDescriptor extends VerticalDescriptor {
+  /**
+   * What `keel add <id>` answers here, word for word: the note of an Ok
+   * that installs nothing, saying where the vertical comes from.
+   */
+  readonly note: string;
+}
+
+/** One service of a product root, as its status reports it. */
+export interface ServiceStatus extends ServiceRef {
+  /**
+   * The service's directory: the product root's, joined with
+   * {@link ServiceRef.path}. Reported whole, so a front end re-points
+   * itself there without building a path of its own.
+   */
+  readonly directory: string;
+  /**
+   * What the service is, in a few words a button can carry: its
+   * preset, and the build system it was scaffolded on where the
+   * product recorded one — `quarkus-rest · Gradle`.
+   */
+  readonly label: string;
+}
+
+/**
  * A refusal reported ahead of the command it would stop: the error
  * that command returns, as data — its stable code, its sentence, and,
  * for a refusal the engine raises as data, the {@link Refusal} the
@@ -689,9 +729,22 @@ export interface ProjectStatus {
    * once, in {@link harnessGeneration}.
    */
   readonly available: readonly AvailableVerticalDescriptor[];
+  /**
+   * The verticals this directory has without having installed them:
+   * a monorepo service's, from the product that holds it — what the
+   * repository root installed (`vcs`), and what the product root builds
+   * for it (its image, which the root's `compose.yaml` builds). Neither
+   * `installed` nor `available`: nothing here re-renders one, and
+   * `keel add <id>` of one is an Ok that installs nothing and says
+   * {@link ProvidedVerticalDescriptor.note}. Empty anywhere else.
+   */
+  readonly provided: readonly ProvidedVerticalDescriptor[];
   readonly modules: readonly InstalledModule[];
-  /** Services, when this is a composite product root. */
-  readonly services: readonly ServiceRef[];
+  /**
+   * Services, when this is a composite product root — each with the
+   * directory a front end opens it at.
+   */
+  readonly services: readonly ServiceStatus[];
   readonly moduleLayout: 'basic' | 'modulith';
   /**
    * Whether `keel add module` would be accepted here — the modulith

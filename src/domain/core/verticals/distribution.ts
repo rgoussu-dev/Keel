@@ -42,6 +42,13 @@ export const distributionVertical: Vertical = {
   // OpenTelemetry variables only when persistence and observability
   // are recorded (`serviceDeployVars`), so in one run those go first.
   reads: ['persistence', 'observability'],
+  // Its release workflows are CI workflows, read at the repository
+  // root only — a monorepo service releasing on its own is epic U.
+  placement: {
+    scope: 'repository',
+    because:
+      'its release workflows are read only at the repository root, which in a monorepo is the product root — per-service releases need the polyrepo layout',
+  },
   adapters: [
     quarkusCliNativeAdapter,
     jvmContainerAdapter,

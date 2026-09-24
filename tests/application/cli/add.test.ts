@@ -303,6 +303,20 @@ describe('keel add --list', () => {
       const printed = logger.messages('info');
       expect(printed.at(-2)).toBe("Installed: vcs — 'keel add <id> --reapply' re-renders one");
       expect(printed.at(-1)).toBe("Also installed, which 'keel add' does not re-render: fullstack");
+
+      // One directory down, a service: what the product gives it is
+      // said apart, each with where it comes from.
+      logger.entries.length = 0;
+      await program(mediator, logger, path.join(cwd, 'backend')).parseAsync(['add', '--list'], {
+        from: 'user',
+      });
+      const service = logger.messages('info');
+      const from = service.indexOf('From the product, nothing to add:');
+      expect(from).toBeGreaterThan(service.indexOf('Not for this project:'));
+      expect(service.slice(from + 1, from + 3)).toEqual([
+        '  containerization  Container image is already there: the product root builds it for this service',
+        '  vcs               Version control is already there: the product root has it, for the one repository its services share',
+      ]);
     } finally {
       await fs.remove(cwd);
     }

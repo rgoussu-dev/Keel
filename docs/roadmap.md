@@ -2836,7 +2836,7 @@ project whose image, release and IaC queue no action. _Belongs in a
 service_ is the sentence alone until Q1.10's buttons. The grid does
 not move: the step is the page's.
 
-#### Q1.10 — Composite products: the root points into its services (L)
+#### Q1.10 — Composite products: the root points into its services (L) ✅
 
 A `scopeOf` probe through `ManifestStore` finds the enclosing product
 and its services. At the root a vertical a service can take is
@@ -2851,6 +2851,50 @@ services and stays _ready_ in a plugin product's backend the glue
 does not build. Monorepo products still get no per-service release
 pipeline or IaC; that is now said, and handed to **U**. `keel new`
 inside a product's unlisted subdirectory is refused.
+
+Landed with `domain/core/scope.ts`: `scopeOf` reads a directory's
+manifest, the product root above it — the walk stops at the nearest
+keel project, and looks no deeper than the deepest service path a
+registered product declares — and at a product root each service's
+manifest, once per question (the status no longer re-reads them per
+card). `planScopeOf` hands the planner a value: a monorepo service's
+`PlanScope` holds what the product gives it (`provisionsFor`: a placed
+vertical the root installed, and a vertical a root adapter's
+`providesInServices` lists its stack for) among `installed`, and
+`member`, so a placed vertical neither goes there nor comes in as a
+prerequisite, and one needing it reads unavailable with
+`ReadinessGap.repositoryOnly` — computed by planning the service as a
+repository of its own, without what the product gave it. The refusal
+carries `repositoryOnly` and is worded from the first placed
+vertical's `because`; the plan's "use `--layout polyrepo`" became
+"per-service releases need the polyrepo layout", since a sentence names
+no flag. Every scope refusal is `keel.wrong-scope` — the root's
+`elsewhere` (was `keel.uncoverable-vertical`, and
+`keel.invalid-agent-harness` for the harness) and `keel new --with` on
+a composite (was `keel.invalid-extra-verticals`) — except `ci` and
+`distribution` asked of a monorepo root, which no service can take
+either: refused there as uncovered, sent nowhere. The agent-harness
+special case became a declared rule on the product glue,
+`fullstack/one-harness`, against the family kit's tag. A vertical a
+service has from its product is neither installed nor a card:
+`ProjectStatus.provided`, each with the note `keel add` answers it
+with — an Ok that stages nothing (I4 holds it so) — and
+`ProjectStatus.services` gained `directory` and `label` (the preset id
+and build system, the page's own names for them). `keel new --with vcs`
+on a composite is set aside with a note, as on a single preset, and
+`keel.dials` lists a composite's own verticals as included so the menu
+still says so (I3). The unbuilt-image note is generic ("backend/ has
+no Container image from the product root, which builds one only for
+the stacks it knows — 'keel add containerization' there adds its
+own"), since nothing in the declaration names `compose.yaml`.
+Registration refuses a placement with no `because`. The page's
+**Open backend/** buttons emit `service-opened`, which lands on the
+service's "What to add". Grid: I7 landed hard over the composite
+cells — no service cell refused for a file in the way, and wherever the
+polyrepo twin is Ok the monorepo cell is Ok or `keel.wrong-scope` — and
+the 36 PHASE-3 I4 keys cleared, so I4 is hard too. The monorepo
+scaffold of every shipped product is byte-identical to before
+(manifests and reports included), checked against the previous build.
 
 #### Q1.11 — Answer choices declare where they apply (S) ✅
 

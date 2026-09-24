@@ -17,11 +17,14 @@
  *   - **Not for this project** — collapsed, one sentence each, the
  *     refusal `keel add` would give. Not a control: there is nothing
  *     to pick.
- *   - **Belongs in a service** — at a product root, what goes one
- *     directory down, and the sentence naming where.
+ *   - **Belongs in a service** — at a product root, an **Open
+ *     backend/** button per service, which points the page there
+ *     (`service-opened`), then what goes one directory down and the
+ *     sentence naming where.
  *   - **Installed** — a **Re-render** button each, a run of its own,
  *     never a card in the add's set; a product's glue or a bounded
- *     context, which no `keel add` names, as a chip.
+ *     context, which no `keel add` names, as a chip; what a monorepo
+ *     service has from its product, a line saying where from.
  *
  * Re-renders an add proposes — an installed vertical the run changes
  * and would leave as it was — appear under the cards as toggles, once
@@ -47,7 +50,8 @@
  * with a **whole** target for the tabs and the context form — a patch
  * merged into the old target is how a re-render flag used to outlive
  * the card that set it — and, for the gestures, which vertical moved
- * and how: `vertical-toggled`, `rerender-requested`, `refresh-toggled`.
+ * and how: `vertical-toggled`, `rerender-requested`, `refresh-toggled`;
+ * and `service-opened` with the directory of the service to open.
  * What else a gesture moves is `../target.js`'s answer.
  */
 
@@ -167,7 +171,12 @@ export class KeelAddForm extends HTMLElement {
     const group = additionsGroup(this.#status, this.#target);
     const nothing =
       group.ready.length + group.needs.length + group.refused.length + group.elsewhere.length ===
-        0 && group.rerenderable.length + group.chips.length === 0;
+        0 &&
+      group.services.length +
+        group.rerenderable.length +
+        group.chips.length +
+        group.provided.length ===
+        0;
     if (nothing) return note('Nothing left to install here.');
 
     const part = (id, title, choices) => {
@@ -234,7 +243,7 @@ export class KeelAddForm extends HTMLElement {
             open: this.#refusedOpen,
             onToggle: (open) => (this.#refusedOpen = open),
           }),
-      this.#elsewhereField(group.elsewhere),
+      this.#elsewhereField(group.services, group.elsewhere),
       this.#installedField(group),
       group.rerendering === null
         ? null
@@ -245,28 +254,49 @@ export class KeelAddForm extends HTMLElement {
   }
 
   /**
-   * At a product root, what belongs in one of its services — each
-   * with the sentence naming which. Open, not collapsed: unlike "not
-   * for this project" it is a direction, one directory down.
+   * At a product root, a way into each service, then what belongs in
+   * one of them — each with the sentence naming which. Open, not
+   * collapsed: unlike "not for this project" it is a direction, one
+   * directory down, and the buttons take it.
    */
-  #elsewhereField(elsewhere) {
-    if (elsewhere.length === 0) return null;
+  #elsewhereField(services, elsewhere) {
+    if (services.length + elsewhere.length === 0) return null;
     return el(
       'div',
       { id: 'add-elsewhere' },
       el('h4', { id: 'add-elsewhere-title', text: 'Belongs in a service' }),
-      el(
-        'ul',
-        { class: 'plain refused-list', attrs: { 'aria-labelledby': 'add-elsewhere-title' } },
-        ...elsewhere.map((item) =>
-          el(
-            'li',
-            { attrs: { 'data-id': item.id } },
-            el('span', { class: 'refused-title', text: item.title }),
-            el('span', { class: 'muted', text: item.sentence }),
+      services.length === 0
+        ? null
+        : el(
+            'cluster-pk',
+            {
+              id: 'add-services',
+              attrs: { space: 'var(--s-2)', role: 'group', 'aria-label': 'Open a service' },
+            },
+            ...services.map((service) =>
+              el('button', {
+                type: 'button',
+                class: 'ghost',
+                text: service.label,
+                attrs: { 'data-path': service.path },
+                on: { click: () => this.#emit('service-opened', { path: service.path }) },
+              }),
+            ),
           ),
-        ),
-      ),
+      elsewhere.length === 0
+        ? null
+        : el(
+            'ul',
+            { class: 'plain refused-list', attrs: { 'aria-labelledby': 'add-elsewhere-title' } },
+            ...elsewhere.map((item) =>
+              el(
+                'li',
+                { attrs: { 'data-id': item.id } },
+                el('span', { class: 'refused-title', text: item.title }),
+                el('span', { class: 'muted', text: item.sentence }),
+              ),
+            ),
+          ),
     );
   }
 
@@ -276,7 +306,7 @@ export class KeelAddForm extends HTMLElement {
    * chip per recorded piece no `keel add` names.
    */
   #installedField(group) {
-    if (group.rerenderable.length + group.chips.length === 0) return null;
+    if (group.rerenderable.length + group.chips.length + group.provided.length === 0) return null;
     return el(
       'div',
       { id: 'add-installed' },
@@ -321,6 +351,24 @@ export class KeelAddForm extends HTMLElement {
             { id: 'add-installed-chips', class: 'plain chips' },
             ...group.chips.map((chip) =>
               el('li', { class: 'chip', text: chip.title, attrs: { 'data-id': chip.id } }),
+            ),
+          ),
+      group.provided.length === 0
+        ? null
+        : el(
+            'ul',
+            {
+              id: 'add-provided',
+              class: 'plain refused-list',
+              attrs: { 'aria-label': 'From the product' },
+            },
+            ...group.provided.map((item) =>
+              el(
+                'li',
+                { attrs: { 'data-id': item.id } },
+                el('span', { class: 'refused-title', text: item.title }),
+                el('span', { class: 'muted', text: item.sentence }),
+              ),
             ),
           ),
     );

@@ -56,10 +56,10 @@ instead, which has a name to give it.
 | `observability`    | ⛔      | ●        | ⛔             | ●            | ●         | ⛔               | ● backend                    |
 | `persistence`      | ⛔      | ➕       | ⛔             | ➕           | ➕        | ⛔               | ➕ backend                   |
 | `gateway`          | —       | ➕ ¹     | —              | ➕ ¹         | ➕ ¹      | ➕ ¹             | ● both services              |
-| `containerization` | ⛔      | ➕       | ⛔             | ➕           | ➕        | ➕               | (root compose is separate ²) |
-| `ci`               | ➕      | ➕       | ➕             | ➕           | ➕        | ➕               | ➕ per service               |
-| `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³           | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service             |
-| `iac`              | ⛔ ⁵    | ➕ ⁵     | ⛔ ⁵           | ➕ ⁵         | ➕ ⁵      | ➕ ⁵             | ➕ ⁵ per service             |
+| `containerization` | ⛔      | ➕       | ⛔             | ➕           | ➕        | ➕               | ● monorepo ² · ➕ polyrepo   |
+| `ci`               | ➕      | ➕       | ➕             | ➕           | ➕        | ➕               | ➕ per service, polyrepo ²   |
+| `distribution`     | ➕ ³    | ➕ ⁴     | ⛔ ³           | ➕ ⁴         | ➕ ⁴      | ➕ ⁴             | ➕ ⁴ per service, polyrepo ² |
+| `iac`              | ⛔ ⁵    | ➕ ⁵     | ⛔ ⁵           | ➕ ⁵         | ➕ ⁵      | ➕ ⁵             | ➕ ⁵ per service, polyrepo ² |
 | `toolchain`        | ➕      | ➕       | ➕             | ➕           | ➕        | ➕               | ➕ per service               |
 | `fullstack`        | —       | —        | —              | —            | —         | —                | ● monorepo root only         |
 
@@ -67,9 +67,18 @@ instead, which has a name to give it.
 then `keel add gateway` on each side. Without peers it is refused,
 pointing at `keel link` — it would install nothing — and it is not
 offered as an extra at `keel new`.
-² Monorepo products get `compose.yaml` + Dockerfiles from the
-[`fullstack`](fullstack.md) root glue; `containerization` is the
-standalone-service story.
+² A monorepo product's services are directories of one repository. Its
+[`fullstack`](fullstack.md) root glue builds each service's image
+(`compose.yaml` + a Dockerfile beside each), and declares so — so in
+such a service `containerization` is already there, and `keel add
+containerization` adds nothing, saying so (a plugin backend the glue
+does not know keeps it to add). A pipeline and a release are read only
+at the repository root, which is the product root's: `ci` and
+`distribution` declare that placement, so a monorepo service refuses
+them — and `iac`, which needs `distribution` — under
+`keel.wrong-scope`, and keel has no adapter for the product root's own
+pipeline yet. Per-service pipelines, releases and IaC need the
+`polyrepo` layout, where each service is a repository of its own.
 ³ CLI distribution covers `quarkus-cli` on Gradle today; Go/Rust/TS
 CLI siblings are the intended growth path.
 ⁴ The container family: requires `containerization` installed first —
@@ -77,11 +86,13 @@ the release pipeline builds that Dockerfile, and each container
 adapter declares so in its predicate. Offered as _needs Container
 image_; named without it, distribution brings it along. A composed
 CLI + HTTP Quarkus stack on Gradle ships native binaries when
-distribution comes alone. See [`distribution`](distribution.md).
+distribution comes alone. Per service of a fullstack product, polyrepo
+only (²). See [`distribution`](distribution.md).
 ⁵ Keyed on the `dist.container-image` tag the distribution container
 family promotes — so it needs `containerization` and `distribution`,
 in that order. CLI shapes never carry it, so they are refused for the
-HTTP entrypoint they lack. See [`iac`](iac.md).
+HTTP entrypoint they lack; a monorepo service, for the `distribution`
+it cannot take (²). See [`iac`](iac.md).
 
 The "first" in ⁴ and ⁵ is an order, not a separate run:
 [`keel new --with`](../cli.md#keel-new) and

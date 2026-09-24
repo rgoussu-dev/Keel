@@ -13,10 +13,12 @@
  *
  *   - {@link productRootRefusal}, which a composite product's root
  *     answers first: a capability belongs to one of its services;
- *   - the planner, over {@link projectScope} — this project's effective
- *     tags, its installed verticals, and the rules those declare —
- *     through `./plan-refusal.ts`, whose {@link foresee} words a
- *     vertical asked alone exactly as `admit` words the plan of it.
+ *   - the planner, over the scope `./scope.ts` reads for the directory
+ *     — this project's effective tags, its installed verticals, and the
+ *     rules those declare, and in a monorepo service what the product
+ *     gives it and where it stands in the repository — through
+ *     `./plan-refusal.ts`, whose {@link foresee} words a vertical asked
+ *     alone exactly as `admit` words the plan of it.
  *
  * {@link addReadiness} composes them for one vertical, as a card reads
  * it; the front door composes them for the set it was given. The
@@ -26,24 +28,13 @@
  * once, not on every card.
  */
 
-import path from 'node:path';
-import { effectiveTags, projectScopeRoot, type ManifestV2 } from '../contract/manifest.js';
 import type { Vertical } from '../contract/composition.js';
-import type { ManifestStore } from '../contract/ports/manifest-store.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { ElsewhereService, RefusalError } from '../contract/refusal.js';
-import { conflictsOf } from './compatibility.js';
 import { foresee } from './plan-refusal.js';
-import { defaultScope, readiness, type PlanScope } from './planner.js';
-import { elsewhereRefusal, UNCOVERED_CODE } from './refusals.js';
-import { installedVertical } from './registry.js';
-import { coversFor } from './resolver.js';
-
-/** The ports reading a project on disk takes. */
-export interface ProjectReadDeps {
-  readonly registry: Registry;
-  readonly manifests: ManifestStore;
-}
+import { readiness } from './planner.js';
+import { elsewhereRefusal, productRootPlacementRefusal } from './refusals.js';
+import { planScopeOf, serviceScopeOf, type DirectoryScope } from './scope.js';
 
 /** How ready one vertical is for `keel add` here, as a card reads it. */
 export interface AddReadiness {
@@ -63,49 +54,21 @@ export interface AddReadiness {
 }
 
 /**
- * The scope a project on disk plans onto: its effective tags (its own,
- * and what linked projects project here), the verticals it has
- * installed — less `except`, the ones a run re-renders and so plans as
- * if they were not there yet — and the rules those installed pieces
- * declare, which nothing the run adds may newly break.
- *
- * An installed vertical this keel does not know (a plugin no longer
- * loaded) still counts as installed; it only brings no rules, since
- * there is nothing to read them from.
+ * How ready `vertical` is for `keel add` on the project `where` holds,
+ * and the refusal where there is one — what the front door answers
+ * `keel add <vertical>` with, before any file moves, the
+ * harness-generation gate aside. `vertical` is registered, neither
+ * installed here nor given by the product (`./scope.ts`
+ * `provisionsHere`), and `where` holds a manifest.
  */
-export function projectScope(
+export function addReadiness(
   registry: Registry,
-  manifest: ManifestV2,
-  except: readonly string[] = [],
-): PlanScope {
-  const installed = manifest.verticals.map((v) => v.id).filter((id) => !except.includes(id));
-  return {
-    tags: effectiveTags(manifest),
-    installed,
-    rules: conflictsOf(installed.flatMap((id) => installedVertical(registry, id) ?? [])),
-  };
-}
-
-/**
- * How ready `vertical` is for `keel add` on the project `stored`
- * records at `cwd`, and the refusal where there is one — what the front
- * door answers `keel add <vertical>` with, before any file moves, the
- * harness-generation gate aside. `vertical` is registered and not
- * installed here.
- */
-export async function addReadiness(
-  deps: ProjectReadDeps,
-  stored: ManifestV2,
-  cwd: string,
+  where: DirectoryScope,
   vertical: Vertical,
-): Promise<AddReadiness> {
-  const misplaced = await productRootRefusal(deps, vertical, stored, cwd);
+): AddReadiness {
+  const misplaced = productRootRefusal(registry, where, vertical);
   if (misplaced !== null) return { readiness: 'unavailable', requires: [], refusal: misplaced };
-  const { readiness: ready, refusal } = foresee(
-    deps.registry,
-    projectScope(deps.registry, stored),
-    vertical,
-  );
+  const { readiness: ready, refusal } = foresee(registry, planScopeOf(registry, where), vertical);
   switch (ready.kind) {
     case 'ready':
       return { readiness: 'ready', requires: [], refusal: null };
@@ -118,58 +81,51 @@ export async function addReadiness(
     case 'unavailable':
       return { readiness: 'unavailable', requires: [], refusal };
     case 'included':
-      throw new Error(`addReadiness: '${vertical.id}' is installed here already`);
+      throw new Error(`addReadiness: '${vertical.id}' is there already`);
   }
 }
 
 /**
  * A composite product's root holds services, and a capability belongs
- * to one of them: whatever the root cannot carry is refused as
- * belonging elsewhere, naming the service directories and how ready
- * it is in each — read from each service's own manifest, or its
- * preset where there is none — rather than with the gap of whichever
- * adapter family sits nearest to a root's near-empty tag set. The
- * code stays the coverage one, since the condition is. The agent
- * harness is the one vertical refused here although it would
- * resolve: the root has a harness of its own, which indexes the
- * services' and must not be replaced by one of theirs. Null anywhere
- * but a product root, and for what a root does carry.
+ * to one of them: whatever the planner reads the root itself as unable
+ * to carry is refused as belonging elsewhere (`keel.wrong-scope`),
+ * naming the service directories and how ready it is in each — read
+ * from each service's own manifest, or its preset where there is none,
+ * as a monorepo service of this root — rather than with the gap of
+ * whichever adapter family sits nearest to a root's near-empty tag
+ * set, which is advice for a different product. The agent harness is
+ * no exception: the root carries a harness of its own, and the
+ * planner reads a service's as not for it.
+ *
+ * A vertical placed at a repository root (`Vertical.placement`) is
+ * the one not sent anywhere: this root is the repository's, and no
+ * service of it can take one — so it is refused here, as nothing keel
+ * has installing it at a product root. Null anywhere but a product
+ * root, and for what a root does carry.
  *
  * Asked by the front door of each vertical it is named, before it
  * plans them (`admit`), and by {@link addReadiness} of a card.
  */
-export async function productRootRefusal(
-  deps: ProjectReadDeps,
+export function productRootRefusal(
+  registry: Registry,
+  where: DirectoryScope,
   vertical: Vertical,
-  stored: ManifestV2,
-  cwd: string,
-): Promise<RefusalError | null> {
-  if (stored.services.length === 0) return null;
-  const harness = vertical.id === 'agent-harness';
-  if (!harness && coversFor(vertical, effectiveTags(stored))) return null;
-  const registry = deps.registry;
-  const services: ElsewhereService[] = [];
-  for (const service of stored.services) {
-    // Only the wording of this refusal rides on it: a service
-    // manifest keel cannot read is that service's to report when
-    // the user runs there, and its preset says well enough here
-    // whether the vertical goes in it.
-    const own = await deps.manifests
-      .read(projectScopeRoot(path.join(cwd, service.path)))
-      .catch(() => null);
-    const stack = registry.stack(service.stack);
-    const scope =
-      own !== null ? projectScope(registry, own) : stack !== null ? defaultScope(stack) : null;
-    services.push({
-      path: service.path,
-      stack: service.stack,
-      readiness: scope === null ? 'unavailable' : readiness(registry, scope, vertical.id).kind,
-    });
+): RefusalError | null {
+  const root = where.manifest;
+  if (root === null || root.services.length === 0) return null;
+  if (readiness(registry, planScopeOf(registry, where), vertical.id).kind !== 'unavailable') {
+    return null;
   }
-  return elsewhereRefusal(
-    registry,
-    vertical,
-    services,
-    harness ? 'keel.invalid-agent-harness' : UNCOVERED_CODE,
-  );
+  if (vertical.placement?.scope === 'repository') {
+    return productRootPlacementRefusal(registry, vertical);
+  }
+  const services: ElsewhereService[] = where.services.map((service) => {
+    const scope = serviceScopeOf(registry, root, service);
+    return {
+      path: service.ref.path,
+      stack: service.ref.stack,
+      readiness: scope === null ? 'unavailable' : readiness(registry, scope, vertical.id).kind,
+    };
+  });
+  return elsewhereRefusal(registry, vertical, services);
 }

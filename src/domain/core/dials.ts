@@ -429,7 +429,8 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
  * combination for a {@link Conflict} to bite on. The module layout,
  * the peer context and the extras are not dials here either: the
  * install refuses all three on a composite, so a settled target must
- * not carry them.
+ * not carry them — but for the product's own verticals, which it
+ * reports as `included`, since naming one of those is set aside.
  */
 function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
   const chosen = readServiceBuildSystems(target.buildSystem);
@@ -458,7 +459,11 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
     services,
     peerContext: false,
     extraVerticals: [],
-    verticals: [],
+    // What `--with` sets aside with a note rather than refusing: the
+    // product's own, which the product installs whatever is named.
+    verticals: listVerticals(registry)
+      .filter((summary) => stack.verticals.some((own) => own.id === summary.id))
+      .map((summary) => ({ ...summary, readiness: 'included', requires: [] })),
     adjustments: [],
   };
 }

@@ -175,6 +175,28 @@ describe('registryOf', () => {
     expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
   });
 
+  it('refuses a placement with no reason, or a scope keel does not read, naming the plugin', () => {
+    const blank: Vertical = {
+      ...wellFormed('acme'),
+      placement: { scope: 'repository', because: ' ' },
+    };
+    expect(refusal(() => registryOf([{ origin: ACME, verticals: [blank] }])).message).toContain(
+      `${ACME} vertical 'acme' declares a placement with no 'because'`,
+    );
+    const unknown = {
+      ...wellFormed('acme'),
+      placement: { scope: 'workspace', because: 'somewhere else' },
+    } as unknown as Vertical;
+    expect(refusal(() => registryOf([{ origin: ACME, verticals: [unknown] }])).message).toContain(
+      `${ACME} vertical 'acme' declares placement scope 'workspace', which keel does not know`,
+    );
+    const placed: Vertical = {
+      ...wellFormed('acme'),
+      placement: { scope: 'repository', because: 'read at the root only' },
+    };
+    expect(registryOf([{ origin: ACME, verticals: [placed] }]).vertical('acme')).toBe(placed);
+  });
+
   it('takes an adapter declaring a share of its vertical s promotes', () => {
     const base = wellFormed('acme');
     const narrowed: Vertical = {

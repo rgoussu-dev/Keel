@@ -45,15 +45,16 @@ import { extrasOf } from './target.js';
 /**
  * The group for this dials reply and target, or null where there is
  * none — before the first reply lands, and on a product, whose
- * services each carry their own extras.
+ * services each carry their own extras (its reply lists only what the
+ * product installs of its own, which is nothing to tick).
  *
- * @param {{ verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> } | null} dials
+ * @param {{ verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment>, services?: ReadonlyArray<unknown> } | null} dials
  * @param {object | null} target
  * @returns {ExtrasGroup | null}
  */
 export function extrasGroup(dials, target) {
   const verticals = dials?.verticals ?? [];
-  if (verticals.length === 0) return null;
+  if (verticals.length === 0 || (dials?.services ?? []).length > 0) return null;
   const titleOf = titles(verticals);
   const card = (vertical) => ({
     value: vertical.id,

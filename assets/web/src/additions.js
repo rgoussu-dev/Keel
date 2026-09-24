@@ -16,13 +16,17 @@
  *     (`target.js`'s `toggleVertical`); one plan, one Generate.
  *   - **Not for this project** — collapsed, one sentence each: the
  *     refusal `keel add` would give, word for word.
- *   - **Belongs in a service** — at a product's root, what goes in one
- *     of its services, and the sentence saying which.
+ *   - **Belongs in a service** — at a product's root, a way into each
+ *     of its services ("Open backend/ (quarkus-rest · Gradle)", which
+ *     re-points the page at that directory), then what goes in one of
+ *     them, and the sentence saying which.
  *   - **Installed** — each with a **Re-render** action of its own
  *     (`target.js`'s `rerender`), not a card in the add's set: a
  *     re-render is a different run. What no `keel add` names — a
  *     product's glue, a bounded context — is a chip, a fact about the
- *     project rather than a control.
+ *     project rather than a control; and in a monorepo service, what
+ *     the product gives it — its repository's version control, the
+ *     image the product root builds — a line each, saying where from.
  *
  * Pure, and separate from any element, so the grouping is testable
  * without a DOM — the same split `steps.js`, `target.js` and
@@ -32,7 +36,8 @@
  * @typedef {{ value: string, label: string, meta: string, doc: string, badge?: string }} AddCard
  * @typedef {{ id: string, title: string, doc: string, meta: string, pressed: boolean }} Rerenderable
  * @typedef {{ id: string, title: string }} Chip
- * @typedef {{ ready: AddCard[], needs: AddCard[], refused: Refused[], elsewhere: Refused[], rerenderable: Rerenderable[], chips: Chip[], chosen: string[], rerendering: string | null }} AdditionsGroup
+ * @typedef {{ path: string, label: string }} ServiceLink
+ * @typedef {{ ready: AddCard[], needs: AddCard[], refused: Refused[], elsewhere: Refused[], services: ServiceLink[], rerenderable: Rerenderable[], chips: Chip[], provided: Refused[], chosen: string[], rerendering: string | null }} AdditionsGroup
  * @typedef {{ value: string, label: string, doc: string }} RefreshChoice
  */
 
@@ -42,7 +47,7 @@ import { refreshOf, rerendering, verticalsOf } from './target.js';
 /**
  * The step's parts, for this project status and target.
  *
- * @param {{ installed: ReadonlyArray<{ id: string, title: string, description: string, reapplicable?: boolean }>, available: ReadonlyArray<{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string, refusal?: { kind: string } } }> }} status
+ * @param {{ installed: ReadonlyArray<{ id: string, title: string, description: string, reapplicable?: boolean }>, available: ReadonlyArray<{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string, refusal?: { kind: string } } }>, provided?: ReadonlyArray<{ id: string, title: string, note: string }>, services?: ReadonlyArray<{ path: string, directory: string, label: string }> }} status
  * @param {object | null} target
  * @returns {AdditionsGroup}
  */
@@ -63,6 +68,7 @@ export function additionsGroup(status, target) {
       .map((vertical) => ({ ...card(vertical), badge: needsBadge(vertical, titleOf) })),
     refused: refusedOf(status.available),
     elsewhere: status.available.filter(belongsElsewhere).map(refused),
+    services: serviceLinks(status),
     rerenderable: installed
       .filter((vertical) => vertical.reapplicable !== false)
       .map((vertical) => ({
@@ -75,9 +81,30 @@ export function additionsGroup(status, target) {
     chips: installed
       .filter((vertical) => vertical.reapplicable === false)
       .map((vertical) => ({ id: vertical.id, title: vertical.title || vertical.id })),
+    provided: (status.provided ?? []).map((vertical) => ({
+      id: vertical.id,
+      title: vertical.title || vertical.id,
+      sentence: vertical.note,
+    })),
     chosen: again === null ? verticalsOf(target) : [],
     rerendering: again,
   };
+}
+
+/**
+ * At a product root, a way into each of its services: the directory to
+ * point the page at — the status reports it whole, so the page builds
+ * no path of its own — and the button's words, which name the service
+ * by its directory and what it is. Empty anywhere else.
+ *
+ * @param {{ services?: ReadonlyArray<{ path: string, directory: string, label: string }> }} status
+ * @returns {ServiceLink[]}
+ */
+export function serviceLinks(status) {
+  return (status.services ?? []).map((service) => ({
+    path: service.directory,
+    label: `Open ${service.path}/ (${service.label})`,
+  }));
 }
 
 /**

@@ -24,7 +24,11 @@
  * vertical's {@link Vertical.reads}, to put a reader after what it
  * reads; each vertical's own conflicts; and the conflicts of the pieces
  * already on the scope ({@link PlanScope.rules}), which what a plan adds
- * must not newly break. A promotion is read as
+ * must not newly break; and, on a monorepo service
+ * ({@link PlanScope.member}), each vertical's `placement` — one whose
+ * place is a repository root neither goes there nor comes in as a
+ * prerequisite, and one needing it is unavailable naming it, as it
+ * would plan on a repository of its own. A promotion is read as
  * certain once its adapter matches: planning cannot know an answer
  * that has not been given, so a JVM image counts as both flavours.
  *
@@ -93,6 +97,19 @@ export interface PlanScope {
    * must still answer. Absent, none.
    */
   readonly rules?: readonly Conflict[];
+  /**
+   * Set when the scope is a service of a monorepo product — a
+   * directory of the product's repository, not a repository of its
+   * own (`./scope.ts`) — so a vertical whose place is a repository
+   * root ({@link Vertical.placement}) can neither go here nor come in
+   * as a prerequisite, and one needing it reads as unavailable,
+   * naming it. `provided` are the ids of {@link installed} the product
+   * gives the service rather than an install of its own — the
+   * repository's version control, the image the product root builds —
+   * which a plan on a repository of its own would not have. Absent,
+   * the scope is a repository root.
+   */
+  readonly member?: { readonly provided: readonly string[] };
 }
 
 /** One vertical of a planned order, and why it is in it. */
@@ -143,6 +160,7 @@ export function readiness(registry: Registry, scope: PlanScope, id: string): Rea
   if (scope.installed.includes(id)) return { kind: 'included' };
   const vertical = registry.vertical(id);
   if (vertical === null) throw new Error(`readiness: no vertical '${id}' is registered`);
+  if (misplaced(scope, vertical)) return { kind: 'unavailable', gap: placementGap([id]) };
   const closure = closureOf(registry, scope, [vertical]);
   if (closure === null) {
     return { kind: 'unavailable', gap: gapOf(registry, scope, vertical) };
@@ -174,6 +192,10 @@ export function plan(registry: Registry, scope: PlanScope, requested: readonly s
     const vertical = registry.vertical(id);
     if (vertical === null) return { kind: 'unknown', vertical: id };
     wanted.push(vertical);
+  }
+  const placed = wanted.find((vertical) => misplaced(scope, vertical));
+  if (placed !== undefined) {
+    return { kind: 'unavailable', vertical: placed.id, gap: placementGap([placed.id]) };
   }
 
   const closure = closureOf(registry, scope, wanted);
@@ -417,7 +439,10 @@ function providersOf(
       .verticals()
       .filter(
         (vertical) =>
-          !taken.has(vertical.id) && !chosen.has(vertical.id) && promotesAny(vertical, wanted),
+          !taken.has(vertical.id) &&
+          !chosen.has(vertical.id) &&
+          !misplaced(scope, vertical) &&
+          promotesAny(vertical, wanted),
       );
     for (const vertical of frontier) chosen.add(vertical.id);
   }
@@ -584,6 +609,18 @@ function stepsOf(
  * scope's, against what it would add.
  */
 function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): ReadinessGap {
+  if (scope.member !== undefined) {
+    // What stops it may be only where it was asked: planned on a
+    // repository of its own, it would come with a vertical whose place
+    // is a repository root. That is the whole gap — a stack, an
+    // entrypoint or a link would change nothing here.
+    const anywhere = closureOf(registry, repositoryOf(scope), [vertical]);
+    const placed = (anywhere?.placed ?? [])
+      .map((step) => step.vertical)
+      .filter((step) => step.placement?.scope === 'repository')
+      .map((step) => step.id);
+    if (placed.length > 0) return placementGap(placed);
+  }
   const tags = asSet(scope.tags);
   const acquirable = acquirableIn(registry);
   const entrypoint = new Set<Tag>();
@@ -617,6 +654,44 @@ function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): Readin
       ),
     ],
     nearestStacks: nearestStacks(registry, scope, vertical),
+  };
+}
+
+/**
+ * Whether `vertical` is placed at a repository root and `scope` is a
+ * monorepo service — somewhere it can neither go nor be planned in.
+ * @see PlanScope.member
+ */
+function misplaced(scope: PlanScope, vertical: Vertical): boolean {
+  return scope.member !== undefined && vertical.placement?.scope === 'repository';
+}
+
+/**
+ * The gap of a vertical stopped only by where it was asked: `ids` are
+ * the verticals whose place is a repository root — it, or what it
+ * would be planned with there.
+ */
+function placementGap(ids: readonly string[]): ReadinessGap {
+  return {
+    entrypoint: [],
+    peer: [],
+    identity: [],
+    rules: [],
+    nearestStacks: [],
+    repositoryOnly: ids,
+  };
+}
+
+/**
+ * A monorepo service's scope as a repository of its own: without what
+ * the product gave it, and without the placement a member keeps.
+ */
+function repositoryOf(scope: PlanScope): PlanScope {
+  const provided = scope.member?.provided ?? [];
+  return {
+    tags: scope.tags,
+    installed: scope.installed.filter((id) => !provided.includes(id)),
+    ...(scope.rules === undefined ? {} : { rules: scope.rules }),
   };
 }
 

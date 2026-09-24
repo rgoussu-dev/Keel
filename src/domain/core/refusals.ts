@@ -10,7 +10,8 @@
  * vertical is built here, as a `RefusalError` carrying both — the
  * resolver's last-line throw, the planner's refusals (`./plan-refusal.ts`),
  * `keel.dials`' reasons for dropping an extra, `keel add`'s product-root
- * redirect and `keel new`'s composite `--with`. So a fact reads the
+ * redirect and `keel new`'s composite `--with`, and a vertical placed at
+ * a repository root asked of a monorepo service. So a fact reads the
  * same whichever of them meets it first, and in either phase.
  *
  * **Phase-neutral.** A sentence here never says `--with` or `keel
@@ -103,6 +104,17 @@ export const UNCOVERED_CODE = 'keel.uncoverable-vertical';
 export const INCOMPATIBLE_CODE = 'keel.incompatible';
 
 /**
+ * The code a vertical is refused with, in both phases, when what
+ * stops it is the scope it was asked in rather than the project: one
+ * asked of a product root that belongs in a service (an `elsewhere`),
+ * and one asked of a monorepo service that belongs at the repository
+ * root — or needs a vertical that does (an `unavailable` naming
+ * `repositoryOnly`). "Not here", where `keel.uncoverable-vertical` is
+ * "not in this project".
+ */
+export const WRONG_SCOPE_CODE = 'keel.wrong-scope';
+
+/**
  * Tag namespaces a preset fixes at `keel new`. An adapter that needs
  * one this project lacks is an adapter for another kind of project.
  * `arch.` is read after the entrypoints are picked out, so what it
@@ -171,6 +183,20 @@ export function unavailableRefusal(
   gap: ReadinessGap,
   rules: readonly Conflict[] = [],
 ): RefusalError {
+  const placed = gap.repositoryOnly ?? [];
+  if (placed.length > 0) {
+    return refusalError(
+      {
+        kind: 'unavailable',
+        vertical: vertical.id,
+        missing: {},
+        carriedBy: [],
+        repositoryOnly: placed,
+      },
+      WRONG_SCOPE_CODE,
+      names,
+    );
+  }
   const broken = conflictsOf([vertical, { conflicts: rules }]).filter((conflict) =>
     gap.rules.includes(conflict.id),
   );
@@ -296,16 +322,41 @@ export function incompatibleRefusal(
  * them can take it, rather than the tags the root lacks — a root
  * carries almost none, so its nearest adapter is whichever family
  * happens to sit closest to an empty set, and its gap is advice for a
- * different product. `code` is the one the front door has always
- * refused this with.
+ * different product. Under {@link WRONG_SCOPE_CODE}, in both phases.
  */
 export function elsewhereRefusal(
   names: RefusalNames,
   vertical: Vertical,
   services: readonly ElsewhereService[],
-  code: string,
 ): RefusalError {
-  return refusalError({ kind: 'elsewhere', vertical: vertical.id, services }, code, names);
+  return refusalError(
+    { kind: 'elsewhere', vertical: vertical.id, services },
+    WRONG_SCOPE_CODE,
+    names,
+  );
+}
+
+/**
+ * The refusal of a vertical placed at a repository root
+ * (`Vertical.placement`) asked of a monorepo product's root, which is
+ * that repository's root but carries none of its adapters: no service
+ * can take it instead, since each is a directory of this repository —
+ * so it is not sent anywhere. Under {@link UNCOVERED_CODE}: this is
+ * the right scope, and nothing keel has installs it here.
+ */
+export function productRootPlacementRefusal(names: RefusalNames, vertical: Vertical): RefusalError {
+  return refusalError(
+    {
+      kind: 'unavailable',
+      vertical: vertical.id,
+      missing: {},
+      carriedBy: [],
+      because:
+        "nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+    },
+    UNCOVERED_CODE,
+    names,
+  );
 }
 
 /**
@@ -369,6 +420,35 @@ export function alreadyInstalledNote(vertical: Vertical): string {
 }
 
 /**
+ * The note `keel add` gives in a monorepo service for a vertical the
+ * product gives it rather than an install of its own: `repository` —
+ * the product root installed it, and its place is the repository the
+ * service is part of; `product` — the product root builds it for this
+ * service (an adapter's `providesInServices`). Nothing is installed,
+ * and the run is Ok, as for one installed here already; there is
+ * nothing here to re-render either, so the note names no command.
+ */
+export function providedNote(vertical: Vertical, by: 'repository' | 'product'): string {
+  const where =
+    by === 'repository'
+      ? 'the product root has it, for the one repository its services share'
+      : 'the product root builds it for this service';
+  return `${verticalTitle(vertical)} is already there: ${where}`;
+}
+
+/**
+ * The note `keel new` gives for a service of a monorepo product that a
+ * vertical the product root builds for its services
+ * (`Adapter.providesInServices`) is not built for — a stack the root's
+ * glue does not know, a plugin's — where the service could take the
+ * vertical on its own: the product root leaves it out, and adding it
+ * in the service fills the gap.
+ */
+export function unbuiltInServiceNote(servicePath: string, vertical: Vertical): string {
+  return `${servicePath}/ has no ${verticalTitle(vertical)} from the product root, which builds one only for the stacks it knows — 'keel add ${vertical.id}' there adds its own`;
+}
+
+/**
  * The note a run opens with when it installs verticals it was not
  * asked for, because the ones it was need them: `added Container
  * image, Distribution — needed by Infrastructure as code`. Titles, in
@@ -429,6 +509,8 @@ export function refreshProposalNote(
  */
 function unavailableSentence(refusal: UnavailableRefusal, names: RefusalNames): string {
   const title = titleOf(names, refusal.vertical);
+  const placed = refusal.repositoryOnly ?? [];
+  if (placed.length > 0) return placementSentence(title, refusal.vertical, placed, names);
   if (refusal.because !== undefined) return `${title} cannot be installed here: ${refusal.because}`;
   const entrypoint = refusal.missing.entrypoint ?? [];
   const peer = refusal.missing.peer ?? [];
@@ -466,6 +548,26 @@ function unavailableSentence(refusal: UnavailableRefusal, names: RefusalNames): 
     needs.push(`what ${listed(adders)} ${verb}, which this project does not have yet`);
   }
   return `${title} needs ${needs.join('; and ')}`;
+}
+
+/**
+ * A vertical stopped by where it was asked — a monorepo service — in
+ * the words of the first vertical whose place is a repository root:
+ * itself ("Continuous integration cannot go in a monorepo service:
+ * …"), or one it needs ("Infrastructure as code needs Distribution,
+ * which cannot go in a monorepo service: …").
+ */
+function placementSentence(
+  title: string,
+  id: string,
+  placed: readonly string[],
+  names: RefusalNames,
+): string {
+  const [first = id] = placed;
+  const because = names.vertical(first)?.placement?.because ?? 'its place is a repository root';
+  if (placed.includes(id)) return `${title} cannot go in a monorepo service: ${because}`;
+  const needed = listed(placed.map((other) => titleOf(names, other)));
+  return `${title} needs ${needed}, which cannot go in a monorepo service: ${because}`;
 }
 
 /** The nearest-stacks tail of an identity sentence; empty when none carries it. */

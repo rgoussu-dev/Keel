@@ -140,14 +140,21 @@ disagree:
   needs an entrypoint this project does not have: HTTP server — a REST
   endpoint._ Kept rather than hidden, because an absent option answers
   "why can I not have observability?" with nothing.
-- **Belongs in a service** — at a composite product's root, what goes
-  in one of its services, each saying which.
+- **Belongs in a service** — at a composite product's root, an
+  **Open backend/ (quarkus-rest · Gradle)** button per service, which
+  points the page at that directory and opens its "What to add"; then
+  what goes in one of the services, each saying which — Container image
+  and the agent harness read as there already in both.
 - **Installed** — each vertical with a **Re-render** button:
   `keel add <id> --reapply`, a run of its own rather than a card in the
   add's set, since it rewrites what the vertical owns from the answers
   the manifest recorded. Ticking a card lets it go. A product's glue
   (`fullstack`) and a bounded context are recorded as installed too,
-  and no `keel add` names them, so they are chips, not buttons.
+  and no `keel add` names them, so they are chips, not buttons. In a
+  monorepo service, what the product gives it — its repository's
+  version control, the image the product root builds — is a line each,
+  saying where it comes from; a CI pipeline or a release, which only a
+  repository root reads, is under _Not for this project_, saying so.
 
 An add can change what an installed vertical would render —
 Persistence arriving where Distribution's deploy descriptor was written
@@ -467,8 +474,15 @@ generation this keel writes: where they differ, every add but
 fact, reported once rather than on every card. An installed entry is
 `reapplicable` where `keel add <id> --reapply` can re-render it — not a
 product's glue (`fullstack`) nor a bounded context, which the manifest
-records and no `keel add` names. `keel add --list` prints the same
-status.
+records and no `keel add` names. At a composite product's root,
+`services` lists each service as the product recorded it (`path`,
+`stack`, `buildSystem`) with the `directory` to open it at and a
+`label` for its button (`quarkus-rest · Gradle`); in a monorepo
+service, `provided` lists what the product gives it — its
+repository's version control, the image the product root builds —
+each with the `note` `keel add <id>` answers there, an Ok that stages
+nothing. Both are empty anywhere else. `keel add --list` prints the
+same status.
 
 `add-vertical` names its verticals as `verticals` — a set, planned
 and installed in one run with what it needs, exactly as `keel add a b`
@@ -547,8 +561,9 @@ under _Not for this project_ before any click, in the words the finder
 uses — _"Container image needs an entrypoint this project does not
 have: HTTP server — a REST endpoint"_ — never a tag no command can
 add. Pointed at a composite product's root, a vertical the root cannot
-carry is refused naming the services that can take it, and listed
-under _Belongs in a service_.
+carry is refused naming the services that can take it
+(`keel.wrong-scope`), and listed under _Belongs in a service_ beside a
+button into each service.
 
 A vertical that installs only once another has is no longer refused
 at all: distribution on a project with no container image yet

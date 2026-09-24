@@ -71,7 +71,7 @@ import { expectOk, installMediator } from './factory.js';
 
 /**
  * The invariants the grid holds, by the ids `docs/roadmap.md` gives
- * them. I7 and I9 land with the steps that make them true.
+ * them. I9 lands with the step that makes it true.
  */
 export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
@@ -80,6 +80,7 @@ export const INVARIANTS = {
   I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code and sentence',
   I5: 'keel new --with v and keel add v on the same stack reach the same outcome, code and sentence',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
+  I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
 } as const;
 
@@ -95,9 +96,19 @@ export type Invariant = keyof typeof INVARIANTS;
  * Q1.3, when the extras menu and both front doors moved onto the
  * planner; I8 landed hard, with the same step; I6 with Q1.7, when every
  * refusal of a vertical came to be written by one builder that prints
- * no tag.
+ * no tag; I4 with Q1.10, when a monorepo service came to read what its
+ * product gives it and what its repository root keeps from it — and
+ * I7 landed hard, with the same step.
  */
-export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I6', 'I8'];
+export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8'];
+
+/**
+ * The codes a refusal about a file in the way carries — the one kind
+ * of refusal a composite service must never meet (I7): the product
+ * root writing into a service is the product's to declare, not the
+ * user's to trip over.
+ */
+export const FILE_REFUSALS: readonly string[] = ['keel.path-conflict', 'keel.path-missing'];
 
 /** The verdict of a cell that came back Ok. */
 export const OK = 'ok';
@@ -356,9 +367,12 @@ export async function settle(
 /**
  * Holds a project's cards to the add each stands for (I4), in the
  * directory `status` was read from: every vertical of `verticals` is
- * either installed there or a card, and a card agrees with the preview
- * of `keel add <id>` — `outcome`, the cell already swept for it.
+ * installed there, given by the product it is part of, or a card, and
+ * a card agrees with the preview of `keel add <id>` — `outcome`, the
+ * cell already swept for it.
  *
+ * - a vertical the product gives (`provided`) previews Ok, stages
+ *   nothing and runs nothing, and says the card's note;
  * - `ready` previews Ok;
  * - `needs` previews Ok, and stages exactly what naming its
  *   prerequisites with it stages ({@link Grid.twin}, which records
@@ -383,6 +397,18 @@ export async function holdCard(
     (candidate) => candidate.id === vertical,
   );
   if (card === undefined) {
+    const given = status.provided.find((candidate) => candidate.id === vertical);
+    if (given !== undefined) {
+      const preview = outcome.value;
+      const nothing =
+        outcome.verdict === OK &&
+        preview !== null &&
+        preview.changes.length === 0 &&
+        preview.actions.length === 0 &&
+        (preview.notes ?? []).includes(given.note);
+      if (!nothing) grid.violate('I4', cell);
+      return;
+    }
     if (!status.installed.some((installed) => installed.id === vertical)) grid.violate('I4', cell);
     return;
   }

@@ -157,14 +157,14 @@ Every refusal of a vertical or a file is **data first**: a `Refusal`
 ([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
 `RefusalError` beside its code and the sentence written from it.
 
-| Kind            | Carries                                                                                                          | Raised when                                                        |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here                         |
-| `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle      |
-| `elsewhere`     | the vertical, and each service with how ready it is there                                                        | it is asked of a composite product rather than one of its services |
-| `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together           |
-| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way         |
-| `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                     |
+| Kind            | Carries                                                                                                          | Raised when                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle                                     |
+| `elsewhere`     | the vertical, and each service with how ready it is there                                                        | it is asked of a composite product rather than one of its services                                |
+| `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together                                          |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way                                        |
+| `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                                                    |
 
 One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
 that data as a sentence, and every surface speaks it: the planner's
@@ -222,7 +222,12 @@ carries almost no tags, so its nearest adapter is advice for some other
 product, and a vertical the root cannot carry is refused as
 `elsewhere`, naming the services that can take it — _"Persistence
 belongs to a service, not to the product root — it goes in
-backend/"_.
+backend/"_. That, and a monorepo service asked for what only a
+repository root reads — _"Continuous integration cannot go in a
+monorepo service: its pipeline is read only at the repository root,
+which in a monorepo is the product root — per-service pipelines need
+the polyrepo layout"_ — are refused under `keel.wrong-scope`: not
+here, where `keel.uncoverable-vertical` is not in this project.
 
 ### Stacks
 
@@ -336,18 +341,19 @@ vertical declares binds a newcomer whose tags would break it, exactly
 as the newcomer's own rules do, and the install loop holds every such
 rule again after each vertical folds in the tags it really added.
 
-#### Three kinds of refusal, and only one of them is a conflict
+#### Four kinds of refusal, and only one of them is a conflict
 
 A `Conflict` is about **tags**. That is the whole test, and it is
 narrower than "the command said no" — most of what keel refuses is
-not a capability sitting badly with another capability. The three
-kinds, so the next reader does not re-run the audit:
+not a capability sitting badly with another capability. The kinds, so
+the next reader does not re-run the audit:
 
-| kind                 | reads as                                     | lives in                            |
-| -------------------- | -------------------------------------------- | ----------------------------------- |
-| **tag conflict**     | "capability X cannot sit with capability Y"  | a `Conflict` on the piece owning it |
-| **structural fact**  | "this preset/project is not shaped for that" | a check where the shape is known    |
-| **capability probe** | "no adapter here would emit anything"        | `coversFor` / `emitsFor`            |
+| kind                   | reads as                                     | lives in                                                                |
+| ---------------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
+| **tag conflict**       | "capability X cannot sit with capability Y"  | a `Conflict` on the piece owning it                                     |
+| **structural fact**    | "this preset/project is not shaped for that" | a check where the shape is known                                        |
+| **declared placement** | "this is read only at a repository root"     | `Vertical.placement` / `Adapter.providesInServices`, read by `scope.ts` |
+| **capability probe**   | "no adapter here would emit anything"        | `coversFor` / `emitsFor`                                                |
 
 **Structural facts** are the ones that look like conflicts and are
 not, because the thing they turn on is not a tag:
@@ -359,7 +365,8 @@ not, because the thing they turn on is not a tag:
   — a composite's services can perfectly well each be a modulith.
 - `manifest.services` being non-empty is the same fact brownfield, and
   why `keel add module` sends the user into a service directory — and
-  `keel add` too, for any vertical the root's own tags cannot cover.
+  `keel add` too, for any vertical the planner reads the root as unable
+  to carry (`keel.wrong-scope`, naming the services that can).
 - `manifest.modules` already holding the name, or holding a
   `--consumes` target with no seam, is manifest **state**: it takes a
   name to check, and a name is not a tag.
@@ -367,6 +374,26 @@ not, because the thing they turn on is not a tag:
   `monorepo` nor `polyrepo`, a build system the stack does not list,
   `--with` or `keel add` naming the same vertical twice — input
   validation against what the registry declares.
+
+**Declared placements** are the structural fact a vertical brings with
+it. A monorepo product's services are directories of one repository,
+and nothing in a service's tags says so — only the product root's
+manifest does, by listing it. So a vertical whose output only a
+repository root reads — `vcs`'s hooks and changelog, `ci`'s pipeline,
+`distribution`'s release workflows — declares `placement: { scope:
+'repository', because }`, and product glue that builds something inside
+its services — the fullstack `compose.yaml`'s images — declares
+`providesInServices: { vertical, stacks }` on its adapter, which writes
+exactly those. `scope.ts` reads both off the manifests on disk
+(`scopeOf`, through `ManifestStore`) and hands the planner a value: in
+a monorepo service, the product root's placed verticals and what its
+glue builds read as there already, and a placed vertical the root does
+not have — or a vertical needing one, `iac` needing `distribution` —
+as not for that scope (`keel.wrong-scope`). `keel new` reads the same
+placement to leave those verticals out of a monorepo service, so what
+it scaffolds and what `keel add` refuses there cannot drift. No tag is
+minted for either: the fact is where a directory sits, and a
+declaration read by a structural check is the honest home for it.
 
 **Capability probes** ask the adapter set a question no tag answers:
 would anything actually be emitted here? `coversFor` and
@@ -872,9 +899,13 @@ service is a **full stack installed into its own directory** (own
 tree, own manifest) with its siblings' projections in scope. The
 repository layout (`monorepo`/`polyrepo`) is the user's choice and is
 deliberately **not a tag**: no adapter behaves differently by topology
-— what varies (where git runs, whether
-[product-root glue](verticals/fullstack.md) exists) belongs to the
-orchestrator.
+— what varies (whether [product-root glue](verticals/fullstack.md)
+exists) belongs to the orchestrator, and where a vertical may go is its
+own declared placement (above): under monorepo, `vcs` runs once at the
+product root because it declares the repository root as its place.
+`keel new` in a directory inside a product that lists no service there
+is refused (`keel.inside-product`): adding a service to a product is
+not supported yet.
 
 ## The toolchain block
 

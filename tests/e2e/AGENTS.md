@@ -164,15 +164,17 @@ Rust or Go context has no container to lose a handler in.
   shipped), `ui-refusal` (a scaffolded project; what it cannot carry,
   shown before the click, a refusal only the click meets, shown in the
   plan column, and the re-render state) and `ui-compose` (an empty
-  directory and two scaffolded projects; the Options step's "Also
-  scaffold" group, the "What to add" cards ticked into one run, and
-  the bodies the page posts for them — `watchTraffic` keeps what went
-  out). What they cover is the seam nothing else can: the narrowing,
-  the steps, the transitions and the groups are pure and unit-tested
-  (`finder.js`, `steps.js`, `target.js`, `extras.js`, `additions.js`),
-  but the element rebuilds its subtree on every change and `<keel-app>`
-  replaces the element itself, so keeping a choice — or the focus — across a step
-  is a claim about surviving a DOM replacement. A page-level suite is
+  directory, two scaffolded projects and a TypeScript product; the
+  Options step's "Also scaffold" group, the "What to add" cards ticked
+  into one run, the bodies the page posts for them — `watchTraffic`
+  keeps what went out — and a product root's **Open backend/** button
+  into a service). What they cover is the seam nothing else can: the
+  narrowing, the steps, the transitions and the groups are pure and
+  unit-tested (`finder.js`, `steps.js`, `target.js`, `extras.js`,
+  `additions.js`), but the element rebuilds its subtree on every
+  change and `<keel-app>` replaces the element itself, so keeping a
+  choice — or the focus — across a step is a claim about surviving a
+  DOM replacement. A page-level suite is
   the only thing that sees a `pageerror` too — a throw inside a
   listener leaves the page looking right and aborts the rest of that
   handler. **None of them presses Generate on a JVM stack**: the `web`

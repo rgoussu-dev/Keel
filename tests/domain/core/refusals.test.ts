@@ -14,27 +14,48 @@ import type { Vertical } from '../../../src/domain/contract/composition.js';
 import type { ReadinessGap } from '../../../src/domain/contract/queries.js';
 import { RefusalError, type Refusal } from '../../../src/domain/contract/refusal.js';
 import {
+  elsewhereRefusal,
+  productRootPlacementRefusal,
+  providedNote,
   refusalSentence,
   ruleRefusal,
+  unbuiltInServiceNote,
   uncoveredRefusal,
   unavailableRefusal,
+  WRONG_SCOPE_CODE,
   type RefusalNames,
 } from '../../../src/domain/core/refusals.js';
 
-const vertical = (id: string, title: string, promotes: readonly string[] = []): Vertical => ({
+const vertical = (
+  id: string,
+  title: string,
+  promotes: readonly string[] = [],
+  because?: string,
+): Vertical => ({
   id,
   title,
   description: '',
   dimensions: [],
   adapters: [],
   promotes,
+  ...(because === undefined ? {} : { placement: { scope: 'repository', because } }),
 });
 
 const REGISTERED: readonly Vertical[] = [
   vertical('observability', 'Observability'),
   vertical('containerization', 'Container image', ['deploy.container-image']),
-  vertical('distribution', 'Distribution', ['dist.container-image', 'dist.release']),
-  vertical('ci', 'Continuous integration', ['ci.github-actions']),
+  vertical(
+    'distribution',
+    'Distribution',
+    ['dist.container-image', 'dist.release'],
+    'its release workflows are read at the repository root only',
+  ),
+  vertical(
+    'ci',
+    'Continuous integration',
+    ['ci.github-actions'],
+    'its pipeline is read at the root',
+  ),
   vertical('gateway', 'Service gateway'),
   vertical('iac', 'Infrastructure as code'),
 ];
@@ -250,6 +271,30 @@ const TABLE: readonly {
       'Observability belongs to a service, not to the product root — none of its services can carry it',
   },
   {
+    why: 'a monorepo service asked for what only a repository root reads, in its own words',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'ci',
+      missing: {},
+      carriedBy: [],
+      repositoryOnly: ['ci'],
+    },
+    sentence:
+      'Continuous integration cannot go in a monorepo service: its pipeline is read at the root',
+  },
+  {
+    why: 'a monorepo service asked for what needs one, in that one’s words',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'iac',
+      missing: {},
+      carriedBy: [],
+      repositoryOnly: ['distribution'],
+    },
+    sentence:
+      'Infrastructure as code needs Distribution, which cannot go in a monorepo service: its release workflows are read at the repository root only',
+  },
+  {
     why: 'verticals no order installs together',
     refusal: { kind: 'incompatible', verticals: ['distribution', 'containerization'] },
     sentence:
@@ -368,6 +413,58 @@ describe('the refusals built from a gap', () => {
     };
     expect(uncoveredRefusal(plugin, []).message).toBe(
       "Probe has no adapter for this project's stack",
+    );
+  });
+});
+
+describe('the refusals and notes of a scope', () => {
+  const [, containerization, distribution, ci, , iac] = REGISTERED as readonly Vertical[];
+
+  it('refuses a vertical stopped only by where it was asked as the wrong scope', () => {
+    const refusal = unavailableRefusal(names, iac as Vertical, {
+      entrypoint: [],
+      peer: [],
+      identity: [],
+      rules: [],
+      nearestStacks: [],
+      repositoryOnly: ['distribution'],
+    });
+    expect(refusal.code).toBe(WRONG_SCOPE_CODE);
+    expect(refusal.refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'iac',
+      missing: {},
+      carriedBy: [],
+      repositoryOnly: ['distribution'],
+    });
+    expect(refusal.message).toBe(refusalSentence(refusal.refusal, names));
+  });
+
+  it('sends a product root’s request to its services under the same code', () => {
+    const refusal = elsewhereRefusal(names, containerization as Vertical, [
+      { path: 'backend', stack: 'quarkus-rest', readiness: 'included' },
+    ]);
+    expect(refusal.code).toBe(WRONG_SCOPE_CODE);
+  });
+
+  it('sends a repository-root vertical nowhere from a product root that cannot carry it', () => {
+    const refusal = productRootPlacementRefusal(names, ci as Vertical);
+    expect(refusal.code).toBe('keel.uncoverable-vertical');
+    expect(refusal.message).toBe(
+      "Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+    );
+    expect(refusal.message).not.toMatch(ANY_TAG);
+  });
+
+  it('says where a vertical a monorepo service has from its product comes from', () => {
+    expect(providedNote(distribution as Vertical, 'repository')).toBe(
+      'Distribution is already there: the product root has it, for the one repository its services share',
+    );
+    expect(providedNote(containerization as Vertical, 'product')).toBe(
+      'Container image is already there: the product root builds it for this service',
+    );
+    expect(unbuiltInServiceNote('backend', containerization as Vertical)).toBe(
+      "backend/ has no Container image from the product root, which builds one only for the stacks it knows — 'keel add containerization' there adds its own",
     );
   });
 });

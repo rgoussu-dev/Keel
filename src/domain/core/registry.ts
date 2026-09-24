@@ -185,6 +185,32 @@ function validateVertical(origin: string, vertical: Vertical): void {
     }
   }
   validateAdapterPromotes(origin, vertical);
+  validatePlacement(origin, vertical);
+}
+
+/**
+ * A placement is read as a sentence — its `because` is all a monorepo
+ * service is told when it is refused the vertical — and as the one
+ * scope keel knows, `repository`. A plugin written in plain JavaScript
+ * reaches here without the compiler's help, so a blank reason or a
+ * scope keel does not read is refused, naming the plugin, rather than
+ * refused in no words, or not held at all.
+ */
+function validatePlacement(origin: string, vertical: Vertical): void {
+  const placement = vertical.placement;
+  if (placement === undefined) return;
+  if (placement.scope !== 'repository') {
+    throw refuse(
+      origin,
+      `vertical '${vertical.id}' declares placement scope '${String(placement.scope)}', which keel does not know — the one scope is 'repository'`,
+    );
+  }
+  if (typeof placement.because !== 'string' || placement.because.trim() === '') {
+    throw refuse(
+      origin,
+      `vertical '${vertical.id}' declares a placement with no 'because' — it is the sentence a monorepo service is refused the vertical in`,
+    );
+  }
 }
 
 /**

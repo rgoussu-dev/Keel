@@ -421,6 +421,53 @@ promotes. When two verticals would each supply what yours requires,
 the planner does not choose between them: the set is refused as
 `keel.missing-prerequisites`, naming both, and the user names one.
 
+### Where a vertical goes in a product
+
+Two more optional declarations, for pieces that meet a composite
+product. Both are read by keel itself — never re-checked in your
+`contribute()` — and neither is a tag.
+
+```js
+export const pipelineVertical = {
+  id: 'acme-pipeline',
+  placement: {
+    scope: 'repository',
+    because:
+      'its workflow is read only at the repository root, which in a monorepo is the product root',
+  },
+  // …
+};
+
+const productGlueAdapter = {
+  id: 'acme-product/compose',
+  // …
+  providesInServices: { vertical: 'containerization', stacks: ['acme-http', 'web-components'] },
+};
+```
+
+- **A vertical that writes repository-root files declares
+  `placement`.** Git's own directory and hooks, a CI provider's
+  workflows, a release pipeline: written inside a monorepo product's
+  service, none of it is ever read. With a `placement` of scope
+  `'repository'` and a `because`, `keel new` leaves your vertical out of a
+  monorepo product's services — the product root carries the
+  repository — and `keel add` in such a service reads it as there
+  already when the product root has it, and refuses it otherwise, as
+  `keel.wrong-scope`, in the words of your `because` (which finishes
+  _"… cannot go in a monorepo service:"_). A vertical needing yours is
+  refused there too, naming it. A polyrepo service is a repository of
+  its own and takes it. Registration refuses a blank `because`, or a
+  `scope` other than `repository`.
+- **Product glue that builds something inside its services declares
+  `providesInServices`** on the adapter that writes it: the vertical
+  whose part it builds, and the service stacks it builds it for — and
+  it writes exactly those, reading its own declaration, so the two
+  cannot disagree. In a monorepo service whose stack is listed, that
+  vertical then reads as already there, and `keel add` of it adds
+  nothing rather than meeting your files as `keel.path-conflict`; in
+  one whose stack is not listed it stays to add, and the product's
+  `keel new` report says so.
+
 ---
 
 ## Trust — read this
@@ -469,6 +516,7 @@ loads there is no name to quote, so those messages name the path.
 | A dimension none of its own adapters covers | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers` |
 | An adapter promoting beyond its vertical    | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …` |
 | A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
+| A `placement` with no reason                | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                |
 | An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
 | An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
 

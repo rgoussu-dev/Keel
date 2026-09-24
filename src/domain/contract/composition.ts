@@ -441,7 +441,55 @@ export interface Adapter {
    * SQL engine — since "may" is the whole of what it says.
    */
   readonly promotes?: readonly Tag[];
+  /**
+   * What this adapter builds inside a product's services when it runs
+   * at the product root — {@link ServiceProvision}. Absent, it builds
+   * nothing there.
+   */
+  readonly providesInServices?: ServiceProvision;
   contribute(ctx: Ctx): Promise<Contribution> | Contribution;
+}
+
+/**
+ * What a product root's adapter builds for its services: `vertical`'s
+ * part in each service scaffolded from one of `stacks`. The product
+ * glue's `compose.yaml` builds an image for each service it knows,
+ * and writes that service's Dockerfile beside it — so in that service
+ * `containerization` is already there, and `keel add containerization`
+ * would only meet the files the root wrote.
+ *
+ * Declared on the adapter that writes those files, and read by the
+ * adapter itself to decide which it writes, so what it declares and
+ * what it builds cannot disagree. A service whose stack it does not
+ * list gets nothing from it and keeps the vertical to add: a plugin
+ * product's backend the glue has no image for.
+ */
+export interface ServiceProvision {
+  /** Id of the vertical whose part it builds — `containerization`. */
+  readonly vertical: string;
+  /** Ids of the service stacks it builds that part for. */
+  readonly stacks: readonly string[];
+}
+
+/**
+ * Where a vertical's output is read, when that is not wherever it is
+ * installed. {@link Vertical.placement}.
+ */
+export interface Placement {
+  /**
+   * `repository` — only at the root of a repository: git's own
+   * directory and hooks, a CI provider's workflows, a release
+   * pipeline. A service of a monorepo product is a directory inside
+   * the product's repository, so what such a vertical writes there is
+   * never read.
+   */
+  readonly scope: 'repository';
+  /**
+   * Why, in words that finish "… cannot go in a monorepo service:" —
+   * the whole of what a refusal of it there says, and of what one
+   * needing it says.
+   */
+  readonly because: string;
 }
 
 /**
@@ -525,6 +573,23 @@ export interface Vertical {
    * disagree, requirements win.
    */
   readonly reads?: readonly string[];
+  /**
+   * Where its output is read, when only a repository root reads it —
+   * {@link Placement}. Absent, it goes wherever it is installed.
+   *
+   * Declared because a monorepo product's services are directories of
+   * one repository, and nothing about a service's own tags says so: a
+   * pipeline written under `backend/.github/workflows/` is a pipeline
+   * no provider runs. One declaration, read by two structural checks
+   * that therefore cannot drift apart: `keel new` leaves a placed
+   * vertical out of a monorepo product's services (the product root
+   * carries the repository), and in such a service the planner reads
+   * it as there already when the product root has it, and as not for
+   * this scope otherwise — and so reads a vertical needing it the same
+   * way. A polyrepo product's services are repositories of their own,
+   * and keep it.
+   */
+  readonly placement?: Placement;
   /**
    * Every skill name installing this vertical may stage — the union
    * over its adapters' {@link Contribution.skills}, including the

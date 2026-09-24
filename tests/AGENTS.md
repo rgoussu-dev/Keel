@@ -56,8 +56,8 @@ matching change lands in the same commit as the thing it guards:
 
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
-measure behind roadmap epic Q, whose invariants (I1–I6 and I8 today)
-it holds. Three suites, split so vitest runs them in parallel:
+measure behind roadmap epic Q, whose invariants (I1–I8 today) it
+holds. Three suites, split so vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -78,10 +78,11 @@ it holds. Three suites, split so vitest runs them in parallel:
   it.
 - `composite` — every product under every repository layout its install
   offers, at the root and in each service, its cards held to I4 as
-  brownfield's are. The one I4 allowance left is here: a monorepo
-  service's image cells read ready and meet the image files the product
-  root wrote there (PHASE-3), which only the root's declaration of what
-  it builds can say before the click.
+  brownfield's are — a vertical a monorepo service has from its product
+  (`ProjectStatus.provided`) held to an add that stages nothing and says
+  the card's note — and every service cell to I7: never refused for a
+  file in the way, and Ok or `keel.wrong-scope` under the monorepo
+  layout wherever its polyrepo twin, a repository of its own, is Ok.
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
@@ -100,8 +101,11 @@ the record can only shrink. Beside each suite:
   there is nowhere to list a cell, and one violation fails the grid.
   I1 has been hard since Q0.3 — a thrown cell is always a failure —
   I2, I3 and I8 since Q1.3, when the menus and both front doors moved
-  onto the planner, and I6 since Q1.7, when every refusal came to be
-  worded by one builder that prints no tag.
+  onto the planner, I6 since Q1.7, when every refusal came to be
+  worded by one builder that prints no tag, and I4 and I7 since Q1.10,
+  when a monorepo service came to read what its product gives it and
+  what only a repository root may carry. Every known file is empty now
+  but brownfield's I5 key.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records

@@ -8,6 +8,7 @@
 import { productComposeAdapter } from '../adapters/product-compose.js';
 import { productDocsAdapter } from '../adapters/product-docs.js';
 import { productHarnessAdapter } from '../adapters/product-harness.js';
+import { CLAUDE_KIT_TAG } from '../adapters/claude-kit.js';
 import { AGENT_HARNESS_TAG, type Vertical } from '../../contract/composition.js';
 
 export const fullstackVertical: Vertical = {
@@ -20,5 +21,18 @@ export const fullstackVertical: Vertical = {
   // that opens the engine's final pass (and with it the `keel:map`
   // projection) comes from `product-harness`.
   promotes: [AGENT_HARNESS_TAG],
+  // …and a service's harness never replaces it: a family kit writes the
+  // binding spec over the root's own `AGENTS.md`, which indexes the
+  // services' instead. A rule of the piece that is there, so the
+  // planner reads `agent-harness` as not for the root however its tags
+  // came to match a family, and the root sends it to its services.
+  conflicts: [
+    {
+      id: 'fullstack/one-harness',
+      when: [CLAUDE_KIT_TAG],
+      reason:
+        "a product root carries a harness of its own, which indexes its services'; a service's harness goes in the service",
+    },
+  ],
   adapters: [productDocsAdapter, productComposeAdapter, productHarnessAdapter],
 };

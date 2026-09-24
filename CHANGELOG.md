@@ -14,6 +14,29 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A monorepo product's service is part of one repository, and keel
+  now reads it as one.** Inside `backend/` of a monorepo product,
+  `keel add containerization` met the Dockerfile the product root had
+  already written there (`keel.path-conflict`), and so did
+  `distribution` and `iac`, which bring it along; `keel add ci` and
+  `keel add distribution` wrote workflows under `backend/.github/`,
+  where no provider reads them; and `keel add vcs` would initialise a
+  second git repository inside the first. What the product gives a
+  service is now there already — adding `vcs` or `containerization`
+  in it is an Ok that writes nothing, its note saying the product root
+  has it or builds it — and what only a
+  repository root reads is refused there under `keel.wrong-scope`, in
+  the vertical's own words: _"Continuous integration cannot go in a
+  monorepo service: its pipeline is read only at the repository root,
+  which in a monorepo is the product root — per-service pipelines need
+  the polyrepo layout"_; `iac` reads as needing Distribution, which
+  cannot go there. `keel.project-status`, `keel add --list` and
+  `keel ui` say so before the click. A polyrepo product's services are
+  repositories of their own and are unchanged. At a product root,
+  `gateway` is sent to the services that have it, like every other
+  vertical the root cannot carry, rather than refused as needing an
+  HTTP entrypoint.
+
 - **A plugin's rule binds what comes after its piece.** A `Conflict`
   was read, on a project already on disk, only for the vertical being
   added and only against the tags the manifest recorded — so a rule an
@@ -223,6 +246,36 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **A refusal of the scope says so in its code: `keel.wrong-scope`.**
+  A vertical asked of a composite product's root that belongs in a
+  service (`elsewhere`) was refused under `keel.uncoverable-vertical`
+  — `keel.invalid-agent-harness` for the agent harness — and
+  `keel new --with` on a composite under
+  `keel.invalid-extra-verticals`; both, and a monorepo service asked
+  for what only a repository root
+  reads, are now `keel.wrong-scope`: not here, where
+  `keel.uncoverable-vertical` stays not in this project. `ci` and
+  `distribution` asked of a monorepo product root are refused without
+  being sent into a service, since no service there can take them
+  (`keel.uncoverable-vertical`). `keel new --with vcs` on a composite
+  is set aside with a note, as on a single preset. Scripts matching
+  the old codes should match the new one.
+
+- **`keel new` inside a product refuses a directory the product does
+  not list.** `keel new --stack=go-http` in `my-product/worker/` of a
+  monorepo product scaffolded a project that was neither one of the
+  product's services nor a repository of its own. It is refused as
+  `keel.inside-product` before anything is asked: adding a service to
+  a product is not supported yet.
+
+- **`keel ui` opens a product's services from its root.** At a
+  composite product's root, _Belongs in a service_ starts with an
+  **Open backend/ (quarkus-rest · Gradle)** button per service, which
+  points the page at that directory; in a monorepo service, what the
+  product gives it is listed under _Installed_, saying where it comes
+  from. `keel.project-status` reports each service's `directory` and a
+  `label`, and a new `provided` list.
 
 - **`keel ui`'s brownfield page says what a project can take before
   the click, and takes several at once.** The _What to add_ step
@@ -498,6 +551,23 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **Plugin contract: where a vertical goes in a product.** Two
+  optional declarations, each read by one structural check and neither
+  a tag. `Vertical.placement: { scope: 'repository', because }` says a
+  vertical's output is read only at a repository root — keel's own
+  `vcs`, `ci` and `distribution` declare it — so `keel new` leaves it
+  out of a monorepo product's services, and `keel add` there reads it
+  as the product root's or refuses it in the words of `because`.
+  `Adapter.providesInServices: { vertical, stacks }` says what product
+  glue builds inside its services — keel's `compose.yaml` glue declares
+  the images it builds, and writes them by the same field — so that
+  vertical reads as already there in those services, and a service
+  whose stack is not listed (a plugin's backend) keeps it to add, the
+  product's `keel new` report saying so. Registration refuses a
+  placement with no reason. The product glue also declares the rule
+  `fullstack/one-harness`, which is what now keeps a service's agent
+  harness off the product root.
 
 - **The preview carries what the run decided on its own, and the
   status which installed verticals re-render.** `keel.preview`

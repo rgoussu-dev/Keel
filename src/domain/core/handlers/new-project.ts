@@ -35,11 +35,15 @@
  * one question per service interactively), recorded both as the
  * service manifest's `pkg.*` tag and on the product manifest's
  * service refs so root glue follows it. The repository
- * layout is the user's choice: under **monorepo** the `vcs` vertical
- * is hoisted out of the services and runs once at the product root
- * together with the composite stack's own glue verticals; under
- * **polyrepo** every service keeps its own `vcs` run and no shared
- * root artifacts exist. Commit order matches the single flow, per
+ * layout is the user's choice: under **monorepo** the services are
+ * directories of one repository, so a vertical placed at a repository
+ * root (`Vertical.placement` — `vcs`) is left out of them and runs
+ * once at the product root, together with the composite stack's own
+ * glue verticals; under **polyrepo** every service is a repository of
+ * its own, keeps its own `vcs` run, and no shared root artifacts
+ * exist. A directory inside an existing product that it lists no
+ * service in is refused before anything is asked
+ * (`keel.inside-product`). Commit order matches the single flow, per
  * scope: trees, then manifests, then deferred actions (root first,
  * then services in declaration order).
  *
@@ -83,6 +87,7 @@ import {
 } from '../../contract/composition.js';
 import type { Asker, Prompt } from '../../contract/ports/prompt.js';
 import {
+  effectiveTags,
   emptyManifestV2,
   projectScopeRoot,
   type ManifestV2,
@@ -136,11 +141,22 @@ import {
   type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
-import { alreadyIncludedNote, elsewhereRefusal } from '../refusals.js';
-import { defaultScope, readiness } from '../planner.js';
+import {
+  alreadyIncludedNote,
+  elsewhereRefusal,
+  productRootPlacementRefusal,
+  unbuiltInServiceNote,
+} from '../refusals.js';
+import { readiness } from '../planner.js';
 import { PathConflictError, PathMissingError } from '../../contract/refusal.js';
 import { NOTHING_INSTALLED, strayAnswerRefusal } from '../supplied-answers.js';
-import { vcsVertical } from '../verticals/vcs.js';
+import {
+  enclosingProduct,
+  memberScope,
+  presetServiceScope,
+  projectScope,
+  provisionsFor,
+} from '../scope.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
 import type { Registry } from '../../contract/ports/registry.js';
@@ -332,6 +348,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
   /** Resolves the stack and runs the matching staging pipeline. Commits nothing. */
   private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
+    // Before a question is asked: nothing about the stack changes it.
+    const product = await enclosingProduct(this.deps, command.cwd);
+    if (product !== null && product.service === null) {
+      return err(insideProduct(path.relative(command.cwd, product.root)));
+    }
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
     const registered = this.deps.registry.stack(resolved.value);
@@ -546,12 +567,21 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * The refusal of `--with` on a composite stack: each service declares
    * its own extra verticals, and `--with` names no service. Spoken as
    * the product-root refusal `keel add` gives the same vertical — it
-   * belongs to a service, and here is which can take it, from each
-   * service's preset — so the product-level fact reads the same in
-   * both phases. An id no vertical is registered under is refused as
-   * one, as it is on a single-service stack.
+   * belongs to a service (`keel.wrong-scope`), and here is which can
+   * take it, from each service's preset as the layout asked for places
+   * it (the default layout when none was: the question comes later) —
+   * so the product-level fact reads the same in both phases. A vertical
+   * placed at a repository root, asked of a monorepo product, is the
+   * one not sent anywhere, as at a product root on disk. An id no
+   * vertical is registered under is refused as one, as it is on a
+   * single-service stack.
    */
-  private compositeExtraRefusal(services: readonly ResolvedService[], asked: string): DomainError {
+  private compositeExtraRefusal(
+    command: NewProjectCommand,
+    product: Stack,
+    services: readonly ResolvedService[],
+    asked: string,
+  ): DomainError {
     const registry = this.deps.registry;
     const vertical = registry.vertical(asked);
     if (vertical === null) {
@@ -562,6 +592,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         'keel.unknown-vertical',
       );
     }
+    const monorepo = command.layout !== 'polyrepo';
+    if (monorepo && vertical.placement?.scope === 'repository') {
+      return productRootPlacementRefusal(registry, vertical);
+    }
     return elsewhereRefusal(
       registry,
       vertical,
@@ -570,14 +604,16 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         stack: service.stack.id,
         readiness: readiness(
           registry,
-          defaultScope(
+          presetServiceScope(
+            registry,
+            product,
             service.stack,
             service.extraVerticals.map((extra) => extra.id),
+            monorepo,
           ),
           vertical.id,
         ).kind,
       })),
-      'keel.invalid-extra-verticals',
     );
   }
 
@@ -632,7 +668,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       peerTag: peerTag.value,
       peers: [],
       services: [],
-      skipVcs: false,
+      member: false,
       extraVerticals: admitted.order,
       command,
       now,
@@ -706,8 +742,16 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
-    const [asked] = command.extraVerticals ?? [];
-    if (asked !== undefined) return err(this.compositeExtraRefusal(resolved, asked));
+    // What the product preset installs of its own — version control,
+    // at the root of a monorepo or in each polyrepo service — is set
+    // aside with a note, as on a single-service stack; anything else
+    // named belongs to a service, which `--with` does not name.
+    const extras = command.extraVerticals ?? [];
+    const present = stack.verticals.filter((vertical) => extras.includes(vertical.id));
+    const asked = extras.find((id) => !present.some((vertical) => vertical.id === id));
+    if (asked !== undefined) {
+      return err(this.compositeExtraRefusal(command, stack, resolved, asked));
+    }
 
     const layout = await this.resolveLayout(command, stack, prompt);
     if (!layout.ok) return layout;
@@ -747,7 +791,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
               ...(chosen ? { buildSystem: chosen.id } : {}),
             };
           }),
-          skipVcs: false,
+          member: false,
           command,
           now,
           prompt,
@@ -765,7 +809,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           layoutTag: defaultLayoutTag(service.stack),
           peers: peersFor(service, resolved),
           services: [],
-          skipVcs: monorepo,
+          member: monorepo,
           extraVerticals: service.extraVerticals,
           command,
           now,
@@ -785,15 +829,58 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       ),
     );
     const skipped = scopes.reduce((total, scope) => total + scope.skippedHarnessElements, 0);
+    const notes = [
+      ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
+      ...(monorepo ? this.unbuiltNotes(scopes) : []),
+    ];
     const report: InstallReport = {
       subject: stack.id,
       changes,
       actions,
       committed: !command.dryRun,
+      ...(notes.length > 0 ? { notes } : {}),
       ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     };
 
     return ok({ report, scopes });
+  }
+
+  /**
+   * What a monorepo product's root leaves out of a service: a vertical
+   * the root's glue builds for the services it knows
+   * (`Adapter.providesInServices`) but not for this one's stack, where
+   * the service could take it on its own — a plugin's backend the
+   * product's `compose.yaml` has no image for. One note each, so the
+   * report says what `keel add` there would fill in; the product root
+   * is the first scope, the services follow in the product's order.
+   */
+  private unbuiltNotes(scopes: readonly StagedScope[]): readonly string[] {
+    const registry = this.deps.registry;
+    const [root, ...services] = scopes;
+    if (root === undefined) return [];
+    const built = [
+      ...new Set(root.adapters.flatMap((adapter) => adapter.providesInServices?.vertical ?? [])),
+    ];
+    const product = {
+      installed: root.manifest.verticals.map((v) => v.id),
+      tags: effectiveTags(root.manifest),
+    };
+    const notes: string[] = [];
+    for (const service of services) {
+      const ref = root.manifest.services.find((candidate) => candidate.path === service.prefix);
+      if (ref === undefined) continue;
+      const provisions = provisionsFor(registry, product, ref.stack);
+      const scope = memberScope(projectScope(registry, service.manifest), provisions);
+      for (const id of built) {
+        const vertical = registry.vertical(id);
+        if (vertical === null || provisions.some((given) => given.vertical.id === id)) continue;
+        const ready = readiness(registry, scope, id).kind;
+        if (ready === 'ready' || ready === 'needs') {
+          notes.push(unbuiltInServiceNote(service.prefix, vertical));
+        }
+      }
+    }
+    return notes;
   }
 
   /**
@@ -814,7 +901,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     peerTag?: Tag | null;
     peers: readonly PeerLink[];
     services: ManifestV2['services'];
-    skipVcs: boolean;
+    /**
+     * Whether the scope is a service of a monorepo product — a
+     * directory of the product's repository — so a vertical placed at
+     * a repository root is left out of it: the product root carries
+     * the repository.
+     */
+    member: boolean;
     extraVerticals?: readonly Vertical[];
     command: NewProjectCommand;
     now: string;
@@ -835,11 +928,14 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     };
 
     const tree = this.deps.trees(inputs.cwd);
-    const own = inputs.skipVcs
-      ? inputs.stack.verticals.filter((v) => v.id !== vcsVertical.id)
-      : inputs.stack.verticals;
+    // The declaration the add front door refuses by (`Vertical.placement`),
+    // read here too, so what a monorepo service is scaffolded without
+    // and what `keel add` there refuses cannot drift apart.
+    const placed = (v: Vertical) => inputs.member && v.placement?.scope === 'repository';
     const result = await installVerticals({
-      verticals: [...own, ...(inputs.extraVerticals ?? [])],
+      verticals: [...inputs.stack.verticals, ...(inputs.extraVerticals ?? [])].filter(
+        (v) => !placed(v),
+      ),
       // The preset's own rules, held with its verticals' over every
       // tag the run folds in, as `assemblyIsLegal` held them over the
       // tags the dials settled.
@@ -1707,6 +1803,23 @@ function underService(thrown: unknown, prefix: string): unknown {
 /** The default module-layout tag of a service stack, if it declares a choice. */
 function defaultLayoutTag(stack: Stack): Tag | null {
   return stack.moduleLayouts?.[0]?.tag ?? null;
+}
+
+/** The code `keel new` inside a product, in a directory it does not list, is refused with. */
+export const INSIDE_PRODUCT_CODE = 'keel.inside-product';
+
+/**
+ * The refusal of `keel new` in a directory inside a product root that
+ * lists no service there: a project scaffolded there would be neither
+ * a service of the product nor a project of its own, and the product
+ * has no command that adds one. `root` is the product root, relative
+ * to where `keel new` ran.
+ */
+function insideProduct(root: string): DomainError {
+  return new DomainError(
+    `this directory is inside the product at ${toPosix(root)}/, which lists no service here; adding a service to a product is not supported yet`,
+    INSIDE_PRODUCT_CODE,
+  );
 }
 
 function alreadyInitialised(scopeRoot: string): DomainError {

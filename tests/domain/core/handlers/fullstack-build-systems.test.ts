@@ -48,7 +48,10 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-const newComposite = (stack: string, opts: { buildSystem?: string; interactive?: boolean } = {}) =>
+const newComposite = (
+  stack: string,
+  opts: { buildSystem?: string; interactive?: boolean; layout?: 'monorepo' | 'polyrepo' } = {},
+) =>
   newProjectCommand({
     cwd,
     stack,
@@ -56,6 +59,7 @@ const newComposite = (stack: string, opts: { buildSystem?: string; interactive?:
     interactive: opts.interactive ?? false,
     dryRun: false,
     ...(opts.buildSystem !== undefined ? { buildSystem: opts.buildSystem } : {}),
+    ...(opts.layout !== undefined ? { layout: opts.layout } : {}),
   });
 
 const read = (rel: string): string | null => {
@@ -247,7 +251,13 @@ describe('ci follows the per-service choice through the service manifest', () =>
   it('emits a Maven pipeline for a backend scaffolded with backend=maven', async () => {
     const { runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred });
-    expectOk(await mediator.dispatch(newComposite('fullstack', { buildSystem: 'backend=maven' })));
+    // Polyrepo: a monorepo service's pipeline would sit under a
+    // directory no provider reads, so `keel add ci` refuses it there.
+    expectOk(
+      await mediator.dispatch(
+        newComposite('fullstack', { buildSystem: 'backend=maven', layout: 'polyrepo' }),
+      ),
+    );
 
     expectOk(
       await mediator.dispatch(

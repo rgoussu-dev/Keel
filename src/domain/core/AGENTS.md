@@ -3,8 +3,8 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`compatibility`, `planner`, `plan-refusal`, `add-readiness`, `dials`, `answers`, `supplied-answers`,
-`apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
+`compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `dials`, `answers`,
+`supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
 add-vertical, docs-sync, docs-check), `registry.ts` (`registryOf` and
@@ -61,7 +61,15 @@ vertical or a tie, before a file moves), and the brownfield cards
 which composes the add front door's own pieces — the product-root
 redirect, then the planner over the project's tags, installed
 verticals and their rules — so a card carries the refusal the click
-would get, word for word (grid I4); after a `keel add`,
+would get, word for word (grid I4); where a directory sits in a
+product is read once, by `scope.ts` (`scopeOf`, through the
+`ManifestStore` port), and handed to the planner as a value — a
+product root's services, and for a monorepo service what the product
+gives it (`Vertical.placement` on `vcs`/`ci`/`distribution`,
+`Adapter.providesInServices` on the product glue) and that it is no
+repository root (`PlanScope.member`) — never a list of ids in a
+handler: `keel new` reads the same placement to leave those verticals
+out of a monorepo service (grid I7); after a `keel add`,
 `refreshProposals` names the installed verticals the run changed and
 did not re-render — proposed, never done. A new surface asks it too, rather
 than re-deriving readiness from `coversFor` or a `promotes` union —

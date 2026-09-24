@@ -35,13 +35,18 @@ import type { Tag } from './tags.js';
  * - `unavailable` — nothing keel can add makes the vertical install
  *   on this project, and `missing` says what would change that.
  * - `elsewhere` — the vertical belongs to a service, and this is the
- *   product that holds them.
+ *   root of the product that holds them.
  * - `incompatible` — each vertical installs on its own, but no order
  *   installs them together.
  * - `path-conflict` — a file the run would write, or patch inside, is
  *   already there in a shape keel does not overwrite.
  * - `path-missing` — a file the run patches is gone, and keel never
  *   recreates what it only patches.
+ *
+ * A refusal of the scope a vertical was asked in, rather than of the
+ * project — an `elsewhere`, or an `unavailable` whose
+ * `repositoryOnly` is set — travels under `keel.wrong-scope`, so a
+ * script can tell "not here" from "not in this project".
  */
 export type Refusal =
   | NeedsRefusal
@@ -104,6 +109,14 @@ export interface UnavailableRefusal {
   readonly because?: string;
   /** Ids of those rules (`Conflict`s), when any. */
   readonly rules?: readonly string[];
+  /**
+   * Ids of the verticals whose place is a repository root, which this
+   * project — a service of a monorepo product — is not: the vertical
+   * itself, or prerequisites it could have anywhere else. Standing in
+   * for the gap when present; the sentence gives the first one's own
+   * reason (`Vertical.placement`).
+   */
+  readonly repositoryOnly?: readonly string[];
 }
 
 /** {@link Refusal} for a vertical asked of a product root rather than a service. */
@@ -164,10 +177,11 @@ export interface PathMissingRefusal {
  * {@link Refusal} beside the sentence written from it.
  *
  * The code is its own field rather than a function of the kind: one
- * kind of fact keeps the code it has always had in each place it is
- * met (`keel.uncoverable-vertical`, `keel.incompatible`,
- * `keel.invalid-extra-verticals`), so a script matching one keeps
- * working.
+ * kind of fact can travel under more than one code — an `unavailable`
+ * is `keel.uncoverable-vertical`, `keel.incompatible` where a rule
+ * stops it, or `keel.wrong-scope` where `repositoryOnly` says the
+ * scope does — and the code, not the kind, is what a script matches
+ * on.
  */
 export class RefusalError extends DomainError {
   constructor(

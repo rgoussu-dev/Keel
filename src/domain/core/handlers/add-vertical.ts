@@ -6,13 +6,19 @@
  * Install pipeline:
  *   1. Resolve each named vertical by id from the registry; reject
  *      unknown ids with a list of available ones, and one named twice.
- *   2. Read the existing manifest; refuse to run if no project has
- *      been initialised under the project scope.
+ *   2. Read where the directory sits (`../scope.ts`): its manifest —
+ *      refuse to run if no project has been initialised under the
+ *      project scope — the product above it, and at a product root its
+ *      services'. At a product root, refuse what the root cannot
+ *      carry, naming the services that can (`keel.wrong-scope`).
  *   3. Set a vertical already installed aside, with a note naming
  *      what re-renders it (`--reapply`): asking for what is there has
  *      one sensible reading, so it is Ok, not a refusal, and the rest
- *      of the set installs. Refuse a `--reapply` or a `--refresh` of
- *      one that is not installed.
+ *      of the set installs. So is one a monorepo service has from its
+ *      product — the repository's version control, the image the
+ *      product root builds — with a note saying where it comes from.
+ *      Refuse a `--reapply` or a `--refresh` of one that is not
+ *      installed.
  *   4. Plan the named set with the planner (`../planner.ts`), the
  *      reading the extras menu, `keel new --with` and this project's
  *      cards share (`../plan-refusal.ts`, `../add-readiness.ts`):
@@ -23,8 +29,10 @@
  *      it reads and what decides its adapters. The assembly rules hold
  *      over the installed pieces and the incoming ones together, against
  *      every tag the run would add. A vertical the planner reads as
- *      unavailable here is refused, one breaking a rule among them, and
- *      a tie between two sets of prerequisites.
+ *      unavailable here is refused — in a monorepo service, one whose
+ *      place is the repository root, or that needs one, under
+ *      `keel.wrong-scope` — one breaking a rule among them, and a tie
+ *      between two sets of prerequisites.
  *   5. Refuse a supplied answer for a re-rendered adapter that has
  *      answers recorded — they are frozen — and one no adapter of the
  *      planned verticals could read, before a question is asked.
@@ -87,7 +95,7 @@ import type {
 } from '../../contract/commands.js';
 import type { ManifestV2 } from '../../contract/manifest.js';
 import { effectiveTags, HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
-import { productRootRefusal, projectScope } from '../add-readiness.js';
+import { productRootRefusal } from '../add-readiness.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
@@ -97,8 +105,14 @@ import { finalizeHarness, installVerticals, recordsAnswers } from '../install.js
 import { retrofitHarness } from '../harness-retrofit.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
-import { alreadyInstalledNote, refreshProposalNote, ruleRefusal } from '../refusals.js';
+import {
+  alreadyInstalledNote,
+  providedNote,
+  refreshProposalNote,
+  ruleRefusal,
+} from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
+import { planScopeOf, provisionsHere, scopeOf } from '../scope.js';
 import { installedOwnerOf, strayAnswerRefusal } from '../supplied-answers.js';
 import type { Vertical } from '../../contract/composition.js';
 import type { InstallDeps } from './deps.js';
@@ -130,7 +144,8 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     if (!refresh.ok) return refresh;
 
     const scopeRoot = projectScopeRoot(command.cwd);
-    const stored = await this.deps.manifests.read(scopeRoot);
+    const where = await scopeOf(this.deps, command.cwd);
+    const stored = where.manifest;
     if (!stored) {
       return err(
         new DomainError(
@@ -141,7 +156,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     }
 
     for (const vertical of named.value) {
-      const misplaced = await productRootRefusal(this.deps, vertical, stored, command.cwd);
+      const misplaced = productRootRefusal(registry, where, vertical);
       if (misplaced !== null) return err(misplaced);
     }
 
@@ -170,13 +185,25 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // What the run installs: the verticals named, less those the
     // project has already. Each of those is set aside with a note
     // naming what does re-render it — unless `--refresh` re-renders it
-    // in this very run.
-    const adding = reapply ? [] : named.value.filter((v) => !installed.has(v.id));
+    // in this very run. In a monorepo service, so is what the product
+    // gives it (the repository's version control, the image the root
+    // builds): it is there, and nothing here installs it again.
+    const provisions = provisionsHere(registry, where);
+    const given = (v: Vertical) => provisions.find((provision) => provision.vertical.id === v.id);
+    const adding = reapply
+      ? []
+      : named.value.filter((v) => !installed.has(v.id) && given(v) === undefined);
     const present = reapply
       ? []
       : named.value.filter(
           (v) => installed.has(v.id) && !refresh.value.some((other) => other.id === v.id),
         );
+    const provided = reapply
+      ? []
+      : named.value.flatMap((v) => {
+          const provision = installed.has(v.id) ? undefined : given(v);
+          return provision === undefined ? [] : [provision];
+        });
     for (const vertical of refresh.value) {
       if (!installed.has(vertical.id)) {
         return err(
@@ -221,9 +248,9 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // the run installs, and of a move only among the ones named.
     let told: AdmittedSet | null = null;
     if (!reapply) {
-      const scope = projectScope(
+      const scope = planScopeOf(
         registry,
-        stored,
+        where,
         rerender.map((v) => v.id),
       );
       const planned = admit(registry, scope, [...adding, ...refresh.value]);
@@ -258,7 +285,10 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       if (stray !== null) return err(stray);
     }
 
-    const already = present.map(alreadyInstalledNote);
+    const already = [
+      ...present.map(alreadyInstalledNote),
+      ...provided.map((provision) => providedNote(provision.vertical, provision.by)),
+    ];
     // Everything named is here already, and nothing is re-rendered:
     // the plan is empty, and the project is not touched — nothing is
     // staged, and the manifest is not written again.

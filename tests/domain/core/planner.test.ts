@@ -8,8 +8,9 @@
  * prerequisites deep, a provider whose promotion another vertical's
  * adapter excludes, two plugins supplying one capability, a vertical
  * that reads another, one whose adapters another's tag decides, a rule
- * a later vertical's tag breaks, one selected by peer tags alone, and
- * a handful of stacks to be the nearest.
+ * a later vertical's tag breaks, one selected by peer tags alone, a
+ * handful of stacks to be the nearest — and, apart, one placed at a
+ * repository root, asked of a monorepo service.
  *
  * **Factory.** `registryOf`, the one door any piece comes in by.
  *
@@ -65,7 +66,9 @@ function adapter(
 function vertical(
   id: string,
   adapters: readonly Adapter[],
-  extra: Partial<Pick<Vertical, 'promotes' | 'reads' | 'dimensions' | 'conflicts'>> = {},
+  extra: Partial<
+    Pick<Vertical, 'promotes' | 'reads' | 'dimensions' | 'conflicts' | 'placement'>
+  > = {},
 ): Vertical {
   return { id, description: `the ${id} vertical`, dimensions: ['only'], adapters, ...extra };
 }
@@ -598,6 +601,85 @@ describe('plan', () => {
       kind: 'unknown',
       vertical: 'nothing',
     });
+  });
+});
+
+describe('placement in a monorepo service', () => {
+  // A pipeline read only at a repository root, which ships the image
+  // another vertical builds, and a deployer needing what it ships —
+  // `distribution` between `containerization` and `iac`, as a plugin
+  // would declare them.
+  const pipeline = vertical(
+    'acme-pipeline',
+    [adapter('acme-pipeline', ['acme.image'], { promotes: ['acme.shipped'] })],
+    {
+      promotes: ['acme.shipped'],
+      placement: { scope: 'repository', because: 'a provider reads it at the root only' },
+    },
+  );
+  const deployer = vertical('acme-deployer', [adapter('acme-deployer', ['acme.shipped'])]);
+  const placed = registryOf([
+    { origin: pluginOrigin('acme'), verticals: [image, pipeline, deployer, database] },
+  ]);
+  /** A service of a monorepo product that gave it the image. */
+  const member: PlanScope = {
+    tags: ACME.tags,
+    installed: ['acme-image'],
+    member: { provided: ['acme-image'] },
+  };
+
+  it('reads a vertical whose place is a repository root as not for the service, naming it', () => {
+    const unavailable = { kind: 'unavailable', vertical: 'acme-pipeline' };
+    const gap = {
+      entrypoint: [],
+      peer: [],
+      identity: [],
+      rules: [],
+      nearestStacks: [],
+      repositoryOnly: ['acme-pipeline'],
+    };
+    expect(readiness(placed, member, 'acme-pipeline')).toEqual({ kind: 'unavailable', gap });
+    expect(plan(placed, member, ['acme-db', 'acme-pipeline'])).toEqual({ ...unavailable, gap });
+    // A repository of its own takes it, once it has the image.
+    expect(readiness(placed, on(ACME.tags), 'acme-pipeline')).toEqual({
+      kind: 'needs',
+      prerequisites: ['acme-image'],
+    });
+  });
+
+  it('reads one that needs it as unavailable for the same reason, not as a gap of tags', () => {
+    // Planned as a repository of its own — without the image the
+    // product gave it, which carries no tag here — it would come with
+    // the pipeline: that, and only that, is what stops it.
+    expect(readiness(placed, member, 'acme-deployer')).toEqual({
+      kind: 'unavailable',
+      gap: {
+        entrypoint: [],
+        peer: [],
+        identity: [],
+        rules: [],
+        nearestStacks: [],
+        repositoryOnly: ['acme-pipeline'],
+      },
+    });
+    expect(readiness(placed, on(ACME.tags), 'acme-deployer')).toEqual({
+      kind: 'needs',
+      prerequisites: ['acme-image', 'acme-pipeline'],
+    });
+    // Nor is it brought in as a prerequisite where it would match: a
+    // service whose image carries its tag still cannot take the
+    // pipeline, so nothing makes the deployer installable there.
+    const tagged: PlanScope = { ...member, tags: [...ACME.tags, 'acme.image'] };
+    expect(readiness(placed, tagged, 'acme-deployer')).toMatchObject({
+      kind: 'unavailable',
+      gap: { repositoryOnly: ['acme-pipeline'] },
+    });
+    expect(plan(placed, tagged, ['acme-deployer'])).toMatchObject({ kind: 'unavailable' });
+  });
+
+  it('reads what the product gives as there already, and plans the rest as anywhere', () => {
+    expect(readiness(placed, member, 'acme-image')).toEqual({ kind: 'included' });
+    expect(readiness(placed, member, 'acme-db')).toEqual({ kind: 'ready' });
   });
 });
 

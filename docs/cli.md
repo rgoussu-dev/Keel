@@ -61,6 +61,20 @@ Nothing is written before the refusal. The JVM and TypeScript stacks keep an exi
 `.gitignore` exactly as it is; the Go, Rust, `web-components` and
 composite stacks refuse both for now.
 
+**A directory inside a product.** `keel new` in a subdirectory of a
+monorepo product root that the product does not list as a service —
+`keel new --stack=go-http` in `my-product/worker/` — is refused as
+`keel.inside-product` before anything is asked: _"this directory is
+inside the product at ../, which lists no service here; adding a
+service to a product is not supported yet"_. A project scaffolded there
+would be neither a service of the product nor a repository of its own.
+
+On a composite stack, `--with` naming a vertical the product installs
+of its own (`vcs`) is set aside with a note, as on a single preset;
+any other vertical is refused as belonging to a service
+(`keel.wrong-scope`), in the words `keel add` gives it at the product
+root.
+
 `--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness` or a plugin stack/vertical that activates `agentic.harness`. Composite product-root harness selection is outside this flag; run `keel add agent-harness` inside an individual service.
 
 ### The interactive wizard
@@ -285,9 +299,23 @@ the refusal is the same sentence `keel new --with` gives, under the
 same code — the remedy only `keel add` has is the `hint:` line under
 it (_"quarkus-cli-rest carries both this project's entrypoints and
 persistence"_). At the root of a composite product, a vertical the
-root cannot carry is refused naming the services that can take it,
-read from each service's own manifest, and the hint says where to
-`cd` (`cd backend && keel add persistence`).
+root cannot carry is refused under `keel.wrong-scope`, naming the
+services that can take it, read from each service's own manifest, and
+the hint says where to `cd` (`cd backend && keel add persistence`).
+
+In a **monorepo product's service**, a directory of the product's
+repository, two things differ from a project of its own. What the
+product gives the service is already there — the repository's version
+control, and the image the product root's `compose.yaml` builds for
+it — so `keel add vcs` or `keel add containerization` there is an Ok
+that writes nothing, its note saying where it comes from. And what
+only a repository root reads — a CI pipeline, a release — is refused
+there under `keel.wrong-scope`, and so is what needs it:
+`keel add iac` reads _"Infrastructure as code needs Distribution,
+which cannot go in a monorepo service: its release workflows are read
+only at the repository root, which in a monorepo is the product root —
+per-service releases need the polyrepo layout"_. A polyrepo product's
+services are repositories of their own, and take all of them.
 
 The verticals named are a **set**, planned exactly as `--with` plans
 one: closed over what they need, and installed in one run in the order
@@ -333,7 +361,9 @@ Installed: vcs, walking-skeleton, agent-harness, … — 'keel add <id> --reappl
 At a product root the list ends with what is recorded as installed
 and no `keel add` names — the product's glue, `fullstack` — and a
 project with a bounded context lists `bounded-context` there too:
-`Also installed, which 'keel add' does not re-render: fullstack`.
+`Also installed, which 'keel add' does not re-render: fullstack`. In a
+monorepo service, what the product gives it is listed apart, under
+`From the product, nothing to add:`, each with where it comes from.
 
 A refusal is printed in the words `keel add <id>` would refuse it
 with. A vertical that two sets of prerequisites would each serve is
@@ -398,9 +428,11 @@ the vertical would write that the project already holds — your own
 `.github/workflows/ci.yml` before `keel add ci` — is refused as
 `keel.path-conflict`, naming it, in the sentence `keel new` uses —
 with no advice to move it, since under `keel add` the file may be
-keel's own (a composite product root writes each service's image
-files); so is a build file keel patches that lacks the block keel adds
-its line to. A file keel patches that has
+keel's own; so is a build file keel patches that lacks the block keel
+adds its line to. (What a composite product root writes into a service
+— its image files — is declared by the root, so `keel add
+containerization` there reads it as already there rather than meeting
+the files.) A file keel patches that has
 been deleted — a `README.md`, a `build.gradle.kts` — is refused as
 `keel.path-missing`: restore it, then re-run. Either way nothing is
 written.

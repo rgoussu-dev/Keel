@@ -19,6 +19,11 @@
  *     composes from the same pieces): ready, needs others first, or
  *     not for this project and why. Nothing is hidden: a card this
  *     project cannot carry says so before it is picked.
+ *   - `provided` — in a monorepo service, what the product gives it
+ *     without an install of its own (`../scope.ts`), each with the note
+ *     `keel add` answers it with: there already, nothing to add.
+ *   - `services` — at a product root, each service with the directory
+ *     a front end opens it at.
  *   - `canAddModule` / `moduleRefusal` — `keel add module`'s gates that
  *     turn on the project alone (`./add-module.ts` `moduleRefusal`).
  *   - `harnessGeneration` — the gate every brownfield command but the
@@ -33,20 +38,29 @@ import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import type { DomainError } from '../../kernel/result.js';
 import { ok, type Result } from '../../kernel/result.js';
-import { HARNESS_GENERATION, projectScopeRoot, type ManifestV2 } from '../../contract/manifest.js';
+import {
+  HARNESS_GENERATION,
+  projectScopeRoot,
+  type ManifestV2,
+  type ServiceRef,
+} from '../../contract/manifest.js';
 import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type {
   AvailableVerticalDescriptor,
   ProjectStatus,
   ProjectStatusQuery,
+  ProvidedVerticalDescriptor,
   RefusalDescriptor,
   VerticalDescriptor,
 } from '../../contract/queries.js';
 import { RefusalError } from '../../contract/refusal.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { addReadiness } from '../add-readiness.js';
+import { providedNote } from '../refusals.js';
 import { installedVertical, verticalTitle } from '../registry.js';
+import { provisionsHere, scopeOf, type DirectoryScope } from '../scope.js';
+import { getBuildSystem } from '../stacks.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import { moduleRefusal } from './add-module.js';
 
@@ -67,23 +81,30 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
 
   async handle(query: ProjectStatusQuery): Promise<Result<ProjectStatus>> {
     const scopeRoot = projectScopeRoot(query.cwd);
-    const manifest = await this.deps.manifests.read(scopeRoot);
-    return ok(
-      manifest ? await this.statusOf(query.cwd, scopeRoot, manifest) : uninitialised(scopeRoot),
-    );
+    // Read once: at a product root it holds every service's manifest,
+    // which each card's refusal names the services from.
+    const where = await scopeOf(this.deps, query.cwd);
+    const manifest = where.manifest;
+    return ok(manifest ? this.statusOf(where, scopeRoot, manifest) : uninitialised(scopeRoot));
   }
 
-  private async statusOf(
-    cwd: string,
-    scopeRoot: string,
-    manifest: ManifestV2,
-  ): Promise<ProjectStatus> {
+  private statusOf(where: DirectoryScope, scopeRoot: string, manifest: ManifestV2): ProjectStatus {
     const registry = this.deps.registry;
     const installedIds = new Set(manifest.verticals.map((v) => v.id));
+    const provisions = provisionsHere(registry, where);
     const available: AvailableVerticalDescriptor[] = [];
+    const provided: ProvidedVerticalDescriptor[] = [];
     for (const vertical of [...registry.verticals()].sort(byId)) {
       if (installedIds.has(vertical.id)) continue;
-      const ready = await addReadiness(this.deps, manifest, cwd, vertical);
+      const given = provisions.find((provision) => provision.vertical.id === vertical.id);
+      if (given !== undefined) {
+        provided.push({
+          ...describe(registry, vertical.id),
+          note: providedNote(vertical, given.by),
+        });
+        continue;
+      }
+      const ready = addReadiness(registry, where, vertical);
       available.push({
         ...describe(registry, vertical.id),
         readiness: ready.readiness,
@@ -104,8 +125,13 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
         reapplicable: registry.vertical(entry.id) !== null,
       })),
       available,
+      provided,
       modules: [...manifest.modules],
-      services: [...manifest.services],
+      services: where.services.map((service) => ({
+        ...service.ref,
+        directory: service.directory,
+        label: serviceLabel(service.ref),
+      })),
       moduleLayout: moduleLayoutOf(manifest.tags),
       canAddModule: module === null,
       ...(module === null ? {} : { moduleRefusal: describeRefusal(module) }),
@@ -125,6 +151,7 @@ function uninitialised(scopeRoot: string): ProjectStatus {
     tags: [],
     installed: [],
     available: [],
+    provided: [],
     modules: [],
     services: [],
     moduleLayout: 'basic',
@@ -167,6 +194,18 @@ function describeInstalled(registry: Registry, id: string): VerticalDescriptor {
     description: vertical.description,
     dimensions: [...vertical.dimensions],
   };
+}
+
+/**
+ * A service in the few words a button carries: its preset, and the
+ * build system recorded for it by label — `quarkus-rest · Gradle`.
+ */
+function serviceLabel(service: ServiceRef): string {
+  if (service.buildSystem === undefined) return service.stack;
+  // The name, not the gloss: a label reads "Gradle — incremental
+  // task-graph build (Kotlin DSL)".
+  const build = getBuildSystem(service.buildSystem)?.label.split(' — ')[0] ?? service.buildSystem;
+  return `${service.stack} · ${build}`;
 }
 
 /** A refusal as the status reports it: what the command's `Err` would carry. */

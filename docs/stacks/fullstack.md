@@ -85,6 +85,16 @@ flowchart LR
 docker compose up --build
 ```
 
+A monorepo's services are directories of **one repository**, so what
+only a repository root reads stays at the product root: git runs once
+there, and inside a service `keel add containerization` and
+`keel add vcs` add nothing (the root already builds the image and holds
+the repository), while `keel add ci`, `distribution` and `iac` are
+refused as the wrong scope — per-service pipelines, releases and IaC
+need `--layout polyrepo`, where each service is a repository of its
+own. `keel new` in a directory of the product that is not one of its
+services is refused (`keel.inside-product`).
+
 ## Brownfield: wire two existing projects instead
 
 You don't need the composite preset — the seam is addable after the

@@ -58,7 +58,11 @@
  * reason), belonging in a service — several at a time, beside a
  * **Re-render** for each one it has (`<keel-add-form>`). What the
  * project cannot take is said before the click, in the refusal's own
- * words, rather than learned from it.
+ * words, rather than learned from it. At a product root, an **Open
+ * backend/** button per service points the page one directory down.
+ * In a monorepo service, a pipeline or a release — whose place is the
+ * repository root — is one of those refusals, and what the product
+ * gives the service is listed with what it has installed.
  *
  * **A refusal is shown where the plan would be.** The plan column
  * says why there is none — the engine's sentence, as an alert, headed
@@ -140,6 +144,9 @@ export class KeelApp extends HTMLElement {
   connectedCallback() {
     this.#scaffold();
     this.addEventListener('target-chosen', (event) => void this.#goTo(event.detail.path));
+    // A product root's way into a service: another directory, opened
+    // where a keel project's page opens — on what to add there.
+    this.addEventListener('service-opened', (event) => void this.#goTo(event.detail.path, TARGET));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
     this.addEventListener('extra-toggled', (event) =>
       this.#move(toggleExtra(this.#run(), event.detail.id, event.detail.ticked)),

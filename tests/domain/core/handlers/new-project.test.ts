@@ -1801,7 +1801,52 @@ describe('keel.new-project extra verticals', () => {
   });
 
   it('rejects --with on a composite stack, whose services declare their own', async () => {
-    const error = expectErr(
+    const composite = (extra: string, layout?: 'monorepo' | 'polyrepo') =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: [extra],
+          ...(layout === undefined ? {} : { layout }),
+        }),
+      );
+    // Spoken as `keel add persistence` at the product root is: it
+    // belongs to a service, and here is which preset can take it.
+    const error = expectErr(await composite('persistence'));
+    expect(error.code).toBe('keel.wrong-scope');
+    expect(error.message).toBe(
+      'Persistence belongs to a service, not to the product root — it goes in backend/',
+    );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'elsewhere',
+      vertical: 'persistence',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+      ],
+    });
+
+    // A pipeline goes at a repository root. Each polyrepo service is
+    // one, so it is sent there; a monorepo's is the product root's,
+    // which no adapter serves yet — so it is sent nowhere, as `keel add
+    // ci` at a monorepo product root is not.
+    const polyrepo = expectErr(await composite('ci', 'polyrepo'));
+    expect(polyrepo.code).toBe('keel.wrong-scope');
+    expect(polyrepo.message).toBe(
+      'Continuous integration belongs to a service, not to the product root — it goes in backend/ or frontend/',
+    );
+    const monorepo = expectErr(await composite('ci'));
+    expect(monorepo.code).toBe('keel.uncoverable-vertical');
+    expect(monorepo.message).toBe(
+      "Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+    );
+  });
+
+  it('sets aside a vertical the product preset installs of its own, as a single stack does', async () => {
+    const report = expectOk(
       await installMediator().dispatch(
         newProjectCommand({
           cwd,
@@ -1809,24 +1854,11 @@ describe('keel.new-project extra verticals', () => {
           answers: {},
           interactive: false,
           dryRun: true,
-          extraVerticals: ['ci'],
+          extraVerticals: ['vcs'],
         }),
       ),
     );
-    // Spoken as `keel add ci` at the product root is: it belongs to a
-    // service, and each service's preset can take it.
-    expect(error.code).toBe('keel.invalid-extra-verticals');
-    expect(error.message).toBe(
-      'Continuous integration belongs to a service, not to the product root — it goes in backend/ or frontend/',
-    );
-    expect((error as RefusalError).refusal).toEqual({
-      kind: 'elsewhere',
-      vertical: 'ci',
-      services: [
-        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
-        { path: 'frontend', stack: 'web-components', readiness: 'ready' },
-      ],
-    });
+    expect(report.notes).toEqual(['Version control already comes with fullstack']);
   });
 
   it('refuses an unregistered id on a composite stack as the unknown vertical it is', async () => {

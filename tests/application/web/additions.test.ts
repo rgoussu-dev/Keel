@@ -36,6 +36,7 @@ import {
   additionsGroup,
   additionsSummary,
   refreshChoices,
+  serviceLinks,
 } from '../../../assets/web/src/additions.js';
 import {
   rerender,
@@ -168,6 +169,47 @@ describe('the "What to add" step', () => {
     // names it: a fact about the project, not a Re-render.
     expect(group.chips).toEqual([{ id: 'fullstack', title: 'Product root' }]);
     expect(group.rerenderable.map((vertical) => vertical.id)).not.toContain('fullstack');
+    // What the services have is in them, not a gap of the root's.
+    expect(group.elsewhere.map((line) => line.id)).toEqual(
+      expect.arrayContaining(['agent-harness', 'containerization', 'gateway', 'persistence']),
+    );
+    // And the way into each: the directory the status reports whole,
+    // named by the service's directory and what it is.
+    expect(group.services).toEqual([
+      { path: path.join(cwd, 'backend'), label: 'Open backend/ (ts-http · npm)' },
+      { path: path.join(cwd, 'frontend'), label: 'Open frontend/ (web-components · npm)' },
+    ]);
+    expect(serviceLinks(reported)).toEqual(group.services);
+  });
+
+  it('lists what a monorepo service has from its product, in the words the add answers', async () => {
+    await scaffold('fullstack-ts', { layout: 'monorepo' });
+    const backend = path.join(cwd, 'backend');
+    const reported = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: backend })));
+    const group = additionsGroup(reported, { kind: 'add-vertical', verticals: [] });
+
+    expect(group.provided.map((line) => line.id)).toEqual(['containerization', 'vcs']);
+    expect(group.services).toEqual([]);
+    for (const line of group.provided) {
+      const added = expectOk(
+        await mediator.dispatch(
+          previewQuery({
+            cwd: backend,
+            target: { kind: 'add-vertical', verticals: [line.id] },
+            answers: {},
+          }),
+        ),
+      );
+      expect(added.changes).toEqual([]);
+      expect(added.notes).toEqual([line.sentence]);
+    }
+    // A pipeline is refused there, under "Not for this project", in
+    // the add's own words.
+    const ci = group.refused.find((line) => line.id === 'ci');
+    expect(ci?.sentence).toBe(
+      reported.available.find((card) => card.id === 'ci')?.refusal?.message,
+    );
+    expect(ci?.sentence).toMatch(/^Continuous integration cannot go in a monorepo service/);
   });
 
   it('holds the ticked cards, or the one being re-rendered, and spells them for the review', async () => {

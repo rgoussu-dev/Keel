@@ -108,6 +108,9 @@ names the matching Gradle project. The image content is unchanged.
 - Monorepo products get their compose story from the
   [`fullstack`](fullstack.md) root glue instead — same Dockerfile
   patterns (the SPA's assets-image shape included), orchestrated at
-  the root.
+  the root. The glue declares which service stacks it builds an image
+  for, so in those services `keel add containerization` reads the
+  image as already there; a service it has no image for keeps this
+  vertical to add.
 - [`distribution`](distribution.md) — the CLI shipping story.
 - [Verticals catalog](README.md)

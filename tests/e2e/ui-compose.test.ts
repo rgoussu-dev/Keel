@@ -47,6 +47,13 @@
  * no action there at all, so it needs nothing the shard does not have.
  * The CLI project is seeded the same way and never generated.
  *
+ * **A product.** At a composite product's root, "Belongs in a
+ * service" opens with a button into each service; the click points
+ * the page one directory down, onto that service's "What to add",
+ * where what the product gives it is a line and a pipeline — read only
+ * at the repository root — is under "Not for this project". Seeded
+ * in-process, a TypeScript product, and never generated.
+ *
  * Skip rules are the shared ones (`skipE2E`), and each `describe`
  * carries the browser guard because its `beforeAll` launches one.
  */
@@ -456,6 +463,96 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
         expect(await card(tab, id).count(), id).toBe(0);
       }
       expect(await fs.pathExists(path.join(project, 'deploy', 'compose.yaml'))).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+});
+
+/* ---- a product's scopes ----------------------------------------- */
+
+describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and its services', () => {
+  let product: string;
+  let productUi: UiProcess;
+  let chromium: Browser;
+  let tab: Page;
+  let seen: Traffic;
+  let errors: string[];
+
+  beforeAll(async () => {
+    buildCli();
+    // A TypeScript product, so nothing here would need a JDK — and
+    // nothing is generated anyway: the claim is where the page goes.
+    product = await mkTempDir('keel-ui-compose-product-e2e-');
+    expectOk(
+      await installMediator({ runDeferred: fakeActions }).dispatch(
+        newProjectCommand({
+          cwd: product,
+          stack: 'fullstack-ts',
+          layout: 'monorepo',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    productUi = await startUi(product);
+    chromium = await browserType.launch({
+      ...(browserBinary === null ? {} : { executablePath: browserBinary }),
+      args: ['--no-sandbox'],
+    });
+  }, E2E_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await chromium?.close().catch(() => undefined);
+    await productUi?.stop().catch(() => undefined);
+    if (product) await fs.remove(product).catch(() => undefined);
+  }, E2E_TIMEOUT_MS);
+
+  beforeEach(async () => {
+    tab = await chromium.newPage();
+    errors = [];
+    tab.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+    seen = watchTraffic(tab);
+  }, E2E_TIMEOUT_MS);
+
+  afterEach(async () => {
+    const found = [...(errors ?? [])];
+    await tab?.close().catch(() => undefined);
+    expect(found).toEqual([]);
+  });
+
+  it(
+    'opens a service from the root, where what the product gives it is said, not offered',
+    async () => {
+      await openProject(productUi.url, tab, seen);
+      const elsewhere = tab.locator('#add-elsewhere');
+      const services = elsewhere.locator('#add-services button');
+      expect(await services.allTextContents()).toEqual([
+        'Open backend/ (ts-http · npm)',
+        'Open frontend/ (web-components · npm)',
+      ]);
+      expect(await elsewhere.locator('li[data-id="persistence"]').textContent()).toContain(
+        'Persistence belongs to a service, not to the product root — it goes in backend/',
+      );
+
+      await act(seen, () => services.first().click());
+      await until(
+        async () => (await tab.locator('#add-provided').count()) > 0,
+        "the backend's What to add",
+      );
+      expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('What to add');
+      expect(await tab.locator('#add-elsewhere').count()).toBe(0);
+      expect(
+        await tab.locator('#add-provided li[data-id="containerization"]').textContent(),
+      ).toContain('Container image is already there: the product root builds it for this service');
+      // A pipeline is not offered in a monorepo service: it is said,
+      // with why, before any click.
+      expect(await card(tab, 'ci').count()).toBe(0);
+      expect(await tab.locator('#add-refused li[data-id="ci"]').textContent()).toContain(
+        'Continuous integration cannot go in a monorepo service',
+      );
+      expect(await card(tab, 'persistence').count()).toBe(1);
+      expect(seen.posted('/api/install')).toEqual([]);
     },
     E2E_TIMEOUT_MS,
   );
