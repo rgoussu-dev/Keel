@@ -79,6 +79,8 @@ const opened = () =>
       generation: 0,
       carried: null,
       notice: '',
+      held: [],
+      identity: [],
     },
     { kind: 'add-vertical', verticals: [] },
   );

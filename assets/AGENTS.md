@@ -20,8 +20,9 @@ it compiled.
   the drill-down tree, `src/steps.js` says which steps the rail has, and
   `src/target.js` says how a change moves the run — which of the
   target, the answers, the dials and the request generation it clears,
-  which dials a new preset carries, what the line under the preset
-  picker says a move could not keep, and which boxes an "Also
+  which dials and extras a new preset carries, where the answers it
+  holds land once the new preset is previewed, what the line under the
+  preset picker says a move could not keep, and which boxes an "Also
   scaffold" tick or a "What to add" tick moves (`toggleExtra`,
   `toggleVertical`: a tick brings what the vertical needs, an untick
   takes what needs it; `rerender` and `toggleRefresh` for an installed

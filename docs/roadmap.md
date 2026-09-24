@@ -2418,7 +2418,8 @@ back to a sibling with the same framework, then the same runtime (a
 `runtime` field on the catalog's language nodes, so the page never
 parses an id), then `finder.defaultStack`'s language and framework —
 never `languages[0]`, which is Go because languages sort by label —
-and the same line announces the jump. Answers and extras still reset.
+and the same line announces the jump. Answers and extras still reset
+(until Q2.2).
 
 #### Q0.7 — Coverage refusals stop naming tags (S) ✅
 
@@ -2976,9 +2977,47 @@ answered twice) to a preview and a dry-run install, stages the same
 bytes (a product's services included) or is refused alike, in the
 sentence the preview reported.
 
-- **Q2.2 — A preset switch keeps extras and answers (S).** Snapped by
-  `keel.dials` with `adjustments`; answers pruned to the next
-  preview's bindings.
+#### Q2.2 — A preset switch keeps extras and answers (S) ✅
+
+Snapped by `keel.dials` with `adjustments`; answers pruned to the next
+preview's bindings, identity answers moved onto the new preset's
+bootstrap.
+
+Landed in the page alone (`target.js`, `<keel-app>`); no domain
+change. A preset move carries `extraVerticals` with the dials;
+`keel.dials` snaps them, and the line under the Preset picker names
+each extra lost — _Container image dropped: …_ with the reason the
+reply's `dropped` adjustment gave, or, where the reply gives none (a
+product, which takes no extras of its own until Q2.3), in the "did not
+keep" series by the title the old menu gave it — and keeps quiet about
+one the new preset comes with (`included`), which it keeps. The
+answers are **held** (`Run.held`) rather than posted: posted blind, a
+choice the new preset does not offer — MariaDB, moved to Go — is
+`keel.invalid-answer` from the preview, a refusal the page could not
+leave, since the question to change it at comes from the preview it
+refused. `previewed` places each held answer on its own question
+where the new preview asks it and offers the value, and then an
+identity answer — marked by the last preview before the move
+(`Run.identity`, read off `PendingQuestion.shared`) — on the new
+preview's shared question of the same id: only onto a question nothing
+has answered, one question per answer, the first given first. Placing
+a value the reply had not resolved to moves the generation on, and
+`<keel-app>` previews again rather than draw that reply; what is still
+held waits for that preview (an answer can bring its own adapter in),
+and a reply that places nothing new lets the rest go. A carried
+answer is therefore always posted under the key the new preset's own
+bootstrap asks under, never a sibling's, so the question list's
+grouping by `binding.adapter` (a Q2.1 note) never meets one. Held by
+`target.test.ts` — the placements, and a real round trip
+`quarkus-rest` → `quarkus-cli-rest` → `go-http` whose preview and
+dry-run install agree, the package kept within the family and the name
+across it, the same into `fullstack`'s backend under either layout,
+and MariaDB let go on Go without a refusal — by
+`dials.test.ts` (Maven, the modulith and `[ci]` kept onto
+`quarkus-cli-rest`; the image dropped onto `quarkus-cli`, with its
+reason; a development environment quiet onto the preset that includes
+one) and by `ui-compose`, without Generate. No grid verdict moved.
+
 - **Q2.3 — Per-service extras when creating a product (L).**
   `--with backend:persistence`, mirroring `--build-system path=id`;
   per-service menus from `compositeDials`; a bare `--with` routes to

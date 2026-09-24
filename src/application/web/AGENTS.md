@@ -48,9 +48,13 @@ socket, the per-run token and the asset roots. The page it serves is
   of them left behind: a whole target (what `<keel-add-form>` always
   emits) replaces rather than merges, a new subject (vertical, preset,
   kind) clears the answers and the menus — a new preset keeps its
-  dials, for `keel.dials` to snap, and `settle` names in one line
-  what it could not keep — and every change moves the generation on
-  so a reply in flight is dropped. A new control adds its transition
+  dials and extras, for `keel.dials` to snap, `settle` names in one
+  line what it could not keep, and its answers are held for the
+  preview of the new preset to place (`previewed`: the same question,
+  or an identity answer's question of the same id; a placement the
+  reply had not resolved moves the generation on, and the page
+  previews again rather than draw it) — and every change moves the
+  generation on so a reply in flight is dropped. A new control adds its transition
   there, with a case in `tests/application/web/target.test.ts` — as
   the "Also scaffold" boxes did (`toggleExtra`) and the "What to add"
   cards (`toggleVertical`, `rerender`, `toggleRefresh`), since one tick

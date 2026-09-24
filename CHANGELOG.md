@@ -14,6 +14,26 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **Moving to another preset in `keel ui` keeps your extras and
+  answers too.** The "Also scaffold" extras and the answers to the
+  adapters' questions were still thrown away on every preset move: a
+  pipeline ticked and a package typed on `quarkus-cli` were gone the
+  moment HTTP was ticked. The extras now carry over like the dials,
+  `keel.dials` drops what the new preset cannot carry, and the line
+  under the Preset picker names each one with the reason it gave —
+  _Container image dropped: Container image needs an entrypoint this
+  project does not have: HTTP server — a REST endpoint._ — but not one
+  the new preset comes with, which it keeps. The answers are held until
+  the new preset's first preview has reported its questions, then
+  placed wherever the same question is asked and still offers the
+  value, and previewed again; an answer about the project's identity
+  (`shared: "project"`: its name, package, module path or npm scope)
+  moves onto the new bootstrap's question of the same id, so the
+  package survives ticking HTTP on and the name survives a move to Go.
+  A choice the new preset does not offer — MariaDB, moved to Go — is
+  let go rather than posted into a `keel.invalid-answer` the page had
+  no question on screen to fix.
+
 - **`keel ui` previews an answer as the install writes it.** An answer
   keyed to a bootstrap's sibling — a Quarkus REST bootstrap's package
   on `quarkus-cli-rest`, whose CLI bootstrap asks first, or on
@@ -215,8 +235,7 @@ new` the terminal adds the way past it (move it aside, or start in
   same framework, then one on the same runtime, then the default
   preset's — Kotlin on Spring lands on `fullstack-spring`, the browser
   front end moved to a backend on `quarkus-cli` — and the line says
-  the language changed. The adapters' answers and the extra verticals
-  still reset on a preset move. The catalog's language nodes
+  the language changed. The catalog's language nodes
   (`Catalog.finder`) gain `runtime`, which is what the page compares.
 
 - **Distribution without an image, and an answer outside its

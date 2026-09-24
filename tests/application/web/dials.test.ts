@@ -28,11 +28,11 @@
  * the gate agree.
  *
  * A preset move is the one control that posts a target the menus did
- * not draw: it keeps the old preset's dials (`target.js`) and leaves
- * the snapping to this route. The last block drives that move the way
- * `<keel-app>` does — retarget, round trip, settle — so "the page keeps
- * what the new preset can take" is proved on the route that decides
- * what it can take.
+ * not draw: it keeps the old preset's dials and extras (`target.js`)
+ * and leaves the snapping to this route. The last block drives that
+ * move the way `<keel-app>` does — retarget, round trip, settle — so
+ * "the page keeps what the new preset can take, and names what it
+ * could not" is proved on the route that decides what it can take.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -107,6 +107,8 @@ const settledRun = (dials: DialOptions): Run =>
       generation: 0,
       carried: null,
       notice: '',
+      held: [],
+      identity: [],
     },
     dials,
   );
@@ -481,6 +483,8 @@ describe('a preset move, the way the page makes it', () => {
       generation: 0,
       carried: null,
       notice: '',
+      held: [],
+      identity: [],
     };
     return settle(run, await dialsFor(mediator, target));
   }
@@ -493,22 +497,26 @@ describe('a preset move, the way the page makes it', () => {
     return settle(moved, dials, catalog.finder);
   }
 
-  it('keeps Maven and the modulith from quarkus-rest onto quarkus-cli-rest', async () => {
+  it('keeps Maven, the modulith and the pipeline from quarkus-rest onto quarkus-cli-rest', async () => {
     // Ticking the CLI adapter is a preset move. It used to cost the
-    // two dials set on the way, although the new preset takes both.
+    // two dials set on the way and the extra ticked, although the new
+    // preset takes all three.
     const mediator = installMediator();
     const before = await settledOn(mediator, {
       kind: 'new-project',
       stack: 'quarkus-rest',
       buildSystem: 'maven',
       moduleLayout: 'modulith',
+      extraVerticals: ['ci'],
     });
     const after = await moveTo(mediator, before, 'quarkus-cli-rest');
     expect(after.target).toMatchObject({
       stack: 'quarkus-cli-rest',
       buildSystem: 'maven',
       moduleLayout: 'modulith',
+      extraVerticals: ['ci'],
     });
+    expect(after.dials?.adjustments).toEqual([]);
     expect(after.notice).toBe('');
     expect(
       await previewOf(
@@ -538,6 +546,46 @@ describe('a preset move, the way the page makes it', () => {
       withPeerContext: true,
     });
     expect(after.notice).toBe('Moving to ts-cli did not keep build system maven.');
+  });
+
+  it('says which extras the new preset cannot carry, each with the reason keel.dials gave', async () => {
+    const mediator = installMediator();
+    const before = await settledOn(mediator, {
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      extraVerticals: ['ci', 'containerization', 'distribution'],
+    });
+    // Unticking the HTTP adapter: a CLI has no image to build.
+    const after = await moveTo(mediator, before, 'quarkus-cli');
+    expect(extrasOf(after.target)).toEqual(['ci', 'distribution']);
+    expect(after.notice).toBe(
+      'Container image dropped: Container image needs an entrypoint this project does not have: ' +
+        'HTTP server — a REST endpoint.',
+    );
+    expect(
+      await previewOf(
+        mediator,
+        '/tmp/keel-dials-preview',
+        after.target as unknown as NewProjectTarget,
+      ),
+    ).toBe('200');
+  });
+
+  it('keeps quiet about an extra the new preset comes with', async () => {
+    // quarkus-cli-rest installs a development environment of its own:
+    // the box goes, the environment stays.
+    const mediator = installMediator();
+    const before = await settledOn(mediator, {
+      kind: 'new-project',
+      stack: 'quarkus-cli',
+      extraVerticals: ['dev-env'],
+    });
+    const after = await moveTo(mediator, before, 'quarkus-cli-rest');
+    expect(extrasOf(after.target)).toEqual([]);
+    expect((after.dials?.adjustments ?? []).map((adjustment) => adjustment.id)).toEqual([
+      'dev-env',
+    ]);
+    expect(after.notice).toBe('');
   });
 
   it('announces the language a shape move had to leave behind', async () => {

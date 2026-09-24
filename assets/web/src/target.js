@@ -2,9 +2,10 @@
  * What the page is about to run, and how each change moves it.
  *
  * `<keel-app>` holds four things that have to move together: the
- * target the body posts, the answers given to the adapters' questions,
- * the menus `keel.dials` last returned, and the generation — the id of
- * the one request whose reply the page will still accept. They used to
+ * target the body posts, the answers given to the adapters' questions
+ * (and those a preset move holds for the next preview), the menus
+ * `keel.dials` last returned, and the generation — the id of the one
+ * request whose reply the page will still accept. They used to
  * be moved field by field inside the element, and each state bug the
  * brownfield half shipped was one of them failing to move with the
  * others: a re-render flag that outlived the installed card that set
@@ -21,28 +22,45 @@
  *
  * **A run is about one subject** — the stack a `keel new` builds, the
  * verticals a `keel add` layers on as such, the one it re-renders, or
- * `keel add module` as such. A different subject means different
- * adapters, so the answers gathered for the old one are meaningless,
- * and the old menus describe nothing about the new one; both start
- * afresh. Ticking another card into an add, or out of it, is not a
- * new subject — the set grows or shrinks, like the greenfield extras
- * — so the answers stay and the next preview drops the ones no
- * adapter of the new set asks ({@link previewed}); moving between
- * adding and re-rendering is, and so is re-rendering another
- * vertical. Renaming the context an `add-module` run creates is not
- * a new subject either, and keeps them.
+ * `keel add module` as such. The old menus describe nothing about a
+ * new subject, so they start afresh. Ticking another card into an
+ * add, or out of it, is not a new subject — the set grows or shrinks,
+ * like the greenfield extras — so the answers stay and the next
+ * preview drops the ones no adapter of the new set asks
+ * ({@link previewed}); moving between adding and re-rendering is,
+ * and so is re-rendering another vertical, and those start their
+ * answers afresh too: a re-render reads what the manifest recorded,
+ * and has no business with what an add was asked. Renaming the
+ * context an `add-module` run creates is not a new subject either,
+ * and keeps them.
  *
- * **The dials are the exception.** A build system, a module layout,
- * the peer context and a product's repository layout are settings of
- * the preset rather than questions of an adapter, most presets share
- * them, and `keel.dials` already snaps a value the new preset cannot
- * take to one it can. So a new preset keeps them, and resetting them
- * was only ever throwing away work: toggling an adapter on the way to
- * `quarkus-cli-rest` cost you the Maven and the modulith you had
- * picked on `quarkus-rest`. What the move could *not* keep is said in
- * one line, once the reply has settled it ({@link settle}) — a dial
- * you had moved off its default, and the language, where the new
- * shape has none by the old one's name.
+ * **A new preset is the exception, and keeps everything.** A build
+ * system, a module layout, the peer context, a product's repository
+ * layout and the extras are settings of the preset rather than
+ * questions of an adapter, most presets share them, and `keel.dials`
+ * already snaps a value the new preset cannot take to one it can —
+ * the extras to what it can carry, saying why for each it drops. Most
+ * answers are shared too: `vcs/git-init` asks for a default branch on
+ * every preset, by the same id. So resetting them was only ever
+ * throwing away work — toggling an adapter on the way to
+ * `quarkus-cli-rest` cost you the Maven, the modulith, the pipeline
+ * and the package you had picked on `quarkus-rest`. What the move
+ * could *not* keep is said in one line, once the reply has settled it
+ * ({@link settle}): a dial you had moved off its default, an extra
+ * the new preset cannot carry, and the language, where the new shape
+ * has none by the old one's name.
+ *
+ * The answers are **held**, not posted, until a preview of the new
+ * preset says where each still goes ({@link previewed}). Posted
+ * blind, an answer the new preset's question does not offer — a
+ * MariaDB chosen on a JVM preset, moved to Go — is a refusal the page
+ * could not navigate out of, since the question to change it on
+ * comes from the preview it refused. And the project's identity is
+ * asked by each family's own bootstrap, under its own id: a package
+ * chosen on `quarkus-rest` is `quarkus-rest-bootstrap`'s answer, and
+ * `quarkus-cli-rest` asks `quarkus-cli-bootstrap` for it. The preview
+ * marks those questions (`shared: 'project'`), and a held answer to
+ * one moves onto the question of the same id the new preset asks.
  *
  * Pure, and separate from any element, so every transition is testable
  * without a DOM — the same split `steps.js` and `finder.js` live under.
@@ -55,8 +73,10 @@
  * @typedef {{ id: string, change: string, because: string }} Adjustment
  * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<{ path: string, buildSystems: ReadonlyArray<Option> }>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
  * @typedef {{ from: string, dials: Record<string, unknown> }} Carried
- * @typedef {{ target: Target, answers: Answers, dials: Dials | null, generation: number, carried: Carried | null, notice: string }} Run
+ * @typedef {{ adapter: string, question: string, value: string, identity: boolean }} Held
+ * @typedef {{ target: Target, answers: Answers, dials: Dials | null, generation: number, carried: Carried | null, notice: string, held: ReadonlyArray<Held>, identity: ReadonlyArray<string> }} Run
  * @typedef {{ kind: string, adapter?: string, question?: string, service?: string }} Binding
+ * @typedef {{ binding: Binding, value?: string, kind?: string, choices?: ReadonlyArray<{ value: string }>, shared?: string }} Asked
  */
 
 import { languageJump } from './finder.js';
@@ -66,7 +86,7 @@ import { languageJump } from './finder.js';
  * drops or snaps whichever the new preset cannot take, so carrying one
  * a preset has never heard of costs nothing.
  */
-const CARRIED = ['layout', 'buildSystem', 'moduleLayout', 'withPeerContext'];
+const CARRIED = ['layout', 'buildSystem', 'moduleLayout', 'withPeerContext', 'extraVerticals'];
 
 /**
  * The carried dials the page speaks up for when a move loses one, and
@@ -74,7 +94,8 @@ const CARRIED = ['layout', 'buildSystem', 'moduleLayout', 'withPeerContext'];
  *
  * The repository layout rides along without a line: it exists only on
  * a product, and leaving a product for a single project is leaving
- * the dial behind with it, not losing a value.
+ * the dial behind with it, not losing a value. The extras have a line
+ * of their own, with the reason `keel.dials` dropped each (`noticeOf`).
  */
 const ANNOUNCED = {
   buildSystem: (value) => {
@@ -103,6 +124,8 @@ export function restart(run, target) {
     generation: run.generation + 1,
     carried: null,
     notice: '',
+    held: [],
+    identity: [],
   };
 }
 
@@ -121,7 +144,8 @@ export function restart(run, target) {
  *   - **Without one, it is the fields that moved**, the way the
  *     greenfield controls speak: a build system, a module layout, a
  *     preset. They merge — except that a new preset starts its target
- *     over from its dials alone, which `keel.dials` then settles.
+ *     over from its dials and extras alone, which `keel.dials` then
+ *     settles, and holds the answers for the next preview to place.
  *
  * Any move supersedes the last one's notice: a line about a move is
  * only worth reading while that move is the latest.
@@ -133,6 +157,7 @@ export function restart(run, target) {
 export function retarget(run, patch) {
   const target = moved(run.target, patch);
   const same = subject(target) === subject(run.target);
+  const onward = !same && target.kind === 'new-project' && run.target?.kind === 'new-project';
   return {
     target,
     answers: same ? run.answers : {},
@@ -140,6 +165,8 @@ export function retarget(run, patch) {
     generation: run.generation + 1,
     carried: same ? unpatched(run.carried, patch) : carriedFrom(run, target),
     notice: '',
+    held: same ? run.held : onward ? heldAcross(run) : [],
+    identity: run.identity,
   };
 }
 
@@ -152,9 +179,12 @@ export function retarget(run, patch) {
  * it. What this adds is the line. Where the reply settles a move onto
  * a new preset, it says what that move could not keep — a dial only if
  * it had been moved off the old preset's default, since the Gradle
- * nobody chose going missing is not news, and the language only where
- * it jumped (`finder.js`'s `languageJump`), which needs the finder.
- * Without one, the line is about the dials alone.
+ * nobody chose going missing is not news; an extra the new preset
+ * cannot carry, with the reason the reply dropped it for
+ * (`adjustments`), but not one the new preset comes with, which is
+ * kept rather than lost; and the language only where it jumped
+ * (`finder.js`'s `languageJump`), which needs the finder. Without
+ * one, the line is about the dials and extras alone.
  *
  * @param {Run} run
  * @param {Dials} dials the `keel.dials` reply
@@ -168,13 +198,14 @@ export function settle(run, dials, finder = null) {
     target,
     dials,
     carried: null,
-    notice: run.carried === null ? run.notice : noticeOf(run.carried, target, finder),
+    notice: run.carried === null ? run.notice : noticeOf(run.carried, dials, finder),
   };
 }
 
 /**
  * The run once a preview has replied: its answers are the ones that
- * preview asked for, and no others.
+ * preview asked for, and no others — and the answers a preset move
+ * held are placed where it asks for them.
  *
  * A move within one subject keeps the answers, but it can take their
  * adapter out of the plan — an extra unticked after its question was
@@ -186,20 +217,31 @@ export function settle(run, dials, finder = null) {
  * while it is the latest, so what it drops is exactly what the run
  * it describes would not read.
  *
- * Not a move: the generation stays where it is, this reply being the
- * one the page was waiting for.
+ * A held answer goes back to its own question where the new preset
+ * asks it — the same adapter, asking the same thing, as every preset's
+ * `vcs/git-init` does — and, failing that, an answer about the
+ * project's identity goes to the identity question of the same id
+ * the new preset asks under its own bootstrap. Either way only onto a
+ * question nothing has answered yet, and only where the question
+ * offers the value: a choice the new preset does not offer is left
+ * behind rather than posted into a `keel.invalid-answer`. What finds
+ * no question is let go.
+ *
+ * Not a move, as a rule: the generation stays where it is, this reply
+ * being the one the page was waiting for. Placing a held answer the
+ * preview did not already resolve to is the exception — the reply no
+ * longer describes the run, so the generation moves on, and the page
+ * previews again. What is still held waits for that preview, since an
+ * answer can bring an adapter into the plan whose own question it is;
+ * a reply that places nothing new lets the rest go.
  *
  * @param {Run} run
- * @param {{ questions: ReadonlyArray<{ binding: Binding }> }} preview the `keel.preview` reply
+ * @param {{ questions: ReadonlyArray<Asked> }} preview the `keel.preview` reply
  * @returns {Run}
  */
 export function previewed(run, preview) {
-  const asked = new Set(
-    preview.questions
-      .map(({ binding }) => binding)
-      .filter((binding) => binding.kind === 'answer')
-      .map((binding) => `${binding.adapter}:${binding.question}`),
-  );
+  const questions = preview.questions.filter(({ binding }) => binding.kind === 'answer');
+  const asked = new Map(questions.map((question) => [keyOf(question.binding), question]));
   const answers = {};
   for (const [adapter, byQuestion] of Object.entries(run.answers)) {
     const kept = Object.entries(byQuestion).filter(([question]) =>
@@ -207,7 +249,42 @@ export function previewed(run, preview) {
     );
     if (kept.length > 0) answers[adapter] = Object.fromEntries(kept);
   }
-  return { ...run, answers };
+
+  const taken = new Set();
+  let outdated = false;
+  const open = (question) =>
+    question !== undefined &&
+    answers[question.binding.adapter]?.[question.binding.question] === undefined;
+  const place = (entry, question) => {
+    if (!open(question) || !offers(question, entry.value)) return;
+    const { adapter, question: id } = question.binding;
+    answers[adapter] = { ...(answers[adapter] ?? {}), [id]: entry.value };
+    taken.add(entry);
+    if (question.value !== entry.value) outdated = true;
+  };
+  for (const entry of run.held) place(entry, asked.get(keyOf(entry)));
+  for (const entry of run.held) {
+    if (taken.has(entry) || !entry.identity || asked.has(keyOf(entry))) continue;
+    place(
+      entry,
+      questions.find(
+        (question) =>
+          question.shared === 'project' &&
+          question.binding.question === entry.question &&
+          open(question),
+      ),
+    );
+  }
+
+  return {
+    ...run,
+    answers,
+    generation: outdated ? run.generation + 1 : run.generation,
+    held: outdated ? run.held.filter((entry) => !taken.has(entry)) : [],
+    identity: questions
+      .filter((question) => question.shared === 'project')
+      .map((question) => keyOf(question.binding)),
+  };
 }
 
 /**
@@ -459,12 +536,12 @@ function moved(target, patch) {
 
 /**
  * What a move onto a new preset has to account for once it settles:
- * where it came from, and which of the dials it carries are worth a
- * line if lost.
+ * where it came from, and which of the dials and extras it carries
+ * are worth a line if lost.
  *
  * Worth a line means moved off the old preset's default, and the old
  * menus are where the default is read — `keel.dials` settles an unset
- * dial to its menu's first entry. Without menus, the move before this
+ * dial to its menu's first entry, and the extras to none. Without menus, the move before this
  * one never settled, so this one carries on from where that one did:
  * the same preset, whose language a jump is measured from, and the
  * same dials still pending.
@@ -478,7 +555,10 @@ function carriedFrom(run, target) {
   };
 }
 
-/** The announced dials `target` holds at something other than their default. */
+/**
+ * The announced dials `target` holds at something other than their
+ * default — and its extras, whose default is none.
+ */
 function chosen(target, dials) {
   const moved = {
     buildSystem:
@@ -487,6 +567,7 @@ function chosen(target, dials) {
         : differs(target.buildSystem, dials.buildSystems[0]?.id),
     moduleLayout: differs(target.moduleLayout, dials.moduleLayouts[0]?.id),
     withPeerContext: differs(target.withPeerContext, false),
+    extraVerticals: titled(extrasOf(target), dials),
   };
   return Object.fromEntries(Object.entries(moved).filter(([, value]) => value !== undefined));
 }
@@ -509,6 +590,17 @@ function servicesMoved(raw, dials) {
   );
   const moved = pairsOf(raw).filter((pair) => !defaults.has(pair));
   return moved.length === 0 ? undefined : moved.join(',');
+}
+
+/**
+ * `extras`, each with the title the menus that offered it gave it —
+ * the reply settling the move may not list it at all, a product's
+ * listing only its own verticals. Undefined for none.
+ */
+function titled(extras, dials) {
+  if (extras.length === 0) return undefined;
+  const titles = new Map((dials.verticals ?? []).map((vertical) => [vertical.id, vertical.title]));
+  return extras.map((id) => ({ id, title: titles.get(id) ?? id }));
 }
 
 /**
@@ -535,8 +627,13 @@ function unpatched(carried, patch) {
   };
 }
 
-/** The line a settled move owes the user: the language jump, then the dials it lost. */
-function noticeOf(carried, target, finder) {
+/**
+ * The line a settled move owes the user: the language jump, then the
+ * dials and extras it lost — an extra `keel.dials` gave a reason for
+ * dropping in a sentence of its own, with that reason.
+ */
+function noticeOf(carried, dials, finder) {
+  const target = dials.target;
   const lines = [];
   const jump = finder ? languageJump(finder, carried.from, String(target.stack ?? '')) : null;
   if (jump) {
@@ -545,11 +642,42 @@ function noticeOf(carried, target, finder) {
       `${jump.from.label} has no ${shape} preset, so the language is now ${jump.to.label}.`,
     );
   }
-  const lost = Object.entries(carried.dials).flatMap(([field, value]) =>
-    lostIn(target, field, value).map(ANNOUNCED[field]),
-  );
+  const { extraVerticals = [], ...announced } = carried.dials;
+  const dropped = extrasLost(extraVerticals, dials);
+  const lost = [
+    ...Object.entries(announced).flatMap(([field, value]) =>
+      lostIn(target, field, value).map(ANNOUNCED[field]),
+    ),
+    ...dropped.filter((extra) => extra.because === undefined).map((extra) => extra.title),
+  ];
   if (lost.length > 0) lines.push(`Moving to ${target.stack} did not keep ${series(lost)}.`);
+  for (const extra of dropped) {
+    if (extra.because !== undefined) lines.push(`${extra.title} dropped: ${extra.because}.`);
+  }
   return lines.join(' ');
+}
+
+/**
+ * The carried extras the settled reply does not hold, each with the
+ * reason the reply gave for dropping it where it gave one. One the new
+ * preset comes with is not among them: that one is kept — by the
+ * preset now rather than by a box.
+ */
+function extrasLost(carried, dials) {
+  const kept = new Set(extrasOf(dials.target));
+  const included = new Set(
+    (dials.verticals ?? [])
+      .filter((vertical) => vertical.readiness === 'included')
+      .map((vertical) => vertical.id),
+  );
+  const reasons = new Map(
+    (dials.adjustments ?? [])
+      .filter((adjustment) => adjustment.change === 'dropped')
+      .map((adjustment) => [adjustment.id, adjustment.because]),
+  );
+  return carried
+    .filter(({ id }) => !kept.has(id) && !included.has(id))
+    .map(({ id, title }) => ({ title, because: reasons.get(id) }));
 }
 
 /**
@@ -569,6 +697,45 @@ function series(items) {
   return items.length === 1
     ? items[0]
     : `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`;
+}
+
+/**
+ * What a move onto a new preset holds for the next preview to place:
+ * every answer given — each marked as the project's identity where
+ * the latest preview's question for it was one — then whatever an
+ * earlier move still holds that was not answered again since.
+ */
+function heldAcross(run) {
+  const given = Object.entries(run.answers).flatMap(([adapter, byQuestion]) =>
+    Object.entries(byQuestion).map(([question, value]) => ({
+      adapter,
+      question,
+      value,
+      identity: run.identity.includes(`${adapter}:${question}`),
+    })),
+  );
+  const again = new Set(given.map(keyOf));
+  return [...given, ...run.held.filter((entry) => !again.has(keyOf(entry)))];
+}
+
+/** An answer's `adapter:question` key, off its binding or a held entry alike. */
+function keyOf({ adapter, question }) {
+  return `${adapter}:${question}`;
+}
+
+/**
+ * Whether `question` offers `value`: any value where it has no choices,
+ * and otherwise one of them — each of them, for a `multi-select`,
+ * whose answer is the choices comma-joined and `''` for none.
+ */
+function offers(question, value) {
+  const choices = (question.choices ?? []).map((choice) => choice.value);
+  if (choices.length === 0) return true;
+  if (question.kind !== 'multi-select') return choices.includes(value);
+  return value
+    .split(',')
+    .filter((part) => part !== '')
+    .every((part) => choices.includes(part));
 }
 
 /** The fields of `object` named in `fields` that it sets. */

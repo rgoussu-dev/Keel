@@ -30,10 +30,14 @@
  * one Generate is `ui-compose.test.ts`, in a browser.
  *
  * The greenfield half has one more job: a new preset keeps the dials
- * and lets `keel.dials` snap them, and once the reply settles the move
- * the run carries one line naming what it could not keep. That
- * round trip through the real route is `dials.test.ts`; which move owes
- * a line, and what the line says, is decided here.
+ * and the extras and lets `keel.dials` snap them, and once the reply
+ * settles the move the run carries one line naming what it could not
+ * keep. That round trip through the real route is `dials.test.ts`;
+ * which move owes a line, and what the line says, is decided here. It
+ * keeps the answers too, held until a preview of the new preset says
+ * where each goes — a package moved onto the question the new
+ * bootstrap asks for it, a choice the new preset does not offer let
+ * go — and that runs the real preview and install.
  *
  * The fixtures are typed against the contract the page reads them
  * from (`ProjectStatus`, `AnswerBinding`, `DialOptions`), so a renamed
@@ -45,13 +49,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { installCommandFor, type NewProjectTarget } from '../../../src/domain/contract/commands.js';
-import { catalogQuery, previewQuery } from '../../../src/domain/contract/queries.js';
+import { catalogQuery, dialsQuery, previewQuery } from '../../../src/domain/contract/queries.js';
 import type {
   AnswerBinding,
   AvailableVerticalDescriptor,
   Catalog,
   DialOptions,
+  InstallPreview,
   InstalledVerticalDescriptor,
+  PendingQuestion,
   ProjectStatus,
   VerticalDescriptor,
 } from '../../../src/domain/contract/queries.js';
@@ -164,6 +170,8 @@ const brownfield = (): Run => ({
   generation: 0,
   carried: null,
   notice: '',
+  held: [],
+  identity: [],
 });
 
 /** A greenfield page after `keel.dials` has settled `quarkus-rest`. */
@@ -174,6 +182,8 @@ const greenfield = (): Run => ({
   generation: 0,
   carried: null,
   notice: '',
+  held: [],
+  identity: [],
 });
 
 /** `quarkus-rest` settled on Maven, the modulith and the peer context — every dial moved. */
@@ -354,12 +364,22 @@ describe('a greenfield control', () => {
     expect(next.dials).toBe(before.dials);
   });
 
-  it('starts a new preset over, but for its dials', () => {
+  it('starts a new preset over from its dials, holding the answers for the next preview', () => {
     const next = retarget(greenfield(), { stack: 'go-http' });
     // The build system goes along; `keel.dials` is what drops it, Go
     // having none to choose.
     expect(next.target).toEqual({ kind: 'new-project', stack: 'go-http', buildSystem: 'gradle' });
+    // Held rather than posted: the preview of the new preset says
+    // where each still goes (`previewed`).
     expect(next.answers).toEqual({});
+    expect(next.held).toEqual([
+      {
+        adapter: 'persistence/database-compose',
+        question: 'engine',
+        value: 'postgres',
+        identity: false,
+      },
+    ]);
     expect(next.dials).toBeNull();
   });
 
@@ -387,10 +407,17 @@ describe('a greenfield control', () => {
     });
   });
 
-  it('leaves the extras behind for now, with the answers', () => {
+  it('carries the extras onto the new preset, for keel.dials to snap', () => {
     const before = { ...tuned() };
-    before.target = { ...before.target, extraVerticals: ['ci'] };
-    expect(retarget(before, { stack: 'quarkus-cli-rest' }).target.extraVerticals).toBeUndefined();
+    before.target = { ...before.target, extraVerticals: ['ci', 'containerization'] };
+    expect(retarget(before, { stack: 'quarkus-cli' }).target).toEqual({
+      kind: 'new-project',
+      stack: 'quarkus-cli',
+      buildSystem: 'maven',
+      moduleLayout: 'modulith',
+      withPeerContext: true,
+      extraVerticals: ['ci', 'containerization'],
+    });
   });
 
   it('keeps everything when the preset picked is the one already there', () => {
@@ -405,6 +432,7 @@ describe('a greenfield control', () => {
     const next = retarget(greenfield(), { kind: 'add-vertical', verticals: [] });
     expect(next.target).toEqual({ kind: 'add-vertical', verticals: [] });
     expect(next.answers).toEqual({});
+    expect(next.held).toEqual([]);
     expect(next.dials).toBeNull();
   });
 });
@@ -441,6 +469,7 @@ describe('an answer', () => {
     const next = answer(greenfield(), { binding: { kind: 'stack' }, value: 'go-http' });
     expect(next.target).toEqual({ kind: 'new-project', stack: 'go-http', buildSystem: 'gradle' });
     expect(next.answers).toEqual({});
+    expect(next.held).toEqual(retarget(greenfield(), { stack: 'go-http' }).held);
   });
 });
 
@@ -783,6 +812,101 @@ describe('what a preset move could not keep', () => {
     expect(onSpring.notice).toBe('');
   });
 
+  /**
+   * `tuned` with `extras` ticked, its menus titling them as the
+   * shipped registry does.
+   */
+  const withExtras = (...extras: string[]): Run => {
+    const run = tuned();
+    const target = { ...run.target, extraVerticals: extras };
+    return {
+      ...run,
+      target,
+      dials: {
+        ...jvmDials(target as DialOptions['target']),
+        verticals: [
+          { id: 'ci', title: 'Continuous integration', description: '', readiness: 'ready' },
+          { id: 'containerization', title: 'Container image', description: '', readiness: 'ready' },
+          { id: 'dev-env', title: 'Development environment', description: '', readiness: 'ready' },
+        ].map((option) => ({ ...option, requires: [] }) as DialOptions['verticals'][number]),
+      },
+    };
+  };
+
+  it('names each extra the new preset could not carry, with the reason keel.dials gave', () => {
+    const moved = retarget(withExtras('ci', 'containerization'), { stack: 'quarkus-cli' });
+    const because =
+      'Container image needs an entrypoint this project does not have: HTTP server — a REST endpoint';
+    const settled = settle(moved, {
+      ...jvmDials({ ...moved.target, kind: 'new-project', extraVerticals: ['ci'] }),
+      adjustments: [{ id: 'containerization', change: 'dropped', because }],
+    });
+    expect(settled.notice).toBe(`Container image dropped: ${because}.`);
+  });
+
+  it('keeps quiet about an extra the new preset comes with, which it keeps', () => {
+    const moved = retarget(withExtras('dev-env'), { stack: 'quarkus-cli-rest' });
+    const settled = settle(moved, {
+      ...jvmDials({ ...moved.target, kind: 'new-project', extraVerticals: [] }),
+      verticals: [
+        {
+          id: 'dev-env',
+          title: 'Development environment',
+          description: '',
+          readiness: 'included',
+          requires: [],
+        },
+      ],
+      adjustments: [
+        {
+          id: 'dev-env',
+          change: 'dropped',
+          because: 'Development environment already comes with quarkus-cli-rest',
+        },
+      ],
+    });
+    expect(settled.notice).toBe('');
+  });
+
+  it('names an extra a product left behind by the title the old menu gave it', () => {
+    // A product takes no extras of its own, and its reply neither lists
+    // a single project's nor says why it dropped them.
+    const moved = retarget(withExtras('ci'), { stack: 'fullstack' });
+    const settled = settle(
+      moved,
+      reply({
+        target: {
+          kind: 'new-project',
+          stack: 'fullstack',
+          layout: 'monorepo',
+          buildSystem: 'backend=maven,frontend=npm',
+        },
+        buildSystems: [],
+        moduleLayouts: [],
+        services: [
+          { path: 'backend', stack: 'quarkus-rest', buildSystems: [choice('gradle')] },
+          { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
+        ],
+        peerContext: false,
+        extraVerticals: [],
+        verticals: [],
+        adjustments: [],
+      }),
+    );
+    expect(settled.notice).toBe(
+      'Moving to fullstack did not keep build system maven, module layout modulith, the peer context or Continuous integration.',
+    );
+  });
+
+  it('forgets the extras ticked by hand before the reply landed', () => {
+    const moved = retarget(withExtras('ci', 'containerization'), { stack: 'quarkus-cli' });
+    const repicked = retarget(moved, { extraVerticals: ['ci'] });
+    const settled = settle(repicked, {
+      ...jvmDials({ ...repicked.target, kind: 'new-project', extraVerticals: ['ci'] }),
+    });
+    expect(settled.notice).toBe('');
+  });
+
   it('lets any later move retire the line', () => {
     const settled = {
       ...greenfield(),
@@ -889,6 +1013,429 @@ describe('a preview reply', () => {
   });
 });
 
+describe('the answers a preset move holds', () => {
+  const bootstrap = (id: string, question: string): AnswerBinding => ({
+    kind: 'answer',
+    adapter: `walking-skeleton/${id}-bootstrap`,
+    question,
+  });
+  const BRANCH: AnswerBinding = {
+    kind: 'answer',
+    adapter: 'vcs/git-init',
+    question: 'defaultBranch',
+  };
+
+  /** A question as a preview reports it, held to the contract the page reads it from. */
+  const pending = (
+    binding: AnswerBinding,
+    value: string,
+    more: Partial<PendingQuestion> = {},
+  ): PendingQuestion => ({
+    id: binding.kind === 'answer' ? binding.question : binding.kind,
+    prompt: '',
+    doc: '',
+    default: value,
+    value,
+    memory: 'sticky',
+    binding,
+    ...more,
+  });
+  const shared = { shared: 'project' } as const;
+
+  /**
+   * `quarkus-rest` with a package, a branch and an engine answered,
+   * after the preview that asked them: the package marked as the
+   * project's identity.
+   */
+  const answered = (): Run =>
+    previewed(
+      {
+        ...greenfield(),
+        answers: {
+          'walking-skeleton/quarkus-rest-bootstrap': { basePackage: 'org.acme' },
+          'vcs/git-init': { defaultBranch: 'trunk' },
+          'persistence/database-compose': { engine: 'mariadb' },
+        },
+      },
+      {
+        questions: [
+          pending(bootstrap('quarkus-rest', 'basePackage'), 'org.acme', shared),
+          pending(BRANCH, 'trunk'),
+          pending(ENGINE, 'mariadb'),
+        ],
+      },
+    );
+
+  it('holds every answer a move leaves, marking the ones about the project’s identity', () => {
+    const moved = retarget(answered(), { stack: 'go-http' });
+    expect(moved.answers).toEqual({});
+    expect(moved.held).toEqual([
+      {
+        adapter: 'walking-skeleton/quarkus-rest-bootstrap',
+        question: 'basePackage',
+        value: 'org.acme',
+        identity: true,
+      },
+      { adapter: 'vcs/git-init', question: 'defaultBranch', value: 'trunk', identity: false },
+      {
+        adapter: 'persistence/database-compose',
+        question: 'engine',
+        value: 'mariadb',
+        identity: false,
+      },
+    ]);
+    // A second move before any preview holds the same, measured from
+    // the same preview's marks.
+    expect(retarget(moved, { stack: 'quarkus-cli-rest' }).held).toEqual(moved.held);
+    // So does a move within the preset before it: the marks are the
+    // last preview's until the next one replies.
+    const maven = retarget(answered(), { buildSystem: 'maven' });
+    expect(retarget(maven, { stack: 'go-http' }).held).toEqual(moved.held);
+  });
+
+  it('places a held answer back on its question, and previews again for it', () => {
+    const moved = retarget(answered(), { stack: 'spring-rest' });
+    const first = previewed(moved, {
+      questions: [
+        pending(bootstrap('spring-rest', 'basePackage'), 'com.example', shared),
+        pending(BRANCH, 'main'),
+      ],
+    });
+    expect(first.answers).toEqual({
+      'walking-skeleton/spring-rest-bootstrap': { basePackage: 'org.acme' },
+      'vcs/git-init': { defaultBranch: 'trunk' },
+    });
+    // That reply shows `com.example` and `main`: not the run's plan any
+    // more, so the page asks again.
+    expect(first.generation).toBe(moved.generation + 1);
+    expect(first.held).toEqual([moved.held[2]]);
+
+    const second = previewed(first, {
+      questions: [
+        pending(bootstrap('spring-rest', 'basePackage'), 'org.acme', shared),
+        pending(BRANCH, 'trunk'),
+      ],
+    });
+    expect(second.answers).toEqual(first.answers);
+    expect(second.generation).toBe(first.generation);
+    // Nothing left to place: what is still held is let go.
+    expect(second.held).toEqual([]);
+  });
+
+  it('moves an identity answer onto its own id only, and only onto one question', () => {
+    // A product's two names, moved to a single project asking one: the
+    // first takes it, the other has nowhere to go.
+    const product: Run = {
+      ...greenfield(),
+      answers: {
+        'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'api', basePackage: 'org.acme' },
+        'walking-skeleton/wc-spa-bootstrap': { projectName: 'web' },
+        'observability/monitoring-compose': { projectName: 'metrics' },
+      },
+      identity: [
+        'walking-skeleton/quarkus-rest-bootstrap:projectName',
+        'walking-skeleton/quarkus-rest-bootstrap:basePackage',
+        'walking-skeleton/wc-spa-bootstrap:projectName',
+      ],
+    };
+    const moved = retarget(product, { stack: 'go-http' });
+    const placed = previewed(moved, {
+      questions: [
+        pending(bootstrap('go', 'modulePath'), 'example.com/walking-skeleton', shared),
+        pending(bootstrap('go', 'projectName'), 'walking-skeleton', shared),
+      ],
+    });
+    // The package has no question of its id on Go, and an answer that
+    // was never the project's identity is not moved onto one.
+    expect(placed.answers).toEqual({ 'walking-skeleton/go-bootstrap': { projectName: 'api' } });
+    expect(placed.identity).toEqual([
+      'walking-skeleton/go-bootstrap:modulePath',
+      'walking-skeleton/go-bootstrap:projectName',
+    ]);
+  });
+
+  it('moves by the marks alone: an unmarked answer stays put, a marked one skips an unmarked question', () => {
+    // A plugin's adapter may ask a `projectName` of its own, about
+    // itself rather than the project. Sharing the id is not sharing
+    // the meaning, in either direction.
+    const METRICS: AnswerBinding = {
+      kind: 'answer',
+      adapter: 'acme/metrics',
+      question: 'projectName',
+    };
+    const GO_NAME = pending(bootstrap('go', 'projectName'), 'walking-skeleton', shared);
+
+    const unmarked = retarget(
+      { ...greenfield(), answers: { 'acme/metrics': { projectName: 'metrics' } } },
+      { stack: 'go-http' },
+    );
+    expect(previewed(unmarked, { questions: [GO_NAME] }).answers).toEqual({});
+
+    const marked = retarget(
+      {
+        ...greenfield(),
+        answers: { 'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'shop' } },
+        identity: ['walking-skeleton/quarkus-rest-bootstrap:projectName'],
+      },
+      { stack: 'go-http' },
+    );
+    expect(
+      previewed(marked, { questions: [pending(METRICS, 'metrics'), GO_NAME] }).answers,
+    ).toEqual({ 'walking-skeleton/go-bootstrap': { projectName: 'shop' } });
+  });
+
+  it('keeps an identity answer to its own question, even once that one is answered again', () => {
+    // Its own question is where it belongs. Answered there since the
+    // move, it is superseded — not moved onto another service's name.
+    const moved = retarget(
+      {
+        ...greenfield(),
+        answers: { 'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'shop' } },
+        identity: ['walking-skeleton/quarkus-rest-bootstrap:projectName'],
+      },
+      { stack: 'fullstack' },
+    );
+    const given = answer(moved, {
+      binding: bootstrap('quarkus-rest', 'projectName'),
+      value: 'api',
+    });
+    const placed = previewed(given, {
+      questions: [
+        pending(bootstrap('quarkus-rest', 'projectName'), 'api', shared),
+        pending(bootstrap('wc-spa', 'projectName'), 'walking-skeleton', shared),
+      ],
+    });
+    expect(placed.answers).toEqual({
+      'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'api' },
+    });
+    expect(placed.generation).toBe(given.generation);
+  });
+
+  it('gives two identity answers of one id a question each, in the order they were given', () => {
+    // A product whose services both change family — no two shipped
+    // products differ in both, but a plugin's can: each name takes the
+    // first question of its id nothing has taken yet.
+    const product = retarget(
+      {
+        ...greenfield(),
+        answers: {
+          'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'api' },
+          'walking-skeleton/wc-spa-bootstrap': { projectName: 'web' },
+        },
+        identity: [
+          'walking-skeleton/quarkus-rest-bootstrap:projectName',
+          'walking-skeleton/wc-spa-bootstrap:projectName',
+        ],
+      },
+      { stack: 'acme-product' },
+    );
+    const placed = previewed(product, {
+      questions: [
+        pending(bootstrap('go', 'projectName'), 'walking-skeleton', shared),
+        pending(bootstrap('ts-cli', 'projectName'), 'walking-skeleton', shared),
+      ],
+    });
+    expect(placed.answers).toEqual({
+      'walking-skeleton/go-bootstrap': { projectName: 'api' },
+      'walking-skeleton/ts-cli-bootstrap': { projectName: 'web' },
+    });
+  });
+
+  it('leaves behind a choice the new question does not offer', () => {
+    const moved = retarget(answered(), { stack: 'go-http' });
+    const choices = (...values: string[]) =>
+      values.map((value) => ({ value, label: value, doc: '' }));
+    const placed = previewed(moved, {
+      questions: [pending(ENGINE, 'postgres', { choices: choices('postgres') })],
+    });
+    // Posted, MariaDB would be `keel.invalid-answer` on Go — a refusal
+    // with no question on screen to change it at.
+    expect(placed.answers).toEqual({});
+    expect(placed.generation).toBe(moved.generation);
+    expect(placed.held).toEqual([]);
+
+    // A selection is held to its choices one value at a time.
+    const selection: Run = {
+      ...moved,
+      held: [
+        { adapter: 'x/y', question: 'some', value: 'a,c', identity: false },
+        { adapter: 'x/y', question: 'many', value: 'a,b', identity: false },
+      ],
+    };
+    const both = { kind: 'multi-select', choices: choices('a', 'b') } as const;
+    expect(
+      previewed(selection, {
+        questions: [
+          pending({ kind: 'answer', adapter: 'x/y', question: 'some' }, '', both),
+          pending({ kind: 'answer', adapter: 'x/y', question: 'many' }, '', both),
+        ],
+      }).answers,
+    ).toEqual({ 'x/y': { many: 'a,b' } });
+  });
+
+  it('previews once where the reply already shows each answer it places', () => {
+    // `trunk` chosen where `trunk` is what the new preset would have
+    // said anyway: the reply is the run's plan, and is drawn.
+    const moved = retarget(answered(), { stack: 'go-http' });
+    const placed = previewed(moved, { questions: [pending(BRANCH, 'trunk')] });
+    expect(placed.answers).toEqual({ 'vcs/git-init': { defaultBranch: 'trunk' } });
+    expect(placed.generation).toBe(moved.generation);
+    expect(placed.held).toEqual([]);
+  });
+
+  it('never places a held answer over one given since', () => {
+    const moved = retarget(answered(), { stack: 'go-http' });
+    const given = answer(moved, { binding: BRANCH, value: 'develop' });
+    const placed = previewed(given, { questions: [pending(BRANCH, 'develop')] });
+    expect(placed.answers).toEqual({ 'vcs/git-init': { defaultBranch: 'develop' } });
+    expect(placed.generation).toBe(given.generation);
+  });
+
+  /**
+   * `<keel-app>`'s loop after a move, through the real queries: settle
+   * the dials, preview, place what is held — and again while placing
+   * moved the plan, as the page previews again.
+   */
+  async function roundTrip(cwd: string, run: Run): Promise<{ run: Run; preview: InstallPreview }> {
+    const mediator = installMediator();
+    let current = run;
+    for (let round = 0; round < 5; round += 1) {
+      const target = current.target as unknown as NewProjectTarget;
+      const settled = settle(current, expectOk(await mediator.dispatch(dialsQuery({ target }))));
+      const preview = expectOk(
+        await mediator.dispatch(
+          previewQuery({
+            cwd,
+            target: settled.target as unknown as NewProjectTarget,
+            answers: settled.answers,
+          }),
+        ),
+      );
+      const next = previewed(settled, preview);
+      if (next.generation === settled.generation) return { run: next, preview };
+      current = next;
+    }
+    throw new Error('the preview loop never settled');
+  }
+
+  /** What a dry-run install of the run's body stages. */
+  const installOf = async (cwd: string, run: Run) =>
+    expectOk(
+      await installMediator().dispatch(
+        installCommandFor(run.target as unknown as NewProjectTarget, {
+          cwd,
+          answers: run.answers,
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+
+  it('carries a package within the family and a name across it, as the install writes them', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-held-'));
+    try {
+      const opened = await roundTrip(cwd, {
+        ...greenfield(),
+        target: { kind: 'new-project', stack: 'quarkus-rest' },
+        answers: {},
+        dials: null,
+      });
+      const bootstrapOf = (stack: string) => `walking-skeleton/${stack}-bootstrap`;
+      const given = [
+        { binding: bootstrap('quarkus-rest', 'basePackage'), value: 'org.acme' },
+        { binding: bootstrap('quarkus-rest', 'projectName'), value: 'shop' },
+        { binding: BRANCH, value: 'trunk' },
+      ].reduce((run, answered) => answer(run, answered), opened.run);
+      const onRest = await roundTrip(cwd, given);
+
+      // Ticking the CLI adapter: the CLI bootstrap asks for the package now.
+      const onCliRest = await roundTrip(cwd, retarget(onRest.run, { stack: 'quarkus-cli-rest' }));
+      expect(onCliRest.run.answers).toEqual({
+        [bootstrapOf('quarkus-cli')]: { basePackage: 'org.acme', projectName: 'shop' },
+        'vcs/git-init': { defaultBranch: 'trunk' },
+      });
+      expect(onCliRest.preview.unusedAnswers).toBeUndefined();
+      expect(onCliRest.preview.changes.some((change) => change.path.includes('org/acme'))).toBe(
+        true,
+      );
+      expect((await installOf(cwd, onCliRest.run)).changes).toEqual(onCliRest.preview.changes);
+
+      // On to Go: the name goes along, the package has no question there.
+      const onGo = await roundTrip(cwd, retarget(onCliRest.run, { stack: 'go-http' }));
+      expect(onGo.run.answers).toEqual({
+        [bootstrapOf('go')]: { projectName: 'shop' },
+        'vcs/git-init': { defaultBranch: 'trunk' },
+      });
+      expect((await installOf(cwd, onGo.run)).changes).toEqual(onGo.preview.changes);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('lets a MariaDB go on Go rather than post it into a refusal', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-held-'));
+    try {
+      const opened = await roundTrip(cwd, {
+        ...greenfield(),
+        target: { kind: 'new-project', stack: 'quarkus-rest', extraVerticals: ['persistence'] },
+        answers: {},
+        dials: null,
+      });
+      const onJvm = await roundTrip(cwd, answer(opened.run, { binding: ENGINE, value: 'mariadb' }));
+      expect(onJvm.run.answers).toEqual({ 'persistence/database-compose': { engine: 'mariadb' } });
+
+      const onGo = await roundTrip(cwd, retarget(onJvm.run, { stack: 'go-http' }));
+      expect(extrasOf(onGo.run.target)).toEqual(['persistence']);
+      expect(onGo.run.answers).toEqual({});
+      expect(onGo.run.held).toEqual([]);
+      await installOf(cwd, onGo.run);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it.each(['monorepo', 'polyrepo'])(
+    'carries a package and a name into a product’s backend, %s, as the install writes them',
+    async (layout) => {
+      // A product's backend is asked by the same bootstrap as the
+      // preset it came from, so the answers land on their own
+      // questions; the front end, asked by another, keeps its defaults.
+      // The layout picked before the first reply is a move within the
+      // product, which leaves what is held alone.
+      const cwd = await mkdtemp(path.join(tmpdir(), 'keel-held-'));
+      try {
+        const opened = await roundTrip(cwd, {
+          ...greenfield(),
+          target: { kind: 'new-project', stack: 'quarkus-rest' },
+          answers: {},
+          dials: null,
+        });
+        const given = [
+          { binding: bootstrap('quarkus-rest', 'basePackage'), value: 'org.acme' },
+          { binding: bootstrap('quarkus-rest', 'projectName'), value: 'shop' },
+        ].reduce((run, answered) => answer(run, answered), opened.run);
+        const onRest = await roundTrip(cwd, given);
+
+        const moved = retarget(retarget(onRest.run, { stack: 'fullstack' }), { layout });
+        const onProduct = await roundTrip(cwd, moved);
+        expect(onProduct.run.target).toMatchObject({ stack: 'fullstack', layout });
+        expect(onProduct.run.answers).toEqual({
+          'walking-skeleton/quarkus-rest-bootstrap': {
+            basePackage: 'org.acme',
+            projectName: 'shop',
+          },
+        });
+        expect(onProduct.preview.changes.some((change) => change.path.includes('org/acme'))).toBe(
+          true,
+        );
+        expect((await installOf(cwd, onProduct.run)).changes).toEqual(onProduct.preview.changes);
+      } finally {
+        await rm(cwd, { recursive: true, force: true });
+      }
+    },
+  );
+});
+
 describe('the request in flight', () => {
   /**
    * `<keel-app>` claims a generation when a request starts and drops
@@ -928,6 +1475,8 @@ describe('pointing the page at a directory', () => {
       generation: 1,
       carried: null,
       notice: '',
+      held: [],
+      identity: [],
     });
   });
 });

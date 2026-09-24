@@ -47,8 +47,12 @@
  * adopted whole: the target it hands back is the one the page renders
  * from, previews and finally posts. Adopting it is also where a move
  * onto a new preset says what it could not keep — a dial it had to
- * snap, a language the new shape does not have — in one line under
- * the preset picker (`../target.js`'s `settle`).
+ * snap, an extra it had to drop, a language the new shape does not
+ * have — in one line under the preset picker (`../target.js`'s
+ * `settle`). The answers such a move keeps are placed by the preview
+ * that follows it (`previewed`), and where that places one the reply
+ * did not already show, the reply is not the plan of the run any more:
+ * the page previews again rather than draw it.
  *
  * **The mode.** Pointing at a directory decides everything. No
  * manifest there and only `keel new` applies; a manifest and the page
@@ -125,6 +129,8 @@ export class KeelApp extends HTMLElement {
   #answers = {};
   #carried = null;
   #notice = '';
+  #held = [];
+  #identity = [];
   #preview = null;
   #report = null;
   #error = null;
@@ -273,6 +279,8 @@ export class KeelApp extends HTMLElement {
       generation: this.#generation,
       carried: this.#carried,
       notice: this.#notice,
+      held: this.#held,
+      identity: this.#identity,
     };
   }
 
@@ -283,6 +291,8 @@ export class KeelApp extends HTMLElement {
     this.#generation = run.generation;
     this.#carried = run.carried;
     this.#notice = run.notice;
+    this.#held = run.held;
+    this.#identity = run.identity;
   }
 
   /* ---- the preview loop ---------------------------------------- */
@@ -324,9 +334,17 @@ export class KeelApp extends HTMLElement {
     const result = await api.preview(this.#body());
     if (generation !== this.#generation) return;
     if (result.ok) {
-      this.#preview = result.value;
       this.#adopt(previewed(this.#run(), result.value));
       this.#error = null;
+      // The reply placed an answer a preset move held, which it had
+      // not read: its plan is not this run's. The last one stays up,
+      // marked stale, until the preview of the answers as they are.
+      if (this.#generation !== generation) {
+        this.#previewSoon();
+        this.#render();
+        return;
+      }
+      this.#preview = result.value;
     } else {
       this.#preview = null;
       this.#error = result.error;

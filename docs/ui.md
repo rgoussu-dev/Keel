@@ -212,18 +212,38 @@ default preset's (the browser front end moved to a backend lands on
 picker says so — _Kotlin has no fullstack preset, so the language is
 now Java._ — rather than let the language change without a word.
 
-**A new preset keeps your dials.** Every move that lands on another
+**A new preset keeps your choices.** Every move that lands on another
 preset — an adapter ticked, a framework switched, a shape moved —
-carries the build system, the module layout, the peer context and a
-product's repository layout along, and `keel.dials` snaps whichever
-the new preset cannot take. Maven and the modulith picked on
-`quarkus-rest` survive ticking the CLI adapter, since
-`quarkus-cli-rest` takes both. Moved to `ts-cli`, Maven becomes npm,
-and the same line says so: _Moving to ts-cli did not keep build system
-maven._ Only a value you had moved off its default is named — a
-product's build systems service by service, _build system maven for
-backend_ — and the next change retires the line. The adapters' answers and the extra
-verticals still start afresh on a new preset.
+carries the build system, the module layout, the peer context, a
+product's repository layout and the **Also scaffold** extras along, and
+`keel.dials` snaps whichever the new preset cannot take. Maven, the
+modulith and a pipeline picked on `quarkus-rest` survive ticking the
+CLI adapter, since `quarkus-cli-rest` takes all three. Moved to
+`ts-cli`, Maven becomes npm, and the same line says so: _Moving to
+ts-cli did not keep build system maven._ Only a value you had moved off
+its default is named — a product's build systems service by service,
+_build system maven for backend_ — and the next change retires the
+line. An extra the new preset cannot carry is named with the reason
+`keel.dials` dropped it — a Container image ticked on `quarkus-rest`,
+moved to `quarkus-cli`, reads _Container image dropped: Container
+image needs an entrypoint this project does not have: HTTP server — a
+REST endpoint._ — and one the new preset comes with is not named at
+all: it is kept, by the preset now rather than by the box.
+
+The answers go along too. Most are asked by the same adapter on every
+preset — `vcs/git-init`'s default branch, a database engine — and
+land back on their question; the project's identity (its name,
+package, module path or npm scope), which each family's bootstrap asks
+under its own id, lands on the question of the same name the new
+preset's bootstrap asks. So the package typed on `quarkus-cli` is
+still `org.acme` once HTTP is ticked, and the name typed on a Quarkus
+preset is still the name on Go, where the package has no question to
+go to. The page holds them until the first preview of the new preset
+has said which questions it asks and which choices it offers, then
+previews again with them in place: an answer is kept only where its
+question is asked and offers it — a MariaDB chosen on a JVM preset is
+let go on Go, which offers PostgreSQL alone — so a move never turns
+into a refusal with no question on screen to change it at.
 
 The **Preset** picker under the rail stays, and it is not redundant.
 It is the result of the four steps, it is the way to pick a preset by
@@ -523,15 +543,20 @@ or a question one has settled (`keel.frozen-answer`) or for an answer a
 re-render reads as recorded (`keel.reapply-frozen-answers`), and so is
 a value outside its question's choices (`keel.invalid-answer`) — none of
 them is written into a manifest, and none is a 500. A preview does not
-refuse such an answer: it lists it in `unusedAnswers`, each entry
-`{ adapter, question, code, message }` with the refusal an install of
-the same body gives — the first is the one it gives — and previews the
-body without them. The page sends only the answers its
-latest preview asked for — an extra or a card unticked after its
-question was answered takes that answer with it, and Generate waits
-for the preview of the run as it now stands — and starts them over
-whenever the stack changes, or the page moves between adding and
-re-rendering.
+refuse an answer the run does not read: it lists it in
+`unusedAnswers`, each entry `{ adapter, question, code, message }`
+with the refusal an install of the same body gives — the first is the
+one it gives — and previews the body without them. A value outside its
+question's choices is read, and a preview refuses it as the install
+does. The page sends only the answers its latest preview asked for —
+an extra or a card unticked after its question was answered takes that
+answer with it, and Generate waits for the preview of the run as it
+now stands — and starts them over whenever the page moves between
+adding and re-rendering. When the stack changes it sends none until a
+preview of the new one has reported its questions, then sends each
+answer whose question is still asked and still offers it, under that
+question's binding — one marked `shared: "project"` moved onto the new
+bootstrap's question of the same id.
 
 A refusal comes back as **422** with the domain's own error code:
 

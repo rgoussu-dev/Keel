@@ -23,6 +23,11 @@
  * not to pick a directory. On a CLI project, Observability is under
  * "Not for this project" with its sentence before any click.
  *
+ * **A preset move keeps them.** Ticking HTTP on a tuned CLI preset
+ * lands on the composed one with the build system, the module layout,
+ * the extras and the package still set — the plan redrawn under
+ * `org/acme`, from a body that carries them all.
+ *
  * Which boxes a gesture moves is pinned without a browser
  * (`tests/application/web/target.test.ts`), what the groups show too
  * (`extras.test.ts`, `additions.test.ts`), and that `keel.dials` then
@@ -68,6 +73,7 @@ import { expectOk, installMediator } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
+  adapter,
   buildCli,
   browserBinary,
   control,
@@ -76,6 +82,7 @@ import {
   stackIs,
   startUi,
   until,
+  valueOf,
   watchTraffic,
   type Traffic,
   type UiProcess,
@@ -106,6 +113,16 @@ const plansCompose = async (page: Page): Promise<boolean> =>
     .filter({ has: page.locator(':scope > .row .name', { hasText: /^deploy\/$/ }) })
     .locator('li .name', { hasText: /^compose\.yaml$/ })
     .count()) > 0;
+
+/** Whether the plan beside the step has a directory path running through `segment`. */
+const plansUnder = async (page: Page, segment: string): Promise<boolean> =>
+  ((await page.locator('keel-plan keel-file-tree').textContent()) ?? '').includes(segment);
+
+/** The last body the page posted to `POST /api/preview`. */
+const lastBody = (traffic: Traffic): { target?: unknown; answers?: unknown } | undefined => {
+  const bodies = traffic.posted('/api/preview') as { target?: unknown; answers?: unknown }[];
+  return bodies[bodies.length - 1];
+};
 
 /** The copyable command, which is derived from the body the page posts. */
 const command = async (page: Page): Promise<string> =>
@@ -271,6 +288,55 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       await act(traffic, () => row.getByRole('button').click());
       expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Options');
       for (const id of CHAIN) expect(await ticked(page, id), id).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'keeps the dials, the extras and the package when ticking HTTP moves the preset',
+    async () => {
+      // Tuned on the CLI preset: Maven, the modulith, a pipeline, and
+      // the package the project lives under.
+      await act(traffic, () => control(page, 'stack').selectOption('quarkus-cli'));
+      await stackIs(page, 'quarkus-cli');
+      await goToStep(traffic, page, 'options');
+      await act(traffic, () => control(page, 'buildSystem').selectOption('maven'));
+      await act(traffic, () => control(page, 'moduleLayout').selectOption('modulith'));
+      await act(traffic, () => box(page, 'ci').click());
+      await goToStep(traffic, page, 'questions');
+      const basePackage = control(page, 'q-walking-skeleton-quarkus-cli-bootstrap--basePackage');
+      await act(traffic, async () => {
+        await basePackage.fill('org.acme');
+        await basePackage.blur();
+      });
+      await until(() => plansUnder(page, 'org/acme'), 'the plan to move under org/acme');
+
+      // Ticking HTTP lands on another preset, which used to start all
+      // four over: Gradle, the flat layout, no pipeline, com/example.
+      await goToStep(traffic, page, 'entrypoints');
+      await act(traffic, () => adapter(page, 'server-http').click());
+      await stackIs(page, 'quarkus-cli-rest');
+      await until(() => plansUnder(page, 'org/acme'), 'the new preset’s plan under org/acme');
+      expect(await plansUnder(page, 'com/example')).toBe(false);
+      expect(await page.locator('[data-role="preset-notice"]').count()).toBe(0);
+
+      // The body that went out, not a control describing it.
+      expect(lastBody(traffic)?.target).toEqual({
+        kind: 'new-project',
+        stack: 'quarkus-cli-rest',
+        buildSystem: 'maven',
+        moduleLayout: 'modulith',
+        withPeerContext: false,
+        extraVerticals: ['ci'],
+      });
+      expect(lastBody(traffic)?.answers).toEqual({
+        'walking-skeleton/quarkus-cli-bootstrap': { basePackage: 'org.acme' },
+      });
+      await goToStep(traffic, page, 'options');
+      expect(await valueOf(page, 'buildSystem')).toBe('maven');
+      expect(await valueOf(page, 'moduleLayout')).toBe('modulith');
+      expect(await ticked(page, 'ci')).toBe(true);
+      // No Generate: the web shard has no JDK for a real Quarkus install.
     },
     E2E_TIMEOUT_MS,
   );
