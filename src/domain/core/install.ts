@@ -1,8 +1,16 @@
 /**
- * The top-level orchestrator: install one vertical against a manifest
- * and a Tree.
+ * The top-level orchestrator: install verticals against a manifest and
+ * a Tree.
  *
- * Pipeline:
+ * `installVerticals` is the run both front doors install through —
+ * `keel new` with a scope's stack verticals and extras, `keel add` with
+ * a list of one. It installs each vertical in the order given onto one
+ * Tree, each against the manifest the ones before it produced, under
+ * one ownership memory and one harness buffer, then realizes the
+ * run's harness declarations once — unless the caller supplied the
+ * buffer, and finalizes it itself.
+ *
+ * `installVertical` installs one of them. Pipeline:
  *   1. `resolveVertical` — predicate match → topo sort → coverage check.
  *   2. For each adapter in order:
  *        a. resolve its questions against its sticky memory — the
@@ -93,31 +101,103 @@ export interface InstallVerticalInputs {
   /**
    * The run's ownership memory — which contributor owns each skill
    * name and each declared region of each file — so a second claim
-   * is refused naming both. A run that installs several verticals
-   * onto one tree (`keel new`) passes one {@link Ownership} through
-   * every call; absent, the call is its own run.
+   * is refused naming both. {@link installVerticals} passes one
+   * {@link Ownership} through every vertical it installs; absent, the
+   * call is its own run.
    */
   readonly owners?: Ownership;
-  /** Shared run buffer. Absent, this install finalizes its own declarations. */
+  /**
+   * Shared run buffer. Absent, this install finalizes its own
+   * declarations; present, the caller finalizes them
+   * ({@link finalizeHarness}) once the run is over.
+   */
   readonly harness?: HarnessContribution[];
   /** Replay recorded answers for harness declarations only; never apply domain changes or actions. */
   readonly harnessOnly?: boolean;
 }
 
-/** Result of installing a vertical. */
+/** Result of installing a vertical, or a run of them. */
 export interface InstallVerticalResult {
   /** The next manifest, with tags/vertical/answers merged. */
   readonly manifest: ManifestV2;
   /** The raw apply result, for diagnostics or reuse by callers. */
   readonly applyResult: ApplyResult;
   /**
-   * The adapters the vertical resolved to, in the order they ran —
+   * The adapters the verticals resolved to, in the order they ran —
    * what a caller holds supplied answers against once the run is
    * staged.
    */
   readonly adapters: readonly Adapter[];
 }
 
+/** Inputs to {@link installVerticals}: one install's inputs, over a list of verticals. */
+export interface InstallVerticalsInputs extends Omit<
+  InstallVerticalInputs,
+  'vertical' | 'harnessOnly'
+> {
+  /**
+   * The verticals to install, in the order they run. Each resolves
+   * against the manifest the ones before it produced, so a tag an
+   * earlier one promotes is one a later one's adapters can match.
+   */
+  readonly verticals: readonly Vertical[];
+}
+
+/**
+ * Installs `verticals` in order onto one Tree — the loop `keel new`
+ * runs over a scope's stack verticals and extras, and `keel add` over
+ * a list of one.
+ *
+ * The run is one scope: the running manifest threads from each
+ * vertical into the next, and one {@link Ownership} and one harness
+ * buffer serve every vertical, so a skill name or a region two
+ * verticals both claim collides here, not only when both come from
+ * one vertical. With no `harness` supplied the run realizes its
+ * declarations itself once the last vertical has installed; with one,
+ * the caller finalizes, having first added what else the run needs in
+ * that buffer (`keel add agent-harness` replays the project's earlier
+ * contributors into it). Nothing is committed.
+ */
+export async function installVerticals(
+  inputs: InstallVerticalsInputs,
+): Promise<InstallVerticalResult> {
+  const { verticals, ...run } = inputs;
+  const owners = inputs.owners ?? newOwnership();
+  const harness = inputs.harness ?? [];
+  let manifest = inputs.manifest;
+  const tagsAdded = new Set<Tag>();
+  const actions: DeferredAction[] = [];
+  const adapters: Adapter[] = [];
+
+  for (const vertical of verticals) {
+    const result = await installVertical({ ...run, vertical, manifest, owners, harness });
+    manifest = result.manifest;
+    for (const tag of result.applyResult.tagsAdded) tagsAdded.add(tag);
+    actions.push(...result.applyResult.actions);
+    adapters.push(...result.adapters);
+  }
+
+  if (inputs.harness !== undefined) {
+    return { manifest, applyResult: { tagsAdded: [...tagsAdded], skills: [], actions }, adapters };
+  }
+  const finalized = finalizeHarness({ ...run, manifest, harness, owners });
+  return {
+    manifest: finalized.manifest,
+    applyResult: {
+      tagsAdded: [...tagsAdded],
+      skills: finalized.skills,
+      actions,
+      ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
+    },
+    adapters,
+  };
+}
+
+/**
+ * Installs one vertical against `inputs.manifest` and `inputs.tree` —
+ * the step {@link installVerticals} repeats, and what the harness
+ * replay and `keel add module` run on their own.
+ */
 export async function installVertical(
   inputs: InstallVerticalInputs,
 ): Promise<InstallVerticalResult> {

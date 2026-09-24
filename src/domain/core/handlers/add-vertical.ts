@@ -15,12 +15,17 @@
  *      one for an installed vertical's adapter is frozen, any other
  *      is unknown (`../supplied-answers.ts`). Only the adapters it is
  *      keyed to take it, so nothing else it names is ever recorded.
- *   5. Install the vertical against a Tree rooted at cwd. The
- *      pre-existing project files on disk live in the Tree as "real"
- *      reads — patches against them work, and a whole-file write over
- *      one is refused as `keel.path-conflict` naming the file (which
- *      is exactly the diagnostic we want); a patch target the user
- *      deleted is refused as `keel.path-missing`.
+ *   5. Install the vertical against a Tree rooted at cwd, through the
+ *      loop `keel new` installs each scope through
+ *      (`installVerticals`), with a list of one. The pre-existing
+ *      project files on disk live in the Tree as "real" reads —
+ *      patches against them work, and a whole-file write over one is
+ *      refused as `keel.path-conflict` naming the file (which is
+ *      exactly the diagnostic we want); a patch target the user
+ *      deleted is refused as `keel.path-missing`. The run's harness
+ *      buffer stays this handler's to finalize: adopting a harness
+ *      replays the project's earlier contributors into it before the
+ *      finalize, and restamps the harness generation after.
  *   6. Under dry-run: report the plan, commit nothing.
  *   7. Otherwise: commit the Tree, persist the updated manifest, then
  *      run the deferred actions — manifest before actions, as in the
@@ -58,7 +63,7 @@ import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
 import { unifiedDiff } from '../diff.js';
-import { finalizeHarness, installVertical } from '../install.js';
+import { finalizeHarness, installVerticals } from '../install.js';
 import { retrofitHarness } from '../harness-retrofit.js';
 import { productRootSentence } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
@@ -172,8 +177,8 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     const owners = newOwnership();
     const harness: HarnessContribution[] = [];
     try {
-      result = await installVertical({
-        vertical,
+      result = await installVerticals({
+        verticals: [vertical],
         manifest: stored,
         supplied: command.answers,
         tree,

@@ -2458,11 +2458,22 @@ a package — a CHANGELOG entry; two test fixtures that did (the plugin
 byte-identity matrix, the Kotlin combo e2e cells' Java bootstrap ids)
 are keyed to their own adapters now.
 
-#### Q1.1 — refactor: one install loop for both handlers (M)
+#### Q1.1 — refactor: one install loop for both handlers (M) ✅
 
 `NewProjectHandler.stageStack`'s ordered loop moves into `install.ts`
 as `installVerticals`; `AddVerticalHandler` calls it with a list of
 one. No behaviour change; the grid golden is byte-identical.
+
+Landed with the harness buffer's contract carried over from
+`installVertical`: a run given no buffer realizes its declarations
+once, after the last vertical (`keel new`'s scopes); a caller that
+supplies one finalizes it, which is how `keel add` keeps the harness
+retrofit between the loop and the finalize, and the generation
+restamp after. `keel add module` and the harness replay still call
+`installVertical` directly: the first installs one synthetic vertical,
+and the second replays each contributor against the recorded manifest,
+never a running one. `install-verticals.test.ts` pins the run's three
+shared pieces — running manifest, ownership, harness buffer.
 
 #### Q1.2 — Two declarations and a planner, with no caller yet (M)
 

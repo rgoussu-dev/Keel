@@ -10,7 +10,8 @@
  *      `keel new` is greenfield-only; brownfield is `keel add`.
  *   3. Build an empty v2 manifest seeded with the stack's tags and
  *      its declared peer projections.
- *   4. Install each vertical in stack order against a fresh Tree.
+ *   4. Install each vertical in stack order against a fresh Tree
+ *      (`installVerticals`, the loop `keel add` installs through).
  *      Tags emitted by adapters via `tagsAdd` accumulate into the
  *      manifest snapshot the next vertical sees. A pre-supplied
  *      answer reaches only the adapters keyed to it (or borrowing
@@ -105,8 +106,7 @@ import {
   peerContextOffered,
   promotedBy,
 } from '../dials.js';
-import { finalizeHarness, installVertical } from '../install.js';
-import { newOwnership, type HarnessContribution } from '../apply.js';
+import { installVerticals } from '../install.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
@@ -736,9 +736,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }
 
   /**
-   * Installs one stack's verticals against a fresh manifest and Tree
-   * rooted at `cwd`. Nothing is committed — the caller owns commit
-   * order across scopes.
+   * Installs one stack's verticals, then its extras, against a fresh
+   * manifest and Tree rooted at `cwd` — one `installVerticals` run,
+   * the loop `keel add` installs through as well. Nothing is
+   * committed — the caller owns commit order across scopes.
    */
   private async stageStack(inputs: {
     prefix: string;
@@ -758,7 +759,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     now: string;
     prompt: Prompt;
   }): Promise<StagedScope> {
-    let manifest: ManifestV2 = {
+    const manifest: ManifestV2 = {
       ...emptyManifestV2(inputs.now, this.deps.keelVersion),
       tags: [
         ...inputs.stack.tags,
@@ -773,58 +774,33 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     };
 
     const tree = this.deps.trees(inputs.cwd);
-    const collected: DeferredAction[] = [];
-    const adapters: Adapter[] = [];
     const own = inputs.skipVcs
       ? inputs.stack.verticals.filter((v) => v.id !== vcsVertical.id)
       : inputs.stack.verticals;
-    const verticals = [...own, ...(inputs.extraVerticals ?? [])];
-    // One ownership scope for the whole scaffold: a skill name or a
-    // region two verticals both claim collides here, not only when
-    // both come from one vertical.
-    const owners = newOwnership();
-    const harness: HarnessContribution[] = [];
-
-    for (const vertical of verticals) {
-      const result = await installVertical({
-        vertical,
-        manifest,
-        supplied: inputs.command.answers,
-        tree,
-        owners,
-        harness,
-        // Nothing on disk here is keel's: a file in the way is the
-        // user's to move, and a patch target nothing created is a bug.
-        apply: 'scaffold',
-        mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
-        prompt: inputs.prompt,
-        logger: this.deps.logger,
-        cwd: inputs.cwd,
-        templates: this.deps.templates,
-        processes: this.deps.processes,
-        now: () => inputs.now,
-      });
-      manifest = result.manifest;
-      collected.push(...result.applyResult.actions);
-      adapters.push(...result.adapters);
-    }
-
-    const finalized = finalizeHarness({
+    const result = await installVerticals({
+      verticals: [...own, ...(inputs.extraVerticals ?? [])],
       manifest,
-      harness,
+      supplied: inputs.command.answers,
       tree,
-      owners,
+      // Nothing on disk here is keel's: a file in the way is the
+      // user's to move, and a patch target nothing created is a bug.
+      apply: 'scaffold',
+      mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
+      prompt: inputs.prompt,
       logger: this.deps.logger,
+      cwd: inputs.cwd,
+      templates: this.deps.templates,
+      processes: this.deps.processes,
       now: () => inputs.now,
     });
     return {
       prefix: inputs.prefix,
       cwd: inputs.cwd,
       tree,
-      manifest: finalized.manifest,
-      actions: collected,
-      adapters,
-      skippedHarnessElements: finalized.skipped,
+      manifest: result.manifest,
+      actions: result.applyResult.actions,
+      adapters: result.adapters,
+      skippedHarnessElements: result.applyResult.skippedHarnessElements ?? 0,
     };
   }
 
