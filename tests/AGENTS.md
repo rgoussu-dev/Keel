@@ -61,11 +61,12 @@ it holds. Three suites, split so vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
-  offered), every permutation of each offered set whose order could
-  matter — a vertical that `reads` another, with both chains — and the
-  whole menu named forwards and backwards, held to staging the same
-  bytes (I8, read back through the Trees the preview opened), plus
-  `README.md` and `.gitignore` seeded before `keel new`.
+  offered, or shown as coming with the preset — naming one of those
+  adds nothing), every permutation of each offered set whose order
+  could matter — a vertical that `reads` another, with both chains —
+  and the whole menu named forwards and backwards, held to staging the
+  same bytes (I8, read back through the Trees the preview opened),
+  plus `README.md` and `.gitignore` seeded before `keel new`.
 - `brownfield` — every single-service stack scaffolded once, `keel add`
   previewed for every vertical (I4 available ⇒ Ok, I5 same outcome as
   greenfield), plus a user `Dockerfile` or `.github/workflows/ci.yml`

@@ -153,8 +153,9 @@ by construction.
 
 Two things are off the menu, and neither is a judgement call:
 
-- **What the stack already installs.** Naming it would be asking for
-  a second install of something already in the plan.
+- **What the stack already installs.** It is in the plan either way,
+  so there is nothing to tick; `--with` naming it anyway is noted and
+  dropped, below.
 - **What nothing keel can add makes installable here.** `persistence`
   on a CLI-only preset has no datasource adapter, so it would resolve
   to nothing; a service gateway with no linked project would install
@@ -178,9 +179,8 @@ suppresses the question, `--with ''` included — that is how you say
 `--with` is checked rather than pruned, at the front door — before
 the first adapter question, never eight questions later:
 
-- an id that is not a registered vertical, or one the stack already
-  installs, is refused with the list of what is available here, and
-  one named twice is refused as well;
+- an id that is not a registered vertical is refused with the list of
+  what is available here, and one named twice is refused as well;
 - so is one this stack cannot carry, saying what it lacks — the same
   fact the menu's pruning states by omission. An entrypoint is named by
   the label the finder offers it under; a language, framework or build
@@ -199,6 +199,11 @@ the first adapter question, never eight questions later:
   each supply, equally well — a tie only you can settle, by naming the
   one you want (`keel.missing-prerequisites`, naming both). None of
   keel's own verticals ties; two plugins can.
+
+One the stack already installs is not refused: asking for what the
+plan has has one sensible reading. It is dropped, the rest of the set
+installs as it would without it, and the plan opens with a note saying
+so — `note: Development environment already comes with quarkus-rest`.
 
 A set that leaves out what one of its extras needs installed first is
 completed rather than refused: the planner adds the missing verticals,
@@ -298,8 +303,19 @@ verticals that would each supply what one needs
 `keel add --list` needs no existing project — it just prints the
 catalog.
 
-Adding an already-installed vertical errors with
-`keel.vertical-already-installed` — that is what `--reapply` is for.
+Adding a vertical that is already installed is not an error: there
+is nothing to install, so the plan is empty, the project is left as
+it is, and the run exits 0 with a note naming what does re-render it:
+
+```
+$ keel add ci
+keel add ci: planned changes
+  note: Continuous integration is already installed; 'keel add ci --reapply' re-renders it
+```
+
+Named beside others, it is noted the same way and the rest install —
+so a script can name what it needs, and run twice. Named with
+`--refresh` as well, it is re-rendered in the run instead.
 
 ### `--refresh`: what an add changes
 
@@ -319,8 +335,9 @@ keel add persistence: planned changes
   + …
 ```
 
-Once a run has written its files, running it again would refuse what
-it just installed, so its note offers the re-render alone:
+Once a run has written its files, what it installed is there, and
+naming it again would only be noted as already installed — so its note
+offers the plain re-render:
 `re-render it with 'keel add distribution --reapply'`.
 
 `--refresh <ids>` takes it up in the same run: each named installed

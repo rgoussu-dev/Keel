@@ -4,9 +4,10 @@
  *
  * Runs `keel new` first to seed a project, then layers `distribution`
  * on top and asserts the workflow files land, the manifest gains the
- * new vertical and tags, and the safeguards (duplicate, unknown id,
- * missing project, a file of the user's in the way or gone) surface as
- * domain errors. Then several verticals at once, with what they need,
+ * new vertical and tags, a second add of it is an empty plan that says
+ * so, and the safeguards (unknown id, missing project, a file of the
+ * user's in the way or gone) surface as domain errors. Then several
+ * verticals at once, with what they need and what is there already,
  * and the installed ones a run re-renders (`--refresh`) or proposes.
  */
 
@@ -18,6 +19,7 @@ import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/co
 import { previewQuery } from '../../../../src/domain/contract/queries.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
+import type { ManifestStore } from '../../../../src/domain/contract/ports/manifest-store.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import {
   expectErr,
@@ -109,12 +111,49 @@ describe('keel.add-vertical (keel add)', () => {
     expect(manifest!.updatedAt).toBe('2026-04-27T08:00:00Z');
   });
 
-  it('refuses to install the same vertical twice', async () => {
+  it('adds nothing a second time, says so, and leaves the project untouched', async () => {
     await seedQuarkusCli();
     expectOk(await addDistribution());
-    const error = expectErr(await addDistribution());
-    expect(error.code).toBe('keel.vertical-already-installed');
-    expect(error.message).toMatch(/already installed/);
+    const release = path.join(cwd, '.github/workflows/release.yml');
+    await fs.appendFile(release, '# kept by hand\n');
+
+    // The store the project's manifest is persisted through, recording
+    // every write it is asked for.
+    const written: string[] = [];
+    const manifests: ManifestStore = {
+      read: (root) => fsManifestStore.read(root),
+      write: (root, manifest) => {
+        written.push(root);
+        return fsManifestStore.write(root, manifest);
+      },
+    };
+    const again = (dryRun: boolean) =>
+      installMediator({ clock: new FakeClock('2026-05-01T00:00:00Z'), manifests }).dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals: ['distribution'],
+          answers: {},
+          interactive: false,
+          dryRun,
+        }),
+      );
+    for (const dryRun of [true, false]) {
+      expect(expectOk(await again(dryRun))).toEqual({
+        subject: 'distribution',
+        changes: [],
+        actions: [],
+        committed: !dryRun,
+        notes: [
+          "Distribution is already installed; 'keel add distribution --reapply' re-renders it",
+        ],
+      });
+    }
+    // Neither re-rendered nor restamped: the edit stands, and the
+    // manifest the first add wrote is not written again.
+    expect(await fs.readFile(release, 'utf8')).toContain('# kept by hand');
+    expect(written).toEqual([]);
+    const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+    expect(manifest?.updatedAt).toBe('2026-04-27T08:00:00Z');
   });
 
   it('rejects an unknown vertical id with available ones listed', async () => {
@@ -538,6 +577,55 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await snapshot(cwd)).toEqual(before);
     });
 
+    it('installs the rest of a set, noting each vertical named that is there already', async () => {
+      await scaffold(cwd, 'go-http');
+      await fs.copy(cwd, twin);
+      const alone = expectOk(await add(twin, ['ci']));
+
+      const report = expectOk(await add(cwd, ['vcs', 'ci', 'code-style']));
+      expect(report.subject).toBe('vcs ci code-style');
+      expect(report.notes).toEqual([
+        "Version control is already installed; 'keel add vcs --reapply' re-renders it",
+        "Code style is already installed; 'keel add code-style --reapply' re-renders it",
+        ...(alone.notes ?? []),
+      ]);
+      expect(report.changes).toEqual(alone.changes);
+      expect(await snapshot(cwd)).toEqual(await snapshot(twin));
+
+      // Run again, all of it is there: an empty plan, and nothing moves.
+      const again = expectOk(await add(cwd, ['vcs', 'ci', 'code-style']));
+      expect(again.changes).toEqual([]);
+      expect(again.notes).toHaveLength(3);
+      expect(await snapshot(cwd)).toEqual(await snapshot(twin));
+    });
+
+    it('holds an answer to an empty plan too: nothing reads it', async () => {
+      await scaffold(cwd, 'go-http');
+      const before = await snapshot(cwd);
+      const frozen = expectErr(
+        await add(cwd, ['vcs'], { answers: { 'vcs/git-init': { defaultBranch: 'trunk' } } }),
+      );
+      expect(frozen.code).toBe('keel.frozen-answer');
+      const unknown = expectErr(
+        await add(cwd, ['vcs'], { answers: { 'ci/go-pipeline': { provider: 'gitlab-ci' } } }),
+      );
+      expect(unknown.code).toBe('keel.unknown-answer');
+      expect(await snapshot(cwd)).toEqual(before);
+    });
+
+    it('re-renders a vertical named and refreshed, rather than noting it is there', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      const compose = path.join(cwd, 'deploy/compose.yaml');
+      const pristine = await fs.readFile(compose, 'utf8');
+      await fs.writeFile(compose, 'edited by hand\n');
+
+      const report = expectOk(await add(cwd, ['distribution'], { refresh: ['distribution'] }));
+      expect(report.notes).toBeUndefined();
+      expect(report.diffs?.map((d) => d.path)).toContain('deploy/compose.yaml');
+      expect(await fs.readFile(compose, 'utf8')).toBe(pristine);
+    });
+
     it('proposes re-rendering what reads an incoming vertical, and --refresh takes it up', async () => {
       await scaffold(cwd, 'go-http');
       expectOk(await add(cwd, ['distribution']));
@@ -554,8 +642,8 @@ describe('keel.add-vertical (keel add)', () => {
       expect(planned.notes).toEqual([
         "refresh proposed: Distribution reads Persistence, which it was rendered without — re-render it in this run with --refresh distribution, or afterwards with 'keel add distribution --reapply'",
       ]);
-      // Once written, running it again would refuse persistence as
-      // installed: only the re-render is left to offer.
+      // Once written, persistence is there — naming it again would
+      // only be noted — so the plain re-render is what is left to offer.
       const plain = expectOk(await add(cwd, ['persistence']));
       expect(plain.refreshProposals).toEqual(planned.refreshProposals);
       expect(plain.notes).toEqual([

@@ -207,6 +207,21 @@ gateway` refuses it: _"Service gateway wires linked projects — run
 
 ### Changed
 
+- **"Already there" is not an error.** `keel add X` on a project that
+  has X installed exits 0 with an empty plan — nothing written, the
+  manifest untouched — and the note _"Version control is already
+  installed; 'keel add vcs --reapply' re-renders it"_, where it was
+  refused as `keel.vertical-already-installed` and exited 1; named
+  beside others, an installed vertical is noted the same way and the
+  rest install. `keel new --with` naming a vertical the stack installs
+  of its own drops it with the note _"Development environment already
+  comes with quarkus-rest"_ instead of refusing the run as
+  `keel.invalid-extra-verticals` (still the code for an id named
+  twice). A script that read exit code 1 as "already installed" now
+  sees success: the project manifest (`.claude/.keel-manifest.json`,
+  its `verticals`) lists what is installed. `keel.dials` drops such an
+  extra in the same words.
+
 - **`--with` names a set, not a sequence.** Extras install in the
   order they depend on one another — `containerization` before the
   `distribution` that builds its image, `persistence` before the

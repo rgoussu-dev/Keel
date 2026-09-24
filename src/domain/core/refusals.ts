@@ -38,8 +38,9 @@
  * installed is refused with (`./planner.ts`, spoken through
  * `./plan-refusal.ts`): a tie between two sets of prerequisites, a
  * vertical the scope cannot carry, verticals that cannot go together —
- * and the notes a run reports what it decided with: the prerequisites
- * it added, the order it installed in, the refreshes it proposes.
+ * and the notes a run reports what it decided with: what it was asked
+ * for and found already there, the prerequisites it added, the order
+ * it installed in, the refreshes it proposes.
  */
 
 import type { Tag, Vertical } from '../contract/composition.js';
@@ -170,6 +171,29 @@ export function unknownQuestionSentence(
 }
 
 /**
+ * The note `keel new --with` gives for a vertical the preset installs
+ * of its own: "Development environment already comes with
+ * quarkus-rest". Asking for what is already in the plan has one
+ * sensible reading, so the id is dropped from the request rather than
+ * refused. `keel.dials` drops it from a page's extras in the same
+ * words.
+ */
+export function alreadyIncludedNote(vertical: Vertical, stackId: string): string {
+  return `${verticalTitle(vertical)} already comes with ${stackId}`;
+}
+
+/**
+ * The note `keel add` gives for a vertical the project has installed
+ * already: there is nothing to install, and the run says which command
+ * does re-render it. Asking for what is there has one sensible
+ * reading, so it is Ok, not a refusal — a script that adds what it
+ * needs can run twice.
+ */
+export function alreadyInstalledNote(vertical: Vertical): string {
+  return `${verticalTitle(vertical)} is already installed; 'keel add ${vertical.id} --reapply' re-renders it`;
+}
+
+/**
  * The note a run opens with when it installs verticals it was not
  * asked for, because the ones it was need them: `added Container
  * image, Distribution — needed by Infrastructure as code`. Titles, in
@@ -198,9 +222,9 @@ export function dependencyOrderNote(order: readonly Vertical[]): string {
  * and was rendered without them, or — `adapters` — would render
  * through other adapters on what the run adds; then how to take the
  * proposal up. A run that only planned (`committed` false) can be run
- * again with `--refresh`; one that wrote its files leaves `--reapply`
- * alone, since running it again would refuse what it just installed
- * as already there.
+ * again with `--refresh`; one that wrote its files points at the plain
+ * re-render, `--reapply`, since what it installed is there now and
+ * naming it again would only be noted as already there.
  */
 export function refreshProposalNote(
   vertical: Vertical,

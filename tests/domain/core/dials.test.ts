@@ -471,7 +471,7 @@ describe('the extras, as the planner reads them', () => {
     expect((dials.target as NewProjectTarget).extraVerticals).toEqual(['ci']);
     expect(dials.adjustments).toEqual([
       { id: 'nonsense', change: 'dropped', because: "no vertical 'nonsense' is registered" },
-      { id: 'vcs', change: 'dropped', because: 'Version control comes with go-cli already' },
+      { id: 'vcs', change: 'dropped', because: 'Version control already comes with go-cli' },
       {
         id: 'persistence',
         change: 'dropped',

@@ -2682,12 +2682,32 @@ the page's gestures to leaving `keel.dials` nothing to add or drop.
 The grid does not move: the step is the page's, and the goldens
 regenerate unchanged.
 
-#### Q1.6 — "Already there" is not an error (S)
+#### Q1.6 — "Already there" is not an error (S) ✅
 
 `--with` naming a stack's own vertical is dropped with a note;
 `keel add X` on an installed X is Ok with an empty plan and "already
 installed; `--reapply` re-renders it". Exit-code change → CHANGELOG
 (D4).
+
+Landed with two notes in `refusals.ts`, one per phase:
+`alreadyIncludedNote` ("Development environment already comes with
+quarkus-rest", which `keel.dials` now drops a page's extra with too)
+and `alreadyInstalledNote` ("Version control is already installed;
+'keel add vcs --reapply' re-renders it"). Both front doors set such a
+vertical aside before they plan and install the rest; the notes open
+the report. An add left with nothing to install returns before it
+stages, so no file is written and neither is the manifest, but its
+supplied answers are still held — any `--set` on it reaches nothing,
+and is refused as frozen or unknown. A vertical both named and
+`--refresh`ed is re-rendered, not noted. Unchanged ahead of the note:
+a product root's refusal of what it cannot carry (Q1.10) and the
+harness-generation gate. Grid: the 176 greenfield and 176 brownfield
+"already" cells move from `keel.invalid-extra-verticals` /
+`keel.vertical-already-installed` to Ok together (I5 parity kept), and
+the composite axis's 162 with them; I3 counts what the dials reply
+shows as _included_ as on the menu, since naming it adds nothing
+(`new-project.test.ts` pins the same changes with it and without). No
+known key moved.
 
 #### Q1.7 — One refusal vocabulary, the same in both phases (L)
 

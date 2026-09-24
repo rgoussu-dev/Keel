@@ -1339,21 +1339,36 @@ describe('keel.new-project extra verticals', () => {
     expect(error.message).toContain('ci');
   });
 
-  it('rejects a vertical the stack already installs', async () => {
-    const error = expectErr(
-      await installMediator().dispatch(
-        newProjectCommand({
-          cwd,
-          stack: 'quarkus-cli',
-          answers: bootstrapAnswers,
-          interactive: false,
-          dryRun: true,
-          extraVerticals: ['vcs'],
-        }),
-      ),
-    );
-    expect(error.code).toBe('keel.invalid-extra-verticals');
-    expect(error.message).toContain('already installs');
+  it('drops a vertical the stack already installs, and says so, installing the rest', async () => {
+    const plan = async (extraVerticals: readonly string[]) =>
+      expectOk(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-cli',
+            answers: bootstrapAnswers,
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+    const alone = await plan([]);
+    const own = await plan(['vcs']);
+    expect(own.notes).toEqual(['Version control already comes with quarkus-cli']);
+    expect(own.changes).toEqual(alone.changes);
+
+    // Beside an extra it does not ask for, the note comes first — it
+    // is about what was named — and the extra installs as it would
+    // alone.
+    const withCi = await plan(['ci']);
+    const mixed = await plan(['dev-container', 'ci', 'vcs']);
+    expect(mixed.notes).toEqual([
+      'Dev container already comes with quarkus-cli',
+      'Version control already comes with quarkus-cli',
+      ...(withCi.notes ?? []),
+    ]);
+    expect(mixed.changes).toEqual(withCi.changes);
   });
 
   it('rejects a vertical no adapter here can cover, naming what is missing and the fix', async () => {
@@ -1711,6 +1726,21 @@ describe('keel.new-project extra verticals', () => {
     );
     expect(error.code).toBe('keel.invalid-extra-verticals');
     expect(error.message).toContain('twice');
+    // One the stack installs is set aside, not waved through twice.
+    const own = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['vcs', 'vcs'],
+        }),
+      ),
+    );
+    expect(own.code).toBe('keel.invalid-extra-verticals');
+    expect(own.message).toBe("--with names vertical 'vcs' twice");
   });
 
   it('reads as a set at the review step, empty included', async () => {

@@ -17,7 +17,10 @@
  *   - **Does the gate accept what the menu hides?** (I3) The menu is
  *     flat, so an extra it does not offer is out of reach in any set.
  *     If some set containing it previews Ok ({@link candidateSets}),
- *     the CLI accepts what the page cannot build.
+ *     the CLI accepts what the page cannot build. What the preset
+ *     comes with is shown beside the menu, and naming it adds nothing
+ *     — `--with` drops it with a note — so no set is out of reach for
+ *     naming it.
  *   - **Does the order extras are named in change what is written?**
  *     (I8) Every permutation of each set whose order could matter
  *     ({@link orderSensitiveSets}: a vertical that reads another, with
@@ -62,7 +65,7 @@ describe('composition grid: greenfield', () => {
       const empty = await grid.scratch();
 
       await eachStack(catalog.stacks, async ({ id: stack }) => {
-        const { target, offered } = await settle(grid, stack);
+        const { target, offered, included } = await settle(grid, stack);
         const preview = (extras: readonly string[]) =>
           grid.cell(
             `new:${stack}+${extras.join(',')}`,
@@ -82,6 +85,7 @@ describe('composition grid: greenfield', () => {
             if ((await preview(chain)).verdict !== OK) grid.violate('I2', cell);
             continue;
           }
+          if (included.has(vertical)) continue;
           for (const extras of candidateSets(grid.registry, vertical, offered)) {
             if ((await preview(extras)).verdict !== OK) continue;
             grid.violate('I3', cell);

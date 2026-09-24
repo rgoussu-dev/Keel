@@ -53,7 +53,8 @@ readiness**. It reads `Adapter.promotes` and `Vertical.reads` into one
 answer — included, ready, needs, unavailable — and an ordered closure,
 and every surface asks it: the extras menu (`dials.ts`, both front
 ends), `keel.dials`' snap of a page's extras to their closure, and both
-front doors through `plan-refusal.ts` (both install a named set closed
+front doors through `plan-refusal.ts` (both set a vertical already
+there aside with a note — never a refusal — install the rest closed
 over its prerequisites, in plan order, and refuse an unavailable
 vertical or a tie, before a file moves); after a `keel add`,
 `refreshProposals` names the installed verticals the run changed and

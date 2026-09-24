@@ -76,7 +76,7 @@ describe('the "Also scaffold" group', () => {
     const reply = await dials('go-cli', ['persistence', 'ci', 'vcs']);
     const line = extrasGroup(reply, reply.target)?.line ?? '';
     expect(line.startsWith('Left out ')).toBe(true);
-    expect(line).toContain('Version control comes with go-cli already');
+    expect(line).toContain('Version control already comes with go-cli');
     expect(line.endsWith('.')).toBe(true);
     // One line, however many moved.
     expect(line).not.toContain('\n');

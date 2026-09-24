@@ -305,15 +305,19 @@ export class Grid {
 }
 
 /**
- * A stack's default target as `keel.dials` settles it, and the extras
- * its menu offers there — the target a blank form posts, and the menu
- * it shows.
+ * A stack's default target as `keel.dials` settles it, the extras its
+ * menu offers there, and the verticals it shows as coming with the
+ * preset — the target a blank form posts, and the menu it shows.
  */
 export async function settle(
   grid: Grid,
   stack: string,
   dials: Omit<NewProjectTarget, 'kind' | 'stack'> = {},
-): Promise<{ readonly target: NewProjectTarget; readonly offered: ReadonlySet<string> }> {
+): Promise<{
+  readonly target: NewProjectTarget;
+  readonly offered: ReadonlySet<string>;
+  readonly included: ReadonlySet<string>;
+}> {
   const options: DialOptions = await grid.read(
     dialsQuery({ target: { kind: 'new-project', stack, ...dials } }),
   );
@@ -323,6 +327,11 @@ export async function settle(
   return {
     target: options.target,
     offered: new Set(options.extraVerticals.map((choice) => choice.id)),
+    included: new Set(
+      options.verticals
+        .filter((vertical) => vertical.readiness === 'included')
+        .map((vertical) => vertical.id),
+    ),
   };
 }
 

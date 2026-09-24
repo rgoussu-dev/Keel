@@ -8,9 +8,11 @@
  *      unknown ids with a list of available ones, and one named twice.
  *   2. Read the existing manifest; refuse to run if no project has
  *      been initialised under the project scope.
- *   3. Refuse a vertical already installed (that is what `--reapply`
- *      is for; the safe default is to surface the duplicate to the
- *      user), and a `--refresh` of one that is not.
+ *   3. Set a vertical already installed aside, with a note naming
+ *      what re-renders it (`--reapply`): asking for what is there has
+ *      one sensible reading, so it is Ok, not a refusal, and the rest
+ *      of the set installs. Refuse a `--reapply` or a `--refresh` of
+ *      one that is not installed.
  *   4. Plan the named set with the planner (`../planner.ts`), the
  *      reading the extras menu and `keel new --with` share
  *      (`../plan-refusal.ts`): closed over its prerequisites — a
@@ -44,12 +46,15 @@
  *   8. Ask the planner which installed verticals the run changed the
  *      rendering of without re-rendering them, and report each as a
  *      proposal — never a re-render of its own accord.
- *   9. Under dry-run: report the plan, commit nothing.
+ *   9. Under dry-run: report the plan, commit nothing. A plan left
+ *      empty — every vertical named was there already, and nothing
+ *      is re-rendered — is reported as it stands, its notes saying
+ *      why, before anything is staged: the project is not touched.
  *  10. Otherwise: commit the Tree, persist the updated manifest, then
  *      run the deferred actions — manifest before actions, as in the
  *      new-project handler, so a failed action leaves a coherent
- *      (files + manifest) pair and a re-run correctly refuses the
- *      duplicate-vertical install.
+ *      (files + manifest) pair and a re-run finds the vertical
+ *      installed rather than installing it twice.
  *
  * A re-render differs in the guards and the apply posture, not in the
  * pipeline: the vertical must already be installed; an adapter the
@@ -89,7 +94,7 @@ import { finalizeHarness, installVerticals, recordsAnswers } from '../install.js
 import { retrofitHarness } from '../harness-retrofit.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
-import { productRootSentence, refreshProposalNote } from '../refusals.js';
+import { alreadyInstalledNote, productRootSentence, refreshProposalNote } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
 import { coversFor, UNCOVERED_CODE } from '../resolver.js';
 import { installedOwnerOf, strayAnswerRefusal } from '../supplied-answers.js';
@@ -150,16 +155,8 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
 
     const reapply = command.reapply === true;
     const installed = new Set(stored.verticals.map((v) => v.id));
-    for (const vertical of named.value) {
-      if (!reapply && installed.has(vertical.id)) {
-        return err(
-          new DomainError(
-            `vertical '${vertical.id}' is already installed in this project; re-render it from its recorded answers with 'keel add ${vertical.id} --reapply'`,
-            'keel.vertical-already-installed',
-          ),
-        );
-      }
-      if (reapply && !installed.has(vertical.id)) {
+    for (const vertical of reapply ? named.value : []) {
+      if (!installed.has(vertical.id)) {
         return err(
           new DomainError(
             `vertical '${vertical.id}' is not installed in this project — nothing to reapply; install it with 'keel add ${vertical.id}'`,
@@ -168,6 +165,16 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         );
       }
     }
+    // What the run installs: the verticals named, less those the
+    // project has already. Each of those is set aside with a note
+    // naming what does re-render it — unless `--refresh` re-renders it
+    // in this very run.
+    const adding = reapply ? [] : named.value.filter((v) => !installed.has(v.id));
+    const present = reapply
+      ? []
+      : named.value.filter(
+          (v) => installed.has(v.id) && !refresh.value.some((other) => other.id === v.id),
+        );
     for (const vertical of refresh.value) {
       if (!installed.has(vertical.id)) {
         return err(
@@ -184,7 +191,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // read against the tags the manifest records. A capability that
     // cannot sit with what is already here is refused before a file
     // moves, naming the rule rather than failing somewhere downstream.
-    for (const vertical of named.value) {
+    for (const vertical of reapply ? named.value : adding) {
       const refusal = assemblyRefusal([vertical], stored.tags);
       if (refusal !== null) {
         return err(
@@ -223,12 +230,12 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
           .map((v) => v.id)
           .filter((id) => !rerender.some((v) => v.id === id)),
       };
-      const planned = admit(registry, scope, [...named.value, ...refresh.value]);
+      const planned = admit(registry, scope, [...adding, ...refresh.value]);
       if (!planned.ok) return planned;
       admitted = planned.value;
       told = admitted;
       if (refresh.value.length > 0) {
-        const alone = admit(registry, scope, named.value);
+        const alone = admit(registry, scope, adding);
         told = {
           ...admitted,
           order: admitted.order.filter((v) => !refresh.value.some((r) => r.id === v.id)),
@@ -253,6 +260,20 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         owner,
       );
       if (stray !== null) return err(stray);
+    }
+
+    const already = present.map(alreadyInstalledNote);
+    // Everything named is here already, and nothing is re-rendered:
+    // the plan is empty, and the project is not touched — nothing is
+    // staged, and the manifest is not written again.
+    if (order.length === 0) {
+      return ok({
+        subject: named.value.map((v) => v.id).join(' '),
+        changes: [],
+        actions: [],
+        committed: !command.dryRun,
+        notes: already,
+      });
     }
 
     const now = this.deps.clock.nowIso();
@@ -351,6 +372,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       effectiveTags(result.manifest),
     );
     const notes = [
+      ...already,
       ...(told === null ? [] : admissionNotes(told)),
       ...proposals.map((proposal) => this.proposalNote(proposal, !command.dryRun)),
     ];

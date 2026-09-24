@@ -50,6 +50,7 @@ import {
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
 import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
 import {
+  alreadyIncludedNote,
   incompatibleSentence,
   tiedPrerequisitesSentence,
   unavailableSentence,
@@ -260,9 +261,8 @@ export function snapExtras(
   for (const id of [...new Set(requested)].sort()) {
     const vertical = registry.vertical(id);
     if (vertical === null) drop(id, unregistered(id));
-    else if (scope.installed.includes(id)) {
-      drop(id, `${verticalTitle(vertical)} comes with ${stack.id} already`);
-    } else candidates.push(vertical);
+    else if (scope.installed.includes(id)) drop(id, alreadyIncludedNote(vertical, stack.id));
+    else candidates.push(vertical);
   }
   const tied: Vertical[] = [];
   const keep = (vertical: Vertical, retry: boolean): void => {

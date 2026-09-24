@@ -135,6 +135,7 @@ import {
   type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
+import { alreadyIncludedNote } from '../refusals.js';
 import { NOTHING_INSTALLED, strayAnswerRefusal } from '../supplied-answers.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
@@ -274,6 +275,21 @@ interface StagedScope {
   readonly actions: readonly DeferredAction[];
   /** Every adapter the scope's verticals resolved to, in install order. */
   readonly adapters: readonly Adapter[];
+}
+
+/**
+ * The extras a single-service run installs, and what it was asked for
+ * that the preset carries of its own.
+ */
+interface ResolvedExtras {
+  /** The extras, closed over their prerequisites and in install order. */
+  readonly admitted: AdmittedSet;
+  /**
+   * The preset's own verticals `--with` named, in the order named:
+   * dropped from the request — the scaffold has them either way — with
+   * a note each.
+   */
+  readonly present: readonly Vertical[];
 }
 
 /** A fully-staged plan: nothing committed yet, the caller's to `finish`. */
@@ -556,8 +572,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
     if (!extras.ok) return extras;
+    const { admitted, present } = extras.value;
 
-    const legal = assemblyIsLegal(stack, extras.value.order, [
+    const legal = assemblyIsLegal(stack, admitted.order, [
       ...stackTagsFor(stack, buildTag.value, layoutTag.value),
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
@@ -574,13 +591,16 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       peers: [],
       services: [],
       skipVcs: false,
-      extraVerticals: extras.value.order,
+      extraVerticals: admitted.order,
       command,
       now,
       prompt,
     });
 
-    const notes = admissionNotes(extras.value);
+    const notes = [
+      ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
+      ...admissionNotes(admitted),
+    ];
     const report: InstallReport = {
       subject: stack.id,
       changes: staged.tree.changes(),
@@ -1019,9 +1039,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * image and the release it needs.
    *
    * `--with` is checked rather than filtered: a name that is not a
-   * registered vertical, one the stack already carries, or one named
-   * twice is refused at the front door with the list spelled out,
-   * exactly as `keel add` refuses an unknown id. Then the set is
+   * registered vertical, or one named twice, is refused at the front
+   * door with the list spelled out, exactly as `keel add` refuses an
+   * unknown id. One the stack already carries is asking for what the
+   * plan has, which has one sensible reading: it is set aside, and the
+   * report says the preset comes with it — as `keel add` notes a
+   * vertical the project has installed. Then the rest of the set is
    * planned (`../plan-refusal.ts`) — the same reading `keel add` asks
    * of the verticals it names — closed over its prerequisites, and
    * installs in the order the planner puts it in, the rest by id,
@@ -1036,9 +1059,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     stack: Stack,
     prompt: Prompt,
     tags: readonly Tag[],
-  ): Promise<Result<AdmittedSet>> {
+  ): Promise<Result<ResolvedExtras>> {
     const registry = this.deps.registry;
-    const own = new Set(stack.verticals.map((v) => v.id));
     const candidates = verticalOptions(registry, stack, tags).filter(
       (option) =>
         offeredAsExtra(option) &&
@@ -1059,14 +1081,17 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
             );
 
     const chosen: Vertical[] = [];
+    const present: Vertical[] = [];
     for (const id of requested) {
-      if (own.has(id)) {
+      if ([...present, ...chosen].some((v) => v.id === id)) {
         return err(
-          new DomainError(
-            `stack '${stack.id}' already installs vertical '${id}' — remove it from --with`,
-            'keel.invalid-extra-verticals',
-          ),
+          new DomainError(`--with names vertical '${id}' twice`, 'keel.invalid-extra-verticals'),
         );
+      }
+      const own = stack.verticals.find((v) => v.id === id);
+      if (own !== undefined) {
+        present.push(own);
+        continue;
       }
       const vertical = registry.vertical(id);
       if (!vertical) {
@@ -1087,18 +1112,15 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           ),
         );
       }
-      if (chosen.some((v) => v.id === id)) {
-        return err(
-          new DomainError(`--with names vertical '${id}' twice`, 'keel.invalid-extra-verticals'),
-        );
-      }
       chosen.push(vertical);
     }
 
-    return admit(registry, presetScope(stack, tags), chosen, {
+    const admitted = admit(registry, presetScope(stack, tags), chosen, {
       unavailable: (vertical, sentence) =>
         `stack '${stack.id}': ${sentence}; drop '${vertical.id}' from --with, or scaffold a stack that can carry it`,
     });
+    if (!admitted.ok) return admitted;
+    return ok({ admitted: admitted.value, present });
   }
 
   private async resolveLayout(

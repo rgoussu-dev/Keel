@@ -92,7 +92,8 @@ export interface AdmissionWording {
  *
  * Every id in `requested` is registered and none is on the scope
  * already: the front doors refuse an unknown or a repeated id, each in
- * its own words, before they plan. Its order changes nothing but
+ * its own words, and set one already there aside with a note of their
+ * own, before they plan. Its order changes nothing but
  * {@link AdmittedSet.reordered}.
  */
 export function admit(
