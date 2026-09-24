@@ -2282,7 +2282,7 @@ always the real `keel.preview`, never a re-implementation over tags
 (the existing "what the page can post" test used one, which is how
 the distribution throw got through).
 
-| Id  | Invariant                                                                                            | Today       | Zero at |
+| Id  | Invariant                                                                                            | At audit    | Zero at |
 | --- | ---------------------------------------------------------------------------------------------------- | ----------- | ------- |
 | I1  | No preview throws — every cell, plus a seeded-user-file axis                                         | 62 + seeded | Q0.3    |
 | I2  | Every extra `keel.dials` offers, posted with its prerequisites, previews Ok                          | 19          | Q1.3    |
@@ -2303,20 +2303,30 @@ an I8 diff) and every choice of every question (~1.5k previews).
 Q0.2, Q0.4, Q0.5 and Q0.7 need no grid and land first: between them
 they remove every 500 and every tag-speaking remedy quoted above.
 
-#### Q0.1 — The composition grid, as a ratchet (M)
+#### Q0.1 — The composition grid, as a ratchet (M) ✅
 
 `tests/domain/core/composition-grid/{greenfield,brownfield,composite}.test.ts`
 over `tests/support/composition-grid.ts`: cells derived from
 `keel.catalog`, `keel.dials` and `keel.project-status`, never
 hand-listed; Factory `installMediator` with a `FakeProcessRunner` and
 a no-op `runDeferred`; port `Mediator.dispatch` only. Axes: stack ×
-vertical in both phases, product × service × vertical under both
-layouts, and a seeded-user-file axis scoped by phase (`README.md`,
-`.gitignore` before `keel new`; `Dockerfile`,
-`.github/workflows/ci.yml` before `keel add`). A verdict golden
-(`KEEL_UPDATE_GOLDEN=1`) plus the shrink-only known file. Under 10 s
-in `verify`. `tests/AGENTS.md` gains the rule "a menu-versus-gate
-test uses preview or install as its oracle".
+vertical in both phases (greenfield against each stack's default
+`keel.dials` menu, brownfield on one scaffold per stack), product ×
+service × vertical under both layouts, and a seeded-user-file axis
+scoped by phase (`README.md`, `.gitignore` before `keel new`;
+`Dockerfile`, `.github/workflows/ci.yml` before `keel add`, beside the
+verticals whose preview creates them). I3's candidate sets come from
+the promotes→requires graph, each chain longer than one also tried
+behind every offered extra that promotes a tag — which is where
+distribution's undeclared image turns up. Each axis keeps its own
+verdict golden (`KEEL_UPDATE_GOLDEN=1`) and shrink-only known file, so
+the parallel suites never race on one file. Landed at I1 = 85 (26
+seeded before `keel new`, 47 seeded before `keel add`, 12
+monorepo-service containerization), I2 = 19, I3 = 19, I4 = 233 (83
+single-service, 150 in products), I5 = 0 and I6 = 0 — Q0.7 had
+already cleared the coverage refusals. About 7 s wall on its own.
+`tests/AGENTS.md` gains the rule "a menu-versus-gate test uses preview
+or install as its oracle".
 
 #### Q0.2 — A 500 carries its sentence (S) ✅
 

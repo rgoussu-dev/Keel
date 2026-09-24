@@ -43,7 +43,7 @@ This root is held to the same ≤ 120 lines keel emits, by
 - [`src/domain/kernel/`](src/domain/kernel/AGENTS.md) — Action/Command/Query, Result, Handler, Mediator; depends on nothing
 - [`src/domain/toolchain/`](src/domain/toolchain/AGENTS.md) — the provisioning bounded context, its own hexagon
 - [`src/infrastructure/`](src/infrastructure/AGENTS.md) — one directory per port, real adapter and canonical fake side by side
-- [`tests/`](tests/AGENTS.md) — how a test is built, the guard suites, mutation testing
+- [`tests/`](tests/AGENTS.md) — how a test is built, the guard suites, the composition grid, mutation testing
 <!-- keel:map:end -->
 
 `bin/keel.js` is the npm bin entry → `dist/application/cli/executable`.

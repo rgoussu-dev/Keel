@@ -1,13 +1,14 @@
 # Agent conventions — tests
 
-<!-- keel:purpose: how a test is built, the guard suites, mutation testing -->
+<!-- keel:purpose: how a test is built, the guard suites, the composition grid, mutation testing -->
 
 What lives here: vitest suites mirroring `src/` (`domain/`, `contract/`
 pieces under it, `application/`, `infrastructure/`, `toolchain/`), the
 shared test `support/factory.ts`, the browser harness both `keel ui`
 suites drive (`support/ui-e2e.ts`), the fixture trees under
 `support/fixtures/`, the fixture plugins the `plugins/` suite loads from
-disk, and the guard tests that keep this repo's registries honest.
+disk, the guard tests that keep this repo's registries honest, and the
+composition grid (`domain/core/composition-grid/`).
 
 <!-- keel:children:begin -->
 
@@ -50,6 +51,49 @@ matching change lands in the same commit as the thing it guards:
   preaches a ≤ 120-line root; this is what keeps it one.
 - `mise-toolchain.test.ts` and `toolchain-pins.test.ts` — `mise.toml`
   against the shard matrix's tool lists and against `GRADLE_VERSION`.
+
+## The composition grid
+
+`domain/core/composition-grid/` sweeps keel's whole composition surface
+through the real mediator, over `support/composition-grid.ts`: the
+measure behind roadmap epic Q, whose invariants (I1–I6 today) it holds.
+Three suites, split so vitest runs them in parallel:
+
+- `greenfield` — every stack × every vertical as its one extra, held
+  against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
+  offered), plus `README.md` and `.gitignore` seeded before `keel new`.
+- `brownfield` — every single-service stack scaffolded once, `keel add`
+  previewed for every vertical (I4 available ⇒ Ok, I5 same outcome as
+  greenfield), plus a user `Dockerfile` or `.github/workflows/ci.yml`
+  seeded wherever the add would create it.
+- `composite` — every product under every repository layout its install
+  offers, at the root and in each service.
+
+Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
+never from a hand list, so a new preset or vertical is swept without an
+edit. The grid is a **ratchet**: today's violations are on record, and
+the record can only shrink. Beside each suite:
+
+- `<axis>.golden.json` holds every cell's verdict (`ok`, the code, or
+  `thrown:<Error>`). `KEEL_UPDATE_GOLDEN=1` rewrites it for a deliberate
+  change; the diff is the review.
+- `<axis>.known.json` maps invariant → cell → finding id, asserted by
+  exact equality both ways. `KEEL_UPDATE_GOLDEN=1` writes known ∩
+  actual, so it only shrinks: a step that clears a violation drops its
+  key in the same commit, and adding a key is never the fix.
+- brownfield's I5 reads `greenfield.golden.json`, so when a change moves
+  both, regenerate greenfield first.
+
+About 7 s wall on its own, greenfield the longest at ~5 s.
+
+**A menu-versus-gate test uses preview or install as its oracle.** A
+test claiming that what a front end offers is what keel accepts — a dial
+menu, the extras list, a brownfield card — dispatches `keel.preview` (or
+the install) for the offered choice. It never re-derives the gate from
+`compatibility.ts`, `resolver.ts` or the tags: a re-derivation shares
+the menu's blind spots. `application/web/dials.test.ts` holds the page's
+bodies to `assemblyRefusal`, the function the menu itself filters by,
+and an offered extra that throws passed it.
 
 ## Mutation testing
 
