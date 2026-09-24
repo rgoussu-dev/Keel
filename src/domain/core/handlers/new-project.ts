@@ -45,8 +45,9 @@
  * named without a service that one service alone can take — are
  * planned onto that service's scope once the layout and its build
  * system are settled, as a single stack's are onto the preset. A
- * directory inside an existing product that it lists no service in is
- * refused before anything is asked (`keel.inside-product`), and a file
+ * directory inside an existing product that it lists no service in, or
+ * a service it lists that holds no project, is refused before anything
+ * is asked (`keel.inside-product`), and a file
  * two scopes would both write is refused once every scope is staged,
  * before the plan is reported (`keel.cross-scope-write`). Commit
  * order matches the single flow, per scope: trees, then manifests,
@@ -98,6 +99,7 @@ import {
   projectScopeRoot,
   type ManifestV2,
   type PeerLink,
+  type ServiceRef,
 } from '../../contract/manifest.js';
 import type { TreeChange } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
@@ -121,6 +123,7 @@ import {
   peerContextOffered,
   presetScope,
   productScopes,
+  productIncludedNote,
   routeExtra,
   serviceIncludedNote,
   switchesHarnessOn,
@@ -370,6 +373,18 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const product = await enclosingProduct(this.deps, command.cwd);
     if (product !== null && product.service === null) {
       return err(insideProduct(path.relative(command.cwd, product.root)));
+    }
+    // A service the product lists, emptied: scaffolded here, it would
+    // be a repository root inside the product's repository — a second
+    // history's hooks and changelog — of whatever stack was named,
+    // whatever the product records. One that still holds its manifest
+    // is refused below as already initialised.
+    if (
+      product !== null &&
+      product.service !== null &&
+      (await this.deps.manifests.read(projectScopeRoot(command.cwd)).catch(() => null)) === null
+    ) {
+      return err(insideProductService(path.relative(command.cwd, product.root), product.service));
     }
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
@@ -651,9 +666,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       prompt,
     });
 
+    // What the run adds unasked comes first: it is the note that
+    // changes what is written (D1).
     const notes = [
-      ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
       ...admissionNotes(admitted),
+      ...present.map((vertical) => alreadyIncludedNote(vertical, stack.id)),
     ];
     const report: InstallReport = {
       subject: stack.id,
@@ -927,8 +944,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   /**
    * Each service's extras, planned onto the scope its dials settled
    * (`scopes`): the ones `--with` named for it, and each named without
-   * a service that it alone can take (`routeExtra` — refused, naming
-   * the services, where none or several can). Planned as a single
+   * a service that it alone can take (`routeExtra` — set aside with a
+   * note where the services that could have it have it already, and
+   * refused, naming the services, where none or several can). Planned as a single
    * stack's are: one already there set aside with a note, the rest
    * closed over their prerequisites in plan order, or refused in the
    * sentence `keel add` there would give (`keel.wrong-scope` for a
@@ -951,6 +969,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     for (const vertical of [...bare].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
       const routed = routeExtra(registry, scopes, vertical, monorepo);
       if (routed.kind === 'refused') return err(routed.refusal);
+      if (routed.kind === 'included') {
+        notes.push(productIncludedNote(stack, scopes, vertical, routed.paths, monorepo));
+        continue;
+      }
       requested.set(routed.path, [...(requested.get(routed.path) ?? []), vertical]);
       notes.push(routedExtraNote(vertical, routed.path, stack.id));
     }
@@ -963,18 +985,16 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         ),
       ];
       if (chosen.length === 0) continue;
-      const already = serviceIncludedNote(stack, service);
-      const incoming: Vertical[] = [];
-      for (const vertical of chosen) {
-        if (scope.installed.includes(vertical.id)) {
-          notes.push(`${service.path}: ${already(vertical)}`);
-        } else incoming.push(vertical);
+      const already = serviceIncludedNote(stack, service, monorepo);
+      const present = chosen.filter((vertical) => scope.installed.includes(vertical.id));
+      const incoming = chosen.filter((vertical) => !scope.installed.includes(vertical.id));
+      if (incoming.length > 0) {
+        const set = admit(registry, scope, incoming);
+        if (!set.ok) return set;
+        admitted.set(service.path, set.value);
+        notes.push(...admissionNotes(set.value).map((note) => `${service.path}: ${note}`));
       }
-      if (incoming.length === 0) continue;
-      const set = admit(registry, scope, incoming);
-      if (!set.ok) return set;
-      admitted.set(service.path, set.value);
-      notes.push(...admissionNotes(set.value).map((note) => `${service.path}: ${note}`));
+      notes.push(...present.map((vertical) => `${service.path}: ${already(vertical)}`));
     }
     return ok({ admitted, notes });
   }
@@ -1992,7 +2012,11 @@ function defaultLayoutTag(stack: Stack): Tag | null {
  */
 const INVALID_EXTRAS_CODE = 'keel.invalid-extra-verticals';
 
-/** The code `keel new` inside a product, in a directory it does not list, is refused with. */
+/**
+ * The code `keel new` inside a monorepo product is refused with: in a
+ * directory it does not list, or in a service it lists that holds no
+ * project.
+ */
 export const INSIDE_PRODUCT_CODE = 'keel.inside-product';
 
 /**
@@ -2005,6 +2029,20 @@ export const INSIDE_PRODUCT_CODE = 'keel.inside-product';
 function insideProduct(root: string): DomainError {
   return new DomainError(
     `this directory is inside the product at ${toPosix(root)}/, which lists no service here; adding a service to a product is not supported yet`,
+    INSIDE_PRODUCT_CODE,
+  );
+}
+
+/**
+ * The refusal of `keel new` in a directory a product lists as a
+ * service, that holds no project: the product records what it is, and
+ * scaffolding a service again — its own preset, or another — is not a
+ * command keel has. `root` is the product root, relative to where
+ * `keel new` ran.
+ */
+function insideProductService(root: string, service: ServiceRef): DomainError {
+  return new DomainError(
+    `this directory is ${service.path}/ of the product at ${toPosix(root)}/, recorded as ${service.stack}; re-scaffolding a service is not supported yet`,
     INSIDE_PRODUCT_CODE,
   );
 }

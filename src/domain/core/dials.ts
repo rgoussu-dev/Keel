@@ -58,12 +58,18 @@ import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.j
 import { foresee, planRefusal } from './plan-refusal.js';
 import {
   alreadyIncludedNote,
+  alreadyInServicesNote,
   elsewhereRefusal,
   elsewhereService,
   productRootPlacementRefusal,
   routedExtraNote,
 } from './refusals.js';
-import { presetServiceScope, presetServiceTags, type PresetService } from './scope.js';
+import {
+  presetServiceScope,
+  presetServiceTags,
+  presetServiceVerticals,
+  type PresetService,
+} from './scope.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
@@ -685,6 +691,14 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
       adjustments.push({ id, change: 'dropped', because: routed.refusal.message });
       continue;
     }
+    if (routed.kind === 'included') {
+      adjustments.push({
+        id,
+        change: 'dropped',
+        because: productIncludedNote(stack, scopes, vertical, routed.paths, monorepo),
+      });
+      continue;
+    }
     requested.get(routed.path)?.push(id);
     adjustments.push({
       id,
@@ -701,7 +715,7 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
       registry,
       scope,
       requested.get(service.path) ?? [],
-      serviceIncludedNote(stack, service),
+      serviceIncludedNote(stack, service, monorepo),
     );
     adjustments.push(
       ...snapped.adjustments.map((adjustment) => ({ ...adjustment, service: service.path })),
@@ -782,16 +796,24 @@ export function productScopes(
   }));
 }
 
-/** Where {@link routeExtra} sends a vertical, or why it sends it nowhere. */
+/**
+ * Where {@link routeExtra} sends a vertical: to one service; nowhere,
+ * since the services that could have it have it already (`paths`);
+ * or nowhere, and why.
+ */
 export type Routed =
   | { readonly kind: 'routed'; readonly path: string }
+  | { readonly kind: 'included'; readonly paths: readonly string[] }
   | { readonly kind: 'refused'; readonly refusal: RefusalError };
 
 /**
  * Where `vertical`, named for a composite product without a service,
  * goes: to the one service whose scope admits it — ready, or ready
- * once its prerequisites are in. Where none does, or several, it goes
- * nowhere, and the refusal is the one `keel add` gives it at the
+ * once its prerequisites are in. Where none does but some service has
+ * it already, it is there — `included`, set aside with a note, as a
+ * vertical a single stack comes with is, so a `--with` list that names
+ * it runs on a product as it does on a single preset. Otherwise it
+ * goes nowhere, and the refusal is the one `keel add` gives it at the
  * product root: a vertical whose place is a repository root, asked of
  * a monorepo product, cannot go in any of its services
  * (`keel.uncoverable-vertical`); any other belongs to a service, and
@@ -816,6 +838,10 @@ export function routeExtra(
   if (monorepo && vertical.placement?.scope === 'repository') {
     return { kind: 'refused', refusal: productRootPlacementRefusal(registry, vertical) };
   }
+  const having = read.filter((service) => service.readiness === 'included');
+  if (admitting.length === 0 && having.length > 0) {
+    return { kind: 'included', paths: having.map((service) => service.path) };
+  }
   return { kind: 'refused', refusal: elsewhereRefusal(registry, vertical, read) };
 }
 
@@ -823,17 +849,56 @@ export function routeExtra(
  * The sentence a vertical already on a product's service is set aside
  * in: it comes with the service's preset, or with the product — the
  * verticals the product installs in it, and under the monorepo layout
- * what its root gives it.
+ * what its root gives it, the repository's version control among them:
+ * the preset's own is the one the monorepo layout leaves out of the
+ * service.
  */
 export function serviceIncludedNote(
   product: Stack,
   service: PresetService,
+  monorepo: boolean,
 ): (vertical: Vertical) => string {
   return (vertical) =>
-    alreadyIncludedNote(
-      vertical,
-      service.stack.verticals.some((own) => own.id === vertical.id) ? service.stack.id : product.id,
-    );
+    alreadyIncludedNote(vertical, includedBy(product, service, vertical, monorepo));
+}
+
+/**
+ * The note a vertical named for a product without a service is set
+ * aside with where the services that could have it have it already
+ * (`paths`, from {@link routeExtra}): what it comes with in each.
+ */
+export function productIncludedNote(
+  product: Stack,
+  scopes: readonly ServicePlanScope[],
+  vertical: Vertical,
+  paths: readonly string[],
+  monorepo: boolean,
+): string {
+  return alreadyInServicesNote(
+    vertical,
+    scopes
+      .filter(({ service }) => paths.includes(service.path))
+      .map(({ service }) => ({
+        path: service.path,
+        by: includedBy(product, service, vertical, monorepo),
+      })),
+  );
+}
+
+/**
+ * What `vertical` on `service` comes with: the service's preset where
+ * the service installs the preset's own — which under the monorepo
+ * layout is not one whose place is the repository root — and the
+ * product otherwise.
+ */
+function includedBy(
+  product: Stack,
+  service: PresetService,
+  vertical: Vertical,
+  monorepo: boolean,
+): string {
+  const own = presetServiceVerticals({ ...service, extraVerticals: [] }, monorepo);
+  return own.some((candidate) => candidate.id === vertical.id) ? service.stack.id : product.id;
 }
 
 /**
@@ -861,6 +926,7 @@ function productOptions(
         { ...summary, readiness: 'unavailable', requires: [], refusal: { code, message, refusal } },
       ];
     }
+    if (routed.kind === 'included') return [{ ...summary, readiness: 'included', requires: [] }];
     const scope = scopes.find(({ service }) => service.path === routed.path)?.scope;
     if (scope === undefined) return [];
     return scopeOptions(registry, scope).filter((option) => option.id === summary.id);

@@ -148,6 +148,49 @@ export async function scopeOf(deps: ProjectReadDeps, cwd: string): Promise<Direc
   return { cwd, manifest, product: await enclosingProduct(deps, cwd), services };
 }
 
+/** Where the keel projects nearest a directory holding none are — see {@link nearbyProjects}. */
+export interface NearbyProjects {
+  /** The nearest project above, relative to the directory (`..`); null when none is. */
+  readonly above: string | null;
+  /** Service directories below that hold a project, relative to it, in registry order. */
+  readonly below: readonly string[];
+}
+
+/**
+ * The keel projects nearest `cwd`, a directory that holds none: the
+ * nearest one above it — `cwd` is a subdirectory of a project — and
+ * the directories a registered product puts its services in, below it,
+ * that hold one — `cwd` is a polyrepo product's parent directory, which
+ * has no manifest of its own. What a command that needs a project
+ * points at there, rather than at `keel new`, which would scaffold a
+ * project inside another, or over a product's services.
+ */
+export async function nearbyProjects(deps: ProjectReadDeps, cwd: string): Promise<NearbyProjects> {
+  const read = (directory: string) =>
+    deps.manifests.read(projectScopeRoot(directory)).catch(() => null);
+  let above: string | null = null;
+  for (let directory = path.dirname(cwd); ; directory = path.dirname(directory)) {
+    if ((await read(directory)) !== null) {
+      above = path.relative(cwd, directory).split(path.sep).join('/');
+      break;
+    }
+    if (path.dirname(directory) === directory) break;
+  }
+  const paths = [
+    ...new Set(
+      deps.registry
+        .stacks()
+        .flatMap((stack) => stack.services ?? [])
+        .map((service) => path.posix.normalize(service.path).replace(/\/+$/, '')),
+    ),
+  ];
+  const below: string[] = [];
+  for (const service of paths) {
+    if ((await read(path.join(cwd, service))) !== null) below.push(service);
+  }
+  return { above, below };
+}
+
 /**
  * The product root above `cwd`, when the nearest keel project above it
  * is one — see {@link scopeOf}, which this is the upward half of, for

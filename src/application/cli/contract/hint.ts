@@ -112,6 +112,14 @@ function unavailableHint(
   }
   const drop = `drop '${vertical}' from --with`;
   if (refusal.because !== undefined) return drop;
+  const buildOnly =
+    (missing.identity ?? []).length > 0 &&
+    (missing.identity ?? []).every((tag) => tag.startsWith('pkg.')) &&
+    (missing.entrypoint ?? []).length === 0 &&
+    (missing.peer ?? []).length === 0;
+  // The sentence names the build system it needs; the dial is --with's
+  // neighbour on the same command line.
+  if (buildOnly) return `${drop}, or choose the build system it needs with --build-system`;
   if (peerOnly) {
     return `${drop}; scaffold this project, 'keel link <path>' the one it should reach, then 'keel add ${vertical}'`;
   }

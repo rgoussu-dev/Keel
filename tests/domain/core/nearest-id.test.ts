@@ -85,6 +85,9 @@ describe('nearestVertical', () => {
   it('names nothing where nothing is near', () => {
     expect(nearestVertical(verticals, 'nope')).toBeNull();
     expect(nearestVertical(verticals, 'nonsense-vertical')).toBeNull();
+    // A list typed as one id is several, and naming one of them would
+    // drop the rest.
+    expect(nearestVertical(verticals, 'ci,persistence')).toBeNull();
   });
 
   it('does not read a short word as any short id it could be edited into', () => {

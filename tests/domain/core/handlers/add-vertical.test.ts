@@ -814,6 +814,16 @@ describe('keel.add-vertical (keel add)', () => {
       expect(release).not.toContain('quarkus.native.enabled');
     });
 
+    it('says what it adds unasked before what it found there already', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['persistence']));
+      const report = expectOk(await add(cwd, ['persistence', 'iac'], { dryRun: true }));
+      expect(report.notes).toEqual([
+        'added Container image, Distribution — needed by Infrastructure as code',
+        "Persistence is already installed; 'keel add persistence --reapply' re-renders it",
+      ]);
+    });
+
     it('reports a move among the verticals named, and never a refreshed one as installed', async () => {
       await scaffold(cwd, 'go-http');
       expectOk(await add(cwd, ['persistence']));

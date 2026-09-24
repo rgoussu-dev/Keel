@@ -133,10 +133,10 @@ const TABLE: readonly {
     sentence: "Observability has no adapter for this project's stack",
   },
   {
-    why: 'a build system alone by its label',
+    why: 'a build system alone by its label, the dial being the way forward rather than a stack',
     refusal: unavailable({ identity: ['pkg.maven'] }, ['spring-rest']),
     sentence:
-      "Observability has no adapter for this project's build system; it needs Maven — convention-first declarative build (POM); the nearest stack that carries it: spring-rest",
+      "Observability has no adapter for this project's build system; it needs Maven — convention-first declarative build (POM)",
   },
   {
     why: 'a capability by the vertical that adds it',
@@ -486,7 +486,7 @@ describe('the refusals and notes of a scope', () => {
     const refusal = productRootPlacementRefusal(names, ci as Vertical);
     expect(refusal.code).toBe('keel.uncoverable-vertical');
     expect(refusal.message).toBe(
-      "Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+      "Continuous integration cannot be installed here: keel installs it at no monorepo product's root yet, and it cannot go in one of the product's services: its pipeline is read at the root",
     );
     expect(refusal.message).not.toMatch(ANY_TAG);
   });

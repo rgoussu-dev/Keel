@@ -101,13 +101,14 @@ function runGitInit(
     logger.info('git: repo already initialised at project root');
   }
 
-  if (!remote) {
-    logger.info('git: no remote configured. Add one later with `git remote add origin <url>`.');
+  // A clone has its origin already: that is the remote, asked or not.
+  if (hasRemote(cwd, 'origin', processes)) {
+    logger.info('git: origin remote already exists — not overwriting');
     return;
   }
 
-  if (hasRemote(cwd, 'origin', processes)) {
-    logger.info('git: origin remote already exists — not overwriting');
+  if (!remote) {
+    logger.info('git: no remote configured. Add one later with `git remote add origin <url>`.');
     return;
   }
 

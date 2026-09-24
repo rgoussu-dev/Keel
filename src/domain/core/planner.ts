@@ -43,7 +43,8 @@
  * naming both: the planner never picks between two plugins that
  * supply one capability. The order follows the edges first (a
  * vertical after whatever feeds a tag its adapters mention), then
- * `reads`, then the order the caller named them in.
+ * `reads`, then the order the caller named them in — a prerequisite
+ * it added going where its id puts it among them, as it would named.
  *
  * **What it proposes.** An install can change what an installed
  * vertical would render — distribution read whether persistence was
@@ -65,7 +66,7 @@ import { matches, matchesPattern } from './predicate.js';
 import { IDENTITY_NAMESPACES } from './refusals.js';
 import { assemblableStacks } from './registry.js';
 import { coverageGap, coversFor } from './resolver.js';
-import { ENTRYPOINTS } from './stack-wizard.js';
+import { ENTRYPOINTS, shapeOfTags } from './stack-wizard.js';
 import { stackTagsFor, type Stack } from './stacks.js';
 
 /**
@@ -269,7 +270,7 @@ function unionPlan(
     for (const id of settled[0] ?? []) if (!requested.has(id)) extra.add(id);
   }
   const providers = registry.verticals().filter((vertical) => extra.has(vertical.id));
-  const placed = orderOf([...providers, ...wanted], scope);
+  const placed = orderOf(mergedById(providers, wanted), scope);
   return placed === null ? null : { kind: 'planned', order: stepsOf(placed, wanted), included };
 }
 
@@ -416,7 +417,7 @@ function closureOf(
   for (let size = 0; size <= Math.min(MAX_PREREQUISITES, pool.length); size++) {
     const found: (readonly Placed[])[] = [];
     for (const extra of subsets(pool, size)) {
-      const placed = orderOf([...extra, ...requested], scope);
+      const placed = orderOf(mergedById(extra, requested), scope);
       if (placed !== null) found.push(placed);
     }
     const [first, ...others] = found;
@@ -428,6 +429,27 @@ function closureOf(
     }
   }
   return null;
+}
+
+/**
+ * `added` — verticals a plan brings in unasked — merged into
+ * `requested` by id, keeping `requested`'s own order: the order handed
+ * to {@link orderOf}, whose last tie-break it is. A vertical nothing
+ * ties to the others then lands where its id puts it, whether it was
+ * named or added — so a request naming its prerequisites and one
+ * leaving them to the plan install in one order (`keel.dials` settles
+ * to a fixed point, and the manifest records one order) — while the
+ * named verticals keep the order they were named in among themselves,
+ * which is what a report reads a move off.
+ */
+function mergedById(added: readonly Vertical[], requested: readonly Vertical[]): Vertical[] {
+  const queue = [...added].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const merged: Vertical[] = [];
+  for (const vertical of requested) {
+    while (queue.length > 0 && (queue[0]?.id ?? '') < vertical.id) merged.push(queue.shift()!);
+    merged.push(vertical);
+  }
+  return [...merged, ...queue];
 }
 
 /**
@@ -760,6 +782,9 @@ const ENTRYPOINT_TAGS: ReadonlySet<Tag> = new Set(ENTRYPOINTS.map((entry) => ent
 /** What a linked project projects onto this one (`keel link`). */
 const PEER_NAMESPACE = 'peer.';
 
+/** The identity namespaces a preset offers as dials: its build system and module layout. */
+const DIAL_NAMESPACES: readonly string[] = ['pkg.', 'layout.'];
+
 /**
  * The unmet `requires` of the adapter nearest to matching — per
  * uncovered dimension ({@link coverageGap}), or across every adapter
@@ -799,6 +824,14 @@ function unmetOf(
  * framework) and its JVM image one (the entrypoint): the entrypoint is
  * the gap a sibling preset closes — `spring-cli-rest` — while the
  * framework is the project itself.
+ *
+ * Ahead of all that but an adapter keel could reach by adding
+ * verticals, one only a dial away — a build system or a module
+ * layout, and nothing else fixed: a Quarkus CLI on Maven is a dial
+ * from distribution's native adapter (Gradle) and an entrypoint from
+ * its JVM image one, and the project is a Quarkus CLI either way — so
+ * the gap is the build system, not an HTTP server it never meant to
+ * have.
  */
 function nearestUnmet(
   adapters: readonly Adapter[],
@@ -817,7 +850,10 @@ function nearestUnmet(
     const identity = fixed.filter(
       (pattern) => !ENTRYPOINT_TAGS.has(pattern) && !pattern.startsWith(PEER_NAMESPACE),
     ).length;
-    const key = [identity, fixed.length, unmet.length];
+    const dialOnly =
+      fixed.length > 0 &&
+      fixed.every((pattern) => DIAL_NAMESPACES.some((ns) => pattern.startsWith(ns)));
+    const key = [fixed.length === 0 ? 0 : dialOnly ? 1 : 2, identity, fixed.length, unmet.length];
     if (nearest === null || compareKeys(key, nearest.key) < 0) nearest = { unmet, key };
   }
   return nearest?.unmet ?? null;
@@ -864,13 +900,15 @@ function supplierGap(
 }
 
 /**
- * The single-service stacks that carry `vertical` — on their default
- * dials it is theirs already, installs alone, or installs once keel
- * adds what it needs — and are nearest this scope: the same language
- * and framework over any other, then the fewest identity tags apart
- * (the preset's own language, framework, runtime, entrypoints, build
- * system and layout; a tag some vertical promotes is not identity).
- * Only the nearest are listed, by id.
+ * The single-service stacks that carry `vertical` — on this scope's
+ * dials where they offer them, and their defaults where they do not,
+ * it is theirs already, installs alone, or installs once keel adds
+ * what it needs — and are nearest this scope: the same language and
+ * framework over any other, then the fewest identity tags apart (the
+ * preset's own language, framework, runtime, entrypoints, build system
+ * and layout; a tag some vertical promotes is not identity). Only the
+ * nearest are listed, by id, and never one of another shape: a back
+ * end is no answer for a front end.
  */
 function nearestStacks(registry: Registry, scope: PlanScope, vertical: Vertical): string[] {
   const acquirable = acquirableIn(registry);
@@ -883,11 +921,17 @@ function nearestStacks(registry: Registry, scope: PlanScope, vertical: Vertical)
   const here = identityOf(scope.tags);
   const kinOf = (tags: readonly Tag[]): number =>
     sameUnder(tags, scope.tags, 'lang.') && sameUnder(tags, scope.tags, 'framework.') ? 0 : 1;
+  const shape = shapeOfTags(scope.tags);
 
   const scored: { readonly id: string; readonly key: readonly number[] }[] = [];
   for (const stack of assemblableStacks(registry)) {
     if (stack.services !== undefined) continue;
-    const tags = defaultTags(stack);
+    // A back end is no stack to scaffold a front end as instead.
+    if (shape !== null && shapeOfTags(stack.tags) !== shape) continue;
+    // On this scope's dials where the stack offers them: the preset a
+    // Maven project was scaffolded from does not carry what only its
+    // Gradle setting does, so it is no answer to that project.
+    const tags = tagsOnDialsOf(stack, scope.tags);
     if (!carries(registry, stack, tags, vertical)) continue;
     scored.push({ id: stack.id, key: [kinOf(tags), distance(here, identityOf(tags))] });
   }
@@ -938,6 +982,17 @@ function defaultTags(stack: Stack): readonly Tag[] {
     stack.buildSystems?.[0]?.tag ?? null,
     stack.moduleLayouts?.[0]?.tag ?? null,
   );
+}
+
+/**
+ * A stack's tags on the dials `tags` records — its build system and
+ * module layout, where it offers the one `tags` holds — and on its
+ * defaults for any it does not.
+ */
+function tagsOnDialsOf(stack: Stack, tags: readonly Tag[]): readonly Tag[] {
+  const pick = (options: readonly { readonly tag: Tag }[] | undefined): Tag | null =>
+    options?.find((option) => tags.includes(option.tag))?.tag ?? options?.[0]?.tag ?? null;
+  return stackTagsFor(stack, pick(stack.buildSystems), pick(stack.moduleLayouts));
 }
 
 /** Whether two tag lists carry the same tags under `namespace`. */

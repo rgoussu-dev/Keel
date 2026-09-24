@@ -106,13 +106,18 @@ import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
 import {
   alreadyInstalledNote,
+  notInitialisedSentence,
+  notInstalledSentence,
+  placementRefusal,
   providedNote,
+  providedNotInstalledSentence,
   refreshProposalNote,
   ruleRefusal,
+  VERTICAL_NOT_INSTALLED_CODE,
 } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
 import { nearestVertical, unknownIdSentence } from '../nearest-id.js';
-import { planScopeOf, provisionsHere, scopeOf } from '../scope.js';
+import { nearbyProjects, planScopeOf, provisionsHere, scopeOf, type Provision } from '../scope.js';
 import {
   historyOf,
   REAPPLY_FROZEN_ANSWERS_CODE,
@@ -155,7 +160,12 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     if (!stored) {
       return err(
         new DomainError(
-          `no project initialised at ${scopeRoot} — run 'keel new --stack=<id>' first to create one`,
+          notInitialisedSentence(
+            scopeRoot,
+            await nearbyProjects(this.deps, command.cwd),
+            'keel add',
+            'keel new --stack=<id>',
+          ),
           'keel.not-initialised',
         ),
       );
@@ -178,24 +188,21 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
 
     const reapply = command.reapply === true;
     const installed = new Set(stored.verticals.map((v) => v.id));
+    // What a monorepo service has from its product (the repository's
+    // version control, the image the root builds) is there, and
+    // nothing here installs — or re-renders — it again.
+    const provisions = provisionsHere(registry, where);
+    const given = (v: Vertical) => provisions.find((provision) => provision.vertical.id === v.id);
+    const member = where.product !== null && where.product.service !== null;
     for (const vertical of reapply ? named.value : []) {
-      if (!installed.has(vertical.id)) {
-        return err(
-          new DomainError(
-            `vertical '${vertical.id}' is not installed in this project — nothing to reapply; install it with 'keel add ${vertical.id}'`,
-            'keel.vertical-not-installed',
-          ),
-        );
-      }
+      if (!installed.has(vertical.id))
+        return err(this.notInstalled(vertical, 'reapply', given, member));
     }
     // What the run installs: the verticals named, less those the
     // project has already. Each of those is set aside with a note
     // naming what does re-render it — unless `--refresh` re-renders it
     // in this very run. In a monorepo service, so is what the product
-    // gives it (the repository's version control, the image the root
-    // builds): it is there, and nothing here installs it again.
-    const provisions = provisionsHere(registry, where);
-    const given = (v: Vertical) => provisions.find((provision) => provision.vertical.id === v.id);
+    // gives it: it is there, and nothing here installs it again.
     const adding = reapply
       ? []
       : named.value.filter((v) => !installed.has(v.id) && given(v) === undefined);
@@ -211,14 +218,8 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
           return provision === undefined ? [] : [provision];
         });
     for (const vertical of refresh.value) {
-      if (!installed.has(vertical.id)) {
-        return err(
-          new DomainError(
-            `vertical '${vertical.id}' is not installed in this project — nothing to refresh; install it with 'keel add ${vertical.id}'`,
-            'keel.vertical-not-installed',
-          ),
-        );
-      }
+      if (!installed.has(vertical.id))
+        return err(this.notInstalled(vertical, 'refresh', given, member));
     }
 
     // A re-render plans nothing, so its rules are read here: each
@@ -415,9 +416,11 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       effectiveTags(stored),
       effectiveTags(result.manifest),
     );
+    // What the run adds unasked comes first: it is the note that
+    // changes what is written (D1).
     const notes = [
-      ...already,
       ...(told === null ? [] : admissionNotes(told)),
+      ...already,
       ...proposals.map((proposal) => this.proposalNote(proposal, !command.dryRun)),
     ];
     const report: InstallReport = {
@@ -479,6 +482,33 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       named.push(vertical);
     }
     return ok(named);
+  }
+
+  /**
+   * The refusal of a re-render (`verb`) of `vertical`, which this
+   * project has not installed: in a monorepo service, one the product
+   * gives it is the product root's to re-render, and one whose place is
+   * the repository root is refused as `keel add` of it is
+   * (`keel.wrong-scope`) — each where installing it here, the remedy
+   * anywhere else, would be a no-op or a refusal of its own.
+   */
+  private notInstalled(
+    vertical: Vertical,
+    verb: 'reapply' | 'refresh',
+    given: (v: Vertical) => Provision | undefined,
+    member: boolean,
+  ): DomainError {
+    const provision = given(vertical);
+    if (provision !== undefined) {
+      return new DomainError(
+        providedNotInstalledSentence(vertical, provision.by, verb),
+        VERTICAL_NOT_INSTALLED_CODE,
+      );
+    }
+    if (member && vertical.placement?.scope === 'repository') {
+      return placementRefusal(this.deps.registry, vertical);
+    }
+    return new DomainError(notInstalledSentence(vertical, verb), VERTICAL_NOT_INSTALLED_CODE);
   }
 
   /** {@link refreshProposalNote} for one proposal, its ids resolved. */

@@ -85,10 +85,14 @@ handler: `keel new` reads the same placement to leave those verticals
 out of a monorepo service (grid I7), and before it writes anything a
 product's service is one scope too, `presetServiceScope` — read by that
 service's extras menu (`keel.dials`), by a bare `--with`'s routing to
-the one service that takes it (`routeExtra`) and by the install of its
+the one service that takes it — or aside, with a note, where the
+services that could have it have it already (`routeExtra`) — and by the install of its
 `--with path:id` extras alike; after a `keel add`,
 `refreshProposals` names the installed verticals the run changed and
-did not re-render — proposed, never done. A new surface asks it too, rather
+did not re-render — proposed, never done; and where re-rendering one
+is all that stands in the way of a vertical asked for, its gap names it
+(`ReadinessGap.refresh`, `keel.needs-refresh`) rather than reading as a
+capability nothing can add. A new surface asks it too, rather
 than re-deriving readiness from `coversFor` or a `promotes` union —
 that is how the extras menu came to hide `iac`. A prerequisite
 belongs in a predicate the planner can read — a `requires` tag another

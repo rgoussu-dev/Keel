@@ -219,7 +219,7 @@ describe('a monorepo product root', () => {
     const ci = await refusedAlike(mediator, cwd, root, 'ci');
     expect(ci.code).toBe('keel.uncoverable-vertical');
     expect(ci.message).toBe(
-      "Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+      "Continuous integration cannot be installed here: keel installs it at no monorepo product's root yet, and it cannot go in one of the product's services: its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout",
     );
   });
 
@@ -307,6 +307,37 @@ describe('a monorepo service', () => {
     // What a service does carry still installs there.
     expect(card(backend, 'persistence').readiness).toBe('ready');
   });
+
+  it('answers a re-render of what it does not install with where it is, not with an install', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const again = (id: string, flag: 'reapply' | 'refresh') =>
+      mediator.dispatch(
+        addVerticalCommand({
+          cwd: at('backend'),
+          verticals: flag === 'reapply' ? [id] : ['persistence'],
+          ...(flag === 'reapply' ? { reapply: true } : { refresh: [id] }),
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      );
+    // What the product gives it is the product root's to re-render:
+    // `keel add vcs` here would be a note that adds nothing.
+    const vcs = expectErr(await again('vcs', 'reapply'));
+    expect(vcs.code).toBe('keel.vertical-not-installed');
+    expect(vcs.message).toBe(
+      'Version control is not installed in this service — the product root has it, for the one repository its services share, and it is re-rendered there: nothing to reapply here',
+    );
+    expect(expectErr(await again('containerization', 'refresh')).message).toBe(
+      'Container image is not installed in this service — the product root builds it for this service, and it is re-rendered there: nothing to refresh here',
+    );
+    // And what only a repository root reads is refused as adding it is.
+    const ci = expectErr(await again('ci', 'reapply'));
+    const added = expectErr(await add(mediator, at('backend'), ['ci']));
+    expect([ci.code, ci.message]).toEqual([added.code, added.message]);
+    expect(ci.code).toBe('keel.wrong-scope');
+  });
 });
 
 describe('a polyrepo service', () => {
@@ -387,6 +418,74 @@ describe('keel new inside a product', () => {
         ),
       ).code,
     ).toBe('keel.inside-product');
+  });
+});
+
+describe('keel new in a service the product lists', () => {
+  it('refuses one emptied of its project, naming what the product records there', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    await fs.remove(at('backend'));
+    await fs.ensureDir(at('backend'));
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd: at('backend'),
+          stack: 'go-cli',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    // Scaffolded, it would be a second repository's hooks and
+    // changelog inside the product's, of a stack the product does not
+    // record there.
+    expect(error.code).toBe('keel.inside-product');
+    expect(error.message).toBe(
+      'this directory is backend/ of the product at ../, recorded as quarkus-rest; re-scaffolding a service is not supported yet',
+    );
+    expect(await fs.readdir(at('backend'))).toEqual([]);
+  });
+
+  it('refuses one that still holds its project as already initialised', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const error = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd: at('backend'),
+          stack: 'quarkus-rest',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.already-initialised');
+  });
+});
+
+describe('keel add where no project is', () => {
+  it('points a subdirectory of a project at the project it is in', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'polyrepo');
+    await fs.ensureDir(at('backend', 'scripts'));
+    const inside = expectErr(await add(mediator, at('backend', 'scripts'), ['ci']));
+    expect(inside.code).toBe('keel.not-initialised');
+    expect(inside.message).toBe(
+      `no project initialised at ${at('backend', 'scripts', '.claude')} — this directory is inside the keel project at ../; run 'keel add' there`,
+    );
+  });
+
+  it("points a polyrepo product's directory at the services below it", async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'polyrepo');
+    const parent = expectErr(await add(mediator, cwd, ['persistence']));
+    expect(parent.code).toBe('keel.not-initialised');
+    expect(parent.message).toBe(
+      `no project initialised at ${at('.claude')} — backend/ and frontend/ below hold keel projects; run 'keel add' in one of them`,
+    );
   });
 });
 

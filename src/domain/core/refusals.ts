@@ -434,10 +434,91 @@ export function productRootPlacementRefusal(names: RefusalNames, vertical: Verti
       vertical: vertical.id,
       missing: {},
       carriedBy: [],
-      because:
-        "nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+      because: `keel installs it at no monorepo product's root yet, and it cannot go in one of the product's services: ${vertical.placement?.because ?? "its place is the repository's root"}`,
     },
     UNCOVERED_CODE,
+    names,
+  );
+}
+
+/**
+ * The sentence a command that needs a keel project is refused with in
+ * a directory that holds none (`keel.not-initialised`): pointing at the
+ * project it sits inside, or at the services below it that are
+ * projects, where there are — `keel new` there would scaffold a project
+ * inside another, or over a product's services — and at `first`, the
+ * command that creates one, where there are not.
+ */
+export function notInitialisedSentence(
+  scopeRoot: string,
+  nearby: { readonly above: string | null; readonly below: readonly string[] },
+  command: string,
+  first: string,
+): string {
+  const none = `no project initialised at ${scopeRoot}`;
+  if (nearby.above !== null) {
+    return `${none} — this directory is inside the keel project at ${nearby.above}/; run '${command}' there`;
+  }
+  if (nearby.below.length > 0) {
+    const dirs = directories(
+      nearby.below.map((path) => ({ path })),
+      'and',
+    );
+    const [verb, where] =
+      nearby.below.length === 1
+        ? ['holds a keel project', 'in it']
+        : ['hold keel projects', 'in one of them'];
+    return `${none} — ${dirs} below ${verb}; run '${command}' ${where}`;
+  }
+  return `${none} — run '${first}' first to create one`;
+}
+
+/** The code a re-render of a vertical this project has not installed is refused with. */
+export const VERTICAL_NOT_INSTALLED_CODE = 'keel.vertical-not-installed';
+
+/**
+ * The sentence a re-render (`--reapply`, `--refresh`) of a vertical
+ * this project has not installed is refused with, naming what installs
+ * it instead.
+ */
+export function notInstalledSentence(vertical: Vertical, verb: 'reapply' | 'refresh'): string {
+  return `vertical '${vertical.id}' is not installed in this project — nothing to ${verb}; install it with 'keel add ${vertical.id}'`;
+}
+
+/**
+ * The sentence a re-render of a vertical a monorepo service has from
+ * its product (`providedNote`'s `by`) is refused with: it is not this
+ * service's to re-render, and installing it here would change
+ * nothing — the product root has it, and re-renders it there.
+ */
+export function providedNotInstalledSentence(
+  vertical: Vertical,
+  by: 'repository' | 'product',
+  verb: 'reapply' | 'refresh',
+): string {
+  const where =
+    by === 'repository'
+      ? 'the product root has it, for the one repository its services share'
+      : 'the product root builds it for this service';
+  return `${verticalTitle(vertical)} is not installed in this service — ${where}, and it is re-rendered there: nothing to ${verb} here`;
+}
+
+/**
+ * The refusal of a vertical whose place is a repository root
+ * (`Vertical.placement`) asked of a monorepo service, in its own words
+ * — the one `keel add` of it gets there (`keel.wrong-scope`), for
+ * whatever else asks it of a service: a re-render of it.
+ */
+export function placementRefusal(names: RefusalNames, vertical: Vertical): RefusalError {
+  return refusalError(
+    {
+      kind: 'unavailable',
+      vertical: vertical.id,
+      missing: {},
+      carriedBy: [],
+      repositoryOnly: [vertical.id],
+    },
+    WRONG_SCOPE_CODE,
     names,
   );
 }
@@ -497,7 +578,7 @@ export function shadowedAnswerSentence(key: string, readInstead: string): string
  * recorded one is what every reader takes.
  */
 export function recordedAnswerSentence(key: string, recorded: string): string {
-  return `${key} is not read: this project already records ${recorded}, and reconfiguring is not supported yet (drop the answer for ${key})`;
+  return `${key} is not read: this project's manifest records ${recorded}, written by an older keel although nothing installed here asked it, and that recorded answer is what is read — remove it from .claude/.keel-manifest.json to answer anew`;
 }
 
 /**
@@ -528,6 +609,24 @@ export function reapplyFrozenSentence(adapterId: string, vertical: Vertical): st
  */
 export function alreadyIncludedNote(vertical: Vertical, stackId: string): string {
   return `${verticalTitle(vertical)} already comes with ${stackId}`;
+}
+
+/**
+ * The note `keel new --with` gives for a vertical named for a composite
+ * product without a service that the services able to have it have
+ * already, each by what it comes with there: "Code style already comes
+ * with quarkus-rest in backend/ and web-components in frontend/". As
+ * for a single preset, asking for what the plan has is set aside, not
+ * refused; `keel.dials` drops it from a page's extras in the same words.
+ */
+export function alreadyInServicesNote(
+  vertical: Vertical,
+  services: readonly { readonly path: string; readonly by: string }[],
+): string {
+  const by = new Map<string, { readonly path: string }[]>();
+  for (const service of services) by.set(service.by, [...(by.get(service.by) ?? []), service]);
+  const parts = [...by].map(([stack, paths]) => `${stack} in ${directories(paths, 'and')}`);
+  return `${verticalTitle(vertical)} already comes with ${listed(parts)}`;
 }
 
 /**
@@ -685,9 +784,17 @@ function unavailableSentence(refusal: UnavailableRefusal, names: RefusalNames): 
   ) {
     const carried = nearest(refusal.carriedBy);
     const builds = fixed.filter((tag) => tag.startsWith('pkg.'));
-    if (builds.length > 0 && builds.length === fixed.length && capabilities.length === 0) {
+    if (
+      builds.length > 0 &&
+      builds.length === fixed.length &&
+      capabilities.length === 0 &&
+      entrypoint.length === 0
+    ) {
+      // The build system is the way forward, and the sentence names
+      // it: a stack to scaffold instead would be another kind of
+      // project for what is this one on another dial.
       const labels = builds.map((tag) => buildSystemLabel(tag));
-      return `${title} has no adapter for this project's build system; it needs ${labels.join(' or ')}${carried}`;
+      return `${title} has no adapter for this project's build system; it needs ${labels.join(' or ')}`;
     }
     return `${title} has no adapter for this project's stack${carried}`;
   }

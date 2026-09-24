@@ -37,6 +37,7 @@ const installAndRun = async (opts: {
   remote?: string;
   branch?: string;
   dryRun?: boolean;
+  logger?: FakeLogger;
 }): Promise<void> => {
   const tree = new FsTree(opts.cwd);
   const manifest = {
@@ -64,7 +65,7 @@ const installAndRun = async (opts: {
   await runActions({
     actions: result.applyResult.actions,
     cwd: opts.cwd,
-    logger: new FakeLogger(),
+    logger: opts.logger ?? new FakeLogger(),
     processes: spawnProcessRunner,
     dryRun: opts.dryRun ?? false,
   });
@@ -129,6 +130,17 @@ describe('git-init adapter', () => {
       encoding: 'utf8',
     });
     expect(remote.stdout.trim()).toBe('git@old.example.com:a/b.git');
+  });
+
+  it("reports a clone's origin as the remote, not as one to add", async () => {
+    spawnSync('git', ['init', '-b', 'main'], { cwd: workDir });
+    spawnSync('git', ['remote', 'add', 'origin', 'git@example.com:a/b.git'], { cwd: workDir });
+    const logger = new FakeLogger();
+    await installAndRun({ cwd: workDir, logger });
+    expect(logger.messages('info')).toContain(
+      'git: origin remote already exists — not overwriting',
+    );
+    expect(logger.messages('info').join('\n')).not.toContain('no remote configured');
   });
 
   it('refuses to nest under an enclosing repo', async () => {

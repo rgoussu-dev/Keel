@@ -1134,7 +1134,7 @@ describe('what a preset move could not keep', () => {
     expect(settled.target).not.toHaveProperty('extraVerticals');
     expect(settled.notice).toBe(
       'Moving to fullstack did not keep build system maven, module layout modulith or the peer context. ' +
-        "Continuous integration dropped: it cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead.",
+        "Continuous integration dropped: it cannot be installed here: keel installs it at no monorepo product's root yet, and it cannot go in one of the product's services: its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout.",
     );
   });
 

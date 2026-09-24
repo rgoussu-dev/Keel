@@ -1780,6 +1780,34 @@ describe('keel.new-project extra verticals', () => {
     expect(prompt.asked).not.toContain('targets');
   });
 
+  it('refuses distribution on a Quarkus CLI on Maven for its build system, naming no stack', async () => {
+    // Its native adapter is a dial away (Gradle), the image one an
+    // entrypoint away: the project is a Quarkus CLI either way, so the
+    // gap is the build system — and quarkus-cli itself, which carries
+    // distribution only on Gradle, is no stack to scaffold instead.
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          buildSystem: 'maven',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      "Distribution has no adapter for this project's build system; it needs Gradle — incremental task-graph build (Kotlin DSL)",
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      missing: { identity: ['pkg.gradle'] },
+    });
+    expect((error as RefusalError).refusal).not.toMatchObject({ carriedBy: ['quarkus-cli'] });
+  });
+
   it('ships a composed Quarkus CLI + REST as native binaries when distribution comes alone', async () => {
     const report = expectOk(
       await installMediator().dispatch(
@@ -1953,7 +1981,7 @@ describe('keel.new-project extra verticals', () => {
     const monorepo = expectErr(await composite('ci'));
     expect(monorepo.code).toBe('keel.uncoverable-vertical');
     expect(monorepo.message).toBe(
-      "Continuous integration cannot be installed here: nothing keel has installs it at a product root yet, and its place is the repository's root, so no service of this product can take it instead",
+      "Continuous integration cannot be installed here: keel installs it at no monorepo product's root yet, and it cannot go in one of the product's services: its pipeline is read only at the repository root, which in a monorepo is the product root — per-service pipelines need the polyrepo layout",
     );
   });
 
@@ -2064,6 +2092,57 @@ describe('keel.new-project extra verticals', () => {
       ),
     );
     expect(report.notes).toEqual(['Version control already comes with fullstack']);
+  });
+
+  it('sets aside a vertical its services have already, naming what each has it with (D4)', async () => {
+    const withExtras = (extras: readonly string[], layout?: 'monorepo' | 'polyrepo') =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: [...extras],
+          ...(layout === undefined ? {} : { layout }),
+        }),
+      );
+    // A `--with` list that runs on a single preset runs on a product:
+    // what the services have is there, as what a preset comes with is.
+    expect(expectOk(await withExtras(['code-style'])).notes).toEqual([
+      'Code style already comes with quarkus-rest in backend/ and web-components in frontend/',
+    ]);
+    expect(expectOk(await withExtras(['observability'])).notes).toEqual([
+      'Observability already comes with quarkus-rest in backend/',
+    ]);
+    // The image a monorepo root builds for each service is the product's.
+    expect(expectOk(await withExtras(['containerization'])).notes).toEqual([
+      'Container image already comes with fullstack in backend/ and frontend/',
+    ]);
+  });
+
+  it("credits a monorepo service's version control to the product, whose root keeps it", async () => {
+    const named = (layout: 'monorepo' | 'polyrepo') =>
+      installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          layout,
+          services: { backend: { extraVerticals: ['vcs'] } },
+        }),
+      );
+    // Under the monorepo layout the preset's own vcs is the one left
+    // out of the service: the product root has it, as `keel add vcs`
+    // there says.
+    expect(expectOk(await named('monorepo')).notes).toEqual([
+      'backend: Version control already comes with fullstack',
+    ]);
+    expect(expectOk(await named('polyrepo')).notes).toEqual([
+      'backend: Version control already comes with quarkus-rest',
+    ]);
   });
 
   it('refuses an unregistered id on a composite stack as the unknown vertical it is', async () => {

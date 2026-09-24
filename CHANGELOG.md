@@ -28,6 +28,22 @@ use to keep a long-lived changelog scannable — and the root keeps
   `.gitignore` are the only files `keel new` adopts, as `docs/cli.md`
   says. Nothing is written before the refusal.
 
+- **`keel add` where no project is says where one is.** Run in a
+  subdirectory of a keel project, or in a polyrepo product's directory
+  (which has no manifest of its own), `keel add` said _run 'keel new
+  --stack=<id>' first_ — advice that scaffolds a project inside
+  another, or over the product's services. It now names the project
+  above (_this directory is inside the keel project at ../; run 'keel
+  add' there_) or the services below (_backend/ and frontend/ below
+  hold keel projects; run 'keel add' in one of them_), still as
+  `keel.not-initialised`.
+
+- **`keel new` in a clone no longer says there is no remote.** With
+  no remote answered, the git step logged _no remote configured. Add
+  one later with `git remote add origin <url>`_ in a clone whose
+  `origin` was already set, where that command fails. It now says the
+  origin is there.
+
 - **Two scopes of a product writing one file are refused, not
   silently overwritten.** A composite product stages its root and
   each service into trees of their own, so a file two of them wrote —
@@ -118,7 +134,11 @@ use to keep a long-lived changelog scannable — and the root keeps
   which in a monorepo is the product root — per-service pipelines need
   the polyrepo layout"_; `iac` reads as needing Distribution, which
   cannot go there. `keel.project-status`, `keel add --list` and
-  `keel ui` say so before the click. A polyrepo product's services are
+  `keel ui` say so before the click. A `--reapply` or a `--refresh` of
+  either says the same, rather than advising an install there: what
+  the product gives is the product root's to re-render
+  (`keel.vertical-not-installed`, saying so), and what only a
+  repository root reads is `keel.wrong-scope`. A polyrepo product's services are
   repositories of their own and are unchanged. At a product root,
   `gateway` is sent to the services that have it, like every other
   vertical the root cannot carry, rather than refused as needing an
@@ -232,16 +252,19 @@ new` the terminal adds the way past it (move it aside, or start in
   label (_"Observability needs an entrypoint this project does not
   have: HTTP server — a REST endpoint"_), and a language, framework,
   runtime, build system or layout never — the vertical _"has no
-  adapter for this project's stack; the nearest stack that carries it:
-  spring-cli-rest"_. `distribution` on a Spring or Micronaut CLI now
+  adapter for this project's stack"_, naming the nearest stack of the
+  project's shape that carries it on its dials where one does, or,
+  where only the build system differs, _"has no adapter for this
+  project's build system; it needs Gradle — …"_ (distribution on a
+  Quarkus CLI on Maven). `distribution` on a Spring or Micronaut CLI now
   reads as the HTTP entrypoint it lacks, as on every other CLI. At the
   root of a composite product, every vertical the root cannot carry —
   not only `agent-harness` — is refused naming the services that can
-  take it, where it used to report a gap for some other stack. Codes
-  are unchanged (`keel.uncoverable-vertical`, and
-  `keel.invalid-agent-harness` for the harness), and the tags travel
-  in the refusal's data (see _One refusal vocabulary_ under Changed).
-  Scripts matching the old text should match the code instead.
+  take it, where it used to report a gap for some other stack. The
+  code is still `keel.uncoverable-vertical`; at a product root it is
+  `keel.wrong-scope` (see _A refusal of the scope says so in its code_
+  under Changed), and the tags travel in the refusal's data (see _One
+  refusal vocabulary_ under Changed).
 
 - **One installed card in `keel ui` no longer breaks every card
   after it.** An installed vertical's card is a re-render, and the
@@ -334,6 +357,18 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **An answer an older keel recorded is the one read.** An older
+  keel merged every `--set` into the manifest, so a project can record
+  an answer for a vertical it never installed — `keel new --set
+ci/go-pipeline:provider=gitlab-ci` without `ci`. A recorded answer is
+  now read before a supplied one, so `keel add ci --set
+ci/go-pipeline:provider=github-actions` there, which the older keel
+  took, is refused as `keel.frozen-answer` and exits 1, saying why:
+  _… this project's manifest records ci/go-pipeline:provider, written
+  by an older keel although nothing installed here asked it, and that
+  recorded answer is what is read — remove it from
+  .claude/.keel-manifest.json to answer anew_.
+
 - **The backend shape says it holds tools too.** The drill-down's
   first question offered _Backend — a service with no front end of its
   own_, and someone after a command-line tool had to read past
@@ -413,6 +448,13 @@ new` the terminal adds the way past it (move it aside, or start in
   it is still refused as `keel.wrong-scope`, naming each service and
   whether it can take it, and the hint names the pairs to type
   instead: `'--with backend:toolchain' or '--with frontend:toolchain'`.
+  One the services that could have it have already — `code-style`,
+  `observability`, the image a monorepo root builds — is set aside
+  with a note naming what each has it with (_Code style already comes
+  with quarkus-rest in backend/ and web-components in frontend/_),
+  as a single preset sets aside what it comes with, so one `--with`
+  list runs on either; `keel add` of it at the product root is still
+  sent to the services.
   Each service's readiness is now read on the build system chosen for
   it and with the product's own extras for it (the service gateway)
   in place, where it used to be read on the defaults. `keel.dials`
@@ -484,7 +526,12 @@ new` the terminal adds the way past it (move it aside, or start in
   monorepo product scaffolded a project that was neither one of the
   product's services nor a repository of its own. It is refused as
   `keel.inside-product` before anything is asked: adding a service to
-  a product is not supported yet.
+  a product is not supported yet. So is a service the product lists
+  that no longer holds its project — `backend/` emptied — which was
+  scaffolded as a second repository inside the product's, of whatever
+  stack was named: _this directory is backend/ of the product at ../,
+  recorded as quarkus-rest; re-scaffolding a service is not supported
+  yet_.
 
 - **`keel ui` opens a product's services from its root.** At a
   composite product's root, _Belongs in a service_ starts with an
@@ -595,8 +642,10 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   order they depend on one another — `containerization` before the
   `distribution` that builds its image, `persistence` before the
   `distribution` whose descriptor reads it — whatever order they are
-  named in, and extras nothing ties together go in by id, so every
-  order typed writes the same files. The report opens with a note when
+  named in, and extras nothing ties together go in by id — a
+  prerequisite added for you as one named would be — so every order
+  typed, and every way of naming a set's prerequisites, writes the
+  same files and records the same order. The report opens with a note when
   the order typed put one ahead of what it needs
   (`installed in dependency order: …`, `InstallReport.notes`).
   `keel.extra-verticals-order` is retired;
@@ -800,7 +849,9 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   what the service already has is set aside, both said in the plan's
   notes under the service's name — so `--with backend:persistence`
   writes what `keel new` and then `keel add persistence` in `backend/`
-  would. A pipeline or a release in a monorepo service is refused as
+  would; what a monorepo service has from its product root — its
+  version control — is credited to the product, as `keel add vcs`
+  there says. A pipeline or a release in a monorepo service is refused as
   `keel.wrong-scope`, before anything is written, as `keel add ci`
   there is, and the hint under a service's refusal names the pair to
   drop (`drop 'backend:ci' from --with`), never another stack to
@@ -917,8 +968,9 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   raise them.
 
 - **`keel add` takes several verticals, and proposes the re-renders an
-  add calls for.** `keel add containerization distribution iac` is one
-  plan and one run, installed in the order they depend on one another
+  add calls for.** `keel add containerization distribution iac` — or
+  `keel add containerization,distribution,iac`, as `--with` spells a
+  list — is one plan and one run, installed in the order they depend on one another
   whatever order they are named in, and writes what three adds in a
   row write; naming one twice is refused (`keel.invalid-verticals`).
   When an add changes what an installed vertical would render —

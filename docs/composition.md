@@ -197,10 +197,15 @@ add. So the sentence sorts it first, naming the vertical by its title:
 - a tag the preset fixes at `keel new` (`lang.*`, `framework.*`,
   `runtime.*`, `pkg.*`, `layout.*`, an `arch.*` that is not an
   entrypoint) is an **identity** gap, never offered as a remedy — the
-  vertical _"has no adapter for this project's stack; the nearest
-  stack that carries it: ts-http"_, or, when only the build system
+  vertical _"has no adapter for this project's stack"_, followed by
+  _"; the nearest stack that carries it: …"_ where a stack of the
+  project's shape carries it on the project's dials (never its own
+  preset, which does not), or, when only the build system
   differs, _"…has no adapter for this project's build system; it needs
-  Maven — …"_;
+  Maven — …"_ — which an adapter a dial away is read as ahead of one an
+  entrypoint away: a Quarkus CLI on Maven is a build system from
+  distribution's native adapter, and never meant to have an HTTP
+  server;
 - a **peer** tag is what a linked project projects, so the gateway
   reads as _"wires linked projects, and no linked project serves it
   here — link one that does first"_;

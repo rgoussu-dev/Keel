@@ -262,7 +262,8 @@ export function buildProgram(deps: CliDeps): Command {
               })
             : addVerticalCommand({
                 cwd: cwd(),
-                verticals: targets,
+                // `ci,persistence`, as `--with` and `--refresh` spell a list.
+                verticals: targets.flatMap(parseVerticalList),
                 answers: parseSetAnswers(opts.set),
                 interactive: !opts.yes,
                 dryRun: opts.dryRun,

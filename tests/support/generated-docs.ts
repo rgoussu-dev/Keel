@@ -195,9 +195,13 @@ export async function gridFacts(
       const root = verdicts(composite, `${stack.id}/${layout}`);
       layouts.push({
         layout,
+        // What the root itself comes with is the product preset's own
+        // verticals: `keel.dials` reads a vertical every service has as
+        // coming with the product too, which `keel add` at the root —
+        // no service's — still sends to them.
         root: Object.values(root).every((verdict) => verdict === NOT_A_PROJECT)
           ? null
-          : { verdicts: root, included: includedIn(options.verticals) },
+          : { verdicts: root, included: (preset?.verticals ?? []).map((vertical) => vertical.id) },
         services: Object.fromEntries(
           services.map((service) => [
             service.path,

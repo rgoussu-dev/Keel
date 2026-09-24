@@ -388,7 +388,7 @@
   "web-components+ci": "ready",
   "web-components+dev-env": "ready",
   "web-components+dev-container": "included",
-  "web-components+observability": "unavailable — entrypoint arch.server-http — identity lang.go — nearest ts-http",
-  "web-components+persistence": "unavailable — entrypoint arch.server-http — identity runtime.node — nearest ts-http",
+  "web-components+observability": "unavailable — entrypoint arch.server-http — identity lang.go",
+  "web-components+persistence": "unavailable — entrypoint arch.server-http — identity runtime.node",
   "web-components+toolchain": "ready"
 }

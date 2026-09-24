@@ -810,6 +810,27 @@ describe('the agent harness, as a dial', () => {
     }
   });
 
+  it('drops from a product what its services have already, in the words keel new notes it', () => {
+    const product = shippedRegistry.stack('fullstack');
+    if (product === null) throw new Error("no shipped stack 'fullstack'");
+    const dials = stackDials(shippedRegistry, product, {
+      kind: 'new-project',
+      stack: 'fullstack',
+      extraVerticals: ['observability'],
+    });
+    expect(dials.adjustments).toEqual([
+      {
+        id: 'observability',
+        change: 'dropped',
+        because: 'Observability already comes with quarkus-rest in backend/',
+      },
+    ]);
+    // The menu reads it as coming with the product, not as refused.
+    expect(dials.verticals.find((vertical) => vertical.id === 'observability')).toMatchObject({
+      readiness: 'included',
+    });
+  });
+
   it('is no dial where there is no harness to leave out, or where the preset switches it back on', () => {
     const none = stackDials(shippedRegistry, stackWith([]), target({ agentHarness: false }));
     expect(none.agentHarness).toBe(false);

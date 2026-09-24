@@ -96,6 +96,11 @@ monorepo product root that the product does not list as a service —
 inside the product at ../, which lists no service here; adding a
 service to a product is not supported yet"_. A project scaffolded there
 would be neither a service of the product nor a repository of its own.
+So is a service the product does list that no longer holds its
+project — `backend/` emptied — whatever stack is named: _"this
+directory is backend/ of the product at ../, recorded as quarkus-rest;
+re-scaffolding a service is not supported yet"_. Scaffolded, it would
+be a second repository's hooks and changelog inside the product's.
 
 **A product's extras are its services'.** On a composite stack each
 service is a project of its own, so `--with` names the service an
@@ -121,11 +126,14 @@ An id named without a service goes where it can: a vertical the
 product installs of its own (`vcs`) is set aside with a note, as on a
 single preset, and any other goes to the one service that can take
 it, with a note saying where (`note: Persistence goes in backend/,
-the one service of fullstack that can take it`). Where two services
-could each take it — a toolchain — or none can, it is refused as
-belonging to a service (`keel.wrong-scope`), in the words `keel add`
-gives it at the product root, and the hint names the pairs to type
-instead:
+the one service of fullstack that can take it`). One the services
+that could have it have already is set aside too, naming what each
+has it with (`note: Code style already comes with quarkus-rest in
+backend/ and web-components in frontend/`), so a `--with` list that
+runs on a single preset runs on a product. Where two services could
+each take it — a toolchain — or none can, it is refused as belonging
+to a service (`keel.wrong-scope`), in the words `keel add` gives it at
+the product root, and the hint names the pairs to type instead:
 
 ```
 $ keel new --stack=fullstack --with toolchain --yes
@@ -137,8 +145,9 @@ backend/ or frontend/
 
 A pipeline or a release named without a service on a monorepo
 product has no service to go to at all: its place is the repository's
-root, which the product root is, and nothing keel has installs it
-there yet (`keel.uncoverable-vertical`). One command names its extras
+root, which the product root is, and keel installs it at no monorepo
+product's root yet (`keel.uncoverable-vertical`) — per-service
+pipelines and releases need the polyrepo layout. One command names its extras
 one way — each with its service or none with one: the two forms mixed
 are refused, and so are a path the product lists no service at, an id
 named twice for one service, and a `path:id` pair on a single-service
@@ -282,7 +291,12 @@ add` would refuse it with on the scaffolded project (see
   label the finder offers it under; a language, framework or build
   system is never offered as a remedy, since no command changes one,
   and the refusal says the vertical has no adapter for this project's
-  stack instead, naming the nearest stacks that carry it. What only
+  stack instead, naming the nearest stacks of the same shape that carry
+  it on these dials — never the preset being scaffolded, and never a
+  back end for a front end. Where only the build system differs, it
+  names the build system instead (_"Distribution has no adapter for
+  this project's build system; it needs Gradle — …"_ on `quarkus-cli`
+  with Maven), and the hint points at `--build-system`. What only
   `--with` can do about it is the hint under the refusal:
 
   ```
@@ -300,12 +314,14 @@ add` would refuse it with on the scaffolded project (see
 
 One the stack already installs is not refused: asking for what the
 plan has has one sensible reading. It is dropped, the rest of the set
-installs as it would without it, and the plan opens with a note saying
-so — `note: Development environment already comes with quarkus-rest`.
+installs as it would without it, and the plan says so in a note —
+`note: Development environment already comes with quarkus-rest`.
 
 A set that leaves out what one of its extras needs installed first is
 completed rather than refused: the planner adds the missing verticals,
-in the order they install, and the plan opens with a note naming them.
+in the order they install, and the plan opens with a note naming them
+— before any note of what was already there, since it is the one that
+changes what is written.
 
 ```
 $ keel new --stack=quarkus-rest --with iac --dry-run --yes
@@ -361,6 +377,7 @@ project (one that carries a keel manifest — i.e. was scaffolded by
 ```sh
 keel add <vertical>... [options]
 keel add containerization distribution iac    # one plan, one run
+keel add containerization,distribution,iac    # the same, as --with spells it
 ```
 
 Available verticals: `vcs`, `walking-skeleton`, `agent-harness`,
@@ -473,6 +490,14 @@ Named beside others, it is noted the same way and the rest install —
 so a script can name what it needs, and run twice. Named with
 `--refresh` as well, it is re-rendered in the run instead.
 
+Run where there is no keel project, `keel add` is refused as
+`keel.not-initialised`, and the sentence says where one is: in a
+subdirectory of a project, the project above (_"this directory is
+inside the keel project at ../; run 'keel add' there"_); in a polyrepo
+product's directory, which holds no manifest of its own, the services
+below (_"backend/ and frontend/ below hold keel projects; run 'keel
+add' in one of them"_); only where neither is, `keel new`.
+
 ### `--refresh`: what an add changes
 
 Installing a vertical can change what an installed one would render,
@@ -579,7 +604,14 @@ deliberately conservative:
   and takes `--set`, as on a first install.
 
 Reapplying a vertical that is not installed errors with
-`keel.vertical-not-installed`. Tags the original install promoted are
+`keel.vertical-not-installed`. In a monorepo service, one the product
+gives it (the repository's version control, the image the product
+root builds) is refused under that code saying the product root has
+it and re-renders it there, and one only a repository root reads (a
+pipeline, a release) as `keel add` of it there is
+(`keel.wrong-scope`) — neither with advice to install it here, which
+would change nothing, or be refused in turn. `--refresh` of either
+reads the same. Tags the original install promoted are
 re-promoted idempotently (they never double), and the vertical keeps
 its original `installedAt`. A three-way merge that preserves your
 edits to template-owned files is on the [roadmap](roadmap.md) —
@@ -1012,7 +1044,11 @@ alike, a run refuses:
   and one for a re-rendered adapter's recorded answers with
   `keel.reapply-frozen-answers`: they are frozen, and reconfiguring
   one is not supported yet — `keel add module` holds its answers to
-  the same rules;
+  the same rules. So is an answer an older keel recorded for a
+  vertical this project never installed (it merged every `--set` into
+  the manifest): the recorded one is what is read, so a different one
+  supplied is refused under `keel.frozen-answer`, saying so — remove
+  the stale key from `.claude/.keel-manifest.json` to answer anew;
 - a value outside its question's choices with `keel.invalid-answer` —
   the choices it offers this project, since a choice may declare where
   it applies: `persistence/database-compose:engine=mariadb` is taken on

@@ -86,6 +86,11 @@ describe('keel add, as a command line', () => {
     expect(Object.keys(dispatched[0] ?? {})).not.toContain('refresh');
   });
 
+  it('takes a comma list as --with and --refresh do', async () => {
+    const [command] = await run(['add', 'ci,persistence', 'iac', '--yes']);
+    expect(command).toMatchObject({ verticals: ['ci', 'persistence', 'iac'] });
+  });
+
   it('carries --refresh as the list of installed verticals to re-render', async () => {
     const [command] = await run(['add', 'persistence', '--refresh', 'distribution, ci', '--yes']);
     expect(command).toMatchObject({

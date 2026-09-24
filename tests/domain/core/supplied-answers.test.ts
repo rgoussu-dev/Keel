@@ -358,7 +358,9 @@ describe('unusedAnswers', () => {
       ).toEqual([
         [
           FROZEN_ANSWER_CODE,
-          'walking-skeleton/acme-cli-bootstrap:basePackage is not read: this project already records walking-skeleton/acme-rest-bootstrap:basePackage, and reconfiguring is not supported yet (drop the answer for walking-skeleton/acme-cli-bootstrap:basePackage)',
+          // Nothing is being reconfigured, and dropping the answer would
+          // leave the stale one: the sentence says where it is.
+          "walking-skeleton/acme-cli-bootstrap:basePackage is not read: this project's manifest records walking-skeleton/acme-rest-bootstrap:basePackage, written by an older keel although nothing installed here asked it, and that recorded answer is what is read — remove it from .claude/.keel-manifest.json to answer anew",
         ],
       ]);
     });

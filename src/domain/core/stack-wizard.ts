@@ -273,6 +273,15 @@ export function axesOf(tags: readonly Tag[]): WizardAxes | null {
   return { shape, language, framework: frameworkOf(tags), entrypoints };
 }
 
+/**
+ * Which end a set of tags is driven from — `backend`, `frontend` or
+ * `fullstack` — counted off its entrypoints as the finder counts a
+ * preset's; null where it has none.
+ */
+export function shapeOfTags(tags: readonly Tag[]): ProjectShape | null {
+  return shapeOf(entrypointsOf(tags));
+}
+
 /** Where `stackId` sits in the tree, or null when it sits nowhere. */
 export function pathOf(paths: readonly WizardPath[], stackId: string): WizardPath | null {
   return paths.find((path) => path.stackId === stackId) ?? null;

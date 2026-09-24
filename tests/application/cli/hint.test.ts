@@ -60,6 +60,28 @@ const TABLE: readonly {
     hint: "drop 'persistence' from --with",
   },
   {
+    why: 'a build system alone on keel new points at the dial, not at another stack',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'distribution',
+      missing: { identity: ['pkg.gradle'] },
+      carriedBy: ['quarkus-cli-rest'],
+    },
+    command: 'new',
+    hint: "drop 'distribution' from --with, or choose the build system it needs with --build-system",
+  },
+  {
+    why: 'a build system alone on keel add leaves it to the sentence, which names it',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'distribution',
+      missing: { identity: ['pkg.gradle'] },
+      carriedBy: ['quarkus-cli-rest'],
+    },
+    command: 'add',
+    hint: null,
+  },
+  {
     why: 'a missing linked project on keel add says to link one first',
     refusal: {
       kind: 'unavailable',

@@ -33,6 +33,7 @@ import type { Readiness } from '../../../src/domain/contract/queries.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
 import {
   applies,
+  defaultScope,
   plan,
   reachableAdapters,
   readiness,
@@ -465,6 +466,35 @@ describe('plan', () => {
     expect(ids(['acme-monitor', 'acme-release', 'acme-deploy', 'acme-image'])).toEqual(expected);
   });
 
+  it('orders what it adds as it orders the same set named whole', () => {
+    // A prerequisite the request left out lands where its id puts it,
+    // as it would named: planning what a plan settled on plans it again,
+    // unchanged — `keel.dials` is a fixed point, and a manifest records
+    // one order however the set was asked for.
+    const order = (scope: PlanScope, requested: readonly string[]) => {
+      const planned = plan(shippedRegistry, scope, [...requested].sort());
+      return planned.kind === 'planned' ? planned.order.map((step) => step.id) : null;
+    };
+    const singles = shippedRegistry.stacks().filter((stack) => stack.services === undefined);
+    const requests = [
+      ...shippedRegistry.verticals().map((vertical) => [vertical.id]),
+      ['ci', 'distribution', 'persistence'],
+      ['ci', 'iac'],
+    ];
+    let settled = 0;
+    for (const stack of singles) {
+      const scope = defaultScope(stack);
+      for (const requested of requests) {
+        if (requested.some((id) => scope.installed.includes(id))) continue;
+        const first = order(scope, requested);
+        if (first === null || first.length === requested.length) continue;
+        expect(order(scope, first), `${stack.id} ${requested.join(',')}`).toEqual(first);
+        settled++;
+      }
+    }
+    expect(settled).toBeGreaterThan(20);
+  });
+
   it('installs a reader after what it reads, and ignores a read of something absent', () => {
     const order = (requested: readonly string[]) => {
       const planned = plan(registry, ACME, requested);
@@ -518,12 +548,13 @@ describe('plan', () => {
 
   it('bounds the prerequisites per vertical, not per request', () => {
     // Three for the chain and one for the signer: four in all, and
-    // no vertical needing more than three.
+    // no vertical needing more than three. What nothing ties together
+    // goes in by id, added or named.
     expect(plan(registry, ACME, ['acme-monitor', 'acme-sign'])).toEqual({
       kind: 'planned',
       order: [
-        { id: 'acme-image', reason: { neededBy: ['acme-release'] } },
         { id: 'acme-bundle-slim', reason: { neededBy: ['acme-sign'] } },
+        { id: 'acme-image', reason: { neededBy: ['acme-release'] } },
         { id: 'acme-sign', reason: 'requested' },
         { id: 'acme-release', reason: { neededBy: ['acme-deploy'] } },
         { id: 'acme-deploy', reason: { neededBy: ['acme-monitor'] } },

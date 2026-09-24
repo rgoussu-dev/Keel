@@ -117,6 +117,9 @@ export function nearestVertical(
   verticals: readonly Pick<Vertical, 'id' | 'title'>[],
   typed: string,
 ): string | null {
+  // A list typed as one id (`ci,persistence`) is several: naming one of
+  // them as what was meant would drop the others.
+  if (typed.includes(',')) return null;
   return nearestId(
     typed,
     verticals.map((vertical) => ({ id: vertical.id, own: [vertical.title ?? ''], related: [] })),
