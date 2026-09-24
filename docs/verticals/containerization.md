@@ -11,8 +11,9 @@ keel add containerization
 build already produced and documents the build command instead of
 running it. Your CI builds; the Dockerfile packages.
 
-CLI-shaped projects hard-fail with the uncovered `image` dimension — a
-CLI ships through [`distribution`](distribution.md).
+CLI-shaped projects are refused: nothing covers the `image` dimension
+without a server, so the refusal names the HTTP server entrypoint the
+project lacks — a CLI ships through [`distribution`](distribution.md).
 
 ## Dimensions & adapters
 

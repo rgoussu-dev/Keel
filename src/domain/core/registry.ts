@@ -157,8 +157,9 @@ function validateStack(origin: string, stack: Stack): void {
  * not match — the same answer for a broken piece and a legitimate
  * miss. Asking it without tags separates them: a dimension no
  * adapter of the vertical **ever** covers is a typo, and it fails
- * here, naming the plugin, rather than eight questions later as
- * "no adapter covers dimension 'boostrap'".
+ * here, naming the plugin, rather than eight questions later as a
+ * coverage refusal that reads exactly like a project of the wrong
+ * shape.
  */
 function validateVertical(origin: string, vertical: Vertical): void {
   if (vertical.id.length === 0) throw refuse(origin, 'registers a vertical with no id');

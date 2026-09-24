@@ -8,8 +8,9 @@ by default on every REST/HTTP stack; brownfield:
 keel add observability
 ```
 
-**HTTP services only** — on a CLI project the install hard-fails with
-uncovered dimensions (there is no probe surface to cover).
+**HTTP services only** — on a CLI project the install is refused,
+naming the HTTP server entrypoint the project lacks (there is no probe
+surface to cover).
 
 ## The four dimensions
 

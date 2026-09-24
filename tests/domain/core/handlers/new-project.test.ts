@@ -1304,7 +1304,7 @@ describe('keel.new-project extra verticals', () => {
     expect(error.message).toContain('already installs');
   });
 
-  it('rejects a vertical no adapter here can cover, naming the dimension and the fix', async () => {
+  it('rejects a vertical no adapter here can cover, naming what is missing and the fix', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -1318,11 +1318,32 @@ describe('keel.new-project extra verticals', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toContain("vertical 'persistence'");
-    expect(error.message).toContain('datasource');
-    // What the menu's pruning says implicitly, said out loud: this
-    // preset has no `arch.server-http`, so nothing covers a datasource.
-    expect(error.message).toContain('arch.server-http');
+    // What the menu's pruning says implicitly, said out loud — in the
+    // words the finder offered the entrypoint in, not as the
+    // `arch.server-http` tag this preset lacks.
+    expect(error.message).toBe(
+      "stack 'quarkus-cli': Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint; drop 'persistence' from --with, or scaffold a stack that can carry it",
+    );
+  });
+
+  it('names no framework swap when the stack has no adapter at all', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'spring-cli',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    // The adapter nearest a Spring CLI is Quarkus's native one, which
+    // is a framework no command can switch to: the tag stays out.
+    expect(error.message).toContain("Distribution has no adapter for this project's stack");
+    expect(error.message).not.toContain('framework.');
   });
 
   it('refuses it at the front door, before a single adapter question', async () => {

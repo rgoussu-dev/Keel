@@ -26,14 +26,14 @@
 
 import { DomainError } from '../kernel/result.js';
 import { matches, matchesPattern } from './predicate.js';
+import { coverageSentence } from './refusals.js';
 import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 
 /**
  * The code a {@link ResolutionError} carries when a dimension is left
  * uncovered — the same one `keel new`'s `--with` preflight refuses
- * with, because it is the same condition. Only the sentence differs,
- * and only where the preflight genuinely knows more (which extra to
- * list first).
+ * with, because it is the same condition. The sentence is shared too
+ * (`./refusals.ts`); the preflight only adds the remedy `--with` has.
  */
 export const UNCOVERED_CODE = 'keel.uncoverable-vertical';
 
@@ -76,6 +76,11 @@ export type ResolutionErrorDetail =
        * carried here so the thrown refusal says as much as the
        * answered one. The throw is the last line of defence, which
        * makes it the worst place to report only the symptom.
+       *
+       * Here rather than in the message, which names none of them:
+       * most are tags no command can add, so the sentence speaks in
+       * entrypoint labels and vertical titles (`./refusals.ts`), and
+       * the engine's view travels in this field for whoever wants it.
        */
       enablers: readonly Tag[];
     }
@@ -98,12 +103,11 @@ export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readon
   // ahead of time cannot say different things.
   const gap = gapFrom(vertical, matched, tagSet);
   if (gap !== null) {
-    throw new ResolutionError(
-      `vertical '${vertical.id}': no adapter covers dimension(s): ${gap.dimensions.join(', ')}${describeEnablers(gap.enablers)}`,
-      vertical.id,
-      'uncovered',
-      { kind: 'uncovered', dimensions: gap.dimensions, enablers: gap.enablers },
-    );
+    throw new ResolutionError(coverageSentence(vertical, gap.enablers), vertical.id, 'uncovered', {
+      kind: 'uncovered',
+      dimensions: gap.dimensions,
+      enablers: gap.enablers,
+    });
   }
 
   return topoSort(matched, vertical.id);
@@ -127,9 +131,11 @@ export interface CoverageGap {
    * shape keel supports, which tells a user nothing. On a CLI preset
    * asking for `persistence`, the nearest adapter is the one for
    * that framework, missing only `arch.server-http` — which is the
-   * whole answer. Empty when the vertical has no adapter for a
-   * dimension at all, or when the only candidates are ruled out by
-   * an `excludes` entry: adding a tag never un-matches one of those.
+   * whole answer, and the refusal says it as "an entrypoint this
+   * project does not have: HTTP server" (`./refusals.ts`). Empty when
+   * the vertical has no adapter for a dimension at all, or when the
+   * only candidates are ruled out by an `excludes` entry: adding a
+   * tag never un-matches one of those.
    */
   readonly enablers: readonly Tag[];
 }
@@ -179,11 +185,6 @@ function gapFrom(
   const dimensions = uncoveredDimensions(vertical, matched);
   if (dimensions.length === 0) return null;
   return { verticalId: vertical.id, dimensions, enablers: enablers(vertical, dimensions, tagSet) };
-}
-
-/** The enablers as one clause, or nothing when there are none to name. */
-function describeEnablers(enabling: readonly Tag[]): string {
-  return enabling.length === 0 ? '' : ` — would need ${enabling.join(', ')}`;
 }
 
 function enablers(

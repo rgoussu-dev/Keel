@@ -24,6 +24,26 @@ use to keep a long-lived changelog scannable — and the root keeps
   shows the message labelled as a bug to report. The page reads every
   body once, as text, and keeps one that is not the envelope verbatim.
 
+- **Coverage refusals say what is missing, not which tag.** A
+  vertical a project cannot carry was refused with the unmet tags of
+  whichever adapter came nearest — `would need arch.server-http` on a
+  CLI, `would need framework.quarkus` for `distribution` on a Spring
+  CLI, `lang.go` on a TypeScript front end — mostly things no command
+  can add. The refusal now names the vertical by its title and speaks
+  in the stack finder's words: an entrypoint the project lacks by its
+  label (_"Observability needs an entrypoint this project does not
+  have: HTTP server — a REST endpoint"_), and a language, framework,
+  runtime, build system or layout never — the vertical _"has no
+  adapter for this project's stack"_. `keel new --with` refuses in the
+  same sentence, followed by its own remedy. At the root of a
+  composite product, every vertical the root cannot carry — not only
+  `agent-harness` — is refused naming the service directories to run
+  `keel add` in, where it used to report a gap for some other stack.
+  Codes are unchanged (`keel.uncoverable-vertical`, and
+  `keel.invalid-agent-harness` for the harness), and the tags still
+  travel in `ResolutionError.detail.enablers`. Scripts matching the
+  old text should match the code instead.
+
 - **One installed card in `keel ui` no longer breaks every card
   after it.** An installed vertical's card is a re-render, and the
   flag saying so outlived the card: every vertical picked next was

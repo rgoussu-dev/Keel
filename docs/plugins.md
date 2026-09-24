@@ -351,7 +351,8 @@ The dimension check is the static half of the resolver's. `coversFor`
 asks whether a dimension is covered _for a tag set_ and answers "no"
 both for a typo and for a legitimate miss; asking it without tags
 separates them, so a typo fails at load naming the plugin rather than
-eight questions later as `no adapter covers dimension 'boostrap'`.
+eight questions later as a coverage refusal that cannot tell a typo
+from a project of the wrong shape.
 
 Registration failures **throw** rather than returning a `Result`: they
 happen at the composition root, before there is a command to answer.

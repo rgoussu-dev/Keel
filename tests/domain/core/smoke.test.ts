@@ -199,20 +199,27 @@ describe('installVertical end-to-end', () => {
       // Missing ci.github-actions, so the release adapter is filtered out.
       tags: ['lang.java', 'framework.quarkus', 'arch.cli'],
     };
-    await expect(
-      installVertical({
-        vertical: distribution,
-        manifest,
-        tree,
-        mode: 'non-interactive',
-        prompt: rejectingPrompt,
-        logger: new FakeLogger(),
-        cwd: tmp,
-        templates: ejsTemplateSource,
-        processes: spawnProcessRunner,
-        now: () => '2026-04-26T12:00:00Z',
-      }),
-    ).rejects.toThrow(/release/);
+    const install = installVertical({
+      vertical: distribution,
+      manifest,
+      tree,
+      mode: 'non-interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+      now: () => '2026-04-26T12:00:00Z',
+    });
+    // The dimension travels in the detail; the sentence names what
+    // would cover it — a tag another install adds, not there yet.
+    await expect(install).rejects.toMatchObject({
+      code: 'keel.uncoverable-vertical',
+      detail: { kind: 'uncovered', dimensions: ['release'] },
+    });
+    await expect(install).rejects.toThrow(
+      'Distribution needs a capability this project does not have yet: ci.github-actions',
+    );
   });
 
   it('refuses a tag the vertical does not declare in `promotes`', async () => {

@@ -2378,15 +2378,22 @@ finder falls back to a sibling with the same framework, then the same
 runtime, then `finder.defaultStack` — never `languages[0]`, which is
 Go because languages sort by label — and announces the jump.
 
-#### Q0.7 — Coverage refusals stop naming tags (S)
+#### Q0.7 — Coverage refusals stop naming tags (S) ✅
 
 Interim sentence, replaced by Q1.7: identity tags leave the message
 (they stay in the `ResolutionError` detail); `arch.*` prints through
-its `ENTRYPOINTS` label ("needs an HTTP server entrypoint; this
-project has none"); the vertical is named by its title. The
-agent-harness redirect at a product root is generalised to every
-vertical: "this is a product root — run `keel add` inside backend/
-or frontend/".
+its `ENTRYPOINTS` label ("Observability needs an entrypoint this
+project does not have: HTTP server — a REST endpoint"); a gap with an
+identity tag in it reads "has no adapter for this project's stack";
+the vertical is named by its title. The agent-harness redirect at a
+product root is generalised to every vertical the root cannot carry:
+"Persistence belongs to a service, and this is a product root — run
+'keel add persistence' inside backend/ or frontend/". One sentence
+builder (`src/domain/core/refusals.ts`) serves the resolver's throw,
+the `--with` front door and the root redirect. A tag another install
+adds (`iac`'s `dist.container-image`) is still named, as a capability
+the project "does not have yet", until Q1.3 includes the prerequisite
+and Q1.7 names it by its vertical.
 
 ### Phase 1 — one answer, asked everywhere
 

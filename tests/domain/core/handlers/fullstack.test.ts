@@ -105,7 +105,9 @@ describe('fullstack composite install (monorepo)', () => {
         ),
       );
       expect(error.code).toBe('keel.invalid-agent-harness');
-      expect(error.message).toContain('inside a service');
+      expect(error.message).toBe(
+        "Agent harness belongs to a service, and this is a product root — run 'keel add agent-harness' inside backend/ or frontend/",
+      );
       expect(read('AGENTS.md')).toBe(rootDocBefore);
       expect(rootDocBefore).toContain('Work inside a service');
       expect(rootDocBefore).not.toContain('Engineering conventions');
@@ -113,6 +115,57 @@ describe('fullstack composite install (monorepo)', () => {
       expect(ran).toEqual(actionsBefore);
     },
   );
+
+  it('sends a capability the root cannot carry into its services, naming them', async () => {
+    const { ran, runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+    const before = await fsManifestStore.read(projectScopeRoot(cwd));
+    const actionsBefore = [...ran];
+    const error = expectErr(
+      await mediator.dispatch(
+        addVerticalCommand({
+          cwd,
+          vertical: 'persistence',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    // Same code as any coverage refusal, since it is one. The sentence
+    // is the difference: a root carries almost no tags, so the gap of
+    // the adapter nearest to it is advice for some other product, and
+    // where the capability belongs is the whole answer.
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      "Persistence belongs to a service, and this is a product root — run 'keel add persistence' inside backend/ or frontend/",
+    );
+    expect(await fsManifestStore.read(projectScopeRoot(cwd))).toEqual(before);
+    expect(ran).toEqual(actionsBefore);
+  });
+
+  it('lets through a capability the root itself can carry', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+    // The redirect is the coverage check asked of the root's own tags,
+    // not a blanket refusal: `dev-env`'s compose adapter matches
+    // anywhere, so the root resolves it and nothing sends it away.
+    const report = expectOk(
+      await mediator.dispatch(
+        addVerticalCommand({
+          cwd,
+          vertical: 'dev-env',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(report.changes.map((change) => change.path)).toContain('dev/compose.yaml');
+  });
+
   it('scaffolds both services, root glue, and hoists vcs to the root', async () => {
     const { ran, runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred });

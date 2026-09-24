@@ -201,6 +201,6 @@ describe('keel.add-vertical (keel add persistence)', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toMatch(/no adapter covers dimension\(s\)/);
+    expect(error.message).toContain('Persistence needs an entrypoint');
   });
 });

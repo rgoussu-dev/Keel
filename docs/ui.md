@@ -318,7 +318,11 @@ the one thing an HTTP layer can only read as a crash, so that answered
 **500 with a bare string**. It now carries a code
 (`keel.uncoverable-vertical`) and the mediator puts it back on the
 `Err` rail, so it arrives here as a 422 like any other and the page
-shows what is missing and which tag would close it.
+shows what is missing in the words the finder uses — _"Container
+image needs an entrypoint this project does not have: HTTP server — a
+REST endpoint"_ — never a tag no command can add. Pointed at a
+composite product's root, a vertical the root cannot carry is refused
+naming the service directories it belongs in.
 
 The refusals an adapter raises while it runs travel the same way:
 distribution on a project with no container image yet

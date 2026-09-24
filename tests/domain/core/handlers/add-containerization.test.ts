@@ -335,7 +335,7 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(nginx).toContain('try_files $uri /index.html');
   });
 
-  it('refuses a CLI-shaped project with the uncovered image dimension, naming the tag', async () => {
+  it('refuses a CLI-shaped project, naming the entrypoint it lacks', async () => {
     await seed('quarkus-cli');
     // An `Err`, not a throw. The resolver still hard-fails — this is
     // its last line of defence, past every menu — but a refusal a
@@ -354,8 +354,10 @@ describe('keel.add-vertical (keel add containerization)', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toMatch(/no adapter covers dimension\(s\): image/);
-    // The enabler is the whole answer: it says what shape would carry it.
-    expect(error.message).toContain('arch.server-http');
+    // The enabler is the whole answer — what shape would carry it —
+    // said as the finder says it rather than as `arch.server-http`.
+    expect(error.message).toBe(
+      'Container image needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
   });
 });

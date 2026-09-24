@@ -9,8 +9,7 @@
  * `installVertical` as a bare `Error`, and a throw is the one thing an
  * HTTP layer can only read as a crash — so `keel ui` answered **500
  * with a bare string** and the page showed `POST /api/preview failed
- * with 500` for a refusal that names both the missing dimension and
- * the tag that would close it.
+ * with 500` for a refusal that names what would close the gap.
  *
  * The domain half of that fix is pinned where it belongs — the
  * mediator normalising a thrown `DomainError`
@@ -76,6 +75,8 @@ import {
  */
 const STACK = 'ts-cli';
 const REFUSED = 'containerization';
+const REFUSAL =
+  'Container image needs an entrypoint this project does not have: HTTP server — a REST endpoint';
 
 /**
  * Installed by `keel new` on this stack, so its card is a re-render;
@@ -185,10 +186,9 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
       // neither, and are what this used to say.
       expect(await banner.locator('.code').textContent()).toBe('keel.uncoverable-vertical');
       const text = (await banner.textContent()) ?? '';
-      expect(text).toContain('no adapter covers dimension(s): image');
       // The enabler is the actionable half: it says what shape would
-      // carry this vertical.
-      expect(text).toContain('arch.server-http');
+      // carry this vertical, in the words the finder offered it in.
+      expect(text).toContain(REFUSAL);
     },
     E2E_TIMEOUT_MS,
   );
@@ -222,7 +222,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
       // to commit, so it repeats the reason rather than pointing at it.
       const review = (await page.locator('keel-review').textContent()) ?? '';
       expect(review).toContain('Refused:');
-      expect(review).toContain('no adapter covers dimension(s): image');
+      expect(review).toContain(REFUSAL);
       expect(await page.locator('#generate').isDisabled()).toBe(true);
     },
     E2E_TIMEOUT_MS,

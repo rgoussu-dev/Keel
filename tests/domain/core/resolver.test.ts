@@ -5,6 +5,7 @@ import {
   coversFor,
   resolveVertical,
 } from '../../../src/domain/core/resolver.js';
+import { coverageSentence } from '../../../src/domain/core/refusals.js';
 import type { Adapter, Contribution, Vertical } from '../../../src/domain/contract/composition.js';
 
 const noContribution: Contribution = {};
@@ -70,6 +71,7 @@ describe('resolveVertical', () => {
         dimensions: ['deploy-target'],
         enablers: [],
       });
+      expect(err.message).toBe("Observability has no adapter for this project's stack");
     }
   });
 
@@ -97,7 +99,12 @@ describe('resolveVertical', () => {
       expect.fail('expected throw');
     } catch (e) {
       const err = e as ResolutionError;
-      expect(err.message).toContain('would need arch.server-http');
+      // The tag is the engine's view and travels in `detail`; the
+      // sentence says it the way the finder offered it.
+      expect(err.message).toBe(coverageSentence(v, gap?.enablers ?? []));
+      expect(err.message).toBe(
+        'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      );
       expect(err.detail).toEqual({
         kind: 'uncovered',
         dimensions: gap?.dimensions,
@@ -218,8 +225,10 @@ describe('coversFor', () => {
 /**
  * The same question again, with the reason attached. What it is for
  * is refusals: `keel new --with` checks coverage at the front door,
- * and a refusal there has to name the vertical, the dimension it
- * could not cover, and what would have covered it.
+ * and a refusal there is written from the dimension that went
+ * uncovered and the tags that would have covered it — which stay
+ * here, whole, even where the sentence built from them leaves them
+ * out.
  */
 describe('coverageGap', () => {
   const persistence: Vertical = {
@@ -260,6 +269,12 @@ describe('coverageGap', () => {
     // — reporting both frameworks would read as "you need both".
     const gap = coverageGap(persistence, []);
     expect(gap?.enablers).toEqual(['arch.server-http', 'framework.quarkus']);
+    // Which framework wins the tie is declaration order, and no
+    // command changes a project's framework anyway: the refusal says
+    // the stack has no adapter, and names neither.
+    expect(coverageSentence(persistence, gap?.enablers ?? [])).toBe(
+      "Persistence has no adapter for this project's stack",
+    );
   });
 
   it('unions the enablers of every uncovered dimension', () => {
@@ -293,6 +308,11 @@ describe('coverageGap', () => {
     };
     const gap = coverageGap(vertical, ['framework.quarkus']);
     expect(gap?.enablers).toEqual(['framework.spring']);
+    // A framework swap is the engine's answer, not a remedy — the
+    // refusal does not offer it.
+    expect(coverageSentence(vertical, gap?.enablers ?? [])).toBe(
+      "Excl has no adapter for this project's stack",
+    );
   });
 
   it('reports no enablers for a dimension no adapter covers at all', () => {

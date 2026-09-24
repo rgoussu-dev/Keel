@@ -164,16 +164,18 @@ the first adapter question, never eight questions later:
 
 - an id that is not a registered vertical, or one the stack already
   installs, is refused with the list of what is available here;
-- so is one this stack cannot cover, named with the dimension it
-  could not cover and the tag that would have covered it — the same
-  fact the menu's pruning states by omission:
+- so is one this stack cannot cover, saying what it lacks — the same
+  fact the menu's pruning states by omission. An entrypoint is named by
+  the label the finder offers it under; a language, framework or build
+  system is never offered as a remedy, since no command changes one,
+  and the refusal says the vertical has no adapter for this project's
+  stack instead:
 
   ```
   $ keel new --stack=quarkus-cli --with persistence
-  stack 'quarkus-cli' cannot carry vertical 'persistence': no adapter
-  covers dimension(s) datasource, …; an adapter would need tag(s)
-  arch.server-http, which this stack does not have — drop
-  'persistence' from --with, or scaffold a stack that does
+  stack 'quarkus-cli': Persistence needs an entrypoint this project
+  does not have: HTTP server — a REST endpoint; drop 'persistence'
+  from --with, or scaffold a stack that can carry it
   ```
 
 The check walks the list the way the install will run it — in the
@@ -224,8 +226,11 @@ Available verticals: `vcs`, `walking-skeleton`, `dev-env`,
 `containerization`, `ci`, `distribution`, `iac`, `toolchain`. See
 the [compatibility matrix](verticals/README.md#compatibility-matrix)
 for which vertical applies to which stack — a vertical whose declared
-dimensions cannot be covered on your project **hard-fails with a
-message naming the gap** (e.g. `observability` on a CLI project).
+dimensions cannot be covered on your project **is refused, saying what
+the project lacks** (e.g. `observability` on a CLI project needs an
+HTTP server entrypoint). At the root of a composite product, a vertical
+the root cannot carry is refused naming the service directories to run
+`keel add` in instead.
 
 | Option        | Meaning                                                            |
 | ------------- | ------------------------------------------------------------------ |

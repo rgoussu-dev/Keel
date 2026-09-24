@@ -125,7 +125,8 @@ import {
   type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
-import { coverageGap, coversFor, type CoverageGap } from '../resolver.js';
+import { coverageGap, coversFor, UNCOVERED_CODE, type CoverageGap } from '../resolver.js';
+import { coverageSentence } from '../refusals.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -1182,8 +1183,10 @@ function assemblyIsLegal(
  *     order is the bug, so the refusal names the extra to list it
  *     after rather than pretending the composition is illegal;
  *   - uncovered whatever the rest of the list does → the stack
- *     cannot carry it, named with the dimension and the tags that
- *     would have covered it.
+ *     cannot carry it, said in the resolver's own sentence: the
+ *     entrypoint it lacks, by the label the finder offered it under,
+ *     or that no adapter fits this stack at all — never a tag no
+ *     command can add.
  *
  * The resolver's `ResolutionError` is still a throw, and still
  * escapes `installVertical` from every caller (`keel add` on a
@@ -1192,8 +1195,9 @@ function assemblyIsLegal(
  * `Err` rail for whichever front end asked. That was the decision
  * this comment deferred, and it is made where it belongs: at the seam
  * every escape from the install engine crosses, not here. This path
- * simply no longer reaches it — and refuses with more than it could
- * have said, which is why the two sentences differ at all.
+ * simply no longer reaches it — and adds the one thing the throw
+ * cannot say, the `--with` remedy, which is why the two sentences
+ * differ at all.
  */
 function preflightCoverage(
   stack: Stack,
@@ -1240,16 +1244,15 @@ function outOfOrder(
   );
 }
 
-/** The refusal for an extra this stack has no adapter for, in any order. */
+/**
+ * The refusal for an extra this stack has no adapter for, in any
+ * order: the resolver's own sentence, so the front door and the throw
+ * behind it say the same thing, plus the remedy only `--with` has.
+ */
 function uncoverable(stack: Stack, vertical: Vertical, gap: CoverageGap): DomainError {
-  const missing = `no adapter covers dimension(s) ${gap.dimensions.join(', ')}`;
-  const fix =
-    gap.enablers.length > 0
-      ? `an adapter would need tag(s) ${gap.enablers.join(', ')}, which this stack does not have — drop '${vertical.id}' from --with, or scaffold a stack that does`
-      : `no adapter of '${vertical.id}' can cover them here — drop it from --with`;
   return new DomainError(
-    `stack '${stack.id}' cannot carry vertical '${vertical.id}': ${missing}; ${fix}`,
-    'keel.uncoverable-vertical',
+    `stack '${stack.id}': ${coverageSentence(vertical, gap.enablers)}; drop '${vertical.id}' from --with, or scaffold a stack that can carry it`,
+    UNCOVERED_CODE,
   );
 }
 

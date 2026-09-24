@@ -337,8 +337,8 @@ describe('keel.preview', () => {
     // `resolveVertical` hard-fails when no adapter covers a dimension,
     // and a CLI project has nothing to build a container image from.
     // A throw is all an HTTP layer can read as a crash, so `keel ui`
-    // answered 500 with a bare string for a refusal that names both
-    // the dimension and the tag that would close it.
+    // answered 500 with a bare string for a refusal that names what
+    // would close the gap.
     const mediator = installMediator({ runDeferred: discardDeferred() });
     expectOk(
       await mediator.dispatch(
@@ -362,7 +362,7 @@ describe('keel.preview', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toContain('arch.server-http');
+    expect(error.message).toContain('HTTP server — a REST endpoint');
   });
 });
 

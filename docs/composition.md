@@ -43,12 +43,30 @@ adapter; an uncovered dimension **hard-fails the install with a
 message naming the gap** — that is why `keel add observability` on a
 CLI project refuses to half-install (no probe surface to cover).
 
-The refusal also names what would close the gap: `coverageGap` picks
-the adapter _nearest_ to matching and reports its unmet `requires`, so
-the message says `would need arch.server-http` rather than only which
-dimension is empty. `resolveVertical` throws from that same gap, so
-the refusal a user runs into and the one a front door shows ahead of
-time cannot say different things.
+The refusal also says what would close the gap, in the words the
+project was picked in rather than the engine's. `coverageGap` picks
+the adapter _nearest_ to matching and reports its unmet `requires`;
+[`refusals.ts`](../src/domain/core/refusals.ts) writes the sentence
+from them, naming the vertical by its title:
+
+- an entrypoint the project lacks is named by the label the stack
+  finder offers it under — _"Observability needs an entrypoint this
+  project does not have: HTTP server — a REST endpoint"_;
+- a tag the preset fixes at `keel new` (`lang.*`, `framework.*`,
+  `runtime.*`, `pkg.*`, `layout.*`, an `arch.*` that is not an
+  entrypoint) is never offered as a remedy, since no command adds
+  one — the vertical _"has no adapter for this project's stack"_;
+- anything else is a capability another install adds, and is named
+  as one the project does not have yet.
+
+The tags still travel, in `ResolutionError.detail.enablers`, for a
+front end or an adapter author that wants the engine's view.
+`resolveVertical` throws from that same gap, so the refusal a user
+runs into and the one a front door shows ahead of time cannot say
+different things. At a composite product's root `keel add` reports no
+gap at all: a root carries almost no tags, so its nearest adapter is
+advice for some other product, and a vertical the root cannot carry is
+refused naming the service directories to run it in instead.
 
 A vertical also declares **`promotes`**: every tag installing it may
 add, the union over its adapters' `tagsAdd` including the ones only
@@ -190,7 +208,8 @@ not, because the thing they turn on is not a tag:
   _flags that do not apply at a product root_, not about capabilities
   — a composite's services can perfectly well each be a modulith.
 - `manifest.services` being non-empty is the same fact brownfield, and
-  why `keel add module` sends the user into a service directory.
+  why `keel add module` sends the user into a service directory — and
+  `keel add` too, for any vertical the root's own tags cannot cover.
 - `manifest.modules` already holding the name, or holding a
   `--consumes` target with no seam, is manifest **state**: it takes a
   name to check, and a name is not a tag.
