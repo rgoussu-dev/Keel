@@ -165,12 +165,13 @@ Rust or Go context has no container to lose a handler in.
   shown before the click, a refusal only the click meets, shown in the
   plan column, and the re-render state) and `ui-compose` (an empty
   directory, two scaffolded projects and a TypeScript product; the
-  Options step's "Also scaffold" group — a product's, one per
-  service — a preset move keeping the
-  dials, the extras and a package, the "What to add" cards ticked
-  into one run, the bodies the page posts for them — `watchTraffic`
-  keeps what went out — and a product root's **Open backend/** button
-  into a service). What they cover is the seam nothing else can: the
+  Options step's "Also scaffold" group on both flows — a product's,
+  one per service; a keel project's, opened on with what it has
+  ticked and locked and its read-only Project step — a preset move
+  keeping the dials, the extras and a package, boxes ticked into one
+  run, the bodies the page posts for them — `watchTraffic` keeps what
+  went out — and a product root's **Open backend/** button into a
+  service). What they cover is the seam nothing else can: the
   narrowing, the steps, the transitions and the groups are pure and
   unit-tested (`finder.js`, `steps.js`, `target.js`, `extras.js`,
   `additions.js`), but the element rebuilds its subtree on every

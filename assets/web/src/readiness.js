@@ -7,8 +7,9 @@
  * by `plan-refusal.ts`'s `foresee`), and they used to be drawn by two
  * opposite policies: the Options step left out what a preset could
  * not carry, and the brownfield page offered every vertical and let
- * the click find out. They are drawn one way now, in the same parts
- * and the same words:
+ * the click find out. They are drawn one way now — by one control, the
+ * "Also scaffold" group on both phases' Options step — in the same
+ * parts and the same words:
  *
  *   - **Ready** — installs on its own.
  *   - **Needs another capability first** — installs once others have;

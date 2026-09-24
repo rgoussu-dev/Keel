@@ -782,6 +782,51 @@ export interface ServiceStatus extends ServiceRef {
 }
 
 /**
+ * One line of what a project is, worded the way the `keel new` wizard
+ * asked it: `Language` — `Java`. @see ProjectProfile
+ */
+export interface ProfileFact {
+  /**
+   * What the line answers — `Building`, `Language`, `Framework`,
+   * `Adapters`, `Build system`, `Module layout`: the drill-down's
+   * questions and the dials', by the names the page's review gives
+   * them.
+   */
+  readonly label: string;
+  /** The answer, in words — never a tag. */
+  readonly value: string;
+}
+
+/**
+ * What a keel project is, read back off its manifest in the words it
+ * was asked in — so a front end can show a scaffolded project's
+ * settled choices without reading a tag.
+ *
+ * A single project's manifest records the tags its preset seeded, not
+ * the preset's id, and the drill-down is a reading of exactly those
+ * tags: read back, they give the four answers `keel new` was given and
+ * the preset those lead to. A product root's manifest records its services'
+ * presets, which name the product.
+ */
+export interface ProjectProfile {
+  /**
+   * The preset the project reads as — the one the drill-down's answers
+   * lead to, or at a product root the product whose services these
+   * are. Null where none does: a plugin's stack the drill-down cannot
+   * place, or a product no registered one matches.
+   */
+  readonly preset: string | null;
+  /**
+   * The drill-down's answers — what it builds, its language, its
+   * framework where it has one, its ways in — then, on a single
+   * project, the build system and module layout it was scaffolded on.
+   * Empty where the tags answer none of it, and for a directory that
+   * is not a keel project.
+   */
+  readonly facts: readonly ProfileFact[];
+}
+
+/**
  * A refusal reported ahead of the command it would stop: the error
  * that command returns, as data — its stable code, its sentence, and,
  * for a refusal the engine raises as data, the {@link Refusal} the
@@ -818,6 +863,12 @@ export interface ProjectStatus {
   /** False when no manifest is there — only `keel new` applies. */
   readonly initialised: boolean;
   readonly tags: readonly Tag[];
+  /**
+   * What the project is, in words rather than {@link tags}: the preset
+   * it reads as and the choices that made it, for a front end that
+   * shows them without knowing the tag vocabulary.
+   */
+  readonly profile: ProjectProfile;
   readonly installed: readonly InstalledVerticalDescriptor[];
   /**
    * Every registered vertical not installed here, each with how ready

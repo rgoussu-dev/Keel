@@ -1,8 +1,16 @@
 /**
- * What the brownfield half says about the project as a whole, read
+ * What a keel project's page says about the project as a whole, read
  * off `/api/project` before any card is picked.
  *
- * One fact stops every card alike: a project written by another
+ * **What it is.** A keel project has settled every answer the preset
+ * steps ask, so on its rail those steps collapse into one, **Project**,
+ * that shows them instead of asking ({@link projectSummary}): the preset
+ * the manifest reads as and the choices that made it, in the words the
+ * wizard asked them in — the status words them (`profile`), so no tag
+ * reaches the page — its services at a product root, its bounded
+ * contexts, and what it has installed.
+ *
+ * **What stops everything.** One fact stops every card alike: a project written by another
  * harness generation, which `keel add` refuses to half-patch — every
  * vertical but the agent harness, whose re-render is what brings the
  * project forward. Picking card after card to meet the same refusal
@@ -15,10 +23,63 @@
  * under.
  *
  * @typedef {{ found: number|null, expected: number }} HarnessGeneration
+ * @typedef {{ label: string, value: string }} Row
+ * @typedef {{ id: string, title: string }} Had
+ * @typedef {{ rows: Row[], installed: Had[] }} ProjectSummary
  */
 
 /**
- * The sentence the "What to add" step opens with on a project from
+ * The Project step's read-only summary: one row per settled answer —
+ * the preset first, then the drill-down's answers and the dials, as the
+ * status words them — then a row per service of a product, the bounded
+ * contexts, and what the project has, by title: what its manifest
+ * records, then what a monorepo service has from its product.
+ *
+ * @param {{ profile?: { preset: string|null, facts: ReadonlyArray<Row> }, services?: ReadonlyArray<{ path: string, label: string }>, modules?: ReadonlyArray<{ name: string }>, installed?: ReadonlyArray<{ id: string, title?: string }>, provided?: ReadonlyArray<{ id: string, title?: string }> }|null} status the `/api/project` payload
+ * @returns {ProjectSummary}
+ */
+export function projectSummary(status) {
+  const preset = status?.profile?.preset ?? null;
+  const modules = status?.modules ?? [];
+  const had = (vertical) => ({ id: vertical.id, title: vertical.title || vertical.id });
+  return {
+    rows: [
+      ...(preset === null ? [] : [{ label: 'Preset', value: preset }]),
+      ...(status?.profile?.facts ?? []),
+      ...(status?.services ?? []).map((service) => ({
+        label: `${service.path}/`,
+        value: service.label,
+      })),
+      ...(modules.length === 0
+        ? []
+        : [
+            {
+              label: modules.length === 1 ? 'Bounded context' : 'Bounded contexts',
+              value: modules.map((module) => module.name).join(', '),
+            },
+          ]),
+    ],
+    installed: [...(status?.installed ?? []), ...(status?.provided ?? [])].map(had),
+  };
+}
+
+/**
+ * The project in the few words a review row carries: the preset it
+ * reads as, else what it builds in what, else a dash.
+ *
+ * @param {{ profile?: { preset: string|null, facts: ReadonlyArray<Row> } }|null} status the `/api/project` payload
+ * @returns {string}
+ */
+export function projectHeadline(status) {
+  const preset = status?.profile?.preset ?? null;
+  if (preset !== null) return preset;
+  const facts = status?.profile?.facts ?? [];
+  const value = (label) => facts.find((fact) => fact.label === label)?.value;
+  return [value('Building'), value('Language')].filter(Boolean).join(', ') || '—';
+}
+
+/**
+ * The sentence a keel project's Options step opens with on a project from
  * another harness generation, or null where the generations match —
  * and where there is no project, which has no generation to compare.
  *

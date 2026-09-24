@@ -1,7 +1,9 @@
 /**
- * What the Options step's "Also scaffold" group shows — the verticals
- * a preset can take on top of its own, read off the `keel.dials`
- * reply.
+ * What a new project's Options step shows in its "Also scaffold"
+ * group — the verticals a preset can take on top of its own, read off
+ * the `keel.dials` reply. A keel project's Options step draws the same
+ * group, by the same builder (`dom.js`'s `alsoScaffold`), read off its
+ * project status instead (`additions.js`).
  *
  * The extras used to be a question the preview asked, and a question
  * is the wrong control for them: the install stops asking one the
@@ -12,7 +14,7 @@
  *
  * The group is in four parts, because the planner reads four
  * different answers to "can this go on too?" (`VerticalOption`) —
- * three of them the parts the brownfield page draws its cards in too
+ * three of them the parts a keel project's group has too
  * (`readiness.js`):
  *
  *   - **Ready** — installs here on its own.

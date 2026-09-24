@@ -295,13 +295,16 @@ sits beside every step, so flipping Gradle to Maven, or `basic` to
 `modulith`, redraws it before anything is written. On a stack you have
 not used before, that tree is the documentation.
 
-It also reads what your project already is. Point it at a directory
-holding a keel manifest and it becomes the brownfield page — every
-vertical not installed, ready, ready once something else is, or not
-for this project and why, before anything is clicked; several ticked
-into one run; a **Re-render** beside each installed one; and "add a
-bounded context" disabled, with the reason, wherever `keel add module`
-would refuse it.
+It also reads what your project already is — one page for both
+phases, the directory deciding the flow. Point it at a directory
+holding a keel manifest and the preset steps collapse into one
+read-only step saying what the project is, while Options shows the same
+**Also scaffold** group a new project gets: what is installed ticked
+and locked, a **Re-render** beside each; every vertical not installed,
+ready, ready once something else is, or not for this project and why,
+before anything is clicked; several ticked into one `keel add`; and
+"add a bounded context" disabled, with the reason, wherever
+`keel add module` would refuse it.
 
 The URL carries a per-run token, and the server binds loopback only
 and checks `Host` and `Origin` — a local port is reachable by every

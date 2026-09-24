@@ -6,8 +6,9 @@
  * decide what gets scaffolded are answered by reading the answers,
  * not by opening a `<select>` — and a second implementation of it is
  * a second place for that decision to erode. The narrowing steps and
- * the brownfield vertical picker are the same control with different
- * data behind it.
+ * the "Also scaffold" group are the same control with different data
+ * behind it — and the group itself is one control too, drawn here for
+ * both flows' Options step ({@link alsoScaffold}).
  *
  * Below the cards sit the smaller shapes the wizard's other halves
  * need — `el`, the builder everything else is written in; `icon`;
@@ -167,6 +168,119 @@ export function refusedList({ id, title, items, open, onToggle }) {
   );
   details.addEventListener('toggle', () => onToggle(details.open));
   return details;
+}
+
+/* ================================================================ *
+ * "Also scaffold"                                                   *
+ * ================================================================ */
+
+/**
+ * The "Also scaffold" group — what else goes in — on the Options step
+ * of both flows: a new project's extras, and what goes on top of a
+ * keel project.
+ *
+ * One control rather than one per phase, because it is one question,
+ * and two controls asking it had drifted into two policies before
+ * (`../readiness.js`). The frame is the same everywhere — the title,
+ * a count of what is ticked, the help, the line saying what the last
+ * reply moved — and so are the parts inside it, built by the shapes
+ * below from what `../extras.js` or `../additions.js` read: boxes that
+ * tick ({@link tickPart}), what the project has ({@link lockedPart}, or
+ * a new project's chips), what it cannot take ({@link refusedList}).
+ * Which parts a flow has is its data, not a second control.
+ *
+ * @param {{ id: string, title: string, count: number, help: string, line?: string, parts: (Node|null)[] }} spec
+ * @returns {HTMLElement}
+ */
+export function alsoScaffold({ id, title, count, help: helpText, line = '', parts }) {
+  return el(
+    'section',
+    { id, class: 'extras', attrs: { 'aria-labelledby': `${id}-title` } },
+    el(
+      'div',
+      { class: 'section-head' },
+      el('h3', { id: `${id}-title`, text: title }),
+      el('span', { class: count > 0 ? 'chip accent' : 'chip', text: `${count} chosen` }),
+    ),
+    help(helpText),
+    line === ''
+      ? null
+      : el('p', {
+          class: 'extras-line',
+          text: line,
+          attrs: { role: 'status', 'data-role': 'extras-line' },
+        }),
+    ...parts,
+  );
+}
+
+/**
+ * A part of the group whose boxes tick — _Ready_, _Needs another
+ * capability first_, a proposed re-render: a small heading labelling a
+ * group of checkbox cards. A box says which vertical it is and whether
+ * it is now ticked, never the new set: one tick can move several
+ * boxes, and which is `../target.js`'s answer.
+ *
+ * @param {{ id: string, title: string, choices: Choice[], chosen: string[], onTick: (value: string, ticked: boolean) => void, role?: string }} spec
+ * @returns {HTMLElement}
+ */
+export function tickPart({ id, title, choices, chosen, onTick, role }) {
+  const heading = el('h4', { id: `${id}-title`, text: title });
+  const group = checkboxCards({
+    id,
+    chosen,
+    choices,
+    onChange: (values) => {
+      const now = new Set(values);
+      const moved = choices.find(
+        (choice) => now.has(choice.value) !== chosen.includes(choice.value),
+      );
+      if (moved) onTick(moved.value, now.has(moved.value));
+    },
+  });
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-labelledby', heading.id);
+  return el('div', { attrs: { 'data-role': role } }, heading, group);
+}
+
+/**
+ * What a keel project already has, as the same cards with the box
+ * ticked for good: checked and disabled, since a vertical installed is
+ * not one an add can take back, and drawn among the boxes that still
+ * tick so what is there reads as ticked rather than as a list apart.
+ * Beside a card, the action its entry carries — a **Re-render** — sits
+ * outside the label, so pressing it never reaches the box.
+ *
+ * @param {{ id: string, title: string, items: (Choice & { chosen?: boolean, action?: Node|null })[] }} spec
+ * @returns {HTMLElement}
+ */
+export function lockedPart({ id, title, items }) {
+  const heading = el('h4', { id: `${id}-title`, text: title });
+  return el(
+    'div',
+    {},
+    heading,
+    el(
+      'div',
+      { id, class: 'cards', attrs: { role: 'group', 'aria-labelledby': heading.id } },
+      ...items.map((item) =>
+        el(
+          'div',
+          {
+            class: item.chosen ? 'card locked chosen' : 'card locked',
+            attrs: { 'data-id': item.value },
+          },
+          el(
+            'label',
+            { class: 'card-check' },
+            el('input', { type: 'checkbox', value: item.value, checked: true, disabled: true }),
+            body(item),
+          ),
+          item.action ?? null,
+        ),
+      ),
+    ),
+  );
 }
 
 /**

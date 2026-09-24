@@ -1,6 +1,7 @@
 /**
- * What the brownfield "What to add" step shows, and the re-renders a
- * preview proposes beside an add.
+ * What a keel project's Options step shows in its "Also scaffold"
+ * group — the one a new project's Options step draws its extras in —
+ * and the re-renders a preview proposes beside an add.
  *
  * Same standing as `extras.test.ts` and `project.test.ts`: a pure
  * module living in `assets/web/`, tested here because it needs no
@@ -91,7 +92,7 @@ const preview = async (target: object): Promise<InstallPreview> =>
 
 const values = (cards: readonly { value: string }[]): string[] => cards.map((card) => card.value);
 
-describe('the "What to add" step', () => {
+describe('a keel project’s "Also scaffold" group', () => {
   it('sorts an HTTP project’s verticals into ready, needing another first, and not for it', async () => {
     await scaffold('go-http');
     const reported = await status();
@@ -117,17 +118,19 @@ describe('the "What to add" step', () => {
       ].sort(),
     ).toEqual(reported.available.map((card) => card.id).sort());
 
-    // What is installed is re-rendered from a button of its own, and
-    // nothing here is a chip: every piece is one `keel add` names.
-    expect(group.rerenderable.map((vertical) => vertical.id)).toEqual(
-      reported.installed.map((vertical) => vertical.id),
-    );
-    expect(group.rerenderable.find((vertical) => vertical.id === 'vcs')).toMatchObject({
-      title: 'Version control',
+    // What is installed is there, ticked for good, in the order the
+    // manifest records it — and re-rendered from a button of its own:
+    // every piece here is one `keel add` names.
+    expect(values(group.installed)).toEqual(reported.installed.map((vertical) => vertical.id));
+    expect(group.installed.find((vertical) => vertical.value === 'vcs')).toMatchObject({
+      label: 'Version control',
       meta: 'keel add vcs --reapply',
+      rerender: true,
       pressed: false,
     });
-    expect(group.chips).toEqual([]);
+    expect(group.installed.every((vertical) => vertical.rerender)).toBe(true);
+    // Nothing installed is a box that moves.
+    expect([...values(group.ready), ...values(group.needs)]).not.toContain('vcs');
     expect(group.elsewhere).toEqual([]);
   });
 
@@ -157,7 +160,7 @@ describe('the "What to add" step', () => {
     expect(values(group.ready)).not.toContain('observability');
   });
 
-  it('points a product root’s verticals into its services, and shows its glue as a chip', async () => {
+  it('points a product root’s verticals into its services, and locks its glue with no Re-render', async () => {
     await scaffold('fullstack-ts', { layout: 'monorepo' });
     const reported = await status();
     const group = additionsGroup(reported, { kind: 'add-vertical', verticals: [] });
@@ -168,9 +171,12 @@ describe('the "What to add" step', () => {
     );
     expect(group.refused.map((line) => line.id)).not.toContain('persistence');
     // The product's glue is recorded as installed, and no `keel add`
-    // names it: a fact about the project, not a Re-render.
-    expect(group.chips).toEqual([{ id: 'fullstack', title: 'Product root' }]);
-    expect(group.rerenderable.map((vertical) => vertical.id)).not.toContain('fullstack');
+    // names it: a fact about the project, ticked, with no Re-render.
+    expect(group.installed.find((vertical) => vertical.value === 'fullstack')).toMatchObject({
+      label: 'Product root',
+      meta: '',
+      rerender: false,
+    });
     // What the services have is in them, not a gap of the root's.
     expect(group.elsewhere.map((line) => line.id)).toEqual(
       expect.arrayContaining(['agent-harness', 'containerization', 'gateway', 'persistence']),
@@ -190,20 +196,24 @@ describe('the "What to add" step', () => {
     const reported = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: backend })));
     const group = additionsGroup(reported, { kind: 'add-vertical', verticals: [] });
 
-    expect(group.provided.map((line) => line.id)).toEqual(['containerization', 'vcs']);
+    // Locked after what the service installed itself, each saying
+    // where it comes from — with no Re-render: nothing here installed it.
+    const provided = group.installed.slice(reported.installed.length);
+    expect(values(provided)).toEqual(['containerization', 'vcs']);
     expect(group.services).toEqual([]);
-    for (const line of group.provided) {
+    for (const line of provided) {
+      expect(line.rerender).toBe(false);
       const added = expectOk(
         await mediator.dispatch(
           previewQuery({
             cwd: backend,
-            target: { kind: 'add-vertical', verticals: [line.id] },
+            target: { kind: 'add-vertical', verticals: [line.value] },
             answers: {},
           }),
         ),
       );
       expect(added.changes).toEqual([]);
-      expect(added.notes).toEqual([line.sentence]);
+      expect(added.notes).toEqual([line.doc]);
     }
     // A pipeline is refused there, under "Not for this project", in
     // the add's own words.
@@ -229,7 +239,7 @@ describe('the "What to add" step', () => {
     const again = additionsGroup(reported, rerender(ticked, 'vcs').target);
     expect(again.chosen).toEqual([]);
     expect(again.rerendering).toBe('vcs');
-    expect(again.rerenderable.find((vertical) => vertical.pressed)?.id).toBe('vcs');
+    expect(again.installed.find((vertical) => vertical.pressed)?.value).toBe('vcs');
   });
 
   it('turns one tick on a card that needs others into one plan the add accepts', async () => {

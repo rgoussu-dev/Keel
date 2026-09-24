@@ -229,6 +229,29 @@ export function wizardPaths(stacks: readonly Stack[]): readonly WizardPath[] {
   return paths.sort((a, b) => a.stackId.localeCompare(b.stackId));
 }
 
+/** The four answers of a {@link WizardPath}, without the preset they name. */
+export type WizardAxes = Omit<WizardPath, 'stackId'>;
+
+/**
+ * The four answers a set of tags gives the drill-down — a preset's
+ * own, or the tags a scaffolded project's manifest records, read back
+ * — or null where they name no language or no way in, which the
+ * drill-down places nowhere.
+ *
+ * What makes a project's page able to say what it is without a tag on
+ * screen: the same reading placed its preset in the tree, so the
+ * answers read back are the ones `keel new` was given, and
+ * {@link pathFor} over them names the preset they lead to.
+ */
+export function axesOf(tags: readonly Tag[]): WizardAxes | null {
+  const language = languageKey(tags);
+  if (language === null) return null;
+  const entrypoints = entrypointsOf(tags);
+  const shape = shapeOf(entrypoints);
+  if (shape === null) return null;
+  return { shape, language, framework: frameworkOf(tags), entrypoints };
+}
+
 /** Where `stackId` sits in the tree, or null when it sits nowhere. */
 export function pathOf(paths: readonly WizardPath[], stackId: string): WizardPath | null {
   return paths.find((path) => path.stackId === stackId) ?? null;
@@ -477,12 +500,8 @@ function matching(
 
 /** The drill-down node a single-service stack sits at, or null. */
 function singlePath(stack: Stack): WizardPath | null {
-  const language = languageKey(stack.tags);
-  if (language === null) return null;
-  const entrypoints = entrypointsOf(stack.tags);
-  const shape = shapeOf(entrypoints);
-  if (shape === null) return null;
-  return { shape, language, framework: frameworkOf(stack.tags), entrypoints, stackId: stack.id };
+  const axes = axesOf(stack.tags);
+  return axes === null ? null : { ...axes, stackId: stack.id };
 }
 
 /**

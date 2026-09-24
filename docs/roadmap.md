@@ -3239,10 +3239,61 @@ restores only a dropped entry, and a CRLF README comes through a
 The two refusal tests that seeded a README (`new-project`,
 `fullstack`) now seed `go.mod`.
 
-- **Q2.7 — One page for both phases (M).** The Directory step decides
-  the flow; on a keel project the same "Also scaffold" control shows
-  installed verticals checked and locked, and Generate dispatches the
-  delta. The commands stay two (converge is **S**).
+#### Q2.7 — One page for both phases (M) ✅
+
+The Directory step decides the flow; on a keel project the same "Also
+scaffold" control shows installed verticals checked and locked, and
+Generate dispatches the delta. The commands stay two (converge is
+**S**).
+
+Landed with Options hosting the one control, the design with fewer
+page states: the brownfield _What to add_ step is gone rather than
+shared, since sharing it would have split a new project's Options in
+two. A keel project's rail is Directory, **Project**, Options,
+Questions, Review — `project` in the place of the four preset steps,
+`target` retired, so the page has as many step ids as before and one
+Options state for both phases. **Project** is read-only: the preset the
+manifest reads as and the choices that made it, a product's services,
+the bounded contexts and what is installed. The page never sees a tag,
+so this needed one domain addition the plan did not name:
+`ProjectStatus.profile` (`domain/core/profile.ts`), which runs the
+drill-down backwards (`stack-wizard.ts`'s new `axesOf`, the reading
+`singlePath` now shares) over the manifest's tags to the answers
+`keel new` was given and the preset they lead to — or, at a product
+root, names the product with exactly the recorded services — worded
+as `label`/`value` lines. Every assemblable preset on every setting of
+its dials reads back as itself, and every product does
+(`profile.test.ts`). **Options** draws one builder in both flows
+(`dom.js`'s `alsoScaffold`, with `tickPart` and `lockedPart`), under
+the same ids (`#extras-ready`, `-needs`, `-refused`): a new project's
+preset verticals stay chips (nothing is installed yet, and the harness
+is a switch there), and a keel project's installed verticals, its glue
+and context, and a monorepo service's gifts from the product are one
+**Installed** part, boxes ticked and disabled, a **Re-render** beside
+each vertical `--reapply` names (`additions.js`' `installed`, which
+replaces `rerenderable`, `chips` and `provided`). The lock holds in
+the transition too: `toggleVertical` returns the run unchanged for an
+installed or provided id. What Q1.9 and Q1.10 built that Options
+lacked is kept inside the group or beside it: _Proposed re-renders_,
+_Belongs in a service_ with its **Open** buttons, the bounded-context
+tab with its disabled reason, and the harness-generation line above
+the tabs. `keel ui` started in a keel project opens on Options, as do
+Generate and **Open backend/**; an empty directory still opens on
+Directory, and moving through the folder picker never leaves it. A
+keel project's review reads _Project_ and _Also scaffold_ where a new
+project's reads _Preset_ and _Also scaffold_.
+Held by `steps.test.ts` (the rail per flow, where a step of the other
+flow settles), `target.test.ts` (a locked box moves nothing),
+`additions.test.ts`, `project.test.ts` (the summary off real
+scaffolds, a product root and a monorepo service) and a new
+`ui-compose` case on a seeded `ts-http` project: the page opens on
+Options with its installed verticals ticked and disabled, one tick
+posts `{ verticals: ['ci'] }` and `keel add ci --yes`, and the Project
+step shows the profile and no control. The other browser suites
+changed only where the flow did (the rail's `project` step, Options
+for _What to add_, `#extras-*` for `#add-*`). No verdict moved: the
+goldens regenerate byte-identical and the known files stay empty.
+
 - **Q2.8 — Vocabulary (S).** An unknown `--stack` suggests the nearest
   id; the Backend shape reads "Backend or tool — no front end".
 

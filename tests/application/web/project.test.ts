@@ -1,6 +1,8 @@
 /**
- * What the brownfield half says about the project as a whole, before
- * any card is picked.
+ * What a keel project's page says about the project as a whole, before
+ * any card is picked: what it is, on the read-only Project step its
+ * rail has where a new project's preset steps are, and what stops every
+ * card alike.
  *
  * Same standing as `steps.test.ts` and `extras.test.ts`: a pure module
  * living in `assets/web/`, tested here because it needs no browser. The
@@ -22,7 +24,7 @@ import {
 } from '../../../src/domain/contract/manifest.js';
 import { projectStatusQuery, type ProjectStatus } from '../../../src/domain/contract/queries.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
-import { harnessNotice } from '../../../assets/web/src/project.js';
+import { harnessNotice, projectHeadline, projectSummary } from '../../../assets/web/src/project.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
 let cwd: string;
@@ -39,6 +41,18 @@ afterEach(async () => {
 
 const status = async (): Promise<ProjectStatus> =>
   expectOk(await mediator.dispatch(projectStatusQuery({ cwd })));
+
+/** Scaffolds `stack` here, in-process, with its actions faked. */
+async function scaffold(
+  stack: string,
+  more: { layout?: 'monorepo'; moduleLayout?: string } = {},
+): Promise<void> {
+  expectOk(
+    await mediator.dispatch(
+      newProjectCommand({ cwd, stack, answers: {}, interactive: false, dryRun: false, ...more }),
+    ),
+  );
+}
 
 /** Rewrites the scaffold's marker: a number, or none at all. */
 async function stamp(generation: number | null): Promise<void> {
@@ -88,5 +102,57 @@ describe('harnessNotice', () => {
 
     await stamp(HARNESS_GENERATION + 1);
     expect(harnessNotice(await status())).toContain('upgrade keel before adding to it');
+  });
+});
+
+describe('projectSummary', () => {
+  it('says what a project is, in words, where a new one’s preset steps would ask it', async () => {
+    expect(projectSummary(await status())).toEqual({ rows: [], installed: [] });
+    await scaffold('go-http', { moduleLayout: 'modulith' });
+    const reported = await status();
+    const summary = projectSummary(reported);
+    // The preset its manifest reads as, then the choices that made it,
+    // as the status words them — no tag reaches the page.
+    expect(summary.rows).toEqual([
+      { label: 'Preset', value: 'go-http' },
+      { label: 'Building', value: 'Backend' },
+      { label: 'Language', value: 'Go' },
+      { label: 'Adapters', value: 'HTTP server' },
+      { label: 'Module layout', value: 'modulith' },
+      { label: 'Bounded context', value: 'greeting' },
+    ]);
+    expect(summary.installed).toEqual(
+      reported.installed.map((vertical) => ({ id: vertical.id, title: vertical.title })),
+    );
+    expect(projectHeadline(reported)).toBe('go-http');
+  });
+
+  it('names a product root’s services, and a monorepo service’s gifts beside its own', async () => {
+    await scaffold('fullstack-ts', { layout: 'monorepo' });
+    const root = projectSummary(await status());
+    expect(root.rows[0]).toEqual({ label: 'Preset', value: 'fullstack-ts' });
+    expect(root.rows.slice(-2)).toEqual([
+      { label: 'backend/', value: 'ts-http · npm' },
+      { label: 'frontend/', value: 'web-components · npm' },
+    ]);
+
+    const backend = expectOk(
+      await mediator.dispatch(projectStatusQuery({ cwd: path.join(cwd, 'backend') })),
+    );
+    // What the product gives it is part of what it has.
+    expect(projectSummary(backend).installed.slice(-2)).toEqual([
+      { id: 'containerization', title: 'Container image' },
+      { id: 'vcs', title: 'Version control' },
+    ]);
+  });
+
+  it('heads a review row with the preset, else what the project builds in what', () => {
+    const facts = [
+      { label: 'Building', value: 'Backend' },
+      { label: 'Language', value: 'COBOL' },
+    ];
+    expect(projectHeadline({ profile: { preset: null, facts } })).toBe('Backend, COBOL');
+    expect(projectHeadline({ profile: { preset: null, facts: [] } })).toBe('—');
+    expect(projectHeadline(null)).toBe('—');
   });
 });

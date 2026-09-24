@@ -111,15 +111,29 @@ describe('the wizard’s steps', () => {
     expect(steps).not.toContain('language');
   });
 
-  it('offers the brownfield half a different list altogether', () => {
-    const steps = stepsFor({
+  it('collapses the preset steps of a keel project into one, and keeps Options for both flows', async () => {
+    // The directory decides the flow: a manifest there has settled
+    // every answer the preset steps ask, so they are one read-only
+    // step — and the Options step a new project has is the same step
+    // here, where its "Also scaffold" group adds to what is there.
+    const state: PageState = {
       status: { initialised: true },
-      catalog: null,
+      catalog: await catalog(),
       dials: null,
-      target: { kind: 'add-vertical', vertical: 'ci' },
+      target: { kind: 'add-vertical', verticals: [] },
       preview: null,
-    });
-    expect(ids(steps)).toEqual(['directory', 'target', 'questions', 'review']);
+    };
+    const steps = stepsFor(state);
+    expect(ids(steps)).toEqual(['directory', 'project', 'options', 'questions', 'review']);
+    const greenfieldOptions = stepsFor(await greenfield('quarkus-cli')).find(
+      (step) => step.id === 'options',
+    );
+    expect(steps.find((step) => step.id === 'options')?.label).toBe(greenfieldOptions?.label);
+    // A step of the other flow, wanted here, settles onto the one
+    // standing where it stood: a preset step onto what the project is.
+    expect(settleStep(steps, 'framework')).toBe('project');
+    expect(settleStep(steps, 'options')).toBe('options');
+    expect(settleStep(stepsFor(await greenfield('quarkus-cli')), 'project')).toBe('directory');
   });
 
   it('keeps the questions step even when the preview reports none', async () => {
@@ -182,7 +196,11 @@ describe('the wizard’s steps', () => {
   });
 
   it('gives every step a label and a line saying what it is for', async () => {
-    for (const step of stepsFor(await greenfield('quarkus-cli'))) {
+    const keelProject = stepsFor({
+      ...(await greenfield('quarkus-cli')),
+      status: { initialised: true },
+    });
+    for (const step of [...stepsFor(await greenfield('quarkus-cli')), ...keelProject]) {
       expect(step.label).not.toBe('');
       expect(step.doc).not.toBe('');
     }

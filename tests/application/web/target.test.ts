@@ -200,7 +200,7 @@ const tuned = (): Run => {
   return { ...greenfield(), target, dials: jvmDials(target) };
 };
 
-describe('the "What to add" cards', () => {
+describe('a keel project’s "Also scaffold" boxes', () => {
   it('ticks what a card needs along with it, prerequisites first', () => {
     const iac = toggleVertical(brownfield(), chain, 'iac', true);
     expect(iac.target).toEqual({
@@ -240,6 +240,22 @@ describe('the "What to add" cards', () => {
         ).target,
       ),
     ).toEqual([]);
+  });
+
+  it('leaves what the project has locked: a tick on its box moves nothing', () => {
+    // Drawn ticked and disabled, and held so here too: the run is what
+    // goes on top — `keel add` of the delta — and a vertical already
+    // there neither joins that set nor leaves the project.
+    const onCi = toggleVertical(brownfield(), chain, 'ci', true);
+    expect(toggleVertical(onCi, chain, 'vcs', true)).toBe(onCi);
+    expect(toggleVertical(onCi, chain, 'vcs', false)).toBe(onCi);
+    // So is what a monorepo service has from its product.
+    const member: Pick<ProjectStatus, 'installed' | 'available' | 'provided'> = {
+      installed: [installed('walking-skeleton')],
+      available: [ready('ci')],
+      provided: [{ ...vertical('containerization'), note: 'the product root builds it' }],
+    };
+    expect(toggleVertical(brownfield(), member, 'containerization', true)).toEqual(brownfield());
   });
 
   it('keeps the answers while the set moves, for the next preview to prune', () => {

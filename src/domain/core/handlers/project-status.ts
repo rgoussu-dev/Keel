@@ -10,6 +10,9 @@
  * away from the card. So every field here is the answer of the
  * function the command's own front door refuses by:
  *
+ *   - `profile` — what the project is, in the words `keel new` asked
+ *     it in (`../profile.ts`): the preset its tags read as, and the
+ *     choices that made it — for a page that shows them without a tag.
  *   - `installed` — what the manifest records, each saying whether
  *     `keel add --reapply` can re-render it: not the product glue or a
  *     bounded context, which no `keel add <id>` names.
@@ -38,12 +41,7 @@ import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import type { DomainError } from '../../kernel/result.js';
 import { ok, type Result } from '../../kernel/result.js';
-import {
-  HARNESS_GENERATION,
-  projectScopeRoot,
-  type ManifestV2,
-  type ServiceRef,
-} from '../../contract/manifest.js';
+import { HARNESS_GENERATION, projectScopeRoot, type ManifestV2 } from '../../contract/manifest.js';
 import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type {
@@ -57,10 +55,10 @@ import type {
 import { RefusalError } from '../../contract/refusal.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { addReadiness } from '../add-readiness.js';
+import { projectProfile, serviceLabel } from '../profile.js';
 import { providedNote } from '../refusals.js';
 import { installedVertical, verticalTitle } from '../registry.js';
 import { provisionsHere, scopeOf, type DirectoryScope } from '../scope.js';
-import { getBuildSystem } from '../stacks.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import { moduleRefusal } from './add-module.js';
 
@@ -117,6 +115,7 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
       scopeRoot,
       initialised: true,
       tags: [...manifest.tags],
+      profile: projectProfile(registry, manifest.tags, manifest.services),
       installed: manifest.verticals.map((entry) => ({
         ...describeInstalled(registry, entry.id),
         installedAt: entry.installedAt,
@@ -149,6 +148,7 @@ function uninitialised(scopeRoot: string): ProjectStatus {
     scopeRoot,
     initialised: false,
     tags: [],
+    profile: { preset: null, facts: [] },
     installed: [],
     available: [],
     provided: [],
@@ -194,18 +194,6 @@ function describeInstalled(registry: Registry, id: string): VerticalDescriptor {
     description: vertical.description,
     dimensions: [...vertical.dimensions],
   };
-}
-
-/**
- * A service in the few words a button carries: its preset, and the
- * build system recorded for it by label — `quarkus-rest · Gradle`.
- */
-function serviceLabel(service: ServiceRef): string {
-  if (service.buildSystem === undefined) return service.stack;
-  // The name, not the gloss: a label reads "Gradle — incremental
-  // task-graph build (Kotlin DSL)".
-  const build = getBuildSystem(service.buildSystem)?.label.split(' — ')[0] ?? service.buildSystem;
-  return `${service.stack} · ${build}`;
 }
 
 /** A refusal as the status reports it: what the command's `Err` would carry. */

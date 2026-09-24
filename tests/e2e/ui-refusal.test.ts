@@ -1,6 +1,6 @@
 /**
- * A refusal on the brownfield page, driven in a real browser — the one
- * met before the click, and the one only the click can meet.
+ * A refusal on a keel project's page, driven in a real browser — the
+ * one met before the click, and the one only the click can meet.
  *
  * **Before the click.** Picking a card used to be how the page found
  * out whether the project could carry it: about half the cards on a
@@ -8,10 +8,10 @@
  * had often scrolled past. The project status reads each card ahead
  * of time now, with the planner `keel add` plans by, so what this
  * `ts-cli` project cannot carry — Container image, which has nothing
- * to serve an image from — sits under **Not for this project**,
- * collapsed, in the words `keel add containerization` refuses it
- * with, and is not a box to tick. The bounded-context tab is there
- * too, disabled, saying why.
+ * to serve an image from — sits under **Not for this project** in its
+ * Options step's "Also scaffold" group, collapsed, in the words
+ * `keel add containerization` refuses it with, and is not a box to
+ * tick. The bounded-context tab is there too, disabled, saying why.
  *
  * **After the click.** Some refusals only the run can meet: a file of
  * the user's in the way (`keel.path-conflict`) — a
@@ -103,8 +103,12 @@ const WORKFLOW = path.join('.github', 'workflows', 'ci.yml');
 const CONFLICT =
   "'.github/workflows/ci.yml' already exists, and keel does not overwrite a file this run did not write";
 
-/** A card's box on the "What to add" step, by the vertical it stands for. */
-const card = (page: Page, id: string): Locator => page.locator(`#additions input[value="${id}"]`);
+/**
+ * A box of the Options step's "Also scaffold" group that still ticks,
+ * by the vertical it stands for — never one of what the project has.
+ */
+const card = (page: Page, id: string): Locator =>
+  page.locator(`#extras-ready input[value="${id}"], #extras-needs input[value="${id}"]`);
 
 /** The plan column's alert region. */
 const refusal = (page: Page): Locator => page.locator('keel-plan [data-role="refusal"]');
@@ -188,10 +192,10 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     page.on('pageerror', (error) => mishaps.push(`pageerror: ${error.message}`));
     traffic = watchTraffic(page);
     await page.goto(ui.url, { waitUntil: 'domcontentloaded' });
-    // A manifest is there, so the page opens on the brownfield rail.
+    // A manifest is there, so the page opens on a keel project's rail.
     await until(
-      async () => (await page.locator('keel-stepper button[data-step="target"]').count()) > 0,
-      'the brownfield rail',
+      async () => (await page.locator('keel-stepper button[data-step="project"]').count()) > 0,
+      "a keel project's rail",
     );
     await act(traffic, () => Promise.resolve());
   }, E2E_TIMEOUT_MS);
@@ -213,8 +217,8 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
   it(
     'says before any click what this project cannot carry, in the refusal’s words',
     async () => {
-      await goToStep(traffic, page, 'target');
-      const refused = page.locator('#add-refused');
+      await goToStep(traffic, page, 'options');
+      const refused = page.locator('#extras-refused');
       expect(await refused.getAttribute('open')).toBeNull();
       expect(await refused.locator('summary').textContent()).toMatch(
         /^Not for this project \(\d+\)$/,
@@ -243,7 +247,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'shows a refusal only the run can meet where the plan would be, as an alert',
     async () => {
       await withUserWorkflow(async () => {
-        await goToStep(traffic, page, 'target');
+        await goToStep(traffic, page, 'options');
         await act(traffic, () => card(page, AVAILABLE).check());
 
         const alert = refusal(page);
@@ -273,7 +277,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'holds Generate shut on the review step, and names the refusal there',
     async () => {
       await withUserWorkflow(async () => {
-        await goToStep(traffic, page, 'target');
+        await goToStep(traffic, page, 'options');
         await act(traffic, () => card(page, AVAILABLE).check());
         await goToStep(traffic, page, 'review');
 
@@ -292,7 +296,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     'clears the refusal when the card is let go and another is ticked',
     async () => {
       await withUserWorkflow(async () => {
-        await goToStep(traffic, page, 'target');
+        await goToStep(traffic, page, 'options');
         await act(traffic, () => card(page, AVAILABLE).check());
         await until(async () => await refusal(page).isVisible(), 'the refusal');
 
@@ -318,7 +322,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
   it(
     'lets a re-render go with the first card ticked after it',
     async () => {
-      await goToStep(traffic, page, 'target');
+      await goToStep(traffic, page, 'options');
       await act(traffic, () => page.locator(`#rerender-${INSTALLED}`).click());
       await until(
         async () => (await command(page)) === `keel add ${INSTALLED} --reapply --yes`,
@@ -353,7 +357,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
   it(
     'leaves the answers given for an add behind when a re-render is pressed',
     async () => {
-      await goToStep(traffic, page, 'target');
+      await goToStep(traffic, page, 'options');
       await act(traffic, () => card(page, AVAILABLE).check());
       await goToStep(traffic, page, 'questions');
       await act(traffic, () => control(page, PROVIDER).selectOption('gitlab-ci'));
@@ -362,7 +366,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
         'the answer to reach the command',
       );
 
-      await goToStep(traffic, page, 'target');
+      await goToStep(traffic, page, 'options');
       await act(traffic, () => page.locator(`#rerender-${INSTALLED}`).click());
       // The answer was `ci`'s. Carried here it would ride a reapply
       // that runs no adapter reading it, which `POST /api/install`
@@ -380,7 +384,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     async () => {
       // Picking card after card to meet the same refusal is what the
       // status's one field spares: the page reads it before any pick.
-      await goToStep(traffic, page, 'target');
+      await goToStep(traffic, page, 'options');
       expect(await page.locator('[data-role="harness-generation"]').count()).toBe(0);
 
       const file = path.join(projectScopeRoot(cwd), MANIFEST_FILENAME);
@@ -395,10 +399,10 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
         // address bar on load, and a reload would have none to claim.
         await page.goto(ui.url, { waitUntil: 'domcontentloaded' });
         await until(
-          async () => (await page.locator('keel-stepper button[data-step="target"]').count()) > 0,
-          'the brownfield rail',
+          async () => (await page.locator('keel-stepper button[data-step="project"]').count()) > 0,
+          "a keel project's rail",
         );
-        await goToStep(traffic, page, 'target');
+        await goToStep(traffic, page, 'options');
         const notice = page.locator('[data-role="harness-generation"]');
         await until(async () => (await notice.count()) === 1, 'one generation notice');
         expect(await notice.getAttribute('role')).toBe('status');

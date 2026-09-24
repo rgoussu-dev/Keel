@@ -72,7 +72,7 @@
  * @typedef {Record<string, Record<string, string>>} Answers
  * @typedef {{ id: string }} Option
  * @typedef {{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string } }} VerticalOption
- * @typedef {{ installed: ReadonlyArray<{ id: string }>, available: ReadonlyArray<{ id: string, requires: ReadonlyArray<string> }> }} Status
+ * @typedef {{ installed: ReadonlyArray<{ id: string }>, available: ReadonlyArray<{ id: string, requires: ReadonlyArray<string> }>, provided?: ReadonlyArray<{ id: string }> }} Status
  * @typedef {{ id: string, change: string, because: string, service?: string }} Adjustment
  * @typedef {{ path: string, buildSystems: ReadonlyArray<Option>, verticals?: ReadonlyArray<VerticalOption> }} ServiceDials
  * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<ServiceDials>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
@@ -417,11 +417,11 @@ function menusOf(dials) {
 }
 
 /**
- * The run after a card of the brownfield "What to add" step was ticked
- * or unticked.
+ * The run after a box of a keel project's "Also scaffold" group was
+ * ticked or unticked, on the Options step both flows share.
  *
- * The cards are checkboxes, as the greenfield extras are, and one tick
- * is rarely one vertical. **Ticking one that needs others ticks them
+ * The boxes are the greenfield extras' own, and one tick is rarely one
+ * vertical. **Ticking one that needs others ticks them
  * too** — its `requires`, as the project status reports them — since
  * `keel add` installs them with it either way, and a card left
  * unticked beside a plan listing its files would be the page
@@ -438,6 +438,13 @@ function menusOf(dials) {
  * to add, and go with the last card unticked, a re-render being what
  * {@link rerender} is for.
  *
+ * **What the project has is locked.** An installed vertical — or one a
+ * monorepo service has from its product — is drawn ticked, and no
+ * gesture moves it: the run is what goes on top, `keel add` of the
+ * delta, and the box of a vertical already there neither joins that
+ * set nor leaves the project. The run comes back as it was, not even
+ * superseding a reply in flight, since nothing moved.
+ *
  * @param {Run} run
  * @param {Status} status the `/api/project` payload
  * @param {string} id the vertical the card stands for
@@ -445,6 +452,7 @@ function menusOf(dials) {
  * @returns {Run}
  */
 export function toggleVertical(run, status, id, ticked) {
+  if (locked(status, id)) return run;
   const requires = new Map(status.available.map((vertical) => [vertical.id, vertical.requires]));
   const adding = run.target?.kind === 'add-vertical' && run.target.reapply !== true;
   const selected = adding ? verticalsOf(run.target) : [];
@@ -460,6 +468,11 @@ export function toggleVertical(run, status, id, ticked) {
     run,
     addTarget(ordered, adding && ordered.length > 0 ? refreshOf(run.target) : []),
   );
+}
+
+/** Whether `id` is a vertical the project already has: installed, or given it by its product. */
+function locked(status, id) {
+  return [...status.installed, ...(status.provided ?? [])].some((vertical) => vertical.id === id);
 }
 
 /**

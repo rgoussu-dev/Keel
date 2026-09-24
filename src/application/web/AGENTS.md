@@ -56,13 +56,16 @@ socket, the per-run token and the asset roots. The page it serves is
   previews again rather than draw it) — and every change moves the
   generation on so a reply in flight is dropped. A new control adds its transition
   there, with a case in `tests/application/web/target.test.ts` — as
-  the "Also scaffold" boxes did (`toggleExtra`, a product's moving one
-  service's selection) and the "What to add"
-  cards (`toggleVertical`, `rerender`, `toggleRefresh`), since one tick
-  can move several boxes and the element only says which one it was.
-  What a card shows is read off the project status by a pure module
-  too (`additions.js`), never re-derived in the element: the status
-  already carries each card's readiness and refusal, word for word.
+  the "Also scaffold" boxes did, on a new project (`toggleExtra`, a
+  product's moving one service's selection) and on a keel project
+  (`toggleVertical`, which leaves what the project has locked;
+  `rerender`, `toggleRefresh`), since one tick can move several boxes
+  and the element only says which one it was. What a card shows is
+  read off the project status by a pure module too (`additions.js`,
+  and `project.js` for the read-only Project step), never re-derived in
+  the element: the status already carries each card's readiness and
+  refusal, word for word, and the project's own profile in words — the
+  page never reads a tag.
 - **A response body is read once, as text, and `response.js` says
   what it means.** `api.js` claims the token out of `location` the
   moment it loads, so it cannot be imported without a DOM; what a

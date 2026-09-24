@@ -32,8 +32,10 @@
  * preview question: one tick, and the list was gone. They are the
  * "Also scaffold" group here now, drawn from `dials.verticals` — on a
  * product one group per service, from that service's menu in
- * `dials.services` (`../extras.js`) — and `keel.dials` pins them on
- * every target it settles so the preview never asks them again. Everything
+ * `dials.services` (`../extras.js`) — by the builder a keel project's
+ * Options step draws its group with too (`../dom.js`'s
+ * `alsoScaffold`), and `keel.dials` pins them on every target it
+ * settles so the preview never asks them again. Everything
  * conditional still comes back from the preview and is rendered by
  * `<keel-question-list>`.
  *
@@ -60,16 +62,17 @@ import {
   pickShape,
 } from '../finder.js';
 import {
+  alsoScaffold,
   cards,
   checkboxCards,
   el,
   focusIn,
-  help,
   icon,
   note,
   prose,
   refocus,
   refusedList,
+  tickPart,
 } from '../dom.js';
 import { extrasGroup, serviceExtrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
@@ -317,26 +320,14 @@ export class KeelNewForm extends HTMLElement {
     });
   }
 
+  /**
+   * The group itself, drawn by the one builder both flows' Options step
+   * draws it with (`../dom.js`'s `alsoScaffold`) — here with what the
+   * preset comes with as chips, where a keel project's has what it
+   * installed ticked and locked.
+   */
   #extrasSection({ id: prefix, title, help: helpText, comesWith, extras, service }) {
-    const chosen = extras.chosen;
-    const part = (id, title, choices) => {
-      const heading = el('h4', { id: `${id}-title`, text: title });
-      const group = checkboxCards({
-        id,
-        chosen,
-        choices,
-        onChange: (values) => {
-          const now = new Set(values);
-          const moved = choices.find(
-            (choice) => now.has(choice.value) !== chosen.includes(choice.value),
-          );
-          if (moved) this.#toggle(moved.value, now.has(moved.value), service);
-        },
-      });
-      group.setAttribute('role', 'group');
-      group.setAttribute('aria-labelledby', heading.id);
-      return el('div', {}, heading, group);
-    };
+    const tick = (id, ticked) => this.#toggle(id, ticked, service);
     const switchable = extras.included.find((vertical) => vertical.on !== undefined);
     const included =
       extras.included.length === 0
@@ -364,44 +355,46 @@ export class KeelNewForm extends HTMLElement {
             ),
             switchable === undefined ? null : harnessHint(switchable),
           );
-    return el(
-      'section',
-      { id: prefix, class: 'extras', attrs: { 'aria-labelledby': `${prefix}-title` } },
-      el(
-        'div',
-        { class: 'section-head' },
-        el('h3', { id: `${prefix}-title`, text: title }),
-        el('span', {
-          class: chosen.length > 0 ? 'chip accent' : 'chip',
-          text: `${chosen.length} chosen`,
-        }),
-      ),
-      help(helpText),
-      extras.line === ''
-        ? null
-        : el('p', {
-            class: 'extras-line',
-            text: extras.line,
-            attrs: { role: 'status', 'data-role': 'extras-line' },
-          }),
-      extras.ready.length === 0 ? null : part(`${prefix}-ready`, 'Ready', extras.ready),
-      extras.needs.length === 0
-        ? null
-        : part(`${prefix}-needs`, 'Needs another capability first', extras.needs),
-      included,
-      extras.refused.length === 0
-        ? null
-        : refusedList({
-            id: `${prefix}-refused`,
-            title: service === null ? 'Not for this project' : `Not for ${service}/`,
-            items: extras.refused,
-            open: this.#refusedOpen.has(prefix),
-            onToggle: (open) => {
-              if (open) this.#refusedOpen.add(prefix);
-              else this.#refusedOpen.delete(prefix);
-            },
-          }),
-    );
+    return alsoScaffold({
+      id: prefix,
+      title,
+      count: extras.chosen.length,
+      help: helpText,
+      line: extras.line,
+      parts: [
+        extras.ready.length === 0
+          ? null
+          : tickPart({
+              id: `${prefix}-ready`,
+              title: 'Ready',
+              choices: extras.ready,
+              chosen: extras.chosen,
+              onTick: tick,
+            }),
+        extras.needs.length === 0
+          ? null
+          : tickPart({
+              id: `${prefix}-needs`,
+              title: 'Needs another capability first',
+              choices: extras.needs,
+              chosen: extras.chosen,
+              onTick: tick,
+            }),
+        included,
+        extras.refused.length === 0
+          ? null
+          : refusedList({
+              id: `${prefix}-refused`,
+              title: service === null ? 'Not for this project' : `Not for ${service}/`,
+              items: extras.refused,
+              open: this.#refusedOpen.has(prefix),
+              onToggle: (open) => {
+                if (open) this.#refusedOpen.add(prefix);
+                else this.#refusedOpen.delete(prefix);
+              },
+            }),
+      ],
+    });
   }
 
   #toggle(id, ticked, service) {

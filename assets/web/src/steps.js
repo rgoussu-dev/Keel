@@ -3,11 +3,22 @@
  *
  * The page is a stepper now rather than one long form, and the list
  * of steps is **not** a constant: a language reaching one framework
- * has no framework step, and the brownfield half is a different list
- * altogether. That is the same rule the terminal wizard skips a
- * question under — a step whose answer is already settled is not a
- * step — so it is derived here from the catalog, the dials and the
- * preview rather than hard-coded in the element that draws the rail.
+ * has no framework step. That is the same rule the terminal wizard
+ * skips a question under — a step whose answer is already settled is
+ * not a step — so it is derived here from the catalog, the dials and
+ * the preview rather than hard-coded in the element that draws the
+ * rail.
+ *
+ * **The directory decides which flow the rail is.** One page serves
+ * both phases: an empty directory is a new project, and the preset
+ * steps narrow to one; a keel project has settled every one of those
+ * answers, so they collapse into one read-only step, **Project**, what
+ * it already is. Options follows either way, and holds the same "Also
+ * scaffold" group — a new project's extras, or what goes on top of a
+ * keel project, its installed verticals ticked and locked — then the
+ * questions and the review. The commands stay two: the review's
+ * Generate posts `keel new`'s target on the one flow and `keel add`'s
+ * on the other.
  *
  * Pure, and separate from any element, so the rail is testable
  * without a DOM — the same split `finder.js` and `tree.js` live
@@ -24,8 +35,8 @@ export const SHAPE = 'shape';
 export const LANGUAGE = 'language';
 export const FRAMEWORK = 'framework';
 export const ENTRYPOINTS = 'entrypoints';
+export const PROJECT = 'project';
 export const OPTIONS = 'options';
-export const TARGET = 'target';
 export const QUESTIONS = 'questions';
 export const REVIEW = 'review';
 
@@ -46,7 +57,7 @@ export function stepsFor(state) {
     {
       id: DIRECTORY,
       label: 'Directory',
-      doc: 'Where the project goes. A directory that does not exist yet is fine — keel creates it.',
+      doc: 'Where the project goes, or the keel project to add to — what is there decides the rest of the rail. A directory that does not exist yet is fine: keel creates it.',
     },
   ];
   steps.push(...(state.status?.initialised ? brownfieldSteps() : greenfieldSteps(state)));
@@ -63,12 +74,21 @@ export function stepsFor(state) {
   return steps;
 }
 
+/**
+ * The keel-project middle: the preset steps collapsed into what the
+ * project already is, then the one Options step both flows share.
+ */
 function brownfieldSteps() {
   return [
     {
-      id: TARGET,
-      label: 'What to add',
-      doc: 'Capabilities to layer onto this project — tick several, and what one needs first is ticked with it — or a new bounded context. What this project cannot carry is listed too, collapsed, each with the reason; an installed vertical can be re-rendered.',
+      id: PROJECT,
+      label: 'Project',
+      doc: 'What this directory already is, read back from its manifest: the choices keel new made, settled now. Nothing here is a control — what can still go on top is under Options.',
+    },
+    {
+      id: OPTIONS,
+      label: 'Options',
+      doc: 'What to add on top of what the project has — tick several, and what one needs first is ticked with it; what it has is ticked and locked, each with a Re-render of its own — or a new bounded context. What it cannot carry is listed too, collapsed, each with the reason.',
     },
   ];
 }
@@ -153,17 +173,17 @@ export function hasDials(state) {
 
 /**
  * Every step id in the order they can appear, which is what
- * {@link settleStep} measures "before" against. The brownfield
- * `target` sits where the greenfield middle does, the two never
- * being on the same rail.
+ * {@link settleStep} measures "before" against. The keel project's
+ * `project` sits where the preset steps it collapses do, the two never
+ * being on the same rail; `options` is on both.
  */
 const ORDER = [
   DIRECTORY,
+  PROJECT,
   SHAPE,
   LANGUAGE,
   FRAMEWORK,
   ENTRYPOINTS,
-  TARGET,
   OPTIONS,
   QUESTIONS,
   REVIEW,

@@ -527,9 +527,10 @@ jobs:
           # well under `ui-stack-finder`, which floors the four.
           #
           # `ui-compose` is the fourth: the Options step's "Also
-          # scaffold" group, ticked and unticked on quarkus-rest, the
-          # "What to add" cards ticked into one run on two projects it
-          # seeds in-process, and the bodies the page posts for them.
+          # scaffold" group, ticked and unticked on quarkus-rest, and
+          # the same group on two projects it seeds in-process — what
+          # each has ticked and locked, boxes ticked into one run — and
+          # the bodies the page posts for them.
           # It never presses Generate on a JVM stack — a real Quarkus
           # install queues `gradle wrapper`, and this shard provisions
           # no JDK. Its one Generate adds an image, a release path and

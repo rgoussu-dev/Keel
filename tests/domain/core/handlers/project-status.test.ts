@@ -17,6 +17,8 @@
  *     refusal;
  *   - `harnessGeneration` reports the marker once, beside the one this
  *     keel writes;
+ *   - `profile` is the project in words — the preset its tags read as,
+ *     the drill-down's answers and its dials — never a tag;
  *   - an installed vertical is `reapplicable` exactly where
  *     `keel add <id> --reapply` names something it can re-render — not
  *     a product's glue, not a bounded context.
@@ -111,6 +113,22 @@ describe('keel.project-status', () => {
     // and "offer a reapply of this" different controls.
     expect(installed.filter((id) => available.includes(id))).toEqual([]);
     expect(reported.installed[0]?.description).not.toBe('');
+  });
+
+  it('says what the project is in words, the preset its manifest reads as among them', async () => {
+    expect((await status()).profile).toEqual({ preset: null, facts: [] });
+    await scaffold({ stack: 'go-http', moduleLayout: 'modulith' });
+    // The manifest records tags, not a preset id; read back, they are
+    // the answers `keel new` was given, and the preset they lead to.
+    expect((await status()).profile).toEqual({
+      preset: 'go-http',
+      facts: [
+        { label: 'Building', value: 'Backend' },
+        { label: 'Language', value: 'Go' },
+        { label: 'Adapters', value: 'HTTP server' },
+        { label: 'Module layout', value: 'modulith' },
+      ],
+    });
   });
 
   it('reads each card as keel add would: ready, needing others first, or refused in its words', async () => {
@@ -261,6 +279,8 @@ describe('keel.project-status', () => {
     );
     const reported = await status();
     expect(reported.services.map((service) => service.path)).toEqual(['backend', 'frontend']);
+    // The root records its services, not its preset: they name it.
+    expect(reported.profile.preset).toBe('fullstack-ts');
     expect(reported.canAddModule).toBe(false);
     expect(reported.moduleRefusal).toMatchObject({ code: 'keel.invalid-module' });
     expect(reported.moduleRefusal?.message).toContain(

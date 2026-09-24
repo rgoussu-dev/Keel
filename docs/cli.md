@@ -643,13 +643,18 @@ keel ui --port 0        # let the OS pick a free port
 | `--host <host>`     | Loopback interface to bind. Defaults to `127.0.0.1`.              |
 
 Open the printed URL — **the token in it is what authorises the page**
-— and stop the server with Ctrl-C. Point it at an empty directory and
-it is `keel new`; point it at an existing keel project and it becomes
-`keel add` / `keel add module`: every vertical not installed, in the
-parts `keel add --list` prints — ready, ready once something else is,
-and not for this project with the refusal's own sentence, collapsed —
-several ticked into one run, and a **Re-render** (`--reapply`) beside
-each installed one.
+— and stop the server with Ctrl-C. It is one page for both phases, and
+the directory decides the flow. Point it at an empty directory and it
+is `keel new`; point it at an existing keel project and it opens on
+that project's **Options**, where it becomes `keel add` /
+`keel add module`: the preset steps collapse into one read-only
+**Project** step saying what the project is, and Options shows the same
+**Also scaffold** group a new project gets, with what is installed
+ticked and locked, a **Re-render** (`--reapply`) beside each installed
+vertical, and every vertical not installed in the parts
+`keel add --list` prints — ready, ready once something else is, and not
+for this project with the refusal's own sentence, collapsed — several
+ticked into one run. Generate runs `keel add` of what the ticks add.
 
 Full reference, including the JSON API and how the loopback port is
 protected: [the local scaffolder](ui.md).

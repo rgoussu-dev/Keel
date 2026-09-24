@@ -34,13 +34,19 @@ same adapters, the same questions in the same order, and the same
 plan. Neither is a subset of the other's capabilities — pick the one
 that suits how you are working.
 
-It also reads what your project already is. Point it at a directory
-holding a keel manifest and it becomes the brownfield page: every
-vertical it has not installed, sorted by what `keel add` would do with
-it — ready, ready once something else is, or not for this project and
-why — to tick several of at once; each installed one with a
-**Re-render** of its own; and "add a bounded context", disabled with
-the reason wherever `keel add module` would refuse it.
+It also reads what your project already is, and it is **one page for
+both phases**: the directory decides the flow. Point it at a directory
+holding a keel manifest and the preset steps collapse into one
+read-only **Project** step — what the project is, settled — and
+Options shows the same **Also scaffold** group a new project gets, with
+what the project has ticked and locked, each installed vertical with a
+**Re-render** of its own; every vertical it has not installed sorted by
+what `keel add` would do with it — ready, ready once something else is,
+or not for this project and why — to tick several of at once; and "add
+a bounded context", disabled with the reason wherever `keel add module`
+would refuse it. Generate runs `keel add` of what the ticks add. The
+commands stay two: `keel new` on an empty directory, `keel add` on a
+project.
 
 ## The page
 
@@ -52,23 +58,25 @@ the plan column scroll independently, so the plan holds its own screen
 however long the step beside it runs. Under 62rem the two collapse
 into one and the page scrolls as an ordinary document.
 
-| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                                                                                                                                                    |
-| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                                                                    |
-| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                                                            |
-| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                                                               |
-| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                                                                     |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. |
-| **What to add**   | _(brownfield only)_ Capabilities to layer on — several at once — or a bounded context. A card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys, sorted into _Ready_, _Needs another capability first_, _Not for this project_ (collapsed, with the reason) and _Installed_ (each with a **Re-render**). See [What to add](#what-to-add).                                        |
-| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                       |
-| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                                                           |
+| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_. What is there decides the rest of the rail: an empty directory is a new project (`keel new`), one holding a keel manifest a project to add to (`keel add`).                                                                                                                                                                                                                                                                               |
+| **What to build** | _(new project)_ Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Language**      | _(new project)_ The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Framework**     | _(new project)_ Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Adapters**      | _(new project)_ CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Project**       | _(keel project)_ Where the four steps above would be, nothing to ask: what the project already is, read back from its manifest — the preset it reads as, what it builds, its language, framework and adapters, its build system and module layout, a product's services, its bounded contexts, and what it has installed. In words, never tags. See [Options on a keel project](#options-on-a-keel-project).                                                                                                                                               |
+| **Options**       | On a new project, the stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. On a keel project, the same **Also scaffold** group over what it has — or a bounded context instead. |
+| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                                                                                                                                                                                  |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
 have landed on — and is also the flat list of every preset, the
 browser half of the terminal's "Other — pick a preset by id" — and the
-**Plan**, which is the whole reason this page beats a flag.
+**Plan**, which is the whole reason this page beats a flag. On a keel
+project there is no picker: its preset is settled, and the **Project**
+step says which.
 
 **Every step on the rail is clickable, not just the ones behind you.**
 There is nothing for a locked rail to protect: every dial has a
@@ -102,11 +110,14 @@ terminal would refuse it too — it is still what the choices on screen
 spell, and at full strength beside a refusal it read as a way round it.
 
 After a successful generate the page re-reads the directory, turns
-into the brownfield one and opens on **What to add**, the report beside
-it — so layering `ci` onto what you just scaffolded is the next click,
-not four. A plan that would write nothing and run nothing cannot be
-generated: committing it would record a vertical as installed that put
-nothing on disk, and the review says so instead.
+into a keel project's page and opens on **Options**, the report beside
+it and what the run installed now ticked and locked — so layering `ci`
+onto what you just scaffolded is the next click, not four. `keel ui`
+run inside a keel project opens there too; in an empty directory it
+opens on **Directory**, where a new project starts. A plan that would
+write nothing and run nothing cannot be generated: committing it would
+record a vertical as installed that put nothing on disk, and the review
+says so instead.
 
 **A refusal is shown where the plan would be.** When the engine refuses
 the run as it stands, the plan column says why — the refusal's own
@@ -122,12 +133,27 @@ URL carried (open the URL `keel ui` printed again). Only a refusal
 dims the command line under the plan. The review step leads its reason
 with the same words.
 
-## What to add
+## Options on a keel project
 
-The brownfield page's cards are read from the project status before
-anything is clicked — the planner's reading, the one `keel add` plans
-by and `keel add --list` prints — so a card and the click cannot
-disagree:
+A keel project's rail has no preset steps: `keel new` answered them,
+and the manifest remembers. They collapse into one read-only
+**Project** step, which says what the project is in the words the
+wizard asked it in — _Preset ts-http · Building Backend · Language
+TypeScript (Node) · Adapters HTTP server · Build system npm · Module
+layout basic_, a product root's services, the bounded contexts — and
+lists what it has installed. The manifest records tags, not a preset
+id; the drill-down is a reading of those very tags, so read back they
+give the answers `keel new` was given and the preset they lead to, and
+the page never sees a tag.
+
+Options then holds the same **Also scaffold** group a new project's
+Options step does — one control for both phases, where the page used to
+have a _What to add_ step of its own — read from the project status
+before anything is clicked: the planner's reading, the one `keel add`
+plans by and `keel add --list` prints, so a card and the click cannot
+disagree. Where a new project's group lists what its preset comes with
+as chips, a keel project's lists what it has **ticked and locked**, and
+Generate posts only what the ticks add — the delta — as `keel add`:
 
 - **Ready** and **Needs another capability first** are checkboxes,
   several at a time: one plan, one Generate, `keel add a b c` on the
@@ -135,6 +161,19 @@ disagree:
   title — Infrastructure as code _needs Container image, Distribution_
   — and **ticking it ticks them**, since the add installs them with it
   either way; unticking one unticks every ticked card that needs it.
+- **Installed** — every vertical the project has, its box ticked and
+  disabled: an add cannot take one back, and nothing ticked there joins
+  the run. Each one `keel add` names has a **Re-render** button beside
+  it: `keel add <id> --reapply`, a run of its own rather than a box in the
+  add's set, since it rewrites what the vertical owns from the answers
+  the manifest recorded. Ticking a card lets it go. A product's glue
+  (`fullstack`) and a bounded context are recorded as installed too,
+  and no `keel add` names them, so they are locked with no button. In a
+  monorepo service, what the product gives it — its repository's
+  version control, the image the product root builds — is locked the
+  same way, saying where it comes from; a CI pipeline or a release,
+  which only a repository root reads, is under _Not for this project_,
+  saying so.
 - **Not for this project** — collapsed, one line each: the sentence
   `keel add <id>` would refuse it with, word for word. _Observability
   needs an entrypoint this project does not have: HTTP server — a REST
@@ -142,27 +181,17 @@ disagree:
   "why can I not have observability?" with nothing.
 - **Belongs in a service** — at a composite product's root, an
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
-  points the page at that directory and opens its "What to add"; then
-  what goes in one of the services, each saying which — Container image
-  and the agent harness read as there already in both.
-- **Installed** — each vertical with a **Re-render** button:
-  `keel add <id> --reapply`, a run of its own rather than a card in the
-  add's set, since it rewrites what the vertical owns from the answers
-  the manifest recorded. Ticking a card lets it go. A product's glue
-  (`fullstack`) and a bounded context are recorded as installed too,
-  and no `keel add` names them, so they are chips, not buttons. In a
-  monorepo service, what the product gives it — its repository's
-  version control, the image the product root builds — is a line each,
-  saying where it comes from; a CI pipeline or a release, which only a
-  repository root reads, is under _Not for this project_, saying so.
+  points the page at that directory and opens its Options; then what
+  goes in one of the services, each saying which — Container image and
+  the agent harness read as there already in both.
 
 An add can change what an installed vertical would render —
 Persistence arriving where Distribution's deploy descriptor was written
 without a database. Once the preview has said so, the vertical appears
-under the cards as a **proposed re-render**: ticked, it is re-rendered
+in the group as a **proposed re-render**: ticked, it is re-rendered
 in the same run (`--refresh`); left, the report says how to take it up
 later. A project another harness generation wrote is said once, above
-the cards, rather than on each card it refuses.
+the group, rather than on each card it refuses.
 
 "Add a bounded context" is always there, and disabled — with the
 refusal `keel add module` would give — on the flat layout and at a
@@ -318,7 +347,7 @@ image, then Distribution; and the rest, _unavailable_, each with the
 `refusal` `keel new --with` would give it.
 
 The Options step draws that list as its **Also scaffold** group, in
-the parts the brownfield cards are drawn in: _Ready_, _Needs another
+the parts a keel project's group is drawn in: _Ready_, _Needs another
 capability first_ — each card naming what it needs, by title — _Comes
 with quarkus-rest_ (or whichever preset), its own, as chips with
 nothing to untick, and _Not for this project_, collapsed, each with its
@@ -423,7 +452,7 @@ Three consequences worth knowing:
   nothing recorded for: an adapter the vertical newly resolves to, on
   tags the project gained since it was installed.
 - **An answer belongs to the run it was given for.** Ticking and
-  unticking cards under **What to add** keeps the answers, and the next
+  unticking a keel project's **Also scaffold** boxes keeps the answers, and the next
   preview drops the ones no adapter of the new set asks — exactly as
   unticking an extra does — so a provider chosen for `ci` never rides
   along once `ci` is unticked. A **Re-render** is a run of its own and
@@ -510,6 +539,15 @@ give, asked before it is run:
 ```jsonc
 {
   "initialised": true,
+  "profile": {
+    "preset": "go-http",
+    "facts": [
+      { "label": "Building", "value": "Backend" },
+      { "label": "Language", "value": "Go" },
+      { "label": "Adapters", "value": "HTTP server" },
+      { "label": "Module layout", "value": "basic" }
+    ]
+  },
   "installed": [
     { "id": "vcs", "title": "Version control", "installedAt": "…", "reapplicable": true, … }
   ],
@@ -532,6 +570,15 @@ give, asked before it is run:
   "harnessGeneration": { "found": 1, "expected": 1 }
 }
 ```
+
+`profile` is the project in words, for the **Project** step: the
+preset it reads as — the one the drill-down's answers read back off the
+manifest's tags lead to, or at a product root the product with exactly
+those services; null where none does — and the choices that made it,
+as `label`/`value` lines: what it builds, its language, its framework
+where it has one, its adapters, then a single project's build system
+and module layout. No line is a tag, and a directory that is not a keel
+project has `{ "preset": null, "facts": [] }`.
 
 `available` is every registered vertical not installed, the ones this
 project cannot carry included, each with the planner's readiness — the

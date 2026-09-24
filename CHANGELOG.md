@@ -320,6 +320,25 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`keel ui` is one page for both phases.** A keel project had a
+  step of its own, _What to add_, where a new project has Options: two
+  controls for one question, what else goes in. The directory now
+  decides the flow. On a keel project the preset steps collapse into
+  one read-only **Project** step — what the project is, in the words
+  the wizard asked it in: _Preset go-http · Building Backend · Language
+  Go · Adapters HTTP server · Module layout basic_, a product's
+  services, its bounded contexts and what it has installed — and
+  Options shows the same **Also scaffold** group a new project gets,
+  with what the project has ticked and locked, each installed vertical
+  with its **Re-render**, and a tab for a bounded context. Generate
+  runs `keel add` of what the ticks add, the delta; the commands stay
+  two. `keel ui` started in a keel project opens on its Options, and so
+  do Generate and a product root's **Open backend/**. The
+  `/api/project` status gains `profile`: the preset the manifest reads
+  as — the drill-down run back over the tags it records, or at a
+  product root the product with exactly its services — and the choices
+  that made it, as labelled lines rather than tags.
+
 - **The verticals compatibility matrix says what keel does.** The
   table in `docs/verticals/README.md` is now generated from the
   composition grid's verdicts rather than written by hand, and a test

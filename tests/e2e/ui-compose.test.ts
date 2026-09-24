@@ -1,7 +1,8 @@
 /**
  * Composing several verticals into one run, driven in a real browser:
- * the Options step's "Also scaffold" group on an empty directory, and
- * the "What to add" cards on a project already scaffolded.
+ * the Options step's "Also scaffold" group, on an empty directory and
+ * on a project already scaffolded — one page, one group, for both
+ * phases.
  *
  * **Greenfield.** The extras used to be a question the preview asked,
  * and the install stops asking a question once it is answered — so
@@ -13,15 +14,20 @@
  * unticks both. What the preset cannot take is listed too, collapsed,
  * with the reason.
  *
- * **Brownfield.** The cards were one radio group, one vertical per
+ * **Brownfield.** A keel project had a step of its own, "What to add",
+ * beside a new project's Options — one radio group, one vertical per
  * Generate, and half of them on a CLI project a refusal met after the
- * click. They are the same checkboxes now, sorted by what the project
- * status read before anything was clicked: IaC's card says it needs
- * Container image and Distribution, one click ticks all three, and
- * the page makes one plan of them, one Generate, and stays on "What
- * to add" with the report — the next thing to do being to add more,
- * not to pick a directory. On a CLI project, Observability is under
- * "Not for this project" with its sentence before any click.
+ * click. The directory decides the flow now: the page opens a keel
+ * project on its Options, where the preset steps have collapsed into
+ * one read-only Project step, and the same "Also scaffold" group holds
+ * what the project has, ticked and locked, beside the boxes sorted by
+ * what the project status read before anything was clicked. A tick
+ * posts only what it adds. IaC's card says it needs Container image and
+ * Distribution, one click ticks all three, and the page makes one plan
+ * of them, one Generate, and stays on Options with the report — the
+ * three now among what is locked, the next thing to do being to add
+ * more, not to pick a directory. On a CLI project, Observability is
+ * under "Not for this project" with its sentence before any click.
  *
  * **The harness is a switch.** Under "Comes with", the Agent harness
  * chip is a toggle button: pressed off from the keyboard, the body
@@ -67,10 +73,11 @@
  *
  * **A product.** At a composite product's root, "Belongs in a
  * service" opens with a button into each service; the click points
- * the page one directory down, onto that service's "What to add",
- * where what the product gives it is a line and a pipeline — read only
- * at the repository root — is under "Not for this project". Seeded
- * in-process, a TypeScript product, and never generated.
+ * the page one directory down, onto that service's Options, where what
+ * the product gives it is locked with where it comes from and a
+ * pipeline — read only at the repository root — is under "Not for
+ * this project". Seeded in-process, a TypeScript product, and never
+ * generated.
  *
  * Skip rules are the shared ones (`skipE2E`), and each `describe`
  * carries the browser guard because its `beforeAll` launches one.
@@ -92,6 +99,7 @@ import {
   control,
   goToStep,
   railStep,
+  railSteps,
   stackIs,
   startUi,
   until,
@@ -510,22 +518,30 @@ async function seeded(stack: string, buildSystem: string, prefix: string): Promi
   return dir;
 }
 
-/** One card's box on the "What to add" step, by the vertical it stands for. */
-const card = (page: Page, id: string): Locator => page.locator(`#additions input[value="${id}"]`);
+/**
+ * A box of a keel project's "Also scaffold" group that still ticks, by
+ * the vertical it stands for — never one of what the project has.
+ */
+const card = (page: Page, id: string): Locator =>
+  page.locator(`#extras-ready input[value="${id}"], #extras-needs input[value="${id}"]`);
+
+/** A box of what a keel project has: ticked, and locked. */
+const locked = (page: Page, id: string): Locator =>
+  page.locator(`#extras-installed input[value="${id}"]`);
 
 /** Whether a card is drawn ticked right now. */
 const cardTicked = async (page: Page, id: string): Promise<boolean> =>
   (await card(page, id).count()) > 0 && (await card(page, id).isChecked());
 
-/** Opens the page on the project `ui` serves and waits for the brownfield rail. */
+/** Opens the page on the project `ui` serves and waits for a keel project's rail. */
 async function openProject(url: string, into: Page, seen: Traffic): Promise<void> {
   await into.goto(url, { waitUntil: 'domcontentloaded' });
   await until(
-    async () => (await into.locator('keel-stepper button[data-step="target"]').count()) > 0,
-    'the brownfield rail',
+    async () => (await into.locator('keel-stepper button[data-step="project"]').count()) > 0,
+    "a keel project's rail",
   );
   await act(seen, () => Promise.resolve());
-  await goToStep(seen, into, 'target');
+  await goToStep(seen, into, 'options');
 }
 
 describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an add', () => {
@@ -573,10 +589,86 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
   });
 
   it(
+    'opens a keel project on Options, what it has ticked and locked, and previews only what a tick adds',
+    async () => {
+      await tab.goto(projectUi.url, { waitUntil: 'domcontentloaded' });
+      await until(
+        async () => (await tab.locator('[data-role="step-title"]').textContent()) === 'Options',
+        'the page to open on Options',
+      );
+      await act(seen, () => Promise.resolve());
+      // One page: the directory decided the flow, and the preset steps
+      // are one read-only step on this rail.
+      expect(await railSteps(tab)).toEqual([
+        'directory',
+        'project',
+        'options',
+        'questions',
+        'review',
+      ]);
+      // What the project has sits in the same group, ticked for good,
+      // each vertical with a Re-render of its own.
+      for (const id of ['vcs', 'walking-skeleton', 'observability']) {
+        expect(await locked(tab, id).isChecked(), id).toBe(true);
+        expect(await locked(tab, id).isDisabled(), id).toBe(true);
+        expect(await tab.locator(`#rerender-${id}`).count(), id).toBe(1);
+        expect(await card(tab, id).count(), id).toBe(0);
+      }
+      expect(await tab.locator('#extras-title').textContent()).toBe('Also scaffold');
+      // Nothing ticked yet, so nothing to preview.
+      expect(seen.posted('/api/preview')).toEqual([]);
+
+      await act(seen, () => card(tab, 'ci').click());
+      // The body that went out is the delta, and only it.
+      const previews = seen.posted('/api/preview') as { target: unknown }[];
+      expect(previews[previews.length - 1]?.target).toEqual({
+        kind: 'add-vertical',
+        verticals: ['ci'],
+      });
+      expect(await command(tab)).toBe('keel add ci --yes');
+      await until(
+        async () => (await tab.locator('keel-plan keel-file-tree li').count()) > 0,
+        'the plan of the tick',
+      );
+      expect(await locked(tab, 'vcs').isChecked()).toBe(true);
+
+      // What the project is, where a new one's preset steps would ask
+      // it: words, not tags, and nothing to change.
+      await goToStep(seen, tab, 'project');
+      const profile = tab.locator('#project-profile');
+      expect(await profile.locator('dt').allTextContents()).toEqual([
+        'Preset',
+        'Building',
+        'Language',
+        'Adapters',
+        'Build system',
+        'Module layout',
+      ]);
+      expect(await profile.locator('dd').allTextContents()).toEqual([
+        'ts-http',
+        'Backend',
+        'TypeScript (Node)',
+        'HTTP server',
+        'npm',
+        'basic',
+      ]);
+      expect(await tab.locator('#project-installed li[data-id="vcs"]').textContent()).toBe(
+        'Version control',
+      );
+      expect(
+        await tab
+          .locator('keel-add-form input, keel-add-form select, keel-add-form button')
+          .count(),
+      ).toBe(0);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     'shows what a CLI project cannot carry before any click, each with its sentence',
     async () => {
       await openProject(cliUi.url, tab, seen);
-      const refused = tab.locator('#add-refused');
+      const refused = tab.locator('#extras-refused');
       // Collapsed: it answers a question rather than asking one.
       expect(await refused.getAttribute('open')).toBeNull();
       const observability = refused.locator('li[data-id="observability"]');
@@ -592,10 +684,10 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
   );
 
   it(
-    'ticks what a card needs with it, and makes one plan, one Generate, staying on What to add',
+    'ticks what a card needs with it, and makes one plan, one Generate, staying on Options',
     async () => {
       await openProject(projectUi.url, tab, seen);
-      const iac = tab.locator('#add-needs .card', { has: tab.locator('input[value="iac"]') });
+      const iac = tab.locator('#extras-needs .card', { has: tab.locator('input[value="iac"]') });
       expect(await iac.locator('.badge').textContent()).toBe('needs Container image, Distribution');
 
       const before = seen.posted('/api/preview').length;
@@ -630,11 +722,15 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
       expect(await tab.locator('keel-plan [data-role="report"]').textContent()).toContain(
         `Done — ${CHAIN.join(' ')}`,
       );
-      // The page stays where the next thing to do is.
-      expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('What to add');
+      // The page stays where the next thing to do is, and what it
+      // added is among what the project has: ticked, locked, and
+      // re-rendered from a button of its own.
+      expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('Options');
       for (const id of CHAIN) {
         expect(await tab.locator(`#rerender-${id}`).count(), id).toBe(1);
         expect(await card(tab, id).count(), id).toBe(0);
+        expect(await locked(tab, id).isChecked(), id).toBe(true);
+        expect(await locked(tab, id).isDisabled(), id).toBe(true);
       }
       expect(await fs.pathExists(path.join(project, 'deploy', 'compose.yaml'))).toBe(true);
     },
@@ -699,8 +795,8 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
     'opens a service from the root, where what the product gives it is said, not offered',
     async () => {
       await openProject(productUi.url, tab, seen);
-      const elsewhere = tab.locator('#add-elsewhere');
-      const services = elsewhere.locator('#add-services button');
+      const elsewhere = tab.locator('#extras-elsewhere');
+      const services = elsewhere.locator('#extras-services button');
       expect(await services.allTextContents()).toEqual([
         'Open backend/ (ts-http · npm)',
         'Open frontend/ (web-components · npm)',
@@ -710,19 +806,21 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
       );
 
       await act(seen, () => services.first().click());
-      await until(
-        async () => (await tab.locator('#add-provided').count()) > 0,
-        "the backend's What to add",
+      const image = tab.locator('#extras-installed [data-id="containerization"]');
+      await until(async () => (await image.count()) > 0, "the backend's Options");
+      expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('Options');
+      expect(await tab.locator('#extras-elsewhere').count()).toBe(0);
+      // What the product gives it is there, locked, saying where from —
+      // and with no Re-render: nothing here installed it.
+      expect(await image.textContent()).toContain(
+        'Container image is already there: the product root builds it for this service',
       );
-      expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('What to add');
-      expect(await tab.locator('#add-elsewhere').count()).toBe(0);
-      expect(
-        await tab.locator('#add-provided li[data-id="containerization"]').textContent(),
-      ).toContain('Container image is already there: the product root builds it for this service');
+      expect(await locked(tab, 'containerization').isDisabled()).toBe(true);
+      expect(await tab.locator('#rerender-containerization').count()).toBe(0);
       // A pipeline is not offered in a monorepo service: it is said,
       // with why, before any click.
       expect(await card(tab, 'ci').count()).toBe(0);
-      expect(await tab.locator('#add-refused li[data-id="ci"]').textContent()).toContain(
+      expect(await tab.locator('#extras-refused li[data-id="ci"]').textContent()).toContain(
         'Continuous integration cannot go in a monorepo service',
       );
       expect(await card(tab, 'persistence').count()).toBe(1);

@@ -54,19 +54,30 @@
  * did not already show, the reply is not the plan of the run any more:
  * the page previews again rather than draw it.
  *
- * **The mode.** Pointing at a directory decides everything. No
- * manifest there and only `keel new` applies; a manifest and the page
- * becomes the brownfield one: every vertical the project has not
- * installed, each in the part the project status read it into — ready,
- * needing another first, not for this project (collapsed, with the
- * reason), belonging in a service — several at a time, beside a
- * **Re-render** for each one it has (`<keel-add-form>`). What the
- * project cannot take is said before the click, in the refusal's own
- * words, rather than learned from it. At a product root, an **Open
- * backend/** button per service points the page one directory down.
- * In a monorepo service, a pipeline or a release — whose place is the
- * repository root — is one of those refusals, and what the product
- * gives the service is listed with what it has installed.
+ * **One page for both phases; the directory decides the flow.** No
+ * manifest there and only `keel new` applies: the preset steps narrow
+ * to one, and Options sets its dials and its **Also scaffold** extras
+ * (`<keel-new-form>`). A manifest there, and the preset steps collapse
+ * into one read-only **Project** step, what the project already is,
+ * while Options draws the same **Also scaffold** group over it
+ * (`<keel-add-form>`): what it has, ticked and locked, each vertical
+ * with a **Re-render**; every vertical it has not installed, in the
+ * part the project status read it into — ready, needing another first,
+ * not for this project (collapsed, with the reason), belonging in a
+ * service — several at a time. Generate posts `keel add` of what the
+ * ticks add, the delta; the commands stay two. What the project cannot
+ * take is said before the click, in the refusal's own words, rather
+ * than learned from it. At a product root, an **Open backend/** button
+ * per service points the page one directory down. In a monorepo
+ * service, a pipeline or a release — whose place is the repository
+ * root — is one of those refusals, and what the product gives the
+ * service is locked beside what it has installed.
+ *
+ * Where the page opens follows the flow: `keel ui` in a keel project
+ * opens on its Options — the next thing to do there is add something —
+ * and in an empty directory on the Directory step, where a new project
+ * starts. Moving through the folder picker keeps the Directory step
+ * open, whatever the directory turns out to be.
  *
  * **A refusal is shown where the plan would be.** The plan column
  * says why there is none — the engine's sentence, as an alert, headed
@@ -74,15 +85,16 @@
  * `failureOf`) — rather than pointing at a banner above a step the
  * user may have scrolled away from.
  *
- * **Generate lands on "What to add".** The directory re-read after an
- * install makes this a brownfield page with the report beside it, and
- * the next thing to do is add something more, not pick a directory.
+ * **Generate lands on Options.** The directory re-read after an
+ * install makes this a keel project's page with the report beside it,
+ * and the next thing to do is add something more, not pick a directory.
  */
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
 import { additionsSummary } from '../additions.js';
 import { extrasSummary, servicesExtrasSummary } from '../extras.js';
+import { projectHeadline } from '../project.js';
 import { failureOf } from '../response.js';
 import { plansNothing } from '../tree.js';
 import {
@@ -107,7 +119,6 @@ import {
   QUESTIONS,
   REVIEW,
   SHAPE,
-  TARGET,
   chosenStack,
   located,
   nextStep,
@@ -152,7 +163,7 @@ export class KeelApp extends HTMLElement {
     this.addEventListener('target-chosen', (event) => void this.#goTo(event.detail.path));
     // A product root's way into a service: another directory, opened
     // where a keel project's page opens — on what to add there.
-    this.addEventListener('service-opened', (event) => void this.#goTo(event.detail.path, TARGET));
+    this.addEventListener('service-opened', (event) => void this.#goTo(event.detail.path, OPTIONS));
     this.addEventListener('target-changed', (event) => this.#retarget(event.detail));
     this.addEventListener('extra-toggled', (event) =>
       this.#move(
@@ -190,13 +201,15 @@ export class KeelApp extends HTMLElement {
     if (!catalog.ok) return this.#fail(catalog.error);
     if (!listing.ok) return this.#fail(listing.error);
     this.#catalog = catalog.value;
-    await this.#goTo(listing.value.path);
+    await this.#goTo(listing.value.path, null);
   }
 
   /**
    * Points the whole page at a directory and rebuilds the target,
    * opening on `landing` where the rail has it — the directory step
-   * when the user moved, "What to add" after an install.
+   * when the user moved, Options after an install — or, for null, where
+   * that directory's flow starts: Options on a keel project, the
+   * directory step on a new one.
    */
   async #goTo(path, landing = DIRECTORY) {
     this.#cwd = path;
@@ -214,7 +227,7 @@ export class KeelApp extends HTMLElement {
       ),
     );
     this.#preview = null;
-    this.#step = landing;
+    this.#step = landing ?? (this.#status.initialised ? OPTIONS : DIRECTORY);
     this.#drawn = null;
     this.#render();
     this.#previewSoon();
@@ -373,10 +386,10 @@ export class KeelApp extends HTMLElement {
     }
     this.#report = result.value;
     // The project just changed underneath us: re-read it so the page
-    // becomes the brownfield one, and open it where the next thing to
-    // do is — what is left to add, the report beside it — rather than
+    // becomes a keel project's, and open it where the next thing to do
+    // is — what is left to add, the report beside it — rather than
     // back at the directory it is already pointed at.
-    await this.#goTo(this.#cwd, TARGET);
+    await this.#goTo(this.#cwd, OPTIONS);
     this.#report = result.value;
     this.#render();
   }
@@ -418,20 +431,25 @@ export class KeelApp extends HTMLElement {
   #summary() {
     const rows = [{ step: DIRECTORY, label: 'Directory', value: this.#cwd || '—' }];
     if (this.#status?.initialised) {
+      // No jump: the project is what the run adds to, not a choice it
+      // makes — its step has nothing on it to change.
+      rows.push({ label: 'Project', value: projectHeadline(this.#status) });
       if (this.#target?.kind === 'add-module') {
-        rows.push({ step: TARGET, label: 'Bounded context', value: this.#target.module || '—' });
+        rows.push({ step: OPTIONS, label: 'Bounded context', value: this.#target.module || '—' });
         if (this.#target.consumes) {
-          rows.push({ step: TARGET, label: 'Consumes', value: this.#target.consumes });
+          rows.push({ step: OPTIONS, label: 'Consumes', value: this.#target.consumes });
         }
         return rows;
       }
       const { adds, refreshes } = additionsSummary(this.#status, this.#target);
       if (rerendering(this.#target) !== null) {
-        rows.push({ step: TARGET, label: 'Re-render', value: adds });
+        rows.push({ step: OPTIONS, label: 'Re-render', value: adds });
         return rows;
       }
-      rows.push({ step: TARGET, label: 'Verticals', value: adds || '—' });
-      if (refreshes !== '') rows.push({ step: TARGET, label: 'Re-rendered too', value: refreshes });
+      rows.push({ step: OPTIONS, label: 'Also scaffold', value: adds || '—' });
+      if (refreshes !== '') {
+        rows.push({ step: OPTIONS, label: 'Re-rendered too', value: refreshes });
+      }
       return rows;
     }
     const here = located(this.#state());
@@ -684,17 +702,21 @@ export class KeelApp extends HTMLElement {
     host.replaceChildren(stack);
   }
 
-  /** The element a step's controls live in, freshly made. */
+  /**
+   * The element a step's controls live in, freshly made. The middle of
+   * the rail is the flow's: a new project's preset steps and Options,
+   * or a keel project's Project and Options.
+   */
   #stepBody() {
     const tag =
       this.#step === DIRECTORY
         ? 'keel-target-picker'
-        : this.#step === TARGET
-          ? 'keel-add-form'
-          : this.#step === QUESTIONS
-            ? 'keel-question-list'
-            : this.#step === REVIEW
-              ? 'keel-review'
+        : this.#step === QUESTIONS
+          ? 'keel-question-list'
+          : this.#step === REVIEW
+            ? 'keel-review'
+            : this.#status?.initialised
+              ? 'keel-add-form'
               : 'keel-new-form';
     const node = document.createElement(tag);
     this.#fillStepBody(node);
@@ -707,12 +729,6 @@ export class KeelApp extends HTMLElement {
       node.listing = this.#listing;
       return;
     }
-    if (this.#step === TARGET) {
-      node.status = this.#status;
-      node.target = this.#target;
-      node.preview = this.#preview;
-      return;
-    }
     if (this.#step === QUESTIONS) {
       node.questions = this.#preview?.questions ?? [];
       return;
@@ -722,6 +738,13 @@ export class KeelApp extends HTMLElement {
       node.busy = this.#busy;
       node.ready = this.#ready();
       node.hint = this.#reviewHint();
+      return;
+    }
+    if (this.#status?.initialised) {
+      node.status = this.#status;
+      node.target = this.#target;
+      node.preview = this.#preview;
+      node.step = this.#step;
       return;
     }
     node.catalog = this.#catalog;

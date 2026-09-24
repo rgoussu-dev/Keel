@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `dials`, `answers`,
+`compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
@@ -104,7 +104,11 @@ settled is skipped in both. A shape is not a fourth tag to keep in step:
 it is which end each registered entrypoint is driven from
 (`ENTRYPOINTS[].side`), counted. That is what put the composite products
 on the guided path — they carry no `lang.*` tag, but their services do.
-See `docs/cli.md` → Finding a stack.
+The tree reads backwards too: `profile.ts` places a scaffolded project
+on it from its manifest's tags (`axesOf`, the reading a preset is
+placed by), so `keel.project-status` says what a project is in the
+wizard's words — the page's read-only Project step — and no front end
+reads a tag to say it. See `docs/cli.md` → Finding a stack.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

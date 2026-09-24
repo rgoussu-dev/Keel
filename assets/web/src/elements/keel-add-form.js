@@ -1,34 +1,40 @@
 /**
- * `<keel-add-form>` — the brownfield half: layer verticals onto this
- * project, re-render one it has, or add a bounded context to it.
+ * `<keel-add-form>` — a keel project's middle steps, one at a time:
+ * **Project**, what it already is, and **Options**, what goes on top of
+ * it — or a bounded context.
  *
- * What it offers is decided by `/api/project`, not guessed, and every
- * answer there is the one the command's own front door gives — read
- * before the click rather than met after it. The page used to offer
- * every vertical not installed as one radio group, and let the pick
- * find out whether the project could carry it: about half the cards
- * on a CLI project were a refusal, shown in a banner away from the
- * card. Now each card sits in the part the planner read it into
- * (`../additions.js`):
+ * The page used to have a step of its own here, "What to add", beside
+ * a new project's Options: two controls asking one question — what
+ * else goes in? — one per phase. The directory now decides which flow
+ * the rail is (`../steps.js`). On a keel project the preset steps
+ * collapse into **Project**: its settled choices, read back from its
+ * manifest in words (`../project.js`), and nothing to change. Then
+ * **Options** draws the very "Also scaffold" group a new project's
+ * Options step draws its extras in (`../dom.js`'s `alsoScaffold`), in
+ * the parts `../additions.js` reads off the project status — each
+ * answer there the one the command's own front door gives, read before
+ * the click rather than met after it:
  *
  *   - **Ready**, **Needs another capability first** — checkboxes, and
- *     several at a time: one plan, one Generate. A "needs" card's
- *     badge names what it needs by title, and ticking it ticks them.
+ *     several at a time: one plan, one Generate, `keel add` of what the
+ *     ticks add and nothing else. A "needs" card's badge names what it
+ *     needs by title, and ticking it ticks them.
+ *   - **Proposed re-renders** — an installed vertical the run changes
+ *     and would leave as it was, as a toggle, once the preview has said
+ *     so.
+ *   - **Installed** — what the project has, ticked and locked, where a
+ *     new project's group lists what its preset comes with: a
+ *     **Re-render** beside each vertical `keel add --reapply` names, a
+ *     run of its own, never a box in the add's set; a product's glue or
+ *     a bounded context, which no `keel add` names, without one; what a
+ *     monorepo service has from its product, saying where from.
  *   - **Not for this project** — collapsed, one sentence each, the
- *     refusal `keel add` would give. Not a control: there is nothing
- *     to pick.
+ *     refusal `keel add` would give. Not a control: there is nothing to
+ *     pick.
  *   - **Belongs in a service** — at a product root, an **Open
  *     backend/** button per service, which points the page there
  *     (`service-opened`), then what goes one directory down and the
  *     sentence naming where.
- *   - **Installed** — a **Re-render** button each, a run of its own,
- *     never a card in the add's set; a product's glue or a bounded
- *     context, which no `keel add` names, as a chip; what a monorepo
- *     service has from its product, a line saying where from.
- *
- * Re-renders an add proposes — an installed vertical the run changes
- * and would leave as it was — appear under the cards as toggles, once
- * the preview has said so.
  *
  * **A card per capability, not a line in a `<select>`.** Which
  * vertical to add next is the one real question this half of the page
@@ -44,25 +50,38 @@
  * nothing about why.
  *
  * A project written by another harness generation says so once, at
- * the top (`../project.js`), rather than on every card it refuses.
+ * the top of Options (`../project.js`), rather than on every card it
+ * refuses.
  *
- * Status, target and preview in as properties. Out: `target-changed`
- * with a **whole** target for the tabs and the context form — a patch
- * merged into the old target is how a re-render flag used to outlive
- * the card that set it — and, for the gestures, which vertical moved
- * and how: `vertical-toggled`, `rerender-requested`, `refresh-toggled`;
- * and `service-opened` with the directory of the service to open.
- * What else a gesture moves is `../target.js`'s answer.
+ * Status, target, preview and step in as properties. Out:
+ * `target-changed` with a **whole** target for the tabs and the context
+ * form — a patch merged into the old target is how a re-render flag
+ * used to outlive the card that set it — and, for the gestures, which
+ * vertical moved and how: `vertical-toggled`, `rerender-requested`,
+ * `refresh-toggled`; and `service-opened` with the directory of the
+ * service to open. What else a gesture moves is `../target.js`'s
+ * answer.
  */
 
-import { checkboxCards, el, focusIn, note, refocus, refusedList } from '../dom.js';
+import {
+  alsoScaffold,
+  el,
+  focusIn,
+  lockedPart,
+  note,
+  refocus,
+  refusedList,
+  tickPart,
+} from '../dom.js';
 import { additionsGroup, refreshChoices } from '../additions.js';
-import { harnessNotice } from '../project.js';
+import { harnessNotice, projectSummary } from '../project.js';
+import { OPTIONS, PROJECT } from '../steps.js';
 
 export class KeelAddForm extends HTMLElement {
   #status = null;
   #target = null;
   #preview = null;
+  #step = OPTIONS;
   /** Whether "Not for this project" is open — the reader's, kept across redraws. */
   #refusedOpen = false;
 
@@ -87,6 +106,13 @@ export class KeelAddForm extends HTMLElement {
     this.#render();
   }
 
+  /** @param {string} value which step to render — `project` or `options`; see `../steps.js` */
+  set step(value) {
+    if (value === this.#step) return;
+    this.#step = value;
+    this.#render();
+  }
+
   connectedCallback() {
     this.#render();
   }
@@ -99,13 +125,57 @@ export class KeelAddForm extends HTMLElement {
     if (!this.isConnected || !this.#status || !this.#target) return;
     const focused = focusIn(this);
     const form = el('stack-pk', { attrs: { space: 'var(--s0)' } });
+    form.append(...(this.#step === PROJECT ? this.#projectFields() : this.#optionFields()));
+    this.replaceChildren(form);
+    refocus(this, focused);
+  }
+
+  /**
+   * What the project already is — where a new project's preset steps
+   * ask it — as a summary with nothing on it to change: the preset it
+   * reads as and the choices that made it, its services and contexts,
+   * then what it has installed.
+   */
+  #projectFields() {
+    const summary = projectSummary(this.#status);
+    return [
+      el(
+        'dl',
+        { id: 'project-profile', class: 'summary' },
+        ...summary.rows.flatMap((row) => [
+          el('dt', { text: row.label }),
+          el('dd', {}, el('span', { class: 'mono', text: row.value })),
+        ]),
+      ),
+      el(
+        'div',
+        { class: 'project-installed' },
+        el('h4', { id: 'project-installed-title', text: 'Installed' }),
+        el(
+          'ul',
+          {
+            id: 'project-installed',
+            class: 'plain chips',
+            attrs: { 'aria-labelledby': 'project-installed-title' },
+          },
+          ...summary.installed.map((vertical) =>
+            el('li', { class: 'chip', text: vertical.title, attrs: { 'data-id': vertical.id } }),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  /** What goes on top, or a bounded context: the tabs, then the one the target is on. */
+  #optionFields() {
+    const fields = [];
     // Once, above everything it stops: a project from another harness
     // generation refuses every card but the harness's own. A status,
     // not an alert: the form is rebuilt on every pick, and an alert
     // would interrupt each one to repeat a fact that has not changed.
     const stale = harnessNotice(this.#status);
     if (stale !== null) {
-      form.append(
+      fields.push(
         el('p', {
           class: 'error',
           text: stale,
@@ -113,10 +183,9 @@ export class KeelAddForm extends HTMLElement {
         }),
       );
     }
-    form.append(...this.#kindField());
-    form.append(this.#target.kind === 'add-module' ? this.#moduleFields() : this.#verticalFields());
-    this.replaceChildren(form);
-    refocus(this, focused);
+    fields.push(...this.#kindField());
+    fields.push(this.#target.kind === 'add-module' ? this.#moduleFields() : this.#verticalFields());
+    return fields;
   }
 
   /**
@@ -130,7 +199,7 @@ export class KeelAddForm extends HTMLElement {
     const row = el(
       'cluster-pk',
       { attrs: { space: 'var(--s-2)', role: 'group', 'aria-label': 'What to add' } },
-      this.#tab('tab-vertical', 'Add a vertical', adding, () =>
+      this.#tab('tab-vertical', 'Add verticals', adding, () =>
         this.#emit('target-changed', { kind: 'add-vertical', verticals: [] }),
       ),
       this.#tab('tab-module', 'Add a bounded context', !adding, () =>
@@ -167,90 +236,107 @@ export class KeelAddForm extends HTMLElement {
     });
   }
 
+  /**
+   * The "Also scaffold" group, on what this project has: the boxes that
+   * tick, the re-renders the preview proposes, what is installed —
+   * ticked and locked, each vertical with its **Re-render** — what the
+   * project cannot take, and at a product root what belongs in a
+   * service.
+   */
   #verticalFields() {
     const group = additionsGroup(this.#status, this.#target);
     const nothing =
-      group.ready.length + group.needs.length + group.refused.length + group.elsewhere.length ===
-        0 &&
-      group.services.length +
-        group.rerenderable.length +
-        group.chips.length +
-        group.provided.length ===
-        0;
+      group.ready.length +
+        group.needs.length +
+        group.refused.length +
+        group.elsewhere.length +
+        group.services.length +
+        group.installed.length ===
+      0;
     if (nothing) return note('Nothing left to install here.');
 
-    const part = (id, title, choices) => {
-      const heading = el('h4', { id: `${id}-title`, text: title });
-      const cards = checkboxCards({
-        id,
-        chosen: group.chosen,
-        choices,
-        onChange: (values) => {
-          const now = new Set(values);
-          const moved = choices.find(
-            (choice) => now.has(choice.value) !== group.chosen.includes(choice.value),
-          );
-          if (moved) {
-            this.#emit('vertical-toggled', { id: moved.value, ticked: now.has(moved.value) });
-          }
-        },
-      });
-      cards.setAttribute('role', 'group');
-      cards.setAttribute('aria-labelledby', heading.id);
-      return el('div', {}, heading, cards);
-    };
-
+    const tick = (id, ticked) => this.#emit('vertical-toggled', { id, ticked });
     const refresh = refreshChoices(this.#preview, this.#target, this.#status);
-    const refreshed = new Set(this.#target.refresh ?? []);
-    const refreshPart =
-      refresh.length === 0
-        ? null
-        : (() => {
-            const heading = el('h4', { id: 'add-refresh-title', text: 'Proposed re-renders' });
-            const cards = checkboxCards({
-              id: 'add-refresh',
-              chosen: [...refreshed],
+    return alsoScaffold({
+      id: 'extras',
+      title: 'Also scaffold',
+      count: group.chosen.length,
+      help: 'Installed in one run, on top of what this project has — `keel add` with each id ticked, and nothing else. A box that needs others ticks them too; what the project has is ticked for good, and a vertical of it is re-rendered from its own button.',
+      parts: [
+        group.ready.length === 0
+          ? null
+          : tickPart({
+              id: 'extras-ready',
+              title: 'Ready',
+              choices: group.ready,
+              chosen: group.chosen,
+              onTick: tick,
+            }),
+        group.needs.length === 0
+          ? null
+          : tickPart({
+              id: 'extras-needs',
+              title: 'Needs another capability first',
+              choices: group.needs,
+              chosen: group.chosen,
+              onTick: tick,
+            }),
+        refresh.length === 0
+          ? null
+          : tickPart({
+              id: 'extras-refresh',
+              title: 'Proposed re-renders',
               choices: refresh,
-              onChange: (values) => {
-                const now = new Set(values);
-                const moved = refresh.find(
-                  (choice) => now.has(choice.value) !== refreshed.has(choice.value),
-                );
-                if (moved) {
-                  this.#emit('refresh-toggled', { id: moved.value, ticked: now.has(moved.value) });
-                }
-              },
-            });
-            cards.setAttribute('role', 'group');
-            cards.setAttribute('aria-labelledby', heading.id);
-            return el('div', { attrs: { 'data-role': 'refresh' } }, heading, cards);
-          })();
+              chosen: this.#target.refresh ?? [],
+              onTick: (id, ticked) => this.#emit('refresh-toggled', { id, ticked }),
+              role: 'refresh',
+            }),
+        group.installed.length === 0
+          ? null
+          : lockedPart({
+              id: 'extras-installed',
+              title: 'Installed',
+              items: group.installed.map((vertical) => ({
+                ...vertical,
+                chosen: vertical.pressed,
+                action: vertical.rerender ? this.#rerenderButton(vertical) : null,
+              })),
+            }),
+        group.refused.length === 0
+          ? null
+          : refusedList({
+              id: 'extras-refused',
+              title: 'Not for this project',
+              items: group.refused,
+              open: this.#refusedOpen,
+              onToggle: (open) => (this.#refusedOpen = open),
+            }),
+        this.#elsewhereField(group.services, group.elsewhere),
+        group.rerendering === null
+          ? null
+          : note(
+              'Already installed, so this is a re-render from the answers the manifest recorded. Template-owned files are rewritten; a patch that would touch an already-patched file refuses the whole run.',
+            ),
+      ],
+    });
+  }
 
-    return el(
-      'section',
-      { id: 'additions', class: 'picks', attrs: { 'aria-label': 'Verticals to add' } },
-      group.ready.length === 0 ? null : part('add-ready', 'Ready', group.ready),
-      group.needs.length === 0
-        ? null
-        : part('add-needs', 'Needs another capability first', group.needs),
-      refreshPart,
-      group.refused.length === 0
-        ? null
-        : refusedList({
-            id: 'add-refused',
-            title: 'Not for this project',
-            items: group.refused,
-            open: this.#refusedOpen,
-            onToggle: (open) => (this.#refusedOpen = open),
-          }),
-      this.#elsewhereField(group.services, group.elsewhere),
-      this.#installedField(group),
-      group.rerendering === null
-        ? null
-        : note(
-            'Already installed, so this is a re-render from the answers the manifest recorded. Template-owned files are rewritten; a patch that would touch an already-patched file refuses the whole run.',
-          ),
-    );
+  /**
+   * An installed vertical's **Re-render**: `keel add <id> --reapply`,
+   * a run of its own, pressed while it is the run.
+   */
+  #rerenderButton(vertical) {
+    return el('button', {
+      id: `rerender-${vertical.value}`,
+      type: 'button',
+      class: vertical.pressed ? 'primary' : 'ghost',
+      text: 'Re-render',
+      attrs: {
+        'aria-pressed': String(vertical.pressed),
+        'aria-label': `Re-render ${vertical.label}`,
+      },
+      on: { click: () => this.#emit('rerender-requested', { id: vertical.value }) },
+    });
   }
 
   /**
@@ -263,14 +349,14 @@ export class KeelAddForm extends HTMLElement {
     if (services.length + elsewhere.length === 0) return null;
     return el(
       'div',
-      { id: 'add-elsewhere' },
-      el('h4', { id: 'add-elsewhere-title', text: 'Belongs in a service' }),
+      { id: 'extras-elsewhere' },
+      el('h4', { id: 'extras-elsewhere-title', text: 'Belongs in a service' }),
       services.length === 0
         ? null
         : el(
             'cluster-pk',
             {
-              id: 'add-services',
+              id: 'extras-services',
               attrs: { space: 'var(--s-2)', role: 'group', 'aria-label': 'Open a service' },
             },
             ...services.map((service) =>
@@ -287,82 +373,11 @@ export class KeelAddForm extends HTMLElement {
         ? null
         : el(
             'ul',
-            { class: 'plain refused-list', attrs: { 'aria-labelledby': 'add-elsewhere-title' } },
-            ...elsewhere.map((item) =>
-              el(
-                'li',
-                { attrs: { 'data-id': item.id } },
-                el('span', { class: 'refused-title', text: item.title }),
-                el('span', { class: 'muted', text: item.sentence }),
-              ),
-            ),
-          ),
-    );
-  }
-
-  /**
-   * What the project has: a row per vertical `keel add --reapply`
-   * re-renders, its **Re-render** a toggle for that run alone, and a
-   * chip per recorded piece no `keel add` names.
-   */
-  #installedField(group) {
-    if (group.rerenderable.length + group.chips.length + group.provided.length === 0) return null;
-    return el(
-      'div',
-      { id: 'add-installed' },
-      el('h4', { id: 'add-installed-title', text: 'Installed' }),
-      group.rerenderable.length === 0
-        ? null
-        : el(
-            'ul',
-            { class: 'plain installed-list', attrs: { 'aria-labelledby': 'add-installed-title' } },
-            ...group.rerenderable.map((vertical) =>
-              el(
-                'li',
-                {
-                  class: vertical.pressed ? 'installed chosen' : 'installed',
-                  attrs: { 'data-id': vertical.id },
-                },
-                el(
-                  'span',
-                  { class: 'card-body' },
-                  el('span', { class: 'card-title', text: vertical.title }),
-                  el('span', { class: 'muted mono', text: vertical.meta }),
-                ),
-                el('button', {
-                  id: `rerender-${vertical.id}`,
-                  type: 'button',
-                  class: vertical.pressed ? 'primary' : 'ghost',
-                  text: 'Re-render',
-                  title: vertical.doc,
-                  attrs: {
-                    'aria-pressed': String(vertical.pressed),
-                    'aria-label': `Re-render ${vertical.title}`,
-                  },
-                  on: { click: () => this.#emit('rerender-requested', { id: vertical.id }) },
-                }),
-              ),
-            ),
-          ),
-      group.chips.length === 0
-        ? null
-        : el(
-            'ul',
-            { id: 'add-installed-chips', class: 'plain chips' },
-            ...group.chips.map((chip) =>
-              el('li', { class: 'chip', text: chip.title, attrs: { 'data-id': chip.id } }),
-            ),
-          ),
-      group.provided.length === 0
-        ? null
-        : el(
-            'ul',
             {
-              id: 'add-provided',
               class: 'plain refused-list',
-              attrs: { 'aria-label': 'From the product' },
+              attrs: { 'aria-labelledby': 'extras-elsewhere-title' },
             },
-            ...group.provided.map((item) =>
+            ...elsewhere.map((item) =>
               el(
                 'li',
                 { attrs: { 'data-id': item.id } },
