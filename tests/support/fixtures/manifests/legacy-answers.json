@@ -1,0 +1,60 @@
+{
+  "about": "The answers a keel from before identity answers were marked shared (commit 2f6765a) recorded for this target and these supplied answers — the manifest shape a later keel must reapply byte for byte.",
+  "target": {
+    "kind": "new-project",
+    "stack": "quarkus-cli-rest",
+    "buildSystem": "gradle",
+    "moduleLayout": "modulith",
+    "withPeerContext": false,
+    "extraVerticals": ["ci", "containerization", "persistence", "distribution"]
+  },
+  "supplied": {
+    "walking-skeleton/quarkus-rest-bootstrap": {
+      "basePackage": "org.acme.legacy",
+      "projectName": "legacy-app"
+    },
+    "ci/jvm-pipeline": {
+      "provider": "gitlab-ci"
+    },
+    "persistence/database-compose": {
+      "engine": "mariadb"
+    }
+  },
+  "answers": {
+    "vcs/changelog": {
+      "changelog": "yes"
+    },
+    "vcs/git-init": {
+      "remote": "",
+      "defaultBranch": "main"
+    },
+    "vcs/commit-conventions": {
+      "commitHook": "yes"
+    },
+    "walking-skeleton/quarkus-cli-bootstrap": {
+      "basePackage": "org.acme.legacy",
+      "projectName": "legacy-app"
+    },
+    "walking-skeleton/quarkus-rest-bootstrap": {
+      "basePackage": "org.acme.legacy",
+      "projectName": "legacy-app"
+    },
+    "observability/monitoring-compose": {
+      "stack": "granular"
+    },
+    "ci/jvm-pipeline": {
+      "provider": "gitlab-ci"
+    },
+    "containerization/quarkus-rest-image": {
+      "flavor": "jvm"
+    },
+    "persistence/database-compose": {
+      "engine": "mariadb",
+      "migrations": "flyway"
+    },
+    "distribution/jvm-container": {
+      "provider": "gitlab-ci",
+      "deploy": "compose"
+    }
+  }
+}

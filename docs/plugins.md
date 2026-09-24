@@ -331,6 +331,41 @@ user who picked it from the list. Two things to hold to:
   resolves to it, and a default the project is not offered is reported
   as the plugin's bug, not the user's.
 
+### Questions about the project
+
+A bootstrap of your own asks the project's name, package or module path
+like keel's do. Mark each such question `shared: 'project'`:
+
+```js
+questions: [
+  {
+    id: 'projectName',
+    prompt: 'Project name',
+    doc: '…',
+    default: 'walking-skeleton',
+    memory: 'sticky',
+    shared: 'project',
+  },
+],
+```
+
+The marker changes nothing a run does or records — the answer is
+still kept under your adapter's id — but `keel ui` reads it on the
+question it previews: moving from one preset to another, the page
+carries an identity answer onto the question the new preset's
+bootstrap asks instead of dropping it with your adapter. Mark only the
+questions a project has one answer to, whichever adapter asks; a
+database engine or a CI provider is the piece's own. `project` is the
+one value keel reads, and registration refuses any other.
+
+When two of your adapters ask the same question of one project — two
+entrypoint bootstraps a tag set can run together — declare
+`sharesAnswersWith` on each, naming the other. An adapter reads an
+answer the project records before one supplied for the run, under its
+own id first and then each sibling's in the order listed, so the
+second to run takes the first one's answer and the two cannot
+disagree; `keel ui` previews supplied answers by the same order.
+
 ### A file in the way
 
 A file keel will not overwrite is refused as `keel.path-conflict`, and
@@ -517,6 +552,7 @@ loads there is no name to quote, so those messages name the path.
 | An adapter promoting beyond its vertical    | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …` |
 | A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
 | A `placement` with no reason                | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                |
+| A question `shared` with anything else      | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …` |
 | An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
 | An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
 

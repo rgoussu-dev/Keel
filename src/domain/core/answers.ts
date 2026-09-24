@@ -3,13 +3,22 @@
  *
  * Each `Question` an adapter declares is resolved through three
  * sources, in order:
- *   1. Sticky memory (`memory: 'sticky'` only): the answers the
- *      manifest recorded, overlaid by the ones supplied for this run
+ *   1. Sticky memory (`memory: 'sticky'` only): the answer the
+ *      manifest records, or else the one supplied for this run
  *      (`--set`, an install body) — `install.ts` composes it per
  *      adapter, holding each supplied value to its choices with
  *      {@link checkSuppliedAnswer} on the way in.
  *   2. The `default` field, when running non-interactively (`--yes`).
  *   3. The user, prompted via the supplied `Prompt`.
+ *
+ * Where an answer is looked up is one precedence, {@link answerUnder}
+ * over {@link answerKeys}: the adapter's own id, then each
+ * `sharesAnswersWith` sibling in the order it lists them — the first
+ * that holds an answer to the question gives it. The install reads
+ * recorded memory, and then what was supplied, by it; the preview's
+ * recording prompt reads the answers it was sent by it (`./preview.ts`).
+ * One function, so a form cannot preview a value the install then
+ * does not write.
  *
  * The result of resolving an adapter's full question list is split
  * into:
@@ -40,6 +49,59 @@ import { matches } from './predicate.js';
  * terminal reply, a form's field), so it is theirs to correct.
  */
 export const INVALID_ANSWER_CODE = 'keel.invalid-answer';
+
+/** Answers by the id they are keyed to, then by question id — the manifest's shape, and `--set`'s. */
+export type AnswersByKey = Readonly<Record<string, Readonly<Record<string, string>>>>;
+
+/** An answer found by {@link answerUnder}, with the id it was found under. */
+export interface KeyedAnswer {
+  readonly key: string;
+  readonly value: string;
+}
+
+/**
+ * A supplied answer a run read: `key:question` resolved `adapter`'s
+ * question. What tells an answer read apart from one nothing read,
+ * which the front doors refuse (`./supplied-answers.ts`).
+ */
+export interface AnswerRead {
+  /** The adapter whose question it resolved. */
+  readonly adapter: string;
+  readonly question: string;
+  /** The id it was supplied under: the adapter's own, or a sibling's. */
+  readonly key: string;
+}
+
+/**
+ * The ids an answer to `asker`'s questions is read under, in the order
+ * they are tried: its own, then its `sharesAnswersWith` siblings as it
+ * lists them. Takes an adapter, an {@link Asker} or a `ResolvedAdapter`
+ * alike.
+ */
+export function answerKeys(asker: {
+  readonly id: string;
+  readonly sharesAnswersWith?: readonly string[];
+}): readonly string[] {
+  return [asker.id, ...(asker.sharesAnswersWith ?? [])];
+}
+
+/**
+ * The answer to `questionId` under the first of `keys` that holds one,
+ * with that key — the one precedence every reader of an answer uses:
+ * the install over recorded memory and then over what was supplied,
+ * the preview over what it was sent. Undefined when none does.
+ */
+export function answerUnder(
+  answers: AnswersByKey,
+  keys: readonly string[],
+  questionId: string,
+): KeyedAnswer | undefined {
+  for (const key of keys) {
+    const value = answers[key]?.[questionId];
+    if (value !== undefined) return { key, value };
+  }
+  return undefined;
+}
 
 /** Result of resolving a single question. */
 export interface AnswerResolution {
@@ -111,6 +173,9 @@ export async function resolveAdapterAnswers(
         ? await resolveAnswer(offeredIn(q, tags), storedForAdapter, mode, prompt, {
             kind: 'adapter',
             id: adapter.id,
+            ...(adapter.sharesAnswersWith === undefined
+              ? {}
+              : { sharesAnswersWith: adapter.sharesAnswersWith }),
           })
         : { value: recorded, persist: false };
     answers[q.id] = r.value;
@@ -137,7 +202,17 @@ export function checkSuppliedAnswer(
   suppliedAs: string,
   tags: readonly Tag[],
 ): void {
-  validateChoice(offeredIn(question, tags), value, { kind: 'adapter', id: suppliedAs });
+  holdSuppliedAnswer(offeredIn(question, tags), value, suppliedAs);
+}
+
+/**
+ * {@link checkSuppliedAnswer} for a question already put to the scope
+ * — shaped by {@link offeredIn}, as a prompt receives it — so the
+ * preview's prompt refuses a value it was sent in the words the
+ * install refuses it in, naming the key it was sent under.
+ */
+export function holdSuppliedAnswer(question: Question, value: string, suppliedAs: string): void {
+  validateChoice(question, value, { kind: 'adapter', id: suppliedAs });
 }
 
 /**

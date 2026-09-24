@@ -841,6 +841,42 @@ describe('a preview reply', () => {
     }
   });
 
+  it('keeps an answer the preview read under a sibling’s key, which the install reads too', async () => {
+    // A Quarkus REST bootstrap's package on quarkus-cli-rest, whose CLI
+    // bootstrap asks: the preview binds the question to the key it was
+    // read under, so the page keeps it — and posts what it previewed.
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-previewed-'));
+    try {
+      const mediator = installMediator();
+      const target: NewProjectTarget = { kind: 'new-project', stack: 'quarkus-cli-rest' };
+      const run: Run = {
+        ...greenfield(),
+        target: { kind: 'new-project', stack: 'quarkus-cli-rest' },
+        answers: { 'walking-skeleton/quarkus-rest-bootstrap': { basePackage: 'org.acme' } },
+      };
+      const preview = expectOk(
+        await mediator.dispatch(previewQuery({ cwd, target, answers: run.answers })),
+      );
+      const kept = previewed(run, preview);
+      expect(kept.answers).toEqual(run.answers);
+      expect(preview.unusedAnswers).toBeUndefined();
+      const installed = expectOk(
+        await mediator.dispatch(
+          installCommandFor(target, {
+            cwd,
+            answers: kept.answers,
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      );
+      expect(installed.changes).toEqual(preview.changes);
+      expect(installed.changes.some((change) => change.path.includes('org/acme'))).toBe(true);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('drops an unasked question of an adapter it keeps', () => {
     const run = answer(greenfield(), {
       binding: { kind: 'answer', adapter: 'persistence/database-compose', question: 'migrations' },

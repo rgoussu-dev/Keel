@@ -43,6 +43,16 @@ export interface InstallReport {
    */
   readonly refreshProposals?: readonly RefreshProposal[];
   /**
+   * Every adapter the run resolved, once each, in the order they first
+   * ran — across every scope a product writes — as far as an answer
+   * supplied for the run is concerned: the ids an answer may be keyed
+   * to, and the questions each asks. What `keel.preview` holds the
+   * answers it was sent against, so it reports the ones this run would
+   * refuse (`InstallPreview.unusedAnswers`). Absent when the run
+   * resolved none.
+   */
+  readonly resolvedAdapters?: readonly ResolvedAdapter[];
+  /**
    * Unified diffs against the working tree, one per `modify` change,
    * in the same path order. Populated by reapply only — a plain
    * install never modifies a pre-existing file, so there is nothing
@@ -75,6 +85,19 @@ export interface RefreshProposal {
   readonly adapters?: { readonly before: readonly string[]; readonly after: readonly string[] };
 }
 
+/**
+ * An adapter an install run resolved, told by what an answer supplied
+ * for the run can reach: its id, the questions it asks, and the ids it
+ * reads answers under besides its own (`Adapter.sharesAnswersWith`).
+ */
+export interface ResolvedAdapter {
+  readonly id: string;
+  /** The ids of the questions it declares, in declaration order. */
+  readonly questions: readonly string[];
+  /** Its `Adapter.sharesAnswersWith`, in declared order; absent when none. */
+  readonly sharesAnswersWith?: readonly string[];
+}
+
 /** A unified diff of one working-tree file a command would rewrite. */
 export interface FileDiff {
   readonly path: string;
@@ -87,10 +110,19 @@ export interface FileDiff {
  *
  * Each reaches only the adapter it is keyed to, or one that shares the
  * question with it (`Adapter.sharesAnswersWith`), and is recorded only
- * by the adapter that read it. An install refuses a key no adapter of
- * its plan reads (`keel.unknown-answer`), one for an installed
- * vertical's adapter (`keel.frozen-answer`), and a value outside the
- * choices its question offers the project (`keel.invalid-answer`).
+ * by the adapter that read it. An adapter reads a question's answer
+ * from what the project records first, then from what is supplied —
+ * in both, under its own id before its siblings', in the order it
+ * lists them — so one answer settles a question its siblings share.
+ * An install refuses an answer nothing reads: a key no adapter of its
+ * plan reads, or a question none of them asks (`keel.unknown-answer`),
+ * one for an installed vertical's adapter or a question one has
+ * settled (`keel.frozen-answer`), and one a question shared with
+ * another key it was also given reads under that key instead
+ * (`keel.unknown-answer`); and a value outside the choices its
+ * question offers the project (`keel.invalid-answer`). `keel.preview`
+ * reports each of those (`InstallPreview.unusedAnswers`) rather than
+ * refusing.
  */
 export type PresetAnswers = Readonly<Record<string, Readonly<Record<string, string>>>>;
 

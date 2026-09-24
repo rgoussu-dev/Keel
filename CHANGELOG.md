@@ -14,6 +14,36 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel ui` previews an answer as the install writes it.** An answer
+  keyed to a bootstrap's sibling — a Quarkus REST bootstrap's package
+  on `quarkus-cli-rest`, whose CLI bootstrap asks first, or on
+  `quarkus-rest` a CLI bootstrap's — previewed as the default
+  (`com/example`) and was installed as given (`org/acme`). The preview
+  now reads the answers it is sent by the install's own precedence —
+  the adapter's own id, then each sibling it shares the question with,
+  in the order it lists them — and binds the question to the id the
+  answer came under, so the page keeps it and posts it back. The
+  composition grid holds every preset to it: one body, previewed and
+  installed as a dry run, stages the same bytes (I9).
+
+- **Two answers to one shared question no longer split the project.**
+  With `--set` for both bootstraps of a two-entrypoint project, or for
+  both the `ci` and the `distribution` provider, each adapter took its
+  own — two packages in one Gradle build, two providers in one
+  repository — and `keel add distribution` with its own provider took
+  it over the one `ci` recorded. An adapter now reads what the project
+  records before what is supplied, so a question one sibling settled
+  is settled for the other, and a second, different answer is refused
+  (below).
+
+- **A project another keel wrote reads its own identity.** A manifest
+  an older keel seeded with every answer supplied to `keel new` —
+  another family's bootstrap's included — gave the readers that took
+  the first bootstrap in a list with answers the wrong package: the
+  sample port, a bounded context `keel add module` adds, a Quarkus
+  CLI's native build and the deploy descriptors' project name. Each
+  now reads the bootstrap the project's tags say it ran.
+
 - **A monorepo product's service is part of one repository, and keel
   now reads it as one.** Inside `backend/` of a monorepo product,
   `keel add containerization` met the Dockerfile the product root had
@@ -246,6 +276,22 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **An answer nothing reads is refused, including one a shared
+  question has already taken.** `keel new`, `keel add`,
+  `keel add module` and `POST /api/install` refuse, before anything is
+  written: a second answer to a question two siblings share, sent
+  under the other's id with a different value (`keel.unknown-answer`,
+  naming the one read first — the same value under both ids is taken
+  once, as scripts answering both bootstraps of a two-entrypoint stack
+  do); an answer to a question an installed vertical has settled — the
+  CI provider, for `distribution` on a project with `ci`
+  (`keel.frozen-answer`); and, under `keel add module`, which took no
+  answers before and dropped them unread, any answer at all. At a
+  terminal a stray key is still refused before a question is asked; a
+  run that asks nothing (`--yes`, `keel ui`) refuses it once the run
+  is staged, worded from the adapters it resolved, as the preview
+  words it.
 
 - **A refusal of the scope says so in its code: `keel.wrong-scope`.**
   A vertical asked of a composite product's root that belongs in a
@@ -551,6 +597,26 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **The preview reports the answers an install would refuse.**
+  `keel.preview` (`POST /api/preview`) lists each answer it was sent
+  that the run does not read as `unusedAnswers` — each with its
+  `adapter`, `question`, `code` and `message`, the refusal an install
+  of the same body gives, by the same function over the same plan —
+  and previews the body without them, rather than planning around them
+  in silence. The
+  install report carries that plan as `resolvedAdapters`: each adapter
+  the run resolved, the questions it asks and the ids it borrows
+  answers from.
+
+- **Plugin contract: `Question.shared: 'project'`.** Marks a question
+  about the project's identity — its name, package, module path or npm
+  scope — rather than about the piece asking it; keel's bootstraps
+  declare it. Nothing about the answer is persisted differently: it is
+  a marker the preview reports on the question (`PendingQuestion.shared`)
+  so a front end moving between presets can carry the answer onto the
+  new preset's bootstrap. In a product each service's bootstrap asks
+  its own. Registration refuses any other value.
 
 - **Plugin contract: where a vertical goes in a product.** Two
   optional declarations, each read by one structural check and neither

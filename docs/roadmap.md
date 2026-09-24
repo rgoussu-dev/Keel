@@ -2922,13 +2922,60 @@ reports each offered choice without its predicate.
 
 ### Phase 2 — presets that bend
 
-- **Q2.1 — Preview reads answers as install does; identity answers
-  carry across presets (M).** One precedence function (adapter key,
-  then `sharesAnswersWith` siblings, then default) for install _and_
-  preview; `Question.shared: 'project'` marks identity questions for
-  the page's carry-over, persisting nothing (D11); shared readers pick
-  the bootstrap matching the tags, not the first id in a list. Lands
-  I9.
+#### Q2.1 — Preview reads answers as install does; identity answers carry across presets (M) ✅
+
+One precedence function (adapter key, then `sharesAnswersWith`
+siblings, then default) for install _and_ preview;
+`Question.shared: 'project'` marks identity questions for the page's
+carry-over, persisting nothing (D11); shared readers pick the
+bootstrap matching the tags, not the first id in a list. Lands I9.
+
+Landed as `answerUnder` over `answerKeys` (`answers.ts`): an
+adapter's own id, then its siblings in the order it lists them, the
+first holding an answer giving it. The install reads recorded memory
+by it and only then what was supplied — recorded first, because that
+is the one order a preview can reproduce (its prompt is asked exactly
+where recorded memory is silent) and the one that keeps two siblings
+from disagreeing: before, a second bootstrap preferred its own
+supplied answer over the first one's recorded one, and two keys meant
+two packages. The preview's recording prompt reads what it is sent
+by the same function, carries the adapter's siblings on the
+`Asker`, holds the value to the question's choices under the key it
+came under, and binds the question to that key, so the page's
+`previewed` keeps it. `quarkus-cli-rest` with a
+`quarkus-rest-bootstrap` package now previews and installs `org/acme`.
+Every run reports what it read; `unusedAnswers`
+(`supplied-answers.ts`) is the one reading of what nothing read — a
+key no adapter reads, a question none asks, an installed vertical's
+(frozen), a re-rendered one's recorded answers (the old
+`frozenAnswerRefusal`, folded in), and, with the reads, a second,
+different answer to a shared question or one a recorded answer settled
+— which every install front door refuses the first of (`keel add
+module` too, which took none before) and `keel.preview` lists as
+`InstallPreview.unusedAnswers`, over the plan the run resolved
+(`InstallReport.resolvedAdapters`). The same value under both sibling
+ids agrees with itself and passes — the JVM combo e2e answers both
+bootstraps so. `keel add` refuses a stray key before the run only at
+a terminal; a run that asks nothing waits for the exact plan, as the
+preview does. The identity questions of every JVM, Go, Rust,
+TypeScript and web-components bootstrap declare `shared: 'project'`
+(registration refuses another value), which the preview reports on
+the bound question; in a product each service's bootstrap asks its
+own, so two services keep two names. The readers that scanned a list
+of bootstrap ids — the sample ports, the JVM bounded and peer
+contexts, the Quarkus native build, the deploy descriptors' project
+name, the TypeScript shell — read the bootstrap whose predicate the
+manifest's tags match (`adapters/project-identity.ts`), so a manifest
+an older keel seeded with another family's answers renders its own
+package. A manifest recorded before this change reapplies byte for
+byte (`support/fixtures/manifests/legacy-answers.json`). Grid: I9
+landed hard on the greenfield axis — every preset with its whole
+menu, sent as four bodies (none, every question answered away from
+its default, the same keyed to the asker's sibling, and one question
+answered twice) to a preview and a dry-run install, stages the same
+bytes (a product's services included) or is refused alike, in the
+sentence the preview reported.
+
 - **Q2.2 — A preset switch keeps extras and answers (S).** Snapped by
   `keel.dials` with `adjustments`; answers pruned to the next
   preview's bindings.

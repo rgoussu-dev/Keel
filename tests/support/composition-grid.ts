@@ -10,10 +10,12 @@
  * worth trying from the registry's own declarations ({@link chainOf}).
  * A preset or a vertical registered tomorrow is swept by the next run
  * without an edit here, and a plugin's pieces are swept by building a
- * {@link Grid} over the plugin's registry. The one fixed list is the
+ * {@link Grid} over the plugin's registry. The fixed lists are the
  * seeded-user-file axis ({@link SEEDED_BEFORE_NEW},
  * {@link SEEDED_BEFORE_ADD}), because what a user keeps in a directory
- * is not something a registry can know.
+ * is not something a registry can know, and the identity samples I9
+ * answers with ({@link answerBodies}), because a free-form answer's
+ * shape is not something a question declares.
  *
  * **Factory.** {@link installMediator} over the real templates and
  * filesystem, with a {@link FakeProcessRunner} and a deferred-action
@@ -51,8 +53,13 @@ import fs from 'fs-extra';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { Action, ResultOf } from '../../src/domain/kernel/action.js';
 import type { Mediator } from '../../src/domain/kernel/mediator.js';
-import type { Vertical } from '../../src/domain/contract/composition.js';
-import type { NewProjectTarget } from '../../src/domain/contract/commands.js';
+import type { Adapter, Vertical } from '../../src/domain/contract/composition.js';
+import {
+  installCommandFor,
+  type InstallTarget,
+  type NewProjectTarget,
+  type PresetAnswers,
+} from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
 import type { Tree } from '../../src/domain/contract/ports/tree.js';
 import {
@@ -61,6 +68,7 @@ import {
   type AvailableVerticalDescriptor,
   type DialOptions,
   type InstallPreview,
+  type PendingQuestion,
   type ProjectStatus,
 } from '../../src/domain/contract/queries.js';
 import { matchesPattern } from '../../src/domain/core/predicate.js';
@@ -69,10 +77,7 @@ import { FakeProcessRunner } from '../../src/infrastructure/process/fake.js';
 import { fsTreeFactory } from '../../src/infrastructure/tree/fs-tree.js';
 import { expectOk, installMediator } from './factory.js';
 
-/**
- * The invariants the grid holds, by the ids `docs/roadmap.md` gives
- * them. I9 lands with the step that makes it true.
- */
+/** The invariants the grid holds, by the ids `docs/roadmap.md` gives them. */
 export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
   I2: 'every extra keel.dials offers, posted with its prerequisites, previews Ok',
@@ -82,6 +87,7 @@ export const INVARIANTS = {
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
   I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
+  I9: 'the same body previews and installs (dry run) alike: the same bytes, or the same refusal — the one the preview reports an unread answer with',
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -98,9 +104,10 @@ export type Invariant = keyof typeof INVARIANTS;
  * refusal of a vertical came to be written by one builder that prints
  * no tag; I4 with Q1.10, when a monorepo service came to read what its
  * product gives it and what its repository root keeps from it — and
- * I7 landed hard, with the same step.
+ * I7 landed hard, with the same step; I9 landed hard with Q2.1, when
+ * the preview came to read the answers it is sent as the install does.
  */
-export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8'];
+export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'I9'];
 
 /**
  * The codes a refusal about a file in the way carries — the one kind
@@ -199,8 +206,12 @@ export class Grid {
   private readonly outcomes = new Map<string, Outcome<unknown>>();
   private readonly found = new Map<Invariant, Set<string>>();
   private readonly scratches: string[] = [];
-  /** Roots whose Trees {@link staged} is reading, and the Trees opened there. */
-  private readonly watched = new Map<string, Tree[]>();
+  /**
+   * Roots whose Trees {@link staged} is reading, and the Trees opened
+   * there or under it — a product's services open theirs one level
+   * down — each with the directory it is rooted at.
+   */
+  private readonly watched = new Map<string, { readonly at: string; readonly tree: Tree }[]>();
 
   /**
    * @param holds the invariants this axis measures — recording any
@@ -218,7 +229,11 @@ export class Grid {
       runDeferred: async () => {},
       trees: (root) => {
         const tree = fsTreeFactory(root);
-        this.watched.get(root)?.push(tree);
+        for (const [watched, trees] of this.watched) {
+          if (root === watched || root.startsWith(`${watched}${path.sep}`)) {
+            trees.push({ at: path.relative(watched, root), tree });
+          }
+        }
         return tree;
       },
     });
@@ -264,8 +279,9 @@ export class Grid {
   /**
    * Dispatches `action` as the cell `id`, as {@link cell} does, and
    * reads back what it staged under `root`: one line per changed
-   * path — its kind, the path, and a digest of its bytes — in path
-   * order, or null when the cell did not come back Ok. `root` must be
+   * path — its kind, the path from `root` (a service's under its
+   * directory), and a digest of its bytes — in path order, or null
+   * when the cell did not come back Ok. `root` must be
    * a directory no other cell stages into while this one runs, and
    * `id` a cell not swept yet: one answered from the record stages
    * nothing to read back.
@@ -278,18 +294,18 @@ export class Grid {
     if (this.outcomes.has(id)) {
       throw new Error(`staged: cell '${id}' was swept already, so what it staged is gone`);
     }
-    const trees: Tree[] = [];
+    const trees: { readonly at: string; readonly tree: Tree }[] = [];
     this.watched.set(root, trees);
     try {
       const outcome = await this.cell(id, action);
       if (outcome.verdict !== OK) return null;
       return trees
-        .flatMap((tree) =>
+        .flatMap(({ at, tree }) =>
           tree.changes().map((change) => {
             const bytes = tree.read(change.path);
             const digest =
               bytes === null ? '-' : createHash('sha256').update(bytes).digest('hex').slice(0, 16);
-            return `${change.kind} ${change.path} ${digest}`;
+            return `${change.kind} ${path.join(at, change.path)} ${digest}`;
           }),
         )
         .sort();
@@ -445,6 +461,161 @@ async function agrees(
     case 'unavailable':
       return false;
   }
+}
+
+/**
+ * A value for each identity question (`Question.shared`) the grid
+ * answers, and a second for the body that answers it twice. A free-form
+ * answer's shape is not something a question declares, so this is the
+ * one fixed list here besides the seeded files; a shared question with
+ * no entry fails the sweep, naming itself.
+ */
+const IDENTITY_SAMPLES: Readonly<Record<string, readonly [string, string]>> = {
+  basePackage: ['org.grid', 'org.twice'],
+  projectName: ['grid-app', 'twice-app'],
+  modulePath: ['example.org/grid-app', 'example.org/twice-app'],
+  npmScope: ['grid', 'twice'],
+};
+
+/** A body I9 sends to a preview and to a dry-run install alike. */
+export interface AnswerBody {
+  /** Names the pair of cells: `default`, `answered`, `borrowed`, `twice`. */
+  readonly name: string;
+  readonly answers: PresetAnswers;
+}
+
+/**
+ * The bodies I9 holds a preset to, derived from the questions its
+ * preview asked with no answers, and the adapters' own declarations:
+ *
+ * - `default` — no answers at all;
+ * - `answered` — every adapter's question the preview asked, answered
+ *   away from its default (another choice it offers, or an identity
+ *   sample), under the id the preview bound it to;
+ * - `borrowed` — the same, each answer whose adapter borrows from a
+ *   sibling (`Adapter.sharesAnswersWith`) keyed to its first sibling
+ *   instead: the body a form carries from one preset to the next, and
+ *   where preview and install used to part — a Quarkus REST bootstrap's
+ *   package previewed as the default on `quarkus-cli-rest`, and was
+ *   installed as given;
+ * - `twice` — both at once, the sibling's copy carrying a second value:
+ *   one question given two answers, which the install refuses as the
+ *   preview reports it.
+ *
+ * The last two only where some answer has a sibling to go under. A
+ * question with nothing to answer it with but its default is left out.
+ */
+export function answerBodies(
+  registry: Registry,
+  questions: readonly PendingQuestion[],
+): readonly AnswerBody[] {
+  const adapters = adaptersById(registry);
+  const answered: Record<string, Record<string, string>> = {};
+  const borrowed: Record<string, Record<string, string>> = {};
+  const again: Record<string, Record<string, string>> = {};
+  let shares = false;
+  for (const question of questions) {
+    const binding = question.binding;
+    if (binding.kind !== 'answer') continue;
+    const adapter = adapters.get(binding.adapter);
+    if (adapter === undefined) continue;
+    const values = sampleOf(question);
+    if (values === null) continue;
+    const [value, second] = values;
+    (answered[binding.adapter] ??= {})[binding.question] = value;
+    const sibling = adapter.sharesAnswersWith?.[0];
+    const key = sibling ?? binding.adapter;
+    if (sibling !== undefined) {
+      shares = true;
+      (again[sibling] ??= {})[binding.question] = second;
+    }
+    (borrowed[key] ??= {})[binding.question] = value;
+  }
+  const bodies: AnswerBody[] = [
+    { name: 'default', answers: {} },
+    { name: 'answered', answers: answered },
+  ];
+  if (!shares) return bodies;
+  const twice: Record<string, Record<string, string>> = structuredClone(answered);
+  for (const [key, byQuestion] of Object.entries(again)) {
+    twice[key] = { ...(twice[key] ?? {}), ...byQuestion };
+  }
+  return [...bodies, { name: 'borrowed', answers: borrowed }, { name: 'twice', answers: twice }];
+}
+
+/**
+ * Two values for `question` other than its default — its choices, or
+ * an identity sample — or null when it has nothing else to be.
+ */
+function sampleOf(question: PendingQuestion): readonly [string, string] | null {
+  if (question.choices !== undefined) {
+    const values = question.choices.map((choice) => choice.value);
+    const first = values.find((value) => value !== question.default);
+    if (first === undefined) return null;
+    return [first, values.find((value) => value !== first) ?? first];
+  }
+  if (question.shared === undefined) return null;
+  const sample = IDENTITY_SAMPLES[question.id];
+  if (sample === undefined) {
+    throw new Error(
+      `identity question '${question.id}' has no sample in the grid's IDENTITY_SAMPLES — add one`,
+    );
+  }
+  return sample;
+}
+
+/** Every adapter a run could resolve, by id: the registered verticals' and the stacks' own. */
+function adaptersById(registry: Registry): ReadonlyMap<string, Adapter> {
+  const verticals = [
+    ...registry.verticals(),
+    ...registry.stacks().flatMap((stack) => stack.verticals),
+  ];
+  return new Map(
+    verticals.flatMap((vertical) => vertical.adapters).map((adapter) => [adapter.id, adapter]),
+  );
+}
+
+/**
+ * Holds one body to I9, as the cells `cell` (its preview) and
+ * `cell!install` (a dry-run install of it, non-interactive as `keel ui`
+ * installs): each stages into a directory of its own, and they agree
+ * when
+ *
+ * - the preview refuses, and the install refuses under the same code in
+ *   the same sentence;
+ * - the preview reports an answer the run does not read, and the
+ *   install refuses in the first one's code and sentence
+ *   (`InstallPreview.unusedAnswers`);
+ * - or neither does, and both stage the same bytes, file for file.
+ */
+export async function holdParity(
+  grid: Grid,
+  cell: string,
+  target: InstallTarget,
+  answers: PresetAnswers,
+): Promise<void> {
+  const previewAt = await grid.scratch();
+  const installAt = await grid.scratch();
+  const previewing = previewQuery({ cwd: previewAt, target, answers });
+  const installing = installCommandFor(target, {
+    cwd: installAt,
+    answers,
+    interactive: false,
+    dryRun: true,
+  });
+  const previewed = await grid.staged(cell, previewing, previewAt);
+  const installed = await grid.staged(`${cell}!install`, installing, installAt);
+  // Answered from the record: both cells are swept already.
+  const preview = await grid.cell(cell, previewing);
+  const install = await grid.cell(`${cell}!install`, installing);
+  const unused = preview.value?.unusedAnswers?.[0];
+  const agree =
+    preview.verdict !== OK
+      ? install.verdict === preview.verdict && install.message === preview.message
+      : unused !== undefined
+        ? install.verdict === unused.code && install.message === unused.message
+        : install.verdict === OK && JSON.stringify(installed) === JSON.stringify(previewed);
+  if (!agree) grid.violate('I9', cell);
 }
 
 /**

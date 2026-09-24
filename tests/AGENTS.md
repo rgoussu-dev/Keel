@@ -56,7 +56,7 @@ matching change lands in the same commit as the thing it guards:
 
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
-measure behind roadmap epic Q, whose invariants (I1–I8 today) it
+measure behind roadmap epic Q, whose invariants (I1–I9) it
 holds. Three suites, split so vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
@@ -65,8 +65,14 @@ holds. Three suites, split so vitest runs them in parallel:
   adds nothing), every permutation of each offered set whose order
   could matter — a vertical that `reads` another, with both chains —
   and the whole menu named forwards and backwards, held to staging the
-  same bytes (I8, read back through the Trees the preview opened),
-  plus `README.md` and `.gitignore` seeded before `keel new`.
+  same bytes (I8, read back through the Trees the preview opened — a
+  product's services' too), every preset with its whole menu sent as
+  one body to a preview and to a dry-run install, held to the same
+  bytes or the same refusal (I9, over the bodies `answerBodies`
+  derives: none, every question answered away from its default, the
+  same keyed to the sibling its asker borrows from, and one question
+  answered twice), plus `README.md` and `.gitignore` seeded before
+  `keel new`.
 - `brownfield` — every single-service stack scaffolded once, `keel add`
   previewed for every vertical (I4: each vertical is installed or a
   `keel.project-status` card, and the card agrees with the preview —
@@ -102,25 +108,27 @@ the record can only shrink. Beside each suite:
   I1 has been hard since Q0.3 — a thrown cell is always a failure —
   I2, I3 and I8 since Q1.3, when the menus and both front doors moved
   onto the planner, I6 since Q1.7, when every refusal came to be
-  worded by one builder that prints no tag, and I4 and I7 since Q1.10,
+  worded by one builder that prints no tag, I4 and I7 since Q1.10,
   when a monorepo service came to read what its product gives it and
-  what only a repository root may carry. Every known file is empty now
-  but brownfield's I5 key.
+  what only a repository root may carry, and I9 since Q2.1, when the
+  preview came to read the answers it is sent as the install does.
+  Every known file is empty now but brownfield's I5 key.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
   nothing) for the sentence the golden does not keep.
 
-About 11 s wall on its own, greenfield the longest at ~9 s, of which
-I8's orderings are about 3.5 s.
+About 25 s wall on its own, greenfield the longest at ~23 s, of which
+I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
+dispatches — about 14 s.
 
-The grid posts no answers, so every question resolves to its default
-and an answer choice offered where it is refused is invisible to it.
-That class has a focused sweep instead, in `handlers/preview.test.ts`:
-every stack whose menu offers `persistence`, every non-default choice
-its dials declare, posted to a preview and to a dry-run install — Ok
-from both where the preview offers it, `keel.invalid-answer` from both
-where it does not.
+Only I9 posts answers, and only one non-default choice per question,
+so an answer choice offered where it is refused is invisible to the
+grid. That class has a focused sweep instead, in
+`handlers/preview.test.ts`: every stack whose menu offers
+`persistence`, every non-default choice its dials declare, posted to a
+preview and to a dry-run install — Ok from both where the preview
+offers it, `keel.invalid-answer` from both where it does not.
 
 **The planner's readiness golden.** `domain/core/planner-readiness.golden.json`
 records what `planner.ts` reads for every single-service preset × every

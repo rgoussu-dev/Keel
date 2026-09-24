@@ -885,17 +885,31 @@ shares the question with it (`Adapter.sharesAnswersWith`: a
 framework's CLI and REST bootstraps, the CI provider `ci` and
 `distribution` both ask), which reads it as its own — and only the
 adapter that read it records it. On a product, each service's manifest records the
-answers of the adapters that ran in that service. Before anything is
-written, and under `--dry-run` alike, a run refuses:
+answers of the adapters that ran in that service. An adapter reads a
+question's answer from what the project records first, and only then
+from what was supplied — in both, under its own id before a
+sibling's — so a question one of two siblings has settled is settled
+for both: `--set walking-skeleton/quarkus-rest-bootstrap:basePackage=org.acme`
+on `quarkus-cli-rest` gives both bootstraps `org.acme`, whichever asks
+first, and the same value sent under both ids is taken once. `keel ui`
+previews an answer by the same precedence, so what it shows is what
+the install writes. Before anything is written, and under `--dry-run`
+alike, a run refuses:
 
 - a key no adapter of its plan reads — another stack's bootstrap, a
   vertical that is not part of the run, a question its adapter does
   not ask — with `keel.unknown-answer`, naming the adapters that do
   take answers (or the questions the adapter does ask);
-- under `keel add`, a key for a vertical already installed with
-  `keel.frozen-answer`, and one for a re-rendered adapter's recorded
-  answers with `keel.reapply-frozen-answers`: they are frozen, and
-  reconfiguring one is not supported yet;
+- a second, different answer to a question two siblings share, sent
+  under the other's id, with `keel.unknown-answer` naming the one read
+  first — one project, one package;
+- under `keel add`, a key for a vertical already installed, or an
+  answer to a question one has settled already (the CI provider, once
+  `ci` is installed, for `distribution`), with `keel.frozen-answer`,
+  and one for a re-rendered adapter's recorded answers with
+  `keel.reapply-frozen-answers`: they are frozen, and reconfiguring
+  one is not supported yet — `keel add module` holds its answers to
+  the same rules;
 - a value outside its question's choices with `keel.invalid-answer` —
   the choices it offers this project, since a choice may declare where
   it applies: `persistence/database-compose:engine=mariadb` is taken on

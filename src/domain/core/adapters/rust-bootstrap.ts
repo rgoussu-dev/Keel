@@ -52,6 +52,7 @@ export const rustBootstrapAdapter: Adapter = {
       doc: 'The Cargo package name, used in the README and as the binary name. Lowercase + digits + dashes; ≤63 chars.',
       default: 'walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
   ],
   async contribute(ctx) {

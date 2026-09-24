@@ -5,7 +5,8 @@
  * directory already holding a user's file. The preset alone is not a
  * cell here: the brownfield and composite axes scaffold every one.
  *
- * Three questions, each answered by `keel.preview` and nothing else:
+ * Each question is answered by the engine and nothing else —
+ * `keel.preview`, and for I9 the install beside it:
  *
  *   - **Does anything throw?** (I1) Every cell, including a directory
  *     that already holds a `README.md` or a `.gitignore` — the usual
@@ -32,6 +33,14 @@
  *     run. The page names extras in menu order and the command line in
  *     whatever order it was typed; neither may cost a `DB_URL`, or move
  *     a line.
+ *   - **Does a preview plan what the install then writes?** (I9) One
+ *     body — the preset with its whole menu, and its answers — sent
+ *     to a preview and to a dry-run install stages the same bytes, or
+ *     is refused by both in one sentence, the preview reporting the
+ *     answer the install refuses ({@link answerBodies}: none, each
+ *     question answered away from its default, the same keyed to a
+ *     sibling the asker borrows from, and one question answered
+ *     twice).
  *
  * Holds I6 over every refusal on the way. The menu read is each
  * stack's default dial setting; the others are the weekly lane's.
@@ -42,9 +51,11 @@ import { catalogQuery, previewQuery } from '../../../../src/domain/contract/quer
 import {
   OK,
   SEEDED_BEFORE_NEW,
+  answerBodies,
   candidateSets,
   chainOf,
   eachStack,
+  holdParity,
   orderSensitiveSets,
   permutations,
   seed,
@@ -56,7 +67,7 @@ describe('composition grid: greenfield', () => {
   sweepGrid({
     name: 'greenfield',
     here: import.meta.url,
-    holds: ['I1', 'I2', 'I3', 'I6', 'I8'],
+    holds: ['I1', 'I2', 'I3', 'I6', 'I8', 'I9'],
     sweep: async (grid) => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
@@ -118,6 +129,14 @@ describe('composition grid: greenfield', () => {
             first ??= written;
             if (written !== first) grid.violate('I8', cell);
           }
+        }
+
+        // One body, previewed and installed as a dry run: the preset
+        // with its whole menu, so every adapter that asks is asked.
+        const whole = { ...target, extraVerticals: menu };
+        const asked = await grid.read(previewQuery({ cwd: empty, target: whole, answers: {} }));
+        for (const body of answerBodies(grid.registry, asked.questions)) {
+          await holdParity(grid, `answers:${stack}#${body.name}`, whole, body.answers);
         }
 
         for (const file of SEEDED_BEFORE_NEW) {

@@ -538,7 +538,38 @@ export interface PendingQuestion {
   /** What this preview resolved the question to. */
   readonly value: string;
   readonly memory: 'sticky' | 'repeat';
+  /**
+   * `project` when the question is about the project's identity
+   * (`Question.shared`) — its name, its package, its module path —
+   * rather than about the adapter asking it: a front end moving from
+   * one preset to another carries such an answer onto the question
+   * the new preset's bootstrap asks, under the binding the next
+   * preview reports. Absent on every other question.
+   */
+  readonly shared?: 'project';
+  /**
+   * Where the answer goes. For an adapter's question, the id the value
+   * was read under — its own, or a sibling's it borrows from
+   * (`Adapter.sharesAnswersWith`) when the answer arrived under that
+   * one — so an answer sent back under its binding is the one read
+   * again, and never a second answer to the same question.
+   */
   readonly binding: AnswerBinding;
+}
+
+/**
+ * An answer sent to `keel.preview` that the install would not read —
+ * and so refuses — with the refusal it would give: the answers an
+ * install body must drop to be taken as previewed.
+ */
+export interface UnusedAnswer {
+  /** The id the answer was keyed to. */
+  readonly adapter: string;
+  readonly question: string;
+  /** `keel.unknown-answer`, `keel.frozen-answer` or `keel.reapply-frozen-answers`. */
+  readonly code: string;
+  /** The sentence the install refuses it in. */
+  readonly message: string;
 }
 
 /** What an install would ask, and what it would write. */
@@ -570,6 +601,15 @@ export interface InstallPreview {
    * (`AddVerticalTarget.refresh`). Absent when there are none.
    */
   readonly refreshProposals?: readonly RefreshProposal[];
+  /**
+   * The answers sent that this run does not read, each with the
+   * refusal an install of the same body gives it — an install refuses
+   * the first, before anything is written. Read by the same function,
+   * over the same plan (`InstallReport.resolvedAdapters`), as the
+   * install's own check; the plan and the questions above are what
+   * the body without them installs. Absent when every answer is read.
+   */
+  readonly unusedAnswers?: readonly UnusedAnswer[];
 }
 
 /**

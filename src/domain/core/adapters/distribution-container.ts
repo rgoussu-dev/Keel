@@ -57,6 +57,8 @@ import {
   DISTRIBUTION_PIPELINE_SECTION,
   type CiProvider,
 } from './ci-pipeline.js';
+import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
+import { bootstrapAnswers } from './project-identity.js';
 
 /** The tag every distribution container adapter promotes. */
 export const DIST_CONTAINER_TAG: Tag = 'dist.container-image';
@@ -108,14 +110,22 @@ export function distributionProvider(ctx: Ctx, requesterId: string): CiProvider 
 }
 
 /**
- * The project name recorded by whichever walking-skeleton bootstrap
- * ran, used for descriptor defaults (e.g. `OTEL_SERVICE_NAME`, the
- * Helm chart name). Falls back to `app` for manifests that predate
- * the answer.
+ * The project name recorded by the walking-skeleton bootstrap this
+ * project ran — among keel's own, the one its tags match
+ * (`./project-identity.ts`), so a name an older manifest recorded for
+ * another family's bootstrap is never the one read — used for
+ * descriptor defaults (e.g. `OTEL_SERVICE_NAME`, the Helm chart name).
+ * A bootstrap keel does not ship (a plugin's) is found as before, by
+ * the first `walking-skeleton/` id recording a name. Falls back to
+ * `app` for manifests that predate the answer.
  */
 export function bootstrapProjectName(manifest: ManifestV2): string {
+  const own = bootstrapAnswers(manifest, IDENTITY_BOOTSTRAPS)?.['projectName'];
+  if (own) return own;
+  const shipped = new Set(IDENTITY_BOOTSTRAPS.map((bootstrap) => bootstrap.id));
   for (const [adapterId, answers] of Object.entries(manifest.answers)) {
-    const name = adapterId.startsWith('walking-skeleton/') ? answers['projectName'] : undefined;
+    if (shipped.has(adapterId) || !adapterId.startsWith('walking-skeleton/')) continue;
+    const name = answers['projectName'];
     if (name) return name;
   }
   return 'app';

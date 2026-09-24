@@ -197,6 +197,28 @@ describe('registryOf', () => {
     expect(registryOf([{ origin: ACME, verticals: [placed] }]).vertical('acme')).toBe(placed);
   });
 
+  it('refuses a question marked shared with anything but the project, naming the plugin', () => {
+    const marked = (shared: string): Vertical => {
+      const base = wellFormed('acme');
+      return {
+        ...base,
+        adapters: base.adapters.map((adapter) => ({
+          ...adapter,
+          questions: [
+            { id: 'name', prompt: 'Name', doc: '', default: 'x', memory: 'sticky', shared },
+          ],
+        })),
+      } as unknown as Vertical;
+    };
+    expect(
+      refusal(() => registryOf([{ origin: ACME, verticals: [marked('workspace')] }])).message,
+    ).toContain(
+      `${ACME} vertical 'acme' adapter 'acme/one' marks question 'name' shared 'workspace'`,
+    );
+    const project = marked('project');
+    expect(registryOf([{ origin: ACME, verticals: [project] }]).vertical('acme')).toBe(project);
+  });
+
   it('takes an adapter declaring a share of its vertical s promotes', () => {
     const base = wellFormed('acme');
     const narrowed: Vertical = {

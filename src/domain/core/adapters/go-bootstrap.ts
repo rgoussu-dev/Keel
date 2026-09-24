@@ -51,6 +51,7 @@ export const goBootstrapAdapter: Adapter = {
       doc: 'The module directive in go.mod and the import-path root, e.g. github.com/acme/shipper.',
       default: 'example.com/walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
     {
       id: 'projectName',
@@ -58,6 +59,7 @@ export const goBootstrapAdapter: Adapter = {
       doc: 'Used in the README and as the binary name. Lowercase + digits + dashes; ≤63 chars.',
       default: 'walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
   ],
   async contribute(ctx) {

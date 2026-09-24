@@ -47,7 +47,14 @@ live in `dials.ts` and both front ends call them; a copy in a page is
 the same defect one layer out. An adapter question's choice follows the
 same rule one level down: it carries its own `predicate`, and
 `offeredIn` (`answers.ts`) is the one list the prompt, the preview and
-the supplied-answer check read — never a guard in `contribute()`.
+the supplied-answer check read — never a guard in `contribute()`. An
+answer's source is one precedence too, `answerUnder` over `answerKeys`
+(recorded before supplied, an adapter's own id before its siblings'),
+read by the install and the preview's prompt alike, and what neither
+read is `unusedAnswers` (`supplied-answers.ts`) — refused by every
+install front door, reported by the preview; a reader downstream of a
+bootstrap finds the project's identity by its tags
+(`adapters/project-identity.ts`), never by the first id with answers.
 Readiness follows it: `planner.ts` is **the single reading of
 readiness**. It reads `Adapter.promotes` and `Vertical.reads` into one
 answer — included, ready, needs, unavailable — and an ordered closure,

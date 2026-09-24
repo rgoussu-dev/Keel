@@ -117,6 +117,7 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
       doc: `Used as the root ${langLabel} package and Gradle group, e.g. com.example.`,
       default: 'com.example',
       memory: 'sticky',
+      shared: 'project',
     },
     {
       id: 'projectName',
@@ -127,6 +128,7 @@ function questions(spec: JvmBootstrapSpec): readonly Question[] {
           : 'Used as the Gradle root project name. Lowercase + digits + dashes; ≤63 chars.',
       default: 'walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
   ];
 }

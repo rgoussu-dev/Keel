@@ -44,6 +44,7 @@ export const wcSpaBootstrapAdapter: Adapter = {
       doc: 'Used as the workspace package scope (@scope/domain-api) and the custom-element tag prefix (<scope-greeting>). Lowercase + digits + dashes; must start with a letter.',
       default: 'acme',
       memory: 'sticky',
+      shared: 'project',
     },
     {
       id: 'projectName',
@@ -51,6 +52,7 @@ export const wcSpaBootstrapAdapter: Adapter = {
       doc: 'Used as the workspace root package name and the page title. Lowercase + digits + dashes; ≤63 chars.',
       default: 'walking-skeleton',
       memory: 'sticky',
+      shared: 'project',
     },
   ],
   async contribute(ctx) {

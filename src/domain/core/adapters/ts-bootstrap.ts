@@ -26,7 +26,14 @@
  * (`pnpm-workspace.yaml` + the `workspace:*` protocol).
  */
 
-import type { Ctx, ContributionFile, ManifestV2, Question } from '../../contract/composition.js';
+import type {
+  Ctx,
+  ContributionFile,
+  ManifestV2,
+  Predicate,
+  Question,
+} from '../../contract/composition.js';
+import { bootstrapAnswers } from './project-identity.js';
 import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars, type TsWorkspaceVars } from './ts-workspace.js';
 
@@ -35,6 +42,20 @@ export const TS_HTTP_BOOTSTRAP_ID = 'walking-skeleton/ts-http-bootstrap';
 
 /** Id of the CLI entrypoint bootstrap (`arch.cli`). */
 export const TS_CLI_BOOTSTRAP_ID = 'walking-skeleton/ts-cli-bootstrap';
+
+/**
+ * Where the HTTP entrypoint bootstrap runs — declared here, beside the
+ * id, so {@link tsBootstrapAnswers} reads the bootstrap by it without
+ * importing the adapter, which imports this module.
+ */
+export const TS_HTTP_BOOTSTRAP_PREDICATE: Predicate = {
+  requires: ['lang.typescript', 'runtime.node', 'arch.server-http'],
+};
+
+/** Where the CLI entrypoint bootstrap runs; see {@link TS_HTTP_BOOTSTRAP_PREDICATE}. */
+export const TS_CLI_BOOTSTRAP_PREDICATE: Predicate = {
+  requires: ['lang.typescript', 'runtime.node', 'arch.cli'],
+};
 
 const TEMPLATE_ROOT = 'composition/walking-skeleton/ts-domain';
 
@@ -54,6 +75,7 @@ export const TS_BOOTSTRAP_QUESTIONS: readonly Question[] = [
     doc: 'Used as the workspace package scope (@scope/domain-kernel). Lowercase + digits + dashes; must start with a letter.',
     default: 'acme',
     memory: 'sticky',
+    shared: 'project',
   },
   {
     id: 'projectName',
@@ -61,22 +83,27 @@ export const TS_BOOTSTRAP_QUESTIONS: readonly Question[] = [
     doc: 'Used as the workspace root package name. Lowercase + digits + dashes; ≤63 chars.',
     default: 'walking-skeleton',
     memory: 'sticky',
+    shared: 'project',
   },
 ];
 
 /**
- * Reads the answers recorded by whichever TypeScript bootstrap ran —
- * a project has exactly one entrypoint adapter, so at most one of the
- * two ids holds them. The downstream TS adapters (`ts-port-fake` and
- * friends) order themselves `after` both bootstraps and call this
- * instead of re-asking the user.
+ * Reads the answers recorded by the TypeScript bootstrap this project
+ * ran — the one whose predicate its tags match (`./project-identity.ts`);
+ * a workspace carrying both entrypoints runs both, and they share their
+ * answers. The downstream TS adapters (`ts-port-fake` and friends) order
+ * themselves `after` both bootstraps and call this instead of
+ * re-asking the user.
  */
 export function tsBootstrapAnswers(
   manifest: ManifestV2,
   requesterId: string,
 ): { npmScope: string; projectName: string } {
   const answers =
-    manifest.answers[TS_HTTP_BOOTSTRAP_ID] ?? manifest.answers[TS_CLI_BOOTSTRAP_ID] ?? {};
+    bootstrapAnswers(manifest, [
+      { id: TS_HTTP_BOOTSTRAP_ID, predicate: TS_HTTP_BOOTSTRAP_PREDICATE },
+      { id: TS_CLI_BOOTSTRAP_ID, predicate: TS_CLI_BOOTSTRAP_PREDICATE },
+    ]) ?? {};
   const { npmScope, projectName } = answers;
   if (!npmScope || !projectName) {
     throw new Error(

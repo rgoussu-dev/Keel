@@ -40,7 +40,9 @@ socket, the per-run token and the asset roots. The page it serves is
   preview loop, to claim a generation for the request it makes.
   Adopting the `keel.dials` reply is a transition too, `settle`, and
   so is adopting a preview's, `previewed`, which drops the answers
-  that preview no longer asked for — an install refuses those. The
+  that preview no longer asked for — an install refuses those, and the
+  preview lists them as `unusedAnswers`; one it read under a sibling's
+  key is bound to that key, so it stays. The
   target, the answers, the dials, the request generation and the
   notice move together, and every brownfield state bug so far was one
   of them left behind: a whole target (what `<keel-add-form>` always

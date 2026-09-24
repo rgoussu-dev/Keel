@@ -113,6 +113,7 @@ import {
   promotedBy,
   verticalOptions,
 } from '../dials.js';
+import type { AnswerRead } from '../answers.js';
 import { installVerticals } from '../install.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
@@ -149,7 +150,7 @@ import {
 } from '../refusals.js';
 import { readiness } from '../planner.js';
 import { PathConflictError, PathMissingError } from '../../contract/refusal.js';
-import { NOTHING_INSTALLED, strayAnswerRefusal } from '../supplied-answers.js';
+import { NOTHING_INSTALLED, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import {
   enclosingProduct,
   memberScope,
@@ -294,6 +295,8 @@ interface StagedScope {
   readonly actions: readonly DeferredAction[];
   /** Every adapter the scope's verticals resolved to, in install order. */
   readonly adapters: readonly Adapter[];
+  /** The supplied answers the scope's adapters read. */
+  readonly reads: readonly AnswerRead[];
 }
 
 /**
@@ -393,13 +396,20 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       : await this.stageSingle(command, stack, prompt);
     if (!staged.ok) return staged;
     // Only now is the plan known: an adapter resolves against the tags
-    // the verticals before it promoted, in whichever scope it lands.
+    // the verticals before it promoted, in whichever scope it lands —
+    // and which answer each read, a sibling's or its own.
+    const plan = resolvedAdapters(staged.value.scopes.flatMap((scope) => scope.adapters));
     const stray = strayAnswerRefusal(
       command.answers,
-      staged.value.scopes.flatMap((scope) => scope.adapters),
+      plan,
       NOTHING_INSTALLED,
+      staged.value.scopes.flatMap((scope) => scope.reads),
     );
-    return stray === null ? staged : err(stray);
+    if (stray !== null) return err(stray);
+    return ok({
+      ...staged.value,
+      report: { ...staged.value.report, ...(plan.length > 0 ? { resolvedAdapters: plan } : {}) },
+    });
   }
 
   /** Commits a staged plan unless the run is a dry-run, and unwraps it to the report. */
@@ -967,6 +977,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       manifest: result.manifest,
       actions: result.applyResult.actions,
       adapters: result.adapters,
+      reads: result.reads,
       skippedHarnessElements: result.applyResult.skippedHarnessElements ?? 0,
     };
   }

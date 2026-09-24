@@ -71,6 +71,7 @@ import { conflictsOf, violatedBy } from '../compatibility.js';
 import { rulesSentence } from '../refusals.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import { installVertical } from '../install.js';
+import { historyOf, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
 import { projectDocs } from '../docs-projection.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
@@ -129,6 +130,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     const result = await installVertical({
       vertical: boundedContextVertical,
       manifest: seeded,
+      supplied: command.answers,
       tree,
       mode: command.interactive ? 'interactive' : 'non-interactive',
       prompt: this.deps.prompt,
@@ -139,6 +141,16 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       now: () => now,
       registry: this.deps.registry,
     });
+    // An answer none of the context's adapters read is refused, as the
+    // other front doors refuse one, before anything is committed.
+    const plan = resolvedAdapters(result.adapters);
+    const stray = strayAnswerRefusal(
+      command.answers,
+      plan,
+      historyOf(this.deps.registry, stored),
+      result.reads,
+    );
+    if (stray !== null) return err(stray);
 
     // The context is a structural fact, so the index moves with it in
     // the same apply — nothing is left for a later `keel docs sync`
@@ -153,6 +165,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       changes: tree.changes(),
       actions: result.applyResult.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(plan.length > 0 ? { resolvedAdapters: plan } : {}),
       ...(result.applyResult.skippedHarnessElements
         ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
         : {}),

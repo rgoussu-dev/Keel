@@ -186,6 +186,26 @@ function validateVertical(origin: string, vertical: Vertical): void {
   }
   validateAdapterPromotes(origin, vertical);
   validatePlacement(origin, vertical);
+  validateSharedQuestions(origin, vertical);
+}
+
+/**
+ * `Question.shared` names what a question is shared across, and keel
+ * reads one value, `project`. A plugin written in plain JavaScript
+ * reaches here without the compiler's help, so any other is refused,
+ * naming the plugin, rather than read as no marker at all — a front
+ * end would drop that answer on a preset switch without a word.
+ */
+function validateSharedQuestions(origin: string, vertical: Vertical): void {
+  for (const adapter of vertical.adapters) {
+    for (const question of adapter.questions ?? []) {
+      if (question.shared === undefined || question.shared === 'project') continue;
+      throw refuse(
+        origin,
+        `vertical '${vertical.id}' adapter '${adapter.id}' marks question '${question.id}' shared '${String(question.shared)}', which keel does not know — the one value is 'project'`,
+      );
+    }
+  }
 }
 
 /**

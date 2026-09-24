@@ -10,8 +10,9 @@
  * (would) depend only on the `Clock` interface; the test ships with
  * a fake (not a mock) that proves the contract holds.
  *
- * Reads `basePackage` from the bootstrap adapter's manifest answers
- * — the install orchestrator threads a running manifest snapshot
+ * Reads `basePackage` from the answers the bootstrap this project ran
+ * recorded — the one its tags match (`./project-identity.ts`) — as
+ * the install orchestrator threads a running manifest snapshot
  * between adapters, so any answer the bootstrap recorded is visible
  * here without re-prompting the user. Framework-agnostic: the port,
  * the fake, and its Gradle module are plain Java, so the adapter
@@ -23,6 +24,8 @@
 import { jvmBuildSystem } from './jvm-build-system.js';
 import { gradleProject, jvmLayout } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
+import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
+import { bootstrapAnswers } from './project-identity.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
@@ -54,9 +57,7 @@ export const samplePortFakeAdapter: Adapter = {
   predicate: { requires: ['runtime.jvm', 'arch.hexagonal', 'lang.java'] },
   after: [...BOOTSTRAP_IDS],
   async contribute(ctx) {
-    const bootstrap = BOOTSTRAP_IDS.map((id) => ctx.manifest.answers[id]).find(
-      (answers) => answers?.basePackage,
-    );
+    const bootstrap = bootstrapAnswers(ctx.manifest, IDENTITY_BOOTSTRAPS);
     const basePackage = bootstrap?.basePackage;
     const projectName = bootstrap?.projectName;
     if (!basePackage || !projectName) {

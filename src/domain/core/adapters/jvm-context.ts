@@ -74,6 +74,8 @@ import {
   type JvmContextModules,
 } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
+import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
+import { bootstrapAnswers } from './project-identity.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 const TEMPLATE_ROOT = 'composition/bounded-context/jvm-context/templates';
@@ -200,9 +202,7 @@ export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
     after: [...spec.bootstrapIds],
     async contribute(ctx) {
       const added = addedContext(ctx.manifest, spec.id);
-      const bootstrap = spec.bootstrapIds
-        .map((id) => ctx.manifest.answers[id])
-        .find((answers) => answers?.basePackage);
+      const bootstrap = bootstrapAnswers(ctx.manifest, IDENTITY_BOOTSTRAPS);
       const basePackage = bootstrap?.basePackage;
       const projectName = bootstrap?.projectName;
       if (!basePackage || !projectName) {

@@ -23,10 +23,11 @@
  *   1. `resolveVertical` — predicate match → topo sort → coverage check.
  *   2. For each adapter in order:
  *        a. resolve its questions against its sticky memory — the
- *           running manifest's answers, overlaid by the ones supplied
- *           for this run that are keyed to it or to a sibling it
- *           borrows from — or prompt / default, each question offering
- *           only the choices whose predicate the running tags match.
+ *           answer the running manifest records under its id or a
+ *           sibling's it borrows from, or else the one supplied for
+ *           this run under the same ids — or prompt / default, each
+ *           question offering only the choices whose predicate the
+ *           running tags match.
  *           Under the `reapply` posture an adapter the manifest holds
  *           answers for resolves from them alone, without asking;
  *           one it holds none for is asked as on a first install;
@@ -47,7 +48,13 @@
  * returns the next manifest. The caller commits both.
  */
 
-import { checkSuppliedAnswer, resolveAdapterAnswers } from './answers.js';
+import {
+  answerKeys,
+  answerUnder,
+  checkSuppliedAnswer,
+  resolveAdapterAnswers,
+  type AnswerRead,
+} from './answers.js';
 import type { PresetAnswers } from '../contract/commands.js';
 import type { AnswerMode, Prompt } from '../contract/ports/prompt.js';
 import { effectiveTags } from '../contract/manifest.js';
@@ -92,10 +99,11 @@ export interface InstallVerticalInputs {
   /**
    * Answers supplied for this run (`--set`, an install body), keyed as
    * the manifest keys them. Each adapter takes only the ones keyed to
-   * it or to a {@link Adapter.sharesAnswersWith} sibling, over its
-   * recorded memory, and records what it resolved — so an answer no
-   * adapter here reads is written nowhere. Supplied values are held to
-   * the choices their question offers this scope; recorded ones are
+   * it or to a {@link Adapter.sharesAnswersWith} sibling, for a
+   * question its recorded memory does not answer, and records what it
+   * resolved — so an answer no adapter here reads is written nowhere,
+   * and the result says which ones were read. Supplied values are held
+   * to the choices their question offers this scope; recorded ones are
    * not. Absent, none.
    */
   readonly supplied?: PresetAnswers;
@@ -152,6 +160,13 @@ export interface InstallVerticalResult {
    * staged.
    */
   readonly adapters: readonly Adapter[];
+  /**
+   * Every supplied answer the run read, in the order it read them:
+   * which key answered which adapter's question. A supplied answer
+   * not among them is one nothing took — refused by the front doors
+   * (`./supplied-answers.ts`).
+   */
+  readonly reads: readonly AnswerRead[];
 }
 
 /** Inputs to {@link installVerticals}: one install's inputs, over a list of verticals. */
@@ -206,6 +221,7 @@ export async function installVerticals(
   const tagsAdded = new Set<Tag>();
   const actions: DeferredAction[] = [];
   const adapters: Adapter[] = [];
+  const reads: AnswerRead[] = [];
   const rules = runRules(inputs, around);
   const broken = new Set(violatedBy(rules, effectiveTags(manifest)).map((rule) => rule.id));
 
@@ -224,10 +240,16 @@ export async function installVerticals(
     for (const tag of result.applyResult.tagsAdded) tagsAdded.add(tag);
     actions.push(...result.applyResult.actions);
     adapters.push(...result.adapters);
+    reads.push(...result.reads);
   }
 
   if (inputs.harness !== undefined) {
-    return { manifest, applyResult: { tagsAdded: [...tagsAdded], skills: [], actions }, adapters };
+    return {
+      manifest,
+      applyResult: { tagsAdded: [...tagsAdded], skills: [], actions },
+      adapters,
+      reads,
+    };
   }
   const finalized = finalizeHarness({ ...run, manifest, harness, owners });
   return {
@@ -239,6 +261,7 @@ export async function installVerticals(
       ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
     },
     adapters,
+    reads,
   };
 }
 
@@ -286,6 +309,7 @@ export async function installVertical(
   const owners = inputs.owners ?? newOwnership();
   const allTagsAdded = new Set<Tag>();
   const harness = inputs.harness ?? [];
+  const reads: AnswerRead[] = [];
   let skipped = 0;
 
   for (const adapter of ordered) {
@@ -296,10 +320,11 @@ export async function installVertical(
     // One the vertical newly resolves to has none to be frozen, and is
     // asked like any first install rather than left to its defaults.
     const frozen = inputs.apply === 'reapply' && recordsAnswers(inputs.manifest, adapter);
-    const stored = memoryOf(running, frozen ? {} : (inputs.supplied ?? {}), adapter, tags);
+    const memory = memoryOf(running, frozen ? {} : (inputs.supplied ?? {}), adapter, tags);
+    reads.push(...memory.reads);
     const resolution = await resolveAdapterAnswers(
       adapter,
-      stored,
+      memory.answers,
       frozen ? 'non-interactive' : inputs.mode,
       inputs.prompt,
       tags,
@@ -358,6 +383,7 @@ export async function installVertical(
       ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     },
     adapters: ordered,
+    reads,
   };
 }
 
@@ -479,64 +505,65 @@ function foldHarnessEntries(
 
 /**
  * Whether `manifest` records answers for `adapter` — what makes them
- * frozen when its vertical is re-rendered. Public for the front door
- * that refuses a supplied answer for one (`keel add --reapply`,
- * `--refresh`) before the run.
+ * frozen when its vertical is re-rendered. The front doors refuse a
+ * supplied answer for one by the same reading, over the answers the
+ * manifest records (`./supplied-answers.ts`).
  */
-export function recordsAnswers(manifest: ManifestV2, adapter: Adapter): boolean {
+function recordsAnswers(manifest: ManifestV2, adapter: Adapter): boolean {
   return Object.keys(manifest.answers[adapter.id] ?? {}).length > 0;
 }
 
 /**
- * The sticky memory an adapter resolves against: its
- * {@link Adapter.sharesAnswersWith} siblings' answers first, earlier
- * entries overridden by later ones, then its own, which override them
- * all. Under each id the recorded answers come first and the ones
- * supplied for this run over them.
+ * The sticky memory an adapter resolves against, question by question:
+ * the answer the running manifest records under its own id or a
+ * {@link Adapter.sharesAnswersWith} sibling, the first of them in that
+ * order ({@link answerUnder}); failing that, for a sticky question, the
+ * one supplied for this run under the same ids in the same order, held
+ * to the choices its question offers a scope with `tags`.
+ *
+ * Recorded before supplied, because a recorded answer is settled: the
+ * adapter's own under a re-render, or a sibling's — an installed
+ * vertical's, or one resolved earlier in this run — which the two may
+ * not disagree with. So a second bootstrap takes the first one's
+ * package whatever else was supplied, and a supplied answer only ever
+ * decides a question nothing has answered yet. That is also the only
+ * order a preview can reproduce: its prompt, which is sent the
+ * supplied answers, is asked exactly when the recorded memory is
+ * silent.
  *
  * This is the only door a supplied answer has into a run. It reaches
  * the adapter it is keyed to and the ones borrowing from that key, for
  * the questions they declare, and nothing else sees it until the
  * adapter that took it records what it resolved: an answer keyed to an
- * adapter of another family is never in the manifest for a reader that
- * scans a fixed list of ids to find. The front doors refuse such an
- * answer once they know the plan (`./supplied-answers.ts`).
+ * adapter of another family is never in the manifest for a reader to
+ * find. Each one taken is returned as read; the front doors refuse the
+ * rest once they know the plan (`./supplied-answers.ts`).
  */
 function memoryOf(
   manifest: ManifestV2,
   supplied: PresetAnswers,
   adapter: Adapter,
   tags: readonly Tag[],
-): Record<string, string> {
-  const memory: Record<string, string> = {};
-  for (const id of [...(adapter.sharesAnswersWith ?? []), adapter.id]) {
-    Object.assign(
-      memory,
-      manifest.answers[id] ?? {},
-      suppliedTo(adapter, id, supplied[id] ?? {}, tags),
-    );
-  }
-  return memory;
-}
-
-/**
- * The answers supplied under `id` that `adapter` asks for, each held
- * to the choices its question offers a scope with `tags`.
- */
-function suppliedTo(
-  adapter: Adapter,
-  id: string,
-  byQuestion: Readonly<Record<string, string>>,
-  tags: readonly Tag[],
-): Record<string, string> {
-  const taken: Record<string, string> = {};
+): { readonly answers: Record<string, string>; readonly reads: readonly AnswerRead[] } {
+  const keys = answerKeys(adapter);
+  const answers: Record<string, string> = {};
+  const reads: AnswerRead[] = [];
   for (const question of adapter.questions ?? []) {
-    const value = byQuestion[question.id];
-    if (value === undefined) continue;
-    checkSuppliedAnswer(question, value, id, tags);
-    taken[question.id] = value;
+    const recorded = answerUnder(manifest.answers, keys, question.id);
+    if (recorded !== undefined) {
+      answers[question.id] = recorded.value;
+      continue;
+    }
+    // A repeat question is asked every run and never read from memory
+    // (`resolveAnswer`), so a supplied answer to one reaches nothing.
+    if (question.memory !== 'sticky') continue;
+    const given = answerUnder(supplied, keys, question.id);
+    if (given === undefined) continue;
+    checkSuppliedAnswer(question, given.value, given.key, tags);
+    answers[question.id] = given.value;
+    reads.push({ adapter: adapter.id, question: question.id, key: given.key });
   }
-  return taken;
+  return { answers, reads };
 }
 
 function foldAnswers(

@@ -47,6 +47,8 @@ import type { Adapter } from '../../contract/composition.js';
 import { GRAALVM_NATIVE_TAG, JVM_IMAGE_TAG } from './container-image.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
+import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
+import { bootstrapAnswers } from './project-identity.js';
 
 export const QUARKUS_CLI_NATIVE_ID = 'distribution/quarkus-cli-native';
 
@@ -117,9 +119,7 @@ export const quarkusCliNativeAdapter: Adapter = {
   ],
   async contribute(ctx) {
     const bootstrapIds = [QUARKUS_CLI_BOOTSTRAP_ID, QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID];
-    const projectName = bootstrapIds
-      .map((id) => ctx.manifest.answers[id]?.projectName)
-      .find(Boolean);
+    const projectName = bootstrapAnswers(ctx.manifest, IDENTITY_BOOTSTRAPS)?.projectName;
     if (!projectName) {
       throw new Error(
         `${QUARKUS_CLI_NATIVE_ID}: requires a Quarkus CLI bootstrap (one of ${bootstrapIds.join(', ')}) to have run first; projectName not in manifest`,

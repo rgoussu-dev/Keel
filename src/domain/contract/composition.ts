@@ -143,6 +143,28 @@ export interface Question {
    */
   readonly default: string;
   readonly memory: 'sticky' | 'repeat';
+  /**
+   * `project` marks a question about the project's identity — its
+   * name, its base package or module path, its npm scope — rather
+   * than about the piece asking it. Absent on every other question.
+   *
+   * A marker for front ends, and nothing more: the answer is still
+   * recorded under the asking adapter's id, as every answer is, and
+   * nothing about it is persisted. What it says is that the answer is
+   * not the adapter's own. A form that moves from one preset to
+   * another carries an identity answer onto the new preset's
+   * bootstrap — whose id differs — instead of dropping it with the
+   * adapter it was given to; the preview reports it on the question
+   * (`PendingQuestion.shared`) so a front end can. Inside one run the
+   * engine never reads it: in a product each service's bootstrap asks
+   * its own, so two services keep two names.
+   *
+   * Declare it on the questions a project has exactly one answer to,
+   * whichever adapter happens to ask — the bootstraps' identity. A
+   * question whose answer is the piece's own (a database engine, a
+   * CI provider) does not carry it.
+   */
+  readonly shared?: 'project';
 }
 
 /** A single discrete choice for a `select`-style question. */
@@ -398,8 +420,13 @@ export interface Adapter {
   readonly questions?: readonly Question[];
   readonly after?: readonly string[];
   /**
-   * Other adapters whose recorded answers count as this one's sticky
-   * memory, tried in order before its own.
+   * Other adapters whose answers count as this one's, read after its
+   * own and in the order listed — for an answer the project records,
+   * and then for one supplied for the run (`--set`, an install body).
+   * A recorded answer always wins over a supplied one, so a question
+   * one sibling has settled is settled for all of them, and the
+   * preview reads supplied answers by the same precedence
+   * (`domain/core/answers.ts`).
    *
    * Sticky memory is keyed per adapter, which is right while one
    * question belongs to one adapter. It stops being right when two

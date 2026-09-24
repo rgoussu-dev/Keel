@@ -93,7 +93,6 @@ import type {
   PresetAnswers,
   RefreshProposal,
 } from '../../contract/commands.js';
-import type { ManifestV2 } from '../../contract/manifest.js';
 import { effectiveTags, HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
 import { productRootRefusal } from '../add-readiness.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
@@ -101,7 +100,7 @@ import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
 import { unifiedDiff } from '../diff.js';
-import { finalizeHarness, installVerticals, recordsAnswers } from '../install.js';
+import { finalizeHarness, installVerticals } from '../install.js';
 import { retrofitHarness } from '../harness-retrofit.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
@@ -113,7 +112,13 @@ import {
 } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
 import { planScopeOf, provisionsHere, scopeOf } from '../scope.js';
-import { installedOwnerOf, strayAnswerRefusal } from '../supplied-answers.js';
+import {
+  historyOf,
+  REAPPLY_FROZEN_ANSWERS_CODE,
+  resolvedAdapters,
+  strayAnswerRefusal,
+  unusedAnswers,
+} from '../supplied-answers.js';
 import type { Vertical } from '../../contract/composition.js';
 import type { InstallDeps } from './deps.js';
 
@@ -268,21 +273,29 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     }
     const order = admitted?.order ?? rerender;
 
-    // Recorded answers are frozen, and refused before anything runs.
-    const frozen = frozenAnswerRefusal(command.answers, rerender, stored);
-    if (frozen !== null) return err(frozen);
-    // So is an answer no adapter the run could reach would read, which
-    // is most stray keys — a typo, another family's adapter — so they
-    // are refused before a question is asked. Which of those adapters
-    // the run resolves is known once it is staged, and held there.
-    const owner = installedOwnerOf(registry, stored);
+    // Answers are held before anything runs against every adapter the
+    // run could reach. One for a re-rendered vertical's recorded
+    // answers is refused here whatever the mode; so is every stray key
+    // — a typo, another family's adapter — at a terminal, before a
+    // question is asked, and when nothing will run, since then the
+    // reachable plan is the plan. A run that asks nothing loses nothing
+    // by waiting for the exact plan instead, which is what it and the
+    // preview word a refusal from: which adapters a closure runs
+    // depends on the tags its first verticals add, so it is only known
+    // once staged — as under `keel new --with`.
+    const history = historyOf(registry, stored);
     if (hasAnswers(command.answers)) {
-      const stray = strayAnswerRefusal(
+      const [early] = unusedAnswers(
         command.answers,
-        reachableAdapters(order, effectiveTags(stored)),
-        owner,
+        resolvedAdapters(reachableAdapters(order, effectiveTags(stored))),
+        history,
       );
-      if (stray !== null) return err(stray);
+      if (
+        early !== undefined &&
+        (command.interactive || order.length === 0 || early.code === REAPPLY_FROZEN_ANSWERS_CODE)
+      ) {
+        return err(new DomainError(early.message, early.code));
+      }
     }
 
     const already = [
@@ -331,12 +344,15 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         apply: 'install',
         registry,
       });
-      // Held against what the run resolved: which adapters a closure
-      // runs depends on the tags its first verticals add, so the plan
-      // is only known once it is staged — as under `keel new --with`.
-      // Nothing is committed yet.
+      // Held against what the run resolved and what it read — exact,
+      // and what the preview reports. Nothing is committed yet.
       if (hasAnswers(command.answers)) {
-        const stray = strayAnswerRefusal(command.answers, result.adapters, owner);
+        const stray = strayAnswerRefusal(
+          command.answers,
+          resolvedAdapters(result.adapters),
+          history,
+          result.reads,
+        );
         if (stray !== null) return err(stray);
       }
       if (harnessRuns) {
@@ -410,6 +426,9 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       committed: !command.dryRun,
       ...(notes.length > 0 ? { notes } : {}),
       ...(proposals.length > 0 ? { refreshProposals: proposals } : {}),
+      ...(result.adapters.length > 0
+        ? { resolvedAdapters: resolvedAdapters(result.adapters) }
+        : {}),
       ...(result.applyResult.skippedHarnessElements
         ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
         : {}),
@@ -514,30 +533,4 @@ function commandLine(command: AddVerticalCommand): string {
     ...(command.reapply === true ? ['--reapply'] : []),
     ...(refresh.length > 0 ? [`--refresh ${refresh.join(',')}`] : []),
   ].join(' ');
-}
-
-/**
- * The refusal of an answer supplied for an adapter of a re-rendered
- * vertical that the manifest already records answers for — a re-render
- * is from those, and moving one is not supported. Null when none is.
- * An adapter the vertical newly resolves to records nothing, and takes
- * a supplied answer like any first install.
- */
-function frozenAnswerRefusal(
-  answers: PresetAnswers,
-  rerender: readonly Vertical[],
-  stored: ManifestV2,
-): DomainError | null {
-  for (const [adapterId, byQuestion] of Object.entries(answers)) {
-    if (Object.keys(byQuestion).length === 0) continue;
-    for (const vertical of rerender) {
-      const adapter = vertical.adapters.find((candidate) => candidate.id === adapterId);
-      if (adapter === undefined || !recordsAnswers(stored, adapter)) continue;
-      return new DomainError(
-        `--set cannot change ${adapterId}'s answers: re-rendering '${vertical.id}' reads them as the manifest recorded them, and changing one is not supported yet`,
-        'keel.reapply-frozen-answers',
-      );
-    }
-  }
-  return null;
 }

@@ -397,6 +397,45 @@ export function unknownQuestionSentence(
 }
 
 /**
+ * The sentence an answer is refused with when the question it answers
+ * is shared (`Adapter.sharesAnswersWith`) and was also answered under
+ * `readInstead`, the key read first: one question takes one answer,
+ * and keeping the other would leave it quietly unread.
+ */
+export function shadowedAnswerSentence(key: string, readInstead: string): string {
+  return `${key} is not read: it answers the same question as ${readInstead}, which is read first — send one answer for it`;
+}
+
+/**
+ * The sentence an answer is refused with when the project's manifest
+ * already records an answer to the question it would decide, under
+ * `recorded`, and no installed vertical owns that key — an answer an
+ * older keel recorded for an adapter this project never ran. The
+ * recorded one is what every reader takes.
+ */
+export function recordedAnswerSentence(key: string, recorded: string): string {
+  return `${key} is not read: this project already records ${recorded}, and reconfiguring is not supported yet (drop the answer for ${key})`;
+}
+
+/**
+ * The sentence an answer is refused with when every adapter that could
+ * read it had its answer to that question already, from a sibling
+ * that settled it earlier in the run.
+ */
+export function settledAnswerSentence(key: string): string {
+  return `${key} is not read: every adapter here that reads it has that answer already, from an adapter that settled it first`;
+}
+
+/**
+ * The sentence an answer is refused with when it is supplied for an
+ * adapter of a vertical being re-rendered that the manifest records
+ * answers for: a re-render reads those, and moving one is out of scope.
+ */
+export function reapplyFrozenSentence(adapterId: string, vertical: Vertical): string {
+  return `--set cannot change ${adapterId}'s answers: re-rendering '${vertical.id}' reads them as the manifest recorded them, and changing one is not supported yet`;
+}
+
+/**
  * The note `keel new --with` gives for a vertical the preset installs
  * of its own: "Development environment already comes with
  * quarkus-rest". Asking for what is already in the plan has one

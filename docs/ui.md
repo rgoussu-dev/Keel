@@ -343,7 +343,14 @@ Three consequences worth knowing:
 
 - **The plan is paths, not contents.** An answer that only changes what
   is _inside_ a file leaves the tree identical. The answer is still the
-  one the install uses.
+  one the install uses: the preview reads the answers it is sent by the
+  install's own precedence — an adapter's own id, then each sibling it
+  shares the question with — and is asked exactly where the install
+  would read them, so a Quarkus REST bootstrap's package sent to
+  `quarkus-cli-rest`, whose CLI bootstrap asks first, previews as the
+  `org/acme` tree the install writes. The composition grid holds every
+  preset to that (I9): one body, previewed and installed as a dry run,
+  stages the same bytes.
 - **A brownfield answer already recorded is not asked again.** On
   `keel add`, sticky answers in the manifest win, exactly as they do on
   the command line. Those questions are absent from the step because
@@ -498,15 +505,28 @@ both too, which is how the page offers each proposal before Generate.
 `{ "<adapterId>": { "<questionId>": "<value>" } }`, the same pair
 `--set adapterId:questionId=value` names. Each question a preview
 returns carries a `binding` saying where its answer goes, so a client
-never needs a table of question ids of its own.
+never needs a table of question ids of its own. For an adapter's
+question the binding names the id the answer was read under — the
+adapter's own, or a sibling's it shares the question with when the
+answer came under that one — so an answer sent back under its binding
+is the one read again. A question about the project's identity (its
+name, package, module path or npm scope) carries `shared: "project"`:
+the marker a client moving from one preset to another reads to carry
+the answer onto the new preset's bootstrap. In a product each
+service's bootstrap asks its own, so two services keep two names.
 
 An install holds its body's `answers` to the plan exactly as it holds
 `--set`: a key no adapter of the plan reads is refused
-(`keel.unknown-answer`), so is one for a vertical already installed
-(`keel.frozen-answer`) or for an answer a re-render reads as recorded
-(`keel.reapply-frozen-answers`), and so is a value outside its question's
-choices (`keel.invalid-answer`) — none of them is written into a
-manifest, and none is a 500. The page sends only the answers its
+(`keel.unknown-answer`), so is a second, different answer to a
+question two siblings share, so is one for a vertical already installed
+or a question one has settled (`keel.frozen-answer`) or for an answer a
+re-render reads as recorded (`keel.reapply-frozen-answers`), and so is
+a value outside its question's choices (`keel.invalid-answer`) — none of
+them is written into a manifest, and none is a 500. A preview does not
+refuse such an answer: it lists it in `unusedAnswers`, each entry
+`{ adapter, question, code, message }` with the refusal an install of
+the same body gives — the first is the one it gives — and previews the
+body without them. The page sends only the answers its
 latest preview asked for — an extra or a card unticked after its
 question was answered takes that answer with it, and Generate waits
 for the preview of the run as it now stands — and starts them over
