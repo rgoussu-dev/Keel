@@ -14,6 +14,20 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel new` no longer merges into a file of yours that it patches.**
+  Into a directory that was not empty, a file keel writes through a
+  patch rather than whole was merged with the one already there:
+  `package.json` on the TypeScript stacks, `settings.gradle.kts` on the
+  Gradle ones, and `.gitattributes`, `.editorconfig`, `AGENTS.md` and
+  `.claude/settings.json` on nearly every stack. The run exited 0 and
+  left a broken scaffold — a `package.json` of your own kept its name
+  and lost keel's workspaces and scripts (`npm run test`: _Missing
+  script_), a `settings.gradle.kts` lost the foojay plugin and the
+  `domain` modules. Each is now refused as `keel.path-conflict`,
+  naming it, as a file keel writes whole already was: `README.md` and
+  `.gitignore` are the only files `keel new` adopts, as `docs/cli.md`
+  says. Nothing is written before the refusal.
+
 - **Two scopes of a product writing one file are refused, not
   silently overwritten.** A composite product stages its root and
   each service into trees of their own, so a file two of them wrote —

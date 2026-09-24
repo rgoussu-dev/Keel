@@ -9,8 +9,10 @@
  * `keel.preview`, and for I9 the install beside it:
  *
  *   - **Does anything throw?** (I1) Every cell, including a directory
- *     that already holds a `README.md` or a `.gitignore` — the usual
- *     way `keel new` meets a directory that is not empty.
+ *     that already holds a file the scaffold would write at its root
+ *     ({@link seededBeforeNew}): a `README.md` or a `.gitignore` — the
+ *     usual way `keel new` meets a directory that is not empty — is
+ *     adopted, and the golden records every other as refused.
  *   - **Does the menu offer what the gate refuses?** (I2) Every extra
  *     the menu offers, posted after its prerequisites
  *     ({@link chainOf}), must preview Ok. An entry that refuses is a
@@ -50,7 +52,6 @@ import { describe } from 'vitest';
 import { catalogQuery, previewQuery } from '../../../../src/domain/contract/queries.js';
 import {
   OK,
-  SEEDED_BEFORE_NEW,
   answerBodies,
   candidateSets,
   chainOf,
@@ -59,6 +60,7 @@ import {
   orderSensitiveSets,
   permutations,
   seed,
+  seededBeforeNew,
   settle,
   sweepGrid,
 } from '../../../support/composition-grid.js';
@@ -139,7 +141,12 @@ describe('composition grid: greenfield', () => {
           await holdParity(grid, `answers:${stack}#${body.name}`, whole, body.answers);
         }
 
-        for (const file of SEEDED_BEFORE_NEW) {
+        // A directory holding a file the scaffold would write: the
+        // two `keel new` adopts go through, and every other is refused
+        // naming it — merged into, a user's `package.json` is a build
+        // neither of them wrote.
+        const scaffold = await grid.read(previewQuery({ cwd: empty, target, answers: {} }));
+        for (const file of seededBeforeNew(scaffold.changes)) {
           const cwd = await grid.scratch();
           await seed(cwd, file);
           await grid.cell(`new:${stack}@${file}`, previewQuery({ cwd, target, answers: {} }));

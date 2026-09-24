@@ -88,6 +88,7 @@ import {
 } from './docs-index.js';
 import { PathConflictError, PathMissingError } from '../contract/refusal.js';
 import { SETTINGS_SEED, mergeHookSettings } from './hook-settings.js';
+import { ADOPTED_FILES } from './adapters/adopted-files.js';
 import { eolAware } from './util.js';
 import {
   ENGINE_CONTRIBUTOR_ID,
@@ -122,7 +123,10 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
  * reading of a patch target nothing created: no keel project was here
  * to have lost it, so it is the chain's own ordering bug, and throws
  * as one. A file in the way is refused in the same words as under
- * `install` — the sentence is phase-neutral; whether moving the file
+ * `install`, and so is one a patch would merge into — a user's
+ * `package.json` under keel's is a build neither wrote — unless it is
+ * one of the two files `keel new` adopts (`README.md`, `.gitignore`).
+ * The sentence is phase-neutral; whether moving the file
  * aside is sound advice (it is before `keel new`, and may not be
  * after, where a product root writes into its services) is the front
  * end's to say, from the refusal's fields.
@@ -474,7 +478,10 @@ export function realizeHarness(
     }
   }
   const wired = contributions.flatMap((c) => c.hooks);
-  if (wired.length > 0) files.push(wireHooks(wired, tree));
+  if (wired.length > 0) {
+    const scaffold = contributions.some((c) => c.mode === 'scaffold');
+    files.push(wireHooks(wired, tree, scaffold ? owners : null));
+  }
   for (const contribution of contributions) {
     applyContribution(
       contribution.adapter,
@@ -711,6 +718,9 @@ export function applyContribution(
   for (const p of contribution.patches ?? []) {
     const regions = claimRegions(adapter, p, owners);
     const current = tree.read(p.target);
+    if (mode === 'scaffold' && current !== null && foundInProject(tree, owners, p.target)) {
+      throw new PathConflictError(canonicalTarget(p.target), adapter.id);
+    }
     if (current === null && p.seed === undefined) {
       if (mode !== 'scaffold') {
         throw new PathMissingError(canonicalTarget(p.target), adapter.id);
@@ -914,12 +924,21 @@ function stageHook(
 /**
  * Merges every realized hook into `.claude/settings.json` — seeded
  * when the project has none — and writes it only when the merge
- * changed it. The file is the project's, so this is never a whole-file
- * conflict; keel's entries are attributed to the engine, which wrote
- * them for every contributor alike.
+ * changed it. The file is the project's, so on an install this is
+ * never a whole-file conflict; keel's entries are attributed to the
+ * engine, which wrote them for every contributor alike. Under
+ * `keel new` (`scaffold` set) one the directory held before the run
+ * is refused, as every file but the {@link ADOPTED_FILES} is there.
  */
-function wireHooks(hooks: readonly HookSpec[], tree: Tree): HarnessFile {
+function wireHooks(
+  hooks: readonly HookSpec[],
+  tree: Tree,
+  scaffold: Ownership | null,
+): HarnessFile {
   const current = tree.read(SETTINGS_TARGET);
+  if (scaffold !== null && current !== null && foundInProject(tree, scaffold, SETTINGS_TARGET)) {
+    throw new PathConflictError(SETTINGS_TARGET, ENGINE_CONTRIBUTOR_ID);
+  }
   const base = current === null ? SETTINGS_SEED : current.toString('utf8');
   const next = eolAware((existing) => mergeHookSettings(existing, hooks))(base);
   if (current === null || next !== base) tree.write(SETTINGS_TARGET, next);
@@ -988,6 +1007,24 @@ function writeWholeFile(
     if (current !== null && current.equals(next) && fileMode === undefined) return;
   }
   tree.write(filePath, content, fileMode !== undefined ? { mode: fileMode } : undefined);
+}
+
+/**
+ * Whether `keel new` found `target` in the directory rather than
+ * writing it earlier in this run — a file of the user's that a patch
+ * would merge into. The two {@link ADOPTED_FILES} are not: adopting
+ * them is what their patches are for. Anything else is refused as the
+ * whole-file write over it would be, since a `package.json` or a
+ * `settings.gradle.kts` of the user's, merged with keel's part, is a
+ * build neither of them wrote. The writers map answers the common
+ * case — a patch on a file an earlier adapter wrote — without the
+ * walk over every staged change.
+ */
+function foundInProject(tree: Tree, owners: Ownership | null, target: string): boolean {
+  const key = canonicalTarget(target);
+  if (ADOPTED_FILES.includes(key)) return false;
+  if (owners?.writers.has(key) === true) return false;
+  return !tree.changes().some((change) => change.path === key);
 }
 
 /**

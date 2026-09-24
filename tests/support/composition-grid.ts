@@ -11,9 +11,10 @@
  * A preset or a vertical registered tomorrow is swept by the next run
  * without an edit here, and a plugin's pieces are swept by building a
  * {@link Grid} over the plugin's registry. The fixed lists are the
- * seeded-user-file axis ({@link SEEDED_BEFORE_NEW},
- * {@link SEEDED_BEFORE_ADD}), because what a user keeps in a directory
- * is not something a registry can know, and the identity samples I9
+ * seeded-user-file axis before `keel add` ({@link SEEDED_BEFORE_ADD}),
+ * because what a user keeps in a project is not something a registry
+ * can know — before `keel new` it is whatever the scaffold would write
+ * ({@link seededBeforeNew}) — and the identity samples I9
  * answers with ({@link answerBodies}), because a free-form answer's
  * shape is not something a question declares.
  *
@@ -61,7 +62,8 @@ import {
   type PresetAnswers,
 } from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
-import type { Tree } from '../../src/domain/contract/ports/tree.js';
+import type { Tree, TreeChange } from '../../src/domain/contract/ports/tree.js';
+import { SETTINGS_TARGET } from '../../src/domain/contract/hook.js';
 import {
   dialsQuery,
   previewQuery,
@@ -121,10 +123,22 @@ export const FILE_REFUSALS: readonly string[] = ['keel.path-conflict', 'keel.pat
 export const OK = 'ok';
 
 /**
- * Files a user plausibly keeps in a directory before `keel new`,
- * seeded one at a time into an otherwise empty one.
+ * The files a user may keep in a directory before `keel new` that the
+ * scaffold would write, seeded one at a time into an otherwise empty
+ * one: every file the empty-directory scaffold stages at the
+ * directory's root, and the harness's `.claude/settings.json`. Read
+ * off that scaffold's own changes, so a file a preset starts writing
+ * — whole, or through a patch that would merge into the user's — is
+ * swept without an edit here. The two `keel new` adopts
+ * (`ADOPTED_FILES`, `README.md` and `.gitignore`) come back Ok; the golden records every
+ * other as `keel.path-conflict`.
  */
-export const SEEDED_BEFORE_NEW: readonly string[] = ['README.md', '.gitignore'];
+export function seededBeforeNew(changes: readonly TreeChange[]): readonly string[] {
+  return changes
+    .map((change) => change.path)
+    .filter((file) => !file.includes('/') || file === SETTINGS_TARGET)
+    .sort();
+}
 
 /**
  * Files a user plausibly keeps in a project before `keel add`.

@@ -82,8 +82,12 @@ holds. Three suites, split so vitest runs them in parallel:
   bytes or the same refusal (I9, over the bodies `answerBodies`
   derives: none, every question answered away from its default, the
   same keyed to the sibling its asker borrows from, and one question
-  answered twice), plus `README.md` and `.gitignore` seeded before
-  `keel new`, which every stack adopts (Ok on all of them).
+  answered twice), plus each file the empty-directory scaffold writes
+  at its root, and `.claude/settings.json`, seeded before `keel new`
+  (`seededBeforeNew`, read off that scaffold's changes): `README.md`
+  and `.gitignore` are adopted (Ok on every stack), every other is
+  `keel.path-conflict` — a patch that would merge into the user's
+  file included.
 - `brownfield` — every single-service stack scaffolded once, `keel add`
   previewed for every vertical (I4: each vertical is installed or a
   `keel.project-status` card, and the card agrees with the preview —

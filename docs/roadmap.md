@@ -3224,7 +3224,11 @@ JVM, TypeScript) match their `### <arch>` marker in the file's own
 line endings, so a CRLF README, adopted or checked out under
 `core.autocrlf`, does not make that `--reapply` refuse the README as a
 divergence. Any other pre-existing file is still
-`keel.path-conflict`. Into an empty directory the bytes are unchanged
+`keel.path-conflict` — for a file keel writes whole; one it patches
+(`package.json`, `settings.gradle.kts`, `AGENTS.md`, …) was still
+merged into, which the epic's final review found and fixed, and the
+seeded axis now seeds every file the scaffold writes at the
+directory's root (`seededBeforeNew`). Into an empty directory the bytes are unchanged
 on every stack: 154 scaffolds (every preset on its default dials and,
 where it takes them, the modulith, Maven, npm, polyrepo and two sets
 of extras) hashed before and after, byte for byte. The

@@ -344,6 +344,34 @@ describe('keel.new-project (keel new)', () => {
     expect(await fs.readFile(path.join(cwd, 'go.mod'), 'utf8')).toBe('module example.com/mine\n');
   });
 
+  /**
+   * A patch meets a file of the user's the way a whole-file write
+   * does: merged under keel's, a `package.json` or a
+   * `settings.gradle.kts` would be a build neither of them wrote — it
+   * lost keel's workspaces, or its module includes. Only `README.md`
+   * and `.gitignore` are adopted.
+   */
+  it.each([
+    ['ts-http', 'package.json', '{"name":"mine","version":"1.0.0"}\n'],
+    ['quarkus-rest', 'settings.gradle.kts', 'rootProject.name = "mine"\n'],
+    ['go-cli', '.gitattributes', '* text=auto\n'],
+    ['go-cli', '.claude/settings.json', '{}\n'],
+  ])(
+    'refuses %s over a %s of the user’s that a patch would merge into',
+    async (stack, file, content) => {
+      await fs.outputFile(path.join(cwd, file), content);
+      const error = expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({ cwd, stack, answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+      expect(error.code).toBe('keel.path-conflict');
+      expect((error as RefusalError).refusal).toMatchObject({ kind: 'path-conflict', path: file });
+      expect(await fs.readFile(path.join(cwd, file), 'utf8')).toBe(content);
+      expect(await fs.pathExists(path.join(cwd, 'AGENTS.md'))).toBe(false);
+    },
+  );
+
   it('rejects an unknown stack id', async () => {
     const mediator = installMediator();
     const error = expectErr(
