@@ -98,7 +98,7 @@ describe('fullstack composite install (monorepo)', () => {
         await mediator.dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'agent-harness',
+            verticals: ['agent-harness'],
             answers: {},
             interactive: false,
             dryRun: false,
@@ -127,7 +127,7 @@ describe('fullstack composite install (monorepo)', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -157,7 +157,7 @@ describe('fullstack composite install (monorepo)', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'dev-env',
+          verticals: ['dev-env'],
           answers: {},
           interactive: false,
           dryRun: true,
@@ -468,7 +468,7 @@ describe('brownfield: keel link + keel add gateway', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd: frontendDir,
-          vertical: 'gateway',
+          verticals: ['gateway'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -482,7 +482,7 @@ describe('brownfield: keel link + keel add gateway', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd: backendDir,
-          vertical: 'gateway',
+          verticals: ['gateway'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -521,7 +521,7 @@ describe('brownfield: keel link + keel add gateway', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd: appDir,
-          vertical: 'gateway',
+          verticals: ['gateway'],
           answers: {},
           interactive: false,
           dryRun: false,

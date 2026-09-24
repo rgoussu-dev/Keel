@@ -66,7 +66,11 @@ describe('composition grid: composite', () => {
               const cell = `add:${scope}+${vertical}`;
               const outcome = await grid.cell(
                 cell,
-                previewQuery({ cwd: dir, target: { kind: 'add-vertical', vertical }, answers: {} }),
+                previewQuery({
+                  cwd: dir,
+                  target: { kind: 'add-vertical', verticals: [vertical] },
+                  answers: {},
+                }),
               );
               if (available.has(vertical) && outcome.verdict !== OK) grid.violate('I4', cell);
             }

@@ -66,7 +66,7 @@ const addPersistence = async (): Promise<void> => {
     await installMediator({ runDeferred: runActionsExcept(SKIPPED_ACTIONS) }).dispatch(
       addVerticalCommand({
         cwd,
-        vertical: 'persistence',
+        verticals: ['persistence'],
         answers: {},
         interactive: false,
         dryRun: false,
@@ -167,7 +167,7 @@ describe('keel.add-vertical (keel add persistence)', () => {
       await installMediator({ runDeferred: runActionsExcept(SKIPPED_ACTIONS) }).dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers: { 'persistence/database-compose': { migrations: 'liquibase' } },
           interactive: false,
           dryRun: false,
@@ -193,7 +193,7 @@ describe('keel.add-vertical (keel add persistence)', () => {
       await installMediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers: {},
           interactive: false,
           dryRun: false,

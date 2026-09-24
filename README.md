@@ -317,8 +317,10 @@ keel add distribution         # registry-pushed images + a deploy descriptor on 
 keel add iac                  # the OpenTofu deploy target those images run on
 keel add dev-env              # dev/compose.yaml for local infra
 keel add dev-container        # .devcontainer/ attached to the dev env's network
+keel add ci toolchain         # several at once, in one plan — and what they need comes along
 
 keel add distribution --reapply  # re-render an installed vertical after a keel template fix
+keel add persistence --refresh distribution  # …or beside what changes it (DB_URL)
 
 keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam

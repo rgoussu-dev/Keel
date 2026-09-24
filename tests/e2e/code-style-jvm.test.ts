@@ -136,7 +136,7 @@ describe.skipIf(skipJvmE2E)('code-style e2e (JVM)', () => {
         await installMediator({ runDeferred: () => Promise.resolve() }).dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'code-style',
+            verticals: ['code-style'],
             answers: {},
             interactive: false,
             dryRun: false,

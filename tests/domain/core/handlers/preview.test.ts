@@ -323,7 +323,7 @@ describe('keel.preview', () => {
     const before = await fs.readdir(cwd);
     const preview = expectOk(
       await mediator.dispatch(
-        previewQuery({ cwd, target: { kind: 'add-vertical', vertical: 'ci' }, answers: {} }),
+        previewQuery({ cwd, target: { kind: 'add-vertical', verticals: ['ci'] }, answers: {} }),
       ),
     );
     expect(preview.subject).toBe('ci');
@@ -356,7 +356,7 @@ describe('keel.preview', () => {
       await mediator.dispatch(
         previewQuery({
           cwd,
-          target: { kind: 'add-vertical', vertical: 'containerization' },
+          target: { kind: 'add-vertical', verticals: ['containerization'] },
           answers: {},
         }),
       ),
@@ -373,8 +373,7 @@ describe('keel.preview', () => {
  * the mediator hands back as an `Err`. Previewed through a new
  * project, because that is where the page reaches them first.
  * Distribution's missing image was the first of them; it is a
- * declaration now, refused at the front door before any adapter runs,
- * under the code it had.
+ * declaration now, and the planner installs the image with it.
  */
 describe('keel.preview — refusals from inside an adapter', () => {
   const previewGoHttp = (
@@ -389,14 +388,11 @@ describe('keel.preview — refusals from inside an adapter', () => {
       }),
     );
 
-  it('refuses distribution without its image as a missing prerequisite, naming no command', async () => {
-    const error = expectErr(await previewGoHttp(['distribution']));
-    expect(error.code).toBe('keel.missing-prerequisites');
-    // The same sentence reaches `keel new` and `keel add`, so it names
-    // the vertical and the order rather than either command.
-    expect(error.message).toBe(
-      'Distribution needs Container image installed before it — add containerization as well',
-    );
+  it('previews distribution with the image it needs, ahead of it', async () => {
+    const preview = expectOk(await previewGoHttp(['distribution']));
+    const paths = preview.changes.map((change) => change.path);
+    expect(paths).toContain('Dockerfile');
+    expect(paths).toContain('deploy/compose.yaml');
   });
 
   it('refuses a value the question does not list as an invalid answer', async () => {

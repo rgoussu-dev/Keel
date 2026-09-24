@@ -2598,7 +2598,7 @@ permutation. The readiness golden moves exactly the 36 intended cells:
 distribution _needs containerization_ on 17 HTTP stacks, iac _needs
 containerization > distribution_ on 19.
 
-#### Q1.4 — Prerequisites are included; `keel add` takes several verticals and proposes refreshes (M)
+#### Q1.4 — Prerequisites are included; `keel add` takes several verticals and proposes refreshes (M) ✅
 
 Both handlers close a named set over its prerequisites and install it
 in one Tree ("added Container image, Distribution — …").
@@ -2608,6 +2608,38 @@ _proposes_ re-rendering installed verticals that read an incoming one
 change under the new tags; `--refresh <ids>` accepts. A newly
 matching adapter in a refresh is asked its questions rather than
 taking defaults silently.
+
+Landed with `admit` returning the closure (`AdmittedSet.added`,
+`neededBy`) and `admissionNotes` writing both front doors' first notes —
+`added Container image, Distribution — needed by Infrastructure as
+code`, then the dependency-order note; `keel.missing-prerequisites`
+now refuses only a tie. `AddVerticalCommand` and `AddVerticalTarget`
+carry `verticals` and `refresh` (the web API keeps `vertical` as the
+alias for a list of one, exactly one of the two); `keel add
+[targets...]` keeps `module` as the reserved first word, and naming a
+vertical twice is `keel.invalid-verticals`. A refreshed vertical is
+planned with the named ones as though it were not installed, so it
+goes after what it reads or what decides its adapters — `keel add iac
+--refresh distribution` installs on a `quarkus-cli-rest` whose
+distribution predates its image — and runs in the `reapply` posture
+(`installVerticals`' `rerender`). `planner.refreshProposals` reads the
+tags the run actually left rather than the promotions the planner
+assumes, and the report carries `refreshProposals` with a note each.
+The frozen rule moved into `installVertical`: under the reapply posture
+an adapter with recorded answers resolves from them without asking and
+takes nothing supplied, and one with none is asked — so plain
+`--reapply` asks a newly matching adapter too, and its preview shows
+it. Adopting the harness beside other verticals replays into its
+buffer only what was installed before the run. Beyond the text above:
+brownfield holds supplied answers twice — before the run against every
+adapter it could reach (`planner.reachableAdapters`), so a typo is
+still refused before a question, and exactly once staged, against the
+adapters it resolved, as greenfield holds them. Grid: brownfield I4 81 → 45 (17 ENG-1
+distribution, 19 TEST-5 iac), composite I4 150 → 126 (the polyrepo
+services' distribution and iac); greenfield's 36 distribution and iac
+cells go from `keel.missing-prerequisites` to Ok, I5 parity kept. The
+monorepo services' distribution and iac now stop on the image files
+the root wrote (`keel.path-conflict`, still PHASE-3 for Q1.10).
 
 #### Q1.5 — Greenfield extras become a real control (M)
 

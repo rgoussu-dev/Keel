@@ -109,7 +109,7 @@ import {
   verticalOptions,
 } from '../dials.js';
 import { installVerticals } from '../install.js';
-import { admit, type AdmittedSet } from '../plan-refusal.js';
+import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
@@ -580,11 +580,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       prompt,
     });
 
-    const notes = extras.value.reordered
-      ? [
-          `installed in dependency order: ${extras.value.order.map((vertical) => vertical.id).join(', ')}`,
-        ]
-      : [];
+    const notes = admissionNotes(extras.value);
     const report: InstallReport = {
       subject: stack.id,
       changes: staged.tree.changes(),
@@ -1027,12 +1023,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * twice is refused at the front door with the list spelled out,
    * exactly as `keel add` refuses an unknown id. Then the set is
    * planned (`../plan-refusal.ts`) — the same reading `keel add` asks
-   * of its one vertical — and installs in the order the planner puts
-   * it in, the rest by id, whatever order it was named in. A set that
-   * leaves out a prerequisite is refused, naming what to add; one the
-   * stack cannot carry is refused in the resolver's own sentence, plus
-   * the remedy only `--with` has. Both before a single adapter
-   * question.
+   * of the verticals it names — closed over its prerequisites, and
+   * installs in the order the planner puts it in, the rest by id,
+   * whatever order it was named in. A prerequisite the set leaves out
+   * is installed with it, and the report's first note names it; a
+   * vertical the stack cannot carry is refused in the resolver's own
+   * sentence, plus the remedy only `--with` has — before a single
+   * adapter question.
    */
   private async resolveExtraVerticals(
     command: NewProjectCommand,
@@ -1312,7 +1309,8 @@ function stackQuestion(options: readonly StackSummary[]): Question {
  * coherent starting point by construction, so "nothing extra" is the
  * answer that needs no justification. A choice that installs only
  * once others have says so in its label, naming them: the menu is
- * flat, and ticking it alone is refused, naming the same ones.
+ * flat, and ticking it alone installs them with it, which the review
+ * says first.
  */
 function extraVerticalsQuestion(
   candidates: readonly VerticalOption[],
@@ -1326,7 +1324,7 @@ function extraVerticalsQuestion(
   return {
     id: EXTRA_VERTICALS_QUESTION_ID,
     prompt: 'Additional verticals',
-    doc: `Installed on top of what '${stack.id}' already brings, in the same run and in the order they build on one another, so the review below shows one plan. A choice marked "needs …" installs only with what it names ticked as well. Everything here is also available later with 'keel add'.`,
+    doc: `Installed on top of what '${stack.id}' already brings, in the same run and in the order they build on one another, so the review below shows one plan. A choice marked "needs …" brings what it names with it. Everything here is also available later with 'keel add'.`,
     kind: 'multi-select',
     choices: candidates.map((option) => ({
       value: option.id,

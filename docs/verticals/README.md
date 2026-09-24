@@ -6,7 +6,7 @@ set of predicate-selected adapters. Verticals install at bootstrap
 (listed by the [stack](../stacks/README.md)) or later:
 
 ```sh
-keel add <vertical>
+keel add <vertical>...
 ```
 
 Each vertical declares **dimensions** its install must cover; if no
@@ -75,7 +75,7 @@ CLI siblings are the intended growth path.
 ⁴ The container family: requires `containerization` installed first —
 the release pipeline builds that Dockerfile, and each container
 adapter declares so in its predicate. Offered as _needs Container
-image_; refused without it as `keel.missing-prerequisites`. A composed
+image_; named without it, distribution brings it along. A composed
 CLI + HTTP Quarkus stack on Gradle ships native binaries when
 distribution comes alone. See [`distribution`](distribution.md).
 ⁵ Keyed on the `dist.container-image` tag the distribution container
@@ -84,10 +84,11 @@ in that order. CLI shapes never carry it, so they are refused for the
 HTTP entrypoint they lack. See [`iac`](iac.md).
 
 The "first" in ⁴ and ⁵ is an order, not a separate run:
-[`keel new --with`](../cli.md#keel-new) installs extras in the order
-they depend on one another, so `--with containerization,distribution,iac`
-is one run in any order of the three. Naming `iac` without the other
-two is refused up front, naming them.
+[`keel new --with`](../cli.md#keel-new) and
+[`keel add`](../cli.md#keel-add) install a set in the order its
+verticals depend on one another, so `--with containerization,distribution,iac`
+is one run in any order of the three — and naming `iac` alone installs
+the other two with it, first, saying so in the plan's first note.
 
 ## Prerequisites per vertical
 

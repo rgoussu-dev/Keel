@@ -36,8 +36,10 @@
  * (`./supplied-answers.ts`) live here too, for the same reason: both
  * front doors speak them. So do the ones a plan that cannot be
  * installed is refused with (`./planner.ts`, spoken through
- * `./plan-refusal.ts`): a prerequisite missing from the set, a
- * vertical the scope cannot carry, verticals that cannot go together.
+ * `./plan-refusal.ts`): a tie between two sets of prerequisites, a
+ * vertical the scope cannot carry, verticals that cannot go together —
+ * and the notes a run reports what it decided with: the prerequisites
+ * it added, the order it installed in, the refreshes it proposes.
  */
 
 import type { Tag, Vertical } from '../contract/composition.js';
@@ -46,14 +48,14 @@ import { verticalTitle } from './registry.js';
 import { ENTRYPOINTS } from './stack-wizard.js';
 
 /**
- * The code a set missing a prerequisite is refused with, in both
- * phases: `keel add distribution` on a project with no image, and
- * `keel new --with distribution` without `containerization` beside
- * it. Plural because the refusal names every vertical missing, in
- * the order they install, and a code a script matches on should not
- * change with the number of them. A tie between two sets that would
- * each do is refused under it too: the fix is the same — name the
- * prerequisite — and only the user can pick which.
+ * The code a set is refused with, in both phases, when it needs
+ * prerequisites and two sets of them would each do, equally small —
+ * two plugins supplying one capability. A prerequisite nothing ties
+ * is included instead (`./plan-refusal.ts`); a tie is the user's to
+ * settle, by naming the one they want. Plural because the refusal
+ * names every option whole, and it is the code the missing-image
+ * refusal carried before prerequisites were included, so a script
+ * matching it keeps working.
  */
 export const MISSING_PREREQUISITES_CODE = 'keel.missing-prerequisites';
 
@@ -168,24 +170,55 @@ export function unknownQuestionSentence(
 }
 
 /**
- * The sentence a set is refused with when `needing` install only once
- * `prerequisites` have, and the set does not name them: the titles in
- * the order they install, then the ids to add. Phase-neutral — "add
- * as well" reads as one more `--with` entry and as one more
- * `keel add` alike — so the two front doors say the same thing.
+ * The note a run opens with when it installs verticals it was not
+ * asked for, because the ones it was need them: `added Container
+ * image, Distribution — needed by Infrastructure as code`. Titles, in
+ * the order they install. Phase-neutral, like the refusal it
+ * replaced — `keel new --with` and `keel add` say the same thing.
  */
-export function missingPrerequisitesSentence(
-  needing: readonly Vertical[],
-  prerequisites: readonly Vertical[],
+export function addedPrerequisitesNote(
+  added: readonly Vertical[],
+  neededBy: readonly Vertical[],
 ): string {
-  const who = needing.map(verticalTitle);
-  const verb = who.length === 1 ? 'needs' : 'need';
-  const titles = prerequisites.map(verticalTitle);
-  const order = titles.length > 1 ? ', in that order' : '';
-  const before = who.length === 1 ? 'it' : 'them';
-  return `${listed(who)} ${verb} ${listed(titles)} installed before ${before}${order} — add ${prerequisites
-    .map((vertical) => vertical.id)
-    .join(', ')} as well`;
+  return `added ${added.map(verticalTitle).join(', ')} — needed by ${listed(neededBy.map(verticalTitle))}`;
+}
+
+/**
+ * The note a run gives when the order its verticals were named in put
+ * one ahead of what it needs or reads: the ids in the order they
+ * install instead.
+ */
+export function dependencyOrderNote(order: readonly Vertical[]): string {
+  return `installed in dependency order: ${order.map((vertical) => vertical.id).join(', ')}`;
+}
+
+/**
+ * The note a `keel add` gives for an installed vertical it proposes
+ * re-rendering: `vertical` reads `reads` (verticals the run installed)
+ * and was rendered without them, or — `adapters` — would render
+ * through other adapters on what the run adds; then how to take the
+ * proposal up. A run that only planned (`committed` false) can be run
+ * again with `--refresh`; one that wrote its files leaves `--reapply`
+ * alone, since running it again would refuse what it just installed
+ * as already there.
+ */
+export function refreshProposalNote(
+  vertical: Vertical,
+  reads: readonly Vertical[],
+  adapters: boolean,
+  committed: boolean,
+): string {
+  const why = [
+    ...(reads.length > 0
+      ? [`reads ${listed(reads.map(verticalTitle))}, which it was rendered without`]
+      : []),
+    ...(adapters ? ['renders differently with what this adds'] : []),
+  ].join(', and ');
+  const reapply = `'keel add ${vertical.id} --reapply'`;
+  const how = committed
+    ? `re-render it with ${reapply}`
+    : `re-render it in this run with --refresh ${vertical.id}, or afterwards with ${reapply}`;
+  return `refresh proposed: ${verticalTitle(vertical)} ${why} — ${how}`;
 }
 
 /**

@@ -238,10 +238,10 @@ export function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
  * kept, since one of the rest may be the provider that settles it —
  * the front door plans the set whole, and would accept it.
  *
- * The page is where prerequisites are included for the user (the
- * command line refuses a set that leaves one out, naming it), so a
- * form ticking `iac` posts `containerization, distribution, iac`
- * back, and says why.
+ * The closure is the one both front doors install for a set that
+ * leaves a prerequisite out, so a form ticking `iac` posts
+ * `containerization, distribution, iac` back — the plan the command
+ * line would run for `--with iac` — and says why.
  */
 export function snapExtras(
   registry: Registry,

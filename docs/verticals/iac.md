@@ -14,8 +14,10 @@ release pipeline feeding it would be infrastructure keel cannot
 honestly wire to anything, so `distribution` comes first, and the
 `containerization` it builds on before that. The extras menu offers
 `iac` as _needs Container image, Distribution_; `keel new --with iac`
-or `keel add iac` without them is refused, naming both, in that order.
-`--with containerization,distribution,iac` in any order is one run.
+or `keel add iac` without them installs both with it, in that order,
+and says so first. `--with containerization,distribution,iac` in any
+order is the same run, and so is `keel add containerization
+distribution iac`.
 
 ## Dimensions & adapters
 

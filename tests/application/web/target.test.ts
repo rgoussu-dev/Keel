@@ -196,9 +196,9 @@ describe('a vertical card', () => {
     });
     expect(onCi.answers).toEqual({ 'ci/ts-pipeline': { provider: 'gitlab-ci' } });
 
-    // Carried onto a reapply, this answer is refused at install as
-    // `keel.reapply-frozen-answers`; carried onto a plain install, it
-    // is recorded for a vertical that is not installed.
+    // Carried onto a reapply, this answer is refused at install —
+    // no adapter the re-render runs reads it; carried onto a plain
+    // install of another vertical, it is refused the same way.
     expect(retarget(onCi, pickVertical(status, 'vcs')).answers).toEqual({});
     expect(retarget(onCi, pickVertical(status, 'dev-env')).answers).toEqual({});
   });

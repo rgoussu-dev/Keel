@@ -33,7 +33,9 @@ import type { Stack } from '../../../src/domain/contract/stack.js';
 import {
   applies,
   plan,
+  reachableAdapters,
   readiness,
+  refreshProposals,
   seedFor,
   type PlanScope,
 } from '../../../src/domain/core/planner.js';
@@ -546,6 +548,92 @@ describe('plan', () => {
       kind: 'unknown',
       vertical: 'nothing',
     });
+  });
+});
+
+describe('refreshProposals', () => {
+  const tags = [...ACME_TAGS, 'arch.server-http'];
+
+  it('proposes an installed vertical that reads one the run installed', () => {
+    expect(
+      refreshProposals(registry, ['acme-publish', 'acme-image'], ['acme-db'], tags, tags),
+    ).toEqual([{ vertical: 'acme-publish', reads: ['acme-db'] }]);
+  });
+
+  it('proposes one whose adapters the tags the run leaves resolve differently', () => {
+    expect(
+      refreshProposals(registry, ['acme-report'], ['acme-enrich'], tags, [
+        ...tags,
+        'acme.enriched',
+      ]),
+    ).toEqual([
+      {
+        vertical: 'acme-report',
+        reads: [],
+        adapters: {
+          before: ['acme-report/plain'],
+          after: ['acme-report/plain', 'acme-report/enriched'],
+        },
+      },
+    ]);
+  });
+
+  it('passes over the run itself, and an installed id the registry does not know', () => {
+    expect(
+      refreshProposals(
+        registry,
+        ['acme-enrich', 'product-glue', 'acme-image'],
+        ['acme-enrich'],
+        tags,
+        [...tags, 'acme.enriched'],
+      ),
+    ).toEqual([]);
+  });
+
+  it('says both when both hold', () => {
+    const reader = vertical(
+      'acme-digest',
+      [
+        adapter('acme-digest', ['lang.acme'], { name: 'plain' }),
+        adapter('acme-digest', ['lang.acme', 'acme.enriched'], { name: 'enriched' }),
+      ],
+      { reads: ['acme-enrich'] },
+    );
+    const withReader = registryOf([
+      { origin: pluginOrigin('acme'), verticals: [enrich, report, reader] },
+    ]);
+    expect(
+      refreshProposals(withReader, ['acme-digest'], ['acme-enrich'], tags, [
+        ...tags,
+        'acme.enriched',
+      ]),
+    ).toEqual([
+      {
+        vertical: 'acme-digest',
+        reads: ['acme-enrich'],
+        adapters: {
+          before: ['acme-digest/plain'],
+          after: ['acme-digest/plain', 'acme-digest/enriched'],
+        },
+      },
+    ]);
+  });
+});
+
+describe('reachableAdapters', () => {
+  it('keeps what the scope or one of the run could satisfy, and drops what the scope rules out', () => {
+    const ids = (verticals: readonly Vertical[], tags: readonly Tag[]) =>
+      reachableAdapters(verticals, tags).map((a) => a.id);
+    // The release requires the image the run itself adds.
+    expect(ids([image, release, metrics], [...ACME_TAGS, 'arch.server-http'])).toEqual([
+      'acme-image/main',
+      'acme-release/main',
+      'acme-metrics/acme',
+    ]);
+    // Nothing in the run adds the bundle, and a fat one is already there.
+    expect(ids([sign], ACME_TAGS)).toEqual([]);
+    expect(ids([bundleSlim, sign], [...ACME_TAGS, 'acme.fat'])).toEqual(['acme-bundle-slim/main']);
+    expect(ids([bundleSlim, sign], ACME_TAGS)).toEqual(['acme-bundle-slim/main', 'acme-sign/main']);
   });
 });
 

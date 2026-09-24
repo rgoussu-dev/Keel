@@ -115,7 +115,7 @@ describe('the vertical-owned lifecycle skills', () => {
       await installMediator({ runDeferred: async () => {} }).dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -140,7 +140,7 @@ describe('the vertical-owned lifecycle skills', () => {
       await installMediator({ runDeferred: async () => {} }).dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'persistence',
+          verticals: ['persistence'],
           answers,
           interactive: false,
           dryRun: false,
@@ -159,7 +159,13 @@ describe('the vertical-owned lifecycle skills', () => {
     for (const vertical of ['containerization', 'distribution']) {
       expectOk(
         await mediator.dispatch(
-          addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+          addVerticalCommand({
+            cwd,
+            verticals: [vertical],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
         ),
       );
     }
@@ -168,7 +174,7 @@ describe('the vertical-owned lifecycle skills', () => {
       await mediator.dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'iac',
+          verticals: ['iac'],
           answers: {},
           interactive: false,
           dryRun: false,

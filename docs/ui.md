@@ -258,7 +258,9 @@ Three consequences worth knowing:
   `keel add`, sticky answers in the manifest win, exactly as they do on
   the command line. Those questions are absent from the step because
   they are absent from the run — changing one is what `--reapply` is
-  deliberately conservative about.
+  deliberately conservative about. A re-render asks only what it has
+  nothing recorded for: an adapter the vertical newly resolves to, on
+  tags the project gained since it was installed.
 - **An answer belongs to the card it was given on.** Picking another
   card under **What to add** starts its questions afresh, so a
   provider chosen for `ci` never rides along into `keel add dev-env`,
@@ -330,9 +332,18 @@ the target is broken is a menu that cannot be used to fix it.
 ```jsonc
 { "kind": "new-project", "stack": "quarkus-rest",
   "buildSystem": "maven", "moduleLayout": "modulith", "withPeerContext": true }
+{ "kind": "add-vertical", "verticals": ["persistence", "ci"], "refresh": ["distribution"] }
 { "kind": "add-vertical", "vertical": "ci", "reapply": false }
 { "kind": "add-module", "module": "billing", "consumes": "greeting" }
 ```
+
+`add-vertical` names its verticals as `verticals` — a set, planned
+and installed in one run with what it needs, exactly as `keel add a b`
+is — or one of them as `vertical`, the shape the page posts, which
+stands for a list of one. Exactly one of the two; `refresh` names
+installed verticals to re-render in the same run (`keel add
+--refresh`). The install's report lists the re-renders it proposes
+and did not do as `refreshProposals`, each with why.
 
 `answers` is keyed the way the manifest keys them —
 `{ "<adapterId>": { "<questionId>": "<value>" } }`, the same pair
@@ -343,7 +354,8 @@ never needs a table of question ids of its own.
 An install holds its body's `answers` to the plan exactly as it holds
 `--set`: a key no adapter of the plan reads is refused
 (`keel.unknown-answer`), so is one for a vertical already installed
-(`keel.frozen-answer`), and so is a value outside its question's
+(`keel.frozen-answer`) or for an answer a re-render reads as recorded
+(`keel.reapply-frozen-answers`), and so is a value outside its question's
 choices (`keel.invalid-answer`) — none of them is written into a
 manifest, and none is a 500. The page sends only the answers its
 latest preview asked for — an extra unticked after its question was
@@ -373,11 +385,12 @@ not have: HTTP server — a REST endpoint"_ — never a tag no command can
 add. Pointed at a composite product's root, a vertical the root cannot
 carry is refused naming the service directories it belongs in.
 
-A vertical that installs only once another has is refused the same
-way, naming it (`keel.missing-prerequisites`): distribution on a
-project with no container image yet — _"Distribution needs Container
-image installed before it — add containerization as well"_. The
-refusals an adapter raises while it runs travel the same way too: an
+A vertical that installs only once another has is no longer refused
+at all: distribution on a project with no container image yet
+installs Container image with it, first — the plan the page previews
+lists both. Only a tie between two verticals that would each supply
+what one needs is refused, naming both (`keel.missing-prerequisites`).
+The refusals an adapter raises while it runs travel the same way too: an
 answer that is none of the choices its question offers this project,
 sent to a preview or an install (`keel.invalid-answer`). A choice declares where it applies,
 so the preview never lists one the stack cannot serve — `mariadb` is

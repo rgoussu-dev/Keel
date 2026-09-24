@@ -4,7 +4,8 @@
  *
  * `installVerticals` is the run both front doors install through —
  * `keel new` with a scope's stack verticals and extras, `keel add` with
- * a list of one. It installs each vertical in the order given onto one
+ * the verticals it planned, and the ones it re-renders beside them
+ * (`rerender`). It installs each vertical in the order given onto one
  * Tree, each against the manifest the ones before it produced, under
  * one ownership memory and one harness buffer, then realizes the
  * run's harness declarations once — unless the caller supplied the
@@ -17,7 +18,10 @@
  *           running manifest's answers, overlaid by the ones supplied
  *           for this run that are keyed to it or to a sibling it
  *           borrows from — or prompt / default, each question offering
- *           only the choices whose predicate the running tags match;
+ *           only the choices whose predicate the running tags match.
+ *           Under the `reapply` posture an adapter the manifest holds
+ *           answers for resolves from them alone, without asking;
+ *           one it holds none for is asked as on a first install;
  *        b. fold the resolved answers and any tags promoted by
  *           prior adapters into a *running manifest snapshot* —
  *           every subsequent adapter's `ctx.manifest` reflects this
@@ -141,12 +145,20 @@ export interface InstallVerticalsInputs extends Omit<
    * earlier one promotes is one a later one's adapters can match.
    */
   readonly verticals: readonly Vertical[];
+  /**
+   * Ids among {@link verticals} that are installed already and
+   * re-rendered here rather than installed: each runs in the
+   * `reapply` posture whatever {@link InstallVerticalInputs.apply}
+   * says — `keel add --refresh`'s verticals, beside the ones it
+   * installs. Absent, none.
+   */
+  readonly rerender?: readonly string[];
 }
 
 /**
  * Installs `verticals` in order onto one Tree — the loop `keel new`
  * runs over a scope's stack verticals and extras, and `keel add` over
- * a list of one.
+ * the ones it planned and the ones it re-renders.
  *
  * The run is one scope: the running manifest threads from each
  * vertical into the next, and one {@link Ownership} and one harness
@@ -161,7 +173,7 @@ export interface InstallVerticalsInputs extends Omit<
 export async function installVerticals(
   inputs: InstallVerticalsInputs,
 ): Promise<InstallVerticalResult> {
-  const { verticals, ...run } = inputs;
+  const { verticals, rerender = [], ...run } = inputs;
   const owners = inputs.owners ?? newOwnership();
   const harness = inputs.harness ?? [];
   let manifest = inputs.manifest;
@@ -170,7 +182,14 @@ export async function installVerticals(
   const adapters: Adapter[] = [];
 
   for (const vertical of verticals) {
-    const result = await installVertical({ ...run, vertical, manifest, owners, harness });
+    const result = await installVertical({
+      ...run,
+      vertical,
+      manifest,
+      owners,
+      harness,
+      ...(rerender.includes(vertical.id) ? { apply: 'reapply' as const } : {}),
+    });
     manifest = result.manifest;
     for (const tag of result.applyResult.tagsAdded) tagsAdded.add(tag);
     actions.push(...result.applyResult.actions);
@@ -213,11 +232,17 @@ export async function installVertical(
 
   for (const adapter of ordered) {
     const tags = effectiveTags(running);
-    const stored = memoryOf(running, inputs.supplied ?? {}, adapter, tags);
+    // A re-render is "from the recorded answers" for an adapter that
+    // has some: they are frozen, so nothing supplied reaches it and
+    // nothing is asked — a question it grew since takes its default.
+    // One the vertical newly resolves to has none to be frozen, and is
+    // asked like any first install rather than left to its defaults.
+    const frozen = inputs.apply === 'reapply' && recordsAnswers(inputs.manifest, adapter);
+    const stored = memoryOf(running, frozen ? {} : (inputs.supplied ?? {}), adapter, tags);
     const resolution = await resolveAdapterAnswers(
       adapter,
       stored,
-      inputs.mode,
+      frozen ? 'non-interactive' : inputs.mode,
       inputs.prompt,
       tags,
       inputs.harnessOnly === true,
@@ -392,6 +417,16 @@ function foldHarnessEntries(
     });
   }
   return { ...manifest, entries: [...byTarget.values()] };
+}
+
+/**
+ * Whether `manifest` records answers for `adapter` — what makes them
+ * frozen when its vertical is re-rendered. Public for the front door
+ * that refuses a supplied answer for one (`keel add --reapply`,
+ * `--refresh`) before the run.
+ */
+export function recordsAnswers(manifest: ManifestV2, adapter: Adapter): boolean {
+  return Object.keys(manifest.answers[adapter.id] ?? {}).length > 0;
 }
 
 /**

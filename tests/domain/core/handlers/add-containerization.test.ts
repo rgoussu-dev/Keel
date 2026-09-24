@@ -75,7 +75,7 @@ const addContainerization = async (
     await installMediator().dispatch(
       addVerticalCommand({
         cwd,
-        vertical: 'containerization',
+        verticals: ['containerization'],
         answers,
         interactive: false,
         dryRun: false,
@@ -347,7 +347,7 @@ describe('keel.add-vertical (keel add containerization)', () => {
       await installMediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'containerization',
+          verticals: ['containerization'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -370,7 +370,7 @@ describe('keel.add-vertical (keel add containerization)', () => {
       await installMediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'containerization',
+          verticals: ['containerization'],
           answers: {},
           interactive: false,
           dryRun: false,

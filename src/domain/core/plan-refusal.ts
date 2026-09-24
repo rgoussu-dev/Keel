@@ -1,12 +1,13 @@
 /**
  * What a front door makes of a plan: the verticals a request installs
- * as, in the order they install — or the refusal, in words.
+ * as, in the order they install — prerequisites included — or the
+ * refusal, in words.
  *
  * Both front doors ask it — `keel new --with` of its extras, `keel
- * add` of its one vertical — over the same planner (`./planner.ts`)
- * that `keel.dials` builds the extras menu from, so what a menu offers
- * as "needs Container image" is what a front door refuses as
- * "needs Container image installed before it", and never a throw from
+ * add` of the verticals it names (and those it re-renders) — over the
+ * same planner (`./planner.ts`) that `keel.dials` builds the extras
+ * menu from, so what a menu offers as "needs Container image" is what
+ * a front door installs Container image for, and never a throw from
  * inside an adapter.
  *
  * A request is a **set**: it is planned by id, whatever order it was
@@ -17,12 +18,15 @@
  * is the order it is handed; handing it the ids sorted is what makes
  * every permutation stage the same bytes.
  *
- * A request that plans only with verticals it did not name is refused
- * here, under {@link MISSING_PREREQUISITES_CODE}, naming them in the
- * order they install. Including them instead is decided; it lands in
- * the step that teaches both handlers to install what they were not
- * asked for. The page already posts the closure (`keel.dials` snaps
- * its extras to it), so the refusal is the command line's alone.
+ * A request that plans only with verticals it did not name is
+ * admitted with them: the planner's closure is installed whole, in
+ * its order, and {@link admissionNotes} says so first — "added
+ * Container image, Distribution — needed by Infrastructure as code".
+ * `keel.dials` snaps a page's extras to the same closure, so the page,
+ * `keel new --with` and `keel add` install one set for one request.
+ * What is still refused, under {@link MISSING_PREREQUISITES_CODE}, is
+ * a tie: two sets of prerequisites exactly as small, which only the
+ * user can choose between.
  */
 
 import { DomainError, err, ok, type Result } from '../kernel/result.js';
@@ -31,23 +35,39 @@ import type { Registry } from '../contract/ports/registry.js';
 import { assemblyRefusal } from './compatibility.js';
 import { plan, type PlanScope, type PlannedVertical } from './planner.js';
 import {
+  addedPrerequisitesNote,
+  dependencyOrderNote,
   incompatibleSentence,
   MISSING_PREREQUISITES_CODE,
-  missingPrerequisitesSentence,
   tiedPrerequisitesSentence,
   unavailableSentence,
 } from './refusals.js';
 import { UNCOVERED_CODE } from './resolver.js';
 
-/** A request the planner can install as it stands. */
+/** A request the planner can install, closed over its prerequisites. */
 export interface AdmittedSet {
-  /** The requested verticals, in the order they install. */
+  /**
+   * The requested verticals and the prerequisites they need, in the
+   * order they install.
+   */
   readonly order: readonly Vertical[];
   /**
-   * Whether the order they were named in could not have been followed:
-   * it puts a vertical ahead of one it needs, or reads. Not merely a
-   * different order — verticals nothing ties together go in by id, and
-   * that is no decision worth a word.
+   * The verticals of {@link order} the request did not name —
+   * installed because a named one needs what they add — in install
+   * order. Empty when the request named everything it needs.
+   */
+  readonly added: readonly Vertical[];
+  /**
+   * The named verticals {@link added} is there for, directly or
+   * through another added one, in install order. Empty when nothing
+   * was added.
+   */
+  readonly neededBy: readonly Vertical[];
+  /**
+   * Whether the order the request was named in could not have been
+   * followed: it puts a vertical ahead of one it needs, or reads. Not
+   * merely a different order — verticals nothing ties together go in
+   * by id, and that is no decision worth a word.
    */
   readonly reordered: boolean;
 }
@@ -63,12 +83,12 @@ export interface AdmissionWording {
 }
 
 /**
- * Plans `requested` onto `scope` and admits it, or refuses: a vertical
- * the scope cannot carry (`keel.uncoverable-vertical`, or
- * `keel.incompatible` when what stops it is one of its own rules), a
- * prerequisite the request leaves out or a tie between two sets of
- * them (`keel.missing-prerequisites`), verticals no order installs
- * together (`keel.incompatible`).
+ * Plans `requested` onto `scope` and admits it with the prerequisites
+ * it needs, or refuses: a vertical the scope cannot carry
+ * (`keel.uncoverable-vertical`, or `keel.incompatible` when what stops
+ * it is one of its own rules), a tie between two sets of prerequisites
+ * (`keel.missing-prerequisites`, naming each), verticals no order
+ * installs together (`keel.incompatible`).
  *
  * Every id in `requested` is registered and none is on the scope
  * already: the front doors refuse an unknown or a repeated id, each in
@@ -97,26 +117,20 @@ export function admit(
   switch (planned.kind) {
     case 'planned': {
       const added = planned.order.filter((step) => step.reason !== 'requested');
-      if (added.length > 0) {
-        return err(
-          new DomainError(
-            missingPrerequisitesSentence(
-              needing(planned.order, set).map(byId),
-              added.map((step) => byId(step.id)),
-            ),
-            MISSING_PREREQUISITES_CODE,
-          ),
-        );
-      }
       // Planned as named, the planner keeps the named order wherever
       // nothing ties one vertical to another — so it moves one only
-      // for a dependency, which is what a report says.
+      // for a dependency, which is what a report says. What it adds
+      // is not a move: the note naming it says where it goes.
       const asNamed = plan(registry, scope, named);
       return ok({
         order: planned.order.map((step) => byId(step.id)),
+        added: added.map((step) => byId(step.id)),
+        neededBy: added.length === 0 ? [] : needing(planned.order, set).map(byId),
         reordered:
           asNamed.kind !== 'planned' ||
-          asNamed.order.some((step, index) => step.id !== named[index]),
+          asNamed.order
+            .filter((step) => step.reason === 'requested')
+            .some((step, index) => step.id !== named[index]),
       });
     }
     case 'unknown':
@@ -154,6 +168,21 @@ export function admit(
         new DomainError(incompatibleSentence(planned.verticals.map(byId)), 'keel.incompatible'),
       );
   }
+}
+
+/**
+ * What a report says of an admitted set before anything else, one
+ * sentence each: the prerequisites it added and what needs them, then
+ * the order it installs in when the order named could not be kept.
+ * Empty when the set went in as named.
+ */
+export function admissionNotes(admitted: AdmittedSet): readonly string[] {
+  return [
+    ...(admitted.added.length > 0
+      ? [addedPrerequisitesNote(admitted.added, admitted.neededBy)]
+      : []),
+    ...(admitted.reordered ? [dependencyOrderNote(admitted.order)] : []),
+  ];
 }
 
 /**

@@ -1,7 +1,8 @@
 /**
- * What a front door makes of a plan: the request in install order, or
- * the refusal in words — the one reading `keel new --with` and
- * `keel add` share.
+ * What a front door makes of a plan: the request closed over its
+ * prerequisites, in install order, with the notes that say so — or the
+ * refusal in words. The one reading `keel new --with` and `keel add`
+ * share.
  *
  * **Scenario.** A fixture registry the way a plugin's would be: an
  * image a release builds on, two caches either of which serves a
@@ -16,7 +17,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Adapter, Tag, Vertical } from '../../../src/domain/contract/composition.js';
-import { admit } from '../../../src/domain/core/plan-refusal.js';
+import { admissionNotes, admit } from '../../../src/domain/core/plan-refusal.js';
 import type { PlanScope } from '../../../src/domain/core/planner.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
 import { DomainError, type Result } from '../../../src/domain/kernel/result.js';
@@ -125,17 +126,43 @@ describe('admit', () => {
     }
   });
 
-  it('refuses a request missing a prerequisite, naming every one in install order', () => {
-    const error = refusal(admit(registry, scope(), [deploy]));
-    expect(error.code).toBe('keel.missing-prerequisites');
-    expect(error.message).toBe(
-      'Deploy needs Image and Release installed before it, in that order — add acme-image, acme-release as well',
-    );
+  it('admits a request missing prerequisites with them, and says so first', () => {
+    const admitted = admit(registry, scope(), [deploy]);
+    if (!admitted.ok) throw admitted.error;
+    expect(admitted.value.order.map((v) => v.id)).toEqual([
+      'acme-image',
+      'acme-release',
+      'acme-deploy',
+    ]);
+    expect(admitted.value.added.map((v) => v.id)).toEqual(['acme-image', 'acme-release']);
+    expect(admitted.value.neededBy.map((v) => v.id)).toEqual(['acme-deploy']);
+    // What it added is not a move: the named vertical went in as named.
+    expect(admitted.value.reordered).toBe(false);
+    expect(admissionNotes(admitted.value)).toEqual(['added Image, Release — needed by Deploy']);
   });
 
-  it('names only what needs the missing prerequisite, when the rest of the request has it', () => {
-    const error = refusal(admit(registry, scope(), [release, redis]));
-    expect(error.message).toBe('Release needs Image installed before it — add acme-image as well');
+  it('names only what needs the prerequisite, when the rest of the request has it', () => {
+    const admitted = admit(registry, scope(), [release, redis]);
+    if (!admitted.ok) throw admitted.error;
+    expect(admissionNotes(admitted.value)).toEqual(['added Image — needed by Release']);
+  });
+
+  it('says the order too, when the one named cannot be kept', () => {
+    const admitted = admit(registry, scope(), [deploy, image]);
+    if (!admitted.ok) throw admitted.error;
+    expect(admissionNotes(admitted.value)).toEqual([
+      'added Release — needed by Deploy',
+      'installed in dependency order: acme-image, acme-release, acme-deploy',
+    ]);
+  });
+
+  it('has nothing to say of a request that goes in as named', () => {
+    const admitted = admit(registry, scope(), [image, release]);
+    if (!admitted.ok) throw admitted.error;
+    expect(admissionNotes(admitted.value)).toEqual([]);
+    const none = admit(registry, scope(), []);
+    if (!none.ok) throw none.error;
+    expect(admissionNotes(none.value)).toEqual([]);
   });
 
   it('refuses a tie between two providers under the same code, naming both', () => {

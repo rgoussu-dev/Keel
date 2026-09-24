@@ -39,11 +39,18 @@
  * vertical after whatever feeds a tag its adapters mention), then
  * `reads`, then the order the caller named them in.
  *
+ * **What it proposes.** An install can change what an installed
+ * vertical would render — distribution read whether persistence was
+ * there — without re-rendering it. {@link refreshProposals} names
+ * those after a `keel add`, for the user to take up; the planner never
+ * re-renders anything on its own.
+ *
  * Pure: a registry and a scope in, data out. Nothing here refuses in
  * words — a refusal is a {@link Plan} kind or a {@link ReadinessGap},
  * and the sentence is built from it where it is spoken.
  */
 
+import type { RefreshProposal } from '../contract/commands.js';
 import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { Readiness, ReadinessGap } from '../contract/queries.js';
@@ -215,6 +222,83 @@ function unionPlan(
   const providers = registry.verticals().filter((vertical) => extra.has(vertical.id));
   const placed = orderOf([...providers, ...wanted], scope.tags);
   return placed === null ? null : { kind: 'planned', order: stepsOf(placed, wanted), included };
+}
+
+/**
+ * The installed verticals a run should re-render and does not — see
+ * {@link RefreshProposal}: those whose `reads` names a vertical the
+ * run installed (`incoming`), and those whose adapters the tags the
+ * run leaves (`after`) resolve differently from the tags the project
+ * had (`before`). `installed` is every vertical to consider, in the
+ * order they were installed; one the registry does not know (a
+ * product's glue) is passed over, and so is anything in `incoming`.
+ *
+ * A proposal and never a step of the plan: re-rendering overwrites
+ * what a vertical owns, so it is the user's to ask for, and it
+ * replaces a persistent "stale" flag, which could never clear — a
+ * re-rendered vertical keeps its place and its `installedAt`.
+ *
+ * Read from the tags an install actually left rather than from the
+ * promotions {@link plan} assumes, which count a JVM image as both
+ * flavours: which adapters a vertical resolves to is an answer's
+ * consequence here, and the answer has been given.
+ */
+export function refreshProposals(
+  registry: Registry,
+  installed: readonly string[],
+  incoming: readonly string[],
+  before: readonly Tag[],
+  after: readonly Tag[],
+): readonly RefreshProposal[] {
+  const was = asSet(before);
+  const now = asSet(after);
+  const proposals: RefreshProposal[] = [];
+  for (const id of installed) {
+    if (incoming.includes(id)) continue;
+    const vertical = registry.vertical(id);
+    if (vertical === null) continue;
+    const reads = incoming.filter((other) => (vertical.reads ?? []).includes(other));
+    const then = matchingIds(vertical, was);
+    const later = matchingIds(vertical, now);
+    const changed = then.join(' ') !== later.join(' ');
+    if (reads.length === 0 && !changed) continue;
+    proposals.push({
+      vertical: id,
+      reads,
+      ...(changed ? { adapters: { before: then, after: later } } : {}),
+    });
+  }
+  return proposals;
+}
+
+/**
+ * The adapters of `verticals` that could run when they install onto
+ * `tags` in one run: every `requires` met by `tags` or by a tag one of
+ * them may promote, and no `excludes` met by `tags` already. A
+ * superset of what the run resolves — a run only ever adds tags — so a
+ * front door can refuse, before a question is asked, an answer none of
+ * them could read, and leave the exact check to the staged run.
+ */
+export function reachableAdapters(
+  verticals: readonly Vertical[],
+  tags: readonly Tag[],
+): readonly Adapter[] {
+  const now = asSet(tags);
+  const reach = new Set([...tags, ...verticals.flatMap((vertical) => vertical.promotes ?? [])]);
+  return verticals.flatMap((vertical) =>
+    vertical.adapters.filter(
+      (adapter) =>
+        matches({ requires: adapter.predicate.requires ?? [] }, reach) &&
+        matches({ excludes: adapter.predicate.excludes ?? [] }, now),
+    ),
+  );
+}
+
+/** The ids of `vertical`'s adapters whose predicate `tags` matches, in declaration order. */
+function matchingIds(vertical: Vertical, tags: ReadonlySet<Tag>): readonly string[] {
+  return vertical.adapters
+    .filter((adapter) => matches(adapter.predicate, tags))
+    .map((adapter) => adapter.id);
 }
 
 /**

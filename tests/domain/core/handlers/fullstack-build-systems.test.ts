@@ -253,7 +253,7 @@ describe('ci follows the per-service choice through the service manifest', () =>
       await mediator.dispatch(
         addVerticalCommand({
           cwd: path.join(cwd, 'backend'),
-          vertical: 'ci',
+          verticals: ['ci'],
           answers: {},
           interactive: false,
           dryRun: false,

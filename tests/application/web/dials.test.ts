@@ -240,13 +240,21 @@ describe('the dials query as a menu service', () => {
 
   it('reports no dials for a brownfield target, and hands it back untouched', async () => {
     const mediator = installMediator();
-    const target = { kind: 'add-vertical', vertical: 'ci', reapply: true } as const;
+    const target = { kind: 'add-vertical', verticals: ['ci'], reapply: true } as const;
     const response = await post(mediator, '/api/dials', { cwd: '/tmp/demo', target });
     const dials = bodyOf(response) as unknown as DialOptions;
     expect(dials.target).toEqual(target);
     expect(dials.buildSystems).toEqual([]);
     expect(dials.moduleLayouts).toEqual([]);
     expect(dials.peerContext).toBe(false);
+
+    // The one-vertical alias the page posts comes back as the list it
+    // stands for.
+    const alias = await post(mediator, '/api/dials', {
+      cwd: '/tmp/demo',
+      target: { kind: 'add-vertical', vertical: 'ci', reapply: true },
+    });
+    expect((bodyOf(alias) as unknown as DialOptions).target).toEqual(target);
   });
 
   it('drops an extra this preset cannot carry, says why, and pins none when asked for none', async () => {

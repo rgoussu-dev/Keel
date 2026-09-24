@@ -67,7 +67,7 @@ export interface CliDeps {
  * The first argument of `keel add` that means "a bounded context"
  * rather than a vertical id.
  *
- * `keel add <vertical>` and `keel add module <name>` share one
+ * `keel add <vertical>...` and `keel add module <name>` share one
  * commander command because commander matches subcommands by name:
  * registering `add` with a nested `module` would stop `keel add
  * persistence` resolving at all. So the branch is here, on a reserved
@@ -169,17 +169,21 @@ export function buildProgram(deps: CliDeps): Command {
     );
 
   program
-    .command('add [target] [name]')
+    .command('add [targets...]')
     .description(
-      `Install a vertical onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}), or add a bounded context with 'keel add module <name>'.`,
+      `Install verticals onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}) — several at once, with what they need — or add a bounded context with 'keel add module <name>'.`,
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
     .option('--list', 'list available verticals with their descriptions, then exit', false)
     .option(
       '--reapply',
-      're-render an already-installed vertical from its recorded answers, showing a diff against the working tree; refuses on conflict',
+      're-render already-installed verticals from their recorded answers, showing a diff against the working tree; refuses on conflict',
       false,
+    )
+    .option(
+      '--refresh <ids>',
+      'installed verticals to re-render in the same run, comma-separated — the ones a run proposes refreshing, after what they read',
     )
     .option(
       '--consumes <context>',
@@ -192,13 +196,13 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .action(
       async (
-        target: string | undefined,
-        name: string | undefined,
+        targets: string[],
         opts: {
           yes: boolean;
           dryRun: boolean;
           list: boolean;
           reapply: boolean;
+          refresh?: string;
           consumes?: string;
           set: string[];
         },
@@ -207,19 +211,29 @@ export function buildProgram(deps: CliDeps): Command {
           printOptionList('Available verticals', deps.availableVerticals, deps.logger);
           return;
         }
-        if (target === undefined) {
+        const [first, ...rest] = targets;
+        if (first === undefined) {
           throw new Error(
-            "keel add: missing target — pass a vertical id, 'module <name>', or --list",
+            "keel add: missing target — pass vertical ids, 'module <name>', or --list",
           );
         }
-        if (target === MODULE_TARGET && opts.reapply) {
+        const module = first === MODULE_TARGET;
+        if (module && opts.reapply) {
           throw new Error("--reapply applies to verticals; 'keel add module' does not support it");
         }
+        if (module && opts.refresh !== undefined) {
+          throw new Error("--refresh applies to verticals; 'keel add module' does not support it");
+        }
+        if (module && rest.length > 1) {
+          throw new Error(
+            `keel add module takes one name, got ${String(rest.length)}: ${rest.join(' ')}`,
+          );
+        }
         const result = await deps.mediator.dispatch(
-          target === MODULE_TARGET
+          module
             ? addModuleCommand({
                 cwd: cwd(),
-                module: name ?? '',
+                module: rest[0] ?? '',
                 ...(opts.consumes === undefined ? {} : { consumes: opts.consumes }),
                 answers: parseSetAnswers(opts.set),
                 interactive: !opts.yes,
@@ -227,15 +241,16 @@ export function buildProgram(deps: CliDeps): Command {
               })
             : addVerticalCommand({
                 cwd: cwd(),
-                vertical: target,
+                verticals: targets,
                 answers: parseSetAnswers(opts.set),
                 interactive: !opts.yes,
                 dryRun: opts.dryRun,
+                ...(opts.refresh === undefined ? {} : { refresh: parseVerticalList(opts.refresh) }),
                 ...(opts.reapply ? { reapply: true } : {}),
               }),
         );
         const report = unwrap(result);
-        const label = target === MODULE_TARGET ? `module ${report.subject}` : report.subject;
+        const label = module ? `module ${report.subject}` : report.subject;
         printReport(`keel add ${label}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
         else deps.logger.success(`keel add ${label}: ready`);
@@ -531,7 +546,8 @@ function printReport(header: string, report: InstallReport, log: Logger): void {
 }
 
 /**
- * Parses `--with containerization,distribution,iac` into the ids it names.
+ * Parses `--with containerization,distribution,iac` into the ids it
+ * names — and `keel add --refresh`'s list the same way.
  *
  * Empty entries are dropped, so `--with ''` and `--with ,` both mean
  * "none" — which is a real answer here, not a missing one: passing

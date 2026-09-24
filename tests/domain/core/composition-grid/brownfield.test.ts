@@ -64,7 +64,7 @@ describe('composition grid: brownfield', () => {
           const cell = `add:${stack}+${vertical}`;
           const add = previewQuery({
             cwd,
-            target: { kind: 'add-vertical', vertical },
+            target: { kind: 'add-vertical', verticals: [vertical] },
             answers: {},
           });
           const outcome = await grid.cell(cell, add);

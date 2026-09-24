@@ -1557,34 +1557,39 @@ describe('keel.new-project extra verticals', () => {
     },
   );
 
-  it('refuses a set that leaves out a prerequisite, naming it, before any adapter question', async () => {
-    const prompt = new FakePrompt({
-      buildSystem: 'gradle',
-      moduleLayout: 'basic',
-      withPeerContext: 'no',
-      'keel.review': 'proceed',
-    });
-    const error = expectErr(
-      await installMediator({ prompt }).dispatch(
-        newProjectCommand({
-          cwd,
-          stack: 'quarkus-rest',
-          answers: {},
-          interactive: true,
-          dryRun: true,
-          extraVerticals: ['iac'],
-        }),
-      ),
-    );
-    expect(error.code).toBe('keel.missing-prerequisites');
-    expect(error.message).toBe(
-      'Infrastructure as code needs Container image and Distribution installed before it, in that order — add containerization, distribution as well',
-    );
-    expect(prompt.asked).not.toContain('basePackage');
+  it('installs what a set leaves out, says so first, and writes what naming it would', async () => {
+    const staging = async (extraVerticals: readonly string[]) => {
+      let staged: Tree | null = null;
+      const report = expectOk(
+        await installMediator({ trees: (root) => (staged = fsTreeFactory(root)) }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-rest',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+      const tree = staged as Tree | null;
+      const bytes = report.changes.map(
+        (change) => `${change.kind} ${change.path} ${tree?.read(change.path)?.toString('base64')}`,
+      );
+      return { report, bytes };
+    };
+    const alone = await staging(['iac']);
+    expect(alone.report.notes).toEqual([
+      'added Container image, Distribution — needed by Infrastructure as code',
+    ]);
+    expect(alone.report.changes.map((c) => c.path)).toContain('deploy/compose.yaml');
+    const named = await staging(['containerization', 'distribution', 'iac']);
+    expect(named.report.notes).toBeUndefined();
+    expect(alone.bytes).toEqual(named.bytes);
   });
 
   it('names only the prerequisite a set leaves out', async () => {
-    const error = expectErr(
+    const report = expectOk(
       await installMediator().dispatch(
         newProjectCommand({
           cwd,
@@ -1596,10 +1601,10 @@ describe('keel.new-project extra verticals', () => {
         }),
       ),
     );
-    expect(error.code).toBe('keel.missing-prerequisites');
-    expect(error.message).toBe(
-      'Infrastructure as code needs Distribution installed before it — add distribution as well',
-    );
+    expect(report.notes).toEqual([
+      'added Distribution — needed by Infrastructure as code',
+      'installed in dependency order: containerization, distribution, iac',
+    ]);
   });
 
   it('refuses iac on a Quarkus CLI before any adapter question, distribution or not', async () => {

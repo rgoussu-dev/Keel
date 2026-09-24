@@ -307,10 +307,9 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
 
       await goToStep(traffic, page, 'target');
       await act(traffic, () => choice(page, 'vertical', INSTALLED).check());
-      // The answer was `ci`'s. Carried here it would ride a reapply,
-      // which `POST /api/install` refuses as
-      // `keel.reapply-frozen-answers`; carried to a plain install it
-      // would be recorded for a vertical that is not installed.
+      // The answer was `ci`'s. Carried here it would ride a reapply
+      // that runs no adapter reading it, which `POST /api/install`
+      // refuses; it must not reach the command line either.
       await until(
         async () => (await command(page)) === `keel add ${INSTALLED} --reapply --yes`,
         'a command with no answer on it',

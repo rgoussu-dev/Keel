@@ -97,27 +97,46 @@ export interface ApiDeps {
 
 const answersSchema: z.ZodType<PresetAnswers> = z.record(z.record(z.string()));
 
-const targetSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('new-project'),
-    stack: z.string().min(1).optional(),
-    layout: z.enum(['monorepo', 'polyrepo']).optional(),
-    buildSystem: z.string().min(1).optional(),
-    moduleLayout: z.string().min(1).optional(),
-    withPeerContext: z.boolean().optional(),
-    extraVerticals: z.array(z.string().min(1)).optional(),
-  }),
-  z.object({
-    kind: z.literal('add-vertical'),
-    vertical: z.string().min(1),
-    reapply: z.boolean().optional(),
-  }),
-  z.object({
-    kind: z.literal('add-module'),
-    module: z.string().min(1),
-    consumes: z.string().min(1).optional(),
-  }),
-]);
+/**
+ * An install target. `add-vertical` names its verticals as
+ * `verticals`, or one of them as `vertical` — the shape the page has
+ * always posted, kept as an alias for a list of one. Exactly one of
+ * the two.
+ */
+const targetSchema = z
+  .discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('new-project'),
+      stack: z.string().min(1).optional(),
+      layout: z.enum(['monorepo', 'polyrepo']).optional(),
+      buildSystem: z.string().min(1).optional(),
+      moduleLayout: z.string().min(1).optional(),
+      withPeerContext: z.boolean().optional(),
+      extraVerticals: z.array(z.string().min(1)).optional(),
+    }),
+    z.object({
+      kind: z.literal('add-vertical'),
+      verticals: z.array(z.string().min(1)).min(1).optional(),
+      vertical: z.string().min(1).optional(),
+      refresh: z.array(z.string().min(1)).optional(),
+      reapply: z.boolean().optional(),
+    }),
+    z.object({
+      kind: z.literal('add-module'),
+      module: z.string().min(1),
+      consumes: z.string().min(1).optional(),
+    }),
+  ])
+  .superRefine((target, context) => {
+    if (target.kind !== 'add-vertical') return;
+    if ((target.verticals === undefined) === (target.vertical === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['verticals'],
+        message: "name the verticals as 'verticals', or one of them as 'vertical' — exactly one",
+      });
+    }
+  });
 
 const installBodySchema = z.object({
   cwd: z.string().min(1),
@@ -250,7 +269,9 @@ function narrow(target: z.infer<typeof targetSchema>): InstallTarget {
     case 'add-vertical':
       return {
         kind: 'add-vertical',
-        vertical: target.vertical,
+        // The schema admits exactly one of the two.
+        verticals: target.verticals ?? (target.vertical === undefined ? [] : [target.vertical]),
+        ...(target.refresh === undefined ? {} : { refresh: target.refresh }),
         ...(target.reapply === undefined ? {} : { reapply: target.reapply }),
       };
     case 'add-module':

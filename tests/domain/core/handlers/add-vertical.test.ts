@@ -6,7 +6,8 @@
  * on top and asserts the workflow files land, the manifest gains the
  * new vertical and tags, and the safeguards (duplicate, unknown id,
  * missing project, a file of the user's in the way or gone) surface as
- * domain errors.
+ * domain errors. Then several verticals at once, with what they need,
+ * and the installed ones a run re-renders (`--refresh`) or proposes.
  */
 
 import path from 'node:path';
@@ -14,6 +15,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { previewQuery } from '../../../../src/domain/contract/queries.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -61,7 +63,7 @@ const addDistribution = (dryRun = false) =>
   installMediator({ clock: new FakeClock('2026-04-27T08:00:00Z') }).dispatch(
     addVerticalCommand({
       cwd,
-      vertical: 'distribution',
+      verticals: ['distribution'],
       answers: {},
       interactive: false,
       dryRun,
@@ -72,7 +74,7 @@ const reapplyDistribution = (overrides: { dryRun?: boolean; answers?: object } =
   installMediator({ clock: new FakeClock('2026-04-28T09:00:00Z') }).dispatch(
     addVerticalCommand({
       cwd,
-      vertical: 'distribution',
+      verticals: ['distribution'],
       answers: (overrides.answers ?? {}) as Record<string, Record<string, string>>,
       interactive: false,
       dryRun: overrides.dryRun ?? false,
@@ -121,7 +123,7 @@ describe('keel.add-vertical (keel add)', () => {
       await installMediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical: 'nonsense-vertical',
+          verticals: ['nonsense-vertical'],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -135,12 +137,18 @@ describe('keel.add-vertical (keel add)', () => {
   describe('what the planner reads before anything is written', () => {
     const add = (vertical: string) =>
       installMediator({ runDeferred: async () => {} }).dispatch(
-        addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+        addVerticalCommand({
+          cwd,
+          verticals: [vertical],
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
       );
     const installedIds = async (): Promise<readonly string[]> =>
       (await fsManifestStore.read(projectScopeRoot(cwd)))?.verticals.map((v) => v.id) ?? [];
 
-    it('refuses a vertical that needs another first, naming it, then takes it once it is there', async () => {
+    it('installs what a vertical needs with it, and says so first', async () => {
       expectOk(
         await installMediator({ runDeferred: async () => {} }).dispatch(
           newProjectCommand({
@@ -154,21 +162,12 @@ describe('keel.add-vertical (keel add)', () => {
       );
       const before = await installedIds();
 
-      const iac = expectErr(await add('iac'));
-      expect(iac.code).toBe('keel.missing-prerequisites');
-      expect(iac.message).toBe(
-        'Infrastructure as code needs Container image and Distribution installed before it, in that order — add containerization, distribution as well',
+      const report = expectOk(await add('iac'));
+      expect(report.subject).toBe('iac');
+      expect(report.notes?.[0]).toBe(
+        'added Container image, Distribution — needed by Infrastructure as code',
       );
-      const distribution = expectErr(await add('distribution'));
-      expect(distribution.code).toBe('keel.missing-prerequisites');
-      expect(distribution.message).toBe(
-        'Distribution needs Container image installed before it — add containerization as well',
-      );
-      expect(await installedIds()).toEqual(before);
-
-      expectOk(await add('containerization'));
-      expectOk(await add('distribution'));
-      expectOk(await add('iac'));
+      expect(await installedIds()).toEqual([...before, 'containerization', 'distribution', 'iac']);
       expect(await fs.pathExists(path.join(cwd, 'deploy/compose.yaml'))).toBe(true);
     });
 
@@ -208,7 +207,7 @@ describe('keel.add-vertical (keel add)', () => {
       installMediator().dispatch(
         addVerticalCommand({
           cwd,
-          vertical,
+          verticals: [vertical],
           answers: {},
           interactive: false,
           dryRun: false,
@@ -324,7 +323,7 @@ describe('keel.add-vertical (keel add)', () => {
         }).dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'agent-harness',
+            verticals: ['agent-harness'],
             answers: {},
             interactive: false,
             dryRun: false,
@@ -372,7 +371,7 @@ describe('keel.add-vertical (keel add)', () => {
         await installMediator().dispatch(
           addVerticalCommand({
             cwd,
-            vertical: 'ci',
+            verticals: ['ci'],
             answers: {},
             interactive: false,
             dryRun: false,
@@ -393,7 +392,315 @@ describe('keel.add-vertical (keel add)', () => {
         }),
       );
       expect(error.code).toBe('keel.reapply-frozen-answers');
-      expect(error.message).toMatch(/--set cannot be combined with --reapply/);
+      expect(error.message).toBe(
+        "--set cannot change distribution/quarkus-cli-native's answers: re-rendering 'distribution' reads them as the manifest recorded them, and changing one is not supported yet",
+      );
+    });
+
+    it('refuses --set for an adapter nothing re-rendered reads, as any install would', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const error = expectErr(
+        await reapplyDistribution({ answers: { 'ci/jvm-pipeline': { provider: 'gitlab-ci' } } }),
+      );
+      expect(error.code).toBe('keel.unknown-answer');
+    });
+  });
+
+  describe('several verticals in one run, and what it re-renders', () => {
+    /** Deferred actions shell out to gradle and git; the plan and the files are what is asserted. */
+    const mediator = () => installMediator({ runDeferred: async () => {} });
+    const scaffold = async (dir: string, stack: string, buildSystem?: string) =>
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd: dir,
+            stack,
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            ...(buildSystem === undefined ? {} : { buildSystem }),
+          }),
+        ),
+      );
+    const add = (
+      dir: string,
+      verticals: readonly string[],
+      more: Partial<Parameters<typeof addVerticalCommand>[0]> = {},
+    ) =>
+      mediator().dispatch(
+        addVerticalCommand({
+          cwd: dir,
+          verticals,
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          ...more,
+        }),
+      );
+    /** Every file under `dir`, relative, with its bytes. */
+    const snapshot = async (dir: string, rel = ''): Promise<Record<string, string>> => {
+      const out: Record<string, string> = {};
+      for (const entry of await fs.readdir(path.join(dir, rel), { withFileTypes: true })) {
+        const child = rel === '' ? entry.name : `${rel}/${entry.name}`;
+        if (entry.isDirectory()) Object.assign(out, await snapshot(dir, child));
+        else out[child] = (await fs.readFile(path.join(dir, child))).toString('base64');
+      }
+      return out;
+    };
+    const composeOf = (dir: string) => fs.readFile(path.join(dir, 'deploy/compose.yaml'), 'utf8');
+
+    let twin: string;
+    beforeEach(async () => {
+      twin = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-add-twin-'));
+    });
+    afterEach(async () => {
+      await fs.remove(twin);
+    });
+
+    it('writes what three adds in a row write, from one add of all three or of the last alone', async () => {
+      await scaffold(cwd, 'quarkus-rest');
+      const pristine = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-add-pristine-'));
+      try {
+        await fs.copy(cwd, pristine);
+        for (const vertical of ['containerization', 'distribution', 'iac']) {
+          expectOk(await add(cwd, [vertical]));
+        }
+        const sequential = await snapshot(cwd);
+
+        await fs.copy(pristine, twin);
+        const all = expectOk(await add(twin, ['iac', 'containerization', 'distribution']));
+        expect(all.subject).toBe('iac containerization distribution');
+        expect(all.notes).toEqual([
+          'installed in dependency order: containerization, distribution, iac',
+        ]);
+        expect(await snapshot(twin)).toEqual(sequential);
+
+        await fs.remove(twin);
+        await fs.copy(pristine, twin);
+        expectOk(await add(twin, ['iac']));
+        expect(await snapshot(twin)).toEqual(sequential);
+      } finally {
+        await fs.remove(pristine);
+      }
+    });
+
+    it('adopts the harness beside another vertical as two adds in a row would', async () => {
+      // The harness replays what was installed before the run into its
+      // buffer; what the run installs beside it is there already, and
+      // replayed a second time its skill would collide with itself.
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-http',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            agentHarness: false,
+          }),
+        ),
+      );
+      await fs.copy(cwd, twin);
+      expectOk(await add(cwd, ['agent-harness']));
+      expectOk(await add(cwd, ['persistence']));
+      expectOk(await add(twin, ['persistence', 'agent-harness']));
+
+      const MANIFEST = '.claude/.keel-manifest.json';
+      const files = async (dir: string) => {
+        const { [MANIFEST]: _, ...rest } = await snapshot(dir);
+        return rest;
+      };
+      expect(await files(twin)).toEqual(await files(cwd));
+      // The manifest records the same install; only the provenance of a
+      // harness document persistence patches differs, as it does
+      // between `keel new --with` and `keel new` then `keel add`: in
+      // one run it ships already patched.
+      const record = async (dir: string) => {
+        const manifest = await fsManifestStore.read(projectScopeRoot(dir));
+        return {
+          verticals: manifest?.verticals,
+          tags: manifest?.tags,
+          answers: manifest?.answers,
+          entries: manifest?.entries.map((entry) => `${entry.source} ${entry.target}`).sort(),
+        };
+      };
+      expect(await record(twin)).toEqual(await record(cwd));
+    });
+
+    it('is one set: none named, or one named twice, is refused before anything is written', async () => {
+      await scaffold(cwd, 'go-http');
+      const before = await snapshot(cwd);
+      const error = expectErr(await add(cwd, ['ci', 'toolchain', 'ci']));
+      expect(error.code).toBe('keel.invalid-verticals');
+      expect(error.message).toBe("vertical 'ci' is named twice");
+      expect(expectErr(await add(cwd, [])).code).toBe('keel.invalid-verticals');
+      expect(await snapshot(cwd)).toEqual(before);
+    });
+
+    it('proposes re-rendering what reads an incoming vertical, and --refresh takes it up', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      expect(await composeOf(cwd)).not.toContain('DB_URL');
+      await fs.copy(cwd, twin);
+
+      // Taken no further, the report says what is now out of date —
+      // and, while nothing is written yet, that this very run can
+      // take it up.
+      const planned = expectOk(await add(cwd, ['persistence'], { dryRun: true }));
+      expect(planned.refreshProposals).toEqual([
+        { vertical: 'distribution', reads: ['persistence'] },
+      ]);
+      expect(planned.notes).toEqual([
+        "refresh proposed: Distribution reads Persistence, which it was rendered without — re-render it in this run with --refresh distribution, or afterwards with 'keel add distribution --reapply'",
+      ]);
+      // Once written, running it again would refuse persistence as
+      // installed: only the re-render is left to offer.
+      const plain = expectOk(await add(cwd, ['persistence']));
+      expect(plain.refreshProposals).toEqual(planned.refreshProposals);
+      expect(plain.notes).toEqual([
+        "refresh proposed: Distribution reads Persistence, which it was rendered without — re-render it with 'keel add distribution --reapply'",
+      ]);
+      expect(await composeOf(cwd)).not.toContain('DB_URL');
+
+      // Taken up, distribution re-renders after persistence, in one run.
+      const refreshed = expectOk(await add(twin, ['persistence'], { refresh: ['distribution'] }));
+      expect(refreshed.refreshProposals).toBeUndefined();
+      expect(refreshed.diffs?.map((d) => d.path)).toContain('deploy/compose.yaml');
+      expect(await composeOf(twin)).toContain('DB_URL');
+    });
+
+    it('asks a newly matching adapter its questions in a refresh, and takes --set for it', async () => {
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      const recorded = async (dir: string) =>
+        (await fsManifestStore.read(projectScopeRoot(dir)))?.answers ?? {};
+      expect(await recorded(cwd)).not.toHaveProperty(['distribution/jvm-container']);
+      await fs.copy(cwd, twin);
+
+      // A JVM image changes which adapters distribution resolves to.
+      const plain = expectOk(await add(twin, ['containerization'], { dryRun: true }));
+      expect(plain.refreshProposals).toEqual([
+        {
+          vertical: 'distribution',
+          reads: [],
+          adapters: {
+            before: ['distribution/quarkus-cli-native'],
+            after: ['distribution/jvm-container'],
+          },
+        },
+      ]);
+
+      const preview = expectOk(
+        await mediator().dispatch(
+          previewQuery({
+            cwd,
+            target: {
+              kind: 'add-vertical',
+              verticals: ['containerization'],
+              refresh: ['distribution'],
+            },
+            answers: {},
+          }),
+        ),
+      );
+      const asked = preview.questions.map((q) =>
+        q.binding.kind === 'answer' ? `${q.binding.adapter}:${q.binding.question}` : q.binding.kind,
+      );
+      expect(asked).toEqual(
+        expect.arrayContaining([
+          'distribution/jvm-container:provider',
+          'distribution/jvm-container:deploy',
+        ]),
+      );
+      // Its recorded adapter is re-rendered from what it recorded, unasked.
+      expect(asked.some((key) => key.startsWith('distribution/quarkus-cli-native:'))).toBe(false);
+
+      expectOk(
+        await add(cwd, ['containerization'], {
+          refresh: ['distribution'],
+          answers: { 'distribution/jvm-container': { provider: 'gitlab-ci' } },
+        }),
+      );
+      expect((await recorded(cwd))['distribution/jvm-container']).toMatchObject({
+        provider: 'gitlab-ci',
+      });
+    });
+
+    it('plans a refreshed vertical with the ones it adds, ahead of what needs it', async () => {
+      // A native-only distribution, then a JVM image added without the
+      // refresh it proposed: no installed vertical builds the image
+      // iac deploys, until distribution re-renders — first, in the
+      // same run.
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      expectOk(await add(cwd, ['containerization']));
+      expect(expectErr(await add(cwd, ['iac'])).code).toBe('keel.uncoverable-vertical');
+
+      // `--refresh` names no order, so going first is no move to report.
+      const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] }));
+      expect(report.notes).toBeUndefined();
+      expect(await fs.pathExists(path.join(cwd, 'deploy/compose.yaml'))).toBe(true);
+    });
+
+    it('reports a move among the verticals named, and never a refreshed one as installed', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['persistence']));
+      const report = expectOk(
+        await add(cwd, ['distribution', 'containerization'], {
+          refresh: ['persistence'],
+          dryRun: true,
+        }),
+      );
+      expect(report.notes).toEqual([
+        'installed in dependency order: containerization, distribution',
+      ]);
+    });
+
+    it('re-renders a recorded adapter from its answers, unasked, even interactively', async () => {
+      // A question the adapter grew since it was installed has nothing
+      // recorded; the rest of its answers are, so it stays frozen and
+      // the new question takes its default — the prompt is never asked.
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      const root = projectScopeRoot(cwd);
+      const manifest = await fsManifestStore.read(root);
+      if (manifest === null) throw new Error('no manifest');
+      const { deploy: _grown, ...recorded } = manifest.answers['distribution/go-container'] ?? {};
+      expect(recorded).toEqual({ provider: 'github-actions' });
+      await fsManifestStore.write(root, {
+        ...manifest,
+        answers: { ...manifest.answers, 'distribution/go-container': recorded },
+      });
+
+      expectOk(await add(cwd, ['distribution'], { reapply: true, interactive: true }));
+      expect((await fsManifestStore.read(root))?.answers['distribution/go-container']).toEqual({
+        provider: 'github-actions',
+        deploy: 'compose',
+      });
+    });
+
+    it('holds an answer to the adapters the run resolved, not the ones it could have', async () => {
+      // The native release is reachable when the run starts, and the
+      // image the run adds first rules it out: its answer would reach
+      // nothing, so it is refused once the run is staged, before a
+      // file is written.
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      const before = await snapshot(cwd);
+      const error = expectErr(
+        await add(cwd, ['containerization', 'distribution'], {
+          answers: { 'distribution/quarkus-cli-native': { targets: 'linux-amd64' } },
+        }),
+      );
+      expect(error.code).toBe('keel.unknown-answer');
+      expect(await snapshot(cwd)).toEqual(before);
+    });
+
+    it('refuses to refresh a vertical that is not installed', async () => {
+      await scaffold(cwd, 'go-http');
+      const error = expectErr(await add(cwd, ['persistence'], { refresh: ['distribution'] }));
+      expect(error.code).toBe('keel.vertical-not-installed');
+      expect(error.message).toMatch(/nothing to refresh/);
     });
   });
 });

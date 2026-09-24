@@ -199,6 +199,51 @@ describe('the keel ui API', () => {
       'keel.add-module',
     ]);
     expect(mediator.dispatched[1]).toMatchObject({ module: 'billing', consumes: 'greeting' });
+    // `vertical` is the alias for a list of one.
+    expect(mediator.dispatched[0]).toMatchObject({ verticals: ['ci'] });
+  });
+
+  it('takes several verticals, and the installed ones to refresh beside them', async () => {
+    const mediator = new RecordingMediator();
+    await call(mediator, {
+      method: 'POST',
+      path: '/api/install',
+      body: JSON.stringify({
+        cwd: '/tmp/demo',
+        target: {
+          kind: 'add-vertical',
+          verticals: ['containerization', 'distribution'],
+          refresh: ['persistence'],
+        },
+        answers: {},
+      }),
+    });
+    expect(mediator.dispatched[0]).toMatchObject({
+      kind: 'keel.add-vertical',
+      verticals: ['containerization', 'distribution'],
+      refresh: ['persistence'],
+    });
+    expect(Object.keys(mediator.dispatched[0] ?? {})).not.toContain('vertical');
+  });
+
+  it.each([
+    ['neither', {}],
+    ['both', { vertical: 'ci', verticals: ['ci'] }],
+    ['an empty list', { verticals: [] }],
+  ])('rejects an add-vertical target naming %s, before dispatching', async (_, names) => {
+    const mediator = new RecordingMediator();
+    const response = await call(mediator, {
+      method: 'POST',
+      path: '/api/preview',
+      body: JSON.stringify({
+        cwd: '/tmp/demo',
+        target: { kind: 'add-vertical', ...names },
+        answers: {},
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(response.body).toContain('target.verticals');
+    expect(mediator.dispatched).toEqual([]);
   });
 
   it('omits an absent optional field rather than sending it as undefined', async () => {

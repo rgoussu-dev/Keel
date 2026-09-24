@@ -53,9 +53,11 @@ readiness**. It reads `Adapter.promotes` and `Vertical.reads` into one
 answer — included, ready, needs, unavailable — and an ordered closure,
 and every surface asks it: the extras menu (`dials.ts`, both front
 ends), `keel.dials`' snap of a page's extras to their closure, and both
-front doors through `plan-refusal.ts` (`keel new --with` installs in
-plan order; both refuse an unavailable vertical or a set missing a
-prerequisite, before a file moves). A new surface asks it too, rather
+front doors through `plan-refusal.ts` (both install a named set closed
+over its prerequisites, in plan order, and refuse an unavailable
+vertical or a tie, before a file moves); after a `keel add`,
+`refreshProposals` names the installed verticals the run changed and
+did not re-render — proposed, never done. A new surface asks it too, rather
 than re-deriving readiness from `coversFor` or a `promotes` union —
 that is how the extras menu came to hide `iac`. A prerequisite
 belongs in a predicate the planner can read — a `requires` tag another

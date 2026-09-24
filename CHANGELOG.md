@@ -25,12 +25,12 @@ use to keep a long-lived changelog scannable — and the root keeps
   one planner: the extras menu offers distribution as _needs Container
   image_ and iac as _needs Container image, Distribution_ — labelled
   so in the wizard; ticked for you in `keel ui` — and `keel new
---with` and `keel add` refuse a set that leaves one out, before any
-  question, as `keel.missing-prerequisites`, naming what to add in the
-  order it installs. `iac` on a CLI project is refused for the HTTP
-  entrypoint it lacks rather than for a tag. On `quarkus-cli-rest` on
-  Gradle, distribution alone now installs its native binaries instead
-  of being refused.
+--with` and `keel add` install what one leaves out with it, first,
+  saying so in the plan's first note (_"added Container image,
+  Distribution — needed by Infrastructure as code"_). `iac` on a CLI
+  project is refused for the HTTP entrypoint it lacks rather than for
+  a tag. On `quarkus-cli-rest` on Gradle, distribution alone now
+  installs its native binaries instead of being refused.
 
 - **`keel ui` no longer loses `DB_URL`.** The page names extras in
   menu order, which is alphabetical, and `keel new` installed them in
@@ -197,12 +197,31 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   the order typed put one ahead of what it needs
   (`installed in dependency order: …`, `InstallReport.notes`).
   `keel.extra-verticals-order` is retired;
-  naming an id twice is still refused. A set that leaves out what an
-  extra needs installed first is refused as
-  `keel.missing-prerequisites`, where `iac` without its prerequisites
-  used to be `keel.uncoverable-vertical`; scripts matching either
-  should expect the new code. Including the prerequisites on the
-  command line is the next step.
+  naming an id twice is still refused.
+
+- **A vertical named without what it needs brings it along.**
+  `keel new --with iac` and `keel add iac` on a REST stack install
+  Container image and Distribution first, in one run, and the plan
+  opens with _"added Container image, Distribution — needed by
+  Infrastructure as code"_ — the set `keel ui` already ticked for you.
+  Both used to refuse it (`keel.missing-prerequisites`, and
+  `keel.uncoverable-vertical` before that); a script relying on that
+  refusal now gets the install.
+  The code remains for a tie between two verticals that would each
+  supply what one needs, which only the user can choose between.
+
+- **A re-render asks what it has nothing recorded for.**
+  `keel add --reapply` (and the new `--refresh`) keeps every recorded
+  answer frozen, but an adapter the vertical newly resolves to — the image
+  release pipeline beside a native one, once a JVM image is there — is
+  asked its questions and takes `--set`, rather than taking its
+  defaults silently. `keel.reapply-frozen-answers` now refuses only a
+  `--set` for an adapter the manifest records answers for; any other
+  answer is held to the run like any install's (`keel.unknown-answer`,
+  `keel.frozen-answer`). In `keel ui`, a re-render's preview shows the
+  questions it asks. `AddVerticalCommand` and the install target carry
+  `verticals` (a list) where they carried `vertical`; the web API still
+  takes `vertical` as a list of one.
 
 - **`keel.dials` reports readiness and snaps the extras to their
   closure.** `DialOptions` gains `verticals` — the preset's own
@@ -345,6 +364,21 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   and refuses a stance leaking across families.
 
 ### Added
+
+- **`keel add` takes several verticals, and proposes the re-renders an
+  add calls for.** `keel add containerization distribution iac` is one
+  plan and one run, installed in the order they depend on one another
+  whatever order they are named in, and writes what three adds in a
+  row write; naming one twice is refused (`keel.invalid-verticals`).
+  When an add changes what an installed vertical would render —
+  `persistence` after the `distribution` whose deploy descriptor reads
+  it for `DB_URL`, a JVM image after a native-only distribution — the
+  report says so (`note: refresh proposed: …`,
+  `InstallReport.refreshProposals`) and re-renders nothing on its own.
+  `--refresh <ids>` takes a proposal up in the same run, after what
+  the re-rendered vertical reads, under `--reapply`'s posture, with a
+  diff for every file it rewrites. The web API's install target takes
+  `verticals` and `refresh` too. See `docs/cli.md` → `keel add`.
 
 - **Plugins can say what each adapter adds, and what a vertical
   reads.** Two optional fields, for the planner keel's menus and front

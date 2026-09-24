@@ -55,7 +55,9 @@ const scaffold = (
   );
 
 const add = (vertical: string, answers: PresetAnswers, dryRun = false) =>
-  mediator().dispatch(addVerticalCommand({ cwd, vertical, answers, interactive: false, dryRun }));
+  mediator().dispatch(
+    addVerticalCommand({ cwd, verticals: [vertical], answers, interactive: false, dryRun }),
+  );
 
 const recordedAnswers = async (dir = cwd) =>
   (await fsManifestStore.read(projectScopeRoot(dir)))?.answers ?? {};

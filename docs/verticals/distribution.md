@@ -36,12 +36,11 @@ a declared one: every container adapter requires the
 `deploy.container-image` tag containerization adds, in its predicate.
 So every surface knows it before anything runs — the extras menu
 offers distribution as _needs Container image_ (`keel ui` ticks it for
-you), and on a server-shaped project without it, distribution is
-refused as `keel.missing-prerequisites` in `keel add distribution` and
-`keel new --with distribution` alike, naming it. The fix is to install
-`containerization` as well — `keel add containerization` first, or
-`--with containerization,distribution` in any order, since extras
-install in the order they depend on one another.
+you), and on a server-shaped project without it, `keel add
+distribution` and `keel new --with distribution` alike install
+`containerization` with it, first, and say so in the plan's first
+note (`added Container image — needed by Distribution`). Naming both,
+in any order, is the same run.
 
 On a stack composing a CLI with an HTTP server (`quarkus-cli-rest`,
 `quarkus-cli-rest-kotlin` on Gradle), distribution **alone** resolves
@@ -50,7 +49,11 @@ it covers both dimensions without an image, so it is ready rather than
 waiting on one. Add `containerization` in the same run and the image
 is built first; its flavor then decides which pipeline ships it (the
 JVM flavor excludes the native adapter). Adding `containerization` to
-such a project later does not touch the native release already there.
+such a project later does not touch the native release already there:
+the run proposes re-rendering distribution, and `keel add
+containerization --refresh distribution` (or `keel add distribution
+--reapply` afterwards) takes it up — asking the image pipeline's
+questions, which the native release never had.
 
 What each family's pipeline does on a `v*` tag:
 

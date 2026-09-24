@@ -152,10 +152,21 @@ installs its extras in plan order, whatever order they were named in —
 it hands the planner the set by id, so verticals nothing ties together
 go in by id and every permutation writes the same bytes; and both
 `keel new --with` and `keel add` refuse — before a file
-moves — a vertical the scope cannot carry, or a set missing a
-prerequisite (`keel.missing-prerequisites`, naming them in install
-order). The front doors do not yet install what they were not asked
-for; the page does, by ticking it.
+moves — a vertical the scope cannot carry, or a tie between two sets
+of prerequisites (`keel.missing-prerequisites`, naming both). A set
+missing a prerequisite is **completed** instead: both front doors
+install the closure in one run, and the report's first note names
+what it added — "added Container image, Distribution — needed by
+Infrastructure as code" — the same set `keel.dials` ticks on the page.
+
+After a `keel add`, the planner also **proposes** what the run did not
+do: re-rendering an installed vertical whose `reads` names one the run
+installed (distribution, rendered before persistence, has no `DB_URL`),
+or whose adapters resolve differently on the tags the run left (a
+native-only distribution once a JVM image arrives). Proposed, never
+done — a re-render overwrites what the vertical owns — and
+`keel add … --refresh <ids>` takes it up in the same run, ordered like
+any other vertical of the set.
 
 ### Stacks
 
@@ -289,8 +300,8 @@ not, because the thing they turn on is not a tag:
   name to check, and a name is not a tag.
 - An unknown stack or vertical id, `--layout` that is neither
   `monorepo` nor `polyrepo`, a build system the stack does not list,
-  `--with` naming the same vertical twice — input validation against
-  what the registry declares.
+  `--with` or `keel add` naming the same vertical twice — input
+  validation against what the registry declares.
 
 **Capability probes** ask the adapter set a question no tag answers:
 would anything actually be emitted here? `coversFor` and
