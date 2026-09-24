@@ -33,7 +33,7 @@
  */
 
 import type { InstallTarget, NewProjectTarget, RepoLayout } from '../contract/commands.js';
-import type { Tag, Vertical } from '../contract/composition.js';
+import { AGENT_HARNESS_TAG, type Tag, type Vertical } from '../contract/composition.js';
 import type {
   ChoiceDescriptor,
   DialAdjustment,
@@ -236,6 +236,119 @@ export function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
   return verticals.flatMap((vertical) => vertical.promotes ?? []);
 }
 
+/** The vertical `keel new --no-agent-harness` leaves out of a preset. */
+const AGENT_HARNESS = 'agent-harness';
+
+/** The code `keel new` refuses a harness it cannot leave out with. */
+export const INVALID_AGENT_HARNESS_CODE = 'keel.invalid-agent-harness';
+
+/**
+ * `stack` as `keel new --no-agent-harness` installs it: its own
+ * verticals, less the agent harness.
+ */
+export function withoutHarness(stack: Stack): Stack {
+  return {
+    ...stack,
+    verticals: stack.verticals.filter((vertical) => vertical.id !== AGENT_HARNESS),
+  };
+}
+
+/**
+ * Whether `stack`'s own tags or verticals switch the agent harness on
+ * — what makes `--no-agent-harness` meaningless on it, and refused.
+ */
+export function harnessActivatedBy(stack: Stack): boolean {
+  return [...stack.tags, ...promotedBy(stack.verticals)].includes(AGENT_HARNESS_TAG);
+}
+
+/** Whether installing `vertical` switches the agent harness on. */
+export function activatesHarness(vertical: Vertical): boolean {
+  return vertical.promotes?.includes(AGENT_HARNESS_TAG) ?? false;
+}
+
+/**
+ * Whether installing `vertical` on `scope` switches the agent harness
+ * back on: it activates the harness itself, or the plan installs a
+ * prerequisite with it that does. A harness brought in to satisfy
+ * another vertical is a harness all the same, so `--no-agent-harness`
+ * refuses the two alike rather than install one unasked.
+ */
+export function switchesHarnessOn(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+): boolean {
+  if (activatesHarness(vertical)) return true;
+  const planned = plan(registry, scope, [vertical.id]);
+  return (
+    planned.kind === 'planned' &&
+    planned.order.some((step) => activatesHarnessById(registry, step.id))
+  );
+}
+
+function activatesHarnessById(registry: Registry, id: string): boolean {
+  const vertical = registry.vertical(id);
+  return vertical !== null && activatesHarness(vertical);
+}
+
+/**
+ * Whether the agent harness is a dial of `stack` — a harness the
+ * preset comes with and `keel new --no-agent-harness` can leave out.
+ *
+ * A single-service preset, since a composite product refuses the flag
+ * (each of its services carries the harness); one that installs the
+ * harness at all, since leaving out what is not there is no choice;
+ * and one that, without it, does not switch it straight back on
+ * through its own tags or verticals, which the install refuses too.
+ */
+export function harnessOptional(stack: Stack): boolean {
+  return (
+    stack.services === undefined &&
+    stack.verticals.some((vertical) => vertical.id === AGENT_HARNESS) &&
+    !harnessActivatedBy(withoutHarness(stack))
+  );
+}
+
+/**
+ * The sentence `keel new` refuses `--with <id>` beside
+ * `--no-agent-harness` in, where `id` would switch the harness back on
+ * — and the reason `keel.dials` drops it from a selection that leaves
+ * the harness out, word for word.
+ */
+export function harnessOptOutSentence(id: string): string {
+  return id === AGENT_HARNESS
+    ? '--no-agent-harness cannot be combined with --with agent-harness'
+    : `--no-agent-harness cannot be combined with --with ${id}: it switches the agent harness back on`;
+}
+
+/**
+ * `options` as they read on a preset installed without its agent
+ * harness ({@link withoutHarness}): the harness itself still
+ * `included` — the preset's own, left out by the target and there to
+ * put back, which no extras box offers — and every other vertical that
+ * would switch it back on ({@link switchesHarnessOn}: itself, or a
+ * prerequisite it `requires`) `unavailable`, with the refusal
+ * `keel new` gives the pair. Both front ends' menus read them so:
+ * `keel new`'s extras question and `keel.dials`.
+ */
+export function harnessLeftOut(
+  registry: Registry,
+  options: readonly VerticalOption[],
+): readonly VerticalOption[] {
+  const activates = (id: string): boolean => activatesHarnessById(registry, id);
+  return options.map((option): VerticalOption => {
+    const { refusal: _refusal, ...rest } = option;
+    if (option.id === AGENT_HARNESS) return { ...rest, readiness: 'included', requires: [] };
+    if (!activates(option.id) && !option.requires.some(activates)) return option;
+    return {
+      ...rest,
+      readiness: 'unavailable',
+      requires: [],
+      refusal: { code: INVALID_AGENT_HARNESS_CODE, message: harnessOptOutSentence(option.id) },
+    };
+  });
+}
+
 /**
  * `requested` snapped to what installs on this preset: each id, by id,
  * kept where the planner can install it beside the ones kept before
@@ -254,12 +367,19 @@ export function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
  * leaves a prerequisite out, so a form ticking `iac` posts
  * `containerization, distribution, iac` back — the plan the command
  * line would run for `--with iac` — and says why.
+ *
+ * With `agentHarness` false, `stack` is the preset without its
+ * harness ({@link withoutHarness}), and a vertical that would switch
+ * it back on ({@link switchesHarnessOn}) is dropped in the sentence
+ * `keel new` refuses the pair in — never kept for the closure to bring
+ * the harness back as its prerequisite.
  */
 export function snapExtras(
   registry: Registry,
   stack: Stack,
   tags: readonly Tag[],
   requested: readonly string[],
+  agentHarness = true,
 ): { readonly extras: readonly string[]; readonly adjustments: readonly DialAdjustment[] } {
   const scope = presetScope(stack, tags);
   const kept: string[] = [];
@@ -273,7 +393,9 @@ export function snapExtras(
     const vertical = registry.vertical(id);
     if (vertical === null) drop(id, unregistered(id));
     else if (scope.installed.includes(id)) drop(id, alreadyIncludedNote(vertical, stack.id));
-    else candidates.push(vertical);
+    else if (!agentHarness && switchesHarnessOn(registry, scope, vertical)) {
+      drop(id, harnessOptOutSentence(id));
+    } else candidates.push(vertical);
   }
   const tied: Vertical[] = [];
   const keep = (vertical: Vertical, retry: boolean): void => {
@@ -364,13 +486,19 @@ function undialled(target: InstallTarget): DialOptions {
     moduleLayouts: [],
     services: [],
     peerContext: false,
+    agentHarness: false,
     extraVerticals: [],
     verticals: [],
     adjustments: [],
   };
 }
 
-function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
+function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget): DialOptions {
+  // The harness first, as `keel new` settles it: every menu below is
+  // read over the preset as it will be installed.
+  const agentHarness = harnessOptional(preset);
+  const harnessOff = agentHarness && target.agentHarness === false;
+  const stack = harnessOff ? withoutHarness(preset) : preset;
   const buildSystems = legalBuildSystems(stack, stack.buildSystems ?? []);
   const build = prefer(buildSystems, target.buildSystem);
   const moduleLayouts = legalModuleLayouts(stack, build?.tag ?? null, stack.moduleLayouts ?? []);
@@ -384,8 +512,9 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
     ...stackTagsFor(stack, build?.tag ?? null, layout?.tag ?? null),
     ...(withPeerContext ? [PEER_CONTEXT_TAG] : []),
   ];
-  const verticals = verticalOptions(registry, stack, tags);
-  const snapped = snapExtras(registry, stack, tags, target.extraVerticals ?? []);
+  const options = verticalOptions(registry, stack, tags);
+  const verticals = harnessOff ? harnessLeftOut(registry, options) : options;
+  const snapped = snapExtras(registry, stack, tags, target.extraVerticals ?? [], !harnessOff);
 
   return {
     target: {
@@ -407,11 +536,15 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
       // others, and a front end that renders it must not also be
       // asked it.
       extraVerticals: snapped.extras,
+      // Only ever `false`: on is what an absent field means, and a
+      // preset whose harness cannot be left out has no such dial.
+      ...(harnessOff ? { agentHarness: false } : {}),
     },
     buildSystems: buildSystems.map(asChoice),
     moduleLayouts: moduleLayouts.map(asChoice),
     services: [],
     peerContext,
+    agentHarness,
     extraVerticals: verticals.filter(offeredAsExtra).map(verticalChoice),
     verticals,
     adjustments: snapped.adjustments,
@@ -427,10 +560,11 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
  * service is a full install of its own stack in its own scope — the
  * product root never assembles their tags together, so there is no
  * combination for a {@link Conflict} to bite on. The module layout,
- * the peer context and the extras are not dials here either: the
- * install refuses all three on a composite, so a settled target must
- * not carry them — but for the product's own verticals, which it
- * reports as `included`, since naming one of those is set aside.
+ * the peer context, the extras and the harness are not dials here
+ * either: the install refuses all four on a composite, so a settled
+ * target must not carry them — but for the product's own verticals,
+ * which it reports as `included`, since naming one of those is set
+ * aside.
  */
 function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
   const chosen = readServiceBuildSystems(target.buildSystem);
@@ -458,6 +592,7 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
     moduleLayouts: [],
     services,
     peerContext: false,
+    agentHarness: false,
     extraVerticals: [],
     // What `--with` sets aside with a note rather than refusing: the
     // product's own, which the product installs whatever is named.

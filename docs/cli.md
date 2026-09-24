@@ -75,7 +75,7 @@ any other vertical is refused as belonging to a service
 (`keel.wrong-scope`), in the words `keel add` gives it at the product
 root.
 
-`--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness` or a plugin stack/vertical that activates `agentic.harness`. Composite product-root harness selection is outside this flag; run `keel add agent-harness` inside an individual service.
+`--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness` or a plugin stack/vertical that activates `agentic.harness` — or a vertical that needs the harness installed first, which the flag refuses rather than bring the harness back as its prerequisite — and the interactive extras question leaves such a vertical off its menu. It is refused on a composite stack: every service of a product keel scaffolds carries the harness. In `keel ui` it is the **Agent harness** chip under the Options step's _Comes with_ list, pressed off ([docs/ui.md](ui.md)), and the command line the page shows carries the flag.
 
 ### The interactive wizard
 

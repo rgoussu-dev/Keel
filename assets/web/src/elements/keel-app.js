@@ -462,6 +462,9 @@ export class KeelApp extends HTMLElement {
       if (this.#target.withPeerContext === true) {
         rows.push({ step: OPTIONS, label: 'Peer context', value: 'yes' });
       }
+      if (this.#target.agentHarness === false) {
+        rows.push({ step: OPTIONS, label: 'Agent harness', value: 'left out' });
+      }
       if (stack.services.length === 0) {
         rows.push({
           step: OPTIONS,

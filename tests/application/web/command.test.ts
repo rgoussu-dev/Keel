@@ -52,6 +52,16 @@ describe('commandFor', () => {
     );
   });
 
+  it('spells a harness left out as the opt-out flag, and a harness kept as nothing', () => {
+    expect(
+      line({ kind: 'new-project', stack: 'go-cli', extraVerticals: ['ci'], agentHarness: false }),
+    ).toBe('keel new --stack go-cli --with ci --no-agent-harness --yes');
+    // On is the default: the flag has no positive spelling.
+    expect(line({ kind: 'new-project', stack: 'go-cli', agentHarness: true })).toBe(
+      'keel new --stack go-cli --yes',
+    );
+  });
+
   it('carries a composite build system as the path=id pairs it travels as', () => {
     expect(
       line({ kind: 'new-project', stack: 'fullstack', buildSystem: 'backend=maven,frontend=pnpm' }),

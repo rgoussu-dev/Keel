@@ -443,6 +443,11 @@ export interface NewProjectTarget {
   readonly moduleLayout?: string;
   readonly withPeerContext?: boolean;
   readonly extraVerticals?: readonly string[];
+  /**
+   * `false` leaves the preset's agent harness out — `keel new
+   * --no-agent-harness`. See {@link NewProjectCommand.agentHarness}.
+   */
+  readonly agentHarness?: boolean;
 }
 
 /** Layer verticals — the subject of {@link AddVerticalCommand}. */
@@ -500,6 +505,7 @@ export function installCommandFor(target: InstallTarget, run: InstallRun): Insta
         // means "ask", and a front end that has already offered the
         // list must be able to say "none".
         ...(target.extraVerticals === undefined ? {} : { extraVerticals: target.extraVerticals }),
+        ...(target.agentHarness === undefined ? {} : { agentHarness: target.agentHarness }),
       });
     case 'add-vertical':
       return addVerticalCommand({

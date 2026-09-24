@@ -27,8 +27,9 @@ it compiled.
   `toggleVertical`: a tick brings what the vertical needs, an untick
   takes what needs it; `rerender` and `toggleRefresh` for an installed
   vertical) — `src/extras.js` sorts that group into its parts from the
-  `keel.dials` reply, `src/additions.js` the brownfield cards from the
-  project status, both through the parts they share in
+  `keel.dials` reply (the agent harness's chip a switch where the reply
+  says it may be left out), `src/additions.js` the brownfield cards
+  from the project status, both through the parts they share in
   `src/readiness.js` (ready, needs, not for this project), and
   `src/project.js` says what the project status reports once for every
   card (a harness from another generation); `src/response.js` heads a

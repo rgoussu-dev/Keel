@@ -269,7 +269,11 @@ export interface DialOptions {
    * prerequisites of what it names added, what cannot go on this
    * preset dropped, in the order the install will run them. Every
    * such change is in {@link DialOptions.adjustments}. The list to
-   * choose from is {@link DialOptions.verticals}.
+   * choose from is {@link DialOptions.verticals}. `agentHarness` is
+   * the exception the other way: carried only as `false`, where
+   * {@link DialOptions.agentHarness} lets the harness be left out —
+   * on is what an absent field means, the install asks nothing about
+   * it, and the command line spells no flag for it.
    */
   readonly target: InstallTarget;
   /** Build systems still legal; empty when the stack pins one. */
@@ -284,6 +288,16 @@ export interface DialOptions {
    * *and* the rules, which is the half a catalog cannot answer.
    */
   readonly peerContext: boolean;
+  /**
+   * Whether the agent harness may be left out (`target.agentHarness:
+   * false`, `keel new --no-agent-harness`): a single-service preset
+   * that comes with it, whose own tags and remaining verticals do not
+   * switch it back on. Never on a composite product, whose every
+   * service carries it. Left out, an extra that would switch it back
+   * on is `unavailable`, and dropped from the selection, in the words
+   * `keel new` refuses the pair with.
+   */
+  readonly agentHarness: boolean;
   /**
    * Verticals that may still be layered on top, labelled by title:
    * those that install here on their own, and those that install once
@@ -329,7 +343,10 @@ export interface VerticalOption {
    * `included` — the preset installs it anyway; `ready` — it installs
    * here on its own; `needs` — it installs once {@link requires} have;
    * `unavailable` — nothing keel can add makes it install on this
-   * preset, and {@link refusal} says why.
+   * preset, and {@link refusal} says why. The agent harness stays
+   * `included` when the target leaves it out: it is still the
+   * preset's own, to put back, and {@link DialOptions.agentHarness}
+   * says whether it may be.
    */
   readonly readiness: 'included' | 'ready' | 'needs' | 'unavailable';
   /**

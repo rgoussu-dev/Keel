@@ -13,9 +13,11 @@ keel add agent-harness                       # adopt in an existing project
 keel add agent-harness --reapply              # refresh an installed harness
 ```
 
-Opting out emits no agent documents, loading shims, skills, settings or
-hooks. The project manifest under `.claude/` remains machinery, and
-`code-style` still installs formatter configuration. Adding the harness
+In `keel ui` the opt-out is the **Agent harness** chip under the
+Options step's _Comes with_ list, pressed off. Opting out emits no
+agent documents, loading shims, skills, settings or hooks. The project
+manifest under `.claude/` remains machinery, and `code-style` still
+installs formatter configuration. Adding the harness
 later re-renders installed contributors from their recorded answers,
 non-interactively, realizing only their declared harness elements.
 Every recorded bounded context is replayed with its transient module

@@ -27,6 +27,7 @@ import {
   addVerticalCommand,
   installCommandFor,
   newProjectCommand,
+  type NewProjectTarget,
 } from '../../../../src/domain/contract/commands.js';
 import { catalogQuery, dialsQuery, previewQuery } from '../../../../src/domain/contract/queries.js';
 import type { InstallPreview, PendingQuestion } from '../../../../src/domain/contract/queries.js';
@@ -454,6 +455,74 @@ describe('keel.preview — refusals from inside an adapter', () => {
     );
     expect(error.code).toBe('keel.invalid-answer');
     expect(error.message).toContain('persistence/database-compose:engine');
+  });
+});
+
+/**
+ * `--no-agent-harness` reaches the page as `target.agentHarness`, and
+ * the preview reads it as the install does — through the one mapping
+ * both share (`installCommandFor`), from the target `keel.dials`
+ * settled.
+ */
+describe('keel.preview — the agent harness left out', () => {
+  /** What a target stages, previewed and installed as a dry run. */
+  async function staged(target: NewProjectTarget): Promise<{
+    readonly previewed: readonly string[];
+    readonly installed: readonly string[];
+  }> {
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+    const preview = expectOk(await mediator.dispatch(previewQuery({ cwd, target, answers: {} })));
+    const report = expectOk(
+      await mediator.dispatch(
+        installCommandFor(target, { cwd, answers: {}, interactive: false, dryRun: true }),
+      ),
+    );
+    return {
+      previewed: preview.changes.map((change) => change.path).sort(),
+      installed: report.changes.map((change) => change.path).sort(),
+    };
+  }
+
+  it('plans no agent documents, skills or hooks, and the install stages the same', async () => {
+    const mediator = installMediator();
+    const settle = async (agentHarness?: boolean): Promise<NewProjectTarget> =>
+      expectOk(
+        await mediator.dispatch(
+          dialsQuery({
+            target: {
+              kind: 'new-project',
+              stack: 'go-cli',
+              ...(agentHarness === undefined ? {} : { agentHarness }),
+            },
+          }),
+        ),
+      ).target as NewProjectTarget;
+
+    const on = await staged(await settle());
+    const off = await staged(await settle(false));
+    expect(off.previewed).toEqual(off.installed);
+    expect(on.previewed).toContain('AGENTS.md');
+    expect(off.previewed).not.toContain('AGENTS.md');
+    const skills = (files: readonly string[]) =>
+      files.some((file) => file.startsWith('.claude/skills/'));
+    expect(skills(on.previewed)).toBe(true);
+    expect(skills(off.previewed)).toBe(false);
+    // The project itself is untouched: only the harness went.
+    expect(off.previewed).toContain('go.mod');
+    expect(on.previewed).toEqual(expect.arrayContaining([...off.previewed]));
+  });
+
+  it('is refused on a product, as the install refuses it', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'new-project', stack: 'fullstack', agentHarness: false },
+          answers: {},
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.invalid-agent-harness');
   });
 });
 

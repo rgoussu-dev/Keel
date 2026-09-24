@@ -42,8 +42,9 @@
  * by its group and value, once the new one is in.
  *
  * Catalog, dials, target and step in as properties; `target-changed`
- * out with the fields that moved, and `extra-toggled` out with the
- * vertical an "Also scaffold" box stands for and whether it is now
+ * out with the fields that moved — the agent harness pressed off or
+ * back on among them, `agentHarness` — and `extra-toggled` out with
+ * the vertical an "Also scaffold" box stands for and whether it is now
  * ticked — what else that tick moves is `../target.js`'s answer.
  */
 
@@ -56,7 +57,18 @@ import {
   pickLanguage,
   pickShape,
 } from '../finder.js';
-import { cards, checkboxCards, el, focusIn, help, note, refocus, refusedList } from '../dom.js';
+import {
+  cards,
+  checkboxCards,
+  el,
+  focusIn,
+  help,
+  icon,
+  note,
+  prose,
+  refocus,
+  refusedList,
+} from '../dom.js';
 import { extrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
@@ -284,6 +296,7 @@ export class KeelNewForm extends HTMLElement {
       group.setAttribute('aria-labelledby', heading.id);
       return el('div', {}, heading, group);
     };
+    const switchable = extras.included.find((vertical) => vertical.on !== undefined);
     const included =
       extras.included.length === 0
         ? null
@@ -299,13 +312,16 @@ export class KeelNewForm extends HTMLElement {
                 attrs: { 'aria-labelledby': 'extras-included-title' },
               },
               ...extras.included.map((vertical) =>
-                el('li', {
-                  class: 'chip',
-                  text: vertical.title,
-                  attrs: { 'data-id': vertical.id },
-                }),
+                vertical.on === undefined
+                  ? el('li', {
+                      class: 'chip',
+                      text: vertical.title,
+                      attrs: { 'data-id': vertical.id },
+                    })
+                  : el('li', { attrs: { 'data-id': vertical.id } }, this.#harnessSwitch(vertical)),
               ),
             ),
+            switchable === undefined ? null : harnessHint(switchable),
           );
     return el(
       'section',
@@ -348,6 +364,28 @@ export class KeelNewForm extends HTMLElement {
 
   #toggle(id, ticked) {
     this.dispatchEvent(new CustomEvent('extra-toggled', { bubbles: true, detail: { id, ticked } }));
+  }
+
+  /**
+   * The agent harness's chip where the preset may leave it out: the
+   * same chip in the same list — it comes with the preset like the
+   * others — drawn as a toggle button, pressed while the harness is on
+   * and let go for `--no-agent-harness`. One field moves, so it is a
+   * field edit like the peer-context box, not an extras gesture.
+   */
+  #harnessSwitch(chip) {
+    return el(
+      'button',
+      {
+        id: 'agentHarness',
+        type: 'button',
+        class: 'chip switch',
+        attrs: { 'aria-pressed': String(chip.on), 'aria-describedby': 'agentHarness-hint' },
+        on: { click: () => this.#change({ agentHarness: !chip.on }) },
+      },
+      chip.on ? icon('check') : null,
+      chip.title,
+    );
   }
 
   /**
@@ -441,6 +479,23 @@ export class KeelNewForm extends HTMLElement {
     label.append(box, text);
     return label;
   }
+}
+
+/**
+ * The line under a harness that can be left out, saying which way it
+ * is and what pressing it does — its state in words, beside the
+ * pressed look, and the switch's description for a screen reader.
+ */
+function harnessHint(chip) {
+  return el(
+    'p',
+    { id: 'agentHarness-hint', class: 'help' },
+    prose(
+      chip.on
+        ? `${chip.title} is on. Press it to leave the agent documents, skills and hooks out — \`keel new --no-agent-harness\`.`
+        : `${chip.title} is left out: no agent documents, skills or hooks. Press it to put it back, or adopt it later with \`keel add agent-harness\`.`,
+    ),
+  );
 }
 
 /**

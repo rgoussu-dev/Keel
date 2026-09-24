@@ -21,7 +21,10 @@
  *     by. Ticking it ticks them (`target.js`'s `toggleExtra`).
  *   - **Comes with the preset** — already part of it, shown so the
  *     question "does it have CI?" is answered where it is asked. Not
- *     a control: there is nothing to untick.
+ *     a control — there is nothing to untick — but for the agent
+ *     harness, where `keel.dials` says the preset may leave it out
+ *     (`agentHarness`): that chip is a switch, pressed while the
+ *     harness is on and let go for `keel new --no-agent-harness`.
  *   - **Not for this project** — what the preset cannot carry at all,
  *     collapsed, each with the sentence `keel new --with` would refuse
  *     it with. It used to be left out, as the terminal's menu leaves
@@ -36,11 +39,18 @@
  * @typedef {import('./target.js').Adjustment} Adjustment
  * @typedef {import('./readiness.js').Refused} Refused
  * @typedef {{ value: string, label: string, doc: string, badge?: string }} ExtraCard
- * @typedef {{ ready: ExtraCard[], needs: ExtraCard[], included: { id: string, title: string }[], refused: Refused[], chosen: string[], line: string }} ExtrasGroup
+ * @typedef {{ id: string, title: string, on?: boolean }} IncludedChip
+ * @typedef {{ ready: ExtraCard[], needs: ExtraCard[], included: IncludedChip[], refused: Refused[], chosen: string[], line: string }} ExtrasGroup
  */
 
 import { needsBadge, refusedOf, titles } from './readiness.js';
 import { extrasOf } from './target.js';
+
+/**
+ * The one vertical a preset comes with that a target can leave out —
+ * where the reply's `agentHarness` says this preset lets it.
+ */
+const HARNESS = 'agent-harness';
 
 /**
  * The group for this dials reply and target, or null where there is
@@ -48,7 +58,11 @@ import { extrasOf } from './target.js';
  * services each carry their own extras (its reply lists only what the
  * product installs of its own, which is nothing to tick).
  *
- * @param {{ verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment>, services?: ReadonlyArray<unknown> } | null} dials
+ * The agent harness's chip carries `on` where the reply lets the
+ * target leave it out: whether the target keeps it, as the install
+ * reads the field — on unless it is `false`.
+ *
+ * @param {{ verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment>, services?: ReadonlyArray<unknown>, agentHarness?: boolean } | null} dials
  * @param {object | null} target
  * @returns {ExtrasGroup | null}
  */
@@ -68,7 +82,11 @@ export function extrasGroup(dials, target) {
       .map((vertical) => ({ ...card(vertical), badge: needsBadge(vertical, titleOf) })),
     included: verticals
       .filter((vertical) => vertical.readiness === 'included')
-      .map((vertical) => ({ id: vertical.id, title: vertical.title })),
+      .map((vertical) =>
+        vertical.id === HARNESS && dials?.agentHarness === true
+          ? { id: vertical.id, title: vertical.title, on: target?.agentHarness !== false }
+          : { id: vertical.id, title: vertical.title },
+      ),
     refused: refusedOf(verticals),
     chosen: extrasOf(target),
     line: adjustmentLine(dials, titleOf),

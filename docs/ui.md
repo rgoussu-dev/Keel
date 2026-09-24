@@ -59,7 +59,7 @@ into one and the page scrolls as an ordinary document.
 | **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                     |
 | **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                        |
 | **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                              |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                                                                                      |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`), and the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                           |
 | **What to add**   | _(brownfield only)_ Capabilities to layer on — several at once — or a bounded context. A card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys, sorted into _Ready_, _Needs another capability first_, _Not for this project_ (collapsed, with the reason) and _Installed_ (each with a **Re-render**). See [What to add](#what-to-add). |
 | **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                |
 | **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                    |
@@ -215,10 +215,11 @@ now Java._ — rather than let the language change without a word.
 **A new preset keeps your choices.** Every move that lands on another
 preset — an adapter ticked, a framework switched, a shape moved —
 carries the build system, the module layout, the peer context, a
-product's repository layout and the **Also scaffold** extras along, and
-`keel.dials` snaps whichever the new preset cannot take. Maven, the
-modulith and a pipeline picked on `quarkus-rest` survive ticking the
-CLI adapter, since `quarkus-cli-rest` takes all three. Moved to
+product's repository layout, the **Also scaffold** extras and a harness
+left out along, and `keel.dials` snaps whichever the new preset cannot
+take. Maven, the modulith and a pipeline picked on `quarkus-rest`
+survive ticking the CLI adapter, since `quarkus-cli-rest` takes all
+three. Moved to
 `ts-cli`, Maven becomes npm, and the same line says so: _Moving to
 ts-cli did not keep build system maven._ Only a value you had moved off
 its default is named — a product's build systems service by service,
@@ -228,7 +229,10 @@ line. An extra the new preset cannot carry is named with the reason
 moved to `quarkus-cli`, reads _Container image dropped: Container
 image needs an entrypoint this project does not have: HTTP server — a
 REST endpoint._ — and one the new preset comes with is not named at
-all: it is kept, by the preset now rather than by the box.
+all: it is kept, by the preset now rather than by the box. A product
+puts a harness left out back — every one of its services carries one
+— and says so: _Moving to fullstack-go did not keep the agent harness
+off._
 
 The answers go along too. Most are asked by the same adapter on every
 preset — `vcs/git-init`'s default branch, a database engine — and
@@ -322,6 +326,22 @@ three go. The group stays on screen however many you tick. It used to
 be a question the preview asked, and the install stops asking a
 question once it is answered — so the list vanished after the first
 tick, and the page could post one extra and never take it back.
+
+**One chip of _Comes with_ is a switch: Agent harness**, on every
+single-service preset. It is pressed while the harness is on. Press it
+and the target carries `agentHarness: false`, the plan loses the agent
+documents, skills and hooks, the command under it gains
+`--no-agent-harness`, the review says _Agent harness: left out_, and
+the line under the chips says how to put it back — on this page, or
+later with `keel add agent-harness`. `keel.dials` says where the switch
+exists (`agentHarness`): never on a product, whose every service
+carries the harness, and which the install refuses the flag on. With
+the harness left out, a vertical that would switch it back on — a
+plugin's, since keel ships none, whether it promotes the harness
+itself or needs it installed first — is under _Not for this project_,
+in the sentence `keel new` refuses the pair with, and is dropped from
+a selection that held it, as the terminal's extras question leaves it
+off and `--with` refuses it.
 
 `keel.dials` **pins `extraVerticals` on every target it settles**,
 to `[]` when none are named, exactly as it pins every other dial — so
@@ -451,6 +471,7 @@ the target is broken is a menu that cannot be used to fix it.
 ```jsonc
 { "kind": "new-project", "stack": "quarkus-rest",
   "buildSystem": "maven", "moduleLayout": "modulith", "withPeerContext": true }
+{ "kind": "new-project", "stack": "go-cli", "extraVerticals": ["ci"], "agentHarness": false }
 { "kind": "add-vertical", "verticals": ["persistence", "ci"], "refresh": ["distribution"] }
 { "kind": "add-vertical", "vertical": "ci", "reapply": false }
 { "kind": "add-module", "module": "billing", "consumes": "greeting" }

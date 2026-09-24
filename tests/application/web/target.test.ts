@@ -96,6 +96,7 @@ const jvmDials = (target: DialOptions['target']): DialOptions => ({
   moduleLayouts: [choice('basic'), choice('modulith')],
   services: [],
   peerContext: true,
+  agentHarness: true,
   extraVerticals: [],
   verticals: [],
   adjustments: [],
@@ -428,6 +429,35 @@ describe('a greenfield control', () => {
     expect(next.dials).toBe(before.dials);
   });
 
+  it('leaves the agent harness out like any dial, keeping answers and menus', () => {
+    // The chip under "Comes with" moves one field of the preset, as
+    // the peer-context box does: the same subject, so nothing resets.
+    const before = greenfield();
+    const off = retarget(before, { agentHarness: false });
+    expect(off.target).toEqual({
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      buildSystem: 'gradle',
+      agentHarness: false,
+    });
+    expect(off.answers).toBe(before.answers);
+    expect(off.dials).toBe(before.dials);
+    expect(off.generation).toBe(before.generation + 1);
+    // Pressed back on, the field says so until `keel.dials` settles it
+    // away — on is what an absent one means.
+    expect(retarget(off, { agentHarness: true }).target).toMatchObject({ agentHarness: true });
+  });
+
+  it('carries a harness left out onto the new preset, for keel.dials to keep or drop', () => {
+    const off = retarget(greenfield(), { agentHarness: false });
+    expect(retarget(off, { stack: 'go-http' }).target).toEqual({
+      kind: 'new-project',
+      stack: 'go-http',
+      buildSystem: 'gradle',
+      agentHarness: false,
+    });
+  });
+
   it('takes a target of another kind whole, and starts over', () => {
     const next = retarget(greenfield(), { kind: 'add-vertical', verticals: [] });
     expect(next.target).toEqual({ kind: 'add-vertical', verticals: [] });
@@ -598,6 +628,7 @@ describe('what a preset move could not keep', () => {
           { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
         ],
         peerContext: false,
+        agentHarness: false,
         extraVerticals: [],
         verticals: [],
         adjustments: [],
@@ -606,6 +637,48 @@ describe('what a preset move could not keep', () => {
     expect(settled.notice).toBe(
       'Moving to fullstack did not keep build system maven, module layout modulith or the peer context.',
     );
+  });
+
+  it('names the agent harness a product put back, and keeps quiet where the preset kept it off', () => {
+    const off = (): Run => {
+      const target = {
+        kind: 'new-project',
+        stack: 'quarkus-rest',
+        buildSystem: 'gradle',
+        agentHarness: false,
+      } as const;
+      return { ...greenfield(), target, dials: jvmDials(target) };
+    };
+    // Another single preset keeps it off, and the reply says so by
+    // carrying it.
+    const kept = retarget(off(), { stack: 'quarkus-cli-rest' });
+    expect(settle(kept, jvmDials({ ...kept.target, kind: 'new-project' })).notice).toBe('');
+
+    // A product has no such dial — every service carries the harness.
+    const moved = retarget(off(), { stack: 'fullstack' });
+    const settled = settle(
+      moved,
+      reply({
+        target: {
+          kind: 'new-project',
+          stack: 'fullstack',
+          layout: 'monorepo',
+          buildSystem: 'backend=gradle,frontend=npm',
+        },
+        buildSystems: [],
+        moduleLayouts: [],
+        services: [
+          { path: 'backend', stack: 'quarkus-rest', buildSystems: [choice('gradle')] },
+          { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
+        ],
+        peerContext: false,
+        agentHarness: false,
+        extraVerticals: [],
+        verticals: [],
+        adjustments: [],
+      }),
+    );
+    expect(settled.notice).toBe('Moving to fullstack did not keep the agent harness off.');
   });
 
   it('keeps quiet about a default nobody chose going missing', () => {
@@ -620,6 +693,7 @@ describe('what a preset move could not keep', () => {
         moduleLayouts: [choice('basic'), choice('modulith')],
         services: [],
         peerContext: true,
+        agentHarness: true,
         extraVerticals: [],
         verticals: [],
         adjustments: [],
@@ -646,6 +720,7 @@ describe('what a preset move could not keep', () => {
           { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
         ],
         peerContext: false,
+        agentHarness: false,
         extraVerticals: [],
         verticals: [],
         adjustments: [],
@@ -693,6 +768,7 @@ describe('what a preset move could not keep', () => {
         moduleLayouts: [choice('basic'), choice('modulith')],
         services: [],
         peerContext: true,
+        agentHarness: true,
         extraVerticals: [],
         verticals: [],
         adjustments: [],
@@ -715,6 +791,7 @@ describe('what a preset move could not keep', () => {
         moduleLayouts: [],
         services: [],
         peerContext: false,
+        agentHarness: false,
         extraVerticals: [],
         verticals: [],
         adjustments: [],
@@ -734,6 +811,7 @@ describe('what a preset move could not keep', () => {
         moduleLayouts: [],
         services: [],
         peerContext: false,
+        agentHarness: false,
         extraVerticals: [],
         verticals: [],
         adjustments: [],
@@ -755,6 +833,7 @@ describe('what a preset move could not keep', () => {
       moduleLayouts: [],
       services,
       peerContext: false,
+      agentHarness: false,
       extraVerticals: [],
       verticals: [],
       adjustments: [],
@@ -888,6 +967,7 @@ describe('what a preset move could not keep', () => {
           { path: 'frontend', stack: 'web-components', buildSystems: [choice('npm')] },
         ],
         peerContext: false,
+        agentHarness: false,
         extraVerticals: [],
         verticals: [],
         adjustments: [],

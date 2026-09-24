@@ -36,19 +36,20 @@
  *
  * **A new preset is the exception, and keeps everything.** A build
  * system, a module layout, the peer context, a product's repository
- * layout and the extras are settings of the preset rather than
- * questions of an adapter, most presets share them, and `keel.dials`
- * already snaps a value the new preset cannot take to one it can —
- * the extras to what it can carry, saying why for each it drops. Most
- * answers are shared too: `vcs/git-init` asks for a default branch on
- * every preset, by the same id. So resetting them was only ever
- * throwing away work — toggling an adapter on the way to
- * `quarkus-cli-rest` cost you the Maven, the modulith, the pipeline
- * and the package you had picked on `quarkus-rest`. What the move
- * could *not* keep is said in one line, once the reply has settled it
- * ({@link settle}): a dial you had moved off its default, an extra
- * the new preset cannot carry, and the language, where the new shape
- * has none by the old one's name.
+ * layout, the extras and a harness left out are settings of the
+ * preset rather than questions of an adapter, most presets share
+ * them, and `keel.dials` already snaps a value the new preset cannot
+ * take to one it can — the extras to what it can carry, saying why
+ * for each it drops. Most answers are shared too: `vcs/git-init` asks
+ * for a default branch on every preset, by the same id. So resetting
+ * them was only ever throwing away work — toggling an adapter on the
+ * way to `quarkus-cli-rest` cost you the Maven, the modulith, the
+ * pipeline and the package you had picked on `quarkus-rest`. What the
+ * move could *not* keep is said in one line, once the reply has
+ * settled it ({@link settle}): a dial you had moved off its default —
+ * the harness left out among them, which a product puts back — an
+ * extra the new preset cannot carry, and the language, where the new
+ * shape has none by the old one's name.
  *
  * The answers are **held**, not posted, until a preview of the new
  * preset says where each still goes ({@link previewed}). Posted
@@ -86,7 +87,14 @@ import { languageJump } from './finder.js';
  * drops or snaps whichever the new preset cannot take, so carrying one
  * a preset has never heard of costs nothing.
  */
-const CARRIED = ['layout', 'buildSystem', 'moduleLayout', 'withPeerContext', 'extraVerticals'];
+const CARRIED = [
+  'layout',
+  'buildSystem',
+  'moduleLayout',
+  'withPeerContext',
+  'extraVerticals',
+  'agentHarness',
+];
 
 /**
  * The carried dials the page speaks up for when a move loses one, and
@@ -104,6 +112,7 @@ const ANNOUNCED = {
   },
   moduleLayout: (value) => `module layout ${value}`,
   withPeerContext: () => 'the peer context',
+  agentHarness: () => 'the agent harness off',
 };
 
 /**
@@ -567,6 +576,7 @@ function chosen(target, dials) {
         : differs(target.buildSystem, dials.buildSystems[0]?.id),
     moduleLayout: differs(target.moduleLayout, dials.moduleLayouts[0]?.id),
     withPeerContext: differs(target.withPeerContext, false),
+    agentHarness: differs(target.agentHarness, true),
     extraVerticals: titled(extrasOf(target), dials),
   };
   return Object.fromEntries(Object.entries(moved).filter(([, value]) => value !== undefined));

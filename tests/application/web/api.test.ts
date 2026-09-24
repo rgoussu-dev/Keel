@@ -184,6 +184,23 @@ describe('the keel ui API', () => {
     });
   });
 
+  it('carries the agent harness left out to the install command', async () => {
+    const mediator = new RecordingMediator();
+    await call(mediator, {
+      method: 'POST',
+      path: '/api/install',
+      body: JSON.stringify({
+        ...NEW_PROJECT,
+        target: { ...NEW_PROJECT.target, agentHarness: false },
+      }),
+    });
+    expect(mediator.dispatched[0]).toMatchObject({
+      kind: 'keel.new-project',
+      stack: 'ts-cli',
+      agentHarness: false,
+    });
+  });
+
   it('maps each target kind to its own command', async () => {
     const mediator = new RecordingMediator();
     for (const target of [

@@ -39,6 +39,8 @@ export function commandFor({ target, answers }) {
     if (Array.isArray(target.extraVerticals) && target.extraVerticals.length > 0) {
       flag(tokens, '--with', target.extraVerticals.join(','));
     }
+    // Only the opt-out has a flag: the harness is on unless left out.
+    if (target.agentHarness === false) tokens.push({ kind: 'flag', text: '--no-agent-harness' });
   } else if (target.kind === 'add-vertical') {
     // `vertical` is the one-vertical alias the API still takes.
     const verticals = Array.isArray(target.verticals)

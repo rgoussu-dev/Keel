@@ -49,7 +49,8 @@ skill only for something its files make real — nothing is emitted for
 a procedure that would be fiction.
 
 The harness is included by default. Use `keel new --no-agent-harness`
-to scaffold without it, and `keel add agent-harness` to adopt it later.
+— in `keel ui`, the **Agent harness** chip pressed off — to scaffold
+without it, and `keel add agent-harness` to adopt it later.
 
 **Don't know the stack id?** Leave `--stack` off:
 

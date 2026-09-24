@@ -3023,7 +3023,56 @@ one) and by `ui-compose`, without Generate. No grid verdict moved.
   per-service menus from `compositeDials`; a bare `--with` routes to
   the one service that admits it (D7). Two scopes staging the same
   path are refused before the report, so preview and install agree.
-- **Q2.4 — `--no-agent-harness` reaches the page (S).**
+
+#### Q2.4 — `--no-agent-harness` reaches the page (S) ✅
+
+`NewProjectTarget` and the web target schema gain `agentHarness`; the
+Agent harness chip becomes deselectable and the copyable command
+carries the flag; `keel.dials` filters out extras that promote
+`agentic.harness`.
+
+Landed as a dial of `keel.dials`. `DialOptions.agentHarness` says
+where it exists (`harnessOptional`, `dials.ts`): a single-service
+preset that comes with the harness and whose own tags and remaining
+verticals do not switch it back on — never a product, whose every
+service carries it. The settled target carries `agentHarness: false`
+and nothing for on, which is what an absent field means to the
+install and to the command line; `installCommandFor` maps it, so
+dials, preview and install read one field. With it off, the menus are
+read over the preset as `--no-agent-harness` installs it
+(`withoutHarness`): `harnessLeftOut` keeps the harness `included` —
+the preset's own, to press back on — and marks a vertical that would
+switch it back on `unavailable` in the sentence `keel new` refuses the
+pair with, which `snapExtras` drops it in. Switching it back on
+includes needing it (`switchesHarnessOn`): a plugin vertical whose
+plan installs the harness first as its prerequisite is refused too,
+where `keel new` used to bring the harness back unasked and
+`keel.dials` settled a target the install refused. `keel new`'s extras
+question reads the same function in place of its inline filter, so
+the two menus are one. The sentence stopped naming the tag (_it
+switches the agent harness back on_), and the composite refusal now
+says why the flag is single-service — every service of a product
+carries the harness — where it claimed only "product-root harness
+selection" was unsupported and `docs/cli.md` sent the user to `keel
+add agent-harness` in a service that already had one. On the page
+(`extras.js`, `<keel-new-form>`) the chip is a toggle button with
+`aria-pressed`, a check while on, dashed and struck through when let
+go, with a line under the chips saying which way it is and how to put
+it back; the command line adds `--no-agent-harness`, the review a row,
+and a preset move carries it like the other dials (`target.js`),
+saying _Moving to fullstack-go did not keep the agent harness off._
+where a product puts it back. Held by `dials.test.ts` (the dial on
+`go-cli`, not on a product, a harness-less or self-activating preset;
+a plugin's harness, and a plugin vertical needing one, unavailable and
+dropped in the install's own words; the terminal's extras question
+equal to the menu either way),
+`preview.test.ts` (preview and dry-run install stage the same tree,
+without `AGENTS.md` or skills; refused on a product), the web walk
+(every single preset pressed off once — 28 more previews — and never
+a product), a preset move each way, `command`, `extras`, `target` and
+`api` cases, and `ui-compose` in a browser, without Generate. No grid
+verdict moved.
+
 - **Q2.5 — The verticals matrix is generated from the grid's verdicts
   (S).** A fifth guard in `verify`; the two "Four guard tests"
   sentences change with it.

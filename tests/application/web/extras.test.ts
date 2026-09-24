@@ -17,11 +17,16 @@ import { extrasGroup, extrasSummary } from '../../../assets/web/src/extras.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
 /** The `keel.dials` reply for `stack`, with `extraVerticals` as the page would post them. */
-async function dials(stack: string, extraVerticals?: readonly string[]): Promise<DialOptions> {
+async function dials(
+  stack: string,
+  extraVerticals?: readonly string[],
+  more: Partial<NewProjectTarget> = {},
+): Promise<DialOptions> {
   const target: NewProjectTarget = {
     kind: 'new-project',
     stack,
     ...(extraVerticals === undefined ? {} : { extraVerticals }),
+    ...more,
   };
   return expectOk(await installMediator().dispatch(dialsQuery({ target })));
 }
@@ -111,6 +116,42 @@ describe('the "Also scaffold" group', () => {
       'Added Container image — Distribution needs it installed first; ' +
         'added Distribution — Infrastructure as code needs it installed first.',
     );
+  });
+
+  it('draws the agent harness as a switch among what the preset comes with, on unless left out', async () => {
+    const on = await dials('go-cli');
+    const chip = (reply: DialOptions) =>
+      extrasGroup(reply, reply.target)?.included.find(
+        (vertical) => vertical.id === 'agent-harness',
+      );
+    expect(chip(on)).toEqual({ id: 'agent-harness', title: 'Agent harness', on: true });
+    // Every other chip is only a chip: there is nothing to untick.
+    const others = (extrasGroup(on, on.target)?.included ?? []).filter(
+      (vertical) => vertical.id !== 'agent-harness',
+    );
+    expect(others.length).toBeGreaterThan(0);
+    for (const other of others) expect(other).not.toHaveProperty('on');
+
+    // Left out, it is still listed with what the preset comes with —
+    // let go rather than gone, so it can be pressed back on — and the
+    // boxes are the ones they were.
+    const off = await dials('go-cli', undefined, { agentHarness: false });
+    expect(chip(off)).toEqual({ id: 'agent-harness', title: 'Agent harness', on: false });
+    expect(values(extrasGroup(off, off.target)?.ready ?? [])).toEqual(
+      values(extrasGroup(on, on.target)?.ready ?? []),
+    );
+  });
+
+  it('draws the harness as a plain chip where the reply offers no such dial', async () => {
+    // A preset whose harness cannot be left out: the reply says so,
+    // whatever the target holds.
+    const reply = await dials('go-cli');
+    const fixed = { ...reply, agentHarness: false };
+    expect(
+      extrasGroup(fixed, { ...reply.target, agentHarness: false })?.included.find(
+        (vertical) => vertical.id === 'agent-harness',
+      ),
+    ).toEqual({ id: 'agent-harness', title: 'Agent harness' });
   });
 
   it('is not there before the first reply lands, nor on a product', async () => {

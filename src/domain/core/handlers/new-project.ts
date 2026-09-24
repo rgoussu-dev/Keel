@@ -105,13 +105,18 @@ import {
 import { assemblyRefusal } from '../compatibility.js';
 import {
   emitsPeerContext,
+  harnessActivatedBy,
+  harnessLeftOut,
+  harnessOptOutSentence,
+  INVALID_AGENT_HARNESS_CODE,
   legalBuildSystems,
   legalModuleLayouts,
   offeredAsExtra,
   peerContextOffered,
   presetScope,
-  promotedBy,
+  switchesHarnessOn,
   verticalOptions,
+  withoutHarness,
 } from '../dials.js';
 import type { AnswerRead } from '../answers.js';
 import { installVerticals } from '../install.js';
@@ -360,34 +365,28 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     if (!resolved.ok) return resolved;
     const registered = this.deps.registry.stack(resolved.value);
     if (!registered) return err(unknownStackError(this.deps.registry, resolved.value));
+    // The harness before any other dial, as `keel.dials` settles it
+    // (`harnessOptional`): every menu after this is read over the
+    // preset as it will be installed.
     if (command.agentHarness === false && registered.services) {
       return err(
         new DomainError(
-          '--no-agent-harness applies to single-service stacks; composite product-root harness selection is not supported',
-          'keel.invalid-agent-harness',
+          '--no-agent-harness applies to single-service stacks: every service of a composite product carries the agent harness',
+          INVALID_AGENT_HARNESS_CODE,
         ),
       );
     }
     if (command.agentHarness === false && command.extraVerticals?.includes('agent-harness')) {
       return err(
-        new DomainError(
-          '--no-agent-harness cannot be combined with --with agent-harness',
-          'keel.invalid-agent-harness',
-        ),
+        new DomainError(harnessOptOutSentence('agent-harness'), INVALID_AGENT_HARNESS_CODE),
       );
     }
-    const stack =
-      command.agentHarness === false
-        ? { ...registered, verticals: registered.verticals.filter((v) => v.id !== 'agent-harness') }
-        : registered;
-    if (
-      command.agentHarness === false &&
-      [...stack.tags, ...promotedBy(stack.verticals)].includes(AGENT_HARNESS_TAG)
-    ) {
+    const stack = command.agentHarness === false ? withoutHarness(registered) : registered;
+    if (command.agentHarness === false && harnessActivatedBy(stack)) {
       return err(
         new DomainError(
           `--no-agent-harness cannot be used with stack '${stack.id}': its tags or remaining verticals activate ${AGENT_HARNESS_TAG}`,
-          'keel.invalid-agent-harness',
+          INVALID_AGENT_HARNESS_CODE,
         ),
       );
     }
@@ -1189,7 +1188,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * way — and so is any vertical nothing keel can add makes install
    * here, such as `persistence` on a CLI-only preset. What stays is
    * ready, or ready once others are: `iac` is on it, labelled with the
-   * image and the release it needs.
+   * image and the release it needs. Under `--no-agent-harness` it is
+   * read as {@link harnessLeftOut} reads it, as `keel.dials` reads it
+   * for a target leaving the harness out: nothing that would switch the
+   * harness back on — itself, or through a prerequisite the plan would
+   * add ({@link switchesHarnessOn}) — is offered, and naming one is
+   * refused rather than installed with the harness it brings.
    *
    * `--with` is checked rather than filtered: a name that is not a
    * registered vertical, or one named twice, is refused at the front
@@ -1214,13 +1218,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     tags: readonly Tag[],
   ): Promise<Result<ResolvedExtras>> {
     const registry = this.deps.registry;
-    const candidates = verticalOptions(registry, stack, tags).filter(
-      (option) =>
-        offeredAsExtra(option) &&
-        (command.agentHarness !== false ||
-          (option.id !== 'agent-harness' &&
-            !registry.vertical(option.id)?.promotes?.includes(AGENT_HARNESS_TAG))),
-    );
+    const scope = presetScope(stack, tags);
+    const options = verticalOptions(registry, stack, tags);
+    const candidates = (
+      command.agentHarness === false ? harnessLeftOut(registry, options) : options
+    ).filter(offeredAsExtra);
     const requested =
       command.extraVerticals !== undefined
         ? command.extraVerticals
@@ -1257,18 +1259,13 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           ),
         );
       }
-      if (command.agentHarness === false && vertical.promotes?.includes(AGENT_HARNESS_TAG)) {
-        return err(
-          new DomainError(
-            `--no-agent-harness cannot be combined with --with ${id}: it activates ${AGENT_HARNESS_TAG}`,
-            'keel.invalid-agent-harness',
-          ),
-        );
+      if (command.agentHarness === false && switchesHarnessOn(registry, scope, vertical)) {
+        return err(new DomainError(harnessOptOutSentence(id), INVALID_AGENT_HARNESS_CODE));
       }
       chosen.push(vertical);
     }
 
-    const admitted = admit(registry, presetScope(stack, tags), chosen);
+    const admitted = admit(registry, scope, chosen);
     if (!admitted.ok) return admitted;
     return ok({ admitted: admitted.value, present });
   }

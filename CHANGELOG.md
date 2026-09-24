@@ -14,6 +14,14 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel new --no-agent-harness` no longer installs the harness as a
+  prerequisite.** A `--with` vertical that needs the agent harness —
+  a plugin's; keel ships none — was planned with its prerequisites, so
+  the harness the flag left out came back unasked. It is now refused
+  as one that switches the harness back on
+  (`keel.invalid-agent-harness`), and the interactive extras question
+  leaves it off its menu.
+
 - **Moving to another preset in `keel ui` keeps your extras and
   answers too.** The "Also scaffold" extras and the answers to the
   adapters' questions were still thrown away on every preset move: a
@@ -616,6 +624,27 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **`keel ui` can leave the agent harness out.** `--no-agent-harness`
+  was the one `keel new` flag the page could not express. On every
+  single-service preset the **Agent harness** chip under the Options
+  step's _Comes with_ list is now a switch: pressed off, the target
+  carries `agentHarness: false` (`POST /api/dials`, `/api/preview` and
+  `/api/install` all take it), the plan drops the agent documents,
+  skills and hooks, the command line under it gains
+  `--no-agent-harness`, and the review says _Agent harness: left out_.
+  A preset move keeps it off where the new preset can, and a move onto
+  a product, whose every service carries the harness, says it could
+  not. `keel.dials` reports where the switch exists (`agentHarness`),
+  and with the harness left out lists a vertical that would switch it
+  back on — a plugin's, itself or through a prerequisite — as
+  unavailable and drops it from the selection, in the sentence
+  `keel new` refuses the pair with; the terminal's extras question
+  reads the same menu. That sentence now
+  says the vertical "switches the agent harness back on" rather than
+  naming its tag, and `--no-agent-harness` on a composite stack is
+  refused as _every service of a composite product carries the agent
+  harness_.
 
 - **The preview reports the answers an install would refuse.**
   `keel.preview` (`POST /api/preview`) lists each answer it was sent

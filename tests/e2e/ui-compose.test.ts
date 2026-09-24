@@ -23,6 +23,12 @@
  * not to pick a directory. On a CLI project, Observability is under
  * "Not for this project" with its sentence before any click.
  *
+ * **The harness is a switch.** Under "Comes with", the Agent harness
+ * chip is a toggle button: pressed off from the keyboard, the body
+ * carries `agentHarness: false`, the command `--no-agent-harness`, the
+ * plan no `AGENTS.md` and the review a row saying so; pressed back on,
+ * all of it goes again.
+ *
  * **A preset move keeps them.** Ticking HTTP on a tuned CLI preset
  * lands on the composed one with the build system, the module layout,
  * the extras and the package still set — the plan redrawn under
@@ -95,6 +101,14 @@ const CHAIN = ['containerization', 'distribution', 'iac'];
 
 /** One "Also scaffold" box, by the vertical it stands for. */
 const box = (page: Page, id: string): Locator => page.locator(`#extras input[value="${id}"]`);
+
+/** Whether the plan beside the step lists `name` at the project's root. */
+const plansAtRoot = async (page: Page, name: string): Promise<boolean> =>
+  (await page
+    .locator('keel-plan keel-file-tree > ul > li:not(.dir) > .row > .name', {
+      hasText: new RegExp(`^${name.replace(/\./g, '\\.')}$`),
+    })
+    .count()) > 0;
 
 /** Whether a box is drawn ticked right now. */
 const ticked = async (page: Page, id: string): Promise<boolean> =>
@@ -288,6 +302,53 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       await act(traffic, () => row.getByRole('button').click());
       expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Options');
       for (const id of CHAIN) expect(await ticked(page, id), id).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'leaves the agent harness out from its chip, says so in the command, and puts it back',
+    async () => {
+      const harness = page.locator('#agentHarness');
+      await until(async () => (await harness.count()) > 0, 'the harness switch to render');
+      // A chip among what the preset comes with, pressed: it is on.
+      expect(
+        await page.locator('#extras-included li[data-id="agent-harness"] button').count(),
+      ).toBe(1);
+      expect(await harness.getAttribute('aria-pressed')).toBe('true');
+      expect(await harness.textContent()).toBe('Agent harness');
+      await until(() => plansAtRoot(page, 'AGENTS.md'), 'the plan to list AGENTS.md');
+
+      await harness.focus();
+      await act(traffic, () => page.keyboard.press('Enter'));
+      expect(await harness.getAttribute('aria-pressed')).toBe('false');
+      // The focus stays on the switch across the redraw.
+      expect(
+        await page.evaluate(
+          () =>
+            (globalThis as { document?: { activeElement?: { id?: string } } }).document
+              ?.activeElement?.id ?? null,
+        ),
+      ).toBe('agentHarness');
+      expect(await page.locator('#agentHarness-hint').textContent()).toContain('left out');
+      // The body that went out, the line that would run it, and the
+      // plan it draws: the project without its agent documents.
+      expect((lastBody(traffic)?.target as { agentHarness?: unknown }).agentHarness).toBe(false);
+      expect(await command(page)).toContain('--no-agent-harness');
+      await until(async () => !(await plansAtRoot(page, 'AGENTS.md')), 'AGENTS.md to leave');
+      expect(await plansAtRoot(page, 'build.gradle.kts')).toBe(true);
+
+      await goToStep(traffic, page, 'review');
+      const row = page.locator('keel-review dd', { hasText: 'left out' });
+      expect(await row.count()).toBe(1);
+      await act(traffic, () => row.getByRole('button').click());
+      expect(await page.locator('[data-role="step-title"]').textContent()).toBe('Options');
+
+      await act(traffic, () => page.locator('#agentHarness').click());
+      expect(await page.locator('#agentHarness').getAttribute('aria-pressed')).toBe('true');
+      expect(lastBody(traffic)?.target).not.toHaveProperty('agentHarness');
+      expect(await command(page)).not.toContain('--no-agent-harness');
+      await until(() => plansAtRoot(page, 'AGENTS.md'), 'AGENTS.md to come back');
     },
     E2E_TIMEOUT_MS,
   );

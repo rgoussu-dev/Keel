@@ -147,9 +147,10 @@ the install) for the offered choice. It never re-derives the gate from
 the menu's blind spots. `application/web/dials.test.ts` held the page's
 bodies to `assemblyRefusal`, the function the menu itself filters by,
 and an offered extra that throws passed it. Its walk now posts every
-body it reaches — each dial setting of every preset, and each extra
-ticked and unticked through the page's own `toggleExtra` — to
-`POST /api/preview`: some 300 previews, about 10 s, under a timeout of
+body it reaches — each dial setting of every preset, each extra
+ticked and unticked through the page's own `toggleExtra`, and the
+agent harness left out once per single preset — to
+`POST /api/preview`: some 330 previews, about 10 s, under a timeout of
 its own.
 
 ## Mutation testing

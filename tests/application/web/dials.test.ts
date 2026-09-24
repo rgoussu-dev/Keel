@@ -12,7 +12,8 @@
  *
  * The walk models the page's controls. `<keel-new-form>` can set a
  * dial to any value on its menu, tick the peer-context box where it
- * is shown, and tick or untick an "Also scaffold" box — a gesture
+ * is shown, press the agent harness off where it may be left out, and
+ * tick or untick an "Also scaffold" box — a gesture
  * that can move several boxes at once, which is why the walk makes it
  * through `target.js`'s own `toggleExtra` rather than a copy of it.
  * Every dial setting is followed from the blank target until nothing
@@ -165,6 +166,18 @@ async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
 
   const gestures = new Map<string, DialOptions>();
   if (opening === null) return { bodies: [...bodies.values()], gestures };
+  // The agent harness's chip, pressed off once, on the dials the page
+  // opens with: a field no shipped rule couples to another dial, so
+  // one body per preset holds it — its product with every other is the
+  // weekly lane's, as the extras' powerset is.
+  if (opening.agentHarness) {
+    keep(
+      await dialsFor(mediator, {
+        ...(opening.target as NewProjectTarget),
+        agentHarness: false,
+      }),
+    );
+  }
   const blank = settledRun(opening);
   for (const extra of opening.extraVerticals) {
     const moved = toggleExtra(blank, extra.id, true);
@@ -199,8 +212,9 @@ const walk = (mediator: Mediator, stack: string): Promise<Walk> => {
 const sharedMediator = installMediator();
 
 /**
- * About 300 previews behind the walk — every dial setting of every
- * preset, and every extra ticked on each — at some 10 s uncontended,
+ * About 330 previews behind the walk — every dial setting of every
+ * preset, every extra ticked on each, and the harness left out once
+ * per single preset — at some 10 s uncontended,
  * so the walk gets a budget of its own well above the suite's 30 s
  * default rather than a flake on a busy runner. Stacks walk and
  * preview concurrently: a preview writes nothing, so one scratch
@@ -255,7 +269,7 @@ describe('every body keel ui can post', () => {
       const { bodies } = await walk(sharedMediator, 'quarkus-rest');
       expect(
         bodies
-          .filter((target) => extrasOf(target).length === 0)
+          .filter((target) => extrasOf(target).length === 0 && target.agentHarness !== false)
           .map(
             (target) =>
               `${target.buildSystem}/${target.moduleLayout}${target.withPeerContext === true ? '+peer' : ''}`,
@@ -300,10 +314,24 @@ describe('every body keel ui can post', () => {
     WALK_TIMEOUT_MS,
   );
 
+  it(
+    'presses the harness off on every single preset, and never offers it on a product',
+    async () => {
+      const catalog: Catalog = expectOk(await sharedMediator.dispatch(catalogQuery()));
+      for (const descriptor of catalog.stacks) {
+        const { bodies } = await walk(sharedMediator, descriptor.id);
+        const off = bodies.filter((target) => target.agentHarness === false);
+        expect(off.length, descriptor.id).toBe(descriptor.services.length > 0 ? 0 : 1);
+      }
+    },
+    WALK_TIMEOUT_MS,
+  );
+
   it('never posts a composite dial the install refuses outright', async () => {
-    // `--module-layout`, `--with-peer-context` and `--with` are hard
-    // errors on a composite, so a settled product target must carry
-    // none of them however the caller asks.
+    // `--module-layout`, `--with-peer-context`, `--with` and
+    // `--no-agent-harness` are hard errors on a composite, so a
+    // settled product target must carry none of them however the
+    // caller asks.
     const mediator = installMediator();
     const settled = await dialsFor(mediator, {
       kind: 'new-project',
@@ -311,6 +339,7 @@ describe('every body keel ui can post', () => {
       moduleLayout: 'modulith',
       withPeerContext: true,
       extraVerticals: ['ci'],
+      agentHarness: false,
     });
     expect(settled.target).toEqual({
       kind: 'new-project',
@@ -605,5 +634,30 @@ describe('a preset move, the way the page makes it', () => {
       'Kotlin has no fullstack preset, so the language is now Java. ' +
         'Moving to fullstack-spring did not keep module layout modulith.',
     );
+  });
+
+  it('keeps the harness left out onto another preset, and names it where a product puts it back', async () => {
+    const mediator = installMediator();
+    const before = await settledOn(mediator, {
+      kind: 'new-project',
+      stack: 'go-cli',
+      agentHarness: false,
+    });
+    const kept = await moveTo(mediator, before, 'go-cli-http');
+    expect(kept.target).toMatchObject({ stack: 'go-cli-http', agentHarness: false });
+    expect(kept.notice).toBe('');
+    expect(
+      await previewOf(
+        mediator,
+        '/tmp/keel-dials-preview',
+        kept.target as unknown as NewProjectTarget,
+      ),
+    ).toBe('200');
+
+    // Every service of a product carries the harness: the move keeps
+    // the rest and says it could not keep this.
+    const product = await moveTo(mediator, before, 'fullstack-go');
+    expect(product.target).not.toHaveProperty('agentHarness');
+    expect(product.notice).toBe('Moving to fullstack-go did not keep the agent harness off.');
   });
 });

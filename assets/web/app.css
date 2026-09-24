@@ -793,6 +793,28 @@ kbd {
 }
 
 /*
+ * A chip that is also a switch: the agent harness, where the preset
+ * may leave it out. Pressed, it is an accented chip with a check; let
+ * go, dashed and struck through — so the state reads without the
+ * attribute, and the line under it says it in words.
+ */
+.chip.switch[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--keel-accent) 40%, transparent);
+  background: var(--keel-accent-wash);
+  color: var(--keel-accent);
+}
+
+.chip.switch[aria-pressed='false'] {
+  border-style: dashed;
+  color: var(--keel-ink-faint);
+  text-decoration: line-through;
+}
+
+.extras ul.chips + p.help {
+  margin-block: var(--s-2) 0;
+}
+
+/*
  * What a project cannot take: collapsed, a count on the summary, one
  * line each — the title, then the refusal's own sentence.
  */
