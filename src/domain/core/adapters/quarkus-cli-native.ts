@@ -86,6 +86,9 @@ export const quarkusCliNativeAdapter: Adapter = {
     requires: ['framework.quarkus', 'arch.cli', 'pkg.gradle'],
     excludes: [JVM_IMAGE_TAG],
   },
+  // Its own share of the vertical's union: native binaries, never
+  // the container image `iac` is keyed on.
+  promotes: [GRAALVM_NATIVE_TAG],
   questions: [
     {
       id: 'targets',

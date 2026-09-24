@@ -78,6 +78,9 @@ export const persistenceVertical: Vertical = {
   ],
   promotes: [...SQL_ENGINES.map((engine) => engine.tag), FLYWAY_TAG, LIQUIBASE_TAG],
   skills: [MIGRATE_SKILL_NAME],
+  // The Quarkus datasource wires pool metrics and JDBC spans only
+  // when observability is recorded (`observabilityInstalled`).
+  reads: ['observability'],
   adapters: [
     quarkusPersistenceAdapter,
     quarkusPersistenceKotlinAdapter,

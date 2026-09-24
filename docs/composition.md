@@ -95,6 +95,42 @@ would refuse a legal composition, so the installer checks each
 contribution's `tagsAdd` against the declaration and throws on a tag
 no vertical claims.
 
+A union over-offers, though: on a Quarkus CLI the one distribution
+adapter that matches builds native binaries, so reading
+`distribution`'s union there promises the `dist.container-image` tag
+`iac` needs and never delivers it. An adapter therefore may declare
+**`promotes`** of its own — its share of the union, which the
+registry holds to being inside it and the installer holds its
+`tagsAdd` to. `quarkus-cli-native` declares `runtime.graalvm-native`,
+the container distribution adapters `dist.container-image`, and the
+Go, Rust, TypeScript and SPA image adapters `deploy.container-image`;
+the JVM image adapters keep the union, since which flavor they
+promote is an answer. An adapter declaring none is read as promoting
+the whole union.
+
+A vertical may also declare **`reads`**: the verticals whose presence
+its `contribute()` reads, so that when both are in one run it installs
+after them. `distribution` reads `persistence` and `observability` —
+its deployment descriptor carries `DB_URL` and the OpenTelemetry
+variables only when they are there — and `persistence` reads
+`observability`. It is a soft edge, not a requirement, and not
+`Adapter.after` (which orders adapters within one vertical). The
+registry ignores a read of an id nobody registers, and refuses a
+cycle.
+
+Both are read by the **planner**,
+[`planner.ts`](../src/domain/core/planner.ts): `readiness` says
+whether a vertical is _included_ on a scope, _ready_ to install on its
+own, _needs_ other verticals first (the smallest such set, in install
+order), or is _unavailable_ — with the gap split into a missing
+entrypoint, a missing peer and the preset's identity, and the nearest
+stacks that do carry it — and `plan` closes a requested set over its
+prerequisites and orders it: after whatever feeds a tag its adapters
+mention, then after what it reads, then as named. Two equally small
+sets of prerequisites (two plugins supplying one capability) are
+refused naming both rather than guessed between. No surface asks the
+planner yet; the menus and both front doors move onto it next.
+
 ### Stacks
 
 A stack preset (`keel new --stack=<id>`) is **sugar over a list of

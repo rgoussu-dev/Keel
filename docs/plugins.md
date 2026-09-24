@@ -324,6 +324,47 @@ user who picked it from the list. Two things to hold to:
   resolves to it, and a default the project is not offered is reported
   as the plugin's bug, not the user's.
 
+### What an adapter promotes, and what a vertical reads
+
+Two optional fields tell keel's planner how your pieces relate to the
+rest, so that what it offers ahead of an install and the order it
+installs in are right. A plugin declaring neither keeps working
+exactly as before.
+
+```js
+const nativeAdapter = {
+  id: 'acme-release/native',
+  // …
+  promotes: ['acme.native'], // its own share of the vertical's promotes
+};
+
+export const releaseVertical = {
+  id: 'acme-release',
+  promotes: ['acme.native', 'acme.image'],
+  reads: ['persistence', 'acme-metrics'],
+  // …
+};
+```
+
+- **`Adapter.promotes`** — the tags this adapter may add: a subset of
+  its vertical's `promotes`, which stays the union over all of them.
+  Declare it where the adapters of one vertical add different things,
+  so a project whose matching adapter adds only `acme.native` is not
+  offered what `acme.image` would enable. Absent, the adapter is read
+  as promoting the whole union — which may offer your vertical where
+  it cannot deliver; the install still refuses such a project
+  truthfully, only later. A `tagsAdd` outside a declared list fails
+  the install as the plugin's bug.
+- **`Vertical.reads`** — verticals whose presence your `contribute()`
+  reads (`ctx.manifest.verticals`), so that in one run yours installs
+  after them. It orders; it does not require. An id no one has
+  registered is ignored — reading another plugin that is not installed
+  is fine — but a cycle of reads is refused at load.
+
+Name only what you really read. A pair that reads each other is a
+cycle keel refuses; if each side already adapts to the other either
+way round, declare neither.
+
 ---
 
 ## Trust — read this
@@ -370,6 +411,8 @@ loads there is no name to quote, so those messages name the path.
 | No plugin exported                          | `keel plugin '<path>' exports no plugin — export it as 'default' …`                 |
 | A malformed `Conflict`                      | `plugin 'x' vertical 'y' declares a malformed conflict: …`                          |
 | A dimension none of its own adapters covers | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers` |
+| An adapter promoting beyond its vertical    | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …` |
+| A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
 | An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
 | An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
 

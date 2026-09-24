@@ -13,6 +13,7 @@ import { goBootstrapAnswers } from './go-bootstrap.js';
 import {
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
   serviceDeployVars,
 } from './distribution-container.js';
 
@@ -23,6 +24,7 @@ export const goContainerAdapter: Adapter = {
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
   predicate: { requires: ['lang.go', 'arch.server-http'] },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(GO_CONTAINER_ID),
   contribute(ctx) {

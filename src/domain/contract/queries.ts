@@ -304,6 +304,89 @@ export function dialsQuery(input: Omit<DialsQuery, 'kind' | 'intent'>): DialsQue
 }
 
 /* ------------------------------------------------------------------ *
+ * Readiness                                                           *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Whether a vertical can go on a scope as it stands, and what it
+ * would take — the one answer a menu, a brownfield card and a front
+ * door's refusal are meant to share, computed by the planner
+ * (`domain/core/planner.ts`) from the registry's declarations.
+ *
+ * - `included` — the scope already has it: installed, or a preset's
+ *   own vertical.
+ * - `ready` — it installs here on its own.
+ * - `needs` — it installs once other verticals are installed first.
+ * - `unavailable` — nothing keel can add makes it install here, and
+ *   the gap says why.
+ */
+export type Readiness =
+  | { readonly kind: 'included' }
+  | { readonly kind: 'ready' }
+  | ReadinessNeeds
+  | { readonly kind: 'unavailable'; readonly gap: ReadinessGap };
+
+/** {@link Readiness} for a vertical that installs once others have. */
+export interface ReadinessNeeds {
+  readonly kind: 'needs';
+  /**
+   * Vertical ids to install first, in the order they install — the
+   * smallest set that makes this one installable.
+   */
+  readonly prerequisites: readonly string[];
+  /**
+   * Other sets exactly as small, in registry order; absent when
+   * `prerequisites` is the only one. Two providers of one capability
+   * — two plugins, say — are a choice for the user: the planner
+   * reports both here and refuses to plan the vertical alone rather
+   * than guess between them.
+   */
+  readonly alternatives?: readonly (readonly string[])[];
+}
+
+/**
+ * Why a vertical is `unavailable` on a scope, split by what would
+ * change the answer.
+ *
+ * Tags, not sentences: this is the structured half of a refusal, and
+ * the words a user reads are built from it elsewhere — an entrypoint
+ * by its label, an identity gap as "no adapter for this project's
+ * stack" — so a front end never has to speak tags.
+ */
+export interface ReadinessGap {
+  /**
+   * Entrypoints the scope lacks — `arch.*` tags the stack finder
+   * offers as a way in (`arch.server-http`). Fixed at `keel new`.
+   */
+  readonly entrypoint: readonly Tag[];
+  /**
+   * `peer.*` tags: what a linked project would project here
+   * (`keel link`), which is how a gateway becomes installable.
+   */
+  readonly peer: readonly Tag[];
+  /**
+   * Everything else the scope lacks and no install can add here: the
+   * preset's language, framework, runtime, build system or layout,
+   * and any capability no registered vertical can supply on this
+   * scope. Empty with the other two when the vertical's adapters are
+   * ruled out by what the scope does have.
+   */
+  readonly identity: readonly Tag[];
+  /** Ids of the vertical's own rules (`Conflict`s) the scope breaks. */
+  readonly rules: readonly string[];
+  /**
+   * The single-service stacks nearest this scope that carry the
+   * vertical on their default dials — it is theirs, it installs
+   * alone, or it installs once keel adds what it needs. Nearest means
+   * the same language and framework over any other, then the fewest
+   * identity tags apart; every stack tied for nearest is listed, by
+   * id, and no other. Empty when no stack carries it — a vertical
+   * selected by peer tags, which only a linked project projects.
+   */
+  readonly nearestStacks: readonly string[];
+}
+
+/* ------------------------------------------------------------------ *
  * Preview                                                             *
  * ------------------------------------------------------------------ */
 

@@ -12,6 +12,7 @@ import { rustBootstrapAnswers } from './rust-bootstrap.js';
 import {
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
   serviceDeployVars,
 } from './distribution-container.js';
 
@@ -22,6 +23,7 @@ export const rustContainerAdapter: Adapter = {
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
   predicate: { requires: ['lang.rust', 'arch.server-http'] },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(RUST_CONTAINER_ID),
   contribute(ctx) {

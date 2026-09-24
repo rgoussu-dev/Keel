@@ -38,6 +38,10 @@ export const distributionVertical: Vertical = {
     'The release path on a tag push: a cross-compiled native binary attached to a GitHub release, or a container image pushed to the registry with a deployment descriptor beside it.',
   dimensions: ['build', 'release-channel'],
   promotes: [DIST_CONTAINER_TAG, GRAALVM_NATIVE_TAG],
+  // The container adapters' descriptors carry `DB_URL` and the
+  // OpenTelemetry variables only when persistence and observability
+  // are recorded (`serviceDeployVars`), so in one run those go first.
+  reads: ['persistence', 'observability'],
   adapters: [
     quarkusCliNativeAdapter,
     jvmContainerAdapter,

@@ -98,6 +98,15 @@ its dials declare, posted to a preview and to a dry-run install — Ok
 from both where the preview offers it, `keel.invalid-answer` from both
 where it does not.
 
+**The planner's readiness golden.** `domain/core/planner-readiness.golden.json`
+records what `planner.ts` reads for every single-service preset × every
+registered vertical on default dials. `KEEL_UPDATE_GOLDEN=1` rewrites
+it, and a change to a declaration — a predicate, an adapter's
+`promotes`, a vertical's `reads` — shows there as a diff to review. It
+is a record of the planner, not an oracle for the gate: once a surface
+reads the planner, the grid holds that surface to the install through
+preview.
+
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial
 menu, the extras list, a brownfield card — dispatches `keel.preview` (or

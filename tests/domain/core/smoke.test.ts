@@ -248,6 +248,37 @@ describe('installVertical end-to-end', () => {
     ).rejects.toThrow(/runtime\.graalvm-native.*does not declare/);
   });
 
+  it('refuses a tag outside the adapter s own `promotes`, when it declares one', async () => {
+    const tree = new FsTree(tmp);
+    const manifest = {
+      ...emptyManifestV2('2026-04-26T00:00:00Z', '0.4.0-alpha'),
+      tags: ['agentic.harness', 'lang.java', 'framework.quarkus', 'arch.cli', 'ci.github-actions'],
+    };
+    // The planner reads an adapter's own share instead of the union,
+    // so a tag it promotes outside that share is one no plan would
+    // ever reach for — the same lie one level down.
+    const narrowed: Vertical = {
+      ...distribution,
+      adapters: distribution.adapters.map((adapter) =>
+        adapter.id === 'distribution/quarkus-cli-native' ? { ...adapter, promotes: [] } : adapter,
+      ),
+    };
+    await expect(
+      installVertical({
+        vertical: narrowed,
+        manifest,
+        tree,
+        mode: 'non-interactive',
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
+        cwd: tmp,
+        templates: ejsTemplateSource,
+        processes: spawnProcessRunner,
+        now: () => '2026-04-26T12:00:00Z',
+      }),
+    ).rejects.toThrow(/runtime\.graalvm-native, which it does not declare in its own 'promotes'/);
+  });
+
   it('refuses a skill the vertical does not declare in `skills`', async () => {
     const tree = new FsTree(tmp);
     const manifest = {

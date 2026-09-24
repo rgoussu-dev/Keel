@@ -28,6 +28,7 @@ import { jvmLayout } from './jvm-module-layout.js';
 import {
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
   serviceDeployVars,
 } from './distribution-container.js';
 
@@ -38,6 +39,7 @@ export const jvmContainerAdapter: Adapter = {
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
   predicate: { requires: ['runtime.jvm', 'arch.server-http'] },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(JVM_CONTAINER_ID),
   contribute(ctx) {

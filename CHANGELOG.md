@@ -280,6 +280,25 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Added
 
+- **Plugins can say what each adapter adds, and what a vertical
+  reads.** Two optional fields, for the planner keel's menus and front
+  doors are moving onto. `Adapter.promotes` is an adapter's own share
+  of its vertical's `promotes`: a vertical's list is the union over its
+  adapters, and read as a whole it offers `iac` on a Quarkus CLI, whose
+  only matching distribution adapter builds native binaries and never
+  the container image `iac` is keyed on. `Vertical.reads` names the
+  verticals `contribute()` reads the presence of — `distribution`
+  reads `persistence` and `observability`, whose variables its
+  deployment descriptor carries only when they are there — so that in
+  one run it installs after them. keel's own distribution and image
+  adapters now declare theirs. A plugin declaring neither is
+  unchanged. Registration refuses an adapter promoting what its
+  vertical does not declare, and a cycle of `reads`, naming the
+  plugin; a `reads` naming a vertical nobody registers is ignored, so
+  a plugin still loads beside another that is not installed. The
+  installer holds an adapter's `tagsAdd` to its own `promotes` when it
+  declares one. See `docs/plugins.md`.
+
 - **The `vcs` vertical grows its working conventions** (#143): two new
   dimensions on the vertical every stack already installs, each
   individually declinable through one sticky question defaulting to

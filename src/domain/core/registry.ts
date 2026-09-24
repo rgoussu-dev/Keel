@@ -15,14 +15,16 @@
  * to read keel's source for a rule keel did not write.
  *
  * **The checks are the ones that can be made without tags.** A
- * malformed {@link Conflict} and a dimension no adapter of its own
- * vertical ever covers are both statically wrong — no assembly
- * makes them right — so they fail at registration, before a user has
- * answered a single question. Everything that depends on the tag set
- * in hand (does *this* assembly cover *that* dimension, does it
- * violate a rule) stays where it was, in the resolver and in
- * `compatibility.ts`: those answers are properties of a run, not of
- * a piece.
+ * malformed {@link Conflict}, a dimension no adapter of its own
+ * vertical ever covers, an adapter promoting what its vertical does
+ * not declare, and a cycle of `reads` are all statically wrong — no
+ * assembly makes them right — so they fail at registration, before a
+ * user has answered a single question. The last is the one check
+ * across pieces, so it runs once every source is in. Everything that
+ * depends on the tag set in hand (does *this* assembly cover *that*
+ * dimension, does it violate a rule) stays where it was, in the
+ * resolver and in `compatibility.ts`: those answers are properties of
+ * a run, not of a piece.
  */
 
 import { DomainError } from '../kernel/result.js';
@@ -102,6 +104,7 @@ export function registryOf(sources: readonly RegistrySource[]): Registry {
 
   const stackList = [...stacks.values()];
   const verticalList = [...verticals.values()];
+  validateReads(knownVerticals(sources, verticalList, verticalOrigins));
   return {
     stacks: () => stackList,
     verticals: () => verticalList,
@@ -181,6 +184,89 @@ function validateVertical(origin: string, vertical: Vertical): void {
       );
     }
   }
+  validateAdapterPromotes(origin, vertical);
+}
+
+/**
+ * An adapter's own `promotes` is its share of the vertical's, so a
+ * tag it lists that the vertical does not is one of two lists being
+ * wrong — and whichever it is, a reader of the union would never see
+ * the tag. Statically wrong, so refused here, naming the plugin.
+ */
+function validateAdapterPromotes(origin: string, vertical: Vertical): void {
+  const union = new Set(vertical.promotes ?? []);
+  for (const adapter of vertical.adapters) {
+    const outside = (adapter.promotes ?? []).filter((tag) => !union.has(tag));
+    if (outside.length === 0) continue;
+    throw refuse(
+      origin,
+      `vertical '${vertical.id}' adapter '${adapter.id}' promotes '${outside.join("', '")}', which the vertical does not declare in 'promotes' — the vertical's list is the union over its adapters`,
+    );
+  }
+}
+
+/** A vertical the `reads` pass can see, with the origin to quote about it. */
+interface KnownVertical {
+  readonly vertical: Vertical;
+  readonly origin: string;
+}
+
+/**
+ * Every vertical a run could install, by id: the registered ones
+ * first, then any a stack names inline that no source registered
+ * under that id — `fullstack` and `bounded-context`, or a plugin
+ * stack's own.
+ */
+function knownVerticals(
+  sources: readonly RegistrySource[],
+  registered: readonly Vertical[],
+  origins: ReadonlyMap<string, string>,
+): ReadonlyMap<string, KnownVertical> {
+  const known = new Map<string, KnownVertical>(
+    registered.map((vertical) => [
+      vertical.id,
+      { vertical, origin: origins.get(vertical.id) ?? KEEL_ORIGIN },
+    ]),
+  );
+  for (const source of sources) {
+    for (const stack of source.stacks ?? []) {
+      for (const vertical of stack.verticals) {
+        if (!known.has(vertical.id)) known.set(vertical.id, { vertical, origin: source.origin });
+      }
+    }
+  }
+  return known;
+}
+
+/**
+ * The one check {@link Vertical.reads} needs that no single vertical
+ * can answer, so it runs once every source has registered.
+ *
+ * An id nothing registers is ignored rather than refused: a read of
+ * an absent vertical changes nothing, and refusing it would stop a
+ * plugin from loading because another plugin it reads is not
+ * installed. A cycle among known ids is refused — `reads` orders an
+ * install, and a cycle orders nothing — naming the origin of the
+ * vertical the walk, in registration order, first meets it at.
+ */
+function validateReads(known: ReadonlyMap<string, KnownVertical>): void {
+  const done = new Set<string>();
+  const visit = (id: string, path: readonly string[]): void => {
+    const at = path.indexOf(id);
+    if (at >= 0) {
+      const cycle = [...path.slice(at), id];
+      throw refuse(
+        known.get(id)?.origin ?? KEEL_ORIGIN,
+        `vertical '${id}' reads in a cycle: ${cycle.map((step) => `'${step}'`).join(' → ')} — 'reads' orders an install after what it reads, and a cycle orders nothing`,
+      );
+    }
+    if (done.has(id)) return;
+    for (const read of known.get(id)?.vertical.reads ?? []) {
+      if (known.has(read)) visit(read, [...path, id]);
+    }
+    done.add(id);
+  };
+  for (const id of known.keys()) visit(id, []);
 }
 
 /**

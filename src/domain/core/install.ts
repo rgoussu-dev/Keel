@@ -288,6 +288,11 @@ export async function installVertical(
  * revisit a list in another file. So the engine checks it where the
  * two meet. An undeclared tag is a keel bug, not a user error, so it
  * throws rather than travelling as an `Err`.
+ *
+ * An adapter that declares its own share ({@link Adapter.promotes})
+ * is held to that too: the planner reads it instead of the union, so
+ * a tag outside it is one the planner never offers a prerequisite
+ * for.
  */
 function assertDeclaredPromotions(
   vertical: Vertical,
@@ -296,9 +301,17 @@ function assertDeclaredPromotions(
 ): void {
   const declared = new Set(vertical.promotes ?? []);
   const undeclared = tagsAdd.filter((tag) => !declared.has(tag));
-  if (undeclared.length === 0) return;
+  if (undeclared.length > 0) {
+    throw new Error(
+      `adapter '${adapter.id}' promotes ${undeclared.join(', ')}, which vertical '${vertical.id}' does not declare in 'promotes' — add it there, or the front-door coverage check will refuse compositions this tag enables`,
+    );
+  }
+  if (adapter.promotes === undefined) return;
+  const own = new Set(adapter.promotes);
+  const unowned = tagsAdd.filter((tag) => !own.has(tag));
+  if (unowned.length === 0) return;
   throw new Error(
-    `adapter '${adapter.id}' promotes ${undeclared.join(', ')}, which vertical '${vertical.id}' does not declare in 'promotes' — add it there, or the front-door coverage check will refuse compositions this tag enables`,
+    `adapter '${adapter.id}' promotes ${unowned.join(', ')}, which it does not declare in its own 'promotes' — add it there, or the planner will not know this adapter can supply it`,
   );
 }
 

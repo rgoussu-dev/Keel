@@ -255,8 +255,9 @@ export interface Contribution {
   /**
    * Capability tags this adapter promotes into the manifest. Every
    * one of them must appear in the parent {@link Vertical.promotes}
-   * set — the installer checks it, so a tag no vertical declares
-   * fails loudly instead of silently breaking the front-door
+   * set, and in the adapter's own {@link Adapter.promotes} when it
+   * declares one — the installer checks both, so a tag nothing
+   * declares fails loudly instead of silently breaking the front-door
    * coverage check that reads that declaration.
    */
   readonly tagsAdd?: readonly Tag[];
@@ -418,6 +419,28 @@ export interface Adapter {
    * adapter's id too, which is what downstream adapters read.
    */
   readonly sharesAnswersWith?: readonly string[];
+  /**
+   * Every tag this adapter may promote — its own share of
+   * {@link Vertical.promotes}, which is the union over the vertical's
+   * adapters. Absent, the adapter is read as promoting the whole
+   * union, which is what a plugin adapter declaring nothing gets.
+   *
+   * Declared because a union over-offers. `distribution` promotes
+   * `dist.container-image` because its container adapters do, but
+   * on a Quarkus CLI the one adapter that matches builds native
+   * binaries and promotes nothing of the kind — so a reader asking
+   * "what would installing distribution here add?" of the union
+   * offers `iac` on a project that can never have its deploy target.
+   * Declaring the adapter's own share lets a planner read only the
+   * adapters that match (`domain/core/planner.ts`).
+   *
+   * Held to both of its neighbours: registration refuses a tag the
+   * vertical's `promotes` does not list, naming the plugin, and the
+   * installer refuses a {@link Contribution.tagsAdd} outside it. Keep
+   * the union where the tags depend on an answer — an image flavor, a
+   * SQL engine — since "may" is the whole of what it says.
+   */
+  readonly promotes?: readonly Tag[];
   contribute(ctx: Ctx): Promise<Contribution> | Contribution;
 }
 
@@ -476,9 +499,32 @@ export interface Vertical {
    * resolver); under-declaring risks refusing a legal composition,
    * which is why {@link Contribution.tagsAdd} is checked against
    * this set at install time and a tag outside it is a hard error.
-   * Omit only when no adapter of the vertical promotes anything.
+   * Omit only when no adapter of the vertical promotes anything. An
+   * adapter may narrow its own share with {@link Adapter.promotes}.
    */
   readonly promotes?: readonly Tag[];
+  /**
+   * Verticals whose presence `contribute()` reads — "if persistence
+   * is installed, the deployment descriptor carries `DB_URL`" — so
+   * that when both are in one run this one installs after them.
+   *
+   * A soft edge, and named to say so. It is not a requirement: the
+   * vertical installs without them, and renders what it renders. It
+   * is not {@link Adapter.after} either, which orders adapters inside
+   * one vertical and refuses a cycle with a code of its own. What it
+   * buys is an order that does not depend on how a caller happened to
+   * list the verticals — a page posting extras alphabetically would
+   * otherwise install distribution before persistence and ship a
+   * descriptor without the database.
+   *
+   * Checked once every source has registered: an id no registered
+   * vertical bears is ignored, because reading something absent is
+   * harmless and a plugin must load beside another plugin that is not
+   * installed; a cycle among known ids is refused, naming the plugin,
+   * since it would order nothing. Where requirements and reads
+   * disagree, requirements win.
+   */
+  readonly reads?: readonly string[];
   /**
    * Every skill name installing this vertical may stage — the union
    * over its adapters' {@link Contribution.skills}, including the

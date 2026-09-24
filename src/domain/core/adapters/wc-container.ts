@@ -24,6 +24,7 @@ import {
   bootstrapProjectName,
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
 } from './distribution-container.js';
 
 export const WC_CONTAINER_ID = 'distribution/wc-container';
@@ -33,6 +34,7 @@ export const wcContainerAdapter: Adapter = {
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
   predicate: { requires: ['framework.web-components', 'arch.spa'] },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(WC_CONTAINER_ID),
   contribute(ctx) {

@@ -49,7 +49,7 @@ import { ENTRYPOINTS } from './stack-wizard.js';
  * records its flavour as a `runtime.` tag too, but no adapter requires
  * one, so it never turns up in a gap.)
  */
-const IDENTITY_NAMESPACES: readonly string[] = [
+export const IDENTITY_NAMESPACES: readonly string[] = [
   'lang.',
   'framework.',
   'runtime.',

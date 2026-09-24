@@ -3,8 +3,8 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`compatibility`, `dials`, `answers`, `supplied-answers`, `apply`,
-`install`, `actions`, `docs-index`, `hook-settings`), the composition
+`compatibility`, `planner`, `dials`, `answers`, `supplied-answers`,
+`apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
 add-vertical, docs-sync, docs-check), `registry.ts` (`registryOf` and
@@ -47,7 +47,13 @@ live in `dials.ts` and both front ends call them; a copy in a page is
 the same defect one layer out. An adapter question's choice follows the
 same rule one level down: it carries its own `predicate`, and
 `offeredIn` (`answers.ts`) is the one list the prompt, the preview and
-the supplied-answer check read — never a guard in `contribute()`. See
+the supplied-answer check read — never a guard in `contribute()`.
+Readiness is next: `planner.ts` reads `Adapter.promotes` and
+`Vertical.reads` into one answer — included, ready, needs, unavailable
+— and an ordered closure, for the menus and both front doors to share
+once they move onto it; a prerequisite belongs in a predicate the
+planner can read, never in a throw inside `contribute()` (distribution's
+image check is the last such throw, and goes next). See
 `docs/composition.md` → Conflicts and `docs/ui.md`.
 
 **Drill-down.** The stack finder is **shape → language → framework →

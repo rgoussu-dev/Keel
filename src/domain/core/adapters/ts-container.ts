@@ -12,6 +12,7 @@ import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import {
   containerDistribution,
   DEPLOY_QUESTION,
+  DIST_CONTAINER_TAG,
   serviceDeployVars,
 } from './distribution-container.js';
 
@@ -22,6 +23,7 @@ export const tsContainerAdapter: Adapter = {
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
   predicate: { requires: ['lang.typescript', 'runtime.node', 'arch.server-http'] },
+  promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(TS_CONTAINER_ID),
   contribute(ctx) {

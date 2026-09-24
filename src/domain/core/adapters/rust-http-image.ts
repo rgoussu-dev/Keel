@@ -23,6 +23,7 @@ export const rustHttpImageAdapter: Adapter = {
   vertical: 'containerization',
   covers: ['image'],
   predicate: { requires: ['lang.rust', 'arch.server-http'] },
+  promotes: [CONTAINER_IMAGE_TAG],
   async contribute(ctx) {
     const { projectName } = rustBootstrapAnswers(ctx.manifest, RUST_HTTP_IMAGE_ID);
     const files = await ctx.templates.render(TEMPLATE_ID, '', { projectName });

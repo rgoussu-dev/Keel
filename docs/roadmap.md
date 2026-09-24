@@ -2475,7 +2475,7 @@ and the second replays each contributor against the recorded manifest,
 never a running one. `install-verticals.test.ts` pins the run's three
 shared pieces — running manifest, ownership, harness buffer.
 
-#### Q1.2 — Two declarations and a planner, with no caller yet (M)
+#### Q1.2 — Two declarations and a planner, with no caller yet (M) ✅
 
 - `Adapter.promotes?` (defaults to the vertical's union), because
   `Vertical.promotes` is a union over adapters and any reader built on
@@ -2494,6 +2494,39 @@ shared pieces — running manifest, ownership, harness buffer.
 
 A shipped-registry readiness golden records today's truth, so Q1.3's
 diff is its review.
+
+Landed with `readiness(registry, scope, id)`, `plan(registry, scope,
+requested)`, `seedFor(stack, tags)` and `applies(v, tags)` exported
+from `planner.ts`, a scope being `{tags, installed}`, and the
+readiness types in `contract/queries.ts`. Declared:
+`quarkus-cli-native` → `runtime.graalvm-native`, the five container
+distribution adapters → `dist.container-image`, the four non-JVM
+image adapters → `deploy.container-image`; `distribution.reads =
+[persistence, observability]` and `persistence.reads =
+[observability]`, both checked against the adapters' `contribute()`.
+`dev-env` and `dev-container` read each other and adapt either way
+round, so neither declares it (it would be a cycle). The search
+closes over the providers in reach of the request's unmet `requires`
+(adapter-level `promotes`), at most three added for any one
+requested vertical (a request whose verticals together need more is
+planned as the union of their own closures), and orders by
+depth-first search: whatever feeds a tag a vertical's adapters
+require _or exclude_ goes first, then `reads`, then the caller's
+order — and a step that leaves an earlier vertical matching an
+adapter the new tags exclude, or breaking one of its rules, is taken
+back, which is what keeps `quarkus-cli-native` off a JVM image.
+Beyond the text above: `needs` carries `alternatives` when another
+set is exactly as small (readiness reports the tie; `plan` refuses it
+as `tied`), the gap also names the vertical's own broken `rules`, a
+capability another vertical could add is traced back to what that
+vertical lacks (`iac` on `quarkus-cli` reads _entrypoint HTTP
+server_, not _dist.container-image_), `nearestStacks` lists only the
+nearest group, and `plan` also answers `unknown`, `incompatible`
+(each plans alone, no order takes both) and the requested ids already
+`included`. The golden (`tests/domain/core/planner-readiness.golden.json`,
+28 presets × 14 verticals on default dials) has distribution _ready_
+on every HTTP stack and iac _needs distribution_ on 19; gateway is
+_unavailable_ everywhere, for want of a peer. The grid does not move.
 
 #### Q1.3 — The throw becomes a declaration; both front doors and the menus ask the planner (L)
 
