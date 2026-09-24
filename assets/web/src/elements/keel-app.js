@@ -58,7 +58,7 @@
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
-import { answer, restart, retarget, settle } from '../target.js';
+import { answer, previewed, restart, retarget, settle } from '../target.js';
 import {
   DIRECTORY,
   ENTRYPOINTS,
@@ -271,6 +271,7 @@ export class KeelApp extends HTMLElement {
     if (generation !== this.#generation) return;
     if (result.ok) {
       this.#preview = result.value;
+      this.#adopt(previewed(this.#run(), result.value));
       this.#error = null;
     } else {
       this.#preview = null;

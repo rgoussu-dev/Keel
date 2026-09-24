@@ -176,6 +176,22 @@ describe('the keel ui server', () => {
     expect(await response.json()).toMatchObject({ error: { code: 'keel.unknown-stack' } });
   });
 
+  it('holds an install body’s answers to the plan and to their choices, as refusals', async () => {
+    // The body reaches the same front door `--set` does. An answer
+    // outside its choices used to pass the sticky path unchecked and
+    // end in whatever the adapter threw; one keyed to another stack's
+    // adapter was written into the manifest.
+    for (const [answers, code] of [
+      [{ 'vcs/commit-conventions': { commitHook: 'maybe' } }, 'keel.invalid-answer'],
+      [{ 'walking-skeleton/go-bootstrap': { projectName: 'demo' } }, 'keel.unknown-answer'],
+    ] as const) {
+      const response = await post('/api/install', { cwd, target, answers });
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ error: { code } });
+    }
+    expect(await fs.readdir(cwd)).toEqual([]);
+  });
+
   it('answers a throw nothing turned into a refusal with the envelope, sentence and all', async () => {
     const sentence = 'fullstack/product-compose: product manifest declares no services';
     const broken = await uiServer(new ThrowingMediator(sentence))({

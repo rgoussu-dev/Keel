@@ -2428,16 +2428,35 @@ changes, the kernel is untouched, and every new contract field is
 optional with a fallback, so a plugin declaring none of them keeps
 working.
 
-#### Q1.0 — Answers only reach the adapters they belong to (M)
+#### Q1.0 — Answers only reach the adapters they belong to (M) ✅
 
-Brownfield `--set` keys for an installed vertical's adapter are
-`keel.frozen-answer`; keys for no adapter in the plan are
-`keel.unknown-answer`, listing the plan's adapters. Greenfield
-composites record in each scope only the keys that resolved there
-(today every scope's manifest gets all of them). Supplied values are
-checked at the front doors, not in the sticky path that serves older
-manifests. Scripts that `--set` another family's adapter now fail
-loudly instead of splitting a package — a CHANGELOG entry.
+Supplied answers (`--set`, an install body) are no longer seeded into
+the manifest: `installVertical` takes them as `supplied`, each adapter
+reads only the ones keyed to it or to a `sharesAnswersWith` sibling,
+and only the adapter that read one records it — so a greenfield
+composite records in each scope only the keys that resolved there,
+and no reader scanning a fixed list of bootstrap ids can find a
+foreign one. `supplied-answers.ts` holds the keys to the plan before
+anything is committed (brownfield before the install, against the
+vertical's resolved adapters; greenfield after staging, against every
+scope's, dry runs included): a key for an installed vertical's
+adapter, including a sibling it would borrow from, is
+`keel.frozen-answer`; a key no adapter of the plan reads, or a
+question its adapter does not ask, is `keel.unknown-answer`, naming
+the plan's adapters that take answers (or the adapter's questions).
+Supplied values are held to their choices where they first reach
+their adapter (`checkSuppliedAnswer`, `keel.invalid-answer`), which
+both front doors pass through, and never on recorded memory, which
+serves older manifests. `validateChoice` holds each value of a
+`multi-select` selection to the choices. The page adopts a preview's
+reply through `previewed` (`target.js`), which drops the answers that
+preview did not ask for: an extra unticked after its question was
+answered would otherwise post a key the install refuses, a case the
+plan's "the page never posts a stray key" had missed. Scripts that
+`--set` another family's adapter now fail loudly instead of splitting
+a package — a CHANGELOG entry; two test fixtures that did (the plugin
+byte-identity matrix, the Kotlin combo e2e cells' Java bootstrap ids)
+are keyed to their own adapters now.
 
 #### Q1.1 — refactor: one install loop for both handlers (M)
 

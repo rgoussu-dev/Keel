@@ -162,6 +162,44 @@ export function settle(run, dials, finder = null) {
 }
 
 /**
+ * The run once a preview has replied: its answers are the ones that
+ * preview asked for, and no others.
+ *
+ * A move within one subject keeps the answers, but it can take their
+ * adapter out of the plan — an extra unticked after its question was
+ * answered. An install refuses an answer no adapter of its plan reads
+ * (`keel.unknown-answer`), so posting one would turn the plan this
+ * preview approved into a refusal, and the command line shown beside
+ * it into a `--set` the terminal refuses too. The preview is what
+ * knows which questions the plan asks, and a reply is adopted only
+ * while it is the latest, so what it drops is exactly what the run
+ * it describes would not read.
+ *
+ * Not a move: the generation stays where it is, this reply being the
+ * one the page was waiting for.
+ *
+ * @param {Run} run
+ * @param {{ questions: ReadonlyArray<{ binding: Binding }> }} preview the `keel.preview` reply
+ * @returns {Run}
+ */
+export function previewed(run, preview) {
+  const asked = new Set(
+    preview.questions
+      .map(({ binding }) => binding)
+      .filter((binding) => binding.kind === 'answer')
+      .map((binding) => `${binding.adapter}:${binding.question}`),
+  );
+  const answers = {};
+  for (const [adapter, byQuestion] of Object.entries(run.answers)) {
+    const kept = Object.entries(byQuestion).filter(([question]) =>
+      asked.has(`${adapter}:${question}`),
+    );
+    if (kept.length > 0) answers[adapter] = Object.fromEntries(kept);
+  }
+  return { ...run, answers };
+}
+
+/**
  * The run after a question was answered.
  *
  * Where the answer goes is the question's binding, reported by the

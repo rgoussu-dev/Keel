@@ -37,7 +37,16 @@ export interface FileDiff {
   readonly diff: string;
 }
 
-/** Sticky answers supplied up front: adapterId → questionId → value. */
+/**
+ * Sticky answers supplied up front: adapterId → questionId → value.
+ *
+ * Each reaches only the adapter it is keyed to, or one that shares the
+ * question with it (`Adapter.sharesAnswersWith`), and is recorded only
+ * by the adapter that read it. An install refuses a key no adapter of
+ * its plan reads (`keel.unknown-answer`), one for an installed
+ * vertical's adapter (`keel.frozen-answer`), and a value outside its
+ * question's choices (`keel.invalid-answer`).
+ */
 export type PresetAnswers = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
 /**

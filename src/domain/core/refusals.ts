@@ -31,6 +31,10 @@
  * Shared by the resolver's throw, `keel new --with`'s front door and
  * `keel add`'s product-root redirect, so a refusal reads the same
  * whichever of them meets it first.
+ *
+ * The sentences a supplied answer no adapter reads is refused with
+ * (`./supplied-answers.ts`) live here too, for the same reason: both
+ * front doors speak them.
  */
 
 import type { Tag, Vertical } from '../contract/composition.js';
@@ -108,4 +112,41 @@ function serviceDirectories(services: readonly { readonly path: string }[]): str
   const dirs = services.map((service) => `${service.path}/`);
   if (dirs.length <= 1) return dirs.join('');
   return `${dirs.slice(0, -1).join(', ')} or ${dirs[dirs.length - 1] ?? ''}`;
+}
+
+/**
+ * The sentence an answer supplied for an installed vertical's adapter
+ * is refused with: `key` is the `adapterId:questionId` it was supplied
+ * as. Moving a recorded answer is out of scope, and taking it quietly
+ * would leave the manifest disagreeing with the files it rendered.
+ */
+export function frozenAnswerSentence(owner: Vertical, key: string): string {
+  return `${verticalTitle(owner)} is installed; its answers are frozen — reconfiguring is not supported yet (drop the answer for ${key})`;
+}
+
+/**
+ * The sentence an answer is refused with when no adapter of the plan
+ * reads its key: `key` is the `adapterId:questionId` it was supplied
+ * as, and `askers` the plan's adapters that do take answers — the
+ * keys it could have meant.
+ */
+export function unknownAnswerSentence(key: string, askers: readonly string[]): string {
+  const where =
+    askers.length === 0
+      ? 'nothing in this plan asks a question'
+      : `the adapters that take answers here: ${askers.join(', ')}`;
+  return `no adapter in this plan reads an answer for ${key}; ${where}`;
+}
+
+/**
+ * The sentence an answer is refused with when its adapter is in the
+ * plan but asks no such question — a typo, most likely, which would
+ * otherwise be recorded and never read.
+ */
+export function unknownQuestionSentence(
+  adapterId: string,
+  questionId: string,
+  asked: readonly string[],
+): string {
+  return `${adapterId} asks no question '${questionId}'; it asks: ${asked.join(', ')}`;
 }

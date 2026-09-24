@@ -14,6 +14,11 @@
  * outlived the pick that superseded it. The browser half — that a
  * card click really takes these paths — is `ui-refusal.test.ts`.
  *
+ * Answers also outlive their adapter within one subject — an extra
+ * unticked after its question was answered — and an install refuses an
+ * answer no adapter of its plan reads, so a preview's reply drops the
+ * ones it did not ask for. That case runs the real preview and install.
+ *
  * The greenfield half has one more job: a new preset keeps the dials
  * and lets `keel.dials` snap them, and once the reply settles the move
  * the run carries one line naming what it could not keep. That
@@ -25,8 +30,12 @@
  * field fails the typecheck here rather than a card on the page.
  */
 
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { catalogQuery } from '../../../src/domain/contract/queries.js';
+import { installCommandFor, type NewProjectTarget } from '../../../src/domain/contract/commands.js';
+import { catalogQuery, previewQuery } from '../../../src/domain/contract/queries.js';
 import type {
   AnswerBinding,
   Catalog,
@@ -35,8 +44,15 @@ import type {
   ProjectStatus,
   VerticalDescriptor,
 } from '../../../src/domain/contract/queries.js';
-import { answer, pickVertical, restart, retarget, settle } from '../../../assets/web/src/target.js';
-import { expectOk, installMediator } from '../../support/factory.js';
+import {
+  answer,
+  pickVertical,
+  previewed,
+  restart,
+  retarget,
+  settle,
+} from '../../../assets/web/src/target.js';
+import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
 /** What `<keel-app>` stores between transitions. */
 type Run = ReturnType<typeof restart>;
@@ -553,6 +569,61 @@ describe('what a preset move could not keep', () => {
     expect(settle(settled, jvmDials(settled.target as DialOptions['target'])).notice).toBe(
       settled.notice,
     );
+  });
+});
+
+describe('a preview reply', () => {
+  it('keeps the answers its plan still asks for, and drops the rest before an install sees them', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-previewed-'));
+    try {
+      const mediator = installMediator();
+      const target = (run: Run): NewProjectTarget => run.target as unknown as NewProjectTarget;
+      const preview = async (run: Run) =>
+        expectOk(
+          await mediator.dispatch(previewQuery({ cwd, target: target(run), answers: run.answers })),
+        );
+      const install = (run: Run) =>
+        mediator.dispatch(
+          installCommandFor(target(run), {
+            cwd,
+            answers: run.answers,
+            interactive: false,
+            dryRun: true,
+          }),
+        );
+
+      const ticked = answer(retarget(greenfield(), { extraVerticals: ['persistence'] }), {
+        binding: ENGINE,
+        value: 'mariadb',
+      });
+      const asked = previewed(ticked, await preview(ticked));
+      expect(asked.answers).toEqual({ 'persistence/database-compose': { engine: 'mariadb' } });
+      // The reply the page was waiting for, not a move of its own.
+      expect(asked.generation).toBe(ticked.generation);
+
+      // Unticking the extra keeps the subject, and so the answer — which
+      // nothing in the plan reads any more, and the install refuses.
+      const unticked = retarget(asked, { extraVerticals: [] });
+      expect(unticked.answers).toEqual(asked.answers);
+      expect(expectErr(await install(unticked)).code).toBe('keel.unknown-answer');
+
+      const heard = previewed(unticked, await preview(unticked));
+      expect(heard.answers).toEqual({});
+      expectOk(await install(heard));
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('drops an unasked question of an adapter it keeps', () => {
+    const run = answer(greenfield(), {
+      binding: { kind: 'answer', adapter: 'persistence/database-compose', question: 'migrations' },
+      value: 'flyway',
+    });
+    const questions = [{ binding: ENGINE }, { binding: { kind: 'stack' } }];
+    expect(previewed(run, { questions }).answers).toEqual({
+      'persistence/database-compose': { engine: 'postgres' },
+    });
   });
 });
 

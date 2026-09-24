@@ -8,13 +8,19 @@
  *      when omitted).
  *   2. Refuse if a manifest already exists under the project scope —
  *      `keel new` is greenfield-only; brownfield is `keel add`.
- *   3. Build an empty v2 manifest seeded with the stack's tags, its
- *      declared peer projections, and any pre-supplied sticky answers.
+ *   3. Build an empty v2 manifest seeded with the stack's tags and
+ *      its declared peer projections.
  *   4. Install each vertical in stack order against a fresh Tree.
  *      Tags emitted by adapters via `tagsAdd` accumulate into the
- *      manifest snapshot the next vertical sees.
- *   5. Under dry-run: report the plan, commit nothing.
- *   6. Otherwise: commit the Tree, persist the manifest, then run
+ *      manifest snapshot the next vertical sees. A pre-supplied
+ *      answer reaches only the adapters keyed to it (or borrowing
+ *      from it), which record what they resolve — so a scope's
+ *      manifest holds only the answers of adapters that ran there.
+ *   5. Refuse a pre-supplied answer no adapter of the run read
+ *      (`../supplied-answers.ts`) — dry run or not, so a preview
+ *      never approves what the install would refuse.
+ *   6. Under dry-run: report the plan, commit nothing.
+ *   7. Otherwise: commit the Tree, persist the manifest, then run
  *      the deferred actions. Persisting the manifest *before*
  *      actions keeps the workspace recoverable if an action throws
  *      (e.g. `gradle wrapper` with no `gradle` on PATH) — files and
@@ -67,6 +73,7 @@ import type { InstallReport, NewProjectCommand, RepoLayout } from '../../contrac
 import {
   AGENT_HARNESS_TAG,
   decodeSelection,
+  type Adapter,
   type DeferredAction,
   type Question,
   type QuestionChoice,
@@ -127,6 +134,7 @@ import {
 } from '../stack-wizard.js';
 import { coverageGap, coversFor, UNCOVERED_CODE, type CoverageGap } from '../resolver.js';
 import { coverageSentence } from '../refusals.js';
+import { NOTHING_INSTALLED, strayAnswerRefusal } from '../supplied-answers.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -262,6 +270,8 @@ interface StagedScope {
   readonly tree: Tree;
   readonly manifest: ManifestV2;
   readonly actions: readonly DeferredAction[];
+  /** Every adapter the scope's verticals resolved to, in install order. */
+  readonly adapters: readonly Adapter[];
 }
 
 /** A fully-staged plan: nothing committed yet, the caller's to `finish`. */
@@ -336,9 +346,18 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         ),
       );
     }
-    return stack.services
-      ? this.stageComposite(command, stack, prompt)
-      : this.stageSingle(command, stack, prompt);
+    const staged = stack.services
+      ? await this.stageComposite(command, stack, prompt)
+      : await this.stageSingle(command, stack, prompt);
+    if (!staged.ok) return staged;
+    // Only now is the plan known: an adapter resolves against the tags
+    // the verticals before it promoted, in whichever scope it lands.
+    const stray = strayAnswerRefusal(
+      command.answers,
+      staged.value.scopes.flatMap((scope) => scope.adapters),
+      NOTHING_INSTALLED,
+    );
+    return stray === null ? staged : err(stray);
   }
 
   /** Commits a staged plan unless the run is a dry-run, and unwraps it to the report. */
@@ -747,7 +766,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         ...(inputs.layoutTag ? [inputs.layoutTag] : []),
         ...(inputs.peerTag ? [inputs.peerTag] : []),
       ].sort(),
-      answers: inputs.command.answers,
       projects: [...(inputs.stack.projects ?? [])],
       peers: inputs.peers,
       services: inputs.services,
@@ -756,6 +774,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
     const tree = this.deps.trees(inputs.cwd);
     const collected: DeferredAction[] = [];
+    const adapters: Adapter[] = [];
     const own = inputs.skipVcs
       ? inputs.stack.verticals.filter((v) => v.id !== vcsVertical.id)
       : inputs.stack.verticals;
@@ -770,6 +789,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       const result = await installVertical({
         vertical,
         manifest,
+        supplied: inputs.command.answers,
         tree,
         owners,
         harness,
@@ -786,6 +806,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       });
       manifest = result.manifest;
       collected.push(...result.applyResult.actions);
+      adapters.push(...result.adapters);
     }
 
     const finalized = finalizeHarness({
@@ -802,6 +823,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       tree,
       manifest: finalized.manifest,
       actions: collected,
+      adapters,
       skippedHarnessElements: finalized.skipped,
     };
   }

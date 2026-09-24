@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAdapterAnswers, resolveAnswer } from '../../../src/domain/core/answers.js';
+import {
+  checkSuppliedAnswer,
+  resolveAdapterAnswers,
+  resolveAnswer,
+} from '../../../src/domain/core/answers.js';
 import type { Asker, Prompt } from '../../../src/domain/contract/ports/prompt.js';
 import type { Adapter, Contribution, Question } from '../../../src/domain/contract/composition.js';
 import { DomainError } from '../../../src/domain/kernel/result.js';
@@ -186,5 +190,69 @@ describe('resolveAdapterAnswers', () => {
     await expect(resolveAdapterAnswers(a, {}, 'non-interactive', failingPrompt)).rejects.toThrow(
       /duplicate question id/,
     );
+  });
+});
+
+describe('a multi-select answer', () => {
+  // A set, encoded as one string: each value it names is held to the
+  // choices, not the joined string.
+  const pick = (def: string): Question => ({
+    id: 'targets',
+    prompt: 'targets',
+    doc: '',
+    kind: 'multi-select',
+    choices: ['linux', 'darwin', 'windows'].map((c) => ({ value: c, label: c, doc: '' })),
+    default: def,
+    memory: 'sticky',
+  });
+
+  it('takes a legal selection of several choices', async () => {
+    const r = await resolveAnswer(pick(''), {}, 'interactive', scripted('linux,darwin'), asker);
+    expect(r).toEqual({ value: 'linux,darwin', persist: true });
+  });
+
+  it('takes the empty selection, its legitimate "none", as a default', async () => {
+    const r = await resolveAnswer(pick(''), {}, 'non-interactive', failingPrompt, asker);
+    expect(r).toEqual({ value: '', persist: true });
+  });
+
+  it('refuses a selection naming a value outside the choices, naming only that one', async () => {
+    const refusal: unknown = await resolveAnswer(
+      pick(''),
+      {},
+      'interactive',
+      scripted('linux,plan9'),
+      asker,
+    ).catch((thrown: unknown) => thrown);
+    expect(refusal).toBeInstanceOf(DomainError);
+    expect(refusal).toMatchObject({ code: 'keel.invalid-answer' });
+    expect((refusal as DomainError).message).toBe(
+      "'plan9' is not a choice for test/adapter:targets; choices: linux, darwin, windows",
+    );
+  });
+});
+
+describe('checkSuppliedAnswer', () => {
+  const provider = stickyQ('provider', 'github-actions', 'github-actions', 'gitlab-ci');
+
+  it('takes a supplied value inside its choices', () => {
+    expect(() => checkSuppliedAnswer(provider, 'gitlab-ci', 'ci/jvm-pipeline')).not.toThrow();
+  });
+
+  it('refuses one outside them, under the key it was supplied as', () => {
+    // The key a `--set` names, which may be a sibling the adapter
+    // borrows from rather than the adapter itself.
+    let refusal: unknown;
+    try {
+      checkSuppliedAnswer(provider, 'bitbucket', 'distribution/jvm-container');
+    } catch (thrown: unknown) {
+      refusal = thrown;
+    }
+    expect(refusal).toBeInstanceOf(DomainError);
+    expect(refusal).toMatchObject({
+      code: 'keel.invalid-answer',
+      message:
+        "'bitbucket' is not a choice for distribution/jvm-container:provider; choices: github-actions, gitlab-ci",
+    });
   });
 });

@@ -3,7 +3,11 @@
  *
  * Each `Question` an adapter declares is resolved through three
  * sources, in order:
- *   1. Sticky memory in the manifest (`memory: 'sticky'` only).
+ *   1. Sticky memory (`memory: 'sticky'` only): the answers the
+ *      manifest recorded, overlaid by the ones supplied for this run
+ *      (`--set`, an install body) — `install.ts` composes it per
+ *      adapter, holding each supplied value to its choices with
+ *      {@link checkSuppliedAnswer} on the way in.
  *   2. The `default` field, when running non-interactively (`--yes`).
  *   3. The user, prompted via the supplied `Prompt`.
  *
@@ -20,7 +24,7 @@
  */
 
 import { DomainError } from '../kernel/result.js';
-import type { Adapter, Question } from '../contract/composition.js';
+import { decodeSelection, type Adapter, type Question } from '../contract/composition.js';
 import type { AnswerMode, Asker, Prompt } from '../contract/ports/prompt.js';
 
 /**
@@ -104,6 +108,20 @@ export async function resolveAdapterAnswers(
 }
 
 /**
+ * Holds an answer supplied up front — a `--set`, an install body's
+ * `answers` — to its question's choices, refusing one outside them
+ * with {@link INVALID_ANSWER_CODE} under the key it was supplied as.
+ *
+ * The install loop calls it where a supplied value first reaches the
+ * adapter that reads it, before that adapter contributes anything;
+ * recorded memory never comes through here, for the reason
+ * {@link validateChoice} gives.
+ */
+export function checkSuppliedAnswer(question: Question, value: string, suppliedAs: string): void {
+  validateChoice(question, value, { kind: 'adapter', id: suppliedAs });
+}
+
+/**
  * Holds a value to its question's choices. Who is to blame for a value
  * outside them decides how it fails: one the prompt handed back was
  * supplied — typed at a terminal, or posted by a form through the
@@ -111,8 +129,12 @@ export async function resolveAdapterAnswers(
  * where the kernel's rule puts an expected failure; a default outside
  * its own choices is the declaring adapter's bug and keeps throwing,
  * even when a prompt handed it back unchanged. `askedBy` is present
- * exactly when a prompt handed the value back, and names the question's
- * home for the refusal's `adapterId:questionId`.
+ * exactly when the value was supplied, and names the key it was
+ * supplied under for the refusal's `adapterId:questionId`.
+ *
+ * A `multi-select` answer is a set, so each value it names is held to
+ * the choices rather than the joined string — `'a,b'` is a legal
+ * selection of two, and `''` the legal "none".
  *
  * A sticky answer already in memory is not checked at all: that path
  * also replays answers older manifests recorded, and holding them to
@@ -121,14 +143,17 @@ export async function resolveAdapterAnswers(
 function validateChoice(question: Question, value: string, askedBy?: Asker): void {
   if (!question.choices) return;
   const allowed = question.choices.map((c) => c.value);
-  if (allowed.includes(value)) return;
+  const picked = question.kind === 'multi-select' ? decodeSelection(value) : [value];
+  const outside = picked.filter((v) => !allowed.includes(v));
+  if (outside.length === 0) return;
   if (askedBy === undefined || value === question.default) {
     throw new Error(
       `invalid value '${value}' for question '${question.id}'; choices: ${allowed.join(', ')}`,
     );
   }
+  const named = outside.map((v) => `'${v}'`).join(', ');
   throw new DomainError(
-    `'${value}' is not a choice for ${askedBy.id}:${question.id}; choices: ${allowed.join(', ')}`,
+    `${named} ${outside.length === 1 ? 'is not a choice' : 'are not choices'} for ${askedBy.id}:${question.id}; choices: ${allowed.join(', ')}`,
     INVALID_ANSWER_CODE,
   );
 }

@@ -11,14 +11,18 @@
  *   3. Refuse if the vertical is already installed (that is what
  *      `--reapply` is for; the safe default is to surface the
  *      duplicate to the user).
- *   4. Install the vertical against a Tree rooted at cwd. The
+ *   4. Refuse a supplied answer the vertical's plan would not read —
+ *      one for an installed vertical's adapter is frozen, any other
+ *      is unknown (`../supplied-answers.ts`). Only the adapters it is
+ *      keyed to take it, so nothing else it names is ever recorded.
+ *   5. Install the vertical against a Tree rooted at cwd. The
  *      pre-existing project files on disk live in the Tree as "real"
  *      reads — patches against them work, and a whole-file write over
  *      one is refused as `keel.path-conflict` naming the file (which
  *      is exactly the diagnostic we want); a patch target the user
  *      deleted is refused as `keel.path-missing`.
- *   5. Under dry-run: report the plan, commit nothing.
- *   6. Otherwise: commit the Tree, persist the updated manifest, then
+ *   6. Under dry-run: report the plan, commit nothing.
+ *   7. Otherwise: commit the Tree, persist the updated manifest, then
  *      run the deferred actions — manifest before actions, as in the
  *      new-project handler, so a failed action leaves a coherent
  *      (files + manifest) pair and a re-run correctly refuses the
@@ -58,7 +62,8 @@ import { finalizeHarness, installVertical } from '../install.js';
 import { retrofitHarness } from '../harness-retrofit.js';
 import { productRootSentence } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
-import { coversFor, UNCOVERED_CODE } from '../resolver.js';
+import { coversFor, resolveVertical, UNCOVERED_CODE } from '../resolver.js';
+import { installedOwnerOf, strayAnswerRefusal } from '../supplied-answers.js';
 import type { Vertical } from '../../contract/composition.js';
 import type { InstallDeps } from './deps.js';
 
@@ -149,18 +154,28 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       );
     }
 
+    // Held against the plan before anything runs, so a stray key is
+    // refused before a question is asked. The plan is the one the
+    // install resolves first thing, against the same tags.
+    if (hasAnswers(command.answers)) {
+      const stray = strayAnswerRefusal(
+        command.answers,
+        resolveVertical(vertical, effectiveTags(stored)),
+        installedOwnerOf(this.deps.registry, stored),
+      );
+      if (stray !== null) return err(stray);
+    }
+
     const now = this.deps.clock.nowIso();
     const tree = this.deps.trees(command.cwd);
-    const merged: ManifestV2 = reapply
-      ? stored
-      : { ...stored, answers: mergeAnswers(stored.answers, command.answers) };
     let result;
     const owners = newOwnership();
     const harness: HarnessContribution[] = [];
     try {
       result = await installVertical({
         vertical,
-        manifest: merged,
+        manifest: stored,
+        supplied: command.answers,
         tree,
         owners,
         harness,
@@ -277,16 +292,6 @@ function looksBinary(content: Buffer): boolean {
 
 function hasAnswers(answers: PresetAnswers): boolean {
   return Object.values(answers).some((byQuestion) => Object.keys(byQuestion).length > 0);
-}
-
-function mergeAnswers(
-  base: Readonly<Record<string, Readonly<Record<string, string>>>>,
-  overlay: Readonly<Record<string, Readonly<Record<string, string>>>>,
-): Record<string, Record<string, string>> {
-  const out: Record<string, Record<string, string>> = {};
-  for (const [k, v] of Object.entries(base)) out[k] = { ...v };
-  for (const [k, v] of Object.entries(overlay)) out[k] = { ...(out[k] ?? {}), ...v };
-  return out;
 }
 
 /**

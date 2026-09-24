@@ -32,7 +32,7 @@ keel new --stack=<id> [options]
 | `--no-agent-harness`      | Single-service stacks: omit agent documents, cross-tool shims, skills and hooks; retain the project manifest and formatter configuration. Adopt later with `keel add agent-harness`.                                                                                                                                                                                                                                                                                                                                                                  |
 | `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                          |
 | `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable). Only for an adapter this run resolves — see [Answers](#answers-stickiness-and---set).                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 Examples:
 
@@ -241,13 +241,13 @@ HTTP server entrypoint). At the root of a composite product, a vertical
 the root cannot carry is refused naming the service directories to run
 `keel add` in instead.
 
-| Option        | Meaning                                                            |
-| ------------- | ------------------------------------------------------------------ |
-| `-y, --yes`   | Non-interactive — defaults for every question.                     |
-| `--dry-run`   | Print the plan; write nothing.                                     |
-| `--list`      | List every vertical id with its one-line description, then exit.   |
-| `--reapply`   | Re-render an installed vertical from its recorded answers.         |
-| `--set <k=v>` | Preset an answer (same shape as `keel new`). Not with `--reapply`. |
+| Option        | Meaning                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `-y, --yes`   | Non-interactive — defaults for every question.                                                  |
+| `--dry-run`   | Print the plan; write nothing.                                                                  |
+| `--list`      | List every vertical id with its one-line description, then exit.                                |
+| `--reapply`   | Re-render an installed vertical from its recorded answers.                                      |
+| `--set <k=v>` | Preset an answer for the vertical being added (same shape as `keel new`). Not with `--reapply`. |
 
 `keel add --list` needs no existing project — it just prints the
 catalog.
@@ -702,6 +702,26 @@ keel new --stack=quarkus-cli --yes \
 
 The key format is `adapterId:questionId`; `--dry-run` prints the
 questions a plan would ask.
+
+**An answer reaches only the adapter it is keyed to** — or one that
+shares the question with it (`Adapter.sharesAnswersWith`: a
+framework's CLI and REST bootstraps, the CI provider `ci` and
+`distribution` both ask), which reads it as its own — and only the
+adapter that read it records it. On a product, each service's manifest records the
+answers of the adapters that ran in that service. Before anything is
+written, and under `--dry-run` alike, a run refuses:
+
+- a key no adapter of its plan reads — another stack's bootstrap, a
+  vertical that is not part of the run, a question its adapter does
+  not ask — with `keel.unknown-answer`, naming the adapters that do
+  take answers (or the questions the adapter does ask);
+- under `keel add`, a key for a vertical already installed with
+  `keel.frozen-answer`: its answers are frozen, and reconfiguring one
+  is not supported yet;
+- a value outside its question's choices with `keel.invalid-answer`.
+
+Answers already recorded in a manifest are never held to today's
+choices, so `--reapply` keeps working after a choice is renamed.
 
 ## Environment
 

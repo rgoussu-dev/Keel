@@ -326,6 +326,16 @@ the target is broken is a menu that cannot be used to fix it.
 returns carries a `binding` saying where its answer goes, so a client
 never needs a table of question ids of its own.
 
+An install holds its body's `answers` to the plan exactly as it holds
+`--set`: a key no adapter of the plan reads is refused
+(`keel.unknown-answer`), so is one for a vertical already installed
+(`keel.frozen-answer`), and so is a value outside its question's
+choices (`keel.invalid-answer`) — none of them is written into a
+manifest, and none is a 500. The page sends only the answers its
+latest preview asked for — an extra unticked after its question was
+answered takes that answer with it — and starts them over whenever the
+stack or the card changes.
+
 A refusal comes back as **422** with the domain's own error code:
 
 ```json
@@ -352,12 +362,12 @@ The refusals an adapter raises while it runs travel the same way:
 distribution on a project with no container image yet
 (`keel.missing-prerequisites`), a listed choice this stack cannot
 serve, such as `mariadb` on `go-http` (`keel.unsupported-answer`), and
-an answer sent to a preview that is none of its question's choices
-(`keel.invalid-answer`). So do the ones about the directory itself: a
-file keel would write that is already there (`keel.path-conflict`) —
-a hosted repository's `README.md` before a new project, your own
-`Dockerfile` before containerization — and a file keel patches that
-has been deleted (`keel.path-missing`). Each names the file, so the
+an answer that is none of its question's choices, sent to a preview
+or an install (`keel.invalid-answer`). So do the ones about the
+directory itself: a file keel would write that is already there
+(`keel.path-conflict`) — a hosted repository's `README.md` before a
+new project, your own `Dockerfile` before containerization — and a
+file keel patches that has been deleted (`keel.path-missing`). Each names the file, so the
 live preview shows what is in the way before Review. Each used to be a
 plain throw, and so a 500.
 

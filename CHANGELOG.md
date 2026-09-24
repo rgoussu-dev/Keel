@@ -114,6 +114,13 @@ use to keep a long-lived changelog scannable — and the root keeps
   throws. Scripts matching the distribution refusal's old text should
   match its code instead.
 
+- **An adapter's multi-select question takes a selection.** An
+  adapter question declared `kind: 'multi-select'` — none ships one,
+  a plugin may — had its answer held to the choices as one string, so
+  a legal `a,b` was refused as `keel.invalid-answer` and its `''`
+  "none" default reported as the adapter's bug. Each value a selection
+  names is now held to the choices instead.
+
 - **The `--with` example runs.** `keel new --help` suggested
   `--with persistence,iac`, and `docs/cli.md` `--with distribution,ci`
   and `--with distribution,iac`. The two ending in `iac` are refused
@@ -150,6 +157,31 @@ use to keep a long-lived changelog scannable — and the root keeps
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **An answer reaches only the adapters it belongs to, and a stray
+  one is refused.** `keel new` wrote every `--set` into the manifest
+  of every scope it created, so a Quarkus bootstrap's `basePackage`
+  given to a Spring stack scaffolded some sources under it and the
+  rest under the default — a split package — and a product recorded
+  each service's answers in every service. `keel add` merged any key
+  into the manifest: `--set vcs/git-init:defaultBranch=trunk` on
+  `keel add ci` rewrote an installed vertical's recorded answer
+  without re-rendering a file. Now an answer reaches only the adapter
+  it is keyed to, or one sharing the question with it (a framework's
+  CLI and REST bootstraps, the CI provider), and only the adapter that
+  read it records it. Before anything is written, dry run or not, a
+  key no adapter of the plan reads is refused as
+  `keel.unknown-answer`, naming the adapters that do take answers; a
+  key for a vertical already installed as `keel.frozen-answer`; and a
+  value outside its question's choices as `keel.invalid-answer`, from
+  `--set` and a `keel ui` install body alike — it used to end in
+  whatever the adapter threw, a 500 in the page. **Scripts that pass
+  `--set` for another stack's adapters now fail loudly** rather than
+  splitting a package: key the answer to one of the adapters the
+  refusal names. Answers a manifest already recorded are not held to
+  today's choices, so `--reapply` is unaffected. `keel ui` drops an
+  answer once its preview stops asking for it, so an extra unticked
+  after its question was answered no longer posts that answer.
 
 - **`keel new` asks two more questions**, `changelog` and `commitHook`,
   both sticky and both defaulting to yes (#143). They come before the

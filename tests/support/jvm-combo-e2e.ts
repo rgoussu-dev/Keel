@@ -186,6 +186,18 @@ const COMBO_STACKS: Readonly<Record<string, keyof typeof FRAMEWORKS>> = {
   'micronaut-cli-rest-kotlin': 'micronaut',
 };
 
+/**
+ * The bootstrap ids a combo stack's identity answers are keyed to: the
+ * framework's, in their Kotlin spelling on a Kotlin stack. A Java id
+ * on a Kotlin stack reaches no adapter, and a run refuses an answer no
+ * adapter reads (`keel.unknown-answer`) rather than scaffolding the
+ * defaults under it.
+ */
+function bootstrapIdsOf(stack: string, framework: ComboFramework): readonly string[] {
+  if (!stack.endsWith('-kotlin')) return framework.bootstrapIds;
+  return framework.bootstrapIds.map((id) => id.replace(/-bootstrap$/, '-kotlin-bootstrap'));
+}
+
 /** One cell of the composed-entrypoint grid. */
 export interface JvmComboCell {
   /** Combo stack preset to scaffold; a key of {@link COMBO_STACKS}. */
@@ -266,7 +278,7 @@ export async function runJvmComboE2E(
   const framework = FRAMEWORKS[COMBO_STACKS[cell.stack] as string] as ComboFramework;
   const spec: JvmProjectSpec = {
     stack: cell.stack,
-    bootstrapId: framework.bootstrapIds,
+    bootstrapId: bootstrapIdsOf(cell.stack, framework),
     moduleLayout: cell.moduleLayout,
     buildSystem: cell.buildSystem,
     ...(cell.moduleLayout === 'modulith' ? { withPeerContext: true } : {}),
