@@ -50,6 +50,15 @@ keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a R
 keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in the same run
 ```
 
+**A directory that is not empty.** `keel new` needs only the absence
+of a keel manifest, and it never overwrites a file it did not write: a
+file of yours in the way is refused as `keel.path-conflict`, naming
+it — move it aside, or start in an empty directory. Nothing is written
+before the refusal. The JVM and TypeScript stacks keep an existing
+`README.md`, adding their own section to it, and an existing
+`.gitignore` exactly as it is; the Go, Rust, `web-components` and
+composite stacks refuse both for now.
+
 `--no-agent-harness` is an explicit opt-out; the harness otherwise stays on without an extra prompt. It cannot be combined with `--with agent-harness` or a plugin stack/vertical that activates `agentic.harness`. Composite product-root harness selection is outside this flag; run `keel add agent-harness` inside an individual service.
 
 ### The interactive wizard
@@ -245,6 +254,16 @@ catalog.
 
 Adding an already-installed vertical errors with
 `keel.vertical-already-installed` — that is what `--reapply` is for.
+
+**keel does not overwrite your files, nor recreate its own.** A file
+the vertical would write that the project already holds — your own
+`Dockerfile` before `keel add containerization`, a
+`.github/workflows/ci.yml` before `keel add ci` — is refused as
+`keel.path-conflict`, naming it; so is a build file keel patches that
+lacks the block keel adds its line to. A file keel patches that has
+been deleted — a `README.md`, a `build.gradle.kts` — is refused as
+`keel.path-missing`: restore it, then re-run. Either way nothing is
+written.
 
 **A project from another harness generation is refused.** Every
 manifest keel creates records the generation of the agent harness it

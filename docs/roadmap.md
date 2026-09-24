@@ -2338,16 +2338,25 @@ since `api.js` claims the token from `location` on load and cannot be
 imported without a DOM). The page labels `keel.internal` as a bug to
 report.
 
-#### Q0.3 — A file already on disk, or missing from it, is a coded refusal (S)
+#### Q0.3 — A file already on disk, or missing from it, is a coded refusal (S) ✅
 
 `apply.ts` `writeWholeFile` raises `PathConflictError extends
-DomainError` (`keel.path-conflict`) when the path exists and this run
-has no `create` for it; a path this run created twice stays a
-`ContributionConflictError` (an adapter bug). Sentences by phase — in
-`keel new` the file is the user's ("move it aside, or start in an
-empty directory"); in `keel add` no move-aside advice, since in a
-monorepo service the file may be the root's. A patch target the user
-deleted becomes `keel.path-missing`. I1 becomes hard.
+DomainError` (`keel.path-conflict`, carrying `path` and `adapterId`)
+when the path exists and this run has no `create` for it — a file
+patched earlier in the run shows as `modify` and still counts as the
+project's; a path this run created twice stays a
+`ContributionConflictError` (an adapter bug). Sentences by phase, read
+off a `scaffold` apply mode `keel new` passes — in `keel new` the file
+is the user's ("move it aside, or start in an empty directory"); in
+`keel add` no move-aside advice, since in a monorepo service the file
+may be the root's. A patch target the user deleted becomes
+`PathMissingError` (`keel.path-missing`); under `keel new` it stays an
+ordering bug. `jvm-format`'s foreign-content anchors — no `plugins {`
+in `build.gradle.kts`, no `<build>` in `pom.xml` — raise
+`keel.path-conflict`. I1 becomes hard: its 85 cells (26 seeded before
+`keel new`, 47 before `keel add`, 12 monorepo-service
+containerization) are all `keel.path-conflict` now, and the grid's
+`HARD` list keeps its key out of every known file.
 
 #### Q0.4 — Hidden prerequisites and bad answers get codes; the failing examples are fixed (S) ✅
 

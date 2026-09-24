@@ -71,7 +71,8 @@ export interface InstallVerticalInputs {
   readonly now: () => string;
   /**
    * Conflict posture towards files already in the Tree; defaults to
-   * `install`. `reapply` re-renders over the previous rendering — see
+   * `install`, the brownfield one. `scaffold` is `keel new`'s, and
+   * `reapply` re-renders over the previous rendering — see
    * {@link ApplyMode}.
    */
   readonly apply?: ApplyMode;

@@ -37,7 +37,7 @@
  *     directions: a new violation fails, and so does a fixed one still
  *     listed. `KEEL_UPDATE_GOLDEN=1` rewrites it as known ∩ actual, so
  *     it can only shrink; a key is only ever added by hand, and review
- *     rejects that.
+ *     rejects that. A {@link HARD} invariant has no entry at all.
  *
  * One file per axis rather than one for the grid, because vitest runs
  * the three suites in parallel workers and each rewrites its own files
@@ -74,6 +74,15 @@ export const INVARIANTS = {
 
 /** One of {@link INVARIANTS}. */
 export type Invariant = keyof typeof INVARIANTS;
+
+/**
+ * The invariants with no allowance: an axis's known file carries no key
+ * for one, so a single violating cell fails the grid, whatever a
+ * reviewer would accept. An invariant joins this list with the step
+ * that brings it to zero for good — I1 with Q0.3, when a file already
+ * on disk, or missing from it, became a coded refusal.
+ */
+export const HARD: readonly Invariant[] = ['I1'];
 
 /** The verdict of a cell that came back Ok. */
 export const OK = 'ok';
@@ -427,47 +436,59 @@ export function sweepGrid(axis: GridAxis): void {
     expect(grid.verdicts()).toEqual(golden);
   });
 
-  it('tracks exactly the invariants it holds, each under a finding id', () => {
-    expect(Object.keys(known).sort()).toEqual([...axis.holds].sort());
+  it('tracks exactly the invariants it holds and allows, each under a finding id', () => {
+    const allowed = axis.holds.filter((invariant) => !HARD.includes(invariant));
+    expect(Object.keys(known).sort()).toEqual(allowed.sort());
     for (const cells of Object.values(known)) {
       for (const finding of Object.values(cells)) expect(finding).toMatch(FINDING_ID);
     }
   });
 
-  it.each(axis.holds.map((invariant) => [invariant, INVARIANTS[invariant]] as const))(
-    '%s: %s (broken only where the known file lists it)',
-    (invariant) => {
-      const listed = Object.keys(known[invariant] ?? {});
-      const found = grid.violations(invariant);
-      const added = found.filter((cell) => !listed.includes(cell));
-      const fixed = listed.filter((cell) => !found.includes(cell)).sort();
-      expect(added, `new ${invariant} violations — ${axis.name}.known.json only shrinks`).toEqual(
-        [],
-      );
-      if (UPDATE) return;
-      expect(
-        fixed,
-        `no longer violating ${invariant} — KEEL_UPDATE_GOLDEN=1 drops them from ${axis.name}.known.json`,
-      ).toEqual([]);
-    },
-  );
+  it.each(
+    axis.holds.map(
+      (invariant) =>
+        [
+          invariant,
+          INVARIANTS[invariant],
+          HARD.includes(invariant)
+            ? 'hard: broken nowhere'
+            : 'broken only where the known file lists it',
+        ] as const,
+    ),
+  )('%s: %s (%s)', (invariant) => {
+    const listed = HARD.includes(invariant) ? [] : Object.keys(known[invariant] ?? {});
+    const found = grid.violations(invariant);
+    const added = found.filter((cell) => !listed.includes(cell));
+    const fixed = listed.filter((cell) => !found.includes(cell)).sort();
+    expect(added, `new ${invariant} violations — ${axis.name}.known.json only shrinks`).toEqual([]);
+    if (UPDATE) return;
+    expect(
+      fixed,
+      `no longer violating ${invariant} — KEEL_UPDATE_GOLDEN=1 drops them from ${axis.name}.known.json`,
+    ).toEqual([]);
+  });
 }
 
-/** `known` ∩ what this run found: the regenerated known file. */
+/**
+ * `known` ∩ what this run found: the regenerated known file, which
+ * drops a {@link HARD} invariant's key along with its cells.
+ */
 function shrunk(known: Known, grid: Grid): Known {
   return Object.fromEntries(
-    Object.entries(known).map(([invariant, cells]) => {
-      const found = new Set(grid.violations(invariant as Invariant));
-      return [
-        invariant,
-        Object.fromEntries(
-          Object.keys(cells)
-            .filter((cell) => found.has(cell))
-            .sort()
-            .map((cell) => [cell, cells[cell]]),
-        ),
-      ];
-    }),
+    Object.entries(known)
+      .filter(([invariant]) => !HARD.includes(invariant as Invariant))
+      .map(([invariant, cells]) => {
+        const found = new Set(grid.violations(invariant as Invariant));
+        return [
+          invariant,
+          Object.fromEntries(
+            Object.keys(cells)
+              .filter((cell) => found.has(cell))
+              .sort()
+              .map((cell) => [cell, cells[cell]]),
+          ),
+        ];
+      }),
   );
 }
 

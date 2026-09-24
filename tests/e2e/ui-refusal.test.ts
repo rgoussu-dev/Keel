@@ -2,25 +2,31 @@
  * A refusal the engine raises **while the page is being filled in**,
  * driven in a real browser.
  *
- * The engine has one refusal that reaches a front end from the very
- * bottom of the install: `resolveVertical` hard-fails when no adapter
- * covers a dimension, which is what "this Go CLI has nothing to build
- * a container image from" comes out as. It used to escape
- * `installVertical` as a bare `Error`, and a throw is the one thing an
- * HTTP layer can only read as a crash — so `keel ui` answered **500
- * with a bare string** and the page showed `POST /api/preview failed
- * with 500` for a refusal that names what would close the gap.
+ * The engine has refusals that reach a front end from the very bottom
+ * of the install. `resolveVertical` hard-fails when no adapter covers
+ * a dimension, which is what "this Go CLI has nothing to build a
+ * container image from" comes out as; the applier refuses a file of
+ * the user's in the way (`keel.path-conflict`) or gone
+ * (`keel.path-missing`). The first is the one driven here. It used to
+ * escape `installVertical` as a bare `Error`, and a throw is the one
+ * thing an HTTP layer can only read as a crash — so `keel ui` answered
+ * **500 with a bare string** and the page showed `POST /api/preview
+ * failed with 500` for a refusal that names what would close the gap.
  *
  * The domain half of that fix is pinned where it belongs — the
  * mediator normalising a thrown `DomainError`
- * (`tests/domain/core/mediator.test.ts`), the refusal arriving as an
- * `Err` (`preview.test.ts`, `add-containerization.test.ts`), the
- * transport mapping an `Err` to 422 (`tests/application/web/api.test.ts`).
+ * (`tests/domain/core/mediator.test.ts`), the refusals arriving as an
+ * `Err` (`preview.test.ts`, `add-containerization.test.ts`,
+ * `add-vertical.test.ts`, and the composition grid, whose I1 no cell
+ * may break), the transport mapping an `Err` to 422
+ * (`tests/application/web/api.test.ts`).
  * What none of them can see is the half the user actually meets:
  * whether the page *shows* it. A banner that renders empty, a plan
  * that sits blank beside it, or a Generate button still live over a
  * run the engine has already refused are all page-level facts, and
- * this is the only kind of test that has eyes.
+ * this is the only kind of test that has eyes. One refusal is enough
+ * to show them: the page renders every coded refusal through the same
+ * banner, so a path conflict needs no browser of its own.
  *
  * **The page's own state is the other way a pick gets refused**, and
  * the second half of this suite. A card for an installed vertical is

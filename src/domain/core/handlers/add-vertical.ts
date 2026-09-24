@@ -13,8 +13,10 @@
  *      duplicate to the user).
  *   4. Install the vertical against a Tree rooted at cwd. The
  *      pre-existing project files on disk live in the Tree as "real"
- *      reads — patches against them work, whole-file writes conflict
- *      (which is exactly the diagnostic we want).
+ *      reads — patches against them work, and a whole-file write over
+ *      one is refused as `keel.path-conflict` naming the file (which
+ *      is exactly the diagnostic we want); a patch target the user
+ *      deleted is refused as `keel.path-missing`.
  *   5. Under dry-run: report the plan, commit nothing.
  *   6. Otherwise: commit the Tree, persist the updated manifest, then
  *      run the deferred actions — manifest before actions, as in the

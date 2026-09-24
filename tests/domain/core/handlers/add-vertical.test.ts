@@ -5,7 +5,8 @@
  * Runs `keel new` first to seed a project, then layers `distribution`
  * on top and asserts the workflow files land, the manifest gains the
  * new vertical and tags, and the safeguards (duplicate, unknown id,
- * missing project) surface as domain errors.
+ * missing project, a file of the user's in the way or gone) surface as
+ * domain errors.
  */
 
 import path from 'node:path';
@@ -150,6 +151,63 @@ describe('keel.add-vertical (keel add)', () => {
       'vcs',
       'walking-skeleton',
     ]);
+  });
+
+  describe('a file the project keeps, or lost', () => {
+    const add = (vertical: string, reapply = false) =>
+      installMediator().dispatch(
+        addVerticalCommand({
+          cwd,
+          vertical,
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          ...(reapply ? { reapply } : {}),
+        }),
+      );
+
+    it('refuses a CI workflow the user already keeps, naming it, and writes nothing', async () => {
+      await seedQuarkusCli();
+      const own = path.join(cwd, '.github/workflows/ci.yml');
+      await fs.outputFile(own, 'name: mine\n');
+
+      const error = expectErr(await add('ci'));
+      expect(error.code).toBe('keel.path-conflict');
+      expect(error.message).toMatch(
+        /^'\.github\/workflows\/ci\.yml' already exists and was not written by this run — keel does not overwrite it \(ci\//,
+      );
+      // `keel add` gives no advice to move it: here the file may be keel's.
+      expect(error.message).not.toContain('move it aside');
+      expect(await fs.readFile(own, 'utf8')).toBe('name: mine\n');
+      const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+      expect(manifest!.verticals.map((v) => v.id)).not.toContain('ci');
+    });
+
+    it('refuses a patch target the user deleted, naming it', async () => {
+      await seedQuarkusCli();
+      await fs.remove(path.join(cwd, 'README.md'));
+
+      const error = expectErr(await add('toolchain'));
+      expect(error.code).toBe('keel.path-missing');
+      expect(error.message).toMatch(
+        /^'README\.md' is missing — keel patches it and does not recreate it; restore it \(toolchain\//,
+      );
+      expect(await fs.pathExists(path.join(cwd, 'README.md'))).toBe(false);
+    });
+
+    it('refuses a build script keel did not write as a path conflict, reapply or not', async () => {
+      await seedQuarkusCli();
+      await fs.writeFile(path.join(cwd, 'build.gradle.kts'), '// hand-written\n');
+
+      const error = expectErr(await add('code-style', true));
+      expect(error.code).toBe('keel.path-conflict');
+      expect(error.message).toBe(
+        "'build.gradle.kts' has no 'plugins {' block for the Spotless plugin — keel adds its line inside that block and does not rewrite the file; add one, then re-run (code-style/jvm-format)",
+      );
+      expect(await fs.readFile(path.join(cwd, 'build.gradle.kts'), 'utf8')).toBe(
+        '// hand-written\n',
+      );
+    });
   });
 
   describe('--reapply', () => {

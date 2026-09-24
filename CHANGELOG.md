@@ -14,6 +14,26 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A file in the way, or gone, is a refusal naming it.** `keel new`
+  into a directory holding a `README.md` or `.gitignore` — a freshly
+  cloned hosted repository — crashed on the Go, Rust,
+  `web-components` and composite stacks. So did
+  `keel add containerization` or `keel add ci` over your own
+  `Dockerfile` or `.github/workflows/ci.yml`, and
+  `keel add containerization` inside a monorepo product's service,
+  whose image files the product root wrote. `keel ui` answered each
+  with a 500 whose sentence was meant for an adapter's author
+  (_"use a patch to modify existing files"_).
+  Each is now refused as `keel.path-conflict`, naming the file: under
+  `keel new`, move it aside or start in an empty directory; under
+  `keel add`, only that this run did not write it, since there it may
+  be keel's own. A JVM build file with no `plugins {` block, or a POM
+  with no `<build>` element, for the Spotless line is refused the same
+  way, and a file keel patches that has been deleted as
+  `keel.path-missing` — restore it. Nothing is written in any of these
+  cases. Two parts of one run writing the same file is still a bug,
+  and still a 500.
+
 - **A 500 in `keel ui` carries its sentence.** An exception nothing
   turned into a refusal was answered as a bare `text/plain` string,
   and the page — which parsed every body as JSON first, consuming it —

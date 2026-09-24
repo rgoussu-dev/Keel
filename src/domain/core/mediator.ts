@@ -9,11 +9,14 @@
  * exception.
  *
  * The kernel's rule is that expected business failures travel as
- * `Err` and genuine bugs keep throwing. The install engine has one
- * refusal that took the other exit: `resolveVertical` hard-fails with
- * a `ResolutionError` when a project's shape cannot carry a vertical,
- * and it escapes `installVertical` from every caller. Each front end
- * then had to cope alone — the CLI printed it (its top-level catch
+ * `Err` and genuine bugs keep throwing. The install engine has
+ * refusals that take the other exit, because they are only knowable
+ * deep inside it: `resolveVertical` hard-fails with a
+ * `ResolutionError` when a project's shape cannot carry a vertical,
+ * and the applier with a `PathConflictError` or `PathMissingError`
+ * when a file of the user's is in the way or gone. They escape
+ * `installVertical` from every caller, and each front end had to cope
+ * with the throw alone — the CLI printed it (its top-level catch
  * treats any throw as a message), and `keel ui` answered **500 with a
  * bare string**, because a crash is all an HTTP layer can read a
  * throw as. The page showed "POST /api/preview failed with 500" for

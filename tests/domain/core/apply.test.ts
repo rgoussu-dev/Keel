@@ -5,9 +5,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
 import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
+import { DomainError } from '../../../src/domain/kernel/result.js';
 import {
   ContributionConflictError,
   ENGINE_REGIONS,
+  PATH_CONFLICT_CODE,
+  PATH_MISSING_CODE,
+  PathConflictError,
+  PathMissingError,
   applyContributions,
   collectHarness,
   newOwnership,
@@ -22,6 +27,8 @@ import { MAP_HEADING } from '../../../src/domain/core/docs-index.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { hashRegion, regionPatch } from '../../../src/domain/contract/region.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
+import { FakeTree } from '../../../src/infrastructure/tree/fake.js';
+import type { Tree } from '../../../src/domain/contract/ports/tree.js';
 import {
   ENGINE_CONTRIBUTOR_ID,
   type Adapter,
@@ -94,13 +101,32 @@ describe('applyContributions', () => {
     expect(tree.read('pom.xml')?.toString()).toBe('<project><a/><b/></project>');
   });
 
-  it('conflicts when two adapters write the same file', async () => {
+  it('conflicts when two adapters write the same file — a bug, not a refusal', async () => {
     const tree = new FsTree(tmp);
     const a = adapter('a', { files: [{ path: 'x.txt', content: 'a' }] });
     const b = adapter('b', { files: [{ path: 'x.txt', content: 'b' }] });
-    await expect(
+    const failure = await applyContributions({
+      adapters: [a, b],
+      answers: {},
+      manifest: emptyManifestV2('now', '0.4.0'),
+      tree,
+      logger: new FakeLogger(),
+      cwd: tmp,
+      templates: ejsTemplateSource,
+      processes: spawnProcessRunner,
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(failure).toBeInstanceOf(ContributionConflictError);
+    expect(failure).not.toBeInstanceOf(DomainError);
+    expect((failure as ContributionConflictError).kind).toBe('overwrite');
+  });
+
+  describe('a file the project already holds, or no longer does', () => {
+    const apply = (adapters: readonly Adapter[], tree: Tree, mode?: ApplyMode) =>
       applyContributions({
-        adapters: [a, b],
+        adapters,
         answers: {},
         manifest: emptyManifestV2('now', '0.4.0'),
         tree,
@@ -108,45 +134,88 @@ describe('applyContributions', () => {
         cwd: tmp,
         templates: ejsTemplateSource,
         processes: spawnProcessRunner,
-      }),
-    ).rejects.toBeInstanceOf(ContributionConflictError);
-  });
-
-  it('conflicts when a file write would overwrite an on-disk file', async () => {
-    const tree = new FsTree(tmp);
-    await fs.writeFile(path.join(tmp, 'README.md'), 'hello');
-    const a = adapter('a', { files: [{ path: 'README.md', content: 'goodbye' }] });
-    await expect(
-      applyContributions({
-        adapters: [a],
-        answers: {},
-        manifest: emptyManifestV2('now', '0.4.0'),
-        tree,
-        logger: new FakeLogger(),
-        cwd: tmp,
-        templates: ejsTemplateSource,
-        processes: spawnProcessRunner,
-      }),
-    ).rejects.toBeInstanceOf(ContributionConflictError);
-  });
-
-  it('errors when a patch targets a missing file', async () => {
-    const tree = new FsTree(tmp);
-    const a = adapter('a', {
-      patches: [{ target: 'nope.txt', apply: (s) => s }],
+        ...(mode !== undefined ? { mode } : {}),
+      }).then(
+        () => null,
+        (e: unknown) => e,
+      );
+    const README = { path: 'README.md', content: 'keel\n' };
+    const bootstrap = adapter('walking-skeleton/go-bootstrap', { files: [README] });
+    const patcher = adapter('p', {
+      patches: [{ target: 'README.md', apply: (s) => `${s}more\n` }],
     });
-    await expect(
-      applyContributions({
-        adapters: [a],
-        answers: {},
-        manifest: emptyManifestV2('now', '0.4.0'),
-        tree,
-        logger: new FakeLogger(),
-        cwd: tmp,
-        templates: ejsTemplateSource,
-        processes: spawnProcessRunner,
-      }),
-    ).rejects.toBeInstanceOf(ContributionConflictError);
+
+    it('refuses a whole-file write over a file on disk, naming the file and the adapter', async () => {
+      await fs.writeFile(path.join(tmp, 'README.md'), 'hello');
+      const failure = await apply([bootstrap], new FsTree(tmp));
+      expect(failure).toBeInstanceOf(PathConflictError);
+      expect(failure).toBeInstanceOf(DomainError);
+      const conflict = failure as PathConflictError;
+      expect(conflict.code).toBe(PATH_CONFLICT_CODE);
+      expect(conflict.code).toBe('keel.path-conflict');
+      expect(conflict.path).toBe('README.md');
+      expect(conflict.adapterId).toBe('walking-skeleton/go-bootstrap');
+      // On `keel add` the file may be keel's own, so no advice to move it.
+      expect(conflict.message).toBe(
+        "'README.md' already exists and was not written by this run — keel does not overwrite it (walking-skeleton/go-bootstrap)",
+      );
+    });
+
+    it('tells a scaffold to move the file aside, since nothing on disk there is keel’s', async () => {
+      await fs.writeFile(path.join(tmp, 'README.md'), 'hello');
+      const failure = await apply([bootstrap], new FsTree(tmp), 'scaffold');
+      expect(failure).toBeInstanceOf(PathConflictError);
+      expect((failure as PathConflictError).message).toBe(
+        "'README.md' already exists and keel does not overwrite it — move it aside, or start in an empty directory (walking-skeleton/go-bootstrap)",
+      );
+    });
+
+    it('still counts a file an earlier adapter of the run patched as the project’s', async () => {
+      await fs.writeFile(path.join(tmp, 'README.md'), 'hello\n');
+      const failure = await apply([patcher, bootstrap], new FsTree(tmp));
+      expect(failure).toBeInstanceOf(PathConflictError);
+      expect((failure as PathConflictError).adapterId).toBe('walking-skeleton/go-bootstrap');
+    });
+
+    it('reads the same off the fake tree: a seeded file is the project’s, a written one the run’s', async () => {
+      const seeded = new FakeTree();
+      seeded.seed('README.md', 'hello\n');
+      expect(await apply([bootstrap], seeded)).toBeInstanceOf(PathConflictError);
+
+      const patched = new FakeTree();
+      patched.seed('README.md', 'hello\n');
+      expect(await apply([patcher, bootstrap], patched)).toBeInstanceOf(PathConflictError);
+      expect(patched.changes()).toEqual([{ kind: 'modify', path: 'README.md' }]);
+
+      const twice = await apply([bootstrap, adapter('b', { files: [README] })], new FakeTree());
+      expect(twice).toBeInstanceOf(ContributionConflictError);
+      expect(twice).not.toBeInstanceOf(DomainError);
+    });
+
+    it('refuses a patch whose target is gone, on install and on reapply alike', async () => {
+      const deleted = adapter('a', { patches: [{ target: './nope.txt', apply: (s) => s }] });
+      for (const mode of ['install', 'reapply'] as const) {
+        const failure = await apply([deleted], new FsTree(tmp), mode);
+        expect(failure).toBeInstanceOf(PathMissingError);
+        expect(failure).toBeInstanceOf(DomainError);
+        const missing = failure as PathMissingError;
+        expect(missing.code).toBe(PATH_MISSING_CODE);
+        expect(missing.code).toBe('keel.path-missing');
+        expect(missing.path).toBe('nope.txt');
+        expect(missing.adapterId).toBe('a');
+        expect(missing.message).toBe(
+          "'nope.txt' is missing — keel patches it and does not recreate it; restore it (a)",
+        );
+      }
+    });
+
+    it('keeps a missing patch target a bug under a scaffold, where nothing was the user’s to delete', async () => {
+      const early = adapter('a', { patches: [{ target: 'nope.txt', apply: (s) => s }] });
+      const failure = await apply([early], new FsTree(tmp), 'scaffold');
+      expect(failure).toBeInstanceOf(ContributionConflictError);
+      expect(failure).not.toBeInstanceOf(DomainError);
+      expect((failure as ContributionConflictError).kind).toBe('missing-patch-target');
+    });
   });
 
   it('seeds a missing patch target instead of erroring (the shared-file upsert)', async () => {
@@ -330,11 +399,15 @@ describe('applyContributions', () => {
       );
     });
 
-    it('conflicts on install when the skill file already exists on disk', async () => {
+    it('refuses on install when the skill file already exists on disk, naming it', async () => {
       const tree = new FsTree(tmp);
       await fs.outputFile(path.join(tmp, '.claude/skills/run/SKILL.md'), 'already there\n');
       const a = adapter('a', { skills: [{ name: 'run', description: 'd', body: 'b' }] });
-      await expect(run([a], tree)).rejects.toBeInstanceOf(ContributionConflictError);
+      await expect(run([a], tree)).rejects.toMatchObject({
+        code: 'keel.path-conflict',
+        path: '.claude/skills/run/SKILL.md',
+        adapterId: 'a',
+      });
     });
   });
 
@@ -442,13 +515,18 @@ describe('applyContributions', () => {
       expect(tree.changes()).toEqual([]);
     });
 
-    it('conflicts on install over an existing script, and reapplies pristine around its slot', async () => {
+    it('refuses on install over an existing script, and reapplies pristine around its slot', async () => {
       const onDisk = gate()
         .script.replace('# none', 'fmt --all')
         .replace('set -eu', 'set -eu # hand-edited');
       await fs.outputFile(path.join(tmp, SCRIPT), onDisk);
       const kit = adapter('kit', { hooks: [gate()] });
-      expect((await failure(run([kit], new FsTree(tmp))))?.kind).toBe('overwrite');
+      const refused = await run([kit], new FsTree(tmp)).then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(refused).toBeInstanceOf(PathConflictError);
+      expect(refused).toMatchObject({ code: 'keel.path-conflict', path: SCRIPT, adapterId: 'kit' });
       const tree = new FsTree(tmp);
       await run([kit], tree, 'reapply');
       expect(tree.read(SCRIPT)?.toString()).toBe(gate().script.replace('# none', 'fmt --all'));

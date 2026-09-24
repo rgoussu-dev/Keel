@@ -306,6 +306,28 @@ describe('keel.new-project (keel new)', () => {
     expect(error.message).toMatch(/already initialised/);
   });
 
+  it('refuses a file of the user’s it would overwrite, saying how to get past it', async () => {
+    await fs.writeFile(path.join(cwd, 'README.md'), '# my repository\n');
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toBe(
+      "'README.md' already exists and keel does not overwrite it — move it aside, or start in an empty directory (walking-skeleton/go-bootstrap)",
+    );
+    // Refused while staging: nothing was committed, nothing ran.
+    expect(await fs.readdir(cwd)).toEqual(['README.md']);
+    expect(await fs.readFile(path.join(cwd, 'README.md'), 'utf8')).toBe('# my repository\n');
+  });
+
   it('rejects an unknown stack id', async () => {
     const mediator = installMediator();
     const error = expectErr(

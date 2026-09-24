@@ -773,6 +773,9 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         tree,
         owners,
         harness,
+        // Nothing on disk here is keel's: a file in the way is the
+        // user's to move, and a patch target nothing created is a bug.
+        apply: 'scaffold',
         mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
         prompt: inputs.prompt,
         logger: this.deps.logger,

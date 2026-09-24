@@ -81,6 +81,10 @@ the record can only shrink. Beside each suite:
   exact equality both ways. `KEEL_UPDATE_GOLDEN=1` writes known ∩
   actual, so it only shrinks: a step that clears a violation drops its
   key in the same commit, and adding a key is never the fix.
+- An invariant a step brings to zero for good becomes **hard**
+  (`HARD` in the support module): its key leaves every known file, so
+  there is nowhere to list a cell, and one violation fails the grid.
+  I1 has been hard since Q0.3 — a thrown cell is always a failure.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first.
 

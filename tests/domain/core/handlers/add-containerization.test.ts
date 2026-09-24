@@ -6,8 +6,9 @@
  * vertical, and asserts the Dockerfile beside the deployment unit is
  * thin — no build stage, copying the artifact the host build
  * produces — with the artifact path following the build system and
- * the flavor answer. The CLI-shaped refusal (uncovered `image`
- * dimension) closes the file.
+ * the flavor answer. Two refusals close the file: the CLI-shaped one
+ * (uncovered `image` dimension), and a `Dockerfile` the user already
+ * keeps (`keel.path-conflict`).
  */
 
 import path from 'node:path';
@@ -359,5 +360,28 @@ describe('keel.add-vertical (keel add containerization)', () => {
     expect(error.message).toBe(
       'Container image needs an entrypoint this project does not have: HTTP server — a REST endpoint',
     );
+  });
+
+  it('refuses a Dockerfile the user already keeps, naming it, and writes nothing', async () => {
+    await seed('ts-http');
+    await fs.writeFile(path.join(cwd, 'Dockerfile'), 'FROM scratch\n');
+
+    const error = expectErr(
+      await installMediator().dispatch(
+        addVerticalCommand({
+          cwd,
+          vertical: 'containerization',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toMatch(
+      /^'Dockerfile' already exists and was not written by this run — keel does not overwrite it \(containerization\//,
+    );
+    expect(await dockerfile()).toBe('FROM scratch\n');
+    expect((await manifest()).verticals.map((v) => v.id)).not.toContain('containerization');
   });
 });

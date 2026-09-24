@@ -1,18 +1,4 @@
 {
-  "I1": {
-    "add:fullstack-go/monorepo/backend+containerization": "PHASE-3",
-    "add:fullstack-go/monorepo/frontend+containerization": "PHASE-3",
-    "add:fullstack-micronaut/monorepo/backend+containerization": "PHASE-3",
-    "add:fullstack-micronaut/monorepo/frontend+containerization": "PHASE-3",
-    "add:fullstack-rust/monorepo/backend+containerization": "PHASE-3",
-    "add:fullstack-rust/monorepo/frontend+containerization": "PHASE-3",
-    "add:fullstack-spring/monorepo/backend+containerization": "PHASE-3",
-    "add:fullstack-spring/monorepo/frontend+containerization": "PHASE-3",
-    "add:fullstack-ts/monorepo/backend+containerization": "PHASE-3",
-    "add:fullstack-ts/monorepo/frontend+containerization": "PHASE-3",
-    "add:fullstack/monorepo/backend+containerization": "PHASE-3",
-    "add:fullstack/monorepo/frontend+containerization": "PHASE-3"
-  },
   "I4": {
     "add:fullstack-go/monorepo+agent-harness": "PHASE-7",
     "add:fullstack-go/monorepo+ci": "PHASE-7",
