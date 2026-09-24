@@ -134,3 +134,19 @@ function isApiError(value) {
     typeof value.message === 'string'
   );
 }
+
+/**
+ * Whether two failures say the same thing — both none, or one code in
+ * one sentence — whatever reply each came from. Every failed reply is
+ * a new object, so the plan's alert region, which announces every
+ * rewrite, asks this rather than whether it holds the same object: the
+ * refusal a move meets again is not news.
+ *
+ * @param {ApiError | null} a
+ * @param {ApiError | null} b
+ * @returns {boolean}
+ */
+export function sameFailure(a, b) {
+  if (a === null || b === null) return a === b;
+  return a.code === b.code && a.message === b.message;
+}

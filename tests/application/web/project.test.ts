@@ -24,7 +24,12 @@ import {
 } from '../../../src/domain/contract/manifest.js';
 import { projectStatusQuery, type ProjectStatus } from '../../../src/domain/contract/queries.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
-import { harnessNotice, projectHeadline, projectSummary } from '../../../assets/web/src/project.js';
+import {
+  harnessNotice,
+  projectHeadline,
+  projectSummary,
+  stampsHarnessGeneration,
+} from '../../../assets/web/src/project.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
 let cwd: string;
@@ -102,6 +107,40 @@ describe('harnessNotice', () => {
 
     await stamp(HARNESS_GENERATION + 1);
     expect(harnessNotice(await status())).toContain('upgrade keel before adding to it');
+  });
+});
+
+describe('stampsHarnessGeneration', () => {
+  it('reads an empty re-render of the harness on an older generation as a change', async () => {
+    await scaffold('ts-cli');
+    await stamp(null);
+    const stale = await status();
+    expect(stampsHarnessGeneration(stale, 'agent-harness')).toBe(true);
+    expect(stampsHarnessGeneration(stale, 'ci')).toBe(false);
+    expect(stampsHarnessGeneration(stale, null)).toBe(false);
+
+    // The engine is the oracle: the re-render plans nothing to write or
+    // run, and still brings the project forward — the marker it stamps
+    // is what lets every other card through.
+    const report = expectOk(
+      await mediator.dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals: ['agent-harness'],
+          reapply: true,
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect([report.changes, report.actions]).toEqual([[], []]);
+    expect(harnessNotice(await status())).toBeNull();
+    expect(stampsHarnessGeneration(await status(), 'agent-harness')).toBe(false);
+
+    // A newer marker is not one to stamp over.
+    await stamp(HARNESS_GENERATION + 1);
+    expect(stampsHarnessGeneration(await status(), 'agent-harness')).toBe(false);
   });
 });
 

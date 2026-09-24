@@ -16,6 +16,15 @@
  * id changed, and the one place on the page that is on screen at
  * every step the move could have been made from.
  *
+ * **Built once, updated in place.** The picker is a `<select>` a
+ * keyboard moves through — ArrowDown is a change, and a change moves
+ * the target, which comes straight back as a property: rebuilding the
+ * control on it dropped the focus on the page body mid-keystroke. And
+ * the notice is a live region (`role=status`), which is announced when
+ * its text changes, not when a new one is inserted already holding it:
+ * so it is there from the first render, empty until a move has
+ * something to say, and its text is written only when it differs.
+ *
  * Catalog, target and notice in as properties, `target-changed` out.
  */
 
@@ -23,6 +32,12 @@ export class KeelPreset extends HTMLElement {
   #catalog = null;
   #target = null;
   #notice = '';
+  /** The parts built once: the picker, the preset's line, and the notice region. */
+  #select = null;
+  #doc = null;
+  #region = null;
+  /** The catalog the picker's options were built from. */
+  #listed = null;
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -48,6 +63,29 @@ export class KeelPreset extends HTMLElement {
 
   #render() {
     if (!this.isConnected || !this.#catalog || !this.#target) return;
+    if (this.#select === null) this.#build();
+    if (this.#listed !== this.#catalog) {
+      this.#select.replaceChildren(
+        ...this.#catalog.stacks.map((stack) => {
+          const option = document.createElement('option');
+          option.value = stack.id;
+          option.textContent = stack.id;
+          option.title = stack.description;
+          return option;
+        }),
+      );
+      this.#listed = this.#catalog;
+    }
+    const chosen = this.#target.stack ?? '';
+    if (this.#select.value !== chosen) this.#select.value = chosen;
+    const stack = this.#catalog.stacks.find((candidate) => candidate.id === chosen);
+    const description = stack?.description ?? '';
+    this.#doc.textContent = description;
+    this.#doc.hidden = description === '';
+    if (this.#region.textContent !== this.#notice) this.#region.textContent = this.#notice;
+  }
+
+  #build() {
     const row = document.createElement('cluster-pk');
     row.className = 'preset';
     row.setAttribute('space', 'var(--s-2)');
@@ -57,40 +95,26 @@ export class KeelPreset extends HTMLElement {
     caption.setAttribute('for', 'stack');
     caption.textContent = 'Preset';
 
-    const select = document.createElement('select');
-    select.id = 'stack';
-    select.className = 'compact';
-    for (const stack of this.#catalog.stacks) {
-      const option = document.createElement('option');
-      option.value = stack.id;
-      option.textContent = stack.id;
-      option.title = stack.description;
-      select.append(option);
-    }
-    select.value = this.#target.stack ?? '';
-    select.addEventListener('change', () =>
+    this.#select = document.createElement('select');
+    this.#select.id = 'stack';
+    this.#select.className = 'compact';
+    this.#select.addEventListener('change', () =>
       this.dispatchEvent(
-        new CustomEvent('target-changed', { bubbles: true, detail: { stack: select.value } }),
+        new CustomEvent('target-changed', {
+          bubbles: true,
+          detail: { stack: this.#select?.value ?? '' },
+        }),
       ),
     );
 
-    row.append(caption, select);
-    const stack = this.#catalog.stacks.find((candidate) => candidate.id === this.#target.stack);
-    if (stack && stack.description !== '') {
-      const doc = document.createElement('p');
-      doc.className = 'muted';
-      doc.textContent = stack.description;
-      row.append(doc);
-    }
-    if (this.#notice === '') {
-      this.replaceChildren(row);
-      return;
-    }
-    const notice = document.createElement('p');
-    notice.className = 'preset-notice';
-    notice.dataset.role = 'preset-notice';
-    notice.setAttribute('role', 'status');
-    notice.textContent = this.#notice;
-    this.replaceChildren(row, notice);
+    this.#doc = document.createElement('p');
+    this.#doc.className = 'muted';
+    row.append(caption, this.#select, this.#doc);
+
+    this.#region = document.createElement('p');
+    this.#region.className = 'preset-notice';
+    this.#region.dataset.role = 'preset-notice';
+    this.#region.setAttribute('role', 'status');
+    this.replaceChildren(row, this.#region);
   }
 }

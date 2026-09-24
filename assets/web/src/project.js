@@ -96,3 +96,21 @@ export function harnessNotice(status) {
   const marker = found === null ? 'carries no generation marker' : `is generation ${found}`;
   return `This project’s harness ${marker}, and this keel writes generation ${expected}: every card but Agent harness is refused until the harness is brought forward, and the refusal on any of them says how.`;
 }
+
+/**
+ * Whether a run re-rendering `rerendered` changes this project even
+ * when its plan writes and runs nothing: re-rendering the agent harness
+ * of a project from an older harness generation, or one with no marker,
+ * stamps this keel's generation into the manifest — the one thing that
+ * lets every other card through — so an empty plan there is not a run
+ * with nothing to do. A newer marker is not one to stamp over.
+ *
+ * @param {{ harnessGeneration?: HarnessGeneration }|null} status the `/api/project` payload
+ * @param {string|null} rerendered the vertical the run re-renders, if it is a re-render
+ * @returns {boolean}
+ */
+export function stampsHarnessGeneration(status, rerendered) {
+  const generation = status?.harnessGeneration;
+  if (rerendered !== 'agent-harness' || generation === undefined) return false;
+  return generation.found === null || generation.found < generation.expected;
+}

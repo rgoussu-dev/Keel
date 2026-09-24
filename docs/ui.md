@@ -68,7 +68,7 @@ into one and the page scrolls as an ordinary document.
 | **Project**       | _(keel project)_ Where the four steps above would be, nothing to ask: what the project already is, read back from its manifest — the preset it reads as, what it builds, its language, framework and adapters, its build system and module layout, a product's services, its bounded contexts, and what it has installed. In words, never tags. See [Options on a keel project](#options-on-a-keel-project).                                                                                                                                               |
 | **Options**       | On a new project, the stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. On a keel project, the same **Also scaffold** group over what it has — or a bounded context instead. |
 | **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                                                                                                                                                                                  |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults (on a keel project's add as on a new project), and the Generate button. Nothing is written before you press it.                                                                                                                                                                                                                                                                    |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
@@ -105,24 +105,37 @@ vcs/git-init:defaultBranch=trunk --yes`, flags highlighted, one
 need it, with a button that copies it. Paste it into a README or a CI
 job. It is derived from the identical body the review step's Generate
 posts, so it can never describe a different install than the one that
-runs. While the run is refused the line stays, dimmed, and says the
-terminal would refuse it too — it is still what the choices on screen
-spell, and at full strength beside a refusal it read as a way round it.
+runs. While the run is refused the line stays, set back on a dashed
+block and captioned as refused as it stands — the terminal would refuse
+it too — but its text keeps full contrast: it is still what the choices
+on screen spell, and what a user fixing the refusal wants to read.
 
-After a successful generate the page re-reads the directory, turns
-into a keel project's page and opens on **Options**, the report beside
-it and what the run installed now ticked and locked — so layering `ci`
-onto what you just scaffolded is the next click, not four. `keel ui`
-run inside a keel project opens there too; in an empty directory it
-opens on **Directory**, where a new project starts. A plan that would
-write nothing and run nothing cannot be generated: committing it would
-record a vertical as installed that put nothing on disk, and the review
-says so instead.
+After a successful generate the page re-reads the directory and opens
+where its flow starts. Where the run left a keel project there, that is
+**Options**, the report beside it and what the run installed now ticked
+and locked — so layering `ci` onto what you just scaffolded is the next
+click, not four. A product generated under the polyrepo layout leaves
+none: it is its services, each a repository with a manifest of its own,
+and its root holds only their directories — so the page opens that
+directory on **Directory**, the report beside it, each service one
+click away in the folder list. `keel ui` run inside a keel project
+opens on Options too; in an empty directory it opens on **Directory**,
+where a new project starts. Moving to another directory while a read
+or an install is out leaves the page on the last one moved to: a late
+reply about a directory the page has left changes nothing, and one that
+cannot be read shows why on the Directory step with nothing of the
+previous project left to post. A plan that would write nothing and run
+nothing cannot be generated: committing it would record a vertical as
+installed that put nothing on disk, and the review says so instead —
+except re-rendering the agent harness of a project from an older
+harness generation, which writes nothing when its files are current and
+still stamps the generation, the one thing every other card waits on.
 
 **A refusal is shown where the plan would be.** When the engine refuses
 the run as it stands, the plan column says why — the refusal's own
 sentence and its code, as an alert, so a screen reader announces it
-the moment it lands — rather than pointing at a banner above a step
+the moment it lands — once: the same refusal met again on the next
+move is not announced again — rather than pointing at a banner above a step
 you may have scrolled away from. It is headed by what kind of failure
 it is: _keel refuses this run_ is a verdict on the choices on screen,
 and changing one clears it; _keel hit a bug, not a refusal_ is keel's

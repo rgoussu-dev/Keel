@@ -206,13 +206,13 @@ export function alsoScaffold({ id, title, count, help: helpText, line = '', part
       el('span', { class: count > 0 ? 'chip accent' : 'chip', text: `${count} chosen` }),
     ),
     help(helpText),
+    // Seen, not announced: the group is drawn afresh on every reply,
+    // and a live region inserted with its text is announced unreliably
+    // or on every redraw. The form that owns the group speaks the line
+    // through a region of its own that outlives the redraws.
     line === ''
       ? null
-      : el('p', {
-          class: 'extras-line',
-          text: line,
-          attrs: { role: 'status', 'data-role': 'extras-line' },
-        }),
+      : el('p', { class: 'extras-line', text: line, attrs: { 'data-role': 'extras-line' } }),
     ...parts,
   );
 }

@@ -254,7 +254,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       await goToStep(traffic, page, 'options');
       expect(await valueOf(page, 'buildSystem')).toBe('maven');
       expect(await valueOf(page, 'moduleLayout')).toBe('modulith');
-      expect(await page.locator('[data-role="preset-notice"]').count()).toBe(0);
+      expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe('');
 
       // No product is written in Kotlin: the shape move lands on Java,
       // keeping Quarkus, and the line under the preset says both that
@@ -273,7 +273,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       // The next move retires the line.
       await goToStep(traffic, page, 'options');
       await act(traffic, () => control(page, 'layout').selectOption('polyrepo'));
-      expect(await page.locator('[data-role="preset-notice"]').count()).toBe(0);
+      expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe('');
     },
     E2E_TIMEOUT_MS,
   );

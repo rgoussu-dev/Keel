@@ -30,11 +30,12 @@
  * use from then on. It is derived from the same body the review step
  * posts (`../command.js`), so it cannot describe a different install.
  *
- * **A refused run's line is dimmed, not hidden.** It is still the
+ * **A refused run's line steps back, not out.** It is still the
  * command the choices on screen spell, and the one a user fixing the
- * refusal will want — but at full strength beside a refusal it reads
- * as a way round it, and the terminal would refuse it in the same
- * words. So it steps back, and says why.
+ * refusal will want — but drawn as usual beside a refusal it reads as
+ * a way round it, and the terminal would refuse it in the same words.
+ * So its block recedes and a caption says why, while its text keeps
+ * full contrast: dimmed, it fell to about 2:1, too faint to read.
  *
  * **The refusal is here, where the plan would be.** It used to be a
  * banner at the top of the step column, and the plan said "The reason
@@ -56,7 +57,7 @@
 
 import { commandFor, commandText } from '../command.js';
 import { el, icon } from '../dom.js';
-import { failureOf } from '../response.js';
+import { failureOf, sameFailure } from '../response.js';
 import { countKinds } from '../tree.js';
 
 export class KeelPlan extends HTMLElement {
@@ -256,13 +257,15 @@ export class KeelPlan extends HTMLElement {
   /**
    * The refusal, in the alert region — rewritten only when it changes,
    * since an alert announces every rewrite and the plan redraws on
-   * every reply.
+   * every reply. Changes by what it says: every failed reply is a new
+   * object, and the same refusal met again on the next move is not
+   * news.
    */
   #renderRefusal() {
     const host = this.#part('refusal');
     if (!host) return;
     host.hidden = this.#error === null;
-    if (this.#error === this.#shown) return;
+    if (sameFailure(this.#error, this.#shown)) return;
     this.#shown = this.#error;
     if (this.#error === null) {
       host.replaceChildren();

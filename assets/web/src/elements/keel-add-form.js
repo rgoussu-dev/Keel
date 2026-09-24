@@ -171,16 +171,18 @@ export class KeelAddForm extends HTMLElement {
   #optionFields() {
     const fields = [];
     // Once, above everything it stops: a project from another harness
-    // generation refuses every card but the harness's own. A status,
-    // not an alert: the form is rebuilt on every pick, and an alert
-    // would interrupt each one to repeat a fact that has not changed.
+    // generation refuses every card but the harness's own. A note, not
+    // a live region: it does not change while the page is on this
+    // project, and the form is rebuilt on every pick — a region
+    // inserted anew each time would be announced on none of them, or
+    // on every one, repeating a fact that has not moved.
     const stale = harnessNotice(this.#status);
     if (stale !== null) {
       fields.push(
         el('p', {
           class: 'error',
           text: stale,
-          attrs: { role: 'status', 'data-role': 'harness-generation' },
+          attrs: { role: 'note', 'data-role': 'harness-generation' },
         }),
       );
     }

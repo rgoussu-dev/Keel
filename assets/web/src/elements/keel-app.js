@@ -85,16 +85,30 @@
  * `failureOf`) — rather than pointing at a banner above a step the
  * user may have scrolled away from.
  *
- * **Generate lands on Options.** The directory re-read after an
- * install makes this a keel project's page with the report beside it,
- * and the next thing to do is add something more, not pick a directory.
+ * **Generate lands where the directory's flow starts.** The directory
+ * re-read after an install is a keel project's page — Options, with
+ * the report beside it, since the next thing to do is add something
+ * more — except where the run left no project at the directory itself:
+ * a polyrepo product is its services, each a repository with a
+ * manifest of its own, and its root holds none. There the page opens
+ * the directory's listing, each service one click away, rather than a
+ * new project's Options with a stranger preset over the product just
+ * made.
+ *
+ * **A move to another directory is the only one that counts.** Its two
+ * reads are stamped (`#visit`): a later move supersedes them, and a
+ * reply to a superseded visit — or an install that lands after the
+ * user moved on — changes nothing on the page the user is now on. A
+ * read that fails leaves nothing of the previous directory behind to
+ * be posted to this one: its project, target and plan are dropped with
+ * the failure.
  */
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
 import { additionsSummary } from '../additions.js';
 import { extrasSummary, servicesExtrasSummary } from '../extras.js';
-import { projectHeadline } from '../project.js';
+import { projectHeadline, stampsHarnessGeneration } from '../project.js';
 import { failureOf } from '../response.js';
 import { plansNothing } from '../tree.js';
 import {
@@ -157,6 +171,11 @@ export class KeelApp extends HTMLElement {
    * to a request made under an older one is discarded.
    */
   #generation = 0;
+  /**
+   * Monotonic, and moved on by every move to a directory: the reads of
+   * a move superseded by a later one are discarded.
+   */
+  #visit = 0;
 
   connectedCallback() {
     this.#scaffold();
@@ -207,17 +226,35 @@ export class KeelApp extends HTMLElement {
   /**
    * Points the whole page at a directory and rebuilds the target,
    * opening on `landing` where the rail has it — the directory step
-   * when the user moved, Options after an install — or, for null, where
-   * that directory's flow starts: Options on a keel project, the
-   * directory step on a new one.
+   * when the user moved, Options for a product's service — or, for
+   * null, where that directory's flow starts: Options on a keel
+   * project, the directory step on a new one.
+   *
+   * Resolves to whether the page landed there: false when a later move
+   * superseded this one while its reads were out, which then leave the
+   * page to that move.
    */
   async #goTo(path, landing = DIRECTORY) {
+    const visit = ++this.#visit;
+    const [listing, status] = await Promise.all([api.browse(path), api.project(path)]);
+    if (visit !== this.#visit) return false;
     this.#cwd = path;
     this.#error = null;
     this.#report = null;
-    const [listing, status] = await Promise.all([api.browse(path), api.project(path)]);
-    if (!listing.ok) return this.#fail(listing.error);
-    if (!status.ok) return this.#fail(status.error);
+    if (!listing.ok || !status.ok) {
+      // Nothing of the directory the page was on may be posted to this
+      // one: its project, its target and its plan go with the failure,
+      // and the page stays on the directory step, where another can be
+      // picked.
+      this.#listing = listing.ok ? listing.value : null;
+      this.#status = null;
+      this.#adopt(restart(this.#run(), null));
+      this.#preview = null;
+      this.#step = DIRECTORY;
+      this.#drawn = null;
+      this.#fail(listing.ok ? status.error : listing.error);
+      return true;
+    }
     this.#listing = listing.value;
     this.#status = status.value;
     this.#adopt(
@@ -231,6 +268,7 @@ export class KeelApp extends HTMLElement {
     this.#drawn = null;
     this.#render();
     this.#previewSoon();
+    return true;
   }
 
   /**
@@ -374,22 +412,29 @@ export class KeelApp extends HTMLElement {
   }
 
   async #install() {
+    const cwd = this.#cwd;
+    const visit = this.#visit;
     this.#busy = true;
     this.#error = null;
     this.#render();
     const result = await api.install(this.#body());
     this.#busy = false;
+    // The user moved to another directory while it ran: that page is
+    // theirs now, and this report is not about it.
+    if (visit !== this.#visit) {
+      this.#render();
+      return;
+    }
     if (!result.ok) {
       this.#error = result.error;
       this.#render();
       return;
     }
-    this.#report = result.value;
-    // The project just changed underneath us: re-read it so the page
-    // becomes a keel project's, and open it where the next thing to do
-    // is — what is left to add, the report beside it — rather than
-    // back at the directory it is already pointed at.
-    await this.#goTo(this.#cwd, OPTIONS);
+    // The project just changed underneath us: re-read it, and open it
+    // where its flow starts — a keel project's Options, the report
+    // beside it; a polyrepo product's listing of its services — rather
+    // than back at the directory step it was generated from.
+    if (!(await this.#goTo(cwd, null))) return;
     this.#report = result.value;
     this.#render();
   }
@@ -430,6 +475,7 @@ export class KeelApp extends HTMLElement {
    */
   #summary() {
     const rows = [{ step: DIRECTORY, label: 'Directory', value: this.#cwd || '—' }];
+    const questions = this.#questionsRow();
     if (this.#status?.initialised) {
       // No jump: the project is what the run adds to, not a choice it
       // makes — its step has nothing on it to change.
@@ -439,17 +485,20 @@ export class KeelApp extends HTMLElement {
         if (this.#target.consumes) {
           rows.push({ step: OPTIONS, label: 'Consumes', value: this.#target.consumes });
         }
+        if (questions !== null) rows.push(questions);
         return rows;
       }
       const { adds, refreshes } = additionsSummary(this.#status, this.#target);
       if (rerendering(this.#target) !== null) {
         rows.push({ step: OPTIONS, label: 'Re-render', value: adds });
+        if (questions !== null) rows.push(questions);
         return rows;
       }
       rows.push({ step: OPTIONS, label: 'Also scaffold', value: adds || '—' });
       if (refreshes !== '') {
         rows.push({ step: OPTIONS, label: 'Re-rendered too', value: refreshes });
       }
+      if (questions !== null) rows.push(questions);
       return rows;
     }
     const here = located(this.#state());
@@ -499,23 +548,27 @@ export class KeelApp extends HTMLElement {
             : servicesExtrasSummary(this.#dials, this.#target),
       });
     }
-    // What the user set, not what the preview asked: every question
-    // has a default, and a row calling the defaults "answered" said a
-    // run nobody had touched was fully configured. `#answers` holds
-    // only what was moved, pruned to what the plan still asks.
-    const asked = this.#preview?.questions.length ?? 0;
-    if (asked > 0) {
-      const set = Object.values(this.#answers).reduce(
-        (count, byQuestion) => count + Object.keys(byQuestion).length,
-        0,
-      );
-      rows.push({
-        step: QUESTIONS,
-        label: 'Questions',
-        value: answeredLine(set, asked),
-      });
-    }
+    if (questions !== null) rows.push(questions);
     return rows;
+  }
+
+  /**
+   * The review's Questions row, in both flows — an add asks questions
+   * too, several verticals' at once — or null where the plan asks none.
+   *
+   * What the user set, not what the preview asked: every question has
+   * a default, and a row calling the defaults "answered" said a run
+   * nobody had touched was fully configured. `#answers` holds only
+   * what was moved, pruned to what the plan still asks.
+   */
+  #questionsRow() {
+    const asked = this.#preview?.questions.length ?? 0;
+    if (asked === 0) return null;
+    const set = Object.values(this.#answers).reduce(
+      (count, byQuestion) => count + Object.keys(byQuestion).length,
+      0,
+    );
+    return { step: QUESTIONS, label: 'Questions', value: answeredLine(set, asked) };
   }
 
   /* ---- rendering ----------------------------------------------- */
@@ -636,8 +689,20 @@ export class KeelApp extends HTMLElement {
       this.#error === null &&
       this.#preview !== null &&
       !this.#stale &&
-      !plansNothing(this.#preview)
+      !this.#changesNothing()
     );
+  }
+
+  /**
+   * Whether the previewed run would change nothing at all. A plan with
+   * nothing to write or run still changes the project where it re-renders
+   * the agent harness of one from another harness generation: the run
+   * stamps the generation marker into the manifest, and that is what
+   * lets every other card through.
+   */
+  #changesNothing() {
+    if (this.#preview === null || !plansNothing(this.#preview)) return false;
+    return !stampsHarnessGeneration(this.#status, rerendering(this.#target));
   }
 
   /** Whether the target carries every field its command requires. */
@@ -673,7 +738,16 @@ export class KeelApp extends HTMLElement {
    */
   #renderStep(steps) {
     const host = this.querySelector('[data-role="step"]');
-    if (!host || this.#target === null || this.#catalog === null) return;
+    if (!host || this.#catalog === null) return;
+    // No run — a directory that could not be read: the directory step
+    // alone has something to show, and no other step keeps the last
+    // directory's controls on screen.
+    if (this.#target === null && this.#step !== DIRECTORY) {
+      host.replaceChildren();
+      this.#drawn = null;
+      this.#body_ = null;
+      return;
+    }
     const current = steps.find((step) => step.id === this.#step);
 
     if (this.#step === this.#drawn && this.#body_ !== null && this.#body_.isConnected) {
@@ -762,7 +836,7 @@ export class KeelApp extends HTMLElement {
     if (this.#error !== null) return `${failureOf(this.#error).lead} ${this.#error.message}`;
     if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
     if (this.#preview === null || this.#stale) return 'Waiting for the plan…';
-    if (plansNothing(this.#preview)) {
+    if (this.#changesNothing()) {
       return 'Nothing to write and nothing to run — this run would change nothing, so there is nothing to generate.';
     }
     return '';

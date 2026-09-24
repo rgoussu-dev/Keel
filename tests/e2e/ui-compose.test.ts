@@ -87,7 +87,12 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Locator, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import {
+  installCommandFor,
+  newProjectCommand,
+  type InstallTarget,
+  type PresetAnswers,
+} from '../../src/domain/contract/commands.js';
 import type { RunActionsInputs } from '../../src/domain/core/actions.js';
 import { expectOk, installMediator } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
@@ -298,6 +303,41 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
   );
 
   it(
+    'keeps the focus on the preset picker moved from the keyboard, and on a text answer tabbed out of',
+    async () => {
+      const activeId = (): Promise<string | null> =>
+        page.evaluate(() => {
+          const active = (globalThis as { document?: { activeElement?: { id?: string } } }).document
+            ?.activeElement;
+          return active?.id ?? null;
+        });
+      // ArrowDown on a select is a change, and a change moves the
+      // target: the picker used to be rebuilt under the keystroke.
+      await control(page, 'stack').focus();
+      const before = await valueOf(page, 'stack');
+      await act(traffic, () => page.keyboard.press('ArrowDown'));
+      expect(await valueOf(page, 'stack')).not.toBe(before);
+      expect(await activeId()).toBe('stack');
+      await act(traffic, () => control(page, 'stack').selectOption(before ?? ''));
+
+      // Tab out of a text answer commits it, and used to rebuild the
+      // list it was typed in before the focus could move on.
+      await goToStep(traffic, page, 'questions');
+      const text = page.locator('keel-question-list input[type="text"]').first();
+      await until(async () => (await text.count()) > 0, 'a text question');
+      const typed = await text.getAttribute('id');
+      await text.fill('org.x');
+      await page.keyboard.press('Tab');
+      const focused = await activeId();
+      expect(focused).not.toBeNull();
+      expect(focused).not.toBe('');
+      expect(focused).not.toBe(typed);
+      await act(traffic, () => Promise.resolve());
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     'lists the extras on the review, with a way back to them',
     async () => {
       await act(traffic, () => box(page, 'iac').click());
@@ -434,7 +474,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       await stackIs(page, 'quarkus-cli-rest');
       await until(() => plansUnder(page, 'org/acme'), 'the new preset’s plan under org/acme');
       expect(await plansUnder(page, 'com/example')).toBe(false);
-      expect(await page.locator('[data-role="preset-notice"]').count()).toBe(0);
+      expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe('');
 
       // The body that went out, not a control describing it.
       expect(lastBody(traffic)?.target).toEqual({
@@ -665,6 +705,90 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
   );
 
   it(
+    'stays on the directory moved to last, whatever answers late, and keeps no other’s project',
+    async () => {
+      await openProject(projectUi.url, tab, seen);
+      const moveTo = async (dir: string): Promise<void> => {
+        const input = tab.locator('keel-target-picker .path-input');
+        if ((await input.count()) === 0) await goToStep(seen, tab, 'directory');
+        await tab.locator('keel-target-picker .path-input').fill(dir);
+        await tab.locator('keel-target-picker .path-input').press('Enter');
+      };
+      // The CLI project's status answers late: the page moves on to the
+      // HTTP project before it lands.
+      let release = (): void => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let asked = false;
+      await tab.route(
+        (url) => url.pathname === '/api/project' && url.searchParams.get('path') === cli,
+        async (route) => {
+          asked = true;
+          await held;
+          await route.continue();
+        },
+      );
+      await moveTo(cli);
+      await until(() => Promise.resolve(asked), "the CLI project's status to be asked");
+      // Not through `act`: the network cannot go quiet while the CLI
+      // project's status is held.
+      await moveTo(project);
+      await until(
+        async () => (await tab.locator('keel-target-picker .path-input').inputValue()) === project,
+        'the move to the HTTP project to land',
+      );
+      release();
+      await act(seen, () => Promise.resolve());
+
+      // The reply that came last was about a directory the page had
+      // left: the page is the HTTP project's, through and through.
+      expect(await tab.locator('keel-target-picker .path-input').inputValue()).toBe(project);
+      await goToStep(seen, tab, 'project');
+      expect(await tab.locator('#project-profile dd').first().textContent()).toBe('ts-http');
+      await goToStep(seen, tab, 'review');
+      expect(await tab.locator('keel-review').textContent()).toContain(project);
+      expect(await tab.locator('keel-review').textContent()).not.toContain(cli);
+
+      // A directory that cannot be read leaves nothing of the last one
+      // to post to it: no project, no card, no plan.
+      const broken = await mkTempDir('keel-ui-compose-broken-e2e-');
+      try {
+        await fs.outputFile(path.join(broken, '.claude', '.keel-manifest.json'), '{ not json');
+        await act(seen, () => moveTo(broken));
+        expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('Directory');
+        expect(await tab.locator('keel-plan [data-role="refusal"]').isHidden()).toBe(false);
+        expect(await railSteps(tab)).not.toContain('project');
+        const before = seen.posted('/api/preview').length;
+        await act(seen, () => railStep(tab, 'review').click());
+        expect(seen.posted('/api/preview')).toHaveLength(before);
+        expect(await tab.locator('keel-add-form').count()).toBe(0);
+      } finally {
+        await fs.remove(broken);
+      }
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'reviews the answers an add will post, as a new project’s review does',
+    async () => {
+      await openProject(projectUi.url, tab, seen);
+      await act(seen, () => card(tab, 'persistence').click());
+      await goToStep(seen, tab, 'questions');
+      const migrations = tab.locator('keel-question-list select[id$="--migrations"]');
+      await until(async () => (await migrations.count()) > 0, 'the migrations question');
+      await act(seen, () => migrations.selectOption('liquibase'));
+      await goToStep(seen, tab, 'review');
+      const review = tab.locator('keel-review');
+      expect(await review.textContent()).toContain('Questions');
+      expect(await review.textContent()).toMatch(/1 answered/);
+      expect(await command(tab)).toContain(
+        '--set persistence/database-compose:migrations=liquibase',
+      );
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     'shows what a CLI project cannot carry before any click, each with its sentence',
     async () => {
       await openProject(cliUi.url, tab, seen);
@@ -834,3 +958,109 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
     E2E_TIMEOUT_MS,
   );
 });
+
+/* ---- a product generated under the polyrepo layout -------------- */
+
+describe.skipIf(skipE2E() || browserBinary === null)(
+  'keel ui — generating a polyrepo product',
+  () => {
+    let empty: string;
+    let emptyUi: UiProcess;
+    let chromium: Browser;
+    let tab: Page;
+    let seen: Traffic;
+    let errors: string[];
+
+    beforeAll(async () => {
+      buildCli();
+      empty = await mkTempDir('keel-ui-compose-polyrepo-e2e-');
+      emptyUi = await startUi(empty);
+      chromium = await browserType.launch({
+        ...(browserBinary === null ? {} : { executablePath: browserBinary }),
+        args: ['--no-sandbox'],
+      });
+    }, E2E_TIMEOUT_MS);
+
+    afterAll(async () => {
+      await chromium?.close().catch(() => undefined);
+      await emptyUi?.stop().catch(() => undefined);
+      if (empty) await fs.remove(empty).catch(() => undefined);
+    }, E2E_TIMEOUT_MS);
+
+    beforeEach(async () => {
+      tab = await chromium.newPage();
+      errors = [];
+      tab.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+      seen = watchTraffic(tab);
+    }, E2E_TIMEOUT_MS);
+
+    afterEach(async () => {
+      const found = [...(errors ?? [])];
+      await tab?.close().catch(() => undefined);
+      expect(found).toEqual([]);
+    });
+
+    it(
+      'lands on the directory, its services listed, rather than on a stranger preset',
+      async () => {
+        // A polyrepo product is its services, each a repository with a
+        // manifest of its own; the root it was generated in holds none.
+        // The install is run in-process from the body the page posts,
+        // its deferred actions faked — a real one would `npm install`
+        // both services — and answered with its own report.
+        await tab.route(
+          (url) => url.pathname === '/api/install',
+          async (route) => {
+            const body = route.request().postDataJSON() as {
+              cwd: string;
+              target: InstallTarget;
+              answers: PresetAnswers;
+            };
+            const report = expectOk(
+              await installMediator({ runDeferred: fakeActions }).dispatch(
+                installCommandFor(body.target, {
+                  cwd: body.cwd,
+                  answers: body.answers,
+                  interactive: false,
+                  dryRun: false,
+                }),
+              ),
+            );
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify(report),
+            });
+          },
+        );
+        await tab.goto(emptyUi.url, { waitUntil: 'domcontentloaded' });
+        await until(
+          async () => (await tab.locator('#stack').count()) > 0,
+          'a new project’s preset picker',
+        );
+        await act(seen, () => control(tab, 'stack').selectOption('fullstack-ts'));
+        await stackIs(tab, 'fullstack-ts');
+        await goToStep(seen, tab, 'options');
+        await act(seen, () => control(tab, 'layout').selectOption('polyrepo'));
+        await goToStep(seen, tab, 'review');
+        await until(() => tab.locator('#generate').isEnabled(), 'Generate');
+        await act(seen, () => tab.locator('#generate').click());
+
+        await until(
+          async () =>
+            (await tab.locator('keel-plan').textContent())?.includes('Done — fullstack-ts') ===
+            true,
+          'the report',
+        );
+        expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('Directory');
+        expect(await tab.locator('keel-target-picker').textContent()).toContain('2 folders');
+        // Not a new project's Options, a stranger preset's dials over
+        // the product just made, one click from a second Generate: the
+        // directory, each service a folder of it.
+        expect(seen.posted('/api/install')).toHaveLength(1);
+        expect((await fs.readdir(empty)).sort()).toEqual(['backend', 'frontend']);
+      },
+      E2E_TIMEOUT_MS,
+    );
+  },
+);

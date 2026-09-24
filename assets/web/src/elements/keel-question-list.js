@@ -44,9 +44,17 @@ import { cards, checkboxCards, el, field, help, select } from '../dom.js';
 export class KeelQuestionList extends HTMLElement {
   #questions = [];
 
-  /** @param {object[]} value pending questions from the last preview */
+  /**
+   * @param {object[]} value pending questions from the last preview —
+   * the same list handed back is no change: an answer redraws the page
+   * while its field is still losing the focus, and rebuilding the list
+   * then left the Tab that committed the answer nowhere to go but the
+   * page body. The next preview's list is new, and redraws it.
+   */
   set questions(value) {
-    this.#questions = value ?? [];
+    const next = value ?? [];
+    if (next === this.#questions) return;
+    this.#questions = next;
     this.#render();
   }
 

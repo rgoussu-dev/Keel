@@ -87,6 +87,17 @@ export class KeelNewForm extends HTMLElement {
    * id — the reader's, kept across redraws.
    */
   #refusedOpen = new Set();
+  /**
+   * The live region that says what the last reply moved in the "Also
+   * scaffold" groups — outside the part rebuilt on every render, so it
+   * is announced when its text changes, once, rather than inserted
+   * anew with it.
+   */
+  #announcer = null;
+  /** The part rebuilt on every render. */
+  #form = null;
+  /** What the groups of the render in progress say they moved. */
+  #lines = [];
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -147,8 +158,26 @@ export class KeelNewForm extends HTMLElement {
     const focused = focusIn(this);
     const form = document.createElement('stack-pk');
     form.setAttribute('space', 'var(--s0)');
+    this.#lines = [];
     form.append(...this.#fields());
-    this.replaceChildren(form);
+    if (this.#announcer === null) {
+      this.#announcer = el('p', {
+        class: 'visually-hidden',
+        attrs: { role: 'status', 'data-role': 'extras-status' },
+      });
+    }
+    if (
+      this.#form !== null &&
+      this.#form.parentNode === this &&
+      this.#announcer.parentNode === this
+    ) {
+      this.#form.replaceWith(form);
+    } else {
+      this.replaceChildren(this.#announcer, form);
+    }
+    this.#form = form;
+    const said = this.#lines.join(' ');
+    if (this.#announcer.textContent !== said) this.#announcer.textContent = said;
     refocus(this, focused);
   }
 
@@ -355,6 +384,7 @@ export class KeelNewForm extends HTMLElement {
             ),
             switchable === undefined ? null : harnessHint(switchable),
           );
+    if (extras.line !== '') this.#lines.push(extras.line);
     return alsoScaffold({
       id: prefix,
       title,

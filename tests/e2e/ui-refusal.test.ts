@@ -420,7 +420,9 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
         await goToStep(traffic, page, 'options');
         const notice = page.locator('[data-role="harness-generation"]');
         await until(async () => (await notice.count()) === 1, 'one generation notice');
-        expect(await notice.getAttribute('role')).toBe('status');
+        // A note, not a live region: it does not change while the page
+        // is on this project, and the form is rebuilt on every pick.
+        expect(await notice.getAttribute('role')).toBe('note');
         expect(await notice.textContent()).toContain('every card but Agent harness is refused');
       } finally {
         await fs.writeFile(file, original);

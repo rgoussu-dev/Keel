@@ -44,6 +44,30 @@ use to keep a long-lived changelog scannable — and the root keeps
   `origin` was already set, where that command fails. It now says the
   origin is there.
 
+- **`keel ui` stays on the directory you moved to last.** The page
+  pointed itself at a directory before reading it, and adopted
+  whatever came back: a slow status read for one directory, landing
+  after a move to another, put the first project's cards over the
+  second's path, and a Generate still running when you moved on
+  opened its report over the page you had moved to. A directory that
+  could not be read kept the previous project's cards, and a tick there
+  posted them to the new path. Each move now supersedes the reads of
+  the last, an install that lands after a move leaves the page alone,
+  and a directory that cannot be read shows why on the Directory step
+  with nothing of the previous project left to post.
+
+- **The review of an add says what you answered.** A keel project's
+  review listed what the run adds but not the answers it posts —
+  `migrations=liquibase` for a ticked Persistence went out on Generate
+  with no row saying so. Its _Questions_ row counts them, as a new
+  project's does.
+
+- **Changing the preset or a text answer from the keyboard keeps the
+  focus.** ArrowDown in the preset picker, or Tab out of a text answer
+  on the Questions step, rebuilt the control mid-move and dropped the
+  focus on the page body. The picker is built once and updated in
+  place, and an answer no longer rebuilds the list it was typed in.
+
 - **Two scopes of a product writing one file are refused, not
   silently overwritten.** A composite product stages its root and
   each service into trees of their own, so a file two of them wrote —
@@ -173,8 +197,8 @@ use to keep a long-lived changelog scannable — and the root keeps
   set rather than every question asked; Generate waits for the
   preview of the run as it now stands, so an answer an unticked extra
   took with it is never posted; and the command line under the plan
-  is dimmed while the run is refused, saying the terminal would refuse
-  it too.
+  is set back while the run is refused, saying the terminal would
+  refuse it too, its text still at full contrast.
 
 - **Distribution and infrastructure as code are offered where they can
   be built, and nowhere else.** `distribution`'s need for the image
@@ -414,7 +438,10 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
   with its **Re-render**, and a tab for a bounded context. Generate
   runs `keel add` of what the ticks add, the delta; the commands stay
   two. `keel ui` started in a keel project opens on its Options, and so
-  do Generate and a product root's **Open backend/**. The
+  does a product root's **Open backend/**; Generate lands where the
+  directory's flow starts — its Options, or, for a product generated
+  under the polyrepo layout, whose root holds no project, the
+  directory's listing of its services. The
   `/api/project` status gains `profile`: the preset the manifest reads
   as — the drill-down run back over the tags its preset seeded, passing
   over what a vertical added since (a native release's runtime), or at
@@ -560,9 +587,11 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   The bounded-context tab is shown disabled with its reason rather than
   hidden. A refusal is shown in the plan column, where the plan would
   be, as an alert headed by what it is — a refusal, a bug in keel, or
-  no answer at all — instead of "The reason is above". After Generate
-  the page opens on _What to add_ with the report, not on _Directory_,
-  and a plan that writes nothing and runs nothing cannot be generated.
+  no answer at all — instead of "The reason is above". A plan that
+  writes nothing and runs nothing cannot be generated, unless it is a
+  re-render of the agent harness that brings a project from an older
+  harness generation forward: that writes nothing when the files are
+  current, and still stamps the generation every other card waits on.
   The greenfield _Also scaffold_ group gains the same _Not for this
   project_ part: what the preset cannot carry, with its reason, where
   it used to be left out.

@@ -15,7 +15,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { errorFrom, failureOf, INTERNAL, outcomeFrom } from '../../../assets/web/src/response.js';
+import {
+  errorFrom,
+  failureOf,
+  INTERNAL,
+  outcomeFrom,
+  sameFailure,
+} from '../../../assets/web/src/response.js';
 
 const envelope = (code: string, message: string): string =>
   JSON.stringify({ error: { code, message } });
@@ -106,5 +112,18 @@ describe('failureOf', () => {
     expect(gone.title).toBe('No plan — keel gave no answer on this run');
     expect(new Set([refusal.title, bug.title, gone.title]).size).toBe(3);
     expect(refusal.title).not.toMatch(/bug/);
+  });
+});
+
+describe('sameFailure', () => {
+  it('reads one code in one sentence as the same failure, whatever reply each came from', () => {
+    const refusal = { code: 'keel.inside-product', message: 'this directory is inside…' };
+    // Every failed reply is a new object: the alert must not re-announce it.
+    expect(sameFailure(refusal, { ...refusal })).toBe(true);
+    expect(sameFailure(null, null)).toBe(true);
+    expect(sameFailure(refusal, null)).toBe(false);
+    expect(sameFailure(null, refusal)).toBe(false);
+    expect(sameFailure(refusal, { ...refusal, message: 'another sentence' })).toBe(false);
+    expect(sameFailure(refusal, { ...refusal, code: 'keel.other' })).toBe(false);
   });
 });
