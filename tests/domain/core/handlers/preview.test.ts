@@ -23,7 +23,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Vertical } from '../../../../src/domain/contract/composition.js';
 import { registryOf, shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
-import { installCommandFor, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import {
+  addVerticalCommand,
+  installCommandFor,
+  newProjectCommand,
+} from '../../../../src/domain/contract/commands.js';
 import { catalogQuery, dialsQuery, previewQuery } from '../../../../src/domain/contract/queries.js';
 import type { InstallPreview, PendingQuestion } from '../../../../src/domain/contract/queries.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
@@ -329,6 +333,53 @@ describe('keel.preview', () => {
     expect(preview.subject).toBe('ci');
     expect(preview.changes.some((change) => change.path.startsWith('.github/'))).toBe(true);
     expect(await fs.readdir(cwd)).toEqual(before);
+  });
+
+  it('carries what the run decided on its own: its notes, and the re-renders it proposes', async () => {
+    // A page offers each proposal as a toggle beside the cards, so the
+    // preview says what the dry-run report says, word for word.
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-http',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const add = (verticals: readonly string[], dryRun = true) =>
+      mediator.dispatch(
+        addVerticalCommand({ cwd, verticals, answers: {}, interactive: false, dryRun }),
+      );
+    expectOk(await add(['containerization', 'distribution'], false));
+
+    const preview = expectOk(
+      await mediator.dispatch(
+        previewQuery({
+          cwd,
+          target: { kind: 'add-vertical', verticals: ['persistence'] },
+          answers: {},
+        }),
+      ),
+    );
+    const report = expectOk(await add(['persistence']));
+    expect(preview.refreshProposals).toEqual([
+      { vertical: 'distribution', reads: ['persistence'] },
+    ]);
+    expect(preview.refreshProposals).toEqual(report.refreshProposals);
+    expect(preview.notes).toEqual(report.notes);
+
+    // Where the run decided nothing, there is nothing to carry.
+    const plain = expectOk(
+      await mediator.dispatch(
+        previewQuery({ cwd, target: { kind: 'add-vertical', verticals: ['ci'] }, answers: {} }),
+      ),
+    );
+    expect(plain).not.toHaveProperty('notes');
+    expect(plain).not.toHaveProperty('refreshProposals');
   });
 
   it('reports a vertical this project cannot carry as an Err, not a crash', async () => {

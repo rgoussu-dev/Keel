@@ -59,10 +59,24 @@ describe('commandFor', () => {
   });
 
   it('spells a vertical, and marks a re-render as one', () => {
-    expect(line({ kind: 'add-vertical', vertical: 'ci' })).toBe('keel add ci --yes');
-    expect(line({ kind: 'add-vertical', vertical: 'ci', reapply: true })).toBe(
+    expect(line({ kind: 'add-vertical', verticals: ['ci'] })).toBe('keel add ci --yes');
+    expect(line({ kind: 'add-vertical', verticals: ['ci'], reapply: true })).toBe(
       'keel add ci --reapply --yes',
     );
+    // The one-vertical alias the API still takes reads the same.
+    expect(line({ kind: 'add-vertical', vertical: 'ci' })).toBe('keel add ci --yes');
+  });
+
+  it('spells several verticals as one add, in the order posted, and the re-renders beside them', () => {
+    expect(
+      line({
+        kind: 'add-vertical',
+        verticals: ['containerization', 'distribution', 'persistence'],
+        refresh: ['observability', 'ci'],
+      }),
+    ).toBe('keel add containerization distribution persistence --refresh observability,ci --yes');
+    // Nothing ticked is no command yet.
+    expect(line({ kind: 'add-vertical', verticals: [] })).toBe('');
   });
 
   it('spells a bounded context and what it consumes', () => {

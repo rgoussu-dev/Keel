@@ -56,7 +56,7 @@ import {
   pickLanguage,
   pickShape,
 } from '../finder.js';
-import { cards, checkboxCards, el, help, note } from '../dom.js';
+import { cards, checkboxCards, el, focusIn, help, note, refocus, refusedList } from '../dom.js';
 import { extrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
 
@@ -65,6 +65,8 @@ export class KeelNewForm extends HTMLElement {
   #dials = null;
   #target = null;
   #step = SHAPE;
+  /** Whether "Not for this project" is open — the reader's, kept across redraws. */
+  #refusedOpen = false;
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -256,10 +258,11 @@ export class KeelNewForm extends HTMLElement {
 
   /**
    * "Also scaffold": the verticals this preset can take on top of its
-   * own, in the three parts `../extras.js` sorts them into. Ticking
-   * and unticking are gestures rather than field edits — one box can
-   * move several — so a box emits which vertical it is and how it
-   * moved, and `<keel-app>` asks `../target.js` for the rest.
+   * own, in the parts `../extras.js` sorts them into, and — collapsed,
+   * each with its reason — the ones it cannot take. Ticking and
+   * unticking are gestures rather than field edits — one box can move
+   * several — so a box emits which vertical it is and how it moved,
+   * and `<keel-app>` asks `../target.js` for the rest.
    */
   #extrasField(stack, extras) {
     const chosen = extras.chosen;
@@ -331,6 +334,15 @@ export class KeelNewForm extends HTMLElement {
         ? null
         : part('extras-needs', 'Needs another capability first', extras.needs),
       included,
+      extras.refused.length === 0
+        ? null
+        : refusedList({
+            id: 'extras-refused',
+            title: 'Not for this project',
+            items: extras.refused,
+            open: this.#refusedOpen,
+            onToggle: (open) => (this.#refusedOpen = open),
+          }),
     );
   }
 
@@ -469,34 +481,6 @@ function field({ id, label, doc, value, choices, onChange }) {
 }
 
 const asChoice = (option) => ({ value: option.id, label: option.label });
-
-/**
- * The focused control inside `host`, as something that outlives the
- * node: its id where it has one, else the card group it sits in and
- * the value it carries — a card's input has no id of its own.
- */
-function focusIn(host) {
-  const active = document.activeElement;
-  if (!(active instanceof HTMLElement) || !host.contains(active)) return null;
-  if (active.id !== '') return { id: active.id };
-  const group = active.closest('.cards');
-  if (group instanceof HTMLElement && group.id !== '' && active instanceof HTMLInputElement) {
-    return { group: group.id, value: active.value };
-  }
-  return null;
-}
-
-/** Puts the focus back on the control `focusIn` described, if it is still drawn. */
-function refocus(host, focused) {
-  if (focused === null) return;
-  const found =
-    'id' in focused
-      ? host.querySelector(`#${CSS.escape(focused.id)}`)
-      : host.querySelector(
-          `#${CSS.escape(focused.group)} input[value="${CSS.escape(focused.value)}"]`,
-        );
-  if (found instanceof HTMLElement) found.focus({ preventScroll: true });
-}
 
 const docOf = (options, id) => options.find((option) => option.id === id)?.doc ?? '';
 

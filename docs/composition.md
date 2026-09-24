@@ -125,7 +125,11 @@ nothing.
 The planner is the **one reading of readiness**, and every surface
 asks it: the extras menu (`keel.dials`, and the terminal's
 multi-select) offers what is ready or needs others, labelled with
-what it needs; `keel.dials` snaps a page's extras to their closure,
+what it needs, and `keel.dials` lists the rest with the refusal
+`keel new --with` gives each; the brownfield cards and `keel add
+--list` read it through `keel.project-status`, so `keel ui` groups
+them the same way on both halves, before any click; `keel.dials`
+snaps a page's extras to their closure,
 reporting each vertical it added or dropped and why; `keel new --with`
 installs its extras in plan order, whatever order they were named in —
 it hands the planner the set by id, so verticals nothing ties together

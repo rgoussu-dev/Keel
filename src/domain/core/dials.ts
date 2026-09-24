@@ -48,8 +48,8 @@ import {
   type ModuleLayoutOption,
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
-import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
-import { planRefusal } from './plan-refusal.js';
+import { plan, seedFor, type Plan, type PlanScope } from './planner.js';
+import { foresee, planRefusal } from './plan-refusal.js';
 import { alreadyIncludedNote } from './refusals.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
@@ -175,20 +175,28 @@ export function presetScope(stack: Stack, tags: readonly Tag[]): PlanScope {
 }
 
 /**
- * Every vertical of this preset an extras control shows — the
- * preset's own (`included`), and every other one the planner reads as
- * `ready` or `needs` on the tags its dials have settled — with what
- * each needs installed first. In the registry's order.
+ * Every registered vertical as an extras control shows it for this
+ * preset — the preset's own (`included`), those the planner reads as
+ * `ready` or `needs` on the tags its dials have settled, with what
+ * each needs installed first, and the rest (`unavailable`), each with
+ * the refusal `keel new --with` would give it. In the registry's
+ * order.
  *
  * The planner's reading (`./planner.ts`), not a probe of its own: the
- * same one both front doors refuse by, so a choice offered here is
- * one they accept once its `requires` are named with it. That is what
- * the flat probe this replaced could not be. It saw the tags the
- * preset settles and what its own verticals may promote, never what
- * another *extra* would add — so `iac`, which needs the image
- * `distribution` publishes, was never offered, and `distribution`,
- * whose need for an image was a throw inside its adapter, was offered
- * everywhere and refused on install.
+ * same one both front doors refuse by, worded as they word it
+ * (`./plan-refusal.ts`'s `foresee`), so a choice offered here is one
+ * they accept once its `requires` are named with it, and a reason
+ * shown here is the sentence they refuse with. That is what the flat
+ * probe this replaced could not be. It saw the tags the preset
+ * settles and what its own verticals may promote, never what another
+ * *extra* would add — so `iac`, which needs the image `distribution`
+ * publishes, was never offered, and `distribution`, whose need for an
+ * image was a throw inside its adapter, was offered everywhere and
+ * refused on install.
+ *
+ * What the preset cannot carry is listed rather than left out, as a
+ * brownfield card is: "does it take persistence?" is a question the
+ * page should answer where it is asked, not by the option's absence.
  */
 export function verticalOptions(
   registry: Registry,
@@ -198,13 +206,17 @@ export function verticalOptions(
   const scope = presetScope(stack, tags);
   const options: VerticalOption[] = [];
   for (const summary of listVerticals(registry)) {
-    const ready = readiness(registry, scope, summary.id);
-    if (ready.kind === 'unavailable') continue;
+    const vertical = registry.vertical(summary.id);
+    if (vertical === null) continue;
+    const { readiness: ready, refusal } = foresee(registry, scope, vertical);
     options.push({
       ...summary,
       readiness: ready.kind,
       requires:
         ready.kind === 'needs' && ready.alternatives === undefined ? ready.prerequisites : [],
+      ...(refusal === null
+        ? {}
+        : { refusal: { code: refusal.code, message: refusal.message, refusal: refusal.refusal } }),
     });
   }
   return options;
@@ -212,10 +224,11 @@ export function verticalOptions(
 
 /**
  * Whether an option of {@link verticalOptions} is on the extras menu:
- * every one but the preset's own — ready, or ready once others are.
+ * ready, or ready once others are — not the preset's own, and not one
+ * it cannot carry.
  */
 export function offeredAsExtra(option: VerticalOption): boolean {
-  return option.readiness !== 'included';
+  return option.readiness === 'ready' || option.readiness === 'needs';
 }
 
 /** Every tag installing `verticals` may promote, in one flat list. */

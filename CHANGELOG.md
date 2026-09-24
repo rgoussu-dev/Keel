@@ -224,6 +224,40 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`keel ui`'s brownfield page says what a project can take before
+  the click, and takes several at once.** The _What to add_ step
+  offered every vertical not installed as one radio group, and about
+  half the cards on a CLI project were a refusal, met after the pick in
+  a banner above the step. The cards are now read from the project
+  status, in the parts `keel add --list` prints: _Ready_ and _Needs
+  another capability first_ as checkboxes — ticking Infrastructure as
+  code ticks Container image and Distribution with it, and the three
+  are one plan and one Generate (`keel add containerization
+distribution iac`) — _Not for this project_, collapsed, each with the
+  sentence `keel add` would refuse it with, and _Belongs in a service_
+  at a product root. An installed vertical has a **Re-render** button
+  of its own instead of a card in the same group, and the product's
+  glue and a bounded context, which no `keel add` names, are chips
+  rather than a pick refused as unknown. A re-render an add proposes
+  is offered beside the cards once the preview says so (`--refresh`).
+  The bounded-context tab is shown disabled with its reason rather than
+  hidden. A refusal is shown in the plan column, where the plan would
+  be, as an alert headed by what it is — a refusal, a bug in keel, or
+  no answer at all — instead of "The reason is above". After Generate
+  the page opens on _What to add_ with the report, not on _Directory_,
+  and a plan that writes nothing and runs nothing cannot be generated.
+  The greenfield _Also scaffold_ group gains the same _Not for this
+  project_ part: what the preset cannot carry, with its reason, where
+  it used to be left out.
+
+- **`keel add module` on the flat layout names its rule, not a tag.**
+  The refusal read `… (incompatible: modules.context; rule
+'bounded-context/context-needs-modulith')`; it now reads `… (rule
+'bounded-context/context-needs-modulith')`, the way every other
+  broken rule is worded — the sentence `keel ui` shows beside the tab
+  it disables. `keel add --list` lists the product glue and a bounded
+  context apart from what `--reapply` re-renders.
+
 - **`keel add --list` says what `keel add` would do here.** Inside a
   project it no longer prints the catalog: every vertical not
   installed is listed under _Ready to add here_, _Ready, with what each
@@ -464,6 +498,17 @@ new` the terminal adds the way past it (move it aside, or start in
   and refuses a stance leaking across families.
 
 ### Added
+
+- **The preview carries what the run decided on its own, and the
+  status which installed verticals re-render.** `keel.preview`
+  (`POST /api/preview`) reports the install's `notes` and
+  `refreshProposals`, as the dry-run report does, so a front end can
+  offer a proposed re-render before Generate. Each `installed` entry of
+  `keel.project-status` says whether `keel add <id> --reapply` can
+  re-render it (`reapplicable`), and names the product glue and a
+  bounded context by title. `keel.dials` lists every registered
+  vertical in `verticals`, those the preset cannot carry as
+  `unavailable` with the `refusal` `keel new --with` would give them.
 
 - **The project status answers before the click.**
   `keel.project-status` (`GET /api/project`) gives every vertical not

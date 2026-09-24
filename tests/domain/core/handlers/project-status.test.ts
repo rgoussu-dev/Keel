@@ -16,7 +16,10 @@
  *     refuses before it looks at the name, and `moduleRefusal` is that
  *     refusal;
  *   - `harnessGeneration` reports the marker once, beside the one this
- *     keel writes.
+ *     keel writes;
+ *   - an installed vertical is `reapplicable` exactly where
+ *     `keel add <id> --reapply` names something it can re-render — not
+ *     a product's glue, not a bounded context.
  */
 
 import path from 'node:path';
@@ -79,10 +82,10 @@ const status = async (at: string = cwd): Promise<ProjectStatus> =>
 const card = (reported: ProjectStatus, id: string): AvailableVerticalDescriptor | undefined =>
   reported.available.find((vertical) => vertical.id === id);
 
-/** What `keel add <id>` answers here, as a dry run. */
-const add = (id: string) =>
+/** What `keel add <id>` answers here — as a dry run, unless told otherwise. */
+const add = (id: string, dryRun = true) =>
   mediator.dispatch(
-    addVerticalCommand({ cwd, verticals: [id], answers: {}, interactive: false, dryRun: true }),
+    addVerticalCommand({ cwd, verticals: [id], answers: {}, interactive: false, dryRun }),
   );
 
 describe('keel.project-status', () => {
@@ -201,6 +204,48 @@ describe('keel.project-status', () => {
     expect(reported.modules).toEqual([expect.objectContaining({ name: 'greeting', seam: true })]);
   });
 
+  it('says which installed verticals keel add --reapply can re-render', async () => {
+    await scaffold({ moduleLayout: 'modulith' });
+    const before = await status();
+    expect(before.installed.every((vertical) => vertical.reapplicable)).toBe(true);
+    expectOk(await add('ci', false));
+    expect((await status()).installed.find((vertical) => vertical.id === 'ci')).toMatchObject({
+      reapplicable: true,
+    });
+
+    // `keel add module` records the context as installed, and no
+    // `keel add <id>` names it: a re-render of it is refused as unknown,
+    // so the status says it is not one to offer.
+    expectOk(
+      await mediator.dispatch(
+        addModuleCommand({
+          cwd,
+          module: 'billing',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const after = await status();
+    const context = after.installed.find((vertical) => vertical.id === 'bounded-context');
+    expect(context).toMatchObject({ title: 'Bounded context', reapplicable: false });
+    expect(
+      expectErr(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            verticals: ['bounded-context'],
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            reapply: true,
+          }),
+        ),
+      ).code,
+    ).toBe('keel.unknown-vertical');
+  });
+
   it('refuses a context at a composite product root', async () => {
     expectOk(
       await mediator.dispatch(
@@ -221,6 +266,12 @@ describe('keel.project-status', () => {
     expect(reported.moduleRefusal?.message).toContain(
       "run 'keel add module <name>' inside the service directory",
     );
+    // The product's glue is recorded as installed, by title, and no
+    // `keel add` re-renders it.
+    expect(reported.installed.find((vertical) => vertical.id === 'fullstack')).toMatchObject({
+      title: 'Product root',
+      reapplicable: false,
+    });
     // At the root, a card is the root's redirect: the capability goes in
     // a service, and the card names which.
     const persistence = card(reported, 'persistence');

@@ -52,14 +52,44 @@
  *
  * **The mode.** Pointing at a directory decides everything. No
  * manifest there and only `keel new` applies; a manifest and the page
- * becomes the brownfield one, offering what that project can actually
- * take.
+ * becomes the brownfield one: every vertical the project has not
+ * installed, each in the part the project status read it into — ready,
+ * needing another first, not for this project (collapsed, with the
+ * reason), belonging in a service — several at a time, beside a
+ * **Re-render** for each one it has (`<keel-add-form>`). What the
+ * project cannot take is said before the click, in the refusal's own
+ * words, rather than learned from it.
+ *
+ * **A refusal is shown where the plan would be.** The plan column
+ * says why there is none — the engine's sentence, as an alert, headed
+ * as a refusal, as a bug or as no answer at all (`../response.js`'s
+ * `failureOf`) — rather than pointing at a banner above a step the
+ * user may have scrolled away from.
+ *
+ * **Generate lands on "What to add".** The directory re-read after an
+ * install makes this a brownfield page with the report beside it, and
+ * the next thing to do is add something more, not pick a directory.
  */
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
+import { additionsSummary } from '../additions.js';
 import { extrasSummary } from '../extras.js';
-import { answer, previewed, restart, retarget, settle, toggleExtra } from '../target.js';
+import { failureOf } from '../response.js';
+import { plansNothing } from '../tree.js';
+import {
+  answer,
+  previewed,
+  rerender,
+  rerendering,
+  restart,
+  retarget,
+  settle,
+  toggleExtra,
+  toggleRefresh,
+  toggleVertical,
+  verticalsOf,
+} from '../target.js';
 import {
   DIRECTORY,
   ENTRYPOINTS,
@@ -114,6 +144,15 @@ export class KeelApp extends HTMLElement {
     this.addEventListener('extra-toggled', (event) =>
       this.#move(toggleExtra(this.#run(), event.detail.id, event.detail.ticked)),
     );
+    this.addEventListener('vertical-toggled', (event) =>
+      this.#move(toggleVertical(this.#run(), this.#status, event.detail.id, event.detail.ticked)),
+    );
+    this.addEventListener('rerender-requested', (event) =>
+      this.#move(rerender(this.#run(), event.detail.id)),
+    );
+    this.addEventListener('refresh-toggled', (event) =>
+      this.#move(toggleRefresh(this.#run(), event.detail.id, event.detail.ticked)),
+    );
     this.addEventListener('question-answered', (event) => this.#answer(event.detail));
     this.addEventListener('step-selected', (event) => this.#goToStep(event.detail.id));
     this.addEventListener('install-requested', () => void this.#install());
@@ -134,8 +173,12 @@ export class KeelApp extends HTMLElement {
     await this.#goTo(listing.value.path);
   }
 
-  /** Points the whole page at a directory and rebuilds the target. */
-  async #goTo(path) {
+  /**
+   * Points the whole page at a directory and rebuilds the target,
+   * opening on `landing` where the rail has it — the directory step
+   * when the user moved, "What to add" after an install.
+   */
+  async #goTo(path, landing = DIRECTORY) {
     this.#cwd = path;
     this.#error = null;
     this.#report = null;
@@ -151,7 +194,7 @@ export class KeelApp extends HTMLElement {
       ),
     );
     this.#preview = null;
-    this.#step = DIRECTORY;
+    this.#step = landing;
     this.#drawn = null;
     this.#render();
     this.#previewSoon();
@@ -178,19 +221,16 @@ export class KeelApp extends HTMLElement {
   }
 
   /**
-   * Where the brownfield wizard opens: on **no** vertical.
+   * Where the brownfield wizard opens: on **no** vertical ticked.
    *
-   * Picking one for the user was defensible when the control was a
-   * `<select>`, which has to show something. A card group does not,
-   * and the pre-pick was never free: `available` is every registered
-   * vertical not yet installed — the ones this project cannot carry
-   * included, each with its refusal — so whichever one sorted first
-   * could be one of those, and the page opened on a refusal nobody had
-   * asked for. An unanswered question is the honest state, and the
-   * plan says so.
+   * Ticking one for the user was defensible when the control was a
+   * `<select>`, which has to show something. A set of checkboxes does
+   * not, and the pre-pick was never free: it opened the page on a plan
+   * nobody had asked for. An unanswered question is the honest state,
+   * and the plan says so.
    */
   #defaultAddTarget() {
-    return { kind: 'add-vertical', vertical: '' };
+    return { kind: 'add-vertical', verticals: [] };
   }
 
   /* ---- intent -------------------------------------------------- */
@@ -301,8 +341,10 @@ export class KeelApp extends HTMLElement {
     }
     this.#report = result.value;
     // The project just changed underneath us: re-read it so the page
-    // becomes the brownfield one, offering what is left to add.
-    await this.#goTo(this.#cwd);
+    // becomes the brownfield one, and open it where the next thing to
+    // do is — what is left to add, the report beside it — rather than
+    // back at the directory it is already pointed at.
+    await this.#goTo(this.#cwd, TARGET);
     this.#report = result.value;
     this.#render();
   }
@@ -344,19 +386,20 @@ export class KeelApp extends HTMLElement {
   #summary() {
     const rows = [{ step: DIRECTORY, label: 'Directory', value: this.#cwd || '—' }];
     if (this.#status?.initialised) {
-      rows.push({
-        step: TARGET,
-        label: this.#target?.kind === 'add-module' ? 'Bounded context' : 'Vertical',
-        value:
-          (this.#target?.kind === 'add-module' ? this.#target.module : this.#target?.vertical) ||
-          '—',
-      });
-      if (this.#target?.kind === 'add-module' && this.#target.consumes) {
-        rows.push({ step: TARGET, label: 'Consumes', value: this.#target.consumes });
+      if (this.#target?.kind === 'add-module') {
+        rows.push({ step: TARGET, label: 'Bounded context', value: this.#target.module || '—' });
+        if (this.#target.consumes) {
+          rows.push({ step: TARGET, label: 'Consumes', value: this.#target.consumes });
+        }
+        return rows;
       }
-      if (this.#target?.reapply === true) {
-        rows.push({ step: TARGET, label: 'Mode', value: 're-render (already installed)' });
+      const { adds, refreshes } = additionsSummary(this.#status, this.#target);
+      if (rerendering(this.#target) !== null) {
+        rows.push({ step: TARGET, label: 'Re-render', value: adds });
+        return rows;
       }
+      rows.push({ step: TARGET, label: 'Verticals', value: adds || '—' });
+      if (refreshes !== '') rows.push({ step: TARGET, label: 'Re-rendered too', value: refreshes });
       return rows;
     }
     const here = located(this.#state());
@@ -445,7 +488,6 @@ export class KeelApp extends HTMLElement {
       <div class="workspace">
         <div class="column">
           <stack-pk space="var(--s1)">
-            <div data-role="error" hidden></div>
             <section class="panel" data-role="step"></section>
           </stack-pk>
         </div>
@@ -478,7 +520,6 @@ export class KeelApp extends HTMLElement {
     }
 
     this.#renderMeta();
-    this.#renderError();
     this.#renderStep(steps);
 
     const plan = this.querySelector('keel-plan');
@@ -487,7 +528,7 @@ export class KeelApp extends HTMLElement {
       plan.report = this.#report;
       plan.stale = this.#stale;
       plan.hint = this.#hint();
-      plan.refused = this.#error !== null;
+      plan.error = this.#error;
       plan.body = this.#body();
     }
   }
@@ -527,53 +568,42 @@ export class KeelApp extends HTMLElement {
 
   /**
    * Whether Generate may post the body: a complete run, previewed as
-   * it now stands. Not merely previewed once — the preview is what
-   * prunes the answers to the ones its plan asks (`previewed`), so a
-   * body posted between a move and its preview would carry an answer
-   * the install refuses, an unticked extra's among them.
+   * it now stands, with something to do. Not merely previewed once —
+   * the preview is what prunes the answers to the ones its plan asks
+   * (`previewed`), so a body posted between a move and its preview
+   * would carry an answer the install refuses, an unticked extra's
+   * among them. And not a plan that writes nothing and runs nothing:
+   * committing one would record a vertical as installed that had put
+   * nothing on disk.
    */
   #ready() {
-    return this.#complete() && this.#error === null && this.#preview !== null && !this.#stale;
+    return (
+      this.#complete() &&
+      this.#error === null &&
+      this.#preview !== null &&
+      !this.#stale &&
+      !plansNothing(this.#preview)
+    );
   }
 
   /** Whether the target carries every field its command requires. */
   #complete() {
     if (this.#target === null) return false;
     if (this.#target.kind === 'add-module') return (this.#target.module ?? '') !== '';
-    if (this.#target.kind === 'add-vertical') return (this.#target.vertical ?? '') !== '';
+    if (this.#target.kind === 'add-vertical') return verticalsOf(this.#target).length > 0;
     return (this.#target.stack ?? '') !== '';
   }
 
   /**
-   * What the plan shows instead of a tree when it has no tree to
-   * show — a run still being filled in, or one the engine refused.
-   *
-   * An empty panel is the one thing it must not be. A refused run
-   * previews nothing, so the tree would render as a blank box beside
-   * a banner the eye has already skipped past; saying the plan is
-   * missing *because* the run was refused is what connects the two.
+   * What the plan shows instead of a tree when a run is still being
+   * filled in. A refused one shows the refusal itself (`plan.error`),
+   * where the tree would have been.
    */
   #hint() {
-    if (this.#error !== null) return 'No plan — this run was refused. The reason is above.';
-    if (this.#complete()) return '';
+    if (this.#error !== null || this.#complete()) return '';
     if (this.#target?.kind === 'add-module') return 'Name the context to see its plan.';
-    if (this.#target?.kind === 'add-vertical') return 'Pick a vertical to see its plan.';
+    if (this.#target?.kind === 'add-vertical') return 'Tick a vertical to see its plan.';
     return '';
-  }
-
-  #renderError() {
-    const box = this.querySelector('[data-role="error"]');
-    if (!box) return;
-    box.hidden = this.#error === null;
-    box.replaceChildren();
-    if (this.#error === null) return;
-    box.className = 'error';
-    const code = document.createElement('span');
-    code.className = 'code';
-    code.textContent = this.#error.code;
-    const message = document.createElement('span');
-    message.textContent = this.#error.message;
-    box.append(code, message);
   }
 
   /**
@@ -644,6 +674,7 @@ export class KeelApp extends HTMLElement {
     if (this.#step === TARGET) {
       node.status = this.#status;
       node.target = this.#target;
+      node.preview = this.#preview;
       return;
     }
     if (this.#step === QUESTIONS) {
@@ -669,9 +700,12 @@ export class KeelApp extends HTMLElement {
    * user arrives at *intending* to commit.
    */
   #reviewHint() {
-    if (this.#error !== null) return `Refused: ${this.#error.message}`;
+    if (this.#error !== null) return `${failureOf(this.#error).lead} ${this.#error.message}`;
     if (!this.#complete()) return this.#hint() || 'The run is not complete yet.';
     if (this.#preview === null || this.#stale) return 'Waiting for the plan…';
+    if (plansNothing(this.#preview)) {
+      return 'Nothing to write and nothing to run — this run would change nothing, so there is nothing to generate.';
+    }
     return '';
   }
 

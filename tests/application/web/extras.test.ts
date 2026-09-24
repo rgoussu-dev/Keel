@@ -3,7 +3,7 @@
  *
  * Same standing as `steps.test.ts` and `target.test.ts`: a pure module
  * living in `assets/web/`, tested here because it needs no browser.
- * Driven against the real `keel.dials` reply, so the three parts are
+ * Driven against the real `keel.dials` reply, so the four parts are
  * the planner's own reading of a shipped preset — a vertical in the
  * wrong part would be the page disagreeing with the terminal's menu
  * about the same preset. That a box really ticks what a card says it
@@ -47,6 +47,31 @@ describe('the "Also scaffold" group', () => {
     );
     expect(group.chosen).toEqual([]);
     expect(group.line).toBe('');
+  });
+
+  it('keeps what the preset cannot take on screen, collapsed, each with the refusal’s words', async () => {
+    const reply = await dials('go-cli');
+    const group = extrasGroup(reply, reply.target);
+    const persistence = group?.refused.find((line) => line.id === 'persistence');
+    expect(persistence).toEqual({
+      id: 'persistence',
+      title: 'Persistence',
+      sentence:
+        'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    });
+    // Not a box: there is nothing to tick.
+    expect([...values(group?.ready ?? []), ...values(group?.needs ?? [])]).not.toContain(
+      'persistence',
+    );
+    // Every vertical of the reply is in exactly one part.
+    expect(
+      [
+        ...values(group?.ready ?? []),
+        ...values(group?.needs ?? []),
+        ...(group?.included ?? []).map((vertical) => vertical.id),
+        ...(group?.refused ?? []).map((line) => line.id),
+      ].sort(),
+    ).toEqual(reply.verticals.map((vertical) => vertical.id).sort());
   });
 
   it('names what a card needs by the title a person knows it by', async () => {

@@ -20,11 +20,17 @@
  * undo the pick.
  *
  * **A run is about one subject** — the stack a `keel new` builds, the
- * vertical a `keel add` layers on, or `keel add module` as such. A
- * different subject means different adapters, so the answers gathered
- * for the old one are meaningless, and the old menus describe nothing
- * about the new one; both start afresh. Renaming the context an
- * `add-module` run creates is not a new subject, and keeps them.
+ * verticals a `keel add` layers on as such, the one it re-renders, or
+ * `keel add module` as such. A different subject means different
+ * adapters, so the answers gathered for the old one are meaningless,
+ * and the old menus describe nothing about the new one; both start
+ * afresh. Ticking another card into an add, or out of it, is not a
+ * new subject — the set grows or shrinks, like the greenfield extras
+ * — so the answers stay and the next preview drops the ones no
+ * adapter of the new set asks ({@link previewed}); moving between
+ * adding and re-rendering is, and so is re-rendering another
+ * vertical. Renaming the context an `add-module` run creates is not
+ * a new subject either, and keeps them.
  *
  * **The dials are the exception.** A build system, a module layout,
  * the peer context and a product's repository layout are settings of
@@ -44,7 +50,8 @@
  * @typedef {{ kind: string } & Record<string, unknown>} Target
  * @typedef {Record<string, Record<string, string>>} Answers
  * @typedef {{ id: string }} Option
- * @typedef {{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string> }} VerticalOption
+ * @typedef {{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string } }} VerticalOption
+ * @typedef {{ installed: ReadonlyArray<{ id: string }>, available: ReadonlyArray<{ id: string, requires: ReadonlyArray<string> }> }} Status
  * @typedef {{ id: string, change: string, because: string }} Adjustment
  * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<{ path: string, buildSystems: ReadonlyArray<Option> }>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
  * @typedef {{ from: string, dials: Record<string, unknown> }} Carried
@@ -105,10 +112,12 @@ export function restart(run, target) {
  * `patch` is read one of two ways, by whether it names a `kind`:
  *
  *   - **With one, it is the whole target.** That is how
- *     `<keel-add-form>` speaks — a card, a tab, a context name — and
- *     it replaces the target rather than merging into it. Merging is
- *     what kept `reapply: true` alive after the installed card that
- *     set it: the next card's patch simply did not mention it.
+ *     `<keel-add-form>` speaks — a tab, a context name, and every card
+ *     gesture through the transition that builds its target
+ *     ({@link toggleVertical}, {@link rerender}) — and it replaces the
+ *     target rather than merging into it. Merging is what kept
+ *     `reapply: true` alive after the installed card that set it: the
+ *     next card's patch simply did not mention it.
  *   - **Without one, it is the fields that moved**, the way the
  *     greenfield controls speak: a build system, a module layout, a
  *     preset. They merge — except that a new preset starts its target
@@ -276,23 +285,147 @@ export function extrasOf(target) {
 }
 
 /**
- * The whole target a vertical's card stands for.
+ * The run after a card of the brownfield "What to add" step was ticked
+ * or unticked.
  *
- * `reapply` is always stated, and stated for *this* card: an installed
- * vertical is offered for a re-render, any other for an install, and
- * which one a pick means has nothing to do with the card picked
- * before it.
+ * The cards are checkboxes, as the greenfield extras are, and one tick
+ * is rarely one vertical. **Ticking one that needs others ticks them
+ * too** — its `requires`, as the project status reports them — since
+ * `keel add` installs them with it either way, and a card left
+ * unticked beside a plan listing its files would be the page
+ * contradicting itself. **Unticking one unticks every ticked vertical
+ * that needs it**, and whatever needed those in turn.
  *
- * @param {{ installed: ReadonlyArray<{ id: string }> }} status the `/api/project` payload
- * @param {string} vertical the card's id
- * @returns {Target}
+ * The set is posted as `verticals`, prerequisites ahead of what needs
+ * them — the order the add runs them in, so the command line under
+ * the plan is the one a person would type — and otherwise in the
+ * order the cards are listed. A tick made while the page was
+ * re-rendering an installed vertical starts a new add: the two are
+ * different runs, and the re-render is let go. Re-renders taken up
+ * beside the add ({@link toggleRefresh}) stay while anything is left
+ * to add, and go with the last card unticked, a re-render being what
+ * {@link rerender} is for.
+ *
+ * @param {Run} run
+ * @param {Status} status the `/api/project` payload
+ * @param {string} id the vertical the card stands for
+ * @param {boolean} ticked whether the card is now ticked
+ * @returns {Run}
  */
-export function pickVertical(status, vertical) {
+export function toggleVertical(run, status, id, ticked) {
+  const requires = new Map(status.available.map((vertical) => [vertical.id, vertical.requires]));
+  const adding = run.target?.kind === 'add-vertical' && run.target.reapply !== true;
+  const selected = adding ? verticalsOf(run.target) : [];
+  const next = ticked
+    ? [...new Set([...selected, ...(requires.get(id) ?? []), id])]
+    : withoutDependants(selected, requires, id);
+  const ordered = installOrder(
+    next,
+    status.available.map((vertical) => vertical.id),
+    requires,
+  );
+  return retarget(
+    run,
+    addTarget(ordered, adding && ordered.length > 0 ? refreshOf(run.target) : []),
+  );
+}
+
+/**
+ * The run after an installed vertical's **Re-render** was pressed: a
+ * run of its own — `keel add <id> --reapply` — rather than a card in
+ * the add's set, since a re-render rewrites what the vertical owns
+ * from the answers the manifest recorded, and has no business riding
+ * along with an install. Pressed again on the vertical being
+ * re-rendered, it lets it go, and the page is back to adding nothing.
+ *
+ * @param {Run} run
+ * @param {string} id the installed vertical
+ * @returns {Run}
+ */
+export function rerender(run, id) {
+  const again = rerendering(run.target) === id;
+  return retarget(
+    run,
+    again ? addTarget([], []) : { kind: 'add-vertical', verticals: [id], reapply: true },
+  );
+}
+
+/**
+ * The run after a proposed re-render was taken up beside an add, or
+ * let go — `keel add`'s `--refresh`: an installed vertical the run
+ * would otherwise leave rendered without what it now brings.
+ *
+ * @param {Run} run
+ * @param {string} id the installed vertical
+ * @param {boolean} ticked whether it is now re-rendered in the run
+ * @returns {Run}
+ */
+export function toggleRefresh(run, id, ticked) {
+  const refresh = refreshOf(run.target).filter((other) => other !== id);
+  return retarget(run, addTarget(verticalsOf(run.target), ticked ? [...refresh, id] : refresh));
+}
+
+/**
+ * The verticals an `add-vertical` target names — `[]` for any other
+ * target, and for one with none ticked yet.
+ *
+ * @param {object | null} target
+ * @returns {string[]}
+ */
+export function verticalsOf(target) {
+  const verticals = target?.kind === 'add-vertical' ? target.verticals : undefined;
+  return Array.isArray(verticals) ? verticals.map(String) : [];
+}
+
+/**
+ * The installed verticals an `add-vertical` target re-renders beside
+ * what it adds (`refresh`) — `[]` when none.
+ *
+ * @param {object | null} target
+ * @returns {string[]}
+ */
+export function refreshOf(target) {
+  const refresh = target?.kind === 'add-vertical' ? target.refresh : undefined;
+  return Array.isArray(refresh) ? refresh.map(String) : [];
+}
+
+/**
+ * The installed vertical a target re-renders on its own, or null where
+ * it is not a re-render.
+ *
+ * @param {object | null} target
+ * @returns {string | null}
+ */
+export function rerendering(target) {
+  if (target?.kind !== 'add-vertical' || target.reapply !== true) return null;
+  return verticalsOf(target)[0] ?? null;
+}
+
+/** A whole `add-vertical` target adding `verticals`, re-rendering `refresh` beside them. */
+function addTarget(verticals, refresh) {
   return {
     kind: 'add-vertical',
-    vertical,
-    reapply: status.installed.some((installed) => installed.id === vertical),
+    verticals,
+    ...(refresh.length === 0 ? {} : { refresh }),
   };
+}
+
+/**
+ * `selected` in the order it installs, as far as the page can tell:
+ * each vertical after what it requires, and otherwise in `listed`
+ * order — the cards'. The add plans the set whole either way; this is
+ * so the command line spells it the way it runs.
+ */
+function installOrder(selected, listed, requires) {
+  const chosen = new Set(selected);
+  const order = [];
+  const place = (id) => {
+    if (!chosen.has(id) || order.includes(id)) return;
+    for (const needed of requires.get(id) ?? []) place(needed);
+    order.push(id);
+  };
+  for (const id of [...listed, ...selected]) place(id);
+  return order;
 }
 
 /**
@@ -447,7 +580,11 @@ function only(object, fields) {
 
 function subject(target) {
   if (target.kind === 'new-project') return `new-project:${target.stack ?? ''}`;
-  if (target.kind === 'add-vertical') return `add-vertical:${target.vertical ?? ''}`;
+  if (target.kind === 'add-vertical') {
+    return target.reapply === true
+      ? `add-vertical:reapply:${verticalsOf(target).join(',')}`
+      : 'add-vertical';
+  }
   return target.kind;
 }
 

@@ -22,8 +22,11 @@
  * (`stack-assembly.test.ts` builds its scenarios the same way).
  */
 
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
+import { newProjectCommand, type NewProjectTarget } from '../../../src/domain/contract/commands.js';
 import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/composition.js';
 import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
@@ -34,6 +37,7 @@ import {
   type ModuleLayoutOption,
   type Stack,
 } from '../../../src/domain/core/stacks.js';
+import { expectErr, installMediator } from '../../support/factory.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
@@ -432,8 +436,53 @@ describe('the extras, as the planner reads them', () => {
 
   it('offers nothing that would install nothing: no gateway without a linked project', () => {
     const dials = shipped('go-http');
-    expect(dials.verticals.map((vertical) => vertical.id)).not.toContain('gateway');
     expect(ids(dials.extraVerticals)).not.toContain('gateway');
+    // Listed all the same, as the brownfield card is, with the reason.
+    expect(dials.verticals.find((vertical) => vertical.id === 'gateway')).toMatchObject({
+      readiness: 'unavailable',
+      requires: [],
+      refusal: { code: 'keel.uncoverable-vertical' },
+    });
+  });
+
+  it('lists what the preset cannot take, in the words keel new --with refuses it with', async () => {
+    const dials = shipped('go-cli');
+    const persistence = dials.verticals.find((vertical) => vertical.id === 'persistence');
+    expect(persistence).toMatchObject({ readiness: 'unavailable', requires: [] });
+    expect(ids(dials.extraVerticals)).not.toContain('persistence');
+
+    const cwd = await mkdtemp(path.join(tmpdir(), 'keel-dials-refused-'));
+    try {
+      const refused = expectErr(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals: ['persistence'],
+          }),
+        ),
+      );
+      expect(persistence?.refusal).toEqual({
+        code: refused.code,
+        message: refused.message,
+        refusal: expect.objectContaining({ kind: 'unavailable', vertical: 'persistence' }),
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+    // Every registered vertical is on the list once, in one of the four
+    // readings, and only the offered ones are on the menu.
+    expect(dials.verticals.map((vertical) => vertical.id)).toEqual(
+      [...shippedRegistry.verticals()].map((vertical) => vertical.id).sort(),
+    );
+    expect(ids(dials.extraVerticals)).toEqual(
+      dials.verticals
+        .filter((vertical) => vertical.readiness === 'ready' || vertical.readiness === 'needs')
+        .map((vertical) => vertical.id),
+    );
   });
 
   it('snaps the extras to their closure, saying what it added and why', () => {

@@ -161,21 +161,24 @@ Rust or Go context has no container to lose a handler in.
   opens, or by what they drive once it has:
   `ui-stack-finder` (an empty directory; the greenfield stepper),
   `ui-plugin-stack` (a keel plugin on disk; a stack keel never
-  shipped), `ui-refusal` (a scaffolded project; a refusal on the page
-  and the brownfield card state) and `ui-compose` (an empty directory;
-  the Options step's "Also scaffold" group, and the body the page
-  posts for it — `watchTraffic` keeps what went out). What they cover
-  is the seam nothing else can: the narrowing, the steps, the
-  transitions and the extras group are pure and unit-tested
-  (`finder.js`, `steps.js`, `target.js`, `extras.js`), but the element
-  rebuilds its subtree on every change and `<keel-app>` replaces the
-  element itself, so keeping a choice — or the focus — across a step
+  shipped), `ui-refusal` (a scaffolded project; what it cannot carry,
+  shown before the click, a refusal only the click meets, shown in the
+  plan column, and the re-render state) and `ui-compose` (an empty
+  directory and two scaffolded projects; the Options step's "Also
+  scaffold" group, the "What to add" cards ticked into one run, and
+  the bodies the page posts for them — `watchTraffic` keeps what went
+  out). What they cover is the seam nothing else can: the narrowing,
+  the steps, the transitions and the groups are pure and unit-tested
+  (`finder.js`, `steps.js`, `target.js`, `extras.js`, `additions.js`),
+  but the element rebuilds its subtree on every change and `<keel-app>`
+  replaces the element itself, so keeping a choice — or the focus — across a step
   is a claim about surviving a DOM replacement. A page-level suite is
   the only thing that sees a `pageerror` too — a throw inside a
   listener leaves the page looking right and aborts the rest of that
   handler. **None of them presses Generate on a JVM stack**: the `web`
   shard provisions no JDK, and a real Quarkus install queues
-  `gradle wrapper`.
+  `gradle wrapper`. The one Generate is `ui-compose`'s, on a `ts-http`
+  project seeded in-process, adding what queues no action there.
 
 ## Cost — what is measured, and what inverted the guess
 

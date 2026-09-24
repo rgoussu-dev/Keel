@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { countKinds, foldTree } from '../../../assets/web/src/tree.js';
+import { countKinds, foldTree, plansNothing } from '../../../assets/web/src/tree.js';
 
 interface Node {
   name: string;
@@ -77,5 +77,17 @@ describe('countKinds', () => {
 
   it('ignores a kind it does not know', () => {
     expect(countKinds([change('a', 'invented')])).toEqual({ create: 0, modify: 0, delete: 0 });
+  });
+});
+
+describe('plansNothing', () => {
+  it('holds a plan that writes nothing and runs nothing, and no other', () => {
+    expect(plansNothing({ changes: [], actions: [] })).toBe(true);
+    // A re-render that rewrites no file can still run an action — a
+    // hook re-installed — and that is something to generate.
+    expect(plansNothing({ changes: [], actions: ['git config core.hooksPath .githooks'] })).toBe(
+      false,
+    );
+    expect(plansNothing({ changes: [change('README.md', 'modify')], actions: [] })).toBe(false);
   });
 });

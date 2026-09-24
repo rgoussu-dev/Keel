@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { errorFrom, INTERNAL, outcomeFrom } from '../../../assets/web/src/response.js';
+import { errorFrom, failureOf, INTERNAL, outcomeFrom } from '../../../assets/web/src/response.js';
 
 const envelope = (code: string, message: string): string =>
   JSON.stringify({ error: { code, message } });
@@ -81,5 +81,30 @@ describe('outcomeFrom', () => {
   it('turns anything else into the error errorFrom reads', () => {
     const body = envelope('keel.web.bad-request', 'body is not valid JSON');
     expect(outcomeFrom(400, body)).toEqual({ ok: false, error: errorFrom(400, body) });
+  });
+});
+
+describe('failureOf', () => {
+  it('heads a refusal as one, a bug as a bug, and no answer as neither', () => {
+    // What to do next differs for each, so the words must too: a
+    // refusal is the engine's verdict on the choices, a bug is keel's
+    // to fix, and no answer means the run never reached the engine.
+    const refusal = failureOf(errorFrom(422, envelope('keel.uncoverable-vertical', 'nope')));
+    const bug = failureOf(errorFrom(500, envelope(INTERNAL, 'boom')));
+    const gone = failureOf({ code: 'keel.web.unreachable', message: 'cannot reach' });
+    expect(refusal).toMatchObject({ kind: 'refusal', lead: 'Refused:' });
+    expect(bug).toMatchObject({ kind: 'bug', lead: 'A bug, not a refusal:' });
+    expect(bug.title).toContain('bug, not a refusal');
+    expect(gone.kind).toBe('no-answer');
+    // Keel's server answers a reloaded page — its token spent — but
+    // never reads the run: headed the same, and not as "no answer
+    // from keel", which the message under it would contradict.
+    const turnedAway = failureOf(
+      errorFrom(401, envelope('keel.web.unauthorized', 'missing or invalid x-keel-token')),
+    );
+    expect(turnedAway).toEqual(gone);
+    expect(gone.title).toBe('No plan — keel gave no answer on this run');
+    expect(new Set([refusal.title, bug.title, gone.title]).size).toBe(3);
+    expect(refusal.title).not.toMatch(/bug/);
   });
 });

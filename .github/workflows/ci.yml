@@ -527,11 +527,15 @@ jobs:
           # well under `ui-stack-finder`, which floors the four.
           #
           # `ui-compose` is the fourth: the Options step's "Also
-          # scaffold" group, ticked and unticked on quarkus-rest, and
-          # the body the page posts for it. It never presses Generate —
-          # a real Quarkus install queues `gradle wrapper`, and this
-          # shard provisions no JDK — so it needs nothing the others
-          # do not. About the length of `ui-plugin-stack`.
+          # scaffold" group, ticked and unticked on quarkus-rest, the
+          # "What to add" cards ticked into one run on two projects it
+          # seeds in-process, and the bodies the page posts for them.
+          # It never presses Generate on a JVM stack — a real Quarkus
+          # install queues `gradle wrapper`, and this shard provisions
+          # no JDK. Its one Generate adds an image, a release path and
+          # IaC to `ts-http`, which queues no action at all, so it needs
+          # nothing the others do not. About the length of
+          # `ui-refusal`, with a third `keel ui` to start.
           - id: web
             tools: npm pnpm browser
             files: >-

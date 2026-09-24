@@ -67,7 +67,8 @@ import { runActions } from '../actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
-import { assemblyRefusal } from '../compatibility.js';
+import { conflictsOf, violatedBy } from '../compatibility.js';
+import { rulesSentence } from '../refusals.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import { installVertical } from '../install.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
@@ -224,10 +225,15 @@ export function moduleRefusal(
 
   // The layout rule, as the vertical declares it rather than as a
   // branch here — `CONTEXT_NEEDS_MODULITH`, evaluated against the tag
-  // set this run would carry.
-  const refusal = assemblyRefusal([boundedContextVertical], [...manifest.tags, CONTEXT_TAG]);
-  if (refusal !== null) {
-    return new DomainError(`cannot add a bounded context here: ${refusal}`, 'keel.incompatible');
+  // set this run would carry — and worded as every broken rule is: its
+  // reason and its id, never the tags that tripped it. The project
+  // status shows this sentence beside the tab it disables.
+  const broken = violatedBy(conflictsOf([boundedContextVertical]), [...manifest.tags, CONTEXT_TAG]);
+  if (broken.length > 0) {
+    return new DomainError(
+      `cannot add a bounded context here: ${rulesSentence(broken)}`,
+      'keel.incompatible',
+    );
   }
 
   if (!emitsFor([boundedContextVertical], CONTEXT_TAG, manifest.tags)) {

@@ -278,6 +278,36 @@ describe('keel add --list', () => {
     }
   });
 
+  it('lists what is installed and not re-rendered by id apart, at a product root', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-list-'));
+    try {
+      const logger = new FakeLogger();
+      const mediator = installMediator({
+        logger,
+        processes: new FakeProcessRunner(),
+        runDeferred: async () => {},
+      });
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack-ts',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            layout: 'monorepo',
+          }),
+        ),
+      );
+      await program(mediator, logger, cwd).parseAsync(['add', '--list'], { from: 'user' });
+      const printed = logger.messages('info');
+      expect(printed.at(-2)).toBe("Installed: vcs — 'keel add <id> --reapply' re-renders one");
+      expect(printed.at(-1)).toBe("Also installed, which 'keel add' does not re-render: fullstack");
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+
   it('prints the plain list where there is no project to ask about', async () => {
     const logger = new FakeLogger();
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-list-'));

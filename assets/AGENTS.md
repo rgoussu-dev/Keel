@@ -22,11 +22,16 @@ it compiled.
   target, the answers, the dials and the request generation it clears,
   which dials a new preset carries, what the line under the preset
   picker says a move could not keep, and which boxes an "Also
-  scaffold" tick moves (`toggleExtra`: a tick brings what the vertical
-  needs, an untick takes what needs it) — `src/extras.js` sorts
-  that group into its parts from the `keel.dials` reply, and
+  scaffold" tick or a "What to add" tick moves (`toggleExtra`,
+  `toggleVertical`: a tick brings what the vertical needs, an untick
+  takes what needs it; `rerender` and `toggleRefresh` for an installed
+  vertical) — `src/extras.js` sorts that group into its parts from the
+  `keel.dials` reply, `src/additions.js` the brownfield cards from the
+  project status, both through the parts they share in
+  `src/readiness.js` (ready, needs, not for this project), and
   `src/project.js` says what the project status reports once for every
-  card (a harness from another generation).
+  card (a harness from another generation); `src/response.js` heads a
+  failure as a refusal, a bug or no answer.
   All pure, all unit-tested without a browser. Linted with `src` and
   `tests`, unlike the ejs template trees.
 

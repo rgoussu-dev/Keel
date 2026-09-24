@@ -2796,7 +2796,7 @@ files the product root wrote; the root's declaration of what it builds
 (Q1.10) is what can say so before the click, so I4 is not hard yet. No
 verdict moved.
 
-#### Q1.9 — The brownfield page shows readiness and takes several picks (L)
+#### Q1.9 — The brownfield page shows readiness and takes several picks (L) ✅
 
 Cards grouped _Ready · Needs another capability first · Not for this
 project_ (collapsed, one sentence each) _· Belongs in a service ·
@@ -2805,6 +2805,36 @@ Installed_ (with a separate **Re-render** action; `fullstack` and
 Refusals render inline in the plan column with `role="alert"`. After
 Generate the page stays on "What to add"; a plan with no changes
 cannot be generated.
+
+Landed with the grouping in a new pure `assets/web/src/additions.js`
+over `ProjectStatus.available` — a tied `needs` card under _Needs_,
+badged as a choice — and the parts both halves share in
+`readiness.js`: the greenfield _Also scaffold_ group gains _Not for
+this project_ from `keel.dials`, whose `verticals` now lists every
+registered vertical, `unavailable` with the `refusal` `keel new
+--with` gives it (`foresee`, as the card's). The gestures are
+`target.js` transitions — `toggleVertical` (a tick brings the card's
+`requires`, an untick takes what needs it; posted as `verticals`,
+prerequisites first), `rerender` and `toggleRefresh` — and a run's
+subject is now the add as such, so ticking keeps the answers for
+`previewed` to prune, while a re-render is a subject of its own.
+`InstalledVerticalDescriptor.reapplicable` (the add registry has the
+id) turns the product glue and a bounded context into chips, titled
+from the stack's or `keel add module`'s own vertical; `keel add
+--list` lists them apart. Proposed refreshes needed the preview to
+carry them, so `InstallPreview` gains the report's `notes` and
+`refreshProposals`, and the plan column shows the notes first. The
+refusal region is headed by `response.js`'s `failureOf` — a refusal,
+a bug (`keel.internal`) or no answer — and the review leads with the
+same words. `moduleRefusal`'s layout sentence, which the disabled tab
+now shows, names its rule and no longer the `modules.context` tag
+(`refusals.ts`'s `rulesSentence`). `ui-refusal` moved to what only a
+click can meet — a user's own `.github/workflows/ci.yml` in the way
+(`keel.path-conflict`) — beside the card listed before any click; the
+brownfield half of `ui-compose` generates once, on a `ts-http`
+project whose image, release and IaC queue no action. _Belongs in a
+service_ is the sentence alone until Q1.10's buttons. The grid does
+not move: the step is the page's.
 
 #### Q1.10 — Composite products: the root points into its services (L)
 

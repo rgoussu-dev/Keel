@@ -73,6 +73,51 @@ export function errorFrom(status, bodyText) {
   };
 }
 
+/**
+ * What a failed call amounts to, in the words the plan column heads it
+ * with and the review step leads its reason with — so a bug never
+ * reads as a refusal, nor a refusal as a bug.
+ *
+ * Three kinds, because the user's next move differs for each:
+ *
+ *   - **a refusal** — the engine understood the run and will not do
+ *     it, and its sentence says what would change that: change a
+ *     choice;
+ *   - **a bug** ({@link INTERNAL}) — the engine threw where it should
+ *     have refused or done the work: nothing on the page is wrong, and
+ *     the thing to do is report it;
+ *   - **no answer** — the run never reached the engine
+ *     (`keel.web.*`): the server is gone, answered in a shape the
+ *     page did not expect, or turned the request away before reading
+ *     it — as it does every call from a page reloaded without the
+ *     token its URL carried. Keel said nothing about the run, so the
+ *     title does not say it did.
+ *
+ * @param {ApiError} error
+ * @returns {{ kind: 'refusal' | 'bug' | 'no-answer', title: string, lead: string }}
+ */
+export function failureOf(error) {
+  if (error.code === INTERNAL) {
+    return {
+      kind: 'bug',
+      title: 'No plan — keel hit a bug, not a refusal',
+      lead: 'A bug, not a refusal:',
+    };
+  }
+  if (error.code.startsWith('keel.web.')) {
+    return {
+      kind: 'no-answer',
+      title: 'No plan — keel gave no answer on this run',
+      lead: 'No answer on this run:',
+    };
+  }
+  return {
+    kind: 'refusal',
+    title: 'No plan — keel refuses this run as it stands',
+    lead: 'Refused:',
+  };
+}
+
 function parsed(text) {
   try {
     return JSON.parse(text);

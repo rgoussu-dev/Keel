@@ -40,8 +40,18 @@ export function commandFor({ target, answers }) {
       flag(tokens, '--with', target.extraVerticals.join(','));
     }
   } else if (target.kind === 'add-vertical') {
-    if (!target.vertical) return [];
-    tokens.push({ kind: 'command', text: 'add' }, { kind: 'value', text: target.vertical });
+    // `vertical` is the one-vertical alias the API still takes.
+    const verticals = Array.isArray(target.verticals)
+      ? target.verticals
+      : target.vertical
+        ? [target.vertical]
+        : [];
+    if (verticals.length === 0) return [];
+    tokens.push({ kind: 'command', text: 'add' });
+    for (const vertical of verticals) tokens.push({ kind: 'value', text: quote(vertical) });
+    if (Array.isArray(target.refresh) && target.refresh.length > 0) {
+      flag(tokens, '--refresh', target.refresh.join(','));
+    }
     if (target.reapply === true) tokens.push({ kind: 'flag', text: '--reapply' });
   } else if (target.kind === 'add-module') {
     if (!target.module) return [];

@@ -295,10 +295,12 @@ sits beside every step, so flipping Gradle to Maven, or `basic` to
 not used before, that tree is the documentation.
 
 It also reads what your project already is. Point it at a directory
-holding a keel manifest and it becomes the brownfield page — verticals
-already installed offered for re-render rather than a second install,
-and "add a bounded context" shown only where `keel add module` would
-actually be accepted.
+holding a keel manifest and it becomes the brownfield page — every
+vertical not installed, ready, ready once something else is, or not
+for this project and why, before anything is clicked; several ticked
+into one run; a **Re-render** beside each installed one; and "add a
+bounded context" disabled, with the reason, wherever `keel add module`
+would refuse it.
 
 The URL carries a per-run token, and the server binds loopback only
 and checks `Host` and `Origin` — a local port is reachable by every

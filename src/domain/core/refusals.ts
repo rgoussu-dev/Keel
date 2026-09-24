@@ -180,7 +180,7 @@ export function unavailableRefusal(
     missing: missingOf(gap.entrypoint, gap.peer, gap.identity),
     carriedBy: gap.nearestStacks,
     ...(broken.length > 0
-      ? { because: ruleReasons(broken), rules: broken.map((conflict) => conflict.id) }
+      ? { because: rulesSentence(broken), rules: broken.map((conflict) => conflict.id) }
       : {}),
   };
   return refusalError(refusal, broken.length > 0 ? INCOMPATIBLE_CODE : UNCOVERED_CODE, names);
@@ -217,7 +217,7 @@ export function brokenRulesRefusal(
       vertical: vertical.id,
       missing: {},
       carriedBy: [],
-      because: ruleReasons(broken),
+      because: rulesSentence(broken),
       rules: broken.map((conflict) => conflict.id),
     },
     INCOMPATIBLE_CODE,
@@ -509,8 +509,15 @@ function missingOf(
   };
 }
 
-/** Each broken rule's own sentence, with the id a user searches for. */
-function ruleReasons(broken: readonly { readonly id: string; readonly reason: string }[]): string {
+/**
+ * Each broken rule's own sentence, with the id a user searches for —
+ * never the tags that tripped it, which are in the rule for whoever
+ * looks it up. What a refusal of something other than a vertical says
+ * of a rule too: `keel add module` on the flat layout.
+ */
+export function rulesSentence(
+  broken: readonly { readonly id: string; readonly reason: string }[],
+): string {
   return broken.map((conflict) => `${conflict.reason} (rule '${conflict.id}')`).join('; ');
 }
 

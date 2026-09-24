@@ -50,8 +50,12 @@ socket, the per-run token and the asset roots. The page it serves is
   what it could not keep — and every change moves the generation on
   so a reply in flight is dropped. A new control adds its transition
   there, with a case in `tests/application/web/target.test.ts` — as
-  the "Also scaffold" boxes did (`toggleExtra`), since one tick can
-  move several boxes and the element only says which one it was.
+  the "Also scaffold" boxes did (`toggleExtra`) and the "What to add"
+  cards (`toggleVertical`, `rerender`, `toggleRefresh`), since one tick
+  can move several boxes and the element only says which one it was.
+  What a card shows is read off the project status by a pure module
+  too (`additions.js`), never re-derived in the element: the status
+  already carries each card's readiness and refusal, word for word.
 - **A response body is read once, as text, and `response.js` says
   what it means.** `api.js` claims the token out of `location` the
   moment it loads, so it cannot be imported without a DOM; what a
@@ -62,7 +66,9 @@ socket, the per-run token and the asset roots. The page it serves is
   still shown verbatim rather than replaced by its status. A
   `RefusalError`'s 422 also carries `error.refusal`, the structured
   refusal (`api.ts` `unwrap`), for a control that acts on its fields
-  rather than its words.
+  rather than its words. The page shows a failure in the plan column,
+  where the plan would be, as an alert — `failureOf` heads it as a
+  refusal, a bug or no answer — never as a banner away from it.
 - **Build the shell and the elements once, update them through
   properties.** Replacing a subtree on every preview takes the caret
   out of the field being typed in and resets the plan tree's scroll

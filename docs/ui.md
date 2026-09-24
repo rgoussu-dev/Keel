@@ -35,10 +35,12 @@ plan. Neither is a subset of the other's capabilities — pick the one
 that suits how you are working.
 
 It also reads what your project already is. Point it at a directory
-holding a keel manifest and it becomes the brownfield page: verticals
-already installed are offered for re-render rather than a second
-install, and "add a bounded context" appears only where
-`keel add module` would actually be accepted.
+holding a keel manifest and it becomes the brownfield page: every
+vertical it has not installed, sorted by what `keel add` would do with
+it — ready, ready once something else is, or not for this project and
+why — to tick several of at once; each installed one with a
+**Re-render** of its own; and "add a bounded context", disabled with
+the reason wherever `keel add module` would refuse it.
 
 ## The page
 
@@ -50,17 +52,17 @@ the plan column scroll independently, so the plan holds its own screen
 however long the step beside it runs. Under 62rem the two collapse
 into one and the page scrolls as an ordinary document.
 
-| Step              | What it asks                                                                                                                                                                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                                                |
-| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                |
-| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                        |
-| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                           |
-| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                 |
-| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                         |
-| **What to add**   | _(brownfield only)_ A capability to layer on, or a bounded context — one card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys. Installed ones are badged and offered for re-render. On a project another harness generation wrote, one line above the cards says so, once. |
-| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                   |
-| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                       |
+| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_.                                                                                                                                                                                                                                                                             |
+| **What to build** | Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                             |
+| **Language**      | The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                     |
+| **Framework**     | Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                        |
+| **Adapters**      | CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                              |
+| **Options**       | The stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and, on a single project, **Also scaffold**: the verticals to install alongside (`--with`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`.                                                                                      |
+| **What to add**   | _(brownfield only)_ Capabilities to layer on — several at once — or a bounded context. A card per vertical, naming the concept it bears, the id `keel add <id>` takes, and what installing it buys, sorted into _Ready_, _Needs another capability first_, _Not for this project_ (collapsed, with the reason) and _Installed_ (each with a **Re-render**). See [What to add](#what-to-add). |
+| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults, and the Generate button. Nothing is written before you press it.                                                                                                                                                    |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
@@ -99,9 +101,65 @@ runs. While the run is refused the line stays, dimmed, and says the
 terminal would refuse it too — it is still what the choices on screen
 spell, and at full strength beside a refusal it read as a way round it.
 
-After a successful generate the page re-reads the directory and turns
-into the brownfield one, so layering `ci` onto what you just
-scaffolded is the next click.
+After a successful generate the page re-reads the directory, turns
+into the brownfield one and opens on **What to add**, the report beside
+it — so layering `ci` onto what you just scaffolded is the next click,
+not four. A plan that would write nothing and run nothing cannot be
+generated: committing it would record a vertical as installed that put
+nothing on disk, and the review says so instead.
+
+**A refusal is shown where the plan would be.** When the engine refuses
+the run as it stands, the plan column says why — the refusal's own
+sentence and its code, as an alert, so a screen reader announces it
+the moment it lands — rather than pointing at a banner above a step
+you may have scrolled away from. It is headed by what kind of failure
+it is: _keel refuses this run_ is a verdict on the choices on screen,
+and changing one clears it; _keel hit a bug, not a refusal_ is keel's
+to fix, and worth reporting; _keel gave no answer on this run_ means
+the run never reached the engine — the server is gone, or turned the
+request away unread, as it does a page reloaded without the token its
+URL carried (open the URL `keel ui` printed again). Only a refusal
+dims the command line under the plan. The review step leads its reason
+with the same words.
+
+## What to add
+
+The brownfield page's cards are read from the project status before
+anything is clicked — the planner's reading, the one `keel add` plans
+by and `keel add --list` prints — so a card and the click cannot
+disagree:
+
+- **Ready** and **Needs another capability first** are checkboxes,
+  several at a time: one plan, one Generate, `keel add a b c` on the
+  command line under it. A "needs" card's badge names what it needs by
+  title — Infrastructure as code _needs Container image, Distribution_
+  — and **ticking it ticks them**, since the add installs them with it
+  either way; unticking one unticks every ticked card that needs it.
+- **Not for this project** — collapsed, one line each: the sentence
+  `keel add <id>` would refuse it with, word for word. _Observability
+  needs an entrypoint this project does not have: HTTP server — a REST
+  endpoint._ Kept rather than hidden, because an absent option answers
+  "why can I not have observability?" with nothing.
+- **Belongs in a service** — at a composite product's root, what goes
+  in one of its services, each saying which.
+- **Installed** — each vertical with a **Re-render** button:
+  `keel add <id> --reapply`, a run of its own rather than a card in the
+  add's set, since it rewrites what the vertical owns from the answers
+  the manifest recorded. Ticking a card lets it go. A product's glue
+  (`fullstack`) and a bounded context are recorded as installed too,
+  and no `keel add` names them, so they are chips, not buttons.
+
+An add can change what an installed vertical would render —
+Persistence arriving where Distribution's deploy descriptor was written
+without a database. Once the preview has said so, the vertical appears
+under the cards as a **proposed re-render**: ticked, it is re-rendered
+in the same run (`--refresh`); left, the report says how to take it up
+later. A project another harness generation wrote is said once, above
+the cards, rather than on each card it refuses.
+
+"Add a bounded context" is always there, and disabled — with the
+refusal `keel add module` would give — on the flat layout and at a
+product root.
 
 ## Finding a stack: the same drill-down, step for step
 
@@ -217,18 +275,19 @@ catalog's own lists, unchanged.
 
 The extras are the planner's (`domain/core/planner.ts`), the same
 reading `keel new --with` and `keel add` refuse by. `keel.dials`
-reports every vertical the preset carries (`verticals`): its own,
-_included_; the ones that install here on their own, _ready_; and the
+reports every registered vertical (`verticals`): the preset's own,
+_included_; the ones that install here on their own, _ready_; the
 ones that install once others have, _needs_, with what they need
 (`requires`, in install order) — Infrastructure as code needs Container
-image, then Distribution. A vertical nothing keel can add makes
-installable here is not on the list.
+image, then Distribution; and the rest, _unavailable_, each with the
+`refusal` `keel new --with` would give it.
 
 The Options step draws that list as its **Also scaffold** group, in
-the same three parts: _Ready_, _Needs another capability first_ —
-each card naming what it needs, by title — and _Comes with
-quarkus-rest_ (or whichever preset), its own, as chips with nothing to
-untick. A box is a gesture, not a field: **ticking one that needs
+the parts the brownfield cards are drawn in: _Ready_, _Needs another
+capability first_ — each card naming what it needs, by title — _Comes
+with quarkus-rest_ (or whichever preset), its own, as chips with
+nothing to untick, and _Not for this project_, collapsed, each with its
+sentence. A box is a gesture, not a field: **ticking one that needs
 others ticks them too**, and **unticking one unticks every ticked
 vertical that needs it**, so tick Infrastructure as code and Container
 image and Distribution tick with it; untick Container image and all
@@ -285,11 +344,13 @@ Three consequences worth knowing:
   deliberately conservative about. A re-render asks only what it has
   nothing recorded for: an adapter the vertical newly resolves to, on
   tags the project gained since it was installed.
-- **An answer belongs to the card it was given on.** Picking another
-  card under **What to add** starts its questions afresh, so a
-  provider chosen for `ci` never rides along into `keel add dev-env`,
-  and whether a pick is an install or a re-render is decided by that
-  card alone. A change also supersedes whatever the page was still
+- **An answer belongs to the run it was given for.** Ticking and
+  unticking cards under **What to add** keeps the answers, and the next
+  preview drops the ones no adapter of the new set asks — exactly as
+  unticking an extra does — so a provider chosen for `ci` never rides
+  along once `ci` is unticked. A **Re-render** is a run of its own and
+  starts its questions afresh, and ticking a card after it starts the
+  add afresh too. A change also supersedes whatever the page was still
   waiting on, so a late reply cannot undo a newer pick.
 
 ## Security
@@ -368,7 +429,9 @@ give, asked before it is run:
 ```jsonc
 {
   "initialised": true,
-  "installed": [{ "id": "vcs", "title": "Version control", "installedAt": "…", … }],
+  "installed": [
+    { "id": "vcs", "title": "Version control", "installedAt": "…", "reapplicable": true, … }
+  ],
   "available": [
     { "id": "ci", "readiness": "ready", "requires": [], … },
     { "id": "iac", "readiness": "needs", "requires": ["containerization", "distribution"], … },
@@ -401,16 +464,21 @@ present exactly when `canAddModule` is false. `harnessGeneration` is
 the marker the manifest carries (`found`, null when none) beside the
 generation this keel writes: where they differ, every add but
 `agent-harness` is refused until the harness is brought forward — one
-fact, reported once rather than on every card. `keel add --list`
-prints the same status.
+fact, reported once rather than on every card. An installed entry is
+`reapplicable` where `keel add <id> --reapply` can re-render it — not a
+product's glue (`fullstack`) nor a bounded context, which the manifest
+records and no `keel add` names. `keel add --list` prints the same
+status.
 
 `add-vertical` names its verticals as `verticals` — a set, planned
 and installed in one run with what it needs, exactly as `keel add a b`
-is — or one of them as `vertical`, the shape the page posts, which
-stands for a list of one. Exactly one of the two; `refresh` names
+is, and what the page posts — or one of them as `vertical`, kept as an
+alias for a list of one. Exactly one of the two; `refresh` names
 installed verticals to re-render in the same run (`keel add
 --refresh`). The install's report lists the re-renders it proposes
-and did not do as `refreshProposals`, each with why.
+and did not do as `refreshProposals`, each with why, and its `notes`
+say what the run decided that was not asked for; a preview carries
+both too, which is how the page offers each proposal before Generate.
 
 `answers` is keyed the way the manifest keys them —
 `{ "<adapterId>": { "<questionId>": "<value>" } }`, the same pair
@@ -425,10 +493,11 @@ An install holds its body's `answers` to the plan exactly as it holds
 (`keel.reapply-frozen-answers`), and so is a value outside its question's
 choices (`keel.invalid-answer`) — none of them is written into a
 manifest, and none is a 500. The page sends only the answers its
-latest preview asked for — an extra unticked after its question was
-answered takes that answer with it, and Generate waits for the preview
-of the run as it now stands — and starts them over whenever the stack
-or the card changes.
+latest preview asked for — an extra or a card unticked after its
+question was answered takes that answer with it, and Generate waits
+for the preview of the run as it now stands — and starts them over
+whenever the stack changes, or the page moves between adding and
+re-rendering.
 
 A refusal comes back as **422** with the domain's own error code:
 
@@ -472,11 +541,14 @@ the one thing an HTTP layer can only read as a crash, so that answered
 (`keel.uncoverable-vertical`) and the mediator puts it back on the
 `Err` rail — and both front doors ask the planner first, so it is
 refused before anything runs, in the same code. It arrives here as a
-422 like any other and the page shows what is missing in the words the
-finder uses — _"Container image needs an entrypoint this project does
-not have: HTTP server — a REST endpoint"_ — never a tag no command can
+422 like any other, and the page no longer waits for one: the project
+status carries the same refusal on the card, so Container image sits
+under _Not for this project_ before any click, in the words the finder
+uses — _"Container image needs an entrypoint this project does not
+have: HTTP server — a REST endpoint"_ — never a tag no command can
 add. Pointed at a composite product's root, a vertical the root cannot
-carry is refused naming the services that can take it.
+carry is refused naming the services that can take it, and listed
+under _Belongs in a service_.
 
 A vertical that installs only once another has is no longer refused
 at all: distribution on a project with no container image yet
@@ -513,7 +585,8 @@ rule, a bug. It carries the same envelope, with the code
 }
 ```
 
-The page shows that sentence, labelled as a bug to report. It used to
+The page shows that sentence, headed as a bug rather than a refusal,
+and labelled as one to report. It used to
 answer with a bare string the page could not read, so a 500 showed as
 `POST /api/preview failed with 500` — and some of those throws are
 refusals nobody has coded yet, whose sentence names the fix. The page

@@ -10,6 +10,9 @@
  * away from the card. So every field here is the answer of the
  * function the command's own front door refuses by:
  *
+ *   - `installed` — what the manifest records, each saying whether
+ *     `keel add --reapply` can re-render it: not the product glue or a
+ *     bounded context, which no `keel add <id>` names.
  *   - `available` — every registered vertical not installed, each with
  *     its readiness and, where `keel add` would refuse it, the refusal
  *     word for word (`../add-readiness.ts`, which the add front door
@@ -43,7 +46,8 @@ import type {
 import { RefusalError } from '../../contract/refusal.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { addReadiness } from '../add-readiness.js';
-import { verticalTitle } from '../registry.js';
+import { installedVertical, verticalTitle } from '../registry.js';
+import { boundedContextVertical } from '../verticals/bounded-context.js';
 import { moduleRefusal } from './add-module.js';
 
 /** The two ports this query needs. */
@@ -93,8 +97,11 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
       initialised: true,
       tags: [...manifest.tags],
       installed: manifest.verticals.map((entry) => ({
-        ...describe(registry, entry.id),
+        ...describeInstalled(registry, entry.id),
         installedAt: entry.installedAt,
+        // What `keel add --reapply` resolves an id against: the add
+        // registry, which leaves out the greenfield-only glue.
+        reapplicable: registry.vertical(entry.id) !== null,
       })),
       available,
       modules: [...manifest.modules],
@@ -135,6 +142,25 @@ function uninitialised(scopeRoot: string): ProjectStatus {
 function describe(registry: Registry, id: string): VerticalDescriptor {
   const vertical = registry.vertical(id);
   if (!vertical) return { id, title: id, description: '', dimensions: [] };
+  return {
+    id,
+    title: verticalTitle(vertical),
+    description: vertical.description,
+    dimensions: [...vertical.dimensions],
+  };
+}
+
+/**
+ * An installed vertical as the project names it — by title, where this
+ * keel knows the piece at all: registered, a stack's own glue
+ * (`fullstack`, which no registry lists on its own), or the context
+ * `keel add module` installs.
+ */
+function describeInstalled(registry: Registry, id: string): VerticalDescriptor {
+  const vertical =
+    installedVertical(registry, id) ??
+    (id === boundedContextVertical.id ? boundedContextVertical : null);
+  if (vertical === null) return describe(registry, id);
   return {
     id,
     title: verticalTitle(vertical),

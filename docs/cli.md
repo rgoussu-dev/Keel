@@ -330,6 +330,11 @@ Not for this project:
 Installed: vcs, walking-skeleton, agent-harness, … — 'keel add <id> --reapply' re-renders one
 ```
 
+At a product root the list ends with what is recorded as installed
+and no `keel add` names — the product's glue, `fullstack` — and a
+project with a bounded context lists `bounded-context` there too:
+`Also installed, which 'keel add' does not re-render: fullstack`.
+
 A refusal is printed in the words `keel add <id>` would refuse it
 with. A vertical that two sets of prerequisites would each serve is
 refused until you name one, but it is listed with the verticals that
@@ -546,8 +551,11 @@ keel ui --port 0        # let the OS pick a free port
 Open the printed URL — **the token in it is what authorises the page**
 — and stop the server with Ctrl-C. Point it at an empty directory and
 it is `keel new`; point it at an existing keel project and it becomes
-`keel add` / `keel add module`, offering only what that project can
-actually take.
+`keel add` / `keel add module`: every vertical not installed, in the
+parts `keel add --list` prints — ready, ready once something else is,
+and not for this project with the refusal's own sentence, collapsed —
+several ticked into one run, and a **Re-render** (`--reapply`) beside
+each installed one.
 
 Full reference, including the JSON API and how the loopback port is
 protected: [the local scaffolder](ui.md).

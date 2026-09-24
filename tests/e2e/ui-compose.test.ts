@@ -1,40 +1,63 @@
 /**
- * The Options step's "Also scaffold" group, driven in a real browser:
- * what a preset takes on top of its own, ticked and unticked.
+ * Composing several verticals into one run, driven in a real browser:
+ * the Options step's "Also scaffold" group on an empty directory, and
+ * the "What to add" cards on a project already scaffolded.
  *
- * The extras used to be a question the preview asked, and the install
- * stops asking a question once it is answered — so the list vanished
- * after the first tick, and the page could post one extra at most and
- * never take it back. They are a control of the Options step now,
- * drawn from `keel.dials`' `verticals`, and a tick is a gesture rather
- * than a field: ticking Infrastructure as code ticks the image and the
- * distribution it needs, unticking the image unticks both.
+ * **Greenfield.** The extras used to be a question the preview asked,
+ * and the install stops asking a question once it is answered — so
+ * the list vanished after the first tick, and the page could post one
+ * extra at most and never take it back. They are a control of the
+ * Options step now, drawn from `keel.dials`' `verticals`, and a tick
+ * is a gesture rather than a field: ticking Infrastructure as code
+ * ticks the image and the distribution it needs, unticking the image
+ * unticks both. What the preset cannot take is listed too, collapsed,
+ * with the reason.
+ *
+ * **Brownfield.** The cards were one radio group, one vertical per
+ * Generate, and half of them on a CLI project a refusal met after the
+ * click. They are the same checkboxes now, sorted by what the project
+ * status read before anything was clicked: IaC's card says it needs
+ * Container image and Distribution, one click ticks all three, and
+ * the page makes one plan of them, one Generate, and stays on "What
+ * to add" with the report — the next thing to do being to add more,
+ * not to pick a directory. On a CLI project, Observability is under
+ * "Not for this project" with its sentence before any click.
  *
  * Which boxes a gesture moves is pinned without a browser
- * (`tests/application/web/target.test.ts`), what the group shows too
- * (`extras.test.ts`), and that `keel.dials` then has nothing to add is
- * walked over every shipped preset (`dials.test.ts`). What none of
- * them can see is the page between them: a box that really ticks its
- * neighbours across the re-render every reply causes, the body that
- * actually goes out — **as `watchTraffic` saw it posted**, not as a
- * control claims — the plan redrawn from it, the review saying so, and
- * Generate held shut until the preview of a tick has landed.
+ * (`tests/application/web/target.test.ts`), what the groups show too
+ * (`extras.test.ts`, `additions.test.ts`), and that `keel.dials` then
+ * has nothing to add is walked over every shipped preset
+ * (`dials.test.ts`). What none of them can see is the page between
+ * them: a box that really ticks its neighbours across the re-render
+ * every reply causes, the body that actually goes out — **as
+ * `watchTraffic` saw it posted**, not as a control claims — the plan
+ * redrawn from it, the review saying so, and Generate held shut until
+ * the preview of a tick has landed.
  *
- * **No Generate, deliberately.** This rides the `web` shard, which
- * provisions a browser and no JDK, and a real quarkus-rest install
- * queues `gradle wrapper` and `./gradlew spotlessApply`. Nothing here
- * needs one: the claim is about what the page posts, and the plan it
- * posts it for is `keel.preview`'s own. That the order the page posts
- * is the one that keeps `DB_URL` in `deploy/compose.yaml` is pinned at
- * the domain level, by the composition grid's I8.
+ * **One Generate, and not on a JVM stack.** This rides the `web`
+ * shard, which provisions a browser and no JDK, and a real
+ * quarkus-rest install queues `gradle wrapper` and
+ * `./gradlew spotlessApply`. The greenfield claim is about what the
+ * page posts, and the plan it posts it for is `keel.preview`'s own;
+ * that the order it posts keeps `DB_URL` in `deploy/compose.yaml` is
+ * pinned at the domain level, by the composition grid's I8. The one
+ * Generate is the brownfield one, on a `ts-http` project seeded
+ * in-process with its own deferred actions faked, as `ui-refusal`
+ * seeds its: an image, its release path and its infrastructure queue
+ * no action there at all, so it needs nothing the shard does not have.
+ * The CLI project is seeded the same way and never generated.
  *
- * Skip rules are the shared ones (`skipE2E`), and the `describe`
- * carries the browser guard because `beforeAll` launches one.
+ * Skip rules are the shared ones (`skipE2E`), and each `describe`
+ * carries the browser guard because its `beforeAll` launches one.
  */
 
+import path from 'node:path';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Locator, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { newProjectCommand } from '../../src/domain/contract/commands.js';
+import type { RunActionsInputs } from '../../src/domain/core/actions.js';
+import { expectOk, installMediator } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
@@ -157,6 +180,14 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       const included = page.locator('#extras-included li');
       expect(await included.allTextContents()).toContain('Observability');
       expect(await page.locator('#extras input[value="observability"]').count()).toBe(0);
+      // What it cannot take is said, collapsed, rather than left out:
+      // nothing is linked here for a gateway to wire.
+      const refused = page.locator('#extras-refused');
+      expect(await refused.getAttribute('open')).toBeNull();
+      expect(await refused.locator('li[data-id="gateway"]').textContent()).toContain(
+        'no linked project serves it here',
+      );
+      expect(await page.locator('#extras input[value="gateway"]').count()).toBe(0);
       // Nothing is ticked yet, and the body says so rather than leaving
       // the question open for the preview to ask.
       expect(lastPreviewed(traffic)).toEqual([]);
@@ -267,6 +298,164 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
 
       release();
       await until(() => page.locator('#generate').isEnabled(), 'Generate once the plan lands');
+    },
+    E2E_TIMEOUT_MS,
+  );
+});
+
+/* ---- the brownfield half ---------------------------------------- */
+
+/** Nothing here is testing a toolchain, so no deferred action runs while seeding. */
+const fakeActions = (inputs: RunActionsInputs): Promise<void> => {
+  void inputs;
+  return Promise.resolve();
+};
+
+/** Scaffolds `stack` into a fresh directory, in-process, and returns it. */
+async function seeded(stack: string, buildSystem: string, prefix: string): Promise<string> {
+  const dir = await mkTempDir(prefix);
+  expectOk(
+    await installMediator({ runDeferred: fakeActions }).dispatch(
+      newProjectCommand({
+        cwd: dir,
+        stack,
+        answers: {},
+        interactive: false,
+        dryRun: false,
+        buildSystem,
+      }),
+    ),
+  );
+  return dir;
+}
+
+/** One card's box on the "What to add" step, by the vertical it stands for. */
+const card = (page: Page, id: string): Locator => page.locator(`#additions input[value="${id}"]`);
+
+/** Whether a card is drawn ticked right now. */
+const cardTicked = async (page: Page, id: string): Promise<boolean> =>
+  (await card(page, id).count()) > 0 && (await card(page, id).isChecked());
+
+/** Opens the page on the project `ui` serves and waits for the brownfield rail. */
+async function openProject(url: string, into: Page, seen: Traffic): Promise<void> {
+  await into.goto(url, { waitUntil: 'domcontentloaded' });
+  await until(
+    async () => (await into.locator('keel-stepper button[data-step="target"]').count()) > 0,
+    'the brownfield rail',
+  );
+  await act(seen, () => Promise.resolve());
+  await goToStep(seen, into, 'target');
+}
+
+describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an add', () => {
+  let project: string;
+  let cli: string;
+  let projectUi: UiProcess;
+  let cliUi: UiProcess;
+  let chromium: Browser;
+  let tab: Page;
+  let seen: Traffic;
+  let errors: string[];
+
+  beforeAll(async () => {
+    buildCli();
+    // An HTTP project, where the one chain of the shipped catalog is
+    // there to compose; and a CLI project, where much is not.
+    project = await seeded('ts-http', 'npm', 'keel-ui-compose-add-e2e-');
+    cli = await seeded('quarkus-cli', 'gradle', 'keel-ui-compose-cli-e2e-');
+    [projectUi, cliUi] = await Promise.all([startUi(project), startUi(cli)]);
+    chromium = await browserType.launch({
+      ...(browserBinary === null ? {} : { executablePath: browserBinary }),
+      args: ['--no-sandbox'],
+    });
+  }, E2E_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await chromium?.close().catch(() => undefined);
+    await projectUi?.stop().catch(() => undefined);
+    await cliUi?.stop().catch(() => undefined);
+    if (project) await fs.remove(project).catch(() => undefined);
+    if (cli) await fs.remove(cli).catch(() => undefined);
+  }, E2E_TIMEOUT_MS);
+
+  beforeEach(async () => {
+    tab = await chromium.newPage();
+    errors = [];
+    tab.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+    seen = watchTraffic(tab);
+  }, E2E_TIMEOUT_MS);
+
+  afterEach(async () => {
+    const found = [...(errors ?? [])];
+    await tab?.close().catch(() => undefined);
+    expect(found).toEqual([]);
+  });
+
+  it(
+    'shows what a CLI project cannot carry before any click, each with its sentence',
+    async () => {
+      await openProject(cliUi.url, tab, seen);
+      const refused = tab.locator('#add-refused');
+      // Collapsed: it answers a question rather than asking one.
+      expect(await refused.getAttribute('open')).toBeNull();
+      const observability = refused.locator('li[data-id="observability"]');
+      expect(await observability.locator('.refused-title').textContent()).toBe('Observability');
+      expect(await observability.textContent()).toContain(
+        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      );
+      expect(await card(tab, 'observability').count()).toBe(0);
+      // Before any click: nothing has been previewed to find it out.
+      expect(seen.posted('/api/preview')).toEqual([]);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'ticks what a card needs with it, and makes one plan, one Generate, staying on What to add',
+    async () => {
+      await openProject(projectUi.url, tab, seen);
+      const iac = tab.locator('#add-needs .card', { has: tab.locator('input[value="iac"]') });
+      expect(await iac.locator('.badge').textContent()).toBe('needs Container image, Distribution');
+
+      const before = seen.posted('/api/preview').length;
+      await act(seen, () => card(tab, 'iac').click());
+      for (const id of CHAIN) expect(await cardTicked(tab, id), id).toBe(true);
+      expect(await cardTicked(tab, 'ci')).toBe(false);
+      // One plan: the whole set, in one body, as it went out.
+      const previews = seen.posted('/api/preview') as { target: { verticals?: unknown } }[];
+      expect(previews.length - before).toBe(1);
+      expect(previews[previews.length - 1]?.target.verticals).toEqual(CHAIN);
+      expect(await command(tab)).toBe(`keel add ${CHAIN.join(' ')} --yes`);
+      await until(() => plansCompose(tab), 'the plan to list deploy/compose.yaml');
+
+      await goToStep(seen, tab, 'review');
+      expect(
+        await tab
+          .locator('keel-review dd', {
+            hasText: 'Container image, Distribution, Infrastructure as code',
+          })
+          .count(),
+      ).toBe(1);
+      await until(() => tab.locator('#generate').isEnabled(), 'Generate');
+      await act(seen, () => tab.locator('#generate').click());
+      await until(
+        async () => (await tab.locator('keel-plan [data-role="report"]').isVisible()) === true,
+        'the report',
+      );
+
+      // One Generate, for the three.
+      const installs = seen.posted('/api/install') as { target: { verticals?: unknown } }[];
+      expect(installs.map((body) => body.target.verticals)).toEqual([CHAIN]);
+      expect(await tab.locator('keel-plan [data-role="report"]').textContent()).toContain(
+        `Done — ${CHAIN.join(' ')}`,
+      );
+      // The page stays where the next thing to do is.
+      expect(await tab.locator('[data-role="step-title"]').textContent()).toBe('What to add');
+      for (const id of CHAIN) {
+        expect(await tab.locator(`#rerender-${id}`).count(), id).toBe(1);
+        expect(await card(tab, id).count(), id).toBe(0);
+      }
+      expect(await fs.pathExists(path.join(project, 'deploy', 'compose.yaml'))).toBe(true);
     },
     E2E_TIMEOUT_MS,
   );

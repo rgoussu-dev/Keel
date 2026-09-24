@@ -23,7 +23,7 @@
  */
 
 import type { Query } from '../kernel/action.js';
-import type { DocsReport, InstallTarget, PresetAnswers } from './commands.js';
+import type { DocsReport, InstallTarget, PresetAnswers, RefreshProposal } from './commands.js';
 import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
@@ -293,10 +293,12 @@ export interface DialOptions {
   readonly extraVerticals: readonly ChoiceDescriptor[];
   /**
    * The verticals of this preset as an extras control shows them:
-   * every one {@link DialOptions.extraVerticals} offers, and the
-   * preset's own (`included`) — each with its readiness and what it
-   * needs installed first. Empty where there are no extras, a
-   * composite or a brownfield target.
+   * every one {@link DialOptions.extraVerticals} offers, the preset's
+   * own (`included`), and every other registered vertical, which it
+   * cannot carry (`unavailable`, with the refusal `keel new --with`
+   * gives it) — each with its readiness and what it needs installed
+   * first. Empty where there are no extras, a composite or a
+   * brownfield target.
    */
   readonly verticals: readonly VerticalOption[];
   /**
@@ -322,9 +324,11 @@ export interface VerticalOption {
   readonly description: string;
   /**
    * `included` — the preset installs it anyway; `ready` — it installs
-   * here on its own; `needs` — it installs once {@link requires} have.
+   * here on its own; `needs` — it installs once {@link requires} have;
+   * `unavailable` — nothing keel can add makes it install on this
+   * preset, and {@link refusal} says why.
    */
-  readonly readiness: 'included' | 'ready' | 'needs';
+  readonly readiness: 'included' | 'ready' | 'needs' | 'unavailable';
   /**
    * Vertical ids to install first, in the order they install — what
    * ticking this one ticks too. Empty unless `needs`, and empty for a
@@ -332,6 +336,14 @@ export interface VerticalOption {
    * choice is the user's, made by ticking one of them.
    */
   readonly requires: readonly string[];
+  /**
+   * What `keel new --with <id>` would answer, word for word: on every
+   * `unavailable` option, and on a `needs` whose prerequisites are
+   * tied. The same reading a brownfield card carries
+   * ({@link AvailableVerticalDescriptor.refusal}), so the two halves
+   * say one thing about one vertical. Absent where it is accepted.
+   */
+  readonly refusal?: RefusalDescriptor;
 }
 
 /** One change {@link DialOptions} made to the caller's extras. */
@@ -529,6 +541,23 @@ export interface InstallPreview {
   readonly actions: readonly string[];
   /** Harness elements omitted because the project has no agent-harness; absent when none. */
   readonly skippedHarnessElements?: number;
+  /**
+   * What the run decided that the request did not spell out, one
+   * sentence each — the install report's own notes
+   * (`InstallReport.notes`): the prerequisites it adds and what needs
+   * them, the order it installs in when the one named could not be
+   * kept, a vertical already there, each re-render it proposes. Absent
+   * when there is nothing to say.
+   */
+  readonly notes?: readonly string[];
+  /**
+   * The installed verticals this run would leave as they were
+   * rendered, although what it installs changes what they would render
+   * now — the install report's own (`InstallReport.refreshProposals`).
+   * A front end offers each as a re-render to take up in the same run
+   * (`AddVerticalTarget.refresh`). Absent when there are none.
+   */
+  readonly refreshProposals?: readonly RefreshProposal[];
 }
 
 /**
@@ -563,6 +592,15 @@ export function previewQuery(input: Omit<PreviewQuery, 'kind' | 'intent'>): Prev
 /** A vertical already installed in the project. */
 export interface InstalledVerticalDescriptor extends VerticalDescriptor {
   readonly installedAt: string;
+  /**
+   * Whether `keel add <id> --reapply` can re-render it: false for an
+   * id the manifest records that no brownfield command installs by id
+   * — `fullstack`, the glue a product root is scaffolded with, and
+   * `bounded-context`, which `keel add module` drives — and for one
+   * this keel no longer registers at all. A front end shows such an
+   * entry as a fact about the project, not as a control.
+   */
+  readonly reapplicable: boolean;
 }
 
 /**

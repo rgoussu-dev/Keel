@@ -124,5 +124,7 @@ function previewOf(report: InstallReport, questions: InstallPreview['questions']
     ...(report.skippedHarnessElements === undefined
       ? {}
       : { skippedHarnessElements: report.skippedHarnessElements }),
+    ...(report.notes === undefined ? {} : { notes: report.notes }),
+    ...(report.refreshProposals === undefined ? {} : { refreshProposals: report.refreshProposals }),
   };
 }

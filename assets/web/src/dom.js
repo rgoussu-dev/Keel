@@ -130,6 +130,86 @@ function body(choice) {
   return column;
 }
 
+/**
+ * What a project cannot take, as a collapsed list: a `<details>`
+ * whose summary counts them, one line each — the title, then the
+ * sentence the command would refuse it with.
+ *
+ * Collapsed because the list answers a question ("why is persistence
+ * not on offer?") rather than asking one, and on a CLI project it is
+ * longer than what is. Kept, rather than left out, because an absent
+ * option answers that question with nothing.
+ *
+ * `open` is the element's to remember: a step is redrawn on every
+ * reply, and a list that snapped shut under the reader each time
+ * would be unreadable. `onToggle` hears each opening and closing.
+ *
+ * @param {{ id: string, title: string, items: { id: string, title: string, sentence: string }[], open: boolean, onToggle: (open: boolean) => void }} spec
+ * @returns {HTMLElement}
+ */
+export function refusedList({ id, title, items, open, onToggle }) {
+  const details = el(
+    'details',
+    { id, class: 'refused', open },
+    el('summary', { text: `${title} (${items.length})` }),
+    el(
+      'ul',
+      { class: 'plain refused-list' },
+      ...items.map((item) =>
+        el(
+          'li',
+          { attrs: { 'data-id': item.id } },
+          el('span', { class: 'refused-title', text: item.title }),
+          el('span', { class: 'muted', text: item.sentence }),
+        ),
+      ),
+    ),
+  );
+  details.addEventListener('toggle', () => onToggle(details.open));
+  return details;
+}
+
+/**
+ * The focused control inside `host`, as something that outlives the
+ * node: its id where it has one, else the card group it sits in and
+ * the value it carries — a card's input has no id of its own.
+ *
+ * A step is redrawn on every reply, and a box ticked from the keyboard
+ * would otherwise hand the focus back to the page body; this and
+ * {@link refocus} put it back on the control that replaced it.
+ *
+ * @param {HTMLElement} host
+ * @returns {{ id: string } | { group: string, value: string } | null}
+ */
+export function focusIn(host) {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !host.contains(active)) return null;
+  if (active.id !== '') return { id: active.id };
+  const group = active.closest('.cards');
+  if (group instanceof HTMLElement && group.id !== '' && active instanceof HTMLInputElement) {
+    return { group: group.id, value: active.value };
+  }
+  return null;
+}
+
+/**
+ * Puts the focus back on the control {@link focusIn} described, if it
+ * is still drawn.
+ *
+ * @param {HTMLElement} host
+ * @param {{ id: string } | { group: string, value: string } | null} focused
+ */
+export function refocus(host, focused) {
+  if (focused === null) return;
+  const found =
+    'id' in focused
+      ? host.querySelector(`#${CSS.escape(focused.id)}`)
+      : host.querySelector(
+          `#${CSS.escape(focused.group)} input[value="${CSS.escape(focused.value)}"]`,
+        );
+  if (found instanceof HTMLElement) found.focus({ preventScroll: true });
+}
+
 /** A muted line of prose, for a step with something to say and nothing to ask. */
 export function note(text) {
   const paragraph = document.createElement('p');

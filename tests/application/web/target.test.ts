@@ -23,7 +23,11 @@
  * ticks what it needs, unticking one unticks what needs it. That the
  * route then has nothing to add or drop — the page's closure is the
  * planner's — is proved over every shipped preset by `dials.test.ts`'s
- * walk; which boxes a gesture moves is decided here.
+ * walk; which boxes a gesture moves is decided here. The brownfield
+ * cards are the same gesture over the project status's `requires`,
+ * and an installed vertical's **Re-render** a run of its own that lets
+ * the add go; one click on IaC ticking three cards into one plan and
+ * one Generate is `ui-compose.test.ts`, in a browser.
  *
  * The greenfield half has one more job: a new preset keeps the dials
  * and lets `keel.dials` snap them, and once the reply settles the move
@@ -54,12 +58,17 @@ import type {
 import {
   answer,
   extrasOf,
-  pickVertical,
   previewed,
+  refreshOf,
+  rerender,
+  rerendering,
   restart,
   retarget,
   settle,
   toggleExtra,
+  toggleRefresh,
+  toggleVertical,
+  verticalsOf,
 } from '../../../assets/web/src/target.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
@@ -101,6 +110,7 @@ const vertical = (id: string): VerticalDescriptor => ({
 const installed = (id: string): InstalledVerticalDescriptor => ({
   ...vertical(id),
   installedAt: '2026-04-26T12:00:00Z',
+  reapplicable: true,
 });
 
 const ready = (id: string): AvailableVerticalDescriptor => ({
@@ -109,10 +119,31 @@ const ready = (id: string): AvailableVerticalDescriptor => ({
   requires: [],
 });
 
+const needs = (id: string, requires: readonly string[]): AvailableVerticalDescriptor => ({
+  ...vertical(id),
+  readiness: 'needs',
+  requires,
+});
+
 /** A project `keel new` scaffolded: `vcs` is in, `ci` and `dev-env` are not. */
 const status: Pick<ProjectStatus, 'installed' | 'available'> = {
   installed: [installed('vcs'), installed('walking-skeleton')],
   available: [ready('ci'), ready('dev-env')],
+};
+
+/**
+ * An HTTP project's cards, the shipped catalog's one chain among them:
+ * the image is ready, the distribution needs it, IaC needs both — in
+ * the id order the status lists them in.
+ */
+const chain: Pick<ProjectStatus, 'installed' | 'available'> = {
+  installed: [installed('vcs')],
+  available: [
+    ready('ci'),
+    ready('containerization'),
+    needs('distribution', ['containerization']),
+    needs('iac', ['containerization', 'distribution']),
+  ],
 };
 
 /** The question `ci` asks on a TypeScript project, as a preview binds it. */
@@ -127,7 +158,7 @@ const ENGINE: AnswerBinding = {
 
 /** Where the brownfield page opens: on no vertical at all. */
 const brownfield = (): Run => ({
-  target: { kind: 'add-vertical', vertical: '' },
+  target: { kind: 'add-vertical', verticals: [] },
   answers: {},
   dials: null,
   generation: 0,
@@ -157,37 +188,121 @@ const tuned = (): Run => {
   return { ...greenfield(), target, dials: jvmDials(target) };
 };
 
-describe('a vertical card', () => {
-  it('re-renders an installed vertical and installs any other', () => {
-    expect(pickVertical(status, 'vcs')).toEqual({
+describe('the "What to add" cards', () => {
+  it('ticks what a card needs along with it, prerequisites first', () => {
+    const iac = toggleVertical(brownfield(), chain, 'iac', true);
+    expect(iac.target).toEqual({
       kind: 'add-vertical',
-      vertical: 'vcs',
-      reapply: true,
+      verticals: ['containerization', 'distribution', 'iac'],
     });
-    expect(pickVertical(status, 'ci')).toEqual({
-      kind: 'add-vertical',
-      vertical: 'ci',
-      reapply: false,
-    });
+    // What is ticked already stays, once, in the order the cards are
+    // listed where nothing ties it to the rest.
+    expect(verticalsOf(toggleVertical(iac, chain, 'ci', true).target)).toEqual([
+      'ci',
+      'containerization',
+      'distribution',
+      'iac',
+    ]);
   });
 
-  it('lets the re-render flag go with the installed card that set it', () => {
-    const onInstalled = retarget(brownfield(), pickVertical(status, 'vcs'));
-    expect(onInstalled.target.reapply).toBe(true);
+  it('unticks every card that needs the one unticked, and nothing else', () => {
+    const all = toggleVertical(toggleVertical(brownfield(), chain, 'ci', true), chain, 'iac', true);
+    expect(verticalsOf(toggleVertical(all, chain, 'containerization', false).target)).toEqual([
+      'ci',
+    ]);
+    expect(verticalsOf(toggleVertical(all, chain, 'iac', false).target)).toEqual([
+      'ci',
+      'containerization',
+      'distribution',
+    ]);
+    // The last card unticked leaves a run with nothing to add, which
+    // the page previews as nothing at all.
+    const none = toggleVertical(toggleVertical(all, chain, 'ci', false), chain, 'iac', false);
+    expect(
+      verticalsOf(
+        toggleVertical(
+          toggleVertical(none, chain, 'distribution', false),
+          chain,
+          'containerization',
+          false,
+        ).target,
+      ),
+    ).toEqual([]);
+  });
 
+  it('keeps the answers while the set moves, for the next preview to prune', () => {
+    const onCi = answer(toggleVertical(brownfield(), status, 'ci', true), {
+      binding: PROVIDER,
+      value: 'gitlab-ci',
+    });
+    const both = toggleVertical(onCi, status, 'dev-env', true);
+    expect(both.answers).toEqual(onCi.answers);
+    // Unticked, `ci` takes nothing with it yet: the preview of the
+    // set without it is what knows its question is no longer asked
+    // (`previewed`), exactly as for an unticked greenfield extra.
+    expect(toggleVertical(both, status, 'ci', false).answers).toEqual(onCi.answers);
+  });
+
+  it('re-renders an installed vertical as a run of its own, letting the add go', () => {
+    const onCi = answer(toggleVertical(brownfield(), status, 'ci', true), {
+      binding: PROVIDER,
+      value: 'gitlab-ci',
+    });
+    const again = rerender(onCi, 'vcs');
+    expect(again.target).toEqual({ kind: 'add-vertical', verticals: ['vcs'], reapply: true });
+    expect(rerendering(again.target)).toBe('vcs');
+    // The answer was `ci`'s. Carried onto the re-render it would reach
+    // no adapter the run has, which the install refuses.
+    expect(again.answers).toEqual({});
+
+    // Pressed on another installed vertical, the run is that one's.
+    expect(rerender(again, 'walking-skeleton').target).toEqual({
+      kind: 'add-vertical',
+      verticals: ['walking-skeleton'],
+      reapply: true,
+    });
+    // Pressed again on the same one, it lets it go.
+    expect(rerender(again, 'vcs').target).toEqual({ kind: 'add-vertical', verticals: [] });
+  });
+
+  it('lets the re-render flag go with the first card ticked after it', () => {
+    const again = rerender(brownfield(), 'vcs');
     // What this used to post was a reapply of `ci`, refused as
     // `keel.vertical-not-installed`.
-    const next = retarget(onInstalled, pickVertical(status, 'ci'));
-    expect(next.target).toEqual({ kind: 'add-vertical', vertical: 'ci', reapply: false });
+    const next = toggleVertical(again, status, 'ci', true);
+    expect(next.target).toEqual({ kind: 'add-vertical', verticals: ['ci'] });
+    expect(rerendering(next.target)).toBeNull();
+  });
+
+  it('takes a proposed re-render up beside the add, and lets it go with the last card', () => {
+    const onPersistence = toggleVertical(brownfield(), status, 'dev-env', true);
+    const refreshed = toggleRefresh(onPersistence, 'vcs', true);
+    expect(refreshed.target).toEqual({
+      kind: 'add-vertical',
+      verticals: ['dev-env'],
+      refresh: ['vcs'],
+    });
+    expect(refreshOf(refreshed.target)).toEqual(['vcs']);
+    // Ticking more keeps it; unticking it lets it go.
+    expect(refreshOf(toggleVertical(refreshed, status, 'ci', true).target)).toEqual(['vcs']);
+    expect(toggleRefresh(refreshed, 'vcs', false).target).toEqual({
+      kind: 'add-vertical',
+      verticals: ['dev-env'],
+    });
+    // Nothing left to add, nothing left to re-render beside it.
+    expect(toggleVertical(refreshed, status, 'dev-env', false).target).toEqual({
+      kind: 'add-vertical',
+      verticals: [],
+    });
   });
 
   it('replaces the target rather than merging a whole one into it', () => {
     // The kind tab says nothing of `reapply` — and merged, that
     // silence was what kept the flag alive for the next card.
-    const onInstalled = retarget(brownfield(), pickVertical(status, 'vcs'));
-    expect(retarget(onInstalled, { kind: 'add-vertical', vertical: '' }).target).toEqual({
+    const again = rerender(brownfield(), 'vcs');
+    expect(retarget(again, { kind: 'add-vertical', verticals: [] }).target).toEqual({
       kind: 'add-vertical',
-      vertical: '',
+      verticals: [],
     });
 
     // The same silence on the context form: "nothing — a standalone
@@ -204,27 +319,7 @@ describe('a vertical card', () => {
     });
   });
 
-  it('clears the answers when another card is picked', () => {
-    const onCi = answer(retarget(brownfield(), pickVertical(status, 'ci')), {
-      binding: PROVIDER,
-      value: 'gitlab-ci',
-    });
-    expect(onCi.answers).toEqual({ 'ci/ts-pipeline': { provider: 'gitlab-ci' } });
-
-    // Carried onto a reapply, this answer is refused at install —
-    // no adapter the re-render runs reads it; carried onto a plain
-    // install of another vertical, it is refused the same way.
-    expect(retarget(onCi, pickVertical(status, 'vcs')).answers).toEqual({});
-    expect(retarget(onCi, pickVertical(status, 'dev-env')).answers).toEqual({});
-  });
-
-  it('keeps the answers while the subject stays the same', () => {
-    const onCi = answer(retarget(brownfield(), pickVertical(status, 'ci')), {
-      binding: PROVIDER,
-      value: 'gitlab-ci',
-    });
-    expect(retarget(onCi, pickVertical(status, 'ci')).answers).toEqual(onCi.answers);
-
+  it('keeps the answers of a context being renamed', () => {
     // Renaming the context an `add-module` run creates is a typo
     // fixed, not a different run.
     const named = answer(retarget(brownfield(), { kind: 'add-module', module: 'bill' }), {
@@ -234,6 +329,14 @@ describe('a vertical card', () => {
     expect(retarget(named, { kind: 'add-module', module: 'billing' }).answers).toEqual(
       named.answers,
     );
+  });
+
+  it('reads the verticals of a target, and none of any other', () => {
+    expect(verticalsOf({ kind: 'add-vertical', verticals: ['ci', 'iac'] })).toEqual(['ci', 'iac']);
+    expect(verticalsOf({ kind: 'add-module', module: 'billing' })).toEqual([]);
+    expect(verticalsOf(null)).toEqual([]);
+    expect(refreshOf({ kind: 'add-vertical', verticals: ['ci'] })).toEqual([]);
+    expect(rerendering({ kind: 'add-vertical', verticals: ['ci'] })).toBeNull();
   });
 });
 
@@ -299,8 +402,8 @@ describe('a greenfield control', () => {
   });
 
   it('takes a target of another kind whole, and starts over', () => {
-    const next = retarget(greenfield(), { kind: 'add-vertical', vertical: '' });
-    expect(next.target).toEqual({ kind: 'add-vertical', vertical: '' });
+    const next = retarget(greenfield(), { kind: 'add-vertical', verticals: [] });
+    expect(next.target).toEqual({ kind: 'add-vertical', verticals: [] });
     expect(next.answers).toEqual({});
     expect(next.dials).toBeNull();
   });
@@ -687,7 +790,7 @@ describe('what a preset move could not keep', () => {
     };
     expect(retarget(settled, { moduleLayout: 'modulith' }).notice).toBe('');
     expect(answer(settled, { binding: ENGINE, value: 'mysql' }).notice).toBe('');
-    expect(restart(settled, { kind: 'add-vertical', vertical: '' }).notice).toBe('');
+    expect(restart(settled, { kind: 'add-vertical', verticals: [] }).notice).toBe('');
     // A reply settling a move that carried nothing has nothing to add.
     expect(settle(settled, jvmDials(settled.target as DialOptions['target'])).notice).toBe(
       settled.notice,
@@ -767,22 +870,23 @@ describe('the request in flight', () => {
     expect(superseded(answer(inFlight, { binding: { kind: 'buildSystem' }, value: 'maven' }))).toBe(
       true,
     );
-    expect(superseded(restart(inFlight, { kind: 'add-vertical', vertical: '' }))).toBe(true);
+    expect(superseded(restart(inFlight, { kind: 'add-vertical', verticals: [] }))).toBe(true);
   });
 
   it('keeps moving forward, so no later transition can reuse an id', () => {
-    const first = retarget(brownfield(), pickVertical(status, 'vcs'));
-    const second = retarget(first, pickVertical(status, 'ci'));
-    const third = restart(second, { kind: 'add-vertical', vertical: '' });
-    expect([first.generation, second.generation, third.generation]).toEqual([1, 2, 3]);
+    const first = rerender(brownfield(), 'vcs');
+    const second = toggleVertical(first, status, 'ci', true);
+    const third = toggleRefresh(second, 'vcs', true);
+    const fourth = restart(third, { kind: 'add-vertical', verticals: [] });
+    expect([first, second, third, fourth].map((run) => run.generation)).toEqual([1, 2, 3, 4]);
   });
 });
 
 describe('pointing the page at a directory', () => {
   it('starts the run over at the target given', () => {
-    const next = restart(greenfield(), { kind: 'add-vertical', vertical: '' });
+    const next = restart(greenfield(), { kind: 'add-vertical', verticals: [] });
     expect(next).toEqual({
-      target: { kind: 'add-vertical', vertical: '' },
+      target: { kind: 'add-vertical', verticals: [] },
       answers: {},
       dials: null,
       generation: 1,

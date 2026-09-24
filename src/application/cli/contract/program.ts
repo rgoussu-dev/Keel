@@ -527,7 +527,9 @@ function printOptionList(
  * `keel add --list` inside a project: every vertical not installed,
  * grouped by what `keel add <id>` would do with it — install it, install
  * it with what it needs first, or refuse it, in the refusal's own
- * sentence — then what is installed. A vertical two sets of
+ * sentence — then what is installed, what `--reapply` re-renders apart
+ * from what it does not (a product's glue, a bounded context). A
+ * vertical two sets of
  * prerequisites tie on is refused until one is named, but it is no
  * less for this project: it is listed with the others that need
  * something first, in the sentence that names the choice. It prints
@@ -561,9 +563,19 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
     log.info('Not for this project:');
     for (const v of refused) log.info(row(v.id, v.refusal?.message ?? ''));
   }
-  if (status.installed.length > 0) {
+  const rerenderable = status.installed.filter((v) => v.reapplicable);
+  const recorded = status.installed.filter((v) => !v.reapplicable);
+  if (rerenderable.length > 0) {
     log.info(
-      `Installed: ${status.installed.map((v) => v.id).join(', ')} — 'keel add <id> --reapply' re-renders one`,
+      `Installed: ${rerenderable.map((v) => v.id).join(', ')} — 'keel add <id> --reapply' re-renders one`,
+    );
+  }
+  // A product's glue and a bounded context are recorded as installed,
+  // and no `keel add <id>` names them: offering a re-render of one
+  // would offer a refusal.
+  if (recorded.length > 0) {
+    log.info(
+      `Also installed, which 'keel add' does not re-render: ${recorded.map((v) => v.id).join(', ')}`,
     );
   }
 }
