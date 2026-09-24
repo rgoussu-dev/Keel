@@ -18,7 +18,7 @@
 import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { ok, type Result } from '../../kernel/result.js';
-import { projectScopeRoot, type ManifestV2 } from '../../contract/manifest.js';
+import { effectiveTags, projectScopeRoot, type ManifestV2 } from '../../contract/manifest.js';
 import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type {
@@ -31,6 +31,7 @@ import { emitsFor } from '../adapters/context-support.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
 import { CONTEXT_TAG } from '../adapters/added-context.js';
 import { conflictsOf, legalWith } from '../compatibility.js';
+import { applies } from '../planner.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import { listVerticalIds, verticalTitle } from '../registry.js';
 
@@ -74,6 +75,7 @@ function uninitialised(scopeRoot: string): ProjectStatus {
 
 function statusOf(registry: Registry, scopeRoot: string, manifest: ManifestV2): ProjectStatus {
   const installedIds = new Set(manifest.verticals.map((v) => v.id));
+  const tags = effectiveTags(manifest);
   return {
     scopeRoot,
     initialised: true,
@@ -82,13 +84,28 @@ function statusOf(registry: Registry, scopeRoot: string, manifest: ManifestV2): 
       describeInstalled(registry, entry.id, entry.installedAt),
     ),
     available: listVerticalIds(registry)
-      .filter((id) => !installedIds.has(id))
+      .filter((id) => !installedIds.has(id) && !emitsNothing(registry, id, tags))
       .flatMap((id) => describeVertical(registry, id)),
     modules: [...manifest.modules],
     services: [...manifest.services],
     moduleLayout: moduleLayoutOf(manifest.tags),
     canAddModule: canAddModule(manifest),
   };
+}
+
+/**
+ * Whether `keel add <id>` would have nothing to write here: a vertical
+ * declaring no dimensions — the gateway, whose adapters are selected
+ * by a linked project's peer tags — with no adapter matching. Such a
+ * card used to install zero files and be recorded, which then blocked
+ * the real install after `keel link`; the front door now refuses it
+ * with the planner's sentence (`../planner.ts` `applies`), so it is no
+ * card at all. Every other vertical stays listed whether or not it can
+ * go here — `keel add` says why when it cannot.
+ */
+function emitsNothing(registry: Registry, id: string, tags: readonly string[]): boolean {
+  const vertical = registry.vertical(id);
+  return vertical !== null && vertical.dimensions.length === 0 && !applies(vertical, tags);
 }
 
 function describeInstalled(

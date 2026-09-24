@@ -101,19 +101,22 @@ import { assemblyRefusal } from '../compatibility.js';
 import {
   emitsPeerContext,
   legalBuildSystems,
-  legalExtraVerticals,
   legalModuleLayouts,
+  offeredAsExtra,
   peerContextOffered,
+  presetScope,
   promotedBy,
+  verticalOptions,
 } from '../dials.js';
 import { installVerticals } from '../install.js';
+import { admit, type AdmittedSet } from '../plan-refusal.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
   listStackIds,
   listStacks,
+  verticalTitle,
   type StackSummary,
-  type VerticalSummary,
 } from '../registry.js';
 import {
   entrypointCombinations,
@@ -132,14 +135,13 @@ import {
   type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
-import { coverageGap, coversFor, UNCOVERED_CODE, type CoverageGap } from '../resolver.js';
-import { coverageSentence } from '../refusals.js';
 import { NOTHING_INSTALLED, strayAnswerRefusal } from '../supplied-answers.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type { Tag } from '../../contract/composition.js';
+import type { VerticalOption } from '../../contract/queries.js';
 
 /**
  * Question ids of the four **stack-level** dials — the choices the
@@ -513,6 +515,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
 
   private printPlan(report: InstallReport): void {
     this.deps.logger.info(`keel new ${report.subject}: planned changes`);
+    for (const note of report.notes ?? []) this.deps.logger.info(`  note: ${note}`);
     for (const c of report.changes) {
       const tag = c.kind === 'create' ? '+' : c.kind === 'modify' ? '~' : '-';
       this.deps.logger.info(`  ${tag} ${c.path}`);
@@ -554,7 +557,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     ]);
     if (!extras.ok) return extras;
 
-    const legal = assemblyIsLegal(stack, extras.value, [
+    const legal = assemblyIsLegal(stack, extras.value.order, [
       ...stackTagsFor(stack, buildTag.value, layoutTag.value),
       ...(peerTag.value ? [peerTag.value] : []),
     ]);
@@ -571,17 +574,23 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       peers: [],
       services: [],
       skipVcs: false,
-      extraVerticals: extras.value,
+      extraVerticals: extras.value.order,
       command,
       now,
       prompt,
     });
 
+    const notes = extras.value.reordered
+      ? [
+          `installed in dependency order: ${extras.value.order.map((vertical) => vertical.id).join(', ')}`,
+        ]
+      : [];
     const report: InstallReport = {
       subject: stack.id,
       changes: staged.tree.changes(),
       actions: staged.actions.map((a) => a.description),
       committed: !command.dryRun,
+      ...(notes.length > 0 ? { notes } : {}),
       ...(staged.skippedHarnessElements > 0
         ? { skippedHarnessElements: staged.skippedHarnessElements }
         : {}),
@@ -1003,47 +1012,42 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   /**
    * Resolves the verticals to layer on top of the stack's own: the
    * `--with` list when supplied, the interactive multi-select
-   * otherwise, none when neither.
+   * otherwise, none when neither — and the order they install in.
    *
-   * **The menu is pruned twice.** The stack's own verticals are off
-   * it — the stack installs them either way, and naming one would be
-   * asking for a second install of something already in the plan.
-   * And so is any vertical whose dimensions no adapter covers for
-   * this stack: `persistence` on a CLI-only preset resolves to
-   * nothing and would hard-fail at install, which is the dead end an
-   * interactive flow must not offer. That probe is
-   * {@link coversFor}, run against the tag set the other three dials
-   * settled — which is why this question comes last among them —
-   * plus what the stack's own verticals promote on their way past.
+   * **The menu is the planner's** (`../planner.ts`, through
+   * {@link verticalOptions}), the same list `keel.dials` reports: the
+   * stack's own verticals are off it — the stack installs them either
+   * way — and so is any vertical nothing keel can add makes install
+   * here, such as `persistence` on a CLI-only preset. What stays is
+   * ready, or ready once others are: `iac` is on it, labelled with the
+   * image and the release it needs.
    *
-   * `--with` is not pruned the same way — it is checked, not
-   * filtered: a name that is not a registered vertical, or is one the
-   * stack already carries, is refused at the front door with the list
-   * spelled out, exactly as `keel add` refuses an unknown id. Coverage
-   * is checked there too, but not with the menu's flat probe — see
-   * {@link preflightCoverage}.
+   * `--with` is checked rather than filtered: a name that is not a
+   * registered vertical, one the stack already carries, or one named
+   * twice is refused at the front door with the list spelled out,
+   * exactly as `keel add` refuses an unknown id. Then the set is
+   * planned (`../plan-refusal.ts`) — the same reading `keel add` asks
+   * of its one vertical — and installs in the order the planner puts
+   * it in, the rest by id, whatever order it was named in. A set that
+   * leaves out a prerequisite is refused, naming what to add; one the
+   * stack cannot carry is refused in the resolver's own sentence, plus
+   * the remedy only `--with` has. Both before a single adapter
+   * question.
    */
   private async resolveExtraVerticals(
     command: NewProjectCommand,
     stack: Stack,
     prompt: Prompt,
     tags: readonly Tag[],
-  ): Promise<Result<readonly Vertical[]>> {
+  ): Promise<Result<AdmittedSet>> {
+    const registry = this.deps.registry;
     const own = new Set(stack.verticals.map((v) => v.id));
-    // What is on the table before any extra runs: the dials' tags
-    // plus whatever the stack's own verticals promote while
-    // installing. A stack that ships `distribution` itself makes
-    // `iac` legal here, and neither the menu nor the front door
-    // should pretend otherwise.
-    const seed = [...tags, ...promotedBy(stack.verticals)];
-    // The same menu `keel.dials` reports, so a form's list and this
-    // question's choices cannot come apart — see `../dials.ts` for
-    // what makes an extra a dead end here.
-    const candidates = legalExtraVerticals(this.deps.registry, stack, tags).filter(
-      (v) =>
-        command.agentHarness !== false ||
-        (v.id !== 'agent-harness' &&
-          !this.deps.registry.vertical(v.id)?.promotes?.includes(AGENT_HARNESS_TAG)),
+    const candidates = verticalOptions(registry, stack, tags).filter(
+      (option) =>
+        offeredAsExtra(option) &&
+        (command.agentHarness !== false ||
+          (option.id !== 'agent-harness' &&
+            !registry.vertical(option.id)?.promotes?.includes(AGENT_HARNESS_TAG))),
     );
     const requested =
       command.extraVerticals !== undefined
@@ -1051,7 +1055,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
         : !command.interactive || candidates.length === 0
           ? []
           : decodeSelection(
-              await prompt.ask(extraVerticalsQuestion(candidates, stack), stackAsker(stack)),
+              await prompt.ask(
+                extraVerticalsQuestion(candidates, stack, registry),
+                stackAsker(stack),
+              ),
             );
 
     const chosen: Vertical[] = [];
@@ -1064,7 +1071,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           ),
         );
       }
-      const vertical = this.deps.registry.vertical(id);
+      const vertical = registry.vertical(id);
       if (!vertical) {
         return err(
           new DomainError(
@@ -1091,9 +1098,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       chosen.push(vertical);
     }
 
-    const refusal = preflightCoverage(stack, chosen, seed);
-    if (refusal) return err(refusal);
-    return ok(chosen);
+    return admit(registry, presetScope(stack, tags), chosen, {
+      unavailable: (vertical, sentence) =>
+        `stack '${stack.id}': ${sentence}; drop '${vertical.id}' from --with, or scaffold a stack that can carry it`,
+    });
   }
 
   private async resolveLayout(
@@ -1153,108 +1161,6 @@ function assemblyIsLegal(
   const refusal = assemblyRefusal([stack, ...stack.verticals, ...extras], tags);
   if (refusal === null) return ok(null);
   return err(new DomainError(`stack '${stack.id}': ${refusal}`, 'keel.incompatible'));
-}
-
-/**
- * The front door's coverage check for `--with`: refuses an extra no
- * adapter here can cover, *before* any adapter question is asked.
- *
- * It cannot be the menu's flat `coversFor` probe. That probe is
- * conservative — it sees the tags it is given, never the ones an
- * adapter promotes at install time — and conservatism that only hides
- * a menu entry becomes a wrong answer the moment it refuses a
- * command: `--with containerization,distribution,iac` is exactly the
- * composition `--with` exists for (`iac` is keyed on the
- * `dist.container-image` tag `distribution` promotes), and a flat
- * probe rejects it.
- *
- * So the check walks the extras the way the install will run them —
- * in the order named, each against the tags its predecessors leave
- * behind, seeded with what the stack's own verticals promote. What
- * "leave behind" means statically is `Vertical.promotes`, the union
- * of tags a vertical's adapters may add; over-declaring there only
- * defers a refusal to the resolver, and under-declaring is what the
- * installer's own assertion exists to prevent.
- *
- * That leaves three outcomes per extra, and the middle one is the
- * reason the walk is ordered rather than a set operation:
- *
- *   - covered at its turn → nothing to say;
- *   - uncovered now, covered once a *later* extra has run → the
- *     order is the bug, so the refusal names the extra to list it
- *     after rather than pretending the composition is illegal;
- *   - uncovered whatever the rest of the list does → the stack
- *     cannot carry it, said in the resolver's own sentence: the
- *     entrypoint it lacks, by the label the finder offered it under,
- *     or that no adapter fits this stack at all — never a tag no
- *     command can add.
- *
- * The resolver's `ResolutionError` is still a throw, and still
- * escapes `installVertical` from every caller (`keel add` on a
- * project whose shape cannot take the vertical does the same) — but
- * it is a `DomainError` now, so the mediator puts it back on the
- * `Err` rail for whichever front end asked. That was the decision
- * this comment deferred, and it is made where it belongs: at the seam
- * every escape from the install engine crosses, not here. This path
- * simply no longer reaches it — and adds the one thing the throw
- * cannot say, the `--with` remedy, which is why the two sentences
- * differ at all.
- */
-function preflightCoverage(
-  stack: Stack,
-  chosen: readonly Vertical[],
-  seed: readonly Tag[],
-): DomainError | null {
-  const running = new Set<Tag>(seed);
-  for (const [index, vertical] of chosen.entries()) {
-    const gap = coverageGap(vertical, running);
-    if (gap === null) {
-      for (const tag of vertical.promotes ?? []) running.add(tag);
-      continue;
-    }
-    const later = chosen.slice(index + 1);
-    const singleHanded = later.filter((other) =>
-      coversFor(vertical, [...running, ...(other.promotes ?? [])]),
-    );
-    if (singleHanded.length > 0) return outOfOrder(vertical, gap, singleHanded);
-    if (coversFor(vertical, [...running, ...promotedBy(later)])) {
-      return outOfOrder(
-        vertical,
-        gap,
-        later.filter((other) => (other.promotes ?? []).length > 0),
-      );
-    }
-    return uncoverable(stack, vertical, gap);
-  }
-  return null;
-}
-
-/** The refusal for an extra listed before whatever would enable it. */
-function outOfOrder(
-  vertical: Vertical,
-  gap: CoverageGap,
-  enablers: readonly Vertical[],
-): DomainError {
-  const names = enablers.map((v) => `'${v.id}'`).join(' and ');
-  const promote = enablers.length > 1 ? 'promote' : 'promotes';
-  return new DomainError(
-    `vertical '${vertical.id}' cannot be installed before ${names}: dimension(s) ${gap.dimensions.join(
-      ', ',
-    )} need tag(s) ${gap.enablers.join(', ')}, which ${names} ${promote} — --with installs extras in the order named, so list '${vertical.id}' after ${names}`,
-    'keel.extra-verticals-order',
-  );
-}
-
-/**
- * The refusal for an extra this stack has no adapter for, in any
- * order: the resolver's own sentence, so the front door and the throw
- * behind it say the same thing, plus the remedy only `--with` has.
- */
-function uncoverable(stack: Stack, vertical: Vertical, gap: CoverageGap): DomainError {
-  return new DomainError(
-    `stack '${stack.id}': ${coverageSentence(vertical, gap.enablers)}; drop '${vertical.id}' from --with, or scaffold a stack that can carry it`,
-    UNCOVERED_CODE,
-  );
 }
 
 /** The asker every stack-level dial carries. @see LAYOUT_QUESTION_ID */
@@ -1404,15 +1310,36 @@ function stackQuestion(options: readonly StackSummary[]): Question {
  *
  * A `multi-select` defaulting to none — the stack's list is a
  * coherent starting point by construction, so "nothing extra" is the
- * answer that needs no justification.
+ * answer that needs no justification. A choice that installs only
+ * once others have says so in its label, naming them: the menu is
+ * flat, and ticking it alone is refused, naming the same ones.
  */
-function extraVerticalsQuestion(candidates: readonly VerticalSummary[], stack: Stack): Question {
+function extraVerticalsQuestion(
+  candidates: readonly VerticalOption[],
+  stack: Stack,
+  registry: Registry,
+): Question {
+  const titleOf = (id: string): string => {
+    const vertical = registry.vertical(id);
+    return vertical === null ? id : verticalTitle(vertical);
+  };
   return {
     id: EXTRA_VERTICALS_QUESTION_ID,
     prompt: 'Additional verticals',
-    doc: `Installed on top of what '${stack.id}' already brings, in the same run — so they resolve against one another's tags and the review below shows one plan. Everything here is also available later with 'keel add'.`,
+    doc: `Installed on top of what '${stack.id}' already brings, in the same run and in the order they build on one another, so the review below shows one plan. A choice marked "needs …" installs only with what it names ticked as well. Everything here is also available later with 'keel add'.`,
     kind: 'multi-select',
-    choices: candidates.map((v) => ({ value: v.id, label: v.id, doc: v.description })),
+    choices: candidates.map((option) => ({
+      value: option.id,
+      label:
+        option.readiness === 'needs'
+          ? `${option.title} — needs ${
+              option.requires.length === 0
+                ? 'one of several verticals first'
+                : option.requires.map(titleOf).join(', ')
+            }`
+          : option.title,
+      doc: option.description,
+    })),
     default: '',
     memory: 'repeat',
   };

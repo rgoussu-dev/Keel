@@ -86,14 +86,24 @@ some answers produce (either container-image flavor, every SQL
 engine, either CI provider). It exists because a tag promoted at
 install time is invisible to anything reasoning _before_ the install,
 and something has to: `keel new --with containerization,distribution,iac`
-is a legal composition only because `distribution` promotes the
-`dist.container-image` tag `iac` is keyed on, so a front door that
-checked coverage flatly would refuse the very composition `--with`
-exists for (see [`keel new --with`](cli.md#keel-new)). Over-declaring
-is safe — it only defers a refusal to the resolver. Under-declaring
-would refuse a legal composition, so the installer checks each
-contribution's `tagsAdd` against the declaration and throws on a tag
-no vertical claims.
+is a legal composition only because `containerization` promotes the
+`deploy.container-image` tag `distribution`'s container adapters
+require, and `distribution` the `dist.container-image` tag `iac` is
+keyed on, so a front door that checked coverage flatly would refuse
+the very composition `--with` exists for (see
+[`keel new --with`](cli.md#keel-new)). Over-declaring is safe — it
+only defers a refusal to the resolver. Under-declaring would refuse a
+legal composition, so the installer checks each contribution's
+`tagsAdd` against the declaration and throws on a tag no vertical
+claims.
+
+A prerequisite is therefore a **`requires` entry**, never a check
+inside `contribute()`: a tag some other vertical promotes, in the
+adapter's own predicate. `iac` has always been keyed that way;
+`distribution`'s container adapters now are too, on the image
+`containerization` builds — which used to be a throw inside their
+shared `contribute()` that no menu, no front door and no planner could
+see, so distribution was offered everywhere and refused on install.
 
 A union over-offers, though: on a Quarkus CLI the one distribution
 adapter that matches builds native binaries, so reading
@@ -128,8 +138,24 @@ stacks that do carry it — and `plan` closes a requested set over its
 prerequisites and orders it: after whatever feeds a tag its adapters
 mention, then after what it reads, then as named. Two equally small
 sets of prerequisites (two plugins supplying one capability) are
-refused naming both rather than guessed between. No surface asks the
-planner yet; the menus and both front doors move onto it next.
+refused naming both rather than guessed between. A vertical declaring
+no dimensions (`gateway`) applies only where some adapter matches, so
+with no linked project it is unavailable rather than an install of
+nothing.
+
+The planner is the **one reading of readiness**, and every surface
+asks it: the extras menu (`keel.dials`, and the terminal's
+multi-select) offers what is ready or needs others, labelled with
+what it needs; `keel.dials` snaps a page's extras to their closure,
+reporting each vertical it added or dropped and why; `keel new --with`
+installs its extras in plan order, whatever order they were named in —
+it hands the planner the set by id, so verticals nothing ties together
+go in by id and every permutation writes the same bytes; and both
+`keel new --with` and `keel add` refuse — before a file
+moves — a vertical the scope cannot carry, or a set missing a
+prerequisite (`keel.missing-prerequisites`, naming them in install
+order). The front doors do not yet install what they were not asked
+for; the page does, by ticking it.
 
 ### Stacks
 
@@ -217,7 +243,7 @@ the last is brownfield and lives with the project status:
 | build system               | some module layout must still complete it legally                                  |
 | module layout              | exact — the build system is already settled                                        |
 | peer context               | offered only where switching it on stays legal                                     |
-| extra verticals (`--with`) | coverage (`coversFor`) **and** the vertical's own rules                            |
+| extra verticals (`--with`) | the planner's readiness: ready, or needs others first — coverage, rules and order  |
 | the stack drill-down       | presets no setting of their dials can build are absent from all four steps at once |
 | `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal |
 
@@ -268,8 +294,9 @@ not, because the thing they turn on is not a tag:
 
 **Capability probes** ask the adapter set a question no tag answers:
 would anything actually be emitted here? `coversFor` and
-`coverageGap` ask it of a vertical's dimensions
-(`keel.uncoverable-vertical`, `keel.extra-verticals-order`);
+`coverageGap` ask it of a vertical's dimensions, and the planner of a
+vertical's readiness on a scope, with what other verticals would add
+(`keel.uncoverable-vertical`, `keel.missing-prerequisites`);
 `emitsFor` asks it where a dimension cannot speak, because a context
 adapter declares `covers: []` (`--with-peer-context` and
 `keel add module` both, see [context-support.ts](../src/domain/core/adapters/context-support.ts)).

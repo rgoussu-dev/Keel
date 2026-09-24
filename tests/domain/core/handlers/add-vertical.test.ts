@@ -132,6 +132,56 @@ describe('keel.add-vertical (keel add)', () => {
     expect(error.message).toMatch(/unknown vertical 'nonsense-vertical'.*distribution/);
   });
 
+  describe('what the planner reads before anything is written', () => {
+    const add = (vertical: string) =>
+      installMediator({ runDeferred: async () => {} }).dispatch(
+        addVerticalCommand({ cwd, vertical, answers: {}, interactive: false, dryRun: false }),
+      );
+    const installedIds = async (): Promise<readonly string[]> =>
+      (await fsManifestStore.read(projectScopeRoot(cwd)))?.verticals.map((v) => v.id) ?? [];
+
+    it('refuses a vertical that needs another first, naming it, then takes it once it is there', async () => {
+      expectOk(
+        await installMediator({ runDeferred: async () => {} }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-http',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      const before = await installedIds();
+
+      const iac = expectErr(await add('iac'));
+      expect(iac.code).toBe('keel.missing-prerequisites');
+      expect(iac.message).toBe(
+        'Infrastructure as code needs Container image and Distribution installed before it, in that order — add containerization, distribution as well',
+      );
+      const distribution = expectErr(await add('distribution'));
+      expect(distribution.code).toBe('keel.missing-prerequisites');
+      expect(distribution.message).toBe(
+        'Distribution needs Container image installed before it — add containerization as well',
+      );
+      expect(await installedIds()).toEqual(before);
+
+      expectOk(await add('containerization'));
+      expectOk(await add('distribution'));
+      expectOk(await add('iac'));
+      expect(await fs.pathExists(path.join(cwd, 'deploy/compose.yaml'))).toBe(true);
+    });
+
+    it("refuses what nothing keel can add makes installable, in the menu's words", async () => {
+      await seedQuarkusCli();
+      const error = expectErr(await add('iac'));
+      expect(error.code).toBe('keel.uncoverable-vertical');
+      expect(error.message).toBe(
+        'Infrastructure as code needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      );
+    });
+  });
+
   it('rejects when the project has no manifest', async () => {
     const error = expectErr(await addDistribution());
     expect(error.code).toBe('keel.not-initialised');

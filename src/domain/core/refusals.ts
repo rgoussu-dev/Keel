@@ -34,12 +34,28 @@
  *
  * The sentences a supplied answer no adapter reads is refused with
  * (`./supplied-answers.ts`) live here too, for the same reason: both
- * front doors speak them.
+ * front doors speak them. So do the ones a plan that cannot be
+ * installed is refused with (`./planner.ts`, spoken through
+ * `./plan-refusal.ts`): a prerequisite missing from the set, a
+ * vertical the scope cannot carry, verticals that cannot go together.
  */
 
 import type { Tag, Vertical } from '../contract/composition.js';
+import type { ReadinessGap } from '../contract/queries.js';
 import { verticalTitle } from './registry.js';
 import { ENTRYPOINTS } from './stack-wizard.js';
+
+/**
+ * The code a set missing a prerequisite is refused with, in both
+ * phases: `keel add distribution` on a project with no image, and
+ * `keel new --with distribution` without `containerization` beside
+ * it. Plural because the refusal names every vertical missing, in
+ * the order they install, and a code a script matches on should not
+ * change with the number of them. A tie between two sets that would
+ * each do is refused under it too: the fix is the same — name the
+ * prerequisite — and only the user can pick which.
+ */
+export const MISSING_PREREQUISITES_CODE = 'keel.missing-prerequisites';
 
 /**
  * Tag namespaces a preset fixes at `keel new`. An adapter that needs
@@ -149,4 +165,73 @@ export function unknownQuestionSentence(
   asked: readonly string[],
 ): string {
   return `${adapterId} asks no question '${questionId}'; it asks: ${asked.join(', ')}`;
+}
+
+/**
+ * The sentence a set is refused with when `needing` install only once
+ * `prerequisites` have, and the set does not name them: the titles in
+ * the order they install, then the ids to add. Phase-neutral — "add
+ * as well" reads as one more `--with` entry and as one more
+ * `keel add` alike — so the two front doors say the same thing.
+ */
+export function missingPrerequisitesSentence(
+  needing: readonly Vertical[],
+  prerequisites: readonly Vertical[],
+): string {
+  const who = needing.map(verticalTitle);
+  const verb = who.length === 1 ? 'needs' : 'need';
+  const titles = prerequisites.map(verticalTitle);
+  const order = titles.length > 1 ? ', in that order' : '';
+  const before = who.length === 1 ? 'it' : 'them';
+  return `${listed(who)} ${verb} ${listed(titles)} installed before ${before}${order} — add ${prerequisites
+    .map((vertical) => vertical.id)
+    .join(', ')} as well`;
+}
+
+/**
+ * The sentence a set is refused with when two or more sets of
+ * prerequisites would each let `needing` install, equally small:
+ * choosing between two providers of one capability is the user's, so
+ * each option is named, in install order.
+ */
+export function tiedPrerequisitesSentence(
+  needing: readonly Vertical[],
+  options: readonly (readonly Vertical[])[],
+): string {
+  const who = needing.map(verticalTitle);
+  const verb = who.length === 1 ? 'needs' : 'need';
+  const choices = options.map((set) => set.map((vertical) => vertical.id).join(', '));
+  return `${listed(who)} ${verb} one of these installed first, and choosing is yours: ${choices
+    .map((ids) => `(${ids})`)
+    .join(' or ')} — add the one you want as well`;
+}
+
+/**
+ * The sentence a vertical is refused with when nothing keel can add
+ * makes it install on this scope: from the planner's
+ * {@link ReadinessGap}, never its tags. A gap that is only a linked
+ * project (a vertical selected by peer tags, like the gateway) points
+ * at `keel link`; any other reads as {@link coverageSentence} does.
+ */
+export function unavailableSentence(vertical: Vertical, gap: ReadinessGap): string {
+  if (gap.peer.length > 0 && gap.entrypoint.length === 0 && gap.identity.length === 0) {
+    return `${verticalTitle(vertical)} wires linked projects — run 'keel link <path>' first`;
+  }
+  return coverageSentence(vertical, [...gap.entrypoint, ...gap.identity]);
+}
+
+/**
+ * The sentence verticals are refused with when each installs here on
+ * its own but no order installs them together: whichever goes first,
+ * a later one's tags rule out what it resolved to, or break one of
+ * its rules.
+ */
+export function incompatibleSentence(verticals: readonly Vertical[]): string {
+  return `${listed(verticals.map(verticalTitle))} cannot be installed together here — each installs on its own, but no order installs them all; drop one`;
+}
+
+/** `A`, `A and B`, `A, B and C`. */
+function listed(names: readonly string[]): string {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1] ?? ''}`;
 }

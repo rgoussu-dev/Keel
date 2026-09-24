@@ -263,8 +263,12 @@ export interface DialOptions {
    * the install asking about them: a stack-level dial the install
    * asks about arrives as a preview question, and a form that already
    * renders it from here would show the same choice twice.
-   * `extraVerticals` is the exception — it is only ever pruned here,
-   * never pinned, because nothing but the preview question offers it.
+   * `extraVerticals` is the exception — never pinned when the caller
+   * left it absent, because nothing but the preview question offers
+   * it. When the caller did set it, it is **snapped to its closure**:
+   * the prerequisites of what it names added, what cannot go on this
+   * preset dropped, in the order the install will run them. Every
+   * such change is in {@link DialOptions.adjustments}.
    */
   readonly target: InstallTarget;
   /** Build systems still legal; empty when the stack pins one. */
@@ -279,8 +283,63 @@ export interface DialOptions {
    * *and* the rules, which is the half a catalog cannot answer.
    */
   readonly peerContext: boolean;
-  /** Verticals that may still be layered on top; pruned as the dials move. */
+  /**
+   * Verticals that may still be layered on top, labelled by title:
+   * those that install here on their own, and those that install once
+   * others have (see {@link DialOptions.verticals} for which). Pruned
+   * as the dials move.
+   */
   readonly extraVerticals: readonly ChoiceDescriptor[];
+  /**
+   * The verticals of this preset as an extras control shows them:
+   * every one {@link DialOptions.extraVerticals} offers, and the
+   * preset's own (`included`) — each with its readiness and what it
+   * needs installed first. Empty where there are no extras, a
+   * composite or a brownfield target.
+   */
+  readonly verticals: readonly VerticalOption[];
+  /**
+   * What snapping `target.extraVerticals` changed: a vertical this
+   * preset cannot carry, or already carries, `dropped`, then each
+   * prerequisite `added` (in install order) — each with the reason, so
+   * nothing leaves or joins the caller's selection silently. Empty when
+   * nothing moved. The extras are a set: the order they were named in
+   * changes neither what is kept nor the order it comes back in.
+   */
+  readonly adjustments: readonly DialAdjustment[];
+}
+
+/**
+ * One vertical of a preset, as the extras control shows it — the
+ * planner's readiness (`domain/core/planner.ts`) with the tags taken
+ * out, since the page never speaks them.
+ */
+export interface VerticalOption {
+  readonly id: string;
+  /** What a person calls it. @see VerticalDescriptor.title */
+  readonly title: string;
+  readonly description: string;
+  /**
+   * `included` — the preset installs it anyway; `ready` — it installs
+   * here on its own; `needs` — it installs once {@link requires} have.
+   */
+  readonly readiness: 'included' | 'ready' | 'needs';
+  /**
+   * Vertical ids to install first, in the order they install — what
+   * ticking this one ticks too. Empty unless `needs`, and empty for a
+   * `needs` that two sets of prerequisites would each satisfy: that
+   * choice is the user's, made by ticking one of them.
+   */
+  readonly requires: readonly string[];
+}
+
+/** One change {@link DialOptions} made to the caller's extras. */
+export interface DialAdjustment {
+  /** The vertical id added or dropped. */
+  readonly id: string;
+  readonly change: 'added' | 'dropped';
+  /** Why, as one sentence a page can show as it stands. */
+  readonly because: string;
 }
 
 /**

@@ -16,11 +16,13 @@
  * **Port.** The planner's pure functions.
  *
  * Then the shipped registry, recorded whole as a readiness golden —
- * today's truth, before any surface reads the planner. Distribution
- * still refuses at the bottom of its install where no image exists,
- * so it reads `ready` on every HTTP stack and `iac` `needs` it alone;
- * the step that declares the image requirement flips those cells, and
- * the golden's diff is its review. `KEEL_UPDATE_GOLDEN=1` rewrites it.
+ * the one reading the menus and both front doors share, so any change
+ * to what a preset offers shows here as a diff to review.
+ * Distribution's container adapters require the image containerization
+ * builds, in their predicates: distribution reads `needs
+ * containerization` on every HTTP stack, `iac` needs both in that
+ * order, and on a composed Quarkus CLI + REST stack distribution alone
+ * is `ready` — its native adapter. `KEEL_UPDATE_GOLDEN=1` rewrites it.
  */
 
 import fs from 'node:fs';
@@ -350,6 +352,39 @@ describe('readiness', () => {
     expect(gap).toMatchObject({ kind: 'unavailable', gap: { identity: ['lang.acme'] } });
   });
 
+  it('takes the adapter nearest by what no install adds, before counting every unmet tag', () => {
+    // Two ways to ship: one for another language and build, one needing
+    // the HTTP entrypoint and an image some vertical builds. Counted
+    // plainly they tie, and the first listed would make the gap a
+    // language; what an install can add is not what keeps it away.
+    const imaging = vertical(
+      'acme-imaging',
+      [adapter('acme-imaging', ['arch.server-http'], { promotes: ['acme.image'] })],
+      { promotes: ['acme.image'] },
+    );
+    const shipping = vertical('acme-shipping', [
+      adapter('acme-shipping', ['lang.beta', 'pkg.two'], { name: 'native' }),
+      adapter('acme-shipping', ['arch.server-http', 'acme.image'], { name: 'image' }),
+    ]);
+    const local = registryOf([
+      {
+        origin: pluginOrigin('ship'),
+        stacks: [stack('acme-http', [...ACME_TAGS, 'arch.server-http'])],
+        verticals: [imaging, shipping],
+      },
+    ]);
+    expect(readiness(local, on([...ACME_TAGS, 'arch.cli']), 'acme-shipping')).toEqual({
+      kind: 'unavailable',
+      gap: {
+        entrypoint: ['arch.server-http'],
+        peer: [],
+        identity: [],
+        rules: [],
+        nearestStacks: ['acme-http'],
+      },
+    });
+  });
+
   it('applies a vertical with no dimensions only where some adapter matches', () => {
     expect(applies(bridge, ACME.tags)).toBe(false);
     expect(readiness(registry, ACME, 'acme-bridge')).toMatchObject({
@@ -606,8 +641,26 @@ describe('the shipped registry', () => {
     expect(cells['quarkus-cli+distribution']).toBe('ready');
   });
 
-  it('records today s truth for distribution on an HTTP stack', () => {
-    expect(cells['quarkus-rest+distribution']).toBe('ready');
-    expect(cells['quarkus-rest+iac']).toBe('needs distribution');
+  it('reads the image distribution builds on as its prerequisite on an HTTP stack', () => {
+    expect(cells['quarkus-rest+distribution']).toBe('needs containerization');
+    expect(cells['quarkus-rest+iac']).toBe('needs containerization > distribution');
+    expect(cells['web-components+distribution']).toBe('needs containerization');
+  });
+
+  it('reads distribution alone as ready on a composed Quarkus CLI + REST stack', () => {
+    // Its native adapter covers both dimensions without an image, so
+    // it needs nothing; iac is keyed on the image, so it still does.
+    expect(cells['quarkus-cli-rest+distribution']).toBe('ready');
+    expect(cells['quarkus-cli-rest+iac']).toBe('needs containerization > distribution');
+  });
+
+  it("reads a CLI stack's gap as its missing entrypoint, not as a foreign adapter", () => {
+    // The Go image adapter misses the HTTP entrypoint and an image
+    // containerization would build; the Quarkus native one misses a
+    // framework and a build system no install adds. The first is
+    // nearer, and the image traces back to the same entrypoint.
+    expect(cells['go-cli+distribution']).toBe(
+      'unavailable — entrypoint arch.server-http — nearest go-cli-http',
+    );
   });
 });

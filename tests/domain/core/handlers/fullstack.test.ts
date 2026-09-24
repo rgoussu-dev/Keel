@@ -16,6 +16,7 @@ import {
   newProjectCommand,
 } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import { peerRef } from '../../../../src/domain/core/handlers/new-project.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -498,7 +499,9 @@ describe('brownfield: keel link + keel add gateway', () => {
     expect(properties).toContain('%dev.quarkus.http.cors.enabled=true');
   });
 
-  it('installs nothing when the gateway vertical resolves without peers', async () => {
+  it('refuses the gateway where no project is linked, and offers no card for it', async () => {
+    // It used to "install" here: zero files, recorded as installed —
+    // which then blocked the real install after `keel link`.
     const { runDeferred } = recordActions();
     const mediator = installMediator({ runDeferred });
     const appDir = path.join(cwd, 'solo');
@@ -514,7 +517,7 @@ describe('brownfield: keel link + keel add gateway', () => {
         }),
       ),
     );
-    const report = expectOk(
+    const error = expectErr(
       await mediator.dispatch(
         addVerticalCommand({
           cwd: appDir,
@@ -525,8 +528,15 @@ describe('brownfield: keel link + keel add gateway', () => {
         }),
       ),
     );
-    expect(report.changes).toHaveLength(0);
-    expect(await fs.pathExists(path.join(appDir, 'infrastructure/gateway-rest'))).toBe(false);
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      "Service gateway wires linked projects — run 'keel link <path>' first",
+    );
+    const manifest = await fsManifestStore.read(projectScopeRoot(appDir));
+    expect(manifest?.verticals.map((v) => v.id)).not.toContain('gateway');
+
+    const status = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: appDir })));
+    expect(status.available.map((v) => v.id)).not.toContain('gateway');
   });
 
   it('link refuses an uninitialised peer', async () => {

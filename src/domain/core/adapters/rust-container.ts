@@ -8,6 +8,7 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
+import { CONTAINER_IMAGE_TAG } from './container-image.js';
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
 import {
   containerDistribution,
@@ -22,7 +23,7 @@ export const rustContainerAdapter: Adapter = {
   id: RUST_CONTAINER_ID,
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
-  predicate: { requires: ['lang.rust', 'arch.server-http'] },
+  predicate: { requires: ['lang.rust', 'arch.server-http', CONTAINER_IMAGE_TAG] },
   promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(RUST_CONTAINER_ID),

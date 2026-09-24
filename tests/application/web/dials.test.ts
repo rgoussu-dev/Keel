@@ -249,7 +249,7 @@ describe('the dials query as a menu service', () => {
     expect(dials.peerContext).toBe(false);
   });
 
-  it('prunes an extra vertical no adapter here can cover, and pins none when asked for none', async () => {
+  it('drops an extra this preset cannot carry, says why, and pins none when asked for none', async () => {
     const mediator = installMediator();
     const withExtras = await dialsFor(mediator, {
       kind: 'new-project',
@@ -259,6 +259,9 @@ describe('the dials query as a menu service', () => {
     const kept = (withExtras.target as NewProjectTarget).extraVerticals ?? [];
     expect(kept).toContain('ci');
     expect(kept).not.toContain('persistence');
+    expect(withExtras.adjustments).toEqual([
+      expect.objectContaining({ id: 'persistence', change: 'dropped' }),
+    ]);
     expect(withExtras.extraVerticals.map((choice) => choice.id)).toContain('ci');
 
     // Absent stays absent: the extras list only ever reaches the page
@@ -266,6 +269,32 @@ describe('the dials query as a menu service', () => {
     // that question being asked at all.
     const blank = await dialsFor(mediator, { kind: 'new-project', stack: 'go-cli' });
     expect((blank.target as NewProjectTarget).extraVerticals).toBeUndefined();
+  });
+
+  it('adds the prerequisites of an extra the page ticks, and says so', async () => {
+    // The page includes them for the user; the command line refuses a
+    // set without them, naming the same ones.
+    const mediator = installMediator();
+    const dials = await dialsFor(mediator, {
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      extraVerticals: ['iac'],
+    });
+    expect((dials.target as NewProjectTarget).extraVerticals).toEqual([
+      'containerization',
+      'distribution',
+      'iac',
+    ]);
+    expect(dials.adjustments.map((adjustment) => [adjustment.id, adjustment.change])).toEqual([
+      ['containerization', 'added'],
+      ['distribution', 'added'],
+    ]);
+    const response = await post(mediator, '/api/preview', {
+      cwd: '/tmp/keel-dials-preview',
+      target: dials.target,
+      answers: {},
+    });
+    expect(response.status).toBe(200);
   });
 
   it('validates the body it is given', async () => {

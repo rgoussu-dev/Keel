@@ -34,7 +34,13 @@
 
 import type { InstallTarget, NewProjectTarget, RepoLayout } from '../contract/commands.js';
 import type { Tag, Vertical } from '../contract/composition.js';
-import type { ChoiceDescriptor, DialOptions, ServiceDescriptor } from '../contract/queries.js';
+import type {
+  ChoiceDescriptor,
+  DialAdjustment,
+  DialOptions,
+  ServiceDescriptor,
+  VerticalOption,
+} from '../contract/queries.js';
 import { emitsFor } from './adapters/context-support.js';
 import {
   MODULITH_LAYOUT_TAG,
@@ -42,9 +48,14 @@ import {
   type ModuleLayoutOption,
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
-import { coversFor } from './resolver.js';
+import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
+import {
+  incompatibleSentence,
+  tiedPrerequisitesSentence,
+  unavailableSentence,
+} from './refusals.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
-import { listVerticals, type VerticalSummary } from './registry.js';
+import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
 
 /** The default repository layout of a composite install. */
@@ -152,39 +163,149 @@ export function peerContextOffered(
 }
 
 /**
- * The verticals that may still be layered on top of this stack, given
- * the tags its dials have settled.
- *
- * Two ways a vertical is a dead end here, and both are asked ahead of
- * the install rather than discovered inside it: no adapter covers one
- * of its dimensions, or one of its own rules is broken by what the
- * dials have settled.
- *
- * Coverage reads the tags *plus* what the stack's own verticals
- * promote, and the rules read the tags alone, because a promotable
- * tag cuts opposite ways: it can only *help* an adapter match, and it
- * can only *create* a conflict. Hiding a vertical over a tag that may
- * never appear would take away a legal choice; the assembly gate
- * still refuses it if the tag does appear.
+ * The scope a preset's extras are planned onto, before anything is
+ * written: the tags its dials settled plus what its own verticals
+ * promote on the way past ({@link seedFor}), and its own verticals as
+ * already there.
  */
-export function legalExtraVerticals(
+export function presetScope(stack: Stack, tags: readonly Tag[]): PlanScope {
+  return {
+    tags: seedFor(stack, tags),
+    installed: stack.verticals.map((vertical) => vertical.id),
+  };
+}
+
+/**
+ * Every vertical of this preset an extras control shows — the
+ * preset's own (`included`), and every other one the planner reads as
+ * `ready` or `needs` on the tags its dials have settled — with what
+ * each needs installed first. In the registry's order.
+ *
+ * The planner's reading (`./planner.ts`), not a probe of its own: the
+ * same one both front doors refuse by, so a choice offered here is
+ * one they accept once its `requires` are named with it. That is what
+ * the flat probe this replaced could not be. It saw the tags the
+ * preset settles and what its own verticals may promote, never what
+ * another *extra* would add — so `iac`, which needs the image
+ * `distribution` publishes, was never offered, and `distribution`,
+ * whose need for an image was a throw inside its adapter, was offered
+ * everywhere and refused on install.
+ */
+export function verticalOptions(
   registry: Registry,
   stack: Stack,
   tags: readonly Tag[],
-): readonly VerticalSummary[] {
-  const own = new Set(stack.verticals.map((v) => v.id));
-  const seed = [...tags, ...promotedBy(stack.verticals)];
-  return listVerticals(registry).filter((summary) => {
-    if (own.has(summary.id)) return false;
-    const vertical = registry.vertical(summary.id);
-    if (vertical === null) return false;
-    return coversFor(vertical, seed) && assemblyRefusal([vertical], tags) === null;
-  });
+): readonly VerticalOption[] {
+  const scope = presetScope(stack, tags);
+  const options: VerticalOption[] = [];
+  for (const summary of listVerticals(registry)) {
+    const ready = readiness(registry, scope, summary.id);
+    if (ready.kind === 'unavailable') continue;
+    options.push({
+      ...summary,
+      readiness: ready.kind,
+      requires:
+        ready.kind === 'needs' && ready.alternatives === undefined ? ready.prerequisites : [],
+    });
+  }
+  return options;
+}
+
+/**
+ * Whether an option of {@link verticalOptions} is on the extras menu:
+ * every one but the preset's own — ready, or ready once others are.
+ */
+export function offeredAsExtra(option: VerticalOption): boolean {
+  return option.readiness !== 'included';
 }
 
 /** Every tag installing `verticals` may promote, in one flat list. */
 export function promotedBy(verticals: readonly Vertical[]): readonly Tag[] {
   return verticals.flatMap((vertical) => vertical.promotes ?? []);
+}
+
+/**
+ * `requested` snapped to what installs on this preset: each id, by id,
+ * kept where the planner can install it beside the ones kept before
+ * it, dropped where it cannot, then the whole set closed over its
+ * prerequisites and put in the order the install runs them — with an
+ * {@link DialAdjustment} for every id added or dropped: the dropped
+ * ones first, the added ones after them in install order.
+ *
+ * A set, like `--with`: taken by id, so the order a page ticks its
+ * boxes in cannot change what is kept or the order it installs in. A
+ * vertical tied between two providers is tried again once the rest is
+ * kept, since one of the rest may be the provider that settles it —
+ * the front door plans the set whole, and would accept it.
+ *
+ * The page is where prerequisites are included for the user (the
+ * command line refuses a set that leaves one out, naming it), so a
+ * form ticking `iac` posts `containerization, distribution, iac`
+ * back, and says why.
+ */
+export function snapExtras(
+  registry: Registry,
+  stack: Stack,
+  tags: readonly Tag[],
+  requested: readonly string[],
+): { readonly extras: readonly string[]; readonly adjustments: readonly DialAdjustment[] } {
+  const scope = presetScope(stack, tags);
+  const kept: string[] = [];
+  const adjustments: DialAdjustment[] = [];
+  const drop = (id: string, because: string): void => {
+    adjustments.push({ id, change: 'dropped', because });
+  };
+  const unregistered = (id: string): string => `no vertical '${id}' is registered`;
+  const candidates: Vertical[] = [];
+  for (const id of [...new Set(requested)].sort()) {
+    const vertical = registry.vertical(id);
+    if (vertical === null) drop(id, unregistered(id));
+    else if (scope.installed.includes(id)) {
+      drop(id, `${verticalTitle(vertical)} comes with ${stack.id} already`);
+    } else candidates.push(vertical);
+  }
+  const tied: Vertical[] = [];
+  const keep = (vertical: Vertical, retry: boolean): void => {
+    const tried = plan(registry, scope, [...kept, vertical.id]);
+    if (tried.kind === 'planned') kept.push(vertical.id);
+    else if (tried.kind === 'tied' && retry) tied.push(vertical);
+    else drop(vertical.id, refusalOf(registry, vertical, tried));
+  };
+  for (const vertical of candidates) keep(vertical, true);
+  for (const vertical of tied) keep(vertical, false);
+  kept.sort();
+  const closed = plan(registry, scope, kept);
+  if (closed.kind !== 'planned') return { extras: kept, adjustments };
+  for (const step of closed.order) {
+    if (step.reason === 'requested') continue;
+    const titles = step.reason.neededBy
+      .flatMap((other) => registry.vertical(other) ?? [])
+      .map(verticalTitle);
+    const who =
+      titles.length === 0
+        ? 'the rest of the selection needs'
+        : `${titles.join(' and ')} ${titles.length === 1 ? 'needs' : 'need'}`;
+    adjustments.push({ id: step.id, change: 'added', because: `${who} it installed first` });
+  }
+  return { extras: closed.order.map((step) => step.id), adjustments };
+}
+
+/** The sentence `vertical` is dropped from a selection with, from the plan that refused it. */
+function refusalOf(registry: Registry, vertical: Vertical, tried: Plan): string {
+  const verticals = (ids: readonly string[]): Vertical[] =>
+    ids.flatMap((other) => registry.vertical(other) ?? []);
+  switch (tried.kind) {
+    case 'unavailable':
+      return unavailableSentence(vertical, tried.gap);
+    case 'tied':
+      return tiedPrerequisitesSentence([vertical], tried.closures.map(verticals));
+    case 'incompatible':
+      return incompatibleSentence(verticals(tried.verticals));
+    case 'unknown':
+      return `no vertical '${tried.vertical}' is registered`;
+    case 'planned':
+      throw new Error(`refusalOf: '${vertical.id}' planned`);
+  }
 }
 
 /**
@@ -235,6 +356,8 @@ function undialled(target: InstallTarget): DialOptions {
     services: [],
     peerContext: false,
     extraVerticals: [],
+    verticals: [],
+    adjustments: [],
   };
 }
 
@@ -244,10 +367,19 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
   const moduleLayouts = legalModuleLayouts(stack, build?.tag ?? null, stack.moduleLayouts ?? []);
   const layout = prefer(moduleLayouts, target.moduleLayout);
 
-  const tags = stackTagsFor(stack, build?.tag ?? null, layout?.tag ?? null);
   const peerContext = peerContextOffered(stack, build?.tag ?? null, layout?.tag ?? null);
-  const extraVerticals = legalExtraVerticals(registry, stack, tags);
-  const legalExtraIds = new Set(extraVerticals.map((vertical) => vertical.id));
+  const withPeerContext = target.withPeerContext === true && peerContext;
+  // The tags the install gate plans the extras onto: the dials', and
+  // the peer context's when it is switched on.
+  const tags = [
+    ...stackTagsFor(stack, build?.tag ?? null, layout?.tag ?? null),
+    ...(withPeerContext ? [PEER_CONTEXT_TAG] : []),
+  ];
+  const verticals = verticalOptions(registry, stack, tags);
+  const snapped =
+    target.extraVerticals === undefined
+      ? null
+      : snapExtras(registry, stack, tags, target.extraVerticals);
 
   return {
     target: {
@@ -258,20 +390,20 @@ function singleDials(registry: Registry, stack: Stack, target: NewProjectTarget)
       // Always set, never omitted. An absent `withPeerContext` is
       // what makes the install *ask*, and a front end reading this
       // has already been handed the choice as a menu of its own.
-      withPeerContext: target.withPeerContext === true && peerContext,
-      // Pruned when the caller set it, never pinned when they did
+      withPeerContext,
+      // Snapped when the caller set it, never pinned when they did
       // not: absent is what keeps the extras question coming back
       // from `keel.preview`, which is the only place a caller is
       // offered the list.
-      ...(target.extraVerticals === undefined
-        ? {}
-        : { extraVerticals: target.extraVerticals.filter((id) => legalExtraIds.has(id)) }),
+      ...(snapped === null ? {} : { extraVerticals: snapped.extras }),
     },
     buildSystems: buildSystems.map(asChoice),
     moduleLayouts: moduleLayouts.map(asChoice),
     services: [],
     peerContext,
-    extraVerticals: extraVerticals.map(verticalChoice),
+    extraVerticals: verticals.filter(offeredAsExtra).map(verticalChoice),
+    verticals,
+    adjustments: snapped?.adjustments ?? [],
   };
 }
 
@@ -315,6 +447,8 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
     services,
     peerContext: false,
     extraVerticals: [],
+    verticals: [],
+    adjustments: [],
   };
 }
 
@@ -354,8 +488,8 @@ const asChoice = (option: BuildSystemOption | ModuleLayoutOption): ChoiceDescrip
   doc: option.doc,
 });
 
-const verticalChoice = (vertical: VerticalSummary): ChoiceDescriptor => ({
+const verticalChoice = (vertical: VerticalOption): ChoiceDescriptor => ({
   id: vertical.id,
-  label: vertical.id,
+  label: vertical.title,
   doc: vertical.description,
 });

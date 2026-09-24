@@ -18,6 +18,17 @@
  *     flat, so an extra it does not offer is out of reach in any set.
  *     If some set containing it previews Ok ({@link candidateSets}),
  *     the CLI accepts what the page cannot build.
+ *   - **Does the order extras are named in change what is written?**
+ *     (I8) Every permutation of each set whose order could matter
+ *     ({@link orderSensitiveSets}: a vertical that reads another, with
+ *     the chains of both) previews to the same verdict and stages the
+ *     same bytes, file for file — and so does the whole menu, named
+ *     forwards and backwards, which turns every pair of it round: two
+ *     verticals nothing ties together can still write one file (the
+ *     toolchain and persistence README sections), in the order they
+ *     run. The page names extras in menu order and the command line in
+ *     whatever order it was typed; neither may cost a `DB_URL`, or move
+ *     a line.
  *
  * Holds I6 over every refusal on the way. The menu read is each
  * stack's default dial setting; the others are the weekly lane's.
@@ -31,6 +42,8 @@ import {
   candidateSets,
   chainOf,
   eachStack,
+  orderSensitiveSets,
+  permutations,
   seed,
   settle,
   sweepGrid,
@@ -40,7 +53,7 @@ describe('composition grid: greenfield', () => {
   sweepGrid({
     name: 'greenfield',
     here: import.meta.url,
-    holds: ['I1', 'I2', 'I3', 'I6'],
+    holds: ['I1', 'I2', 'I3', 'I6', 'I8'],
     sweep: async (grid) => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
@@ -73,6 +86,33 @@ describe('composition grid: greenfield', () => {
             if ((await preview(extras)).verdict !== OK) continue;
             grid.violate('I3', cell);
             break;
+          }
+        }
+
+        // Previews write nothing, but each stages into Trees rooted
+        // here, which is how their bytes are read back.
+        const ordered = await grid.scratch();
+        const menu = [...offered];
+        const orderings = [
+          ...orderSensitiveSets(grid.registry, offered).map(permutations),
+          ...(menu.length > 1 ? [[menu, [...menu].reverse()]] : []),
+        ];
+        for (const orders of orderings) {
+          let first: string | undefined;
+          for (const extras of orders) {
+            const cell = `order:${stack}+${extras.join(',')}`;
+            const staged = await grid.staged(
+              cell,
+              previewQuery({
+                cwd: ordered,
+                target: { ...target, extraVerticals: extras },
+                answers: {},
+              }),
+              ordered,
+            );
+            const written = JSON.stringify(staged);
+            first ??= written;
+            if (written !== first) grid.violate('I8', cell);
           }
         }
 

@@ -11,7 +11,11 @@ The release pipeline pushes an image; this vertical provisions the
 registry-consuming runtime that image runs on. It is keyed on the
 `dist.container-image` tag `distribution` promotes — a target with no
 release pipeline feeding it would be infrastructure keel cannot
-honestly wire to anything, so `keel add distribution` comes first.
+honestly wire to anything, so `distribution` comes first, and the
+`containerization` it builds on before that. The extras menu offers
+`iac` as _needs Container image, Distribution_; `keel new --with iac`
+or `keel add iac` without them is refused, naming both, in that order.
+`--with containerization,distribution,iac` in any order is one run.
 
 ## Dimensions & adapters
 

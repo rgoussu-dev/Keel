@@ -28,8 +28,12 @@
  * House rule: the release pipeline builds the Dockerfile the
  * `containerization` vertical emitted — one image definition, no
  * second build system. That is why every adapter here requires the
- * Dockerfile to exist (the `deploy.container-image` tag) before it
- * will emit a pipeline that builds it.
+ * Dockerfile to exist — the `deploy.container-image` tag, in its
+ * predicate — before it will emit a pipeline that builds it. A
+ * declaration rather than a check inside `contribute()`, so every
+ * reader sees it before anything runs: the planner puts
+ * containerization ahead of distribution, the menus say distribution
+ * needs it, and a front door refuses a set that leaves it out.
  *
  * 12-factor, binding: the pushed image is environment-agnostic — one
  * image serves every environment — and every emitted descriptor
@@ -47,7 +51,6 @@ import type {
   Question,
   Tag,
 } from '../../contract/composition.js';
-import { DomainError } from '../../kernel/result.js';
 import {
   ciProvider,
   gitlabSectionPatch,
@@ -102,39 +105,6 @@ export function distributionProvider(ctx: Ctx, requesterId: string): CiProvider 
   if (ctx.manifest.tags.includes('ci.github-actions')) return 'github-actions';
   if (ctx.manifest.tags.includes('ci.gitlab-ci')) return 'gitlab-ci';
   return ciProvider(ctx.answer('provider'), requesterId);
-}
-
-/**
- * The code {@link requireContainerImage} refuses with — plural,
- * because it is the code a refusal naming every missing prerequisite
- * will carry once one is computed ahead of the install, and a code a
- * script matches on should not change when the sentence behind it
- * does.
- */
-export const MISSING_PREREQUISITES_CODE = 'keel.missing-prerequisites';
-
-/**
- * The release pipeline builds the Dockerfile the `containerization`
- * vertical emitted, so distribution without it would push nothing.
- * Refuses with the fix in the message rather than letting the emitted
- * pipeline fail on the host.
- *
- * A {@link DomainError}, because a project without an image yet is a
- * state the user can fix, not a bug — thrown as a plain `Error`, it
- * reached `keel ui` as a 500. The sentence names no command: the same
- * refusal fires from `keel add distribution` and from `keel new
- * --with distribution`, and the fix is spelled differently in each
- * (run `keel add containerization` first; list `containerization`
- * ahead of `distribution`), so it says what is missing and the order
- * it goes in, which holds in both — naming the vertical by id, which
- * the CLI takes, and by title, which the page's card shows.
- */
-export function requireContainerImage(manifest: ManifestV2): void {
-  if (manifest.tags.includes('deploy.container-image')) return;
-  throw new DomainError(
-    'distribution publishes the image that containerization (Container image) builds, and this project has none yet — add containerization as well, ahead of distribution',
-    MISSING_PREREQUISITES_CODE,
-  );
 }
 
 /**
@@ -208,7 +178,6 @@ export async function containerDistribution(
   ctx: Ctx,
   spec: ContainerDistributionSpec,
 ): Promise<Contribution> {
-  requireContainerImage(ctx.manifest);
   const provider = distributionProvider(ctx, spec.id);
   const deploy = deployFlavor(ctx.answer('deploy'), spec.id);
 

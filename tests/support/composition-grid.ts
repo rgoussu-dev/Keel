@@ -44,6 +44,7 @@
  * under `KEEL_UPDATE_GOLDEN=1` — a shared file would be a race.
  */
 
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
@@ -53,15 +54,17 @@ import type { Mediator } from '../../src/domain/kernel/mediator.js';
 import type { Vertical } from '../../src/domain/contract/composition.js';
 import type { NewProjectTarget } from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
+import type { Tree } from '../../src/domain/contract/ports/tree.js';
 import { dialsQuery, type DialOptions } from '../../src/domain/contract/queries.js';
 import { matchesPattern } from '../../src/domain/core/predicate.js';
 import { shippedRegistry } from '../../src/domain/core/registry.js';
 import { FakeProcessRunner } from '../../src/infrastructure/process/fake.js';
+import { fsTreeFactory } from '../../src/infrastructure/tree/fs-tree.js';
 import { expectOk, installMediator } from './factory.js';
 
 /**
  * The invariants the grid holds, by the ids `docs/roadmap.md` gives
- * them. I7–I9 land with the steps that make them true.
+ * them. I7 and I9 land with the steps that make them true.
  */
 export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
@@ -70,6 +73,7 @@ export const INVARIANTS = {
   I4: 'a vertical keel.project-status lists as available previews Ok',
   I5: 'keel new --with v and keel add v on the same stack reach the same outcome',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
+  I8: 'any permutation of an accepted extras set stages byte-identical changes',
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -80,9 +84,11 @@ export type Invariant = keyof typeof INVARIANTS;
  * for one, so a single violating cell fails the grid, whatever a
  * reviewer would accept. An invariant joins this list with the step
  * that brings it to zero for good — I1 with Q0.3, when a file already
- * on disk, or missing from it, became a coded refusal.
+ * on disk, or missing from it, became a coded refusal; I2 and I3 with
+ * Q1.3, when the extras menu and both front doors moved onto the
+ * planner; I8 landed hard, with the same step.
  */
-export const HARD: readonly Invariant[] = ['I1'];
+export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I8'];
 
 /** The verdict of a cell that came back Ok. */
 export const OK = 'ok';
@@ -173,6 +179,8 @@ export class Grid {
   private readonly outcomes = new Map<string, Outcome<unknown>>();
   private readonly found = new Map<Invariant, Set<string>>();
   private readonly scratches: string[] = [];
+  /** Roots whose Trees {@link staged} is reading, and the Trees opened there. */
+  private readonly watched = new Map<string, Tree[]>();
 
   /**
    * @param holds the invariants this axis measures — recording any
@@ -188,6 +196,11 @@ export class Grid {
       registry,
       processes: new FakeProcessRunner(),
       runDeferred: async () => {},
+      trees: (root) => {
+        const tree = fsTreeFactory(root);
+        this.watched.get(root)?.push(tree);
+        return tree;
+      },
     });
   }
 
@@ -217,6 +230,43 @@ export class Grid {
       this.violate('I6', id);
     }
     return outcome;
+  }
+
+  /**
+   * Dispatches `action` as the cell `id`, as {@link cell} does, and
+   * reads back what it staged under `root`: one line per changed
+   * path — its kind, the path, and a digest of its bytes — in path
+   * order, or null when the cell did not come back Ok. `root` must be
+   * a directory no other cell stages into while this one runs, and
+   * `id` a cell not swept yet: one answered from the record stages
+   * nothing to read back.
+   */
+  async staged<A extends Action>(
+    id: string,
+    action: A,
+    root: string,
+  ): Promise<readonly string[] | null> {
+    if (this.outcomes.has(id)) {
+      throw new Error(`staged: cell '${id}' was swept already, so what it staged is gone`);
+    }
+    const trees: Tree[] = [];
+    this.watched.set(root, trees);
+    try {
+      const outcome = await this.cell(id, action);
+      if (outcome.verdict !== OK) return null;
+      return trees
+        .flatMap((tree) =>
+          tree.changes().map((change) => {
+            const bytes = tree.read(change.path);
+            const digest =
+              bytes === null ? '-' : createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+            return `${change.kind} ${change.path} ${digest}`;
+          }),
+        )
+        .sort();
+    } finally {
+      this.watched.delete(root);
+    }
   }
 
   /** Records that `cell` breaks `invariant`. */
@@ -314,15 +364,15 @@ export function chainOf(
  * other offered extra that promotes a tag, in menu order.
  *
  * The second half is for a prerequisite the declarations do not show
- * — distribution's container image is read inside `contribute()`,
- * not declared in a predicate — which is still a *tag* read, so only
- * an extra that promotes one can meet it. A chain of one gets no such
- * try, and that is a trade, not a proof: by the declarations nothing
- * an extra promotes is required by it, but an undeclared read of the
- * kind distribution's is would go unseen there. Trying every
- * promoting extra ahead of every such vertical would roughly double
- * the axis (~600 previews today) to guard a case the declarations
- * say cannot happen.
+ * — a tag read inside `contribute()` rather than declared in a
+ * predicate, as distribution's container image was until Q1.3 — which
+ * is still a *tag* read, so only an extra that promotes one can meet
+ * it. A chain of one gets no such try, and that is a trade, not a
+ * proof: by the declarations nothing an extra promotes is required by
+ * it, but an undeclared read of that kind would go unseen there.
+ * Trying every promoting extra ahead of every such vertical would
+ * roughly double the axis (~600 previews) to guard a case the
+ * declarations say cannot happen.
  *
  * A candidate generator, not an oracle. Over-reading the graph costs
  * a preview; the preview alone decides what counts as accepted.
@@ -338,6 +388,42 @@ export function candidateSets(
     (id) => !chain.includes(id) && (registry.vertical(id)?.promotes ?? []).length > 0,
   );
   return [chain, ...ahead.map((id) => [id, ...chain])];
+}
+
+/**
+ * The extras sets whose order could matter, for I8: for each offered
+ * vertical that reads another offered one (`Vertical.reads`), its
+ * {@link chainOf} with the chains of what it reads — the two kinds of
+ * edge an install order has to respect, a tag one promotes and
+ * another requires, and a vertical another's `contribute()` looks at.
+ * Each set once, in the order first found; none shorter than two.
+ */
+export function orderSensitiveSets(
+  registry: Registry,
+  offered: ReadonlySet<string>,
+): readonly (readonly string[])[] {
+  const sets: string[][] = [];
+  for (const id of offered) {
+    const read = (registry.vertical(id)?.reads ?? []).filter((other) => offered.has(other));
+    if (read.length === 0) continue;
+    const set = [...new Set([...read, id].flatMap((each) => chainOf(registry, each, offered)))];
+    const key = [...set].sort().join(',');
+    if (set.length >= 2 && !sets.some((other) => [...other].sort().join(',') === key)) {
+      sets.push(set);
+    }
+  }
+  return sets;
+}
+
+/** Every ordering of `items`, `items` itself first. */
+export function permutations<T>(items: readonly T[]): readonly (readonly T[])[] {
+  if (items.length <= 1) return [items];
+  return items.flatMap((item, index) =>
+    permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((rest) => [
+      item,
+      ...rest,
+    ]),
+  );
 }
 
 /** The verticals promoting a tag some adapter of `id` requires. */

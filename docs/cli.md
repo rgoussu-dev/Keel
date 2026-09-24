@@ -20,19 +20,19 @@ Bootstrap a greenfield project from a [stack preset](stacks/README.md).
 keel new --stack=<id> [options]
 ```
 
-| Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Omitted interactively, the wizard **drills down to it** — what you are building → language → framework → user-side adapters (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                      |
-| `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise.                                                                                                                                                                                  |
-| `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                                                                                                                                                                                                     |
-| `--with-peer-context`     | Every stack offering `--module-layout=modulith`, which is every single-service stack: also scaffold a second bounded context reaching the first only through its peer seam. On a stack composing both entrypoints the peer is wired into **both** assemblies. Rejected, with the stack named, on a stack whose modulith has no peer context. Prompted, interactively, the moment `--module-layout` resolves to `modulith` on a stack that actually has a peer-context adapter — passing the flag on the command line always suppresses that question. |
-| `--with <ids>`            | Verticals to install on top of the stack's own, comma-separated (`--with containerization,distribution,iac`) — the greenfield equivalent of running `keel add` once per vertical straight after `keel new`, except they resolve against one another's tags in the same run and the review step shows one plan. Prompted when interactive and omitted; none otherwise. Single-service stacks only — a composite's services declare their own extras, and `--with` names no service.                                                                    |
-| `-y, --yes`               | Non-interactive — use defaults for unanswered questions. Skips the wizard and the review step entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `--no-agent-harness`      | Single-service stacks: omit agent documents, cross-tool shims, skills and hooks; retain the project manifest and formatter configuration. Adopt later with `keel add agent-harness`.                                                                                                                                                                                                                                                                                                                                                                  |
-| `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                          |
-| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable). Only for an adapter this run resolves — see [Answers](#answers-stickiness-and---set).                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Omitted interactively, the wizard **drills down to it** — what you are building → language → framework → user-side adapters (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                                                                                        |
+| `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise.                                                                                                                                                                                                                                                    |
+| `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--with-peer-context`     | Every stack offering `--module-layout=modulith`, which is every single-service stack: also scaffold a second bounded context reaching the first only through its peer seam. On a stack composing both entrypoints the peer is wired into **both** assemblies. Rejected, with the stack named, on a stack whose modulith has no peer context. Prompted, interactively, the moment `--module-layout` resolves to `modulith` on a stack that actually has a peer-context adapter — passing the flag on the command line always suppresses that question.                                                                   |
+| `--with <ids>`            | Verticals to install on top of the stack's own, comma-separated and in any order (`--with containerization,distribution,iac`) — the greenfield equivalent of running `keel add` once per vertical straight after `keel new`, except they resolve against one another's tags in the same run, install in the order they depend on one another, and the review step shows one plan. A set missing what one of them needs first is refused, naming it. Prompted when interactive and omitted; none otherwise. Single-service stacks only — a composite's services declare their own extras, and `--with` names no service. |
+| `-y, --yes`               | Non-interactive — use defaults for unanswered questions. Skips the wizard and the review step entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `--no-agent-harness`      | Single-service stacks: omit agent documents, cross-tool shims, skills and hooks; retain the project manifest and formatter configuration. Adopt later with `keel add agent-harness`.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable). Only for an adapter this run resolves — see [Answers](#answers-stickiness-and---set).                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 Examples:
 
@@ -155,11 +155,18 @@ Two things are off the menu, and neither is a judgement call:
 
 - **What the stack already installs.** Naming it would be asking for
   a second install of something already in the plan.
-- **What this project cannot cover.** `persistence` on a CLI-only
-  preset has no datasource adapter, so it would resolve to nothing
-  and hard-fail; the menu is pruned against the tag set the build
+- **What nothing keel can add makes installable here.** `persistence`
+  on a CLI-only preset has no datasource adapter, so it would resolve
+  to nothing; a service gateway with no linked project would install
+  nothing at all. The menu is read against the tag set the build
   system, module layout and peer-context answers settle, which is why
   this question comes after them.
+
+What stays is either ready, or ready once other verticals are
+installed first — and those say so in their label, by name:
+`Infrastructure as code — needs Container image, Distribution`. Tick
+what it names as well; a choice ticked without them is refused, naming
+them (in `keel ui` they are ticked for you).
 
 Layering here is not the same as running `keel add` once per extra
 afterwards: in one run the extras resolve against one another's tags
@@ -172,8 +179,9 @@ suppresses the question, `--with ''` included — that is how you say
 the first adapter question, never eight questions later:
 
 - an id that is not a registered vertical, or one the stack already
-  installs, is refused with the list of what is available here;
-- so is one this stack cannot cover, saying what it lacks — the same
+  installs, is refused with the list of what is available here, and
+  one named twice is refused as well;
+- so is one this stack cannot carry, saying what it lacks — the same
   fact the menu's pruning states by omission. An entrypoint is named by
   the label the finder offers it under; a language, framework or build
   system is never offered as a remedy, since no command changes one,
@@ -187,14 +195,30 @@ the first adapter question, never eight questions later:
   from --with, or scaffold a stack that can carry it
   ```
 
-The check walks the list the way the install will run it — in the
-order named, each extra against the tags its predecessors promote —
-so a composition where one extra is what enables the next is
-accepted, not refused. `--with containerization,distribution,iac` is
-legal on a REST stack (`iac` is keyed on the `dist.container-image`
-tag `distribution` promotes); the same three ids in another order are
-refused naming the one to list it after, since extras install in the
-order `--with` names them.
+- and so is a set that leaves out what one of its extras needs
+  installed first, naming the missing ones in the order they install
+  (`keel.missing-prerequisites`):
+
+  ```
+  $ keel new --stack=quarkus-rest --with iac
+  Infrastructure as code needs Container image and Distribution
+  installed before it, in that order — add containerization,
+  distribution as well
+  ```
+
+`--with` names a **set**, not a sequence: the extras install in the
+order they depend on one another, whatever order they are named in.
+`--with containerization,distribution,iac` and `--with
+iac,distribution,containerization` plan the same install on a REST
+stack — `distribution` builds the image `containerization` emits, and
+`iac` deploys the one `distribution` publishes — and `persistence`
+goes ahead of the `distribution` whose deploy descriptor reads it, so
+`DB_URL` is there whichever comes first on the line. Extras nothing
+ties together go in by id, so no order you type moves a byte of the
+result. When the order named puts one ahead of a vertical it needs or
+reads, the report opens with a note saying which order it used. The
+planner behind this (`domain/core/planner.ts`) is the one the menu
+above and `keel add` read, so the three cannot disagree.
 
 Once everything is answered, the wizard shows the same plan
 `--dry-run` prints — every file that would be created or changed,
@@ -237,9 +261,15 @@ the [compatibility matrix](verticals/README.md#compatibility-matrix)
 for which vertical applies to which stack — a vertical whose declared
 dimensions cannot be covered on your project **is refused, saying what
 the project lacks** (e.g. `observability` on a CLI project needs an
-HTTP server entrypoint). At the root of a composite product, a vertical
-the root cannot carry is refused naming the service directories to run
-`keel add` in instead.
+HTTP server entrypoint); a service gateway with no linked project is
+refused pointing at `keel link <path>`. One that installs only once
+another has is refused as `keel.missing-prerequisites`, naming what to
+add first, in order — `keel add distribution` on a project with no
+image says `Distribution needs Container image installed before it —
+add containerization as well`. Both are read from the same planner
+`keel new --with` and its menu read, before a file moves. At the root
+of a composite product, a vertical the root cannot carry is refused
+naming the service directories to run `keel add` in instead.
 
 | Option        | Meaning                                                                                         |
 | ------------- | ----------------------------------------------------------------------------------------------- |

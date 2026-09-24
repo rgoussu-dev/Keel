@@ -23,7 +23,6 @@ import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { distributionVertical } from '../../../../src/domain/core/verticals/distribution.js';
 import { ResolutionError } from '../../../../src/domain/core/resolver.js';
-import { DomainError } from '../../../../src/domain/kernel/result.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { ManifestV2 } from '../../../../src/domain/contract/composition.js';
@@ -366,18 +365,39 @@ describe('distribution container family — the deploy-flavor dial', () => {
 });
 
 describe('distribution container family — refusals', () => {
-  it('refuses to emit a pipeline for a Dockerfile that does not exist', async () => {
-    // A refusal, not a crash: the code is what puts it on the Err rail
-    // at the mediator, so it is what this asserts — the sentence is
-    // free to change, and names no command because `keel new` and
-    // `keel add` spell the fix differently.
+  it("declares the Dockerfile it builds, in every container adapter's predicate", () => {
+    // The house rule — the pipeline builds the image containerization
+    // emitted — as a declaration every reader sees before anything
+    // runs, rather than a throw inside `contribute()` only the install
+    // could meet. The planner reads it into `needs containerization`.
+    const containers = distributionVertical.adapters.filter((adapter) =>
+      (adapter.promotes ?? []).includes('dist.container-image'),
+    );
+    expect(containers.map((adapter) => adapter.id).sort()).toEqual([
+      'distribution/go-container',
+      'distribution/jvm-container',
+      'distribution/rust-container',
+      'distribution/ts-container',
+      'distribution/wc-container',
+    ]);
+    for (const adapter of containers) {
+      expect(adapter.predicate.requires, adapter.id).toContain('deploy.container-image');
+    }
+  });
+
+  it('resolves to nothing where no Dockerfile exists, naming the image it needs', async () => {
+    // Reached only by installing past the front doors, which refuse
+    // this set first as a missing prerequisite: a coded refusal, not
+    // a crash, with the missing capability carried in the detail.
     const refusal: unknown = await installDistribution(
       GO_TAGS.filter((t) => t !== 'deploy.container-image'),
       GO_ANSWERS,
     ).catch((thrown: unknown) => thrown);
-    expect(refusal).toBeInstanceOf(DomainError);
-    expect(refusal).toMatchObject({ code: 'keel.missing-prerequisites' });
-    expect((refusal as DomainError).message).not.toContain('keel add');
+    expect(refusal).toBeInstanceOf(ResolutionError);
+    expect(refusal).toMatchObject({
+      code: 'keel.uncoverable-vertical',
+      detail: { enablers: ['deploy.container-image'] },
+    });
   });
 
   it('hard-fails when no family matches (a Go CLI covers no dimension)', async () => {

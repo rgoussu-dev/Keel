@@ -22,6 +22,14 @@ export interface InstallReport {
   /** False under dry-run: nothing was written and no action ran. */
   readonly committed: boolean;
   /**
+   * What the run decided that the caller did not spell out, one
+   * sentence each — `installed in dependency order: containerization,
+   * persistence, distribution` when the order the extras were named in
+   * put one ahead of a vertical it needs or reads. Absent when there is
+   * nothing to say.
+   */
+  readonly notes?: readonly string[];
+  /**
    * Unified diffs against the working tree, one per `modify` change,
    * in the same path order. Populated by reapply only — a plain
    * install never modifies a pre-existing file, so there is nothing
@@ -112,11 +120,15 @@ export interface NewProjectCommand extends Command<InstallReport> {
    */
   readonly withPeerContext?: boolean;
   /**
-   * Verticals to install **on top of** the stack's own list, in this
-   * order, as part of the same run — `persistence`, `distribution`,
-   * `iac`, … Ids from the brownfield registry
-   * (`domain/core/verticals/index.ts`), the same ones `keel add`
-   * takes.
+   * Verticals to install **on top of** the stack's own list, as part
+   * of the same run — `persistence`, `distribution`, `iac`, … Ids from
+   * the brownfield registry (`domain/core/verticals/index.ts`), the
+   * same ones `keel add` takes. A set, not a sequence: they install in
+   * the order they depend on one another (`domain/core/planner.ts`),
+   * the rest by id, whatever order they are named in — so every
+   * permutation writes the same bytes — and naming one twice is
+   * refused. A set that leaves out a prerequisite of what it names is
+   * refused too, naming what to add.
    *
    * The greenfield counterpart of running `keel add <vertical>` once
    * per vertical straight after `keel new`, and it is genuinely not

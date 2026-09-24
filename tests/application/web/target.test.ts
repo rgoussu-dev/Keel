@@ -73,6 +73,8 @@ const jvmDials = (target: DialOptions['target']): DialOptions => ({
   services: [],
   peerContext: true,
   extraVerticals: [],
+  verticals: [],
+  adjustments: [],
 });
 
 async function finder(): Promise<Catalog['finder']> {
@@ -358,6 +360,8 @@ describe('what a preset move could not keep', () => {
         ],
         peerContext: false,
         extraVerticals: [],
+        verticals: [],
+        adjustments: [],
       }),
     );
     expect(settled.notice).toBe(
@@ -378,6 +382,8 @@ describe('what a preset move could not keep', () => {
         services: [],
         peerContext: true,
         extraVerticals: [],
+        verticals: [],
+        adjustments: [],
       }),
     );
     expect(settled.notice).toBe('');
@@ -402,6 +408,8 @@ describe('what a preset move could not keep', () => {
         ],
         peerContext: false,
         extraVerticals: [],
+        verticals: [],
+        adjustments: [],
       }),
     };
     const moved = retarget(product, { stack: 'quarkus-rest' });
@@ -447,6 +455,8 @@ describe('what a preset move could not keep', () => {
         services: [],
         peerContext: true,
         extraVerticals: [],
+        verticals: [],
+        adjustments: [],
       }),
     );
     expect(settled.notice).toBe('Moving to go-cli-http did not keep build system maven.');
@@ -467,6 +477,8 @@ describe('what a preset move could not keep', () => {
         services: [],
         peerContext: false,
         extraVerticals: [],
+        verticals: [],
+        adjustments: [],
       }),
       await finder(),
     );
@@ -484,6 +496,8 @@ describe('what a preset move could not keep', () => {
         services: [],
         peerContext: false,
         extraVerticals: [],
+        verticals: [],
+        adjustments: [],
       }),
       await finder(),
     );
@@ -503,6 +517,8 @@ describe('what a preset move could not keep', () => {
       services,
       peerContext: false,
       extraVerticals: [],
+      verticals: [],
+      adjustments: [],
     });
     // Maven for the backend moved one service off its default; npm for
     // the front end is the default, so it is nothing to lose.

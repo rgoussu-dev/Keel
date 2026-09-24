@@ -64,25 +64,30 @@ instead, which has a name to give it.
 | `fullstack`        | —       | —        | —              | —            | —         | —                | ● monorepo root only         |
 
 ¹ Needs a peer in scope first: `keel link <path>` on both projects,
-then `keel add gateway` on each side. Without peers the vertical
-installs nothing.
+then `keel add gateway` on each side. Without peers it is refused,
+pointing at `keel link` — it would install nothing — and it is not
+offered as an extra at `keel new`.
 ² Monorepo products get `compose.yaml` + Dockerfiles from the
 [`fullstack`](fullstack.md) root glue; `containerization` is the
 standalone-service story.
 ³ CLI distribution covers `quarkus-cli` on Gradle today; Go/Rust/TS
 CLI siblings are the intended growth path.
 ⁴ The container family: requires `containerization` installed first —
-the release pipeline builds that Dockerfile. See
-[`distribution`](distribution.md).
+the release pipeline builds that Dockerfile, and each container
+adapter declares so in its predicate. Offered as _needs Container
+image_; refused without it as `keel.missing-prerequisites`. A composed
+CLI + HTTP Quarkus stack on Gradle ships native binaries when
+distribution comes alone. See [`distribution`](distribution.md).
 ⁵ Keyed on the `dist.container-image` tag the distribution container
-family promotes — `keel add distribution` first. CLI shapes never
-carry it, so they hard-fail. See [`iac`](iac.md).
+family promotes — so it needs `containerization` and `distribution`,
+in that order. CLI shapes never carry it, so they are refused for the
+HTTP entrypoint they lack. See [`iac`](iac.md).
 
 The "first" in ⁴ and ⁵ is an order, not a separate run:
 [`keel new --with`](../cli.md#keel-new) installs extras in the order
-named, so `--with containerization,distribution,iac` is one run and
-the same three ids in another order are refused up front, naming the
-one to list them after.
+they depend on one another, so `--with containerization,distribution,iac`
+is one run in any order of the three. Naming `iac` without the other
+two is refused up front, naming them.
 
 ## Prerequisites per vertical
 

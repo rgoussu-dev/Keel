@@ -28,7 +28,7 @@ import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/compo
 import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
 import { piecesOf, stackDials } from '../../../src/domain/core/dials.js';
-import { shippedRegistry } from '../../../src/domain/core/registry.js';
+import { pluginOrigin, registryOf, shippedRegistry } from '../../../src/domain/core/registry.js';
 import {
   stackTagsFor,
   type ModuleLayoutOption,
@@ -389,5 +389,141 @@ describe('a composite product', () => {
       buildSystem: 'nonsense',
     }).target as NewProjectTarget;
     expect(settled.buildSystem).toBe('backend=gradle');
+  });
+});
+
+describe('the extras, as the planner reads them', () => {
+  /** A shipped preset's dials, settled at `extras` when given. */
+  const shipped = (stack: string, extras?: readonly string[]): DialOptions => {
+    const preset = shippedRegistry.stack(stack);
+    if (preset === null) throw new Error(`no shipped stack '${stack}'`);
+    return stackDials(shippedRegistry, preset, {
+      kind: 'new-project',
+      stack,
+      ...(extras === undefined ? {} : { extraVerticals: extras }),
+    });
+  };
+
+  it('offers what needs another vertical first, saying which, labelled by title', () => {
+    const dials = shipped('quarkus-rest');
+    const option = (id: string) => dials.verticals.find((vertical) => vertical.id === id);
+    expect(option('containerization')).toMatchObject({ readiness: 'ready', requires: [] });
+    expect(option('distribution')).toMatchObject({
+      readiness: 'needs',
+      requires: ['containerization'],
+    });
+    expect(option('iac')).toMatchObject({
+      title: 'Infrastructure as code',
+      readiness: 'needs',
+      requires: ['containerization', 'distribution'],
+    });
+    // The preset's own are there too, to show what comes with it.
+    expect(option('observability')).toMatchObject({ readiness: 'included', requires: [] });
+    // The menu is the rest of them, by the name a person knows.
+    expect(dials.extraVerticals.find((choice) => choice.id === 'iac')?.label).toBe(
+      'Infrastructure as code',
+    );
+    expect(ids(dials.extraVerticals)).not.toContain('observability');
+  });
+
+  it('offers nothing that would install nothing: no gateway without a linked project', () => {
+    const dials = shipped('go-http');
+    expect(dials.verticals.map((vertical) => vertical.id)).not.toContain('gateway');
+    expect(ids(dials.extraVerticals)).not.toContain('gateway');
+  });
+
+  it('snaps the extras to their closure, saying what it added and why', () => {
+    const dials = shipped('quarkus-rest', ['iac']);
+    expect((dials.target as NewProjectTarget).extraVerticals).toEqual([
+      'containerization',
+      'distribution',
+      'iac',
+    ]);
+    expect(dials.adjustments).toEqual([
+      {
+        id: 'containerization',
+        change: 'added',
+        because: 'Distribution needs it installed first',
+      },
+      {
+        id: 'distribution',
+        change: 'added',
+        because: 'Infrastructure as code needs it installed first',
+      },
+    ]);
+  });
+
+  it('puts the extras in the order the install runs them, with nothing to report', () => {
+    const dials = shipped('go-http', ['distribution', 'persistence', 'containerization']);
+    const extras = (dials.target as NewProjectTarget).extraVerticals ?? [];
+    expect([...extras].sort()).toEqual(['containerization', 'distribution', 'persistence']);
+    // Distribution reads persistence, and needs the image.
+    expect(extras.indexOf('distribution')).toBe(2);
+    expect(dials.adjustments).toEqual([]);
+  });
+
+  it('drops what this preset cannot take, and says why, rather than pruning silently', () => {
+    const dials = shipped('go-cli', ['persistence', 'ci', 'vcs', 'nonsense']);
+    expect((dials.target as NewProjectTarget).extraVerticals).toEqual(['ci']);
+    expect(dials.adjustments).toEqual([
+      { id: 'nonsense', change: 'dropped', because: "no vertical 'nonsense' is registered" },
+      { id: 'vcs', change: 'dropped', because: 'Version control comes with go-cli already' },
+      {
+        id: 'persistence',
+        change: 'dropped',
+        because:
+          'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      },
+    ]);
+  });
+
+  it('keeps a vertical two providers tie for when the selection names one, in either order', () => {
+    // A plugin's session store, and two caches either of which serves
+    // it. Ticked alone it is the user's choice to make; ticked beside
+    // one of them the choice is made — the command line plans the set
+    // whole and accepts it, so the page must not drop it for coming
+    // first in the list.
+    const piece = (id: string, requires: readonly Tag[], promotes: readonly Tag[]): Vertical => ({
+      id,
+      description: '',
+      dimensions: ['only'],
+      adapters: [
+        {
+          id: `${id}/main`,
+          vertical: id,
+          covers: ['only'],
+          predicate: { requires },
+          contribute: () => ({}),
+        },
+      ],
+      promotes,
+    });
+    const registry = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [
+          piece('acme-session', ['acme.cache'], []),
+          piece('redis-cache', ['lang.acme'], ['acme.cache']),
+          piece('memcached-cache', ['lang.acme'], ['acme.cache']),
+        ],
+      },
+    ]);
+    const stack = stackWith([], { tags: ['lang.acme'], verticals: [] });
+    for (const extras of [
+      ['acme-session', 'redis-cache'],
+      ['redis-cache', 'acme-session'],
+    ]) {
+      const dials = stackDials(registry, stack, target({ extraVerticals: extras }));
+      expect((dials.target as NewProjectTarget).extraVerticals, extras.join(',')).toEqual([
+        'redis-cache',
+        'acme-session',
+      ]);
+      expect(dials.adjustments).toEqual([]);
+    }
+    const alone = stackDials(registry, stack, target({ extraVerticals: ['acme-session'] }));
+    expect((alone.target as NewProjectTarget).extraVerticals).toEqual([]);
+    expect(alone.adjustments).toEqual([
+      expect.objectContaining({ id: 'acme-session', change: 'dropped' }),
+    ]);
   });
 });

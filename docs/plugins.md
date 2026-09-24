@@ -365,6 +365,20 @@ Name only what you really read. A pair that reads each other is a
 cycle keel refuses; if each side already adapts to the other either
 way round, declare neither.
 
+**A prerequisite is a `requires` entry.** When your adapter needs
+another vertical installed first, require a tag that vertical
+promotes, in the adapter's own predicate — never check for it inside
+`contribute()`. The planner reads the predicate, so the extras menu
+offers your vertical as _needs …_ naming the other, `keel ui` ticks it
+for the user, and `keel new --with` and `keel add` refuse a set that
+leaves it out before anything runs, as `keel.missing-prerequisites`.
+A check inside `contribute()` is seen by none of them: your vertical
+is offered where it cannot install, and refused only once the install
+reaches it. keel's own `distribution` works this way — its container
+adapters require the `deploy.container-image` tag `containerization`
+promotes. When two verticals would each supply what yours requires,
+the planner does not choose between them: the user names one.
+
 ---
 
 ## Trust — read this

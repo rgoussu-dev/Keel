@@ -19,6 +19,7 @@
 import type { Adapter } from '../../contract/composition.js';
 import { PROVIDER_QUESTION, otherProviderAskers } from './ci-pipeline.js';
 import {
+  CONTAINER_IMAGE_TAG,
   GRAALVM_NATIVE_TAG,
   jvmBuildSystem,
   jvmRestArtifact,
@@ -38,7 +39,7 @@ export const jvmContainerAdapter: Adapter = {
   id: JVM_CONTAINER_ID,
   vertical: 'distribution',
   covers: ['build', 'release-channel'],
-  predicate: { requires: ['runtime.jvm', 'arch.server-http'] },
+  predicate: { requires: ['runtime.jvm', 'arch.server-http', CONTAINER_IMAGE_TAG] },
   promotes: [DIST_CONTAINER_TAG],
   questions: [PROVIDER_QUESTION, DEPLOY_QUESTION],
   sharesAnswersWith: otherProviderAskers(JVM_CONTAINER_ID),

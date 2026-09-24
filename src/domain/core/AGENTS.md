@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`compatibility`, `planner`, `dials`, `answers`, `supplied-answers`,
+`compatibility`, `planner`, `plan-refusal`, `dials`, `answers`, `supplied-answers`,
 `apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
@@ -48,12 +48,19 @@ the same defect one layer out. An adapter question's choice follows the
 same rule one level down: it carries its own `predicate`, and
 `offeredIn` (`answers.ts`) is the one list the prompt, the preview and
 the supplied-answer check read — never a guard in `contribute()`.
-Readiness is next: `planner.ts` reads `Adapter.promotes` and
-`Vertical.reads` into one answer — included, ready, needs, unavailable
-— and an ordered closure, for the menus and both front doors to share
-once they move onto it; a prerequisite belongs in a predicate the
-planner can read, never in a throw inside `contribute()` (distribution's
-image check is the last such throw, and goes next). See
+Readiness follows it: `planner.ts` is **the single reading of
+readiness**. It reads `Adapter.promotes` and `Vertical.reads` into one
+answer — included, ready, needs, unavailable — and an ordered closure,
+and every surface asks it: the extras menu (`dials.ts`, both front
+ends), `keel.dials`' snap of a page's extras to their closure, and both
+front doors through `plan-refusal.ts` (`keel new --with` installs in
+plan order; both refuse an unavailable vertical or a set missing a
+prerequisite, before a file moves). A new surface asks it too, rather
+than re-deriving readiness from `coversFor` or a `promotes` union —
+that is how the extras menu came to hide `iac`. A prerequisite
+belongs in a predicate the planner can read — a `requires` tag another
+vertical promotes, as distribution's container adapters require
+`deploy.container-image` — never in a throw inside `contribute()`. See
 `docs/composition.md` → Conflicts and `docs/ui.md`.
 
 **Drill-down.** The stack finder is **shape → language → framework →

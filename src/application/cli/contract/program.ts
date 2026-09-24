@@ -120,7 +120,7 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .option(
       '--with <ids>',
-      `verticals to install on top of the stack's own, comma-separated (e.g. 'containerization,distribution,iac'); prompted when omitted and interactive, none otherwise. Single-service stacks only`,
+      `verticals to install on top of the stack's own, comma-separated, in any order (e.g. 'containerization,distribution,iac'); prompted when omitted and interactive, none otherwise. Single-service stacks only`,
     )
     .option(
       '--set <kv...>',
@@ -500,6 +500,9 @@ function unwrap<T>(result: Result<T>): T {
 
 function printReport(header: string, report: InstallReport, log: Logger): void {
   log.info(header);
+  // First, because each is a decision the run made that the command
+  // did not spell out — the order the extras went in, for one.
+  for (const note of report.notes ?? []) log.info(`  ${chalk.dim('note:')} ${note}`);
   for (const c of report.changes) {
     const tag =
       c.kind === 'create'

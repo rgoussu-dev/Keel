@@ -372,6 +372,9 @@ describe('keel.preview', () => {
  * choice the page itself offered — and each is now a `DomainError`
  * the mediator hands back as an `Err`. Previewed through a new
  * project, because that is where the page reaches them first.
+ * Distribution's missing image was the first of them; it is a
+ * declaration now, refused at the front door before any adapter runs,
+ * under the code it had.
  */
 describe('keel.preview — refusals from inside an adapter', () => {
   const previewGoHttp = (
@@ -391,8 +394,9 @@ describe('keel.preview — refusals from inside an adapter', () => {
     expect(error.code).toBe('keel.missing-prerequisites');
     // The same sentence reaches `keel new` and `keel add`, so it names
     // the vertical and the order rather than either command.
-    expect(error.message).toContain('containerization');
-    expect(error.message).not.toContain('keel add');
+    expect(error.message).toBe(
+      'Distribution needs Container image installed before it — add containerization as well',
+    );
   });
 
   it('refuses a value the question does not list as an invalid answer', async () => {

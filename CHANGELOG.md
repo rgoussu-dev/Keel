@@ -14,6 +14,38 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **Distribution and infrastructure as code are offered where they can
+  be built, and nowhere else.** `distribution`'s need for the image
+  `containerization` builds was a check inside its adapter, which no
+  menu could see: `keel ui` and the `keel new` wizard offered
+  distribution on every HTTP stack and refused it on install, never
+  offered `iac` at all, and `keel.dials` silently dropped an `iac` the
+  command line would have accepted. The requirement is now declared in
+  each container adapter's predicate, and every surface reads it from
+  one planner: the extras menu offers distribution as _needs Container
+  image_ and iac as _needs Container image, Distribution_ — labelled
+  so in the wizard; ticked for you in `keel ui` — and `keel new
+--with` and `keel add` refuse a set that leaves one out, before any
+  question, as `keel.missing-prerequisites`, naming what to add in the
+  order it installs. `iac` on a CLI project is refused for the HTTP
+  entrypoint it lacks rather than for a tag. On `quarkus-cli-rest` on
+  Gradle, distribution alone now installs its native binaries instead
+  of being refused.
+
+- **`keel ui` no longer loses `DB_URL`.** The page names extras in
+  menu order, which is alphabetical, and `keel new` installed them in
+  the order named — so distribution rendered its deploy descriptor
+  before persistence was there, and `deploy/compose.yaml` came out
+  with no `DB_URL`, silently. Extras now install in the order they
+  depend on one another, whatever order they are named in.
+
+- **The service gateway is refused where no project is linked.** With
+  no peer, `gateway` installed zero files and was recorded as
+  installed — which then blocked the real install after `keel link`.
+  It is no longer offered as an extra or a card there, and `keel add
+gateway` refuses it: _"Service gateway wires linked projects — run
+  `keel link <path>` first"_.
+
 - **A file in the way, or gone, is a refusal naming it.** `keel new`
   into a directory holding a `README.md` or `.gitignore` — a freshly
   cloned hosted repository — crashed on the Go, Rust,
@@ -104,8 +136,8 @@ use to keep a long-lived changelog scannable — and the root keeps
   yet threw a plain error — a 500 in `keel ui` — whose sentence told a
   `keel new` user to run `keel add containerization`. It is now
   refused as `keel.missing-prerequisites`, with a sentence that holds
-  in both commands: add `containerization` as well, ahead of
-  `distribution`. An answer a prompt hands back — the page's preview,
+  in both commands: add `containerization` as well. An answer a prompt
+  hands back — the page's preview,
   a terminal — that is none of its question's choices is refused as
   `keel.invalid-answer`, naming the `adapterId:questionId` it was for.
   A default outside its own choices is an adapter bug and still
@@ -155,6 +187,40 @@ use to keep a long-lived changelog scannable — and the root keeps
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`--with` names a set, not a sequence.** Extras install in the
+  order they depend on one another — `containerization` before the
+  `distribution` that builds its image, `persistence` before the
+  `distribution` whose descriptor reads it — whatever order they are
+  named in, and extras nothing ties together go in by id, so every
+  order typed writes the same files. The report opens with a note when
+  the order typed put one ahead of what it needs
+  (`installed in dependency order: …`, `InstallReport.notes`).
+  `keel.extra-verticals-order` is retired;
+  naming an id twice is still refused. A set that leaves out what an
+  extra needs installed first is refused as
+  `keel.missing-prerequisites`, where `iac` without its prerequisites
+  used to be `keel.uncoverable-vertical`; scripts matching either
+  should expect the new code. Including the prerequisites on the
+  command line is the next step.
+
+- **`keel.dials` reports readiness and snaps the extras to their
+  closure.** `DialOptions` gains `verticals` — the preset's own
+  (_included_) and every extra it offers, each _ready_ or _needs_ with
+  the verticals it needs first — and `adjustments`: posted extras come
+  back with their prerequisites added and what this preset cannot take
+  dropped, in install order, each change with its reason, where they
+  used to be pruned without a word. The extras menu is labelled by
+  title rather than id.
+
+- **Distribution's prerequisite is a declaration.** The five container
+  distribution adapters require `deploy.container-image` in their
+  predicates, and the check that threw inside their `contribute()` is
+  gone. `keel add distribution` on a project with no image is refused
+  at the front door, still as `keel.missing-prerequisites`, now
+  _"Distribution needs Container image installed before it — add
+  containerization as well"_. A plugin states a prerequisite the same
+  way: a `requires` tag another vertical promotes.
 
 - **An answer reaches only the adapters it belongs to, and a stray
   one is refused.** `keel new` wrote every `--set` into the manifest

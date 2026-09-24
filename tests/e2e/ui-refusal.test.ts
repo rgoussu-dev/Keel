@@ -7,7 +7,9 @@
  * a dimension, which is what "this Go CLI has nothing to build a
  * container image from" comes out as; the applier refuses a file of
  * the user's in the way (`keel.path-conflict`) or gone
- * (`keel.path-missing`). The first is the one driven here. It used to
+ * (`keel.path-missing`). The first is the one driven here — refused
+ * now at `keel add`'s front door, where the planner reads the same gap
+ * before anything runs, in the same code and words. It used to
  * escape `installVertical` as a bare `Error`, and a throw is the one
  * thing an HTTP layer can only read as a crash — so `keel ui` answered
  * **500 with a bare string** and the page showed `POST /api/preview
@@ -77,7 +79,8 @@ import {
 /**
  * A CLI-shaped TypeScript project: no `arch.server-http`, so the
  * `containerization` vertical has no adapter for its `image`
- * dimension and the engine refuses it from the bottom of the install.
+ * dimension, and `keel add` refuses it at its front door — the
+ * planner's reading, in the words the resolver's throw would use.
  */
 const STACK = 'ts-cli';
 const REFUSED = 'containerization';

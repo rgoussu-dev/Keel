@@ -31,9 +31,11 @@ import type { Adapter, Tag, Vertical } from '../contract/composition.js';
 
 /**
  * The code a {@link ResolutionError} carries when a dimension is left
- * uncovered — the same one `keel new`'s `--with` preflight refuses
- * with, because it is the same condition. The sentence is shared too
- * (`./refusals.ts`); the preflight only adds the remedy `--with` has.
+ * uncovered — the same one both front doors refuse a vertical the
+ * planner reads as unavailable with (`./plan-refusal.ts`), because it
+ * is the same condition asked ahead of time. The sentences come from
+ * one place too (`./refusals.ts`); `keel new --with` only adds the
+ * remedy it has.
  */
 export const UNCOVERED_CODE = 'keel.uncoverable-vertical';
 

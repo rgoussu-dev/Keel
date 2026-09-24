@@ -211,6 +211,20 @@ With no rule declared anywhere — which is where the shipped registry
 stands for everything but the peer context — the menus are the
 catalog's own lists, unchanged.
 
+The extras are the planner's (`domain/core/planner.ts`), the same
+reading `keel new --with` and `keel add` refuse by. `keel.dials`
+reports every vertical the preset carries (`verticals`): its own,
+_included_; the ones that install here on their own, _ready_; and the
+ones that install once others have, _needs_, with what they need
+(`requires`, in install order) — Infrastructure as code needs Container
+image, then Distribution. A vertical nothing keel can add makes
+installable here is not on the list. When the target names extras,
+they come back **snapped to their closure**: ticking Infrastructure as
+code posts Container image and Distribution with it, in the order the
+install runs them, and `adjustments` says so — each vertical `added`
+or `dropped`, with the reason as one sentence. Nothing leaves a
+selection silently.
+
 ## Why the questions are not one static form
 
 keel's question set is a **function of the answers already given**. An
@@ -351,18 +365,21 @@ throwing, from inside `installVertical`, past every menu. A throw is
 the one thing an HTTP layer can only read as a crash, so that answered
 **500 with a bare string**. It now carries a code
 (`keel.uncoverable-vertical`) and the mediator puts it back on the
-`Err` rail, so it arrives here as a 422 like any other and the page
-shows what is missing in the words the finder uses — _"Container
-image needs an entrypoint this project does not have: HTTP server — a
-REST endpoint"_ — never a tag no command can add. Pointed at a
-composite product's root, a vertical the root cannot carry is refused
-naming the service directories it belongs in.
+`Err` rail — and both front doors ask the planner first, so it is
+refused before anything runs, in the same code. It arrives here as a
+422 like any other and the page shows what is missing in the words the
+finder uses — _"Container image needs an entrypoint this project does
+not have: HTTP server — a REST endpoint"_ — never a tag no command can
+add. Pointed at a composite product's root, a vertical the root cannot
+carry is refused naming the service directories it belongs in.
 
-The refusals an adapter raises while it runs travel the same way:
-distribution on a project with no container image yet
-(`keel.missing-prerequisites`), and an answer that is none of the
-choices its question offers this project, sent to a preview or an
-install (`keel.invalid-answer`). A choice declares where it applies,
+A vertical that installs only once another has is refused the same
+way, naming it (`keel.missing-prerequisites`): distribution on a
+project with no container image yet — _"Distribution needs Container
+image installed before it — add containerization as well"_. The
+refusals an adapter raises while it runs travel the same way too: an
+answer that is none of the choices its question offers this project,
+sent to a preview or an install (`keel.invalid-answer`). A choice declares where it applies,
 so the preview never lists one the stack cannot serve — `mariadb` is
 not among `go-http`'s engines, nor `liquibase` among a JVM stack's
 migrations tools — and the same list is what a posted answer is held

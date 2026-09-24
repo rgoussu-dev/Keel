@@ -4,16 +4,17 @@
  * nothing staged and nothing asked.
  *
  * Every surface that offers a vertical asks some version of this
- * question, and until now each answered it its own way: the extras
- * menu flatly, against the union of what a stack's verticals may
- * promote; the `--with` gate by walking the extras in the order typed;
- * the brownfield page not at all. Distribution's need for an image,
- * left as a throw inside `contribute()`, was invisible to all three.
- * This module is the one reading they can share — the rule
- * `./compatibility.ts` already applies to conflicts, extended to
- * readiness: one declaration, read by every surface, so a menu, a card
- * and a refusal cannot disagree. It has no caller yet; the menus and
- * both front doors move onto it next.
+ * question, and each used to answer it its own way: the extras menu
+ * flatly, against the union of what a stack's verticals may promote;
+ * the `--with` gate by walking the extras in the order typed; the
+ * brownfield page not at all. Distribution's need for an image, left
+ * as a throw inside `contribute()`, was invisible to all three. This
+ * module is the one reading they share — the rule `./compatibility.ts`
+ * already applies to conflicts, extended to readiness: one
+ * declaration, read by every surface, so a menu, a card and a refusal
+ * cannot disagree. The extras menu and `keel.dials`' snap read it
+ * through `./dials.ts`, and both front doors through
+ * `./plan-refusal.ts`.
  *
  * **What it reads.** A vertical's `dimensions` and its adapters'
  * predicates, as the resolver does; each adapter's
@@ -472,6 +473,7 @@ function stepsOf(
  */
 function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): ReadinessGap {
   const tags = asSet(scope.tags);
+  const acquirable = acquirableIn(registry);
   const entrypoint = new Set<Tag>();
   const peer = new Set<Tag>();
   const identity = new Set<Tag>();
@@ -481,13 +483,15 @@ function gapOf(registry: Registry, scope: PlanScope, vertical: Vertical): Readin
       else if (tag.startsWith(PEER_NAMESPACE)) peer.add(tag);
       else {
         const deeper =
-          depth < MAX_PREREQUISITES && !seen.has(tag) ? supplierGap(registry, tags, tag) : [];
+          depth < MAX_PREREQUISITES && !seen.has(tag)
+            ? supplierGap(registry, tags, acquirable, tag)
+            : [];
         if (deeper.length === 0) identity.add(tag);
         else explain(deeper, depth + 1, new Set([...seen, tag]));
       }
     }
   };
-  explain(unmetOf(vertical, tags), 0, new Set());
+  explain(unmetOf(vertical, tags, acquirable), 0, new Set());
   return {
     entrypoint: [...entrypoint].sort(),
     peer: [...peer].sort(),
@@ -509,14 +513,40 @@ const PEER_NAMESPACE = 'peer.';
  * for a vertical that declares none. Empty when the adapters in reach
  * are ruled out by an `excludes` entry instead.
  */
-function unmetOf(vertical: Vertical, tags: ReadonlySet<Tag>): readonly Tag[] {
-  if (vertical.dimensions.length > 0) return coverageGap(vertical, tags)?.enablers ?? [];
-  return nearestUnmet(vertical.adapters, tags) ?? [];
+function unmetOf(
+  vertical: Vertical,
+  tags: ReadonlySet<Tag>,
+  acquirable: ReadonlySet<Tag>,
+): readonly Tag[] {
+  if (vertical.dimensions.length === 0) {
+    return nearestUnmet(vertical.adapters, tags, acquirable) ?? [];
+  }
+  const unmet = new Set<Tag>();
+  for (const dimension of coverageGap(vertical, tags)?.dimensions ?? []) {
+    const covering = vertical.adapters.filter((adapter) => adapter.covers.includes(dimension));
+    for (const tag of nearestUnmet(covering, tags, acquirable) ?? []) unmet.add(tag);
+  }
+  return [...unmet].sort();
 }
 
-/** The fewest unmet `requires` among `adapters` not excluded by `tags`; null when all are. */
-function nearestUnmet(adapters: readonly Adapter[], tags: ReadonlySet<Tag>): readonly Tag[] | null {
-  let nearest: readonly Tag[] | null = null;
+/**
+ * The unmet `requires` of the adapter among `adapters` nearest to
+ * matching, and not excluded by `tags`; null when all are.
+ *
+ * Nearest counts first what no install can add — a tag no registered
+ * vertical promotes — and only then every unmet tag. A plain count
+ * would call a Quarkus-native adapter, two identity tags away from a
+ * Go CLI, as near as the Go image one that needs only the HTTP
+ * entrypoint and an image some vertical builds; the gap would then
+ * read as "no adapter for this stack" where the truth is "no HTTP
+ * entrypoint".
+ */
+function nearestUnmet(
+  adapters: readonly Adapter[],
+  tags: ReadonlySet<Tag>,
+  acquirable: ReadonlySet<Tag>,
+): readonly Tag[] | null {
+  let nearest: { readonly unmet: readonly Tag[]; readonly key: readonly number[] } | null = null;
   for (const adapter of adapters) {
     if ((adapter.predicate.excludes ?? []).some((pattern) => matchesPattern(pattern, tags))) {
       continue;
@@ -524,9 +554,22 @@ function nearestUnmet(adapters: readonly Adapter[], tags: ReadonlySet<Tag>): rea
     const unmet = (adapter.predicate.requires ?? []).filter(
       (pattern) => !matchesPattern(pattern, tags),
     );
-    if (nearest === null || unmet.length < nearest.length) nearest = unmet;
+    const fixed = unmet.filter((pattern) => !matchesPattern(pattern, acquirable)).length;
+    const key = [fixed, unmet.length];
+    if (nearest === null || compareKeys(key, nearest.key) < 0) nearest = { unmet, key };
   }
-  return nearest;
+  return nearest?.unmet ?? null;
+}
+
+/** Every tag some registered vertical's adapters may promote. */
+function acquirableIn(registry: Registry): ReadonlySet<Tag> {
+  return new Set(
+    registry
+      .verticals()
+      .flatMap((vertical) =>
+        vertical.adapters.flatMap((adapter) => adapterPromotes(vertical, adapter)),
+      ),
+  );
 }
 
 /**
@@ -535,19 +578,24 @@ function nearestUnmet(adapters: readonly Adapter[], tags: ReadonlySet<Tag>): rea
  * matches — what its vertical lacks. Empty when nothing promotes it,
  * or nothing that does can say more, and the tag is then the gap.
  */
-function supplierGap(registry: Registry, tags: ReadonlySet<Tag>, pattern: Tag): readonly Tag[] {
+function supplierGap(
+  registry: Registry,
+  tags: ReadonlySet<Tag>,
+  acquirable: ReadonlySet<Tag>,
+  pattern: Tag,
+): readonly Tag[] {
   let nearest: { readonly vertical: Vertical; readonly unmet: readonly Tag[] } | null = null;
   for (const vertical of registry.verticals()) {
     const suppliers = vertical.adapters.filter((adapter) =>
       matchesPattern(pattern, new Set(adapterPromotes(vertical, adapter))),
     );
-    const unmet = nearestUnmet(suppliers, tags);
+    const unmet = nearestUnmet(suppliers, tags, acquirable);
     if (unmet !== null && (nearest === null || unmet.length < nearest.unmet.length)) {
       nearest = { vertical, unmet };
     }
   }
   if (nearest === null) return [];
-  return nearest.unmet.length > 0 ? nearest.unmet : unmetOf(nearest.vertical, tags);
+  return nearest.unmet.length > 0 ? nearest.unmet : unmetOf(nearest.vertical, tags, acquirable);
 }
 
 /**
@@ -560,11 +608,7 @@ function supplierGap(registry: Registry, tags: ReadonlySet<Tag>, pattern: Tag): 
  * Only the nearest are listed, by id.
  */
 function nearestStacks(registry: Registry, scope: PlanScope, vertical: Vertical): string[] {
-  const acquirable = new Set(
-    registry
-      .verticals()
-      .flatMap((other) => other.adapters.flatMap((adapter) => adapterPromotes(other, adapter))),
-  );
+  const acquirable = acquirableIn(registry);
   const identityOf = (tags: readonly Tag[]): ReadonlySet<Tag> =>
     new Set(
       tags.filter(

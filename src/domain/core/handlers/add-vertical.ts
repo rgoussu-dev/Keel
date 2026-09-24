@@ -11,11 +11,15 @@
  *   3. Refuse if the vertical is already installed (that is what
  *      `--reapply` is for; the safe default is to surface the
  *      duplicate to the user).
- *   4. Refuse a supplied answer the vertical's plan would not read —
+ *   4. Refuse a vertical the planner (`../planner.ts`) reads as
+ *      unavailable here, or as needing another installed first
+ *      (`keel.missing-prerequisites`, naming it) — the reading the
+ *      extras menu and `keel new --with` share (`../plan-refusal.ts`).
+ *   5. Refuse a supplied answer the vertical's plan would not read —
  *      one for an installed vertical's adapter is frozen, any other
  *      is unknown (`../supplied-answers.ts`). Only the adapters it is
  *      keyed to take it, so nothing else it names is ever recorded.
- *   5. Install the vertical against a Tree rooted at cwd, through the
+ *   6. Install the vertical against a Tree rooted at cwd, through the
  *      loop `keel new` installs each scope through
  *      (`installVerticals`), with a list of one. The pre-existing
  *      project files on disk live in the Tree as "real" reads —
@@ -26,8 +30,8 @@
  *      buffer stays this handler's to finalize: adopting a harness
  *      replays the project's earlier contributors into it before the
  *      finalize, and restamps the harness generation after.
- *   6. Under dry-run: report the plan, commit nothing.
- *   7. Otherwise: commit the Tree, persist the updated manifest, then
+ *   7. Under dry-run: report the plan, commit nothing.
+ *   8. Otherwise: commit the Tree, persist the updated manifest, then
  *      run the deferred actions — manifest before actions, as in the
  *      new-project handler, so a failed action leaves a coherent
  *      (files + manifest) pair and a re-run correctly refuses the
@@ -65,6 +69,7 @@ import { ContributionConflictError, newOwnership, type HarnessContribution } fro
 import { unifiedDiff } from '../diff.js';
 import { finalizeHarness, installVerticals } from '../install.js';
 import { retrofitHarness } from '../harness-retrofit.js';
+import { admit } from '../plan-refusal.js';
 import { productRootSentence } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
 import { coversFor, resolveVertical, UNCOVERED_CODE } from '../resolver.js';
@@ -157,6 +162,20 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
           'keel.incompatible',
         ),
       );
+    }
+
+    // The planner's reading, the one `keel new --with` and the extras
+    // menu share: a vertical this project cannot carry, or one that
+    // installs only once another has, is refused here, in the words
+    // the menu would have used — never discovered inside an adapter.
+    // A reapply re-renders what is there, so it has nothing to ask.
+    if (!reapply) {
+      const admitted = admit(
+        this.deps.registry,
+        { tags: effectiveTags(stored), installed: stored.verticals.map((v) => v.id) },
+        [vertical],
+      );
+      if (!admitted.ok) return admitted;
     }
 
     // Held against the plan before anything runs, so a stray key is

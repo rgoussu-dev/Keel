@@ -18,26 +18,39 @@ selected by predicate:
 
 ## Dimensions & adapters
 
-| Dimension                  | Adapter                           | Predicate                                                                  |
-| -------------------------- | --------------------------------- | -------------------------------------------------------------------------- |
-| `build`, `release-channel` | `distribution/quarkus-cli-native` | `framework.quarkus` + `arch.cli` + `pkg.gradle`, minus `runtime.jvm-image` |
-| `build`, `release-channel` | `distribution/jvm-container`      | `runtime.jvm` + `arch.server-http` (all 12 stacks)                         |
-| `build`, `release-channel` | `distribution/go-container`       | `lang.go` + `arch.server-http`                                             |
-| `build`, `release-channel` | `distribution/rust-container`     | `lang.rust` + `arch.server-http`                                           |
-| `build`, `release-channel` | `distribution/ts-container`       | `lang.typescript` + `runtime.node` + `arch.server-http`                    |
-| `build`, `release-channel` | `distribution/wc-container`       | `framework.web-components` + `arch.spa`                                    |
+| Dimension                  | Adapter                           | Predicate                                                                          |
+| -------------------------- | --------------------------------- | ---------------------------------------------------------------------------------- |
+| `build`, `release-channel` | `distribution/quarkus-cli-native` | `framework.quarkus` + `arch.cli` + `pkg.gradle`, minus `runtime.jvm-image`         |
+| `build`, `release-channel` | `distribution/jvm-container`      | `runtime.jvm` + `arch.server-http` + `deploy.container-image` (all 12 stacks)      |
+| `build`, `release-channel` | `distribution/go-container`       | `lang.go` + `arch.server-http` + `deploy.container-image`                          |
+| `build`, `release-channel` | `distribution/rust-container`     | `lang.rust` + `arch.server-http` + `deploy.container-image`                        |
+| `build`, `release-channel` | `distribution/ts-container`       | `lang.typescript` + `runtime.node` + `arch.server-http` + `deploy.container-image` |
+| `build`, `release-channel` | `distribution/wc-container`       | `framework.web-components` + `arch.spa` + `deploy.container-image`                 |
 
 ## The container family
 
 The release pipeline **builds the Dockerfile the
 [`containerization`](containerization.md) vertical emitted** — one
-image definition, no second build system. That is a prerequisite:
-on a server-shaped project without it, distribution is refused as
-`keel.missing-prerequisites`, in `keel add distribution` and
-`keel new --with distribution` alike. The fix is to install
-`containerization` first — `keel add containerization`, or
-`--with containerization,distribution`, since extras install in the
-order named.
+image definition, no second build system. That is a prerequisite, and
+a declared one: every container adapter requires the
+`deploy.container-image` tag containerization adds, in its predicate.
+So every surface knows it before anything runs — the extras menu
+offers distribution as _needs Container image_ (`keel ui` ticks it for
+you), and on a server-shaped project without it, distribution is
+refused as `keel.missing-prerequisites` in `keel add distribution` and
+`keel new --with distribution` alike, naming it. The fix is to install
+`containerization` as well — `keel add containerization` first, or
+`--with containerization,distribution` in any order, since extras
+install in the order they depend on one another.
+
+On a stack composing a CLI with an HTTP server (`quarkus-cli-rest`,
+`quarkus-cli-rest-kotlin` on Gradle), distribution **alone** resolves
+to `quarkus-cli-native` only: native binaries, no image pipeline —
+it covers both dimensions without an image, so it is ready rather than
+waiting on one. Add `containerization` in the same run and the image
+is built first; its flavor then decides which pipeline ships it (the
+JVM flavor excludes the native adapter). Adding `containerization` to
+such a project later does not touch the native release already there.
 
 What each family's pipeline does on a `v*` tag:
 

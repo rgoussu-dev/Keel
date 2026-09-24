@@ -56,12 +56,16 @@ matching change lands in the same commit as the thing it guards:
 
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
-measure behind roadmap epic Q, whose invariants (I1–I6 today) it holds.
-Three suites, split so vitest runs them in parallel:
+measure behind roadmap epic Q, whose invariants (I1–I6 and I8 today)
+it holds. Three suites, split so vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
-  offered), plus `README.md` and `.gitignore` seeded before `keel new`.
+  offered), every permutation of each offered set whose order could
+  matter — a vertical that `reads` another, with both chains — and the
+  whole menu named forwards and backwards, held to staging the same
+  bytes (I8, read back through the Trees the preview opened), plus
+  `README.md` and `.gitignore` seeded before `keel new`.
 - `brownfield` — every single-service stack scaffolded once, `keel add`
   previewed for every vertical (I4 available ⇒ Ok, I5 same outcome as
   greenfield), plus a user `Dockerfile` or `.github/workflows/ci.yml`
@@ -84,11 +88,14 @@ the record can only shrink. Beside each suite:
 - An invariant a step brings to zero for good becomes **hard**
   (`HARD` in the support module): its key leaves every known file, so
   there is nowhere to list a cell, and one violation fails the grid.
-  I1 has been hard since Q0.3 — a thrown cell is always a failure.
+  I1 has been hard since Q0.3 — a thrown cell is always a failure — and
+  I2, I3 and I8 since Q1.3, when the menus and both front doors moved
+  onto the planner.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first.
 
-About 7 s wall on its own, greenfield the longest at ~5 s.
+About 11 s wall on its own, greenfield the longest at ~9 s, of which
+I8's orderings are about 3.5 s.
 
 The grid posts no answers, so every question resolves to its default
 and an answer choice offered where it is refused is invisible to it.
@@ -103,9 +110,9 @@ records what `planner.ts` reads for every single-service preset × every
 registered vertical on default dials. `KEEL_UPDATE_GOLDEN=1` rewrites
 it, and a change to a declaration — a predicate, an adapter's
 `promotes`, a vertical's `reads` — shows there as a diff to review. It
-is a record of the planner, not an oracle for the gate: once a surface
-reads the planner, the grid holds that surface to the install through
-preview.
+is a record of the planner, not an oracle for the gate: the menus and
+both front doors read the planner, and the grid holds each of them to
+the install through preview.
 
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial

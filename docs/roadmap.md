@@ -110,6 +110,12 @@ sketch, on record:
   `containerization` a hard prerequisite — the adapters refuse with
   the fix in the message when `deploy.container-image` is absent,
   rather than emitting a pipeline that fails on the host.
+  _Superseded by Q1.3:_ that refusal was a throw inside
+  `contribute()`, which no menu, front door or planner could see — so
+  distribution was offered everywhere and refused on install. The
+  requirement is now a `requires` entry in each container adapter's
+  predicate, read by the planner: distribution is offered as _needs
+  Container image_, and refused up front without it, naming it.
 - **The provider is `ci`'s dial, reused, not a second question.**
   GHCR under `github-actions`, the GitLab Container Registry under
   `gitlab-ci` (release jobs appended to `.gitlab-ci.yml` via the
@@ -2528,7 +2534,7 @@ nearest group, and `plan` also answers `unknown`, `incompatible`
 on every HTTP stack and iac _needs distribution_ on 19; gateway is
 _unavailable_ everywhere, for want of a peer. The grid does not move.
 
-#### Q1.3 — The throw becomes a declaration; both front doors and the menus ask the planner (L)
+#### Q1.3 — The throw becomes a declaration; both front doors and the menus ask the planner (L) ✅
 
 `deploy.container-image` joins `predicate.requires` of the five
 container distribution adapters — a tag containerization already
@@ -2541,6 +2547,56 @@ of pruning silently. The `--with` gate stops caring about order
 refused); gateway with no peer is `unavailable` ("run `keel link`
 first"). **One commit**, since the shrink-only file forbids the
 intermediate states. Settles D1 first.
+
+Landed as one commit. Both front doors go through
+`plan-refusal.ts` (`admit`), which plans the request and either
+returns it in plan order or refuses: `keel.uncoverable-vertical` from
+the planner's gap (a peer-only gap reads "Service gateway wires linked
+projects — run `keel link <path>` first"), `keel.incompatible` for a
+broken rule or a set no order installs, and
+`keel.missing-prerequisites` — the code, now in `refusals.ts` — for a
+set that plans only with verticals it did not name, or a tie, naming
+them in install order ("Infrastructure as code needs Container image
+and Distribution installed before it, in that order — add
+containerization, distribution as well"). The command line refuses
+that set in this step; including it is Q1.4's. `--with` is a set:
+`admit` hands the planner its ids sorted, so verticals nothing ties
+together go in by id and every permutation writes the same bytes
+(toolchain and persistence both add a README section, and used to
+place them in the order typed); `InstallReport.notes` says so when
+the order named put one ahead of what it needs. `keel.dials` snaps
+the page's extras the same way, by id, retrying a vertical tied
+between two providers once the rest is kept. The terminal's
+multi-select labels a _needs_ choice with what it needs, by title.
+`legalExtraVerticals` gave way to `verticalOptions` (every vertical
+of the preset, with its readiness) and `offeredAsExtra`, read by both
+front ends. `VerticalOption.readiness` is the kind
+(`included | ready | needs`) with `requires` beside it, so no tag
+reaches the page; `requires` is empty for a vertical two sets would
+serve equally. Distribution alone on `quarkus-cli-rest(-kotlin)`/Gradle
+is _ready_ and installs `quarkus-cli-native` only (D3); with
+`containerization` both install, image first.
+
+Beyond the text above: `keel.project-status` no longer lists a
+vertical that would install nothing — one declaring no dimensions
+with no adapter matching, which today is the gateway without a linked
+project. Refused at `keel add`, its 28 single-service cards and 6
+product-root cards would otherwise have become new I4 violations; Q1.8
+lists it again, as unavailable with its sentence. The planner's
+_nearest adapter_ now counts what no install can add before counting
+every unmet tag, so `go-cli`/`rust-cli`/`ts-cli` + distribution keep
+their entrypoint gap now that the Go/Rust/TS image adapters also miss
+an image. Grid: I2 19 → 0 and I3 19 → 0, both **hard** from here;
+**I8 lands hard** on the greenfield axis — every permutation of each
+offered vertical that `reads` another, with both chains
+(`[containerization, distribution, persistence]` on 18 HTTP stacks,
+108 previews), and each stack's whole menu named forwards and
+backwards (28 stacks), stages byte-identical files; brownfield I4 83 → 81
+(`quarkus-cli-rest(-kotlin)` + distribution); I5 parity kept. The
+`DB_URL` case is pinned directly on go-http and quarkus-rest, every
+permutation. The readiness golden moves exactly the 36 intended cells:
+distribution _needs containerization_ on 17 HTTP stacks, iac _needs
+containerization > distribution_ on 19.
 
 #### Q1.4 — Prerequisites are included; `keel add` takes several verticals and proposes refreshes (M)
 

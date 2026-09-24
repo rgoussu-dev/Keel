@@ -15,9 +15,11 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import { fsTreeFactory } from '../../../../src/infrastructure/tree/fs-tree.js';
 import {
   expectErr,
   expectOk,
@@ -1145,9 +1147,11 @@ describe('keel.new-project extra verticals', () => {
     const installed = manifest?.verticals.map((v) => v.id) ?? [];
     expect(installed).toContain('distribution');
     expect(installed).toContain('ci');
-    // The stack's own first, the extras after, in the order named —
-    // which is what lets them resolve against one another's tags.
-    expect(installed.slice(-2)).toEqual(['distribution', 'ci']);
+    // The stack's own first, the extras after — by id where nothing
+    // ties one to the other, which follows no dependency the order
+    // named broke, so there is nothing to note.
+    expect(installed.slice(-2)).toEqual(['ci', 'distribution']);
+    expect(report.notes).toBeUndefined();
   });
 
   it('installs none when --with is omitted non-interactively', async () => {
@@ -1262,6 +1266,32 @@ describe('keel.new-project extra verticals', () => {
     // `persistence` needs a datasource adapter, and a CLI-only preset
     // has none — offering it would be offering a `ResolutionError`.
     expect(offered).not.toContain('persistence');
+  });
+
+  it('labels a choice that needs another first with what it needs, by title', async () => {
+    // Only the dials are scripted: the run stops at the first adapter
+    // question, after the menu this is about has been asked.
+    const prompt = new FakePrompt({
+      extraVerticals: '',
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+    });
+    await installMediator({ prompt })
+      .dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+        }),
+      )
+      .catch(() => null);
+    const asked = prompt.questions.find((q) => q.id === 'extraVerticals');
+    const label = (id: string) => asked?.choices?.find((c) => c.value === id)?.label;
+    expect(label('containerization')).toBe('Container image');
+    expect(label('distribution')).toBe('Distribution — needs Container image');
+    expect(label('iac')).toBe('Infrastructure as code — needs Container image, Distribution');
   });
 
   it('an explicit --with suppresses the question, including when it is empty', async () => {
@@ -1400,7 +1430,7 @@ describe('keel.new-project extra verticals', () => {
     expect(prompt.asked).not.toContain('projectName');
   });
 
-  it('accepts extras that enable one another, in the order named', async () => {
+  it('accepts extras that enable one another', async () => {
     const mediator = installMediator({
       runDeferred: runActionsExcept(['walking-skeleton/gradle-wrapper']),
     });
@@ -1412,11 +1442,9 @@ describe('keel.new-project extra verticals', () => {
           answers: { 'vcs/git-init': { remote: '', defaultBranch: 'main' } },
           interactive: false,
           dryRun: true,
-          // `iac` is keyed on the `dist.container-image` tag
-          // `distribution` promotes at install time, which no flat
-          // coverage probe can see — refusing this composition is
-          // exactly the wrong answer, since it is the one --with
-          // exists to enable.
+          // `iac` is keyed on the image `distribution` publishes, and
+          // `distribution` on the one `containerization` builds — the
+          // chain `--with` exists to compose in one run.
           extraVerticals: ['containerization', 'distribution', 'iac'],
         }),
       ),
@@ -1424,9 +1452,138 @@ describe('keel.new-project extra verticals', () => {
     const changed = report.changes.map((c) => c.path);
     expect(changed).toContain('Dockerfile');
     expect(changed.some((p) => p.startsWith('iac/'))).toBe(true);
+    expect(report.notes).toBeUndefined();
   });
 
-  it('names the extra to list it after when --with orders the pair backwards', async () => {
+  it('plans the same install from any permutation of the extras', async () => {
+    // A set, not a sequence: every order of the chain is accepted and
+    // stages the same files, installed in the order the planner puts
+    // them in — and a run named out of that order says so.
+    const orders = [
+      ['containerization', 'distribution', 'iac'],
+      ['containerization', 'iac', 'distribution'],
+      ['distribution', 'containerization', 'iac'],
+      ['distribution', 'iac', 'containerization'],
+      ['iac', 'containerization', 'distribution'],
+      ['iac', 'distribution', 'containerization'],
+    ];
+    const plans: string[] = [];
+    for (const extraVerticals of orders) {
+      const report = expectOk(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-rest',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+      plans.push(JSON.stringify(report.changes));
+      expect(report.notes).toEqual(
+        extraVerticals.join(',') === 'containerization,distribution,iac'
+          ? undefined
+          : ['installed in dependency order: containerization, distribution, iac'],
+      );
+    }
+    expect(new Set(plans).size).toBe(1);
+  });
+
+  it('writes the same bytes from either order of two verticals nothing ties together', async () => {
+    // Toolchain and persistence both add a README section; nothing
+    // orders one after the other, so they go in by id — never in the
+    // order typed, which would move a section.
+    const readmes: string[] = [];
+    for (const extraVerticals of [
+      ['persistence', 'toolchain'],
+      ['toolchain', 'persistence'],
+    ]) {
+      let staged: Tree | null = null;
+      const report = expectOk(
+        await installMediator({ trees: (root) => (staged = fsTreeFactory(root)) }).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-http',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            extraVerticals,
+          }),
+        ),
+      );
+      expect(report.notes).toBeUndefined();
+      readmes.push((staged as Tree | null)?.read('README.md')?.toString('utf8') ?? '');
+    }
+    expect(readmes[0]).toContain('### Toolchain');
+    expect(readmes[1]).toBe(readmes[0]);
+  });
+
+  it.each(['go-http', 'quarkus-rest'])(
+    'puts persistence ahead of the distribution that reads it on %s, whatever the order named',
+    async (stack) => {
+      // The descriptor distribution renders carries `DB_URL` only when
+      // persistence is recorded by then. The page used to name extras
+      // alphabetically — distribution first — and lose it silently.
+      const orders = [
+        ['containerization', 'distribution', 'persistence'],
+        ['containerization', 'persistence', 'distribution'],
+        ['distribution', 'containerization', 'persistence'],
+        ['distribution', 'persistence', 'containerization'],
+        ['persistence', 'containerization', 'distribution'],
+        ['persistence', 'distribution', 'containerization'],
+      ];
+      for (const extraVerticals of orders) {
+        let staged: Tree | null = null;
+        const mediator = installMediator({
+          trees: (root) => (staged = fsTreeFactory(root)),
+        });
+        expectOk(
+          await mediator.dispatch(
+            newProjectCommand({
+              cwd,
+              stack,
+              answers: {},
+              interactive: false,
+              dryRun: true,
+              extraVerticals,
+            }),
+          ),
+        );
+        const compose = (staged as Tree | null)?.read('deploy/compose.yaml')?.toString('utf8');
+        expect(compose, extraVerticals.join(',')).toContain('DB_URL');
+      }
+    },
+  );
+
+  it('refuses a set that leaves out a prerequisite, naming it, before any adapter question', async () => {
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      withPeerContext: 'no',
+      'keel.review': 'proceed',
+    });
+    const error = expectErr(
+      await installMediator({ prompt }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+          extraVerticals: ['iac'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.missing-prerequisites');
+    expect(error.message).toBe(
+      'Infrastructure as code needs Container image and Distribution installed before it, in that order — add containerization, distribution as well',
+    );
+    expect(prompt.asked).not.toContain('basePackage');
+  });
+
+  it('names only the prerequisite a set leaves out', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -1435,15 +1592,103 @@ describe('keel.new-project extra verticals', () => {
           answers: {},
           interactive: false,
           dryRun: true,
-          extraVerticals: ['iac', 'containerization', 'distribution'],
+          extraVerticals: ['iac', 'containerization'],
         }),
       ),
     );
-    expect(error.code).toBe('keel.extra-verticals-order');
-    expect(error.message).toContain("vertical 'iac'");
-    expect(error.message).toContain('dist.container-image');
-    // Not "impossible" — misordered, with the order that works named.
-    expect(error.message).toContain("list 'iac' after 'distribution'");
+    expect(error.code).toBe('keel.missing-prerequisites');
+    expect(error.message).toBe(
+      'Infrastructure as code needs Distribution installed before it — add distribution as well',
+    );
+  });
+
+  it('refuses iac on a Quarkus CLI before any adapter question, distribution or not', async () => {
+    // Distribution ships native binaries here, never the image iac is
+    // keyed on — so iac is out of reach, and said so up front rather
+    // than after the bootstrap's questions.
+    const prompt = new FakePrompt({
+      buildSystem: 'gradle',
+      moduleLayout: 'basic',
+      'keel.review': 'proceed',
+    });
+    const error = expectErr(
+      await installMediator({ prompt }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: {},
+          interactive: true,
+          dryRun: true,
+          extraVerticals: ['distribution', 'iac'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toBe(
+      "stack 'quarkus-cli': Infrastructure as code needs an entrypoint this project does not have: HTTP server — a REST endpoint; drop 'iac' from --with, or scaffold a stack that can carry it",
+    );
+    expect(prompt.asked).not.toContain('basePackage');
+    expect(prompt.asked).not.toContain('targets');
+  });
+
+  it('ships a composed Quarkus CLI + REST as native binaries when distribution comes alone', async () => {
+    const report = expectOk(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli-rest',
+          buildSystem: 'gradle',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution'],
+        }),
+      ),
+    );
+    const changed = report.changes.map((c) => c.path);
+    expect(changed).toContain('.github/workflows/native-build.yml');
+    expect(changed).not.toContain('.github/workflows/release-image.yml');
+    expect(changed).not.toContain('Dockerfile');
+  });
+
+  it('installs both on a composed Quarkus CLI + REST once the image is named, image first', async () => {
+    const report = expectOk(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli-rest',
+          buildSystem: 'gradle',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['distribution', 'containerization'],
+        }),
+      ),
+    );
+    const changed = report.changes.map((c) => c.path);
+    expect(changed).toContain('Dockerfile');
+    expect(changed).toContain('.github/workflows/release-image.yml');
+    expect(changed).toContain('deploy/compose.yaml');
+    expect(report.notes).toEqual(['installed in dependency order: containerization, distribution']);
+  });
+
+  it('refuses the gateway where no project is linked', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-http',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['gateway'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    expect(error.message).toContain(
+      "Service gateway wires linked projects — run 'keel link <path>' first",
+    );
   });
 
   it('rejects the same vertical named twice', async () => {

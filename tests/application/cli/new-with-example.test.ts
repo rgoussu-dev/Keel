@@ -72,6 +72,24 @@ describe('keel new --with, the example in --help', () => {
     expect(await fs.readdir(cwd)).toEqual([]);
   });
 
+  it('takes the extras in any order, and says the order it installs them in', async () => {
+    const logger = new FakeLogger();
+    await program(logger).parseAsync(
+      [
+        'new',
+        '--stack=quarkus-rest',
+        '--with',
+        'iac,distribution,containerization',
+        '--yes',
+        '--dry-run',
+      ],
+      { from: 'user' },
+    );
+    expect(logger.messages('info')).toContain(
+      '  note: installed in dependency order: containerization, distribution, iac',
+    );
+  });
+
   it('is the example docs/cli.md shows for the flag', async () => {
     const page = await fs.readFile(path.resolve('docs/cli.md'), 'utf8');
     const row = page.split('\n').find((line) => line.startsWith('| `--with <ids>`'));
