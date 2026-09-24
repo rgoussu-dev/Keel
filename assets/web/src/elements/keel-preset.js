@@ -10,12 +10,19 @@
  * preset by id" — which is what keeps a preset the finder could not
  * place reachable, a plugin's among them.
  *
- * Catalog + target in as properties, `target-changed` out.
+ * Under it, when there is one, the line saying what the last move
+ * onto a new preset could not keep — the dial it had to snap, the
+ * language a new shape does not have. Here because this is where the
+ * id changed, and the one place on the page that is on screen at
+ * every step the move could have been made from.
+ *
+ * Catalog, target and notice in as properties, `target-changed` out.
  */
 
 export class KeelPreset extends HTMLElement {
   #catalog = null;
   #target = null;
+  #notice = '';
 
   /** @param {object} value the `/api/catalog` payload */
   set catalog(value) {
@@ -26,6 +33,12 @@ export class KeelPreset extends HTMLElement {
   /** @param {object} value the current new-project target */
   set target(value) {
     this.#target = value;
+    this.#render();
+  }
+
+  /** @param {string} value what the last preset move could not keep; '' for nothing */
+  set notice(value) {
+    this.#notice = value ?? '';
     this.#render();
   }
 
@@ -69,6 +82,15 @@ export class KeelPreset extends HTMLElement {
       doc.textContent = stack.description;
       row.append(doc);
     }
-    this.replaceChildren(row);
+    if (this.#notice === '') {
+      this.replaceChildren(row);
+      return;
+    }
+    const notice = document.createElement('p');
+    notice.className = 'preset-notice';
+    notice.dataset.role = 'preset-notice';
+    notice.setAttribute('role', 'status');
+    notice.textContent = this.#notice;
+    this.replaceChildren(row, notice);
   }
 }

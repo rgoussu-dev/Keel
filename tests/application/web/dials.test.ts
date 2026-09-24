@@ -14,6 +14,13 @@
  * set a dial to any value on its menu and tick the peer-context box
  * where it is shown; it can do nothing else. So following every such
  * move from the blank target enumerates every body the page can post.
+ *
+ * A preset move is the one control that posts a target the menus did
+ * not draw: it keeps the old preset's dials (`target.js`) and leaves
+ * the snapping to this route. The last block drives that move the way
+ * `<keel-app>` does — retarget, round trip, settle — so "the page keeps
+ * what the new preset can take" is proved on the route that decides
+ * what it can take.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -25,6 +32,8 @@ import type { DirectoryReader } from '../../../src/application/web/contract/api.
 import type { UiRequest, UiResponse } from '../../../src/application/web/contract/http.js';
 import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
 import type { Tag } from '../../../src/domain/contract/composition.js';
+import { pickShape, locate } from '../../../assets/web/src/finder.js';
+import { retarget, settle } from '../../../assets/web/src/target.js';
 import { catalogQuery, dialsQuery } from '../../../src/domain/contract/queries.js';
 import type { Catalog, DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
@@ -276,5 +285,91 @@ describe('the dials query, dispatched directly', () => {
     );
     expect(dials.buildSystems.map((choice) => choice.id)).toEqual(['gradle', 'maven']);
     expect(dials.moduleLayouts.map((choice) => choice.id)).toEqual(['basic', 'modulith']);
+  });
+});
+
+describe('a preset move, the way the page makes it', () => {
+  type Run = ReturnType<typeof settle>;
+
+  /** The page's run once `keel.dials` has settled `target`, as it opens on a preset. */
+  async function settledOn(mediator: Mediator, target: NewProjectTarget): Promise<Run> {
+    const blank = { kind: 'new-project', stack: target.stack };
+    const run: Run = {
+      target: blank,
+      answers: {},
+      dials: null,
+      generation: 0,
+      carried: null,
+      notice: '',
+    };
+    return settle(run, await dialsFor(mediator, target));
+  }
+
+  /** Retarget onto `stack`, round-trip the carried target, settle — `<keel-app>`'s three moves. */
+  async function moveTo(mediator: Mediator, run: Run, stack: string): Promise<Run> {
+    const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
+    const moved = retarget(run, { stack });
+    const dials = await dialsFor(mediator, moved.target as unknown as NewProjectTarget);
+    return settle(moved, dials, catalog.finder);
+  }
+
+  it('keeps Maven and the modulith from quarkus-rest onto quarkus-cli-rest', async () => {
+    // Ticking the CLI adapter is a preset move. It used to cost the
+    // two dials set on the way, although the new preset takes both.
+    const mediator = installMediator();
+    const before = await settledOn(mediator, {
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      buildSystem: 'maven',
+      moduleLayout: 'modulith',
+    });
+    const after = await moveTo(mediator, before, 'quarkus-cli-rest');
+    expect(after.target).toMatchObject({
+      stack: 'quarkus-cli-rest',
+      buildSystem: 'maven',
+      moduleLayout: 'modulith',
+    });
+    expect(after.notice).toBe('');
+    expect(installRefusal(after.target as unknown as NewProjectTarget)).toBeNull();
+  });
+
+  it('snaps what the new preset cannot take, and says so in one line', async () => {
+    const mediator = installMediator();
+    const before = await settledOn(mediator, {
+      kind: 'new-project',
+      stack: 'quarkus-rest',
+      buildSystem: 'maven',
+      moduleLayout: 'modulith',
+      withPeerContext: true,
+    });
+    const after = await moveTo(mediator, before, 'ts-cli');
+    // TypeScript builds with npm or pnpm, so Maven snaps to the first;
+    // the modulith and the peer context it takes as they are.
+    expect(after.target).toMatchObject({
+      stack: 'ts-cli',
+      buildSystem: 'npm',
+      moduleLayout: 'modulith',
+      withPeerContext: true,
+    });
+    expect(after.notice).toBe('Moving to ts-cli did not keep build system maven.');
+  });
+
+  it('announces the language a shape move had to leave behind', async () => {
+    const mediator = installMediator();
+    const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
+    const before = await settledOn(mediator, {
+      kind: 'new-project',
+      stack: 'spring-cli-rest-kotlin',
+      moduleLayout: 'modulith',
+    });
+    const here = locate(catalog.finder, 'spring-cli-rest-kotlin');
+    const landed = pickShape(catalog.finder, 'fullstack', here);
+    expect(landed).toBe('fullstack-spring');
+
+    const after = await moveTo(mediator, before, landed ?? '');
+    expect(after.notice).toBe(
+      'Kotlin has no fullstack preset, so the language is now Java. ' +
+        'Moving to fullstack-spring did not keep module layout modulith.',
+    );
   });
 });

@@ -79,6 +79,25 @@ use to keep a long-lived changelog scannable — and the root keeps
   "nothing" for a new context's _Consumes_ now clears the context
   picked before it.
 
+- **Moving to another preset in `keel ui` keeps your dials, and
+  says what it could not keep.** Ticking an adapter, or changing the
+  language, framework or shape, lands on another preset, and the page
+  used to reset the build system, module layout, peer context and
+  repository layout to that preset's defaults — Maven and the modulith
+  chosen on `quarkus-rest` were gone the moment the CLI adapter was
+  ticked, though `quarkus-cli-rest` takes both. They now carry over,
+  `keel.dials` snaps only what the new preset cannot take, and a line
+  under the Preset picker names each value you had chosen that did not
+  survive. A shape move to a shape without the current language fell
+  to the alphabetically first one, so a Kotlin backend moved to
+  fullstack became `fullstack-go`. It now prefers a language with the
+  same framework, then one on the same runtime, then the default
+  preset's — Kotlin on Spring lands on `fullstack-spring`, the browser
+  front end moved to a backend on `quarkus-cli` — and the line says
+  the language changed. The adapters' answers and the extra verticals
+  still reset on a preset move. The catalog's language nodes
+  (`Catalog.finder`) gain `runtime`, which is what the page compares.
+
 - **Distribution without an image, and an answer a stack cannot
   take, are refusals rather than crashes.** `distribution` on a
   server-shaped project with no container image yet threw a plain

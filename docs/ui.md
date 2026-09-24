@@ -115,8 +115,10 @@ to use.
   products](stacks/README.md) on the guided path at all — a
   two-service product names no single language, so before there was a
   shape axis it appeared on no facet and was reachable only by id.
-- **Language** — Java, Kotlin, Go, Rust, TypeScript. On the fullstack
-  shape, the backend's.
+- **Language** — Java, Kotlin, Go, Rust or TypeScript for a backend.
+  On the fullstack shape it is the backend service's, and only Java,
+  Go, Rust and TypeScript have a product; the frontend shape has one
+  language, TypeScript in the browser.
 - **Framework** — Quarkus, Spring or Micronaut. Absent where the
   shape and language chosen leave only one, which is everywhere
   outside the JVM.
@@ -131,6 +133,28 @@ to fullstack with Java + Spring chosen and you land on
 `fullstack-spring`, not back at square one; come out of a product into
 a backend and the half of its entrypoints a backend can still take —
 `server-http` of `server-http + spa` — comes with you.
+
+Where the new shape does not have your language at all, the move lands
+on its nearest kin rather than on whichever language sorts first: one
+with the same framework (Kotlin + Spring moved to fullstack is Java +
+Spring, `fullstack-spring`), then one on the same runtime, then the
+default preset's (the browser front end moved to a backend lands on
+`quarkus-cli`, where a blank page opens). A line under the **Preset**
+picker says so — _Kotlin has no fullstack preset, so the language is
+now Java._ — rather than let the language change without a word.
+
+**A new preset keeps your dials.** Every move that lands on another
+preset — an adapter ticked, a framework switched, a shape moved —
+carries the build system, the module layout, the peer context and a
+product's repository layout along, and `keel.dials` snaps whichever
+the new preset cannot take. Maven and the modulith picked on
+`quarkus-rest` survive ticking the CLI adapter, since
+`quarkus-cli-rest` takes both. Moved to `ts-cli`, Maven becomes npm,
+and the same line says so: _Moving to ts-cli did not keep build system
+maven._ Only a value you had moved off its default is named — a
+product's build systems service by service, _build system maven for
+backend_ — and the next change retires the line. The adapters' answers and the extra
+verticals still start afresh on a new preset.
 
 The **Preset** picker under the rail stays, and it is not redundant.
 It is the result of the four steps, it is the way to pick a preset by

@@ -45,7 +45,10 @@
  * illegal, which is what lets the page correct itself instead of
  * previewing into a refusal it cannot navigate out of. Its reply is
  * adopted whole: the target it hands back is the one the page renders
- * from, previews and finally posts.
+ * from, previews and finally posts. Adopting it is also where a move
+ * onto a new preset says what it could not keep — a dial it had to
+ * snap, a language the new shape does not have — in one line under
+ * the preset picker (`../target.js`'s `settle`).
  *
  * **The mode.** Pointing at a directory decides everything. No
  * manifest there and only `keel new` applies; a manifest and the page
@@ -55,7 +58,7 @@
 
 import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
-import { answer, restart, retarget } from '../target.js';
+import { answer, restart, retarget, settle } from '../target.js';
 import {
   DIRECTORY,
   ENTRYPOINTS,
@@ -85,6 +88,8 @@ export class KeelApp extends HTMLElement {
   #cwd = '';
   #target = null;
   #answers = {};
+  #carried = null;
+  #notice = '';
   #preview = null;
   #report = null;
   #error = null;
@@ -212,6 +217,8 @@ export class KeelApp extends HTMLElement {
       answers: this.#answers,
       dials: this.#dials,
       generation: this.#generation,
+      carried: this.#carried,
+      notice: this.#notice,
     };
   }
 
@@ -220,6 +227,8 @@ export class KeelApp extends HTMLElement {
     this.#answers = run.answers;
     this.#dials = run.dials;
     this.#generation = run.generation;
+    this.#carried = run.carried;
+    this.#notice = run.notice;
   }
 
   /* ---- the preview loop ---------------------------------------- */
@@ -255,8 +264,7 @@ export class KeelApp extends HTMLElement {
       const dials = await api.dials(this.#body());
       if (generation !== this.#generation) return;
       if (!dials.ok) return this.#fail(dials.error);
-      this.#dials = dials.value;
-      this.#target = dials.value.target;
+      this.#adopt(settle(this.#run(), dials.value, this.#catalog?.finder ?? null));
       this.#render();
     }
     const result = await api.preview(this.#body());
@@ -442,6 +450,7 @@ export class KeelApp extends HTMLElement {
       if (greenfield) {
         preset.catalog = this.#catalog;
         preset.target = this.#target;
+        preset.notice = this.#notice;
       }
     }
 

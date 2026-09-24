@@ -102,6 +102,16 @@ export interface LanguageNode {
   readonly label: string;
   readonly doc: string;
   /**
+   * The runtime the language targets — `jvm`, `node`, `browser` — or
+   * null for one compiled to a native binary (Go, Rust).
+   *
+   * Reported beside the id rather than left in it, so a front end
+   * that has to tell kin from strangers — Kotlin moving to a shape
+   * that offers only Java lands on Java, not on whatever sorts first —
+   * never has to take the id apart to find out.
+   */
+  readonly runtime: string | null;
+  /**
    * One entry per framework reachable here. More than one means the
    * framework facet has something to ask; exactly one means it
    * answers itself — and either way the node below it names the

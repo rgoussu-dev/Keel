@@ -240,6 +240,45 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
   );
 
   it(
+    'keeps the dials across a preset move, and says what a move could not keep',
+    async () => {
+      await goToStep(traffic, page, 'options');
+      await act(traffic, () => control(page, 'buildSystem').selectOption('maven'));
+      await act(traffic, () => control(page, 'moduleLayout').selectOption('modulith'));
+
+      // Ticking an adapter is a preset move. It used to reset both
+      // dials, though the composed preset takes them as they are.
+      await goToStep(traffic, page, 'entrypoints');
+      await act(traffic, () => adapter(page, 'server-http').click());
+      await stackIs(page, 'quarkus-cli-rest');
+      await goToStep(traffic, page, 'options');
+      expect(await valueOf(page, 'buildSystem')).toBe('maven');
+      expect(await valueOf(page, 'moduleLayout')).toBe('modulith');
+      expect(await page.locator('[data-role="preset-notice"]').count()).toBe(0);
+
+      // No product is written in Kotlin: the shape move lands on Java,
+      // keeping Quarkus, and the line under the preset says both that
+      // and which dials a product has no room for.
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
+      await stackIs(page, 'quarkus-cli-rest-kotlin');
+      await goToStep(traffic, page, 'shape');
+      await act(traffic, () => choice(page, 'shape', 'fullstack').check());
+      await stackIs(page, 'fullstack');
+      expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe(
+        'Kotlin has no fullstack preset, so the language is now Java. ' +
+          'Moving to fullstack did not keep build system maven or module layout modulith.',
+      );
+
+      // The next move retires the line.
+      await goToStep(traffic, page, 'options');
+      await act(traffic, () => control(page, 'layout').selectOption('polyrepo'));
+      expect(await page.locator('[data-role="preset-notice"]').count()).toBe(0);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
     'composes both entrypoints into one preset, never a two-service product',
     async () => {
       await goToStep(traffic, page, 'language');

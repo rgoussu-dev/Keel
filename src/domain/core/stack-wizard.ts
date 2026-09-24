@@ -434,6 +434,17 @@ export function languageLabel(language: string): string {
   return runtime === undefined ? (lang ?? language) : `${lang ?? language} (${runtime})`;
 }
 
+/**
+ * The runtime half of a language node key — `jvm` of `java@jvm` — or
+ * null for a language that names none, Go and Rust compiling to a
+ * native binary. The inverse of how {@link WizardPath.language} is
+ * spelled, kept beside it so the key's format stays this module's.
+ */
+export function languageRuntime(language: string): string | null {
+  const at = language.indexOf('@');
+  return at < 0 ? null : language.slice(at + 1);
+}
+
 /** Spells an entrypoint set the way a message names it: `CLI + HTTP server`. */
 export function entrypointsLabel(entrypoints: readonly string[]): string {
   return entrypoints.map((id) => entrypoint(id)?.short ?? id).join(' + ');

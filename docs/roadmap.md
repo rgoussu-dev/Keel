@@ -2388,14 +2388,19 @@ switches in a browser. Clicking the `fullstack` or `bounded-context`
 card is still refused as an unknown vertical, but no longer poisons
 the picks after it; the inert chips are Q1.9's.
 
-#### Q0.6 — A preset switch keeps the dials, and says when the language jumps (S)
+#### Q0.6 — A preset switch keeps the dials, and says when the language jumps (S) ✅
 
 A stack change keeps `buildSystem`, `moduleLayout` and
-`withPeerContext` and lets `keel.dials` snap them (it already does,
-through `prefer()`), with one line when a value was snapped. The
-finder falls back to a sibling with the same framework, then the same
-runtime, then `finder.defaultStack` — never `languages[0]`, which is
-Go because languages sort by label — and announces the jump.
+`withPeerContext` — and a product's repository `layout`, the one dial
+the list had missed — and lets `keel.dials` snap them (it already
+does, through `prefer()`). `target.js`'s `settle` adopts the reply and
+names, in one line under the Preset picker, each carried value the
+user had moved off its default that did not survive. The finder falls
+back to a sibling with the same framework, then the same runtime (a
+`runtime` field on the catalog's language nodes, so the page never
+parses an id), then `finder.defaultStack`'s language and framework —
+never `languages[0]`, which is Go because languages sort by label —
+and the same line announces the jump. Answers and extras still reset.
 
 #### Q0.7 — Coverage refusals stop naming tags (S) ✅
 

@@ -19,7 +19,9 @@ it compiled.
   `@rgoussu.dev/planks`, served as-is (no bundler). `src/finder.js` walks
   the drill-down tree, `src/steps.js` says which steps the rail has, and
   `src/target.js` says how a change moves the run — which of the
-  target, the answers, the dials and the request generation it clears.
+  target, the answers, the dials and the request generation it clears,
+  which dials a new preset carries, and what the line under the preset
+  picker says a move could not keep.
   All pure, all unit-tested without a browser. Linted with `src` and
   `tests`, unlike the ejs template trees.
 
