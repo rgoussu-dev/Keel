@@ -72,7 +72,7 @@ holds. Three suites, split so vitest runs them in parallel:
   derives: none, every question answered away from its default, the
   same keyed to the sibling its asker borrows from, and one question
   answered twice), plus `README.md` and `.gitignore` seeded before
-  `keel new`.
+  `keel new`, which every stack adopts (Ok on all of them).
 - `brownfield` — every single-service stack scaffolded once, `keel add`
   previewed for every vertical (I4: each vertical is installed or a
   `keel.project-status` card, and the card agrees with the preview —

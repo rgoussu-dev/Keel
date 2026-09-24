@@ -19,9 +19,15 @@
  * There is deliberately no mediator — per-use-case driving ports are
  * delivered through typed context keys, and cross-cutting concerns
  * decorate the domain factories at the assembly point.
+ *
+ * The README and `.gitignore` are seeded upserts rather than
+ * whole-file writes, so `keel new` in a directory that already holds
+ * either keeps the user's file and adds keel's part to it
+ * (`adopted-files.ts`).
  */
 
 import type { Adapter } from '../../contract/composition.js';
+import { adoptingRootFiles } from './adopted-files.js';
 import { tsWorkspaceVars } from './ts-workspace.js';
 import { wcLayout, type WcLayoutPaths } from './wc-module-layout.js';
 
@@ -66,7 +72,7 @@ export const wcSpaBootstrapAdapter: Adapter = {
     if (ws.pm === 'pnpm') {
       files.push(...(await ctx.templates.render(`${TEMPLATE_ROOT}/pm${suffix}/pnpm`, '', vars)));
     }
-    return { files };
+    return adoptingRootFiles(files);
   },
 };
 

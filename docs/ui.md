@@ -643,12 +643,13 @@ so the preview never lists one the stack cannot serve — `mariadb` is
 not among `go-http`'s engines, nor `liquibase` among a JVM stack's
 migrations tools — and the same list is what a posted answer is held
 to. So do the ones about the directory itself: a file keel would write
-that is already there (`keel.path-conflict`) — a hosted repository's
-`README.md` before a new project, your own `Dockerfile` before
-containerization — and a file keel patches that has been deleted
-(`keel.path-missing`). Each names the file, so the live preview shows
-what is in the way before Review. Each used to be a plain throw, and so
-a 500.
+that is already there (`keel.path-conflict`) — your own `go.mod`
+before a new Go project, your own `Dockerfile` before
+containerization, though never a `README.md` or `.gitignore`, which a
+new project adopts ([cli.md](cli.md#keel-new)) — and a file keel
+patches that has been deleted (`keel.path-missing`). Each names the
+file, so the live preview shows what is in the way before Review. Each
+used to be a plain throw, and so a 500.
 
 A malformed request is a **400**, a missing or wrong token a **401**,
 and a failed `Host`/`Origin` guard a **403**.

@@ -1,10 +1,11 @@
 /**
  * Test for the `go-bootstrap` adapter — verifies the declarations
  * (vertical, coverage, predicate, sticky questions) and the
- * contribution shape: the module shell's files plus the single
- * deferred `go mod tidy` action. End-to-end placement, answer
- * threading, and template content are covered by the
- * walking-skeleton-go vertical test.
+ * contribution shape: the module shell's files, its README and
+ * `.gitignore` as seeded upserts, plus the single deferred
+ * `go mod tidy` action. End-to-end placement, answer threading, and
+ * template content are covered by the walking-skeleton-go vertical
+ * test.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -48,7 +49,13 @@ describe('go-bootstrap adapter', () => {
     expect(paths).toContain('go.mod');
     expect(paths).toContain('internal/domain/greet.go');
     expect(paths).toContain('internal/domain/internal/greet/greet.go');
-    expect(contribution.patches ?? []).toEqual([]);
+    // The two files `keel new` adopts from a directory that already
+    // holds them are seeded upserts, never whole-file writes.
+    expect(paths).not.toContain('README.md');
+    expect(paths).not.toContain('.gitignore');
+    const patches = contribution.patches ?? [];
+    expect(patches.map((p) => p.target).sort()).toEqual(['.gitignore', 'README.md']);
+    for (const patch of patches) expect(patch.apply(patch.seed ?? '')).toBe(patch.seed);
     expect(contribution.actions).toHaveLength(1);
     expect(contribution.actions?.[0]?.id).toBe(GO_BOOTSTRAP_ID);
     expect(contribution.actions?.[0]?.description).toBe('go mod tidy');

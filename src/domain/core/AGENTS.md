@@ -21,6 +21,11 @@ the shipped source, every refusal naming its origin) and
 - Composition adapters render templates via `ctx.templates` and probe
   tools via `ctx.processes`; deferred actions use their env's
   `processes`. No direct `spawn`/`fs` anywhere.
+- A bootstrap writes the root `README.md` and `.gitignore` through
+  `adapters/adopted-files.ts`, never whole: `keel new` adopts a user's
+  own (their content kept, keel's part added once) and refuses any
+  other file in the way. The grid's seeded `keel new` cells hold
+  every stack to it.
 - Tests follow Scenario + Factory + port (`tests/support/factory.ts`)
   with the shipped fakes — no mocking libraries.
 

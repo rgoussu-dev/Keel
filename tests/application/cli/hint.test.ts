@@ -144,9 +144,9 @@ const TABLE: readonly {
   },
   {
     why: 'a file in the way before keel new is the user’s to move',
-    refusal: { kind: 'path-conflict', path: 'README.md', adapterId: 'x/y' },
+    refusal: { kind: 'path-conflict', path: 'go.mod', adapterId: 'x/y' },
     command: 'new',
-    hint: "move 'README.md' aside, or start in an empty directory",
+    hint: "move 'go.mod' aside, or start in an empty directory",
   },
   {
     why: 'a file in the way under keel add may be keel’s own, so no advice',

@@ -966,7 +966,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     }).catch((thrown: unknown) => {
       // A service's Tree is rooted at its own directory, so the file
       // an adapter names is relative to it; the user ran `keel new`
-      // one level up, where `README.md` in the way is `backend/README.md`.
+      // one level up, where `go.mod` in the way is `backend/go.mod`.
       throw inputs.prefix === '' ? thrown : underService(thrown, inputs.prefix);
     });
     return {

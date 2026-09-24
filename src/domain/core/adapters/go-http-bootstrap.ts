@@ -60,8 +60,11 @@ export const goHttpBootstrapAdapter: Adapter = {
         {
           target: 'README.md',
           apply: (existing) => {
-            if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eolOf(existing))}`;
+            // The marker is matched in the file's own line endings: a
+            // README checked out as CRLF still has its section.
+            const eol = eolOf(existing);
+            if (existing.includes(withEol(README_MARKER, eol))) return existing;
+            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eol)}`;
           },
         },
       ],

@@ -51,15 +51,26 @@ keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in t
 ```
 
 **A directory that is not empty.** `keel new` needs only the absence
-of a keel manifest, and it never overwrites a file it did not write: a
-file of yours in the way is refused as `keel.path-conflict`, naming
-it — from where you ran the command, so a file in a composite's
-service reads `backend/README.md` — and the hint under the refusal
-says the way past it: move it aside, or start in an empty directory.
-Nothing is written before the refusal. The JVM and TypeScript stacks keep an existing
-`README.md`, adding their own section to it, and an existing
-`.gitignore` exactly as it is; the Go, Rust, `web-components` and
-composite stacks refuse both for now.
+of a keel manifest, and it never overwrites a file it did not write.
+Two files are adopted instead, on every stack keel ships, because a
+repository created on a hosting service and cloned usually holds
+them:
+
+- a `README.md` keeps its content, title included, and gains keel's
+  own README after it, less keel's title, with the entrypoints'
+  sections — unless it already has every one of those sections'
+  headings;
+- a `.gitignore` keeps every line and gains each of keel's entries it
+  lacks, in keel's groups, under keel's comments.
+
+An empty one is written as it would be in an empty directory. Each
+is adopted once: running the adoption again adds nothing. A
+composite's services adopt their own the same way. Any other file of
+yours in the way is refused as `keel.path-conflict`, naming it, from
+where you ran the command, so a file in a composite's service reads
+`backend/go.mod`. The hint under the refusal says the way past it:
+move it aside, or start in an empty directory. Nothing is written
+before the refusal, not even the adoption.
 
 **A directory inside a product.** `keel new` in a subdirectory of a
 monorepo product root that the product does not list as a service —
@@ -463,9 +474,10 @@ deliberately conservative:
   plan lists only real changes — and every rewrite is reported as a
   unified diff against your working tree. `--dry-run` shows the same
   diff without writing anything.
-- **Patched files** (shared files like build files, which you own) are
-  never rewritten whole. A patch whose re-application changes nothing —
-  the guarded style keel's adapters use — passes silently. One that
+- **Patched files** (shared files like build files, `README.md` and
+  `.gitignore`, which you own) are never rewritten whole. A patch
+  whose re-application changes nothing — the guarded style keel's
+  adapters use — passes silently. One that
   owns a region of the file — a sentinel-delimited section, a guarded
   insert: applying it to its own result changes nothing more — re-renders
   that region and reports the diff, the way a template-owned file is

@@ -14,6 +14,12 @@
  * the dependency wall — a `main.go` physically cannot import the
  * core.
  *
+ * The README and `.gitignore` are seeded upserts rather than
+ * whole-file writes, so `keel new` in a directory that already holds
+ * either keeps the user's file and adds keel's part to it
+ * (`adopted-files.ts`); the entrypoints append their sections to the
+ * README either way.
+ *
  * Entrypoints are NOT emitted here: `go-cli-bootstrap` and
  * `go-http-bootstrap` cover the `entrypoint` dimension and layer
  * their `cmd/` deployment units on top — both may land in the same
@@ -22,6 +28,7 @@
  * against the local toolchain once the files are on disk.
  */
 
+import { adoptingRootFiles } from './adopted-files.js';
 import { goLayout, goTemplateVars } from './go-module-layout.js';
 import type {
   Adapter,
@@ -84,7 +91,7 @@ export const goBootstrapAdapter: Adapter = {
         return Promise.resolve();
       },
     };
-    return { files, actions: [action] };
+    return { ...adoptingRootFiles(files), actions: [action] };
   },
 };
 

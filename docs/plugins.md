@@ -375,6 +375,15 @@ held to that for you — one already on disk that a file would
 overwrite, one a patch targets that is gone — so a plugin writes
 nothing for either.
 
+keel's own stacks adopt a freshly cloned repository's `README.md` and
+`.gitignore` rather than refusing them ([cli.md](cli.md#keel-new)):
+their bootstraps return both as a `ContributionPatch` with a `seed`,
+never as files. A stack bootstrap of yours that returns either as a
+file meets a clone's as `keel.path-conflict`. To adopt it too, return
+a patch whose `seed` is what an empty directory gets and whose `apply`
+adds your part to the user's file, leaving the seed and its own
+result unchanged.
+
 The one case keel cannot see is your own patch transform finding that
 the file is not one it can patch, because it lacks the block your lines
 go inside. For that, `PathConflictError` (and `PathMissingError`) come

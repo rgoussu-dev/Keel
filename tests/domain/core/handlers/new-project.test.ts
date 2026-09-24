@@ -310,7 +310,9 @@ describe('keel.new-project (keel new)', () => {
   });
 
   it('refuses a file of the user’s it would overwrite, naming it', async () => {
+    // `README.md` alone would be adopted; `go.mod` is the file in the way.
     await fs.writeFile(path.join(cwd, 'README.md'), '# my repository\n');
+    await fs.writeFile(path.join(cwd, 'go.mod'), 'module example.com/mine\n');
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -327,16 +329,18 @@ describe('keel.new-project (keel new)', () => {
     // moving it aside is the way past it here is the CLI's hint, built
     // from the refusal.
     expect(error.message).toBe(
-      "'README.md' already exists, and keel does not overwrite a file this run did not write",
+      "'go.mod' already exists, and keel does not overwrite a file this run did not write",
     );
     expect((error as RefusalError).refusal).toEqual({
       kind: 'path-conflict',
-      path: 'README.md',
+      path: 'go.mod',
       adapterId: 'walking-skeleton/go-bootstrap',
     });
-    // Refused while staging: nothing was committed, nothing ran.
-    expect(await fs.readdir(cwd)).toEqual(['README.md']);
+    // Refused while staging: nothing was committed, nothing ran — not
+    // even the adoption of the README.
+    expect((await fs.readdir(cwd)).sort()).toEqual(['README.md', 'go.mod']);
     expect(await fs.readFile(path.join(cwd, 'README.md'), 'utf8')).toBe('# my repository\n');
+    expect(await fs.readFile(path.join(cwd, 'go.mod'), 'utf8')).toBe('module example.com/mine\n');
   });
 
   it('rejects an unknown stack id', async () => {

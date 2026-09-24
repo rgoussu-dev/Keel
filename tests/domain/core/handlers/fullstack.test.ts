@@ -124,9 +124,10 @@ describe('fullstack composite install (monorepo)', () => {
 
   it('names a file in the way inside a service from the product root it was run in', async () => {
     // Each service's Tree is rooted at its own directory, so its
-    // adapters see `README.md`; the user ran `keel new` one level up,
-    // where the file in the way is `backend/README.md`.
-    await fs.outputFile(path.join(cwd, 'backend/README.md'), '# mine\n');
+    // adapters see `go.mod`; the user ran `keel new` one level up,
+    // where the file in the way is `backend/go.mod`. (A README there
+    // would be adopted, as at the root.)
+    await fs.outputFile(path.join(cwd, 'backend/go.mod'), 'module example.com/mine\n');
     const { runDeferred } = recordActions();
     const error = expectErr(
       await installMediator({ runDeferred }).dispatch(
@@ -141,13 +142,13 @@ describe('fullstack composite install (monorepo)', () => {
     );
     expect(error.code).toBe('keel.path-conflict');
     expect(error.message).toBe(
-      "'backend/README.md' already exists, and keel does not overwrite a file this run did not write",
+      "'backend/go.mod' already exists, and keel does not overwrite a file this run did not write",
     );
     expect((error as RefusalError).refusal).toMatchObject({
       kind: 'path-conflict',
-      path: 'backend/README.md',
+      path: 'backend/go.mod',
     });
-    expect(read('backend/README.md')).toBe('# mine\n');
+    expect(read('backend/go.mod')).toBe('module example.com/mine\n');
   });
 
   it('sends a capability the root cannot carry into its services, naming them', async () => {

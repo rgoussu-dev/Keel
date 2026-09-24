@@ -3076,10 +3076,59 @@ verdict moved.
 - **Q2.5 — The verticals matrix is generated from the grid's verdicts
   (S).** A fifth guard in `verify`; the two "Four guard tests"
   sentences change with it.
-- **Q2.6 — `README.md` and `.gitignore` are adopted on every stack
-  (M).** Seeded upserts on the Go, Rust, web-components and product
-  bootstraps, as the JVM family already does (D13), so "create a repo
-  with a README, clone, `keel new`" works on all 34.
+
+#### Q2.6 — `README.md` and `.gitignore` are adopted on every stack (M) ✅
+
+Seeded upserts on the Go, Rust, web-components and product
+bootstraps, as the JVM family already does (D13), so "create a repo
+with a README, clone, `keel new`" works on all 34.
+
+Landed as one module, `adapters/adopted-files.ts`, that every family
+writes the two files through: `adoptingRootFiles` turns a rendered
+tree's root `README.md` and `.gitignore` into seeded upserts (the Go,
+Rust and `web-components` bootstraps, `fullstack/product-docs`), and
+the JVM and TypeScript shared roots reach the same adoptions through
+`toUpsertPatches`, which was two private copies before, and
+`readmeUpsert`. A `README.md` keeps the user's content, title
+included, and gains keel's README after it, less keel's title,
+unless it already has every one of that body's `##` headings (the
+marker guard keel's README patches use, so an edit inside keel's
+sections never makes a second copy). Each entrypoint's `### <arch>` section still follows, as
+in a fresh project. A `.gitignore` keeps every line and gains each of
+keel's entries it lacks, in keel's groups, under keel's comments. Each
+`apply` is the identity on its own seed and its own fixed point,
+compared on LF text so a CRLF file is adopted once. The JVM and
+TypeScript stacks change too: their adopted README gained only the
+entrypoint's section, and their `.gitignore` upsert was the identity,
+so keel's entries went missing without a word. Now every family adds
+them. Under `keel add walking-skeleton --reapply` the two are patched
+files on every stack: the Go, Rust and `web-components` ones are no
+longer rewritten to pristine, and every `.gitignore` regains keel's
+missing entries. The entrypoints' README section patches (Go, Rust,
+JVM, TypeScript) match their `### <arch>` marker in the file's own
+line endings, so a CRLF README, adopted or checked out under
+`core.autocrlf`, does not make that `--reapply` refuse the README as a
+divergence. Any other pre-existing file is still
+`keel.path-conflict`. Into an empty directory the bytes are unchanged
+on every stack: 154 scaffolds (every preset on its default dials and,
+where it takes them, the modulith, Maven, npm, polyrepo and two sets
+of extras) hashed before and after, byte for byte. The
+`agent-harness`, `stack-registry` and brownfield and composite grid
+goldens do not move. The greenfield golden's 26 seeded
+`keel.path-conflict` cells turn `ok`, so the seeded axis is `ok` on
+all 34 stacks. Held by `adopted-files.test.ts` (each adoption, its
+identity on the seed, its fixed point, CRLF, a blank file, a README
+keel wrote under another name, an edited section) and
+`new-project-adoption.test.ts`: one stack per family, scaffolded fresh
+and over a user's two files, where the README is the user's followed
+by the fresh one below its title, every keel entry is present once,
+every other file is byte-identical, a service's own README inside a
+product is adopted too, a `--reapply` keeps an edited README and
+restores only a dropped entry, and a CRLF README comes through a
+`--reapply` untouched on the Go, Rust, JVM and TypeScript families.
+The two refusal tests that seeded a README (`new-project`,
+`fullstack`) now seed `go.mod`.
+
 - **Q2.7 — One page for both phases (M).** The Directory step decides
   the flow; on a keel project the same "Also scaffold" control shows
   installed verticals checked and locked, and Generate dispatches the

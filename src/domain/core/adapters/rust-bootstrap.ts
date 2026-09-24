@@ -15,6 +15,12 @@
  * decorators around the ports. Module privacy is the dependency wall
  * — a deployment unit physically cannot import the core.
  *
+ * The README and `.gitignore` are seeded upserts rather than
+ * whole-file writes, so `keel new` in a directory that already holds
+ * either keeps the user's file and adds keel's part to it
+ * (`adopted-files.ts`); the entrypoints append their sections to the
+ * README either way.
+ *
  * Entrypoints are NOT emitted here: `rust-cli-bootstrap` and
  * `rust-http-bootstrap` cover the `entrypoint` dimension and layer
  * their `src/bin/` deployment units on top — both may land in the
@@ -32,6 +38,7 @@ import type {
 } from '../../contract/composition.js';
 import type { Logger } from '../../contract/ports/logger.js';
 import type { ProcessResult, ProcessRunner } from '../../contract/ports/process-runner.js';
+import { adoptingRootFiles } from './adopted-files.js';
 import { rustLayout, rustTemplateVars } from './rust-module-layout.js';
 
 export const RUST_BOOTSTRAP_ID = 'walking-skeleton/rust-bootstrap';
@@ -73,7 +80,7 @@ export const rustBootstrapAdapter: Adapter = {
         return Promise.resolve();
       },
     };
-    return { files, actions: [action] };
+    return { ...adoptingRootFiles(files), actions: [action] };
   },
 };
 

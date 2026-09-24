@@ -161,9 +161,10 @@ gateway` refuses it: _"Service gateway wires linked projects, and no
   `keel link <path>` as the terminal's hint.
 
 - **A file in the way, or gone, is a refusal naming it.** `keel new`
-  into a directory holding a `README.md` or `.gitignore` — a freshly
-  cloned hosted repository — crashed on the Go, Rust,
-  `web-components` and composite stacks. So did
+  into a directory holding a file it writes crashed — a freshly cloned
+  hosted repository's `README.md` or `.gitignore` did, on the Go,
+  Rust, `web-components` and composite stacks, and `keel new` now
+  adopts those two instead (under Changed). So did
   `keel add containerization` or `keel add ci` over your own
   `Dockerfile` or `.github/workflows/ci.yml`, and
   `keel add containerization` inside a monorepo product's service,
@@ -172,7 +173,7 @@ gateway` refuses it: _"Service gateway wires linked projects, and no
   (_"use a patch to modify existing files"_).
   Each is now refused as `keel.path-conflict`, naming the file — from
   where the command ran, so a file in a composite product's service is
-  `backend/README.md` — in one sentence for both commands; under `keel
+  `backend/go.mod` — in one sentence for both commands; under `keel
 new` the terminal adds the way past it (move it aside, or start in
   an empty directory), which under `keel add` it cannot stand behind,
   since there the file may be keel's own. A JVM build file with no
@@ -303,6 +304,32 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`keel new` keeps your `README.md` and `.gitignore`, on every
+  stack.** Create a repository with a README on a hosting service,
+  clone it, run `keel new` in it: that now works on all 34 stacks.
+  The Go, Rust and `web-components` stacks and the composite products
+  refused both files (`keel.path-conflict`, and before that a crash).
+  A `README.md` keeps its content, title included, and gains keel's
+  own README after it, less keel's title, with the entrypoints'
+  sections. A `.gitignore` keeps every line and gains each of keel's
+  entries it lacks, in keel's groups, under keel's comments. Each is
+  adopted once, and an empty one is written as it would be in an
+  empty directory. The JVM and TypeScript stacks, which kept both
+  already, now do the same. Their adopted README used to gain only
+  the entrypoint's section. Their adopted `.gitignore` stayed exactly as
+  it was, so keel's own entries (`build/`, `node_modules/`, …) were
+  silently missing. Any other file of yours in the way is still
+  refused as `keel.path-conflict`, naming it. Into an empty directory,
+  every stack writes the same bytes as before. Under
+  `keel add walking-skeleton --reapply` the two files are now yours on
+  every stack, as patched files are. A README that has keel's section
+  headings is left as it is, edits included. A `.gitignore` regains
+  any of keel's entries it lacks. The Go, Rust and `web-components`
+  stacks used to rewrite both to keel's pristine copy. A README with
+  CRLF line endings, as a Windows checkout under `core.autocrlf` has,
+  keeps them, and `--reapply` finds each entrypoint's section in it
+  instead of refusing to change it.
 
 - **An answer nothing reads is refused, including one a shared
   question has already taken.** `keel new`, `keel add`,

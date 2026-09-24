@@ -182,7 +182,7 @@ grid's I5 holds every single-service stack to that. It never says
 built from the refusal's fields — the CLI prints it on a `hint:` line
 (_drop it from `--with`, or scaffold go-cli-http, which carries it_;
 _`keel link <path>` first_; _`cd backend && keel add persistence`_;
-_move `README.md` aside_ before `keel new`, never after, where the file
+_move `go.mod` aside_ before `keel new`, never after, where the file
 may be a product root's own), and `keel ui` receives the refusal itself
 in the 422 body, as `error.refusal`.
 
