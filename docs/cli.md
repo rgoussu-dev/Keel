@@ -53,8 +53,10 @@ keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in t
 **A directory that is not empty.** `keel new` needs only the absence
 of a keel manifest, and it never overwrites a file it did not write: a
 file of yours in the way is refused as `keel.path-conflict`, naming
-it — move it aside, or start in an empty directory. Nothing is written
-before the refusal. The JVM and TypeScript stacks keep an existing
+it — from where you ran the command, so a file in a composite's
+service reads `backend/README.md` — and the hint under the refusal
+says the way past it: move it aside, or start in an empty directory.
+Nothing is written before the refusal. The JVM and TypeScript stacks keep an existing
 `README.md`, adding their own section to it, and an existing
 `.gitignore` exactly as it is; the Go, Rust, `web-components` and
 composite stacks refuse both for now.
@@ -182,17 +184,21 @@ the first adapter question, never eight questions later:
 - an id that is not a registered vertical is refused with the list of
   what is available here, and one named twice is refused as well;
 - so is one this stack cannot carry, saying what it lacks — the same
-  fact the menu's pruning states by omission. An entrypoint is named by
-  the label the finder offers it under; a language, framework or build
+  fact the menu's pruning states by omission, in the sentence `keel
+add` would refuse it with on the scaffolded project (see
+  [Refusals](composition.md#refusals)). An entrypoint is named by the
+  label the finder offers it under; a language, framework or build
   system is never offered as a remedy, since no command changes one,
   and the refusal says the vertical has no adapter for this project's
-  stack instead:
+  stack instead, naming the nearest stacks that carry it. What only
+  `--with` can do about it is the hint under the refusal:
 
   ```
   $ keel new --stack=quarkus-cli --with persistence
-  stack 'quarkus-cli': Persistence needs an entrypoint this project
-  does not have: HTTP server — a REST endpoint; drop 'persistence'
-  from --with, or scaffold a stack that can carry it
+  Persistence needs an entrypoint this project does not have: HTTP
+  server — a REST endpoint
+    hint: drop 'persistence' from --with, or scaffold quarkus-cli-rest,
+    which carries it: 'keel new --stack=quarkus-cli-rest --with persistence'
   ```
 
 - and so is a set whose extras need a capability that two verticals
@@ -274,9 +280,14 @@ dimensions cannot be covered on your project **is refused, saying what
 the project lacks** (e.g. `observability` on a CLI project needs an
 HTTP server entrypoint); a service gateway with no linked project is
 refused pointing at `keel link <path>`. Both are read from the same
-planner `keel new --with` and its menu read, before a file moves. At
-the root of a composite product, a vertical the root cannot carry is
-refused naming the service directories to run `keel add` in instead.
+planner `keel new --with` and its menu read, before a file moves, and
+the refusal is the same sentence `keel new --with` gives, under the
+same code — the remedy only `keel add` has is the `hint:` line under
+it (_"quarkus-cli-rest carries both this project's entrypoints and
+persistence"_). At the root of a composite product, a vertical the
+root cannot carry is refused naming the services that can take it,
+read from each service's own manifest, and the hint says where to
+`cd` (`cd backend && keel add persistence`).
 
 The verticals named are a **set**, planned exactly as `--with` plans
 one: closed over what they need, and installed in one run in the order
@@ -354,8 +365,11 @@ Refreshing a vertical that is not installed is refused as
 the vertical would write that the project already holds — your own
 `Dockerfile` before `keel add containerization`, a
 `.github/workflows/ci.yml` before `keel add ci` — is refused as
-`keel.path-conflict`, naming it; so is a build file keel patches that
-lacks the block keel adds its line to. A file keel patches that has
+`keel.path-conflict`, naming it, in the sentence `keel new` uses —
+with no advice to move it, since under `keel add` the file may be
+keel's own (a composite product root writes each service's image
+files); so is a build file keel patches that lacks the block keel adds
+its line to. A file keel patches that has
 been deleted — a `README.md`, a `build.gradle.kts` — is refused as
 `keel.path-missing`: restore it, then re-run. Either way nothing is
 written.

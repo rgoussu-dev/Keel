@@ -138,6 +138,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       templates: this.deps.templates,
       processes: this.deps.processes,
       now: () => now,
+      registry: this.deps.registry,
     });
 
     // The context is a structural fact, so the index moves with it in

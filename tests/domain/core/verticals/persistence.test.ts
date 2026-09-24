@@ -25,7 +25,8 @@ import { observabilityVertical } from '../../../../src/domain/core/verticals/obs
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
-import { resolveVertical, ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
 import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
 import { jvmLayout } from '../../../../src/domain/core/adapters/jvm-module-layout.js';
@@ -242,7 +243,7 @@ describe('persistence resolution (per-stack adapter by predicate)', () => {
       ['framework.web-components', 'arch.hexagonal', 'arch.spa', 'pkg.npm'],
     ],
   ])('hard-fails on %s instead of half-installing', (_label, tags) => {
-    expect(() => resolveVertical(persistenceVertical, tags)).toThrow(ResolutionError);
+    expect(() => resolveVertical(persistenceVertical, tags)).toThrow(RefusalError);
   });
 });
 

@@ -17,7 +17,7 @@ import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
 import type { InstallVerticalResult } from '../../../../src/domain/core/install.js';
@@ -246,7 +246,7 @@ describe('walking-skeleton vertical (web-components SPA)', () => {
   });
 
   it('hard-fails when arch.spa is absent (no adapter covers entrypoint)', async () => {
-    await expect(installWith(baseTags())).rejects.toBeInstanceOf(ResolutionError);
+    await expect(installWith(baseTags())).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('hard-fails when pkg.npm is absent (no adapter covers build-tool)', async () => {
@@ -258,7 +258,7 @@ describe('walking-skeleton vertical (web-components SPA)', () => {
         'arch.hexagonal',
         'arch.spa',
       ]),
-    ).rejects.toBeInstanceOf(ResolutionError);
+    ).rejects.toBeInstanceOf(RefusalError);
   });
 
   it('rejects an invalid npmScope with a clear message', async () => {

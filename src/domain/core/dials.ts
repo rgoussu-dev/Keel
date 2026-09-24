@@ -49,12 +49,8 @@ import {
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
 import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
-import {
-  alreadyIncludedNote,
-  incompatibleSentence,
-  tiedPrerequisitesSentence,
-  unavailableSentence,
-} from './refusals.js';
+import { planRefusal } from './plan-refusal.js';
+import { alreadyIncludedNote } from './refusals.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
@@ -290,21 +286,19 @@ export function snapExtras(
   return { extras: closed.order.map((step) => step.id), adjustments };
 }
 
-/** The sentence `vertical` is dropped from a selection with, from the plan that refused it. */
+/**
+ * The sentence `vertical` is dropped from a selection with, from the
+ * plan that refused it — the refusal a front door would give it
+ * (`./plan-refusal.ts`), word for word.
+ */
 function refusalOf(registry: Registry, vertical: Vertical, tried: Plan): string {
-  const verticals = (ids: readonly string[]): Vertical[] =>
-    ids.flatMap((other) => registry.vertical(other) ?? []);
   switch (tried.kind) {
-    case 'unavailable':
-      return unavailableSentence(vertical, tried.gap);
-    case 'tied':
-      return tiedPrerequisitesSentence([vertical], tried.closures.map(verticals));
-    case 'incompatible':
-      return incompatibleSentence(verticals(tried.verticals));
     case 'unknown':
       return `no vertical '${tried.vertical}' is registered`;
     case 'planned':
       throw new Error(`refusalOf: '${vertical.id}' planned`);
+    default:
+      return planRefusal(registry, [vertical], tried).message;
   }
 }
 

@@ -22,3 +22,8 @@ no logic.
   `--with` example out of the program, plans it on two stacks and
   holds `docs/cli.md` to it; `persistence,iac` sat in the help,
   refused on every stack, until it did.
+- A refusal's sentence is the domain's and the same in both phases;
+  what to type next is the CLI's. `contract/hint.ts` builds the
+  `hint:` line `unwrap` prints under a `RefusalError` from its fields,
+  per command (`--with` under `keel new`, `cd <service>` under `keel
+add`) — never by reading the sentence.

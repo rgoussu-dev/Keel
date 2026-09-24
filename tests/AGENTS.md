@@ -69,7 +69,8 @@ it holds. Three suites, split so vitest runs them in parallel:
   plus `README.md` and `.gitignore` seeded before `keel new`.
 - `brownfield` — every single-service stack scaffolded once, `keel add`
   previewed for every vertical (I4 available ⇒ Ok, I5 same outcome as
-  greenfield), plus a user `Dockerfile` or `.github/workflows/ci.yml`
+  greenfield: Ok on both sides, or refused under the same code in the
+  same sentence), plus a user `Dockerfile` or `.github/workflows/ci.yml`
   seeded wherever the add would create it.
 - `composite` — every product under every repository layout its install
   offers, at the root and in each service.
@@ -89,11 +90,14 @@ the record can only shrink. Beside each suite:
 - An invariant a step brings to zero for good becomes **hard**
   (`HARD` in the support module): its key leaves every known file, so
   there is nowhere to list a cell, and one violation fails the grid.
-  I1 has been hard since Q0.3 — a thrown cell is always a failure — and
+  I1 has been hard since Q0.3 — a thrown cell is always a failure —
   I2, I3 and I8 since Q1.3, when the menus and both front doors moved
-  onto the planner.
+  onto the planner, and I6 since Q1.7, when every refusal came to be
+  worded by one builder that prints no tag.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
-  both, regenerate greenfield first.
+  both, regenerate greenfield first. Where either side refuses, it
+  previews the greenfield twin again (`Grid.twin`, which records
+  nothing) for the sentence the golden does not keep.
 
 About 11 s wall on its own, greenfield the longest at ~9 s, of which
 I8's orderings are about 3.5 s.

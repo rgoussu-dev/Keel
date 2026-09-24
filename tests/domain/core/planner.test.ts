@@ -387,6 +387,34 @@ describe('readiness', () => {
     });
   });
 
+  it('prefers a missing entrypoint to a foreign framework when each is one tag away', () => {
+    // A native adapter for another framework, and an image one needing
+    // the HTTP entrypoint and an image some vertical builds. Each lacks
+    // one tag no install adds, so that count ties; but the framework is
+    // the project itself, while the entrypoint is what a sibling preset
+    // has — the gap a user can do something about.
+    const imaging = vertical(
+      'acme-imaging',
+      [adapter('acme-imaging', ['arch.server-http'], { promotes: ['acme.image'] })],
+      { promotes: ['acme.image'] },
+    );
+    const shipping = vertical('acme-shipping', [
+      adapter('acme-shipping', ['framework.other'], { name: 'native' }),
+      adapter('acme-shipping', ['arch.server-http', 'acme.image'], { name: 'image' }),
+    ]);
+    const local = registryOf([
+      {
+        origin: pluginOrigin('ship'),
+        stacks: [stack('acme-http', [...ACME_TAGS, 'arch.server-http'])],
+        verticals: [imaging, shipping],
+      },
+    ]);
+    expect(readiness(local, on([...ACME_TAGS, 'arch.cli']), 'acme-shipping')).toMatchObject({
+      kind: 'unavailable',
+      gap: { entrypoint: ['arch.server-http'], identity: [] },
+    });
+  });
+
   it('applies a vertical with no dimensions only where some adapter matches', () => {
     expect(applies(bridge, ACME.tags)).toBe(false);
     expect(readiness(registry, ACME, 'acme-bridge')).toMatchObject({
@@ -749,6 +777,11 @@ describe('the shipped registry', () => {
     // nearer, and the image traces back to the same entrypoint.
     expect(cells['go-cli+distribution']).toBe(
       'unavailable — entrypoint arch.server-http — nearest go-cli-http',
+    );
+    // A Spring CLI is one framework from the Quarkus native adapter and
+    // one entrypoint from the JVM image one: the entrypoint is the gap.
+    expect(cells['spring-cli+distribution']).toBe(
+      'unavailable — entrypoint arch.server-http — nearest spring-cli-rest',
     );
   });
 });

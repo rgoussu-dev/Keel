@@ -14,7 +14,10 @@
  * `location` the moment it loads — so it is testable without a DOM,
  * the same split `finder.js` and `steps.js` live under.
  *
- * @typedef {{ code: string, message: string }} ApiError
+ * @typedef {{ code: string, message: string, refusal?: object }} ApiError
+ *   `refusal` is the engine's structured refusal, when it raised one as
+ *   data — a vertical this project cannot carry, a file in the way —
+ *   beside the sentence written from it.
  * @typedef {{ ok: true, value: unknown } | { ok: false, error: ApiError }} Outcome
  */
 
@@ -43,7 +46,8 @@ export function outcomeFrom(status, bodyText) {
 /**
  * The error a failed call carries.
  *
- * The server's envelope — `{ "error": { "code", "message" } }` — is
+ * The server's envelope — `{ "error": { "code", "message" } }`, with
+ * a `refusal` beside them when the engine raised one as data — is
  * taken as it stands, except that {@link INTERNAL} is labelled as the
  * bug it is. Any other body is kept verbatim under a code naming the
  * status: a sentence the page did not expect is still a better

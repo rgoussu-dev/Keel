@@ -2,9 +2,11 @@
 
 Client gateways and server accommodations, selected purely by **peer
 tags**. The vertical declares **no dimensions**: with no peers in
-scope it is refused — _"Service gateway wires linked projects — run
-`keel link <path>` first"_ — rather than installing nothing and being
-recorded as there; with peers, each side gets its half of the seam.
+scope it is refused — _"Service gateway wires linked projects, and no
+linked project serves it here — link one that does first"_, with
+`keel link <path>` as the terminal's hint — rather than installing
+nothing and being recorded as there; with peers, each side gets its
+half of the seam.
 
 ## How the seam works
 

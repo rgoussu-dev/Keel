@@ -176,6 +176,30 @@ describe('the keel ui server', () => {
     expect(await response.json()).toMatchObject({ error: { code: 'keel.unknown-stack' } });
   });
 
+  it('sends the refusal an extra is refused with as data, over the real engine', async () => {
+    // What the CLI builds its hint from reaches the page too: the gap,
+    // by kind, and the stack that carries the vertical.
+    const response = await post('/api/preview', {
+      cwd,
+      target: { kind: 'new-project', stack: 'go-cli', extraVerticals: ['persistence'] },
+      answers: {},
+    });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'keel.uncoverable-vertical',
+        message:
+          'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+        refusal: {
+          kind: 'unavailable',
+          vertical: 'persistence',
+          missing: { entrypoint: ['arch.server-http'] },
+          carriedBy: ['go-cli-http'],
+        },
+      },
+    });
+  });
+
   it('holds an install body’s answers to the plan and to their choices, as refusals', async () => {
     // The body reaches the same front door `--set` does. An answer
     // outside its choices used to pass the sticky path unchecked and

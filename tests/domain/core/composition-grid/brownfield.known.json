@@ -46,6 +46,5 @@
     "add:web-components+observability": "TEST-5",
     "add:web-components+persistence": "TEST-5"
   },
-  "I5": {},
-  "I6": {}
+  "I5": {}
 }

@@ -115,6 +115,7 @@ import {
   assemblableStacks,
   listStackIds,
   listStacks,
+  listVerticals,
   verticalTitle,
   type StackSummary,
 } from '../registry.js';
@@ -135,7 +136,9 @@ import {
   type ProjectShape,
   type WizardPath,
 } from '../stack-wizard.js';
-import { alreadyIncludedNote } from '../refusals.js';
+import { alreadyIncludedNote, elsewhereRefusal } from '../refusals.js';
+import { defaultScope, readiness } from '../planner.js';
+import { PathConflictError, PathMissingError } from '../../contract/refusal.js';
 import { NOTHING_INSTALLED, strayAnswerRefusal } from '../supplied-answers.js';
 import { vcsVertical } from '../verticals/vcs.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
@@ -539,6 +542,45 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     for (const a of report.actions) this.deps.logger.info(`  ! ${a}`);
   }
 
+  /**
+   * The refusal of `--with` on a composite stack: each service declares
+   * its own extra verticals, and `--with` names no service. Spoken as
+   * the product-root refusal `keel add` gives the same vertical — it
+   * belongs to a service, and here is which can take it, from each
+   * service's preset — so the product-level fact reads the same in
+   * both phases. An id no vertical is registered under is refused as
+   * one, as it is on a single-service stack.
+   */
+  private compositeExtraRefusal(services: readonly ResolvedService[], asked: string): DomainError {
+    const registry = this.deps.registry;
+    const vertical = registry.vertical(asked);
+    if (vertical === null) {
+      return new DomainError(
+        `unknown vertical '${asked}'; available: ${listVerticals(registry)
+          .map((v) => v.id)
+          .join(', ')}`,
+        'keel.unknown-vertical',
+      );
+    }
+    return elsewhereRefusal(
+      registry,
+      vertical,
+      services.map((service) => ({
+        path: service.path,
+        stack: service.stack.id,
+        readiness: readiness(
+          registry,
+          defaultScope(
+            service.stack,
+            service.extraVerticals.map((extra) => extra.id),
+          ),
+          vertical.id,
+        ).kind,
+      })),
+      'keel.invalid-extra-verticals',
+    );
+  }
+
   private async stageSingle(
     command: NewProjectCommand,
     stack: Stack,
@@ -664,14 +706,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       );
     }
 
-    if (command.extraVerticals !== undefined && command.extraVerticals.length > 0) {
-      return err(
-        new DomainError(
-          `stack '${stack.id}' is composite — each service declares its own extra verticals, and '--with' names no service. Scaffold the product, then 'keel add ${command.extraVerticals[0] ?? ''}' inside the service that needs it`,
-          'keel.invalid-extra-verticals',
-        ),
-      );
-    }
+    const [asked] = command.extraVerticals ?? [];
+    if (asked !== undefined) return err(this.compositeExtraRefusal(resolved, asked));
 
     const layout = await this.resolveLayout(command, stack, prompt);
     if (!layout.ok) return layout;
@@ -817,6 +853,12 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       templates: this.deps.templates,
       processes: this.deps.processes,
       now: () => inputs.now,
+      registry: this.deps.registry,
+    }).catch((thrown: unknown) => {
+      // A service's Tree is rooted at its own directory, so the file
+      // an adapter names is relative to it; the user ran `keel new`
+      // one level up, where `README.md` in the way is `backend/README.md`.
+      throw inputs.prefix === '' ? thrown : underService(thrown, inputs.prefix);
     });
     return {
       prefix: inputs.prefix,
@@ -1115,10 +1157,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       chosen.push(vertical);
     }
 
-    const admitted = admit(registry, presetScope(stack, tags), chosen, {
-      unavailable: (vertical, sentence) =>
-        `stack '${stack.id}': ${sentence}; drop '${vertical.id}' from --with, or scaffold a stack that can carry it`,
-    });
+    const admitted = admit(registry, presetScope(stack, tags), chosen);
     if (!admitted.ok) return admitted;
     return ok({ admitted: admitted.value, present });
   }
@@ -1640,6 +1679,25 @@ function peerContextStackIds(registry: Registry): readonly string[] {
     )
     .map((stack) => stack.id)
     .sort();
+}
+
+/**
+ * `thrown`, with a file refusal's path moved under the service
+ * directory `prefix` — what the user sees from the product root they
+ * ran `keel new` in. Anything else is passed through as it is.
+ */
+function underService(thrown: unknown, prefix: string): unknown {
+  if (thrown instanceof PathConflictError) {
+    return new PathConflictError(
+      path.posix.join(prefix, thrown.path),
+      thrown.adapterId,
+      thrown.refusal.anchor,
+    );
+  }
+  if (thrown instanceof PathMissingError) {
+    return new PathMissingError(path.posix.join(prefix, thrown.path), thrown.adapterId);
+  }
+  return thrown;
 }
 
 /** The default module-layout tag of a service stack, if it declares a choice. */

@@ -56,29 +56,8 @@ message naming the gap** — that is why `keel add observability` on a
 CLI project refuses to half-install (no probe surface to cover).
 
 The refusal also says what would close the gap, in the words the
-project was picked in rather than the engine's. `coverageGap` picks
-the adapter _nearest_ to matching and reports its unmet `requires`;
-[`refusals.ts`](../src/domain/core/refusals.ts) writes the sentence
-from them, naming the vertical by its title:
-
-- an entrypoint the project lacks is named by the label the stack
-  finder offers it under — _"Observability needs an entrypoint this
-  project does not have: HTTP server — a REST endpoint"_;
-- a tag the preset fixes at `keel new` (`lang.*`, `framework.*`,
-  `runtime.*`, `pkg.*`, `layout.*`, an `arch.*` that is not an
-  entrypoint) is never offered as a remedy, since no command adds
-  one — the vertical _"has no adapter for this project's stack"_;
-- anything else is a capability another install adds, and is named
-  as one the project does not have yet.
-
-The tags still travel, in `ResolutionError.detail.enablers`, for a
-front end or an adapter author that wants the engine's view.
-`resolveVertical` throws from that same gap, so the refusal a user
-runs into and the one a front door shows ahead of time cannot say
-different things. At a composite product's root `keel add` reports no
-gap at all: a root carries almost no tags, so its nearest adapter is
-advice for some other product, and a vertical the root cannot carry is
-refused naming the service directories to run it in instead.
+project was picked in rather than the engine's — see
+[Refusals](#refusals) below.
 
 A vertical also declares **`promotes`**: every tag installing it may
 add, the union over its adapters' `tagsAdd` including the ones only
@@ -167,6 +146,79 @@ native-only distribution once a JVM image arrives). Proposed, never
 done — a re-render overwrites what the vertical owns — and
 `keel add … --refresh <ids>` takes it up in the same run, ordered like
 any other vertical of the set.
+
+### Refusals
+
+Every refusal of a vertical or a file is **data first**: a `Refusal`
+([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
+`RefusalError` beside its code and the sentence written from it.
+
+| Kind            | Carries                                                                                                          | Raised when                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here                         |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle      |
+| `elsewhere`     | the vertical, and each service with how ready it is there                                                        | it is asked of a composite product rather than one of its services |
+| `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together           |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way         |
+| `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                     |
+
+One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
+that data as a sentence, and every surface speaks it: the planner's
+refusals at both front doors, `keel.dials`' reasons for dropping an
+extra, the resolver's last-line throw, `keel add`'s product-root
+redirect and `keel new --with` on a composite. The two file sentences
+are spelled beside their errors in the contract, because an adapter —
+a plugin's too — raises them, and the builder reads them from there.
+
+The sentence is **phase-neutral**: `keel new --with persistence` on
+`go-cli` and `keel add persistence` on the project it scaffolds are
+refused in the same words under the same code, and the composition
+grid's I5 holds every single-service stack to that. It never says
+`--with` or `keel add`: the remedy one command has is its front end's,
+built from the refusal's fields — the CLI prints it on a `hint:` line
+(_drop it from `--with`, or scaffold go-cli-http, which carries it_;
+_`keel link <path>` first_; _`cd backend && keel add persistence`_;
+_move `README.md` aside_ before `keel new`, never after, where the file
+may be a product root's own), and `keel ui` receives the refusal itself
+in the 422 body, as `error.refusal`.
+
+And it **never prints a tag.** A gap is a fact about tags — the unmet
+`requires` of the adapter nearest to matching, as `coverageGap` and the
+planner compute it — and most of those name something no command can
+add. So the sentence sorts it first, naming the vertical by its title:
+
+- an **entrypoint** the project lacks is named by the label the stack
+  finder offers it under — _"Observability needs an entrypoint this
+  project does not have: HTTP server — a REST endpoint"_;
+- a tag the preset fixes at `keel new` (`lang.*`, `framework.*`,
+  `runtime.*`, `pkg.*`, `layout.*`, an `arch.*` that is not an
+  entrypoint) is an **identity** gap, never offered as a remedy — the
+  vertical _"has no adapter for this project's stack; the nearest
+  stack that carries it: ts-http"_, or, when only the build system
+  differs, _"…has no adapter for this project's build system; it needs
+  Maven — …"_;
+- a **peer** tag is what a linked project projects, so the gateway
+  reads as _"wires linked projects, and no linked project serves it
+  here — link one that does first"_;
+- any other tag is a **capability** some vertical adds, named by that
+  vertical — _"Distribution needs what Continuous integration adds,
+  which this project does not have yet"_.
+
+The tags travel in the refusal's `missing` field, for a front end or an
+adapter author that wants the engine's view. When one adapter is a
+framework away and another an entrypoint away, the gap is the
+entrypoint — the one a sibling preset has — so `distribution` on a
+Spring CLI reads as the HTTP server it lacks, not as Quarkus.
+`resolveVertical` throws from the same gap, through the same builder, so
+the refusal a user runs into and the one a front door shows ahead of
+time cannot say different things; only an adapter `after` cycle, which
+is an adapter author's bug, is a `ResolutionError` of its own. At a
+composite product's root `keel add` reports no gap at all: a root
+carries almost no tags, so its nearest adapter is advice for some other
+product, and a vertical the root cannot carry is refused as
+`elsewhere`, naming the services that can take it — _"Persistence
+belongs to a service, not to the product root — it goes in
+backend/"_.
 
 ### Stacks
 

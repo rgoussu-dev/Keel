@@ -617,13 +617,19 @@ function unmetOf(
  * The unmet `requires` of the adapter among `adapters` nearest to
  * matching, and not excluded by `tags`; null when all are.
  *
- * Nearest counts first what no install can add — a tag no registered
- * vertical promotes — and only then every unmet tag. A plain count
- * would call a Quarkus-native adapter, two identity tags away from a
- * Go CLI, as near as the Go image one that needs only the HTTP
- * entrypoint and an image some vertical builds; the gap would then
- * read as "no adapter for this stack" where the truth is "no HTTP
- * entrypoint".
+ * Nearest counts first what no install can add and is neither an
+ * entrypoint nor a linked project — the project's language,
+ * framework, runtime, build system or layout — then what no install
+ * can add at all, and only
+ * then every unmet tag. A plain count would call a Quarkus-native
+ * adapter, two identity tags away from a Go CLI, as near as the Go
+ * image one that needs only the HTTP entrypoint and an image some
+ * vertical builds; the gap would then read as "no adapter for this
+ * stack" where the truth is "no HTTP entrypoint". And a Spring CLI is
+ * one tag from each of distribution's Quarkus-native adapter (the
+ * framework) and its JVM image one (the entrypoint): the entrypoint is
+ * the gap a sibling preset closes — `spring-cli-rest` — while the
+ * framework is the project itself.
  */
 function nearestUnmet(
   adapters: readonly Adapter[],
@@ -638,8 +644,11 @@ function nearestUnmet(
     const unmet = (adapter.predicate.requires ?? []).filter(
       (pattern) => !matchesPattern(pattern, tags),
     );
-    const fixed = unmet.filter((pattern) => !matchesPattern(pattern, acquirable)).length;
-    const key = [fixed, unmet.length];
+    const fixed = unmet.filter((pattern) => !matchesPattern(pattern, acquirable));
+    const identity = fixed.filter(
+      (pattern) => !ENTRYPOINT_TAGS.has(pattern) && !pattern.startsWith(PEER_NAMESPACE),
+    ).length;
+    const key = [identity, fixed.length, unmet.length];
     if (nearest === null || compareKeys(key, nearest.key) < 0) nearest = { unmet, key };
   }
   return nearest?.unmet ?? null;
@@ -732,6 +741,20 @@ function carries(
     installed: stack.verticals.map((own) => own.id),
   };
   return closureOf(registry, scope, [vertical]) !== null;
+}
+
+/**
+ * The scope a preset scaffolds on its default dials: its tags as its
+ * own verticals leave them, and those verticals — plus `extras`, the
+ * verticals a composite product installs in that service of its own
+ * accord — as already there. What a front door plans against for a
+ * service it has no manifest for.
+ */
+export function defaultScope(stack: Stack, extras: readonly string[] = []): PlanScope {
+  return {
+    tags: seedFor(stack, defaultTags(stack)),
+    installed: [...stack.verticals.map((own) => own.id), ...extras],
+  };
 }
 
 /** A stack's tags on its default dials. */

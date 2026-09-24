@@ -71,7 +71,7 @@ export const INVARIANTS = {
   I2: 'every extra keel.dials offers, posted with its prerequisites, previews Ok',
   I3: 'every extras set the CLI accepts is reachable from the menu',
   I4: 'a vertical keel.project-status lists as available previews Ok',
-  I5: 'keel new --with v and keel add v on the same stack reach the same outcome',
+  I5: 'keel new --with v and keel add v on the same stack reach the same outcome, code and sentence',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
 } as const;
@@ -86,9 +86,11 @@ export type Invariant = keyof typeof INVARIANTS;
  * that brings it to zero for good — I1 with Q0.3, when a file already
  * on disk, or missing from it, became a coded refusal; I2 and I3 with
  * Q1.3, when the extras menu and both front doors moved onto the
- * planner; I8 landed hard, with the same step.
+ * planner; I8 landed hard, with the same step; I6 with Q1.7, when every
+ * refusal of a vertical came to be written by one builder that prints
+ * no tag.
  */
-export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I8'];
+export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I6', 'I8'];
 
 /** The verdict of a cell that came back Ok. */
 export const OK = 'ok';
@@ -230,6 +232,15 @@ export class Grid {
       this.violate('I6', id);
     }
     return outcome;
+  }
+
+  /**
+   * Dispatches `action` to compare a cell against — another axis's
+   * twin of it, say — and records nothing: no verdict, and no
+   * invariant held over it. The axis that owns that cell holds those.
+   */
+  async twin<A extends Action>(action: A): Promise<Outcome<ResultOf<A>>> {
+    return attempt(this.mediator, action);
   }
 
   /**

@@ -70,6 +70,7 @@ import type {
 } from '../contract/composition.js';
 import type { Logger } from '../contract/ports/logger.js';
 import type { ProcessRunner } from '../contract/ports/process-runner.js';
+import type { Registry } from '../contract/ports/registry.js';
 import type { TemplateSource } from '../contract/ports/template-source.js';
 
 /** Inputs to `installVertical`. */
@@ -118,6 +119,13 @@ export interface InstallVerticalInputs {
   readonly harness?: HarnessContribution[];
   /** Replay recorded answers for harness declarations only; never apply domain changes or actions. */
   readonly harnessOnly?: boolean;
+  /**
+   * What the run composes from — read only to word a refusal: a
+   * vertical whose dimension is left uncovered for want of a
+   * capability names the vertical that adds it. Absent, the refusal
+   * can name only the vertical being installed.
+   */
+  readonly registry?: Registry;
 }
 
 /** Result of installing a vertical, or a run of them. */
@@ -220,7 +228,7 @@ export async function installVerticals(
 export async function installVertical(
   inputs: InstallVerticalInputs,
 ): Promise<InstallVerticalResult> {
-  const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest));
+  const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest), inputs.registry);
 
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];

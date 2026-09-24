@@ -5,8 +5,20 @@ import {
   coversFor,
   resolveVertical,
 } from '../../../src/domain/core/resolver.js';
-import { coverageSentence } from '../../../src/domain/core/refusals.js';
+import { uncoveredRefusal } from '../../../src/domain/core/refusals.js';
+import { RefusalError } from '../../../src/domain/contract/refusal.js';
 import type { Adapter, Contribution, Vertical } from '../../../src/domain/contract/composition.js';
+
+/** What `resolveVertical` threw for `vertical` on `tags`. */
+function refusedWith(vertical: Vertical, tags: readonly string[]): RefusalError {
+  try {
+    resolveVertical(vertical, tags);
+  } catch (thrown) {
+    expect(thrown).toBeInstanceOf(RefusalError);
+    return thrown as RefusalError;
+  }
+  throw new Error(`expected '${vertical.id}' to be refused`);
+}
 
 const noContribution: Contribution = {};
 const stub = (a: Partial<Adapter> & Pick<Adapter, 'id' | 'covers' | 'predicate'>): Adapter => ({
@@ -45,7 +57,7 @@ describe('resolveVertical', () => {
     expect(ordered.map((a) => a.id)).toEqual(['k8s', 'quarkus']);
   });
 
-  it('hard-fails when a dimension is uncovered', () => {
+  it('refuses a dimension left uncovered, as data and in words', () => {
     const v: Vertical = {
       id: 'observability',
       description: '',
@@ -58,24 +70,21 @@ describe('resolveVertical', () => {
         }),
       ],
     };
-    expect(() => resolveVertical(v, ['framework.fastify'])).toThrow(ResolutionError);
-    try {
-      resolveVertical(v, ['framework.fastify']);
-    } catch (e) {
-      const err = e as ResolutionError;
-      expect(err.kind).toBe('uncovered');
-      // Nothing covers `deploy-target` at all, so there is nothing to
-      // name as an enabler — the dimension really is empty.
-      expect(err.detail).toEqual({
-        kind: 'uncovered',
-        dimensions: ['deploy-target'],
-        enablers: [],
-      });
-      expect(err.message).toBe("Observability has no adapter for this project's stack");
-    }
+    const refusal = refusedWith(v, ['framework.fastify']);
+    expect(refusal.code).toBe('keel.uncoverable-vertical');
+    // Nothing covers `deploy-target` at all, so nothing is missing
+    // that anything could add: the gap is empty, and the project is
+    // simply the wrong kind for this vertical.
+    expect(refusal.refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'observability',
+      missing: {},
+      carriedBy: [],
+    });
+    expect(refusal.message).toBe("Observability has no adapter for this project's stack");
   });
 
-  it('throws what coverageGap answers, so the two refusals cannot differ', () => {
+  it('throws the gap coverageGap answers, sorted into what would change it', () => {
     // The throw is the last line of defence, which makes it the worst
     // place to report only a symptom — and the worst place to report
     // a *different* symptom than the front door already showed.
@@ -94,26 +103,70 @@ describe('resolveVertical', () => {
     const gap = coverageGap(v, ['framework.quarkus']);
     expect(gap?.enablers).toEqual(['arch.server-http']);
 
-    try {
-      resolveVertical(v, ['framework.quarkus']);
-      expect.fail('expected throw');
-    } catch (e) {
-      const err = e as ResolutionError;
-      // The tag is the engine's view and travels in `detail`; the
-      // sentence says it the way the finder offered it.
-      expect(err.message).toBe(coverageSentence(v, gap?.enablers ?? []));
-      expect(err.message).toBe(
-        'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
-      );
-      expect(err.detail).toEqual({
-        kind: 'uncovered',
-        dimensions: gap?.dimensions,
-        enablers: gap?.enablers,
-      });
-    }
+    const refusal = refusedWith(v, ['framework.quarkus']);
+    // The tag is the engine's view and travels in the refusal, under
+    // the kind of change it asks for; the sentence says it the way
+    // the finder offered it.
+    expect(refusal.refusal).toMatchObject({ missing: { entrypoint: gap?.enablers } });
+    expect(refusal.message).toBe(uncoveredRefusal(v, gap?.enablers ?? []).message);
+    expect(refusal.message).toBe(
+      'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
   });
 
-  it('hard-fails on a cycle in `after`', () => {
+  it('sorts a gap into entrypoints, linked projects and what the preset fixes', () => {
+    const v: Vertical = {
+      id: 'bridge',
+      description: '',
+      dimensions: ['seam'],
+      adapters: [
+        stub({
+          id: 'spring-seam',
+          covers: ['seam'],
+          predicate: { requires: ['framework.spring', 'arch.server-http', 'peer.ui.spa'] },
+        }),
+      ],
+    };
+    expect(refusedWith(v, ['framework.quarkus']).refusal).toMatchObject({
+      missing: {
+        entrypoint: ['arch.server-http'],
+        peer: ['peer.ui.spa'],
+        identity: ['framework.spring'],
+      },
+    });
+  });
+
+  it('names the vertical that adds a missing capability when handed a registry', () => {
+    const image: Vertical = {
+      id: 'image',
+      title: 'Container image',
+      description: '',
+      dimensions: [],
+      adapters: [],
+      promotes: ['deploy.container-image'],
+    };
+    const release: Vertical = {
+      id: 'release',
+      description: '',
+      dimensions: ['artifact'],
+      adapters: [
+        stub({
+          id: 'image-release',
+          covers: ['artifact'],
+          predicate: { requires: ['deploy.container-image'] },
+        }),
+      ],
+    };
+    const names = {
+      vertical: (id: string) => (id === image.id ? image : null),
+      verticals: () => [image],
+    };
+    expect(() => resolveVertical(release, [], names)).toThrow(
+      'Release needs what Container image adds, which this project does not have yet',
+    );
+  });
+
+  it('hard-fails on a cycle in `after`, as the adapter bug it is', () => {
     const v: Vertical = {
       id: 'cycle',
       description: '',
@@ -127,9 +180,11 @@ describe('resolveVertical', () => {
       resolveVertical(v, []);
       expect.fail('expected throw');
     } catch (e) {
+      expect(e).toBeInstanceOf(ResolutionError);
+      expect(e).not.toBeInstanceOf(RefusalError);
       const err = e as ResolutionError;
-      expect(err.kind).toBe('cycle');
-      expect(err.detail).toEqual({ kind: 'cycle', adapters: ['a', 'b'] });
+      expect(err.code).toBe('keel.adapter-cycle');
+      expect(err.adapters).toEqual(['a', 'b']);
     }
   });
 
@@ -190,8 +245,8 @@ describe('resolveVertical', () => {
 /**
  * The same coverage check, asked ahead of time. What it is for is
  * menus: `keel new`'s extra-verticals step prunes with it, so an
- * option that could only ever end in the `ResolutionError` above is
- * never on the list.
+ * option that could only ever end in the refusal above is never on
+ * the list.
  */
 describe('coversFor', () => {
   const vertical: Vertical = {
@@ -214,7 +269,7 @@ describe('coversFor', () => {
 
   it('is false where a dimension goes uncovered, instead of throwing', () => {
     expect(coversFor(vertical, ['arch.cli'])).toBe(false);
-    expect(() => resolveVertical(vertical, ['arch.cli'])).toThrow(ResolutionError);
+    expect(() => resolveVertical(vertical, ['arch.cli'])).toThrow(RefusalError);
   });
 
   it('is true for a vertical declaring no dimensions at all', () => {
@@ -272,7 +327,7 @@ describe('coverageGap', () => {
     // Which framework wins the tie is declaration order, and no
     // command changes a project's framework anyway: the refusal says
     // the stack has no adapter, and names neither.
-    expect(coverageSentence(persistence, gap?.enablers ?? [])).toBe(
+    expect(uncoveredRefusal(persistence, gap?.enablers ?? []).message).toBe(
       "Persistence has no adapter for this project's stack",
     );
   });
@@ -310,7 +365,7 @@ describe('coverageGap', () => {
     expect(gap?.enablers).toEqual(['framework.spring']);
     // A framework swap is the engine's answer, not a remedy — the
     // refusal does not offer it.
-    expect(coverageSentence(vertical, gap?.enablers ?? [])).toBe(
+    expect(uncoveredRefusal(vertical, gap?.enablers ?? []).message).toBe(
       "Excl has no adapter for this project's stack",
     );
   });

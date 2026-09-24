@@ -7,12 +7,14 @@ import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-temp
 import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
 import { DomainError } from '../../../src/domain/kernel/result.js';
 import {
-  ContributionConflictError,
-  ENGINE_REGIONS,
   PATH_CONFLICT_CODE,
   PATH_MISSING_CODE,
   PathConflictError,
   PathMissingError,
+} from '../../../src/domain/contract/refusal.js';
+import {
+  ContributionConflictError,
+  ENGINE_REGIONS,
   applyContributions,
   collectHarness,
   newOwnership,
@@ -155,19 +157,25 @@ describe('applyContributions', () => {
       expect(conflict.code).toBe('keel.path-conflict');
       expect(conflict.path).toBe('README.md');
       expect(conflict.adapterId).toBe('walking-skeleton/go-bootstrap');
-      // On `keel add` the file may be keel's own, so no advice to move it.
+      // No advice: on `keel add` the file may be keel's own, and what to
+      // do about it is the front end's to say from the refusal.
       expect(conflict.message).toBe(
-        "'README.md' already exists and was not written by this run — keel does not overwrite it (walking-skeleton/go-bootstrap)",
+        "'README.md' already exists, and keel does not overwrite a file this run did not write",
       );
+      expect(conflict.refusal).toEqual({
+        kind: 'path-conflict',
+        path: 'README.md',
+        adapterId: 'walking-skeleton/go-bootstrap',
+      });
     });
 
-    it('tells a scaffold to move the file aside, since nothing on disk there is keel’s', async () => {
+    it('refuses a scaffold over the same file in the same words', async () => {
       await fs.writeFile(path.join(tmp, 'README.md'), 'hello');
-      const failure = await apply([bootstrap], new FsTree(tmp), 'scaffold');
-      expect(failure).toBeInstanceOf(PathConflictError);
-      expect((failure as PathConflictError).message).toBe(
-        "'README.md' already exists and keel does not overwrite it — move it aside, or start in an empty directory (walking-skeleton/go-bootstrap)",
-      );
+      const installing = (await apply([bootstrap], new FsTree(tmp))) as PathConflictError;
+      const scaffolding = await apply([bootstrap], new FsTree(tmp), 'scaffold');
+      expect(scaffolding).toBeInstanceOf(PathConflictError);
+      expect((scaffolding as PathConflictError).message).toBe(installing.message);
+      expect((scaffolding as PathConflictError).refusal).toEqual(installing.refusal);
     });
 
     it('still counts a file an earlier adapter of the run patched as the project’s', async () => {
@@ -204,8 +212,9 @@ describe('applyContributions', () => {
         expect(missing.path).toBe('nope.txt');
         expect(missing.adapterId).toBe('a');
         expect(missing.message).toBe(
-          "'nope.txt' is missing — keel patches it and does not recreate it; restore it (a)",
+          "'nope.txt' is missing — keel patches it and does not recreate it; restore it",
         );
+        expect(missing.refusal).toEqual({ kind: 'path-missing', path: 'nope.txt', adapterId: 'a' });
       }
     });
 

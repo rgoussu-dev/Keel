@@ -378,8 +378,8 @@ describe('keel.add-vertical (keel add containerization)', () => {
       ),
     );
     expect(error.code).toBe('keel.path-conflict');
-    expect(error.message).toMatch(
-      /^'Dockerfile' already exists and was not written by this run — keel does not overwrite it \(containerization\//,
+    expect(error.message).toBe(
+      "'Dockerfile' already exists, and keel does not overwrite a file this run did not write",
     );
     expect(await dockerfile()).toBe('FROM scratch\n');
     expect((await manifest()).verticals.map((v) => v.id)).not.toContain('containerization');

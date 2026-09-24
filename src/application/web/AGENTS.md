@@ -59,7 +59,10 @@ socket, the per-run token and the asset roots. The page it serves is
   leaves the executable as a 500 in the envelope a refusal uses,
   `{ error: { code, message } }`, under `keel.internal`, which the
   page labels as a bug to report; a body that is not the envelope is
-  still shown verbatim rather than replaced by its status.
+  still shown verbatim rather than replaced by its status. A
+  `RefusalError`'s 422 also carries `error.refusal`, the structured
+  refusal (`api.ts` `unwrap`), for a control that acts on its fields
+  rather than its words.
 - **Build the shell and the elements once, update them through
   properties.** Replacing a subtree on every preview takes the caret
   out of the field being typed in and resets the plan tree's scroll

@@ -393,6 +393,31 @@ A refusal comes back as **422** with the domain's own error code:
 { "error": { "code": "keel.unknown-stack", "message": "unknown stack 'nope'; available: …" } }
 ```
 
+A refusal the engine raises as data — a vertical this project cannot
+carry, one that belongs in a service, a tie, a file in the way — also
+carries that data as `error.refusal`, beside the sentence written from
+it: the same fields the CLI builds its `hint:` line from
+([Refusals](composition.md#refusals)).
+
+```json
+{
+  "error": {
+    "code": "keel.uncoverable-vertical",
+    "message": "Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint",
+    "refusal": {
+      "kind": "unavailable",
+      "vertical": "persistence",
+      "missing": { "entrypoint": ["arch.server-http"] },
+      "carriedBy": ["go-cli-http"]
+    }
+  }
+}
+```
+
+The sentence is the same whichever phase met the fact: the extra
+refused on the new-project form and the card refused on the project it
+scaffolds read word for word alike.
+
 **Every refusal, including the ones raised at the bottom of the
 install.** Most are decided at a handler's front door and were always
 an `Err`; one was not. The resolver hard-fails when no adapter covers
@@ -408,7 +433,7 @@ refused before anything runs, in the same code. It arrives here as a
 finder uses — _"Container image needs an entrypoint this project does
 not have: HTTP server — a REST endpoint"_ — never a tag no command can
 add. Pointed at a composite product's root, a vertical the root cannot
-carry is refused naming the service directories it belongs in.
+carry is refused naming the services that can take it.
 
 A vertical that installs only once another has is no longer refused
 at all: distribution on a project with no container image yet

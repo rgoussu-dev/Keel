@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -308,7 +309,7 @@ describe('keel.new-project (keel new)', () => {
     expect(error.message).toMatch(/already initialised/);
   });
 
-  it('refuses a file of the user’s it would overwrite, saying how to get past it', async () => {
+  it('refuses a file of the user’s it would overwrite, naming it', async () => {
     await fs.writeFile(path.join(cwd, 'README.md'), '# my repository\n');
     const error = expectErr(
       await installMediator().dispatch(
@@ -322,9 +323,17 @@ describe('keel.new-project (keel new)', () => {
       ),
     );
     expect(error.code).toBe('keel.path-conflict');
+    // The same sentence `keel add` refuses a file in the way with; that
+    // moving it aside is the way past it here is the CLI's hint, built
+    // from the refusal.
     expect(error.message).toBe(
-      "'README.md' already exists and keel does not overwrite it — move it aside, or start in an empty directory (walking-skeleton/go-bootstrap)",
+      "'README.md' already exists, and keel does not overwrite a file this run did not write",
     );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'path-conflict',
+      path: 'README.md',
+      adapterId: 'walking-skeleton/go-bootstrap',
+    });
     // Refused while staging: nothing was committed, nothing ran.
     expect(await fs.readdir(cwd)).toEqual(['README.md']);
     expect(await fs.readFile(path.join(cwd, 'README.md'), 'utf8')).toBe('# my repository\n');
@@ -1371,7 +1380,7 @@ describe('keel.new-project extra verticals', () => {
     expect(mixed.changes).toEqual(withCi.changes);
   });
 
-  it('rejects a vertical no adapter here can cover, naming what is missing and the fix', async () => {
+  it('rejects a vertical no adapter here can cover, naming what is missing', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -1387,13 +1396,22 @@ describe('keel.new-project extra verticals', () => {
     expect(error.code).toBe('keel.uncoverable-vertical');
     // What the menu's pruning says implicitly, said out loud — in the
     // words the finder offered the entrypoint in, not as the
-    // `arch.server-http` tag this preset lacks.
+    // `arch.server-http` tag this preset lacks, and in the sentence
+    // `keel add persistence` refuses the scaffolded project with. The
+    // remedy only `--with` has (drop it, or scaffold the stack that
+    // carries it) is the CLI's, built from the refusal.
     expect(error.message).toBe(
-      "stack 'quarkus-cli': Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint; drop 'persistence' from --with, or scaffold a stack that can carry it",
+      'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint',
     );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'persistence',
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['quarkus-cli-rest'],
+    });
   });
 
-  it('names no framework swap when the stack has no adapter at all', async () => {
+  it('names the missing entrypoint, not a framework swap, when both would do', async () => {
     const error = expectErr(
       await installMediator().dispatch(
         newProjectCommand({
@@ -1407,10 +1425,18 @@ describe('keel.new-project extra verticals', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    // The adapter nearest a Spring CLI is Quarkus's native one, which
-    // is a framework no command can switch to: the tag stays out.
-    expect(error.message).toContain("Distribution has no adapter for this project's stack");
-    expect(error.message).not.toContain('framework.');
+    // A Spring CLI is one tag from Quarkus's native adapter (the
+    // framework) and one from the JVM image one (the HTTP
+    // entrypoint). The framework is the project itself; the entrypoint
+    // is what the sibling preset has — so that is the gap, and no
+    // framework swap is offered.
+    expect(error.message).toBe(
+      'Distribution needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['spring-cli-rest'],
+    });
   });
 
   it('refuses it at the front door, before a single adapter question', async () => {
@@ -1645,7 +1671,7 @@ describe('keel.new-project extra verticals', () => {
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
     expect(error.message).toBe(
-      "stack 'quarkus-cli': Infrastructure as code needs an entrypoint this project does not have: HTTP server — a REST endpoint; drop 'iac' from --with, or scaffold a stack that can carry it",
+      'Infrastructure as code needs an entrypoint this project does not have: HTTP server — a REST endpoint',
     );
     expect(prompt.asked).not.toContain('basePackage');
     expect(prompt.asked).not.toContain('targets');
@@ -1706,9 +1732,10 @@ describe('keel.new-project extra verticals', () => {
       ),
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toContain(
-      "Service gateway wires linked projects — run 'keel link <path>' first",
+    expect(error.message).toBe(
+      'Service gateway wires linked projects, and no linked project serves it here — link one that does first',
     );
+    expect((error as RefusalError).refusal).toMatchObject({ missing: { peer: ['peer.ui.spa'] } });
   });
 
   it('rejects the same vertical named twice', async () => {
@@ -1786,8 +1813,37 @@ describe('keel.new-project extra verticals', () => {
         }),
       ),
     );
+    // Spoken as `keel add ci` at the product root is: it belongs to a
+    // service, and each service's preset can take it.
     expect(error.code).toBe('keel.invalid-extra-verticals');
-    expect(error.message).toContain('composite');
+    expect(error.message).toBe(
+      'Continuous integration belongs to a service, not to the product root — it goes in backend/ or frontend/',
+    );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'elsewhere',
+      vertical: 'ci',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'frontend', stack: 'web-components', readiness: 'ready' },
+      ],
+    });
+  });
+
+  it('refuses an unregistered id on a composite stack as the unknown vertical it is', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['nope'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-vertical');
+    expect(error.message).toMatch(/^unknown vertical 'nope'; available: /);
   });
 });
 

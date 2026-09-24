@@ -126,6 +126,5 @@
     "add:fullstack/monorepo/frontend+persistence": "TEST-5",
     "add:fullstack/polyrepo/frontend+observability": "TEST-5",
     "add:fullstack/polyrepo/frontend+persistence": "TEST-5"
-  },
-  "I6": {}
+  }
 }

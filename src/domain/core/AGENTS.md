@@ -24,7 +24,7 @@ the shipped source, every refusal naming its origin) and
 - Tests follow Scenario + Factory + port (`tests/support/factory.ts`)
   with the shipped fakes — no mocking libraries.
 
-## Four standing notes
+## Five standing notes
 
 **Registration.** Which stacks and verticals a run may compose from is a
 value, not an import. `domain/contract/ports/registry.ts` is the port;
@@ -87,6 +87,15 @@ gets that without `node:fs` or a port in the domain.
 `tests/domain/core/stack-registry.golden.json` freezes what the registry
 projects onto, the way `version-pins.json` and its test do one level up —
 edit a preset, edit the golden.
+
+**Refusals are data, worded once.** A refusal of a vertical or a file is
+a `RefusalError` (`domain/contract/refusal.ts`), and `refusals.ts` is the
+only place one is put into words: phase-neutral — never `--with` or
+`keel add`, since `keel new --with v` and `keel add v` must say one
+sentence (grid I5) — and never a tag (I6, hard). A new refusal adds a
+kind or a field there and a case to `refusalSentence`, not a string in a
+handler; the remedy one command has is its front end's, built from the
+fields.
 
 ## Naming
 

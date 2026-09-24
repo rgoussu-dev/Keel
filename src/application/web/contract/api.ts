@@ -50,6 +50,7 @@ import {
   previewQuery,
   projectStatusQuery,
 } from '../../../domain/contract/queries.js';
+import { RefusalError } from '../../../domain/contract/refusal.js';
 import { failure, json, type UiHandler, type UiRequest, type UiResponse } from './http.js';
 
 /** Error code for a request this API could not make sense of. */
@@ -297,8 +298,18 @@ function describe(error: z.ZodError): string {
  * project is already initialised", "that vertical is installed",
  * "this stack ships one module layout" — the request was understood
  * exactly, and refused on its merits. The client shows the message;
- * the code is what it branches on.
+ * the code is what it branches on. A refusal the engine raised as data
+ * (a `RefusalError`) also carries that data as `refusal` — the
+ * structured half the CLI builds its hint from, so a page can act on
+ * the same fields.
  */
 function unwrap<T>(result: Result<T>): UiResponse {
-  return result.ok ? json(result.value) : failure(422, result.error.code, result.error.message);
+  if (result.ok) return json(result.value);
+  const { error } = result;
+  return failure(
+    422,
+    error.code,
+    error.message,
+    error instanceof RefusalError ? error.refusal : undefined,
+  );
 }

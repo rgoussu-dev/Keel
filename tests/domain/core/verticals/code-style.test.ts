@@ -24,7 +24,7 @@ import {
 import { renderPreCommitHook } from '../../../../src/domain/core/adapters/claude-kit.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
-import { ResolutionError } from '../../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 
 const HOOK = '.claude/hooks/pre-commit-format.sh';
 
@@ -161,7 +161,7 @@ describe('code-style vertical — the universal baseline', () => {
     // A tag set no formatter adapter matches must refuse to
     // half-install, the same as every other vertical's uncovered
     // dimension.
-    await expect(installWith(['lang.cobol'])).rejects.toBeInstanceOf(ResolutionError);
+    await expect(installWith(['lang.cobol'])).rejects.toBeInstanceOf(RefusalError);
   });
 });
 
@@ -295,7 +295,7 @@ describe('code-style vertical — Rust, Go and the web stacks', () => {
 });
 
 describe('code-style vertical — the linter dimension', () => {
-  it('covers every family without a ResolutionError, and records the tag', async () => {
+  it('covers every family without a refusal, and records the tag', async () => {
     for (const tags of [JVM_GRADLE, JVM_MAVEN, JVM_KOTLIN, GO, RUST, TS, WC]) {
       const { result } = await installWith(tags);
       expect(result.manifest.tags, tags.join(',')).toContain(LINT_MANAGED_TAG);

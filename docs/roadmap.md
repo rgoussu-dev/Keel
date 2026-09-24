@@ -2709,7 +2709,7 @@ shows as _included_ as on the menu, since naming it adds nothing
 (`new-project.test.ts` pins the same changes with it and without). No
 known key moved.
 
-#### Q1.7 — One refusal vocabulary, the same in both phases (L)
+#### Q1.7 — One refusal vocabulary, the same in both phases (L) ✅
 
 `src/domain/contract/refusal.ts`: a `Refusal` union (`needs`,
 `unavailable`, `elsewhere`, `path-conflict`, `path-missing`) and
@@ -2719,6 +2719,34 @@ systems by label, identity gaps as "no adapter for this project's
 stack; nearest stacks that carry it: …", tags only in the structured
 field. `api.ts` forwards `refusal` in the 422 body; the CLI builds its
 hint from the same fields. Codes stay stable.
+
+Landed with the union extended by what the planner already exposes:
+`incompatible{verticals}` for a set no order installs, and
+`unavailable.because`/`rules` for a vertical's own rule (its reason and
+id, no longer the tags that tripped it); `needs` carries the tied
+options, the only `needs` that still refuses since Q1.4. A capability
+some vertical adds is named by that vertical ("Distribution needs what
+Continuous integration adds, which this project does not have yet"),
+the gateway's missing peer as "link one that does first", and the
+`--with` wrapper is gone: the remedy each command has is the CLI's
+`hint:` line (`contract/hint.ts`). `PathConflictError` and
+`PathMissingError` moved into the contract — their two sentences with
+them (`pathSentence`), since an adapter raises them — are exported to
+plugins, and lost `jvm-format`'s engine import; a conflict inside a
+composite's service names the path from the product root. The
+resolver's `ResolutionError` is now only the `after` cycle; its
+uncovered throw is a `RefusalError` from the builder, naming a
+capability's vertical when the install is handed the registry. The
+planner's nearest adapter now prefers an entrypoint gap to a framework
+one, so `distribution` on a Spring or Micronaut CLI reads as the HTTP
+server it lacks (four readiness-golden cells). The product-root
+redirect and the composite `--with` refusal both became `elsewhere`,
+with each service's readiness — from its manifest brownfield, its
+preset greenfield — under their old codes until Q1.10's
+`keel.wrong-scope`. `extraVerticalsQuestion` already labelled choices
+by title. Grid: I5 compares code and sentence on every single-service
+cell (the old wrapper back makes 73 cells fail), I6 is hard, and no
+golden verdict moved.
 
 #### Q1.8 — Readiness before the click (M)
 

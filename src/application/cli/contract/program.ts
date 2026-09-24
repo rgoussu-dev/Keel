@@ -21,7 +21,9 @@ import {
   type RepoLayout,
 } from '../../../domain/contract/commands.js';
 import { docsCheckQuery } from '../../../domain/contract/queries.js';
+import { RefusalError } from '../../../domain/contract/refusal.js';
 import type { ServeUi } from '../../web/contract/server.js';
+import { refusalHint, type HintedCommand } from './hint.js';
 import {
   toolchainCheckQuery,
   toolchainInstallCommand,
@@ -161,7 +163,7 @@ export function buildProgram(deps: CliDeps): Command {
             ...(opts.with === undefined ? {} : { extraVerticals: parseVerticalList(opts.with) }),
           }),
         );
-        const report = unwrap(result);
+        const report = unwrap(result, 'new');
         printReport(`keel new ${report.subject}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
         else deps.logger.success(`keel new ${report.subject}: ready in ${dir}`);
@@ -249,7 +251,7 @@ export function buildProgram(deps: CliDeps): Command {
                 ...(opts.reapply ? { reapply: true } : {}),
               }),
         );
-        const report = unwrap(result);
+        const report = unwrap(result, 'add');
         const label = module ? `module ${report.subject}` : report.subject;
         printReport(`keel add ${label}: planned changes`, report, deps.logger);
         if (!report.committed) deps.logger.info('dry run — nothing committed');
@@ -506,11 +508,19 @@ function printOptionList(
 
 /**
  * Maps a domain `Err` to the CLI's failure transport: a thrown error
- * the executable turns into stderr + exit code 1.
+ * the executable turns into stderr + exit code 1. A refusal raised as
+ * data gets the remedy `command` has for it on a line of its own
+ * (`./hint.ts`) — the sentence above it is the same in both phases,
+ * and what to type next is not.
  */
-function unwrap<T>(result: Result<T>): T {
-  if (!result.ok) throw new Error(result.error.message);
-  return result.value;
+function unwrap<T>(result: Result<T>, command?: HintedCommand): T {
+  if (result.ok) return result.value;
+  const { error } = result;
+  const hint =
+    command !== undefined && error instanceof RefusalError
+      ? refusalHint(error.refusal, command)
+      : null;
+  throw new Error(hint === null ? error.message : `${error.message}\n  hint: ${hint}`);
 }
 
 function printReport(header: string, report: InstallReport, log: Logger): void {

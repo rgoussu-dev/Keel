@@ -24,25 +24,23 @@
  * Container image, Distribution — needed by Infrastructure as code".
  * `keel.dials` snaps a page's extras to the same closure, so the page,
  * `keel new --with` and `keel add` install one set for one request.
- * What is still refused, under {@link MISSING_PREREQUISITES_CODE}, is
+ * What is still refused, under `keel.missing-prerequisites`, is
  * a tie: two sets of prerequisites exactly as small, which only the
  * user can choose between.
  */
 
-import { DomainError, err, ok, type Result } from '../kernel/result.js';
+import { err, ok, type Result } from '../kernel/result.js';
 import type { Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
-import { assemblyRefusal } from './compatibility.js';
-import { plan, type PlanScope, type PlannedVertical } from './planner.js';
+import type { RefusalError } from '../contract/refusal.js';
+import { plan, type Plan, type PlanScope, type PlannedVertical } from './planner.js';
 import {
   addedPrerequisitesNote,
   dependencyOrderNote,
-  incompatibleSentence,
-  MISSING_PREREQUISITES_CODE,
-  tiedPrerequisitesSentence,
-  unavailableSentence,
+  incompatibleRefusal,
+  tiedRefusal,
+  unavailableRefusal,
 } from './refusals.js';
-import { UNCOVERED_CODE } from './resolver.js';
 
 /** A request the planner can install, closed over its prerequisites. */
 export interface AdmittedSet {
@@ -72,23 +70,16 @@ export interface AdmittedSet {
   readonly reordered: boolean;
 }
 
-/** How a front door words what only it can say. */
-export interface AdmissionWording {
-  /**
-   * Wraps the sentence a vertical the scope cannot carry is refused
-   * with — for a remedy only this front door has (`drop it from
-   * --with`). Absent, the sentence stands alone.
-   */
-  readonly unavailable?: (vertical: Vertical, sentence: string) => string;
-}
-
 /**
  * Plans `requested` onto `scope` and admits it with the prerequisites
  * it needs, or refuses: a vertical the scope cannot carry
  * (`keel.uncoverable-vertical`, or `keel.incompatible` when what stops
  * it is one of its own rules), a tie between two sets of prerequisites
  * (`keel.missing-prerequisites`, naming each), verticals no order
- * installs together (`keel.incompatible`).
+ * installs together (`keel.incompatible`) — each a `RefusalError`
+ * from `./refusals.ts`, in the one sentence both front doors speak:
+ * a remedy only one of them has is its front end's to add, from the
+ * refusal's fields.
  *
  * Every id in `requested` is registered and none is on the scope
  * already: the front doors refuse an unknown or a repeated id, each in
@@ -100,7 +91,6 @@ export function admit(
   registry: Registry,
   scope: PlanScope,
   requested: readonly Vertical[],
-  wording: AdmissionWording = {},
 ): Result<AdmittedSet> {
   const named = requested.map((vertical) => vertical.id);
   const set = [...requested].sort(idOrder);
@@ -136,38 +126,40 @@ export function admit(
     }
     case 'unknown':
       throw new Error(`admit: '${planned.vertical}' is not registered — refuse it before planning`);
-    case 'unavailable': {
-      const vertical = byId(planned.vertical);
-      if (planned.gap.rules.length > 0) {
-        const rule = assemblyRefusal([vertical], scope.tags);
-        if (rule !== null) {
-          return err(
-            new DomainError(
-              `vertical '${vertical.id}' cannot be installed here: ${rule}`,
-              'keel.incompatible',
-            ),
-          );
-        }
-      }
-      const sentence = unavailableSentence(vertical, planned.gap);
-      return err(
-        new DomainError(wording.unavailable?.(vertical, sentence) ?? sentence, UNCOVERED_CODE),
-      );
+    default:
+      return err(planRefusal(registry, set, planned));
+  }
+}
+
+/**
+ * The refusal a plan that is not `planned` is written as, for
+ * `requested` — the set it was asked of, by id. What `keel.dials` drops
+ * an extra with too, so a page's reason and a front door's refusal are
+ * one sentence.
+ */
+export function planRefusal(
+  registry: Registry,
+  requested: readonly Vertical[],
+  planned: Exclude<Plan, { readonly kind: 'planned' } | { readonly kind: 'unknown' }>,
+): RefusalError {
+  const byId = (id: string): Vertical => {
+    const found = registry.vertical(id);
+    if (found === null) {
+      throw new Error(`planRefusal: the planner named '${id}', which is not registered`);
     }
+    return found;
+  };
+  switch (planned.kind) {
+    case 'unavailable':
+      return unavailableRefusal(registry, byId(planned.vertical), planned.gap);
     case 'tied':
-      return err(
-        new DomainError(
-          tiedPrerequisitesSentence(
-            set,
-            planned.closures.map((closure) => closure.map(byId)),
-          ),
-          MISSING_PREREQUISITES_CODE,
-        ),
+      return tiedRefusal(
+        registry,
+        requested,
+        planned.closures.map((closure) => closure.map(byId)),
       );
     case 'incompatible':
-      return err(
-        new DomainError(incompatibleSentence(planned.verticals.map(byId)), 'keel.incompatible'),
-      );
+      return incompatibleRefusal(registry, planned.verticals.map(byId));
   }
 }
 

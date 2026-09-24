@@ -21,6 +21,7 @@ import { admissionNotes, admit } from '../../../src/domain/core/plan-refusal.js'
 import type { PlanScope } from '../../../src/domain/core/planner.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
 import { DomainError, type Result } from '../../../src/domain/kernel/result.js';
+import { RefusalError } from '../../../src/domain/contract/refusal.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
@@ -169,22 +170,32 @@ describe('admit', () => {
     const error = refusal(admit(registry, scope(), [session]));
     expect(error.code).toBe('keel.missing-prerequisites');
     expect(error.message).toContain('(redis-cache) or (memcached-cache)');
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'needs',
+      verticals: [session.id],
+      prerequisites: [['redis-cache'], ['memcached-cache']],
+    });
   });
 
-  it("refuses a vertical the scope cannot carry, in the front door's own words", () => {
-    const error = refusal(
-      admit(registry, scope(['lang.beta']), [image], {
-        unavailable: (vertical, sentence) => `${sentence}; drop '${vertical.id}'`,
-      }),
-    );
+  it('refuses a vertical the scope cannot carry as data, in words either phase can say', () => {
+    const error = refusal(admit(registry, scope(['lang.beta']), [image]));
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toBe("Image has no adapter for this project's stack; drop 'acme-image'");
+    expect(error).toBeInstanceOf(RefusalError);
+    expect((error as RefusalError).refusal).toMatchObject({
+      kind: 'unavailable',
+      vertical: 'acme-image',
+      missing: { identity: ['lang.acme'] },
+    });
+    expect(error.message).toBe("Image has no adapter for this project's stack");
   });
 
-  it('points a vertical waiting on a linked project at keel link', () => {
+  it('points a vertical waiting on a linked project at linking one', () => {
     const error = refusal(admit(registry, scope(), [bridge]));
     expect(error.code).toBe('keel.uncoverable-vertical');
-    expect(error.message).toBe("Bridge wires linked projects — run 'keel link <path>' first");
+    expect((error as RefusalError).refusal).toMatchObject({ missing: { peer: ['peer.acme.api'] } });
+    expect(error.message).toBe(
+      'Bridge wires linked projects, and no linked project serves it here — link one that does first',
+    );
   });
 
   it("refuses a vertical whose own rule the scope breaks as incompatible, in the rule's words", () => {

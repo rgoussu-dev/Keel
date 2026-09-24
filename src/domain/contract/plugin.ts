@@ -120,6 +120,13 @@ export type {
   Vertical,
 } from './composition.js';
 export { DISABLED_HOOKS_ENV, HOOK_REMINDER_BUDGET, hookTarget } from './hook.js';
+/**
+ * What an adapter throws for a file in its way — one already there it
+ * would overwrite, one lacking the block it patches inside, or a patch
+ * target the project no longer holds — so the user gets a coded
+ * refusal naming the file rather than a crash.
+ */
+export { PathConflictError, PathMissingError } from './refusal.js';
 export { docSeed, docTarget } from './doc.js';
 export {
   hashRegion,

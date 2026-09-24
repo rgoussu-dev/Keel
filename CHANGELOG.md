@@ -62,8 +62,9 @@ use to keep a long-lived changelog scannable — and the root keeps
   no peer, `gateway` installed zero files and was recorded as
   installed — which then blocked the real install after `keel link`.
   It is no longer offered as an extra or a card there, and `keel add
-gateway` refuses it: _"Service gateway wires linked projects — run
-  `keel link <path>` first"_.
+gateway` refuses it: _"Service gateway wires linked projects, and no
+  linked project serves it here — link one that does first"_, with
+  `keel link <path>` as the terminal's hint.
 
 - **A file in the way, or gone, is a refusal naming it.** `keel new`
   into a directory holding a `README.md` or `.gitignore` — a freshly
@@ -75,15 +76,17 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   whose image files the product root wrote. `keel ui` answered each
   with a 500 whose sentence was meant for an adapter's author
   (_"use a patch to modify existing files"_).
-  Each is now refused as `keel.path-conflict`, naming the file: under
-  `keel new`, move it aside or start in an empty directory; under
-  `keel add`, only that this run did not write it, since there it may
-  be keel's own. A JVM build file with no `plugins {` block, or a POM
-  with no `<build>` element, for the Spotless line is refused the same
-  way, and a file keel patches that has been deleted as
-  `keel.path-missing` — restore it. Nothing is written in any of these
-  cases. Two parts of one run writing the same file is still a bug,
-  and still a 500.
+  Each is now refused as `keel.path-conflict`, naming the file — from
+  where the command ran, so a file in a composite product's service is
+  `backend/README.md` — in one sentence for both commands; under `keel
+new` the terminal adds the way past it (move it aside, or start in
+  an empty directory), which under `keel add` it cannot stand behind,
+  since there the file may be keel's own. A JVM build file with no
+  `plugins {` block, or a POM with no `<build>` element, for the
+  Spotless line is refused the same way, and a file keel patches that
+  has been deleted as `keel.path-missing` — restore it. Nothing is
+  written in any of these cases. Two parts of one run writing the same
+  file is still a bug, and still a 500.
 
 - **A 500 in `keel ui` carries its sentence.** An exception nothing
   turned into a refusal was answered as a bare `text/plain` string,
@@ -105,15 +108,16 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   label (_"Observability needs an entrypoint this project does not
   have: HTTP server — a REST endpoint"_), and a language, framework,
   runtime, build system or layout never — the vertical _"has no
-  adapter for this project's stack"_. `keel new --with` refuses in the
-  same sentence, followed by its own remedy. At the root of a
-  composite product, every vertical the root cannot carry — not only
-  `agent-harness` — is refused naming the service directories to run
-  `keel add` in, where it used to report a gap for some other stack.
-  Codes are unchanged (`keel.uncoverable-vertical`, and
-  `keel.invalid-agent-harness` for the harness), and the tags still
-  travel in `ResolutionError.detail.enablers`. Scripts matching the
-  old text should match the code instead.
+  adapter for this project's stack; the nearest stack that carries it:
+  spring-cli-rest"_. `distribution` on a Spring or Micronaut CLI now
+  reads as the HTTP entrypoint it lacks, as on every other CLI. At the
+  root of a composite product, every vertical the root cannot carry —
+  not only `agent-harness` — is refused naming the services that can
+  take it, where it used to report a gap for some other stack. Codes
+  are unchanged (`keel.uncoverable-vertical`, and
+  `keel.invalid-agent-harness` for the harness), and the tags travel
+  in the refusal's data (see _One refusal vocabulary_ under Changed).
+  Scripts matching the old text should match the code instead.
 
 - **One installed card in `keel ui` no longer breaks every card
   after it.** An installed vertical's card is a re-render, and the
@@ -206,6 +210,38 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **One refusal vocabulary, the same in both phases.** `keel new
+--with v` on a preset and `keel add v` on the project it scaffolds
+  are refused under one code and in one sentence, word for word: the
+  `stack '<id>': … drop 'v' from --with, or scaffold a stack that can
+  carry it` wrapper is gone from the domain's sentence, and the
+  remedy only a command line has is printed under it as a `hint:`
+  line, built from the refusal's fields — _"drop 'persistence' from
+  --with, or scaffold go-cli-http, which carries it"_ under `keel new`,
+  _"go-cli-http carries both this project's entrypoints and
+  persistence"_ under `keel add`, `keel link <path>` first for the
+  gateway, `cd backend && keel add persistence` at a product root.
+  Every sentence is built in one place from a structured refusal —
+  which vertical, what the project lacks, the nearest stacks that carry
+  it, the services it belongs in, the file in the way — and names no
+  tag, no `--with` and no `keel add`: a capability another vertical
+  adds is named by that vertical (_"needs what Container image adds"_),
+  a build system by its label. `keel ui` receives the same refusal in
+  the 422 body as `error.refusal`, beside the sentence. `keel new
+--with` on a composite stack is refused as the product root refuses
+  `keel add` there — _"Continuous integration belongs to a service,
+  not to the product root — it goes in backend/ or frontend/"_ — under
+  its old code, `keel.invalid-extra-verticals`; an id no vertical is
+  registered under is `keel.unknown-vertical` there, as on any other
+  stack. A tie between two sets of prerequisites now ends _"name the
+  one you want as well"_. Codes are otherwise unchanged; scripts
+  matching refusal text should match the code instead. For plugin
+  authors: `ResolutionError` now means only an adapter `after` cycle
+  (`keel.adapter-cycle`, its adapters in `adapters`) — an uncovered
+  dimension is a `RefusalError` carrying the gap in `refusal.missing`
+  — and a file refusal's sentence no longer ends with the adapter id,
+  which is in `refusal.adapterId`.
 
 - **"Already there" is not an error.** `keel add X` on a project that
   has X installed exits 0 with an empty plan — nothing written, the
@@ -404,6 +440,19 @@ gateway` refuses it: _"Service gateway wires linked projects — run
   and refuses a stance leaking across families.
 
 ### Added
+
+- **Plugin adapters can refuse a file in their way.** `PathConflictError`
+  and `PathMissingError` are exported from `@rgoussu.dev/keel/plugin`:
+  an adapter that meets a file it would overwrite, one lacking the
+  block it patches inside (`new PathConflictError(path, adapterId,
+"'plugins {' block")`), or a patch target the project no longer
+  holds throws one, and the user gets `keel.path-conflict` or
+  `keel.path-missing` naming the file rather than a crash. They are
+  classes keel knows by identity, so they hold for a plugin that
+  imports them from the copy of keel that runs it; a copy bundled into
+  the plugin is not recognised (see `docs/plugins.md` → A file in the
+  way). keel's own JVM formatter no longer reaches into the engine to
+  raise them.
 
 - **`keel add` takes several verticals, and proposes the re-renders an
   add calls for.** `keel add containerization distribution iac` is one

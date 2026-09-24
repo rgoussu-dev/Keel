@@ -15,8 +15,9 @@ import {
   linkPeerCommand,
   newProjectCommand,
 } from '../../../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { projectStatusQuery } from '../../../../src/domain/contract/queries.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { peerRef } from '../../../../src/domain/core/handlers/new-project.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -107,7 +108,7 @@ describe('fullstack composite install (monorepo)', () => {
       );
       expect(error.code).toBe('keel.invalid-agent-harness');
       expect(error.message).toBe(
-        "Agent harness belongs to a service, and this is a product root — run 'keel add agent-harness' inside backend/ or frontend/",
+        'Agent harness belongs to a service, not to the product root — backend/ and frontend/ have it already',
       );
       expect(read('AGENTS.md')).toBe(rootDocBefore);
       expect(rootDocBefore).toContain('Work inside a service');
@@ -116,6 +117,34 @@ describe('fullstack composite install (monorepo)', () => {
       expect(ran).toEqual(actionsBefore);
     },
   );
+
+  it('names a file in the way inside a service from the product root it was run in', async () => {
+    // Each service's Tree is rooted at its own directory, so its
+    // adapters see `README.md`; the user ran `keel new` one level up,
+    // where the file in the way is `backend/README.md`.
+    await fs.outputFile(path.join(cwd, 'backend/README.md'), '# mine\n');
+    const { runDeferred } = recordActions();
+    const error = expectErr(
+      await installMediator({ runDeferred }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack-go',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toBe(
+      "'backend/README.md' already exists, and keel does not overwrite a file this run did not write",
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      kind: 'path-conflict',
+      path: 'backend/README.md',
+    });
+    expect(read('backend/README.md')).toBe('# mine\n');
+  });
 
   it('sends a capability the root cannot carry into its services, naming them', async () => {
     const { ran, runDeferred } = recordActions();
@@ -137,13 +166,63 @@ describe('fullstack composite install (monorepo)', () => {
     // Same code as any coverage refusal, since it is one. The sentence
     // is the difference: a root carries almost no tags, so the gap of
     // the adapter nearest to it is advice for some other product, and
-    // where the capability belongs is the whole answer.
+    // where the capability belongs is the whole answer — read from
+    // each service's own manifest: the backend takes it, the frontend
+    // cannot.
     expect(error.code).toBe('keel.uncoverable-vertical');
     expect(error.message).toBe(
-      "Persistence belongs to a service, and this is a product root — run 'keel add persistence' inside backend/ or frontend/",
+      'Persistence belongs to a service, not to the product root — it goes in backend/',
     );
+    expect(error).toBeInstanceOf(RefusalError);
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'elsewhere',
+      vertical: 'persistence',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+      ],
+    });
     expect(await fsManifestStore.read(projectScopeRoot(cwd))).toEqual(before);
     expect(ran).toEqual(actionsBefore);
+  });
+
+  it('reads where it goes from what each service has, not what its preset had', async () => {
+    const { runDeferred } = recordActions();
+    const mediator = installMediator({ runDeferred });
+    expectOk(await mediator.dispatch(newFullstack({})));
+    const persistence = (at: string) =>
+      addVerticalCommand({
+        cwd: at,
+        verticals: ['persistence'],
+        answers: {},
+        interactive: false,
+        dryRun: false,
+      });
+    expectOk(await mediator.dispatch(persistence(path.join(cwd, 'backend'))));
+
+    // Its preset would take it; its manifest says it has it now.
+    const error = expectErr(await mediator.dispatch(persistence(cwd)));
+    expect(error.message).toBe(
+      'Persistence belongs to a service, not to the product root — backend/ has it already',
+    );
+    expect((error as RefusalError).refusal).toMatchObject({
+      services: [
+        { path: 'backend', readiness: 'included' },
+        { path: 'frontend', readiness: 'unavailable' },
+      ],
+    });
+
+    // A service manifest keel cannot read words nothing wrong here —
+    // the root still refuses, reading that service from its preset.
+    await fs.writeFile(
+      path.join(projectScopeRoot(path.join(cwd, 'backend')), MANIFEST_FILENAME),
+      '{ broken',
+    );
+    const unread = expectErr(await mediator.dispatch(persistence(cwd)));
+    expect(unread.code).toBe('keel.uncoverable-vertical');
+    expect((unread as RefusalError).refusal).toMatchObject({
+      services: [{ path: 'backend', readiness: 'ready' }, { path: 'frontend' }],
+    });
   });
 
   it('lets through a capability the root itself can carry', async () => {
@@ -530,7 +609,7 @@ describe('brownfield: keel link + keel add gateway', () => {
     );
     expect(error.code).toBe('keel.uncoverable-vertical');
     expect(error.message).toBe(
-      "Service gateway wires linked projects — run 'keel link <path>' first",
+      'Service gateway wires linked projects, and no linked project serves it here — link one that does first',
     );
     const manifest = await fsManifestStore.read(projectScopeRoot(appDir));
     expect(manifest?.verticals.map((v) => v.id)).not.toContain('gateway');

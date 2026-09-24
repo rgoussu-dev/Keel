@@ -29,6 +29,20 @@ describe('errorFrom', () => {
     });
   });
 
+  it('keeps the refusal a refusal carries as data, for the page to act on', () => {
+    const refusal = {
+      kind: 'elsewhere',
+      vertical: 'persistence',
+      services: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'ready' }],
+    };
+    const message =
+      'Persistence belongs to a service, not to the product root — it goes in backend/';
+    const body = JSON.stringify({
+      error: { code: 'keel.uncoverable-vertical', message, refusal },
+    });
+    expect(errorFrom(422, body)).toEqual({ code: 'keel.uncoverable-vertical', message, refusal });
+  });
+
   it('labels an internal error as the bug it is, keeping its sentence', () => {
     const sentence = 'fullstack/product-compose: product manifest declares no services';
     const error = errorFrom(500, envelope(INTERNAL, sentence));

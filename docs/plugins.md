@@ -126,7 +126,9 @@ The module exports the plugin as its **default** export (a named
 **A plugin has no runtime dependency on keel.** It is a module
 exporting plain data. TypeScript authors get the types (and
 `pluginTemplateId`) from `@rgoussu.dev/keel/plugin`, which is erased at
-runtime; JavaScript authors need nothing.
+runtime; JavaScript authors need nothing. (The one exception is
+refusing a file from inside a patch — see
+[A file in the way](#a-file-in-the-way).)
 
 ### Templates
 
@@ -323,6 +325,38 @@ user who picked it from the list. Two things to hold to:
 - **The `default` must be offered wherever the adapter runs**: `--yes`
   resolves to it, and a default the project is not offered is reported
   as the plugin's bug, not the user's.
+
+### A file in the way
+
+A file keel will not overwrite is refused as `keel.path-conflict`, and
+a patch target the project no longer holds as `keel.path-missing`, each
+naming the file. The files and patches your `contribute()` returns are
+held to that for you — one already on disk that a file would
+overwrite, one a patch targets that is gone — so a plugin writes
+nothing for either.
+
+The one case keel cannot see is your own patch transform finding that
+the file is not one it can patch, because it lacks the block your lines
+go inside. For that, `PathConflictError` (and `PathMissingError`) come
+from `@rgoussu.dev/keel/plugin`:
+
+```js
+import { PathConflictError } from '@rgoussu.dev/keel/plugin';
+
+if (!existing.includes('plugins {')) {
+  throw new PathConflictError('build.gradle.kts', 'acme/format', "'plugins {' block");
+}
+```
+
+The user then gets `keel.path-conflict` naming the file, in the
+sentence keel uses for its own. Unlike the helpers beside them these
+are classes, and keel knows them by identity: a helper works as well
+bundled into the plugin, but these hold only when imported from the
+very copy of keel that runs it — a project that depends on keel and
+runs that copy. A bundled copy is an `Error` of your own to keel,
+printed by the terminal as its message and answered by `keel ui` as a
+500; and where there is no keel to import at all — `keel new` into an
+empty directory — the import fails and the plugin does not load.
 
 ### What an adapter promotes, and what a vertical reads
 

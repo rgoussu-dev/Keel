@@ -12,105 +12,76 @@
  *      `vertical.dimensions` must be `covers`'d by at least one
  *      surviving adapter; otherwise hard-fail with a clear message.
  *
- * Failures are thrown as `ResolutionError`, which **is** a
- * `DomainError`: it carries a stable code, so a refusal that escapes
- * the install engine reaches a front end as the same shape every
- * other refusal does rather than as an anonymous crash.
+ * An uncovered dimension is a refusal: this project's shape cannot
+ * carry the vertical, and the user can act on that. It is thrown as a
+ * `RefusalError` (`../contract/refusal.ts`) built by `./refusals.ts`,
+ * the builder every other refusal of a vertical comes from, so a
+ * refusal that escapes the install engine reaches a front end as the
+ * same shape, code and words as one a front door raises ahead of
+ * time. An `after` cycle is not: it is an adapter author's bug, thrown
+ * as a {@link ResolutionError}.
  *
  * Step 3 is also askable ahead of time, and answered rather than
  * thrown: `coversFor` for a yes/no (what a menu prunes with) and
  * `coverageGap` for the same answer with the missing dimensions and
- * the tags that would cover them attached (what a refusal is written
- * from).
+ * the tags that would cover them attached.
  */
 
 import { DomainError } from '../kernel/result.js';
 import { matches, matchesPattern } from './predicate.js';
-import { coverageSentence } from './refusals.js';
+import { uncoveredRefusal, type RefusalNames } from './refusals.js';
 import type { Adapter, Tag, Vertical } from '../contract/composition.js';
-
-/**
- * The code a {@link ResolutionError} carries when a dimension is left
- * uncovered — the same one both front doors refuse a vertical the
- * planner reads as unavailable with (`./plan-refusal.ts`), because it
- * is the same condition asked ahead of time. The sentences come from
- * one place too (`./refusals.ts`); `keel new --with` only adds the
- * remedy it has.
- */
-export const UNCOVERED_CODE = 'keel.uncoverable-vertical';
 
 /** The code a {@link ResolutionError} carries for an `after` cycle. */
 export const CYCLE_CODE = 'keel.adapter-cycle';
 
 /**
- * Thrown when adapter resolution fails. The message is intended for
- * direct CLI display; structured fields exist for richer UIs.
+ * Thrown when a vertical's surviving adapters order each other in a
+ * cycle through `after` — a mistake in the adapters' declarations,
+ * never something a user can act on.
  *
- * **A `DomainError`, not a bare `Error`**, and that is the whole
- * difference between a refusal a user can act on and a 500. The
- * kernel's rule is that expected business failures travel as `Err`
- * and genuine bugs keep throwing; "this project's shape cannot carry
- * that vertical" is squarely the former, and it was reaching
- * `keel ui` as an anonymous crash only because it took the throwing
- * exit out of the install engine. Carrying a code means the seam
- * every action crosses can put it back on the `Err` rail — see
- * `./mediator.ts` — without any caller having to know that
- * `resolveVertical` throws.
+ * A `DomainError` all the same, carrying {@link CYCLE_CODE}, so it
+ * reaches a front end as a coded failure naming the adapters rather
+ * than as an anonymous crash. An uncovered dimension used to be the
+ * other kind of this error; it is a refusal the user can act on, and
+ * is thrown as one (`RefusalError`, see the module header).
  */
 export class ResolutionError extends DomainError {
   constructor(
     message: string,
     readonly verticalId: string,
-    readonly kind: 'uncovered' | 'cycle',
-    readonly detail: ResolutionErrorDetail,
+    readonly adapters: readonly string[],
   ) {
-    super(message, kind === 'uncovered' ? UNCOVERED_CODE : CYCLE_CODE);
+    super(message, CYCLE_CODE);
     this.name = 'ResolutionError';
   }
 }
-
-export type ResolutionErrorDetail =
-  | {
-      kind: 'uncovered';
-      dimensions: readonly string[];
-      /**
-       * The tags that would close the gap — {@link CoverageGap.enablers},
-       * carried here so the thrown refusal says as much as the
-       * answered one. The throw is the last line of defence, which
-       * makes it the worst place to report only the symptom.
-       *
-       * Here rather than in the message, which names none of them:
-       * most are tags no command can add, so the sentence speaks in
-       * entrypoint labels and vertical titles (`./refusals.ts`), and
-       * the engine's view travels in this field for whoever wants it.
-       */
-      enablers: readonly Tag[];
-    }
-  | { kind: 'cycle'; adapters: readonly string[] };
 
 /**
  * Resolves a vertical for a given tag set. Returns the adapters that
  * should run, in execution order.
  *
- * Throws `ResolutionError` when:
- *   - one or more dimensions are uncovered after predicate filtering;
- *   - the surviving adapters' `after` graph contains a cycle.
+ * Throws:
+ *   - a `RefusalError` (`keel.uncoverable-vertical`, an `unavailable`
+ *     refusal) when one or more dimensions are uncovered after
+ *     predicate filtering — its sentence names a capability another
+ *     vertical adds by that vertical's title when `names` can say
+ *     which, as a registry can;
+ *   - a {@link ResolutionError} when the surviving adapters' `after`
+ *     graph contains a cycle.
  */
-export function resolveVertical(vertical: Vertical, tags: Iterable<Tag>): readonly Adapter[] {
+export function resolveVertical(
+  vertical: Vertical,
+  tags: Iterable<Tag>,
+  names?: RefusalNames,
+): readonly Adapter[] {
   const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
   const matched = vertical.adapters.filter((a) => matches(a.predicate, tagSet));
 
   // Thrown from the same {@link coverageGap} a front door answers
-  // with, so the refusal a user runs into and the one they are shown
-  // ahead of time cannot say different things.
+  // with, and in the words every refusal of a vertical is written in.
   const gap = gapFrom(vertical, matched, tagSet);
-  if (gap !== null) {
-    throw new ResolutionError(coverageSentence(vertical, gap.enablers), vertical.id, 'uncovered', {
-      kind: 'uncovered',
-      dimensions: gap.dimensions,
-      enablers: gap.enablers,
-    });
-  }
+  if (gap !== null) throw uncoveredRefusal(vertical, gap.enablers, names);
 
   return topoSort(matched, vertical.id);
 }
@@ -134,7 +105,8 @@ export interface CoverageGap {
    * asking for `persistence`, the nearest adapter is the one for
    * that framework, missing only `arch.server-http` — which is the
    * whole answer, and the refusal says it as "an entrypoint this
-   * project does not have: HTTP server" (`./refusals.ts`). Empty when
+   * project does not have: HTTP server" (`./refusals.ts`), carrying
+   * the tags in its `missing` field. Empty when
    * the vertical has no adapter for a dimension at all, or when the
    * only candidates are ruled out by an `excludes` entry: adding a
    * tag never un-matches one of those.
@@ -150,7 +122,7 @@ export interface CoverageGap {
  * The same check {@link resolveVertical} hard-fails on, asked ahead
  * of time and answered instead of thrown. What it is for is menus: a
  * vertical offered to a project that cannot take it is a choice whose
- * only outcome is a `ResolutionError` eight questions later, which is
+ * only outcome is a refusal eight questions later, which is
  * exactly the dead end an interactive flow must not walk the user
  * into. Conservative by construction — it sees the tags it is given,
  * not the ones an adapter would promote at install time — so a
@@ -260,8 +232,7 @@ function topoSort(adapters: readonly Adapter[], verticalId: string): readonly Ad
     throw new ResolutionError(
       `vertical '${verticalId}': cyclic 'after' graph among adapters: ${stuck.join(', ')}`,
       verticalId,
-      'cycle',
-      { kind: 'cycle', adapters: stuck },
+      stuck,
     );
   }
 

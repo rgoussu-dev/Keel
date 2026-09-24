@@ -1,109 +1,373 @@
 /**
- * The words a coverage refusal is written in. The gap it is written
- * from is pinned in `resolver.test.ts`; these pin what a user reads:
- * an entrypoint by the label the finder offered it under, the
- * vertical by its title, and never a tag no command can add.
+ * The words a refusal is written in, as a table: each row a `Refusal`
+ * — the data a front end receives — and the one sentence
+ * `refusalSentence` reads it as, in either phase. The gaps these are
+ * written from are pinned where they are computed (`resolver.test.ts`,
+ * `planner.test.ts`); these pin what a user reads: an entrypoint by
+ * the label the finder offered it under, a build system by its label,
+ * a capability by the vertical that adds it, the vertical by its
+ * title, and never a tag, a `--with` or a `keel add`.
  */
 
 import { describe, expect, it } from 'vitest';
 import type { Vertical } from '../../../src/domain/contract/composition.js';
-import { coverageSentence, productRootSentence } from '../../../src/domain/core/refusals.js';
+import type { ReadinessGap } from '../../../src/domain/contract/queries.js';
+import { RefusalError, type Refusal } from '../../../src/domain/contract/refusal.js';
+import {
+  refusalSentence,
+  ruleRefusal,
+  uncoveredRefusal,
+  unavailableRefusal,
+  type RefusalNames,
+} from '../../../src/domain/core/refusals.js';
 
-const observability: Vertical = {
-  id: 'observability',
-  title: 'Observability',
+const vertical = (id: string, title: string, promotes: readonly string[] = []): Vertical => ({
+  id,
+  title,
   description: '',
   dimensions: [],
   adapters: [],
+  promotes,
+});
+
+const REGISTERED: readonly Vertical[] = [
+  vertical('observability', 'Observability'),
+  vertical('containerization', 'Container image', ['deploy.container-image']),
+  vertical('distribution', 'Distribution', ['dist.container-image', 'dist.release']),
+  vertical('ci', 'Continuous integration', ['ci.github-actions']),
+  vertical('gateway', 'Service gateway'),
+  vertical('iac', 'Infrastructure as code'),
+];
+
+/** Names over the fixture above — what a registry answers. */
+const names: RefusalNames = {
+  vertical: (id) => REGISTERED.find((candidate) => candidate.id === id) ?? null,
+  verticals: () => REGISTERED,
 };
 
-describe('coverageSentence', () => {
-  it.each([
-    {
-      why: 'a missing entrypoint, by its finder label',
-      enablers: ['arch.server-http'],
-      sentence:
-        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+const unavailable = (
+  missing: Extract<Refusal, { kind: 'unavailable' }>['missing'],
+  carriedBy: readonly string[] = [],
+  id = 'observability',
+): Refusal => ({ kind: 'unavailable', vertical: id, missing, carriedBy });
+
+/** A tag of any namespace a sentence could leak. */
+const ANY_TAG = /\b(?:lang|framework|runtime|pkg|layout|arch|peer|deploy|dist|ci)\.[a-z]/;
+
+const TABLE: readonly {
+  readonly why: string;
+  readonly refusal: Refusal;
+  readonly sentence: string;
+}[] = [
+  {
+    why: 'a missing entrypoint, by its finder label',
+    refusal: unavailable({ entrypoint: ['arch.server-http'] }, ['quarkus-cli-rest']),
+    sentence:
+      'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+  },
+  {
+    why: 'every missing entrypoint, in the finder’s order',
+    refusal: unavailable({ entrypoint: ['arch.server-http', 'arch.cli'] }),
+    sentence:
+      'Observability needs entrypoints this project does not have: CLI — a command-line entrypoint, HTTP server — a REST endpoint',
+  },
+  {
+    why: 'a framework swap as no adapter, naming the nearest stack that carries it',
+    refusal: unavailable({ identity: ['framework.quarkus'] }, ['spring-cli-rest']),
+    sentence:
+      "Observability has no adapter for this project's stack; the nearest stack that carries it: spring-cli-rest",
+  },
+  {
+    why: 'every stack tied for nearest',
+    refusal: unavailable({ identity: ['lang.go'] }, ['ts-http', 'ts-cli-http']),
+    sentence:
+      "Observability has no adapter for this project's stack; the nearest stacks that carry it: ts-http, ts-cli-http",
+  },
+  {
+    why: 'an identity gap no stack closes as no adapter, and nothing more',
+    refusal: unavailable({ identity: ['runtime.node'] }),
+    sentence: "Observability has no adapter for this project's stack",
+  },
+  {
+    why: 'a mixed gap as the identity half, since the entrypoint alone would not help',
+    refusal: unavailable({ entrypoint: ['arch.server-http'], identity: ['runtime.node'] }, [
+      'ts-http',
+    ]),
+    sentence:
+      "Observability has no adapter for this project's stack; the nearest stack that carries it: ts-http",
+  },
+  {
+    why: 'an `arch.` tag that is not an entrypoint as identity',
+    refusal: unavailable({ identity: ['arch.hexagonal', 'lang.go'] }),
+    sentence: "Observability has no adapter for this project's stack",
+  },
+  {
+    why: 'a layout as identity',
+    refusal: unavailable({ identity: ['layout.modulith'] }),
+    sentence: "Observability has no adapter for this project's stack",
+  },
+  {
+    why: 'adapters ruled out by what the project has as no adapter',
+    refusal: unavailable({}),
+    sentence: "Observability has no adapter for this project's stack",
+  },
+  {
+    why: 'a build system alone by its label',
+    refusal: unavailable({ identity: ['pkg.maven'] }, ['spring-rest']),
+    sentence:
+      "Observability has no adapter for this project's build system; it needs Maven — convention-first declarative build (POM); the nearest stack that carries it: spring-rest",
+  },
+  {
+    why: 'a capability by the vertical that adds it',
+    refusal: unavailable({ identity: ['deploy.container-image'] }),
+    sentence: 'Observability needs what Container image adds, which this project does not have yet',
+  },
+  {
+    why: 'a pattern by every vertical that adds a tag it matches',
+    refusal: unavailable({ identity: ['ci.*', 'dist.container-image'] }),
+    sentence:
+      'Observability needs what Continuous integration and Distribution add, which this project does not have yet',
+  },
+  {
+    why: 'an entrypoint and a capability, both',
+    refusal: unavailable({
+      entrypoint: ['arch.server-http'],
+      identity: ['deploy.container-image'],
+    }),
+    sentence:
+      'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint; and what Container image adds, which this project does not have yet',
+  },
+  {
+    why: 'a capability nothing adds as no adapter',
+    refusal: unavailable({ identity: ['acme.widget'] }),
+    sentence: "Observability has no adapter for this project's stack",
+  },
+  {
+    why: 'a linked project alone as linking one',
+    refusal: unavailable({ peer: ['peer.ui.spa'] }, [], 'gateway'),
+    sentence:
+      'Service gateway wires linked projects, and no linked project serves it here — link one that does first',
+  },
+  {
+    why: 'an entrypoint and a linked project as the entrypoint, which linking would not add',
+    refusal: unavailable(
+      { entrypoint: ['arch.server-http'], peer: ['peer.ui.spa'] },
+      [],
+      'gateway',
+    ),
+    sentence:
+      'Service gateway needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+  },
+  {
+    why: 'a rule of the vertical’s own, in its own words, over any gap',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'observability',
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: [],
+      because: "a probe needs a server to answer it (rule 'acme/probe-needs-server')",
+      rules: ['acme/probe-needs-server'],
     },
-    {
-      why: 'every missing entrypoint, in the finder’s order',
-      enablers: ['arch.server-http', 'arch.cli'],
-      sentence:
-        'Observability needs entrypoints this project does not have: CLI — a command-line entrypoint, HTTP server — a REST endpoint',
+    sentence:
+      "Observability cannot be installed here: a probe needs a server to answer it (rule 'acme/probe-needs-server')",
+  },
+  {
+    why: 'an unregistered vertical by its id spelled out',
+    refusal: unavailable({}, [], 'acme-widget'),
+    sentence: "Acme widget has no adapter for this project's stack",
+  },
+  {
+    why: 'a tie as each option, and the choice as the user’s',
+    refusal: {
+      kind: 'needs',
+      verticals: ['iac'],
+      prerequisites: [
+        ['containerization', 'distribution'],
+        ['acme-image', 'distribution'],
+      ],
     },
-    {
-      why: 'a capability another install adds, as missing yet',
-      enablers: ['dist.container-image'],
-      sentence:
-        'Observability needs a capability this project does not have yet: dist.container-image',
+    sentence:
+      'Infrastructure as code needs one of these installed first, and choosing is yours: (containerization, distribution) or (acme-image, distribution) — name the one you want as well',
+  },
+  {
+    why: 'a tie over two requested verticals in the plural',
+    refusal: {
+      kind: 'needs',
+      verticals: ['distribution', 'iac'],
+      prerequisites: [['containerization'], ['acme-image']],
     },
-    {
-      why: 'both halves, when both are missing',
-      enablers: ['arch.server-http', 'dist.container-image'],
-      sentence:
-        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint; and a capability this project does not have yet: dist.container-image',
+    sentence:
+      'Distribution and Infrastructure as code need one of these installed first, and choosing is yours: (containerization) or (acme-image) — name the one you want as well',
+  },
+  {
+    why: 'a product root as the services that can take it',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'observability',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'worker', stack: 'go-http', readiness: 'needs' },
+        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+      ],
     },
-    {
-      why: 'a framework swap as no adapter at all',
-      enablers: ['framework.quarkus'],
-      sentence: "Observability has no adapter for this project's stack",
+    sentence:
+      'Observability belongs to a service, not to the product root — it goes in backend/ or worker/',
+  },
+  {
+    why: 'a product root whose services have it already',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'ci',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'included' },
+        { path: 'frontend', stack: 'web-components', readiness: 'included' },
+      ],
     },
-    {
-      why: 'a mixed gap as the identity half, since the entrypoint alone would not help',
-      enablers: ['arch.server-http', 'runtime.node'],
-      sentence: "Observability has no adapter for this project's stack",
+    sentence:
+      'Continuous integration belongs to a service, not to the product root — backend/ and frontend/ have it already',
+  },
+  {
+    why: 'a product root with one service that has it',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'observability',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'included' },
+        { path: 'frontend', stack: 'web-components', readiness: 'unavailable' },
+      ],
     },
-    {
-      why: 'an `arch.` tag that is not an entrypoint as identity',
-      enablers: ['arch.cli', 'arch.hexagonal', 'lang.go', 'pkg.gradle'],
-      sentence: "Observability has no adapter for this project's stack",
+    sentence:
+      'Observability belongs to a service, not to the product root — backend/ has it already',
+  },
+  {
+    why: 'a product root none of whose services can take it',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'observability',
+      services: [{ path: 'frontend', stack: 'web-components', readiness: 'unavailable' }],
     },
-    {
-      why: 'a layout as identity',
-      enablers: ['layout.modulith'],
-      sentence: "Observability has no adapter for this project's stack",
+    sentence:
+      'Observability belongs to a service, not to the product root — none of its services can carry it',
+  },
+  {
+    why: 'verticals no order installs together',
+    refusal: { kind: 'incompatible', verticals: ['distribution', 'containerization'] },
+    sentence:
+      'Distribution and Container image cannot be installed together here — each installs on its own, but no order installs them all; drop one',
+  },
+  {
+    why: 'a file in the way, whatever put it there',
+    refusal: { kind: 'path-conflict', path: 'Dockerfile', adapterId: 'containerization/go-image' },
+    sentence:
+      "'Dockerfile' already exists, and keel does not overwrite a file this run did not write",
+  },
+  {
+    why: 'a file lacking the block keel patches inside',
+    refusal: {
+      kind: 'path-conflict',
+      path: 'pom.xml',
+      adapterId: 'code-style/jvm-format',
+      anchor: '<build> element',
     },
-    {
-      why: 'a dimension nothing covers as no adapter',
-      enablers: [],
-      sentence: "Observability has no adapter for this project's stack",
-    },
-  ])('says $why', ({ enablers, sentence }) => {
-    expect(coverageSentence(observability, enablers)).toBe(sentence);
+    sentence:
+      "'pom.xml' has no <build> element — keel adds its lines inside it and does not rewrite the file; add one, then re-run",
+  },
+  {
+    why: 'a patch target gone',
+    refusal: { kind: 'path-missing', path: 'README.md', adapterId: 'toolchain/mise' },
+    sentence: "'README.md' is missing — keel patches it and does not recreate it; restore it",
+  },
+];
+
+describe('refusalSentence', () => {
+  it.each(TABLE)('says $why', ({ refusal, sentence }) => {
+    expect(refusalSentence(refusal, names)).toBe(sentence);
   });
 
-  it('names no identity tag, whatever the gap', () => {
-    const sentence = coverageSentence(observability, [
-      'arch.server-http',
-      'framework.spring',
-      'lang.kotlin',
-      'pkg.maven',
-      'runtime.jvm',
-    ]);
-    expect(sentence).not.toMatch(/\b(arch|lang|framework|runtime|pkg|layout)\.[a-z]/);
-  });
-
-  it('falls back to the id spelled out for a vertical with no title', () => {
-    const plugin: Vertical = { id: 'acme-widget', description: '', dimensions: [], adapters: [] };
-    expect(coverageSentence(plugin, [])).toBe(
-      "Acme widget has no adapter for this project's stack",
-    );
+  it('names no tag, and no command of either phase, in any row', () => {
+    for (const { refusal } of TABLE) {
+      const sentence = refusalSentence(refusal, names);
+      expect(sentence).not.toMatch(ANY_TAG);
+      expect(sentence).not.toMatch(/--with|keel add\b|keel new\b/);
+    }
   });
 });
 
-describe('productRootSentence', () => {
-  it.each([
-    { paths: ['backend'], where: 'backend/' },
-    { paths: ['backend', 'frontend'], where: 'backend/ or frontend/' },
-    { paths: ['api', 'worker', 'web'], where: 'api/, worker/ or web/' },
-  ])('sends the user into $where', ({ paths, where }) => {
-    expect(
-      productRootSentence(
-        observability,
-        paths.map((path) => ({ path })),
-      ),
-    ).toBe(
-      `Observability belongs to a service, and this is a product root — run 'keel add observability' inside ${where}`,
+describe('the refusals built from a gap', () => {
+  const gap: ReadinessGap = {
+    entrypoint: ['arch.server-http'],
+    peer: [],
+    identity: [],
+    rules: [],
+    nearestStacks: ['quarkus-cli-rest'],
+  };
+  const observability = REGISTERED[0] as Vertical;
+
+  it('carries the planner’s gap as the refusal, under the coverage code', () => {
+    const refusal = unavailableRefusal(names, observability, gap);
+    expect(refusal).toBeInstanceOf(RefusalError);
+    expect(refusal.code).toBe('keel.uncoverable-vertical');
+    expect(refusal.refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'observability',
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['quarkus-cli-rest'],
+    });
+    expect(refusal.message).toBe(refusalSentence(refusal.refusal, names));
+  });
+
+  it('refuses a vertical one of its own rules forbids as that rule', () => {
+    const ruled: Vertical = {
+      ...observability,
+      conflicts: [
+        {
+          id: 'observability/not-on-native',
+          when: ['runtime.native'],
+          reason: 'a native binary has no agent to attach',
+        },
+      ],
+    };
+    const refusal = unavailableRefusal(names, ruled, {
+      ...gap,
+      rules: ['observability/not-on-native'],
+    });
+    expect(refusal.code).toBe('keel.incompatible');
+    expect(refusal.message).toBe(
+      "Observability cannot be installed here: a native binary has no agent to attach (rule 'observability/not-on-native')",
+    );
+    expect(ruleRefusal(names, ruled, ['runtime.native'])?.message).toBe(refusal.message);
+    expect(ruleRefusal(names, ruled, ['runtime.jvm'])).toBeNull();
+  });
+
+  it('sorts the resolver’s enablers into the same three kinds', () => {
+    const refusal = uncoveredRefusal(
+      observability,
+      ['arch.server-http', 'framework.quarkus', 'peer.ui.spa'],
+      names,
+    );
+    expect(refusal.code).toBe('keel.uncoverable-vertical');
+    expect(refusal.refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'observability',
+      missing: {
+        entrypoint: ['arch.server-http'],
+        peer: ['peer.ui.spa'],
+        identity: ['framework.quarkus'],
+      },
+      carriedBy: [],
+    });
+  });
+
+  it('names the vertical it was handed even when the names do not know it', () => {
+    const plugin: Vertical = {
+      id: 'acme-probe',
+      title: 'Probe',
+      description: '',
+      dimensions: [],
+      adapters: [],
+    };
+    expect(uncoveredRefusal(plugin, []).message).toBe(
+      "Probe has no adapter for this project's stack",
     );
   });
 });

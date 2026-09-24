@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { previewQuery } from '../../../../src/domain/contract/queries.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import type { ManifestStore } from '../../../../src/domain/contract/ports/manifest-store.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -261,11 +262,17 @@ describe('keel.add-vertical (keel add)', () => {
 
       const error = expectErr(await add('ci'));
       expect(error.code).toBe('keel.path-conflict');
-      expect(error.message).toMatch(
-        /^'\.github\/workflows\/ci\.yml' already exists and was not written by this run — keel does not overwrite it \(ci\//,
+      expect(error.message).toBe(
+        "'.github/workflows/ci.yml' already exists, and keel does not overwrite a file this run did not write",
       );
-      // `keel add` gives no advice to move it: here the file may be keel's.
+      // No advice to move it: here the file may be keel's, and the
+      // adapter that wanted it travels as data rather than in words.
       expect(error.message).not.toContain('move it aside');
+      expect((error as RefusalError).refusal).toMatchObject({
+        kind: 'path-conflict',
+        path: '.github/workflows/ci.yml',
+        adapterId: expect.stringMatching(/^ci\//) as unknown,
+      });
       expect(await fs.readFile(own, 'utf8')).toBe('name: mine\n');
       const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
       expect(manifest!.verticals.map((v) => v.id)).not.toContain('ci');
@@ -277,9 +284,14 @@ describe('keel.add-vertical (keel add)', () => {
 
       const error = expectErr(await add('toolchain'));
       expect(error.code).toBe('keel.path-missing');
-      expect(error.message).toMatch(
-        /^'README\.md' is missing — keel patches it and does not recreate it; restore it \(toolchain\//,
+      expect(error.message).toBe(
+        "'README.md' is missing — keel patches it and does not recreate it; restore it",
       );
+      expect((error as RefusalError).refusal).toMatchObject({
+        kind: 'path-missing',
+        path: 'README.md',
+        adapterId: expect.stringMatching(/^toolchain\//) as unknown,
+      });
       expect(await fs.pathExists(path.join(cwd, 'README.md'))).toBe(false);
     });
 
@@ -290,7 +302,7 @@ describe('keel.add-vertical (keel add)', () => {
       const error = expectErr(await add('code-style', true));
       expect(error.code).toBe('keel.path-conflict');
       expect(error.message).toBe(
-        "'build.gradle.kts' has no 'plugins {' block for the Spotless plugin — keel adds its line inside that block and does not rewrite the file; add one, then re-run (code-style/jvm-format)",
+        "'build.gradle.kts' has no 'plugins {' block — keel adds its lines inside it and does not rewrite the file; add one, then re-run",
       );
       expect(await fs.readFile(path.join(cwd, 'build.gradle.kts'), 'utf8')).toBe(
         '// hand-written\n',
@@ -723,7 +735,13 @@ describe('keel.add-vertical (keel add)', () => {
       await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
       expectOk(await add(cwd, ['distribution']));
       expectOk(await add(cwd, ['containerization']));
-      expect(expectErr(await add(cwd, ['iac'])).code).toBe('keel.uncoverable-vertical');
+      const refused = expectErr(await add(cwd, ['iac']));
+      expect(refused.code).toBe('keel.uncoverable-vertical');
+      // The image is a capability, named by the vertical that adds it —
+      // installed here, without it — never as the tag iac is keyed on.
+      expect(refused.message).toBe(
+        'Infrastructure as code needs what Distribution adds, which this project does not have yet',
+      );
 
       // `--refresh` names no order, so going first is no move to report.
       const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] }));

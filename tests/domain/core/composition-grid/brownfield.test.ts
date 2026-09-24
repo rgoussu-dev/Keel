@@ -15,10 +15,13 @@
  *     is the page's list of cards, so every one that refuses is a
  *     click that ends in a banner.
  *   - **Both phases agree** (I5): `keel add v` on a fresh scaffold
- *     reaches the same outcome — Ok or not — as `keel new --with v`
- *     on the same stack. The greenfield side is read from
- *     `greenfield.golden.json`, which the greenfield suite pins to its
- *     own sweep, rather than swept a second time here.
+ *     reaches the same outcome as `keel new --with v` on the same
+ *     stack — Ok on both sides, or refused on both under one code and
+ *     in one sentence, word for word. Where the greenfield golden
+ *     (which the greenfield suite pins to its own sweep) records Ok
+ *     and so does the add, that is the whole answer; wherever either
+ *     side refuses, the greenfield twin is previewed again here, into
+ *     an empty directory, for its sentence.
  *
  * Holds I6 over every refusal on the way.
  */
@@ -51,6 +54,8 @@ describe('composition grid: brownfield', () => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
       const single = catalog.stacks.filter((stack) => stack.services.length === 0);
+      // The greenfield twins preview into it, and a preview writes nothing.
+      const empty = await grid.scratch();
       await eachStack(single, async ({ id: stack }) => {
         const cwd = await grid.scratch();
         const { target } = await settle(grid, stack);
@@ -70,8 +75,17 @@ describe('composition grid: brownfield', () => {
           const outcome = await grid.cell(cell, add);
           if (available.has(vertical) && outcome.verdict !== OK) grid.violate('I4', cell);
           const twin = greenfield[`new:${stack}+${vertical}`];
-          if (twin !== undefined && (twin === OK) !== (outcome.verdict === OK)) {
-            grid.violate('I5', cell);
+          if (twin !== undefined && (twin !== OK || outcome.verdict !== OK)) {
+            const mirrored = await grid.twin(
+              previewQuery({
+                cwd: empty,
+                target: { ...target, extraVerticals: [vertical] },
+                answers: {},
+              }),
+            );
+            if (mirrored.verdict !== outcome.verdict || mirrored.message !== outcome.message) {
+              grid.violate('I5', cell);
+            }
           }
 
           const created = new Set(

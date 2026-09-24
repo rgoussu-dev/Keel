@@ -44,7 +44,6 @@
  */
 
 import { createHash } from 'node:crypto';
-import { DomainError } from '../kernel/result.js';
 import {
   renderSkill,
   skillSupportingTarget,
@@ -87,6 +86,7 @@ import {
   type DocsIndexInput,
   type DocsIndexRegion,
 } from './docs-index.js';
+import { PathConflictError, PathMissingError } from '../contract/refusal.js';
 import { SETTINGS_SEED, mergeHookSettings } from './hook-settings.js';
 import { eolAware } from './util.js';
 import {
@@ -114,17 +114,18 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
  * `install` (the default) is the brownfield contract — `keel add`,
  * `keel add module`: a whole-file write to an existing path is a hard
  * conflict, and every patch writes its result. A file this run did
- * not write is refused as {@link PathConflictError} without advice to
- * move it, because here it may be keel's own: a composite product's
- * root writes into its services' directories. A patch target the tree
- * does not hold is one the user deleted, refused as
+ * not write is refused as a {@link PathConflictError}; a patch target
+ * the tree does not hold is one the user deleted, refused as a
  * {@link PathMissingError}.
  *
  * `scaffold` is `keel new`'s contract, the same one with a different
- * reading of what the tree already holds. No keel project was here,
- * so a file on disk is the user's, and its refusal says how to get it
- * out of the way. A patch target nothing created is the chain's own
- * ordering bug, and throws as one.
+ * reading of a patch target nothing created: no keel project was here
+ * to have lost it, so it is the chain's own ordering bug, and throws
+ * as one. A file in the way is refused in the same words as under
+ * `install` — the sentence is phase-neutral; whether moving the file
+ * aside is sound advice (it is before `keel new`, and may not be
+ * after, where a product root writes into its services) is the front
+ * end's to say, from the refusal's fields.
  *
  * `reapply` is the day-2 contract for re-rendering an installed
  * vertical: whole-file writes **overwrite** their target (skipped when
@@ -206,54 +207,6 @@ export class ContributionConflictError extends Error {
   ) {
     super(message);
     this.name = 'ContributionConflictError';
-  }
-}
-
-/** The code a {@link PathConflictError} carries. */
-export const PATH_CONFLICT_CODE = 'keel.path-conflict';
-
-/** The code a {@link PathMissingError} carries. */
-export const PATH_MISSING_CODE = 'keel.path-missing';
-
-/**
- * Refuses a run over a file the project already holds, which keel
- * would have to overwrite or cannot patch: a hosted repository's
- * `README.md` before `keel new`, a hand-written `Dockerfile` before
- * `keel add containerization`, a build script with no block for keel's
- * plugin line.
- *
- * A {@link DomainError}, because the file is a fact about the user's
- * directory rather than a bug. Thrown as a {@link ContributionConflictError},
- * it reached `keel ui` as a 500 whose sentence was addressed to an
- * adapter's author. The file and the adapter that wanted it travel as
- * fields as well as in the sentence.
- */
-export class PathConflictError extends DomainError {
-  constructor(
-    message: string,
-    readonly adapterId: string,
-    readonly path: string,
-  ) {
-    super(message, PATH_CONFLICT_CODE);
-    this.name = 'PathConflictError';
-  }
-}
-
-/**
- * Refuses a brownfield run whose patch target is gone from the
- * project. keel patches such a file in place and never recreates it,
- * since all it could recreate is its own part of it. `keel new` has
- * no such refusal: nothing there is the user's to have deleted, so a
- * missing target is an ordering bug, a {@link ContributionConflictError}.
- */
-export class PathMissingError extends DomainError {
-  constructor(
-    message: string,
-    readonly adapterId: string,
-    readonly path: string,
-  ) {
-    super(message, PATH_MISSING_CODE);
-    this.name = 'PathMissingError';
   }
 }
 
@@ -746,12 +699,7 @@ export function applyContribution(
     const current = tree.read(p.target);
     if (current === null && p.seed === undefined) {
       if (mode !== 'scaffold') {
-        const target = canonicalTarget(p.target);
-        throw new PathMissingError(
-          `'${target}' is missing — keel patches it and does not recreate it; restore it (${adapter.id})`,
-          adapter.id,
-          target,
-        );
+        throw new PathMissingError(canonicalTarget(p.target), adapter.id);
       }
       throw new ContributionConflictError(
         `adapter '${adapter.id}': patch target '${p.target}' does not exist in tree`,
@@ -1008,7 +956,9 @@ function writeWholeFile(
 ): void {
   if (tree.exists(filePath)) {
     if (mode !== 'reapply') {
-      if (!createdThisRun(tree, filePath)) throw pathConflict(adapter, filePath, mode);
+      if (!createdThisRun(tree, filePath)) {
+        throw new PathConflictError(canonicalTarget(filePath), adapter.id);
+      }
       throw new ContributionConflictError(
         `adapter '${adapter.id}' would overwrite '${filePath}', which an earlier contribution of this run created; use a patch to modify existing files`,
         adapter.id,
@@ -1031,24 +981,6 @@ function writeWholeFile(
 function createdThisRun(tree: Tree, filePath: string): boolean {
   const key = canonicalTarget(filePath);
   return tree.changes().some((change) => change.kind === 'create' && change.path === key);
-}
-
-/**
- * The refusal of a whole-file write over a file the project already
- * held, worded for the command that met it. Under `keel new` nothing
- * on disk can be keel's, so the way out is the user's to take: move
- * the file aside. Under `keel add` it may be keel's own — a composite
- * root writes each service's image files, and moving one would break
- * the root's `compose.yaml` — so the refusal names the file and gives
- * no advice it cannot stand behind.
- */
-function pathConflict(adapter: Adapter, filePath: string, mode: ApplyMode): PathConflictError {
-  const path = canonicalTarget(filePath);
-  const sentence =
-    mode === 'scaffold'
-      ? `'${path}' already exists and keel does not overwrite it — move it aside, or start in an empty directory`
-      : `'${path}' already exists and was not written by this run — keel does not overwrite it`;
-  return new PathConflictError(`${sentence} (${adapter.id})`, adapter.id, path);
 }
 
 function sha256Of(content: string): string {

@@ -72,10 +72,10 @@
  * double; the vertical keeps its original `installedAt`.
  */
 
+import path from 'node:path';
 import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
-import { assemblyRefusal } from '../compatibility.js';
 import type {
   AddVerticalCommand,
   FileDiff,
@@ -85,6 +85,7 @@ import type {
 } from '../../contract/commands.js';
 import type { ManifestV2 } from '../../contract/manifest.js';
 import { effectiveTags, HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
+import type { ElsewhereService } from '../../contract/refusal.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
@@ -93,10 +94,16 @@ import { unifiedDiff } from '../diff.js';
 import { finalizeHarness, installVerticals, recordsAnswers } from '../install.js';
 import { retrofitHarness } from '../harness-retrofit.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
-import { reachableAdapters, refreshProposals } from '../planner.js';
-import { alreadyInstalledNote, productRootSentence, refreshProposalNote } from '../refusals.js';
+import { defaultScope, reachableAdapters, readiness, refreshProposals } from '../planner.js';
+import {
+  alreadyInstalledNote,
+  elsewhereRefusal,
+  refreshProposalNote,
+  ruleRefusal,
+  UNCOVERED_CODE,
+} from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
-import { coversFor, UNCOVERED_CODE } from '../resolver.js';
+import { coversFor } from '../resolver.js';
 import { installedOwnerOf, strayAnswerRefusal } from '../supplied-answers.js';
 import type { Vertical } from '../../contract/composition.js';
 import type { InstallDeps } from './deps.js';
@@ -139,7 +146,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     }
 
     for (const vertical of named.value) {
-      const misplaced = productRootRefusal(vertical, stored);
+      const misplaced = await this.productRootRefusal(vertical, stored, command.cwd);
       if (misplaced !== null) return err(misplaced);
     }
 
@@ -192,15 +199,8 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // cannot sit with what is already here is refused before a file
     // moves, naming the rule rather than failing somewhere downstream.
     for (const vertical of reapply ? named.value : adding) {
-      const refusal = assemblyRefusal([vertical], stored.tags);
-      if (refusal !== null) {
-        return err(
-          new DomainError(
-            `vertical '${vertical.id}' cannot be installed here: ${refusal}`,
-            'keel.incompatible',
-          ),
-        );
-      }
+      const refusal = ruleRefusal(registry, vertical, stored.tags);
+      if (refusal !== null) return err(refusal);
     }
 
     // What re-renders: under --reapply, everything named; otherwise
@@ -303,6 +303,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         processes: this.deps.processes,
         now: () => now,
         apply: 'install',
+        registry,
       });
       // Held against what the run resolved: which adapters a closure
       // runs depends on the tags its first verticals add, so the plan
@@ -468,6 +469,57 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     }
     return diffs;
   }
+
+  /**
+   * A composite product's root holds services, and a capability belongs
+   * to one of them: whatever the root cannot carry is refused as
+   * belonging elsewhere, naming the service directories and how ready
+   * it is in each — read from each service's own manifest, or its
+   * preset where there is none — rather than with the gap of whichever
+   * adapter family sits nearest to a root's near-empty tag set. The
+   * code stays the coverage one, since the condition is. The agent
+   * harness is the one vertical refused here although it would
+   * resolve: the root has a harness of its own, which indexes the
+   * services' and must not be replaced by one of theirs.
+   */
+  private async productRootRefusal(
+    vertical: Vertical,
+    stored: ManifestV2,
+    cwd: string,
+  ): Promise<DomainError | null> {
+    if (stored.services.length === 0) return null;
+    const harness = vertical.id === 'agent-harness';
+    if (!harness && coversFor(vertical, effectiveTags(stored))) return null;
+    const registry = this.deps.registry;
+    const services: ElsewhereService[] = [];
+    for (const service of stored.services) {
+      // Only the wording of this refusal rides on it: a service
+      // manifest keel cannot read is that service's to report when
+      // the user runs there, and its preset says well enough here
+      // whether the vertical goes in it.
+      const own = await this.deps.manifests
+        .read(projectScopeRoot(path.join(cwd, service.path)))
+        .catch(() => null);
+      const stack = registry.stack(service.stack);
+      const scope =
+        own !== null
+          ? { tags: effectiveTags(own), installed: own.verticals.map((v) => v.id) }
+          : stack !== null
+            ? defaultScope(stack)
+            : null;
+      services.push({
+        path: service.path,
+        stack: service.stack,
+        readiness: scope === null ? 'unavailable' : readiness(registry, scope, vertical.id).kind,
+      });
+    }
+    return elsewhereRefusal(
+      registry,
+      vertical,
+      services,
+      harness ? 'keel.invalid-agent-harness' : UNCOVERED_CODE,
+    );
+  }
 }
 
 function looksBinary(content: Buffer): boolean {
@@ -513,24 +565,4 @@ function frozenAnswerRefusal(
     }
   }
   return null;
-}
-
-/**
- * A composite product's root holds services, and a capability belongs
- * to one of them: whatever the root cannot carry is refused naming the
- * service directories, rather than with the gap of whichever adapter
- * family sits nearest to a root's near-empty tag set. The code stays
- * the coverage one, since the condition is. The agent harness is the
- * one vertical refused here although it would resolve: the root has a
- * harness of its own, which indexes the services' and must not be
- * replaced by one of theirs.
- */
-function productRootRefusal(vertical: Vertical, stored: ManifestV2): DomainError | null {
-  if (stored.services.length === 0) return null;
-  const harness = vertical.id === 'agent-harness';
-  if (!harness && coversFor(vertical, effectiveTags(stored))) return null;
-  return new DomainError(
-    productRootSentence(vertical, stored.services),
-    harness ? 'keel.invalid-agent-harness' : UNCOVERED_CODE,
-  );
 }

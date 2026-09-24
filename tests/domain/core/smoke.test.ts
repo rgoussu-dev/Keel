@@ -13,6 +13,7 @@ import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
 import { ejsTemplateSource } from '../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../src/domain/core/install.js';
+import { shippedRegistry } from '../../../src/domain/core/registry.js';
 import { emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../src/infrastructure/tree/fs-tree.js';
 import type { Prompt } from '../../../src/domain/contract/ports/prompt.js';
@@ -210,15 +211,20 @@ describe('installVertical end-to-end', () => {
       templates: ejsTemplateSource,
       processes: spawnProcessRunner,
       now: () => '2026-04-26T12:00:00Z',
+      registry: shippedRegistry,
     });
-    // The dimension travels in the detail; the sentence names what
-    // would cover it — a tag another install adds, not there yet.
+    // The tag travels in the refusal; the sentence names what would
+    // cover it by the vertical that adds it, not there yet.
     await expect(install).rejects.toMatchObject({
       code: 'keel.uncoverable-vertical',
-      detail: { kind: 'uncovered', dimensions: ['release'] },
+      refusal: {
+        kind: 'unavailable',
+        vertical: 'distribution',
+        missing: { identity: ['ci.github-actions'] },
+      },
     });
     await expect(install).rejects.toThrow(
-      'Distribution needs a capability this project does not have yet: ci.github-actions',
+      'Distribution needs what Continuous integration adds, which this project does not have yet',
     );
   });
 

@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { DomainError } from '../../../../src/domain/kernel/result.js';
-import { PathConflictError } from '../../../../src/domain/core/apply.js';
+import { PathConflictError } from '../../../../src/domain/contract/refusal.js';
 import {
   JVM_FORMAT_ID,
   addSpotlessToGradle,
@@ -40,8 +40,16 @@ describe('jvm-format build-file patches', () => {
     expect(error.path).toBe('build.gradle.kts');
     expect(error.adapterId).toBe(JVM_FORMAT_ID);
     expect(error.message).toBe(
-      "'build.gradle.kts' has no 'plugins {' block for the Spotless plugin — keel adds its line inside that block and does not rewrite the file; add one, then re-run (code-style/jvm-format)",
+      "'build.gradle.kts' has no 'plugins {' block — keel adds its lines inside it and does not rewrite the file; add one, then re-run",
     );
+    // What the file lacks travels as a field too, for a front end
+    // that words its own remedy.
+    expect(error.refusal).toEqual({
+      kind: 'path-conflict',
+      path: 'build.gradle.kts',
+      adapterId: JVM_FORMAT_ID,
+      anchor: "'plugins {' block",
+    });
   });
 
   it('refuses a POM with no build element, naming the file', () => {
@@ -49,7 +57,7 @@ describe('jvm-format build-file patches', () => {
     expect(error.code).toBe('keel.path-conflict');
     expect(error.path).toBe('pom.xml');
     expect(error.adapterId).toBe(JVM_FORMAT_ID);
-    expect(error.message).toMatch(/^'pom\.xml' has no <build> element for the Spotless plugin/);
+    expect(error.message).toMatch(/^'pom\.xml' has no <build> element — keel adds its lines/);
   });
 
   it('leaves a file that already names the plugin alone, anchor or not', () => {

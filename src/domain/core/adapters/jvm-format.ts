@@ -60,7 +60,7 @@ import {
   formatterCommandsFor,
   styleFor,
 } from './code-style.js';
-import { PathConflictError } from '../apply.js';
+import { PathConflictError } from '../../contract/refusal.js';
 import { eolAware } from '../util.js';
 import { formatStepPatch } from './claude-kit.js';
 import type {
@@ -187,11 +187,7 @@ export function addSpotlessToGradle(existing: string, tags: readonly string[]): 
   if (existing.includes('com.diffplug.spotless')) return existing;
   const pluginsAt = existing.indexOf('plugins {');
   if (pluginsAt === -1) {
-    throw new PathConflictError(
-      `'${GRADLE_TARGET}' has no 'plugins {' block for the Spotless plugin — keel adds its line inside that block and does not rewrite the file; add one, then re-run (${JVM_FORMAT_ID})`,
-      JVM_FORMAT_ID,
-      GRADLE_TARGET,
-    );
+    throw new PathConflictError(GRADLE_TARGET, JVM_FORMAT_ID, "'plugins {' block");
   }
   const insertAt = pluginsAt + 'plugins {\n'.length;
   const withPlugin =
@@ -276,11 +272,7 @@ export function addSpotlessToPom(existing: string, tags: readonly string[]): str
   const buildOpen = existing.indexOf('<build>');
   const buildClose = existing.indexOf('</build>', buildOpen);
   if (buildOpen === -1 || buildClose === -1) {
-    throw new PathConflictError(
-      `'${MAVEN_TARGET}' has no <build> element for the Spotless plugin — keel adds its plugin inside that element and does not rewrite the file; add one, then re-run (${JVM_FORMAT_ID})`,
-      JVM_FORMAT_ID,
-      MAVEN_TARGET,
-    );
+    throw new PathConflictError(MAVEN_TARGET, JVM_FORMAT_ID, '<build> element');
   }
   const plugin = renderMavenSpotlessPlugin(tags);
   const masked = maskPluginManagement(existing.slice(buildOpen, buildClose));

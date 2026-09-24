@@ -19,7 +19,7 @@ import {
   newOwnership,
   type HarnessContribution,
 } from '../../../src/domain/core/apply.js';
-import { ResolutionError } from '../../../src/domain/core/resolver.js';
+import { RefusalError } from '../../../src/domain/contract/refusal.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../src/domain/contract/manifest.js';
 import { AGENT_HARNESS_TAG, type Vertical } from '../../../src/domain/contract/composition.js';
 import { hashRegion, regionPatch } from '../../../src/domain/contract/region.js';
@@ -137,7 +137,7 @@ describe('installVerticals', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect(failure).toBeInstanceOf(ResolutionError);
+    expect(failure).toBeInstanceOf(RefusalError);
   });
 
   it('is one ownership scope: a region two of its verticals claim collides, naming both', async () => {
