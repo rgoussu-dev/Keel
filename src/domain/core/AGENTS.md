@@ -61,6 +61,34 @@ the shipped source, every refusal naming its origin) and
   its own section on every application, and a reapply is refused as a
   divergence (`keel.reapply-conflict`); the CRLF cells of
   `new-project-adoption.test.ts` hold every writer to it.
+- The lists the entrypoints share in the build files take the same
+  rule, each read in its own syntax into `rank.ts`'s `rankedIndex`:
+  `jvm-shared-root.ts`'s `placeIncludes` (through `util.ts`'s
+  `codeOnly`, so no comment, not even a `//` holding `/*`, hides an
+  include) and `placeModules` (the seed's modules, then the CLI's,
+  then REST's, then any other — each module at its own place, so one
+  put back alone lands beside its siblings),
+  `ts-shared-root.ts`'s root scripts (by name, the order `web-format`
+  sorts them into), and `rust-cli-bootstrap.ts`'s basic `[[bin]]`
+  (above the HTTP unit's tables). Every other writer of those lists —
+  the port fake, the peer context, persistence, an added context — runs
+  after the entrypoints and appends, so its entries rank last; a writer
+  whose entries must precede an entrypoint's needs a rank of its own.
+  The dev container's in-place attach (`dev-container.ts`) is ranked by
+  the tags as its README section is: the template's shape on
+  `arch.server-http`, the shape an extra dev environment has always
+  written elsewhere. The template's shape lists the docker feature
+  last, so the entry before it takes a comma: the features are read
+  through `codeOnly`, the comma goes where that entry's code ends,
+  ahead of a comment trailing it, which JSONC allows, and the feature
+  on the first line after it that no comment holds, so a block comment
+  the entry's line opens stays whole. The object ends at the brace
+  that matches its opener, counted over that code, never at the next
+  `  }` line: a features object that closes anywhere else would hand
+  its feature to the object after it, a multi-line `"customizations"`,
+  and the file would still parse. `shared-files.golden.test.ts`
+  holds every scaffold to it; `rank-arrival.test.ts` and each writer's
+  own suite hold the writers to going through the rule.
 - A patch that adds to a list in source another command may have grown
   — a composition root's handlers — reads the list as it finds it, its
   brackets and commas found in `util.ts`'s `codeOnly` (comments and

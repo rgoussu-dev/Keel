@@ -4558,9 +4558,14 @@ named.
    on one tag, though: the 512 carry `arch.server-http` and the 36 do
    not, and the in-place upgrade never runs on a greenfield HTTP
    preset. So R.1b ranks the upgrade by the tags, as DR1 ranks
-   `### Dev container`. It is the only path that reaches this file
-   under growth. If that cannot reach the attached template's bytes,
-   R.2b re-renders `dev-container` after dev-env instead (DR2).
+   `### Dev container`. Where growth installs dev-env, it is the only
+   path that reaches this file, and it reaches the attached template's
+   bytes on every family, so R.2b re-renders no dev container (DR2,
+   taken as its first option in R.1b). A CLI project that took dev-env
+   as an extra is the exception: its upgrade ran on the CLI's tags,
+   growth installs no dev-env there, and the definition keeps the
+   CLI's shape, unlike the twin's. I10 has no extras, so it does not
+   measure this (R.2a).
 
 3. **`Cargo.toml` is also a shared file.** When CLI is added to
    `rust-http` on the basic layout, the CLI `[[bin]]` lands after
@@ -4574,7 +4579,10 @@ named.
    folds in the tag and takes `projects` from the twin: `["peer.api.rest"]`
    on every HTTP preset.
 6. **`refreshProposals` cannot see the kits or dev-container.** R.2
-   names both re-renders itself.
+   names the kits' re-render itself. The dev container needs none
+   where growth installs dev-env: R.1b took DR2's first option, so
+   dev-env's in-place upgrade on the grown tags writes the twin's
+   bytes. Where dev-env was an extra, see (2).
 7. **`admit` sorts a request by id**, so `dev-container` comes before
    `dev-env`. `--refresh dev-container` in the same run re-renders it
    standalone before dev-env patches it, as measured. R.2's run uses
@@ -5050,7 +5058,7 @@ Beyond the text above:
 Not done here: R.1b's build-file lists and the dev container's
 in-place upgrade.
 
-#### R.1b — Ranked build-file lists: includes, modules, scripts, the CLI binary (S)
+#### R.1b — Ranked build-file lists: includes, modules, scripts, the CLI binary (S) ✅
 
 This step applies the same rule to the lists the entrypoints share.
 
@@ -5115,6 +5123,208 @@ line joins R.1a's.
 
 **Leaves out:** `go.mod`, which never differed in any pair.
 
+**Landed as the rank rule on each list**, each list read in its own
+syntax into R.1a's `rankedIndex`, and no golden moved.
+
+- **Gradle and Maven.** `jvm-shared-root.ts`'s `appendMissingLines`
+  and `insertModules` gave way to `placeIncludes` and `placeModules`,
+  over a `RootModules` value each layout passes: the basic layout's,
+  and the modulith's own in `jvm-shared-root-modulith.ts`. Its `seed`
+  and per-entrypoint lists are the old `SEED_MODULES` and
+  `ARCH_MODULES`. `moduleRank` is the table above, one step finer: a
+  module ranks by its place in the seed's list, then the CLI's, then
+  REST's, and anything else after them all (below). An include is a
+  line holding one `include("…")`, a module a line holding one
+  `<module>…</module>`. Each of an entrypoint's missing lines goes
+  before the first entry ranked above it, in the file's own line
+  endings, every byte already there kept; where none is, it is
+  appended as the old code appended it.
+- **Root `package.json` scripts.** `mergeRoot` merges through
+  `placeScripts`. A script already there keeps its place and takes the
+  entrypoint's value, as before. A new one goes before the first
+  script there whose name sorts after its own under `localeCompare`,
+  the order `web-format` sorts them into.
+- **The basic Rust crate.** `rootBinPatch` ranks a line holding
+  `[dev-dependencies]` or `[[bin]]` above the CLI binary. The binary
+  goes before the first of them, with one blank line either side as
+  the README sections have, and is appended as before where there is
+  none.
+- **The dev container, by DR2's first option.**
+  `attachDevContainerToDevEnv` takes the tags, which
+  `dev-env-compose.ts` passes from the manifest. On `arch.server-http`
+  it writes the template's attached shape: the Compose note above
+  `"name"`, where `"name"` is the line above the image as the
+  standalone shape renders it, and the docker feature after the last
+  entry of the `"features"` object, with a comma added where that
+  entry's code ends, ahead of any comment trailing it. Anywhere else
+  it runs the old code, byte for byte. The upgrade reaches the
+  template's bytes on every family, and on the tags growth leaves,
+  `arch.cli` beside `arch.server-http`, so the fallback was not needed:
+  where growth installs dev-env, R.2b re-renders no dev container. A
+  CLI project that took dev-env as an extra keeps the CLI's shape
+  through growth, which installs no dev-env there. _What stands in the
+  way_ (2) and (6), R.2a, R.2b and DR2 now say both.
+
+Everything the text keeps an append stays one: `sample-port-fake` (and
+`-kotlin`), `jvm-persistence`, `jvm-context`, `jvm-peer-context`,
+`rust-http-bootstrap`'s `rootCratePatch`, `addWorkspaceMembers`, the
+compose helpers, `web-format` and `web-lint`. R.1a's CHANGELOG entry
+under _Changed_ now covers the lists and the dev container too.
+
+The proof is the golden again. `shared-files.golden.json` passes
+unchanged, all 398 cells and 1,167 hashes, and was never regenerated;
+its 118 cells with `dev-env` among the extras (54 with it alone) and
+ten `keel add dev-env` cells, where the upgrade keeps its old shape,
+are among them.
+`agent-harness.golden.json` and `run-skill.golden.json` pass as they
+were. The greenfield, brownfield, composite and planner-readiness
+goldens and the docs matrix regenerate byte-identical, and the known
+files stay as they were. No template changed, so no e2e suite was
+run. Past the golden's six files, HEAD's code and this step's rendered
+872 cells side by side: every preset on each build system and layout,
+with the peer context on the modulith, under eight extras sets; each
+product under both repository layouts; and `keel add dev-env` on each
+CLI and SPA preset. They wrote 55,570 files byte-identical, and the
+132 cells that refuse were refused by both, under the same code.
+
+Where the rule and an append part ways:
+
+- `rank-arrival.test.ts` gains twelve cells, each a scaffold whose one
+  entrypoint's entries the user deleted, put back by `keel add
+walking-skeleton --reapply` and compared with the scaffold byte for
+  byte. Eight are `quarkus-cli-rest`'s includes or modules, the CLI's
+  and then REST's, under each build system and layout, the Gradle
+  modulith with the peer context. Two delete one of an entrypoint's
+  several alone: `:application:rest:contract` on the basic Gradle
+  layout, and the CLI's `modules/greeting/user-side/cli` on the Maven
+  modulith. Two are `ts-cli-http`'s scripts: `start:cli` on npm, and
+  `dev:rest` with `start:rest` on the pnpm modulith. All twelve failed
+  on the appending code, and all twelve pass.
+- `adapters/jvm-shared-root.test.ts` (new) holds both layouts under
+  both build systems: the seed alone, appended as before; either
+  entrypoint first, the list read back as the table above spells it;
+  either arriving after the port fake and an added context, against
+  one run; each of an entrypoint's modules deleted alone and put back;
+  CRLF; the fixed point; and an entry already there never moved, REST
+  going above a module the user moved above the CLI, which stays
+  below both. An include in a block comment, a module in an XML
+  comment, an include sharing its line with a comment, a module
+  sharing its line with another, and a Maven profile's module below
+  the root's list draw no entry, and a `//` comment holding `/*` above
+  the includes hides none of them.
+- `adapters/ts-shared-root.test.ts`: a later entrypoint where the
+  formatter sorts one run, on pnpm basic and the npm modulith with
+  `web-format`'s and `web-lint`'s own patches applied; either
+  entrypoint first; CRLF; and a user's out-of-order scripts left
+  where they are.
+- `adapters/rust-cli-bootstrap.test.ts` (new): the seed alone, the CLI
+  arriving after the HTTP unit and observability against one run, the
+  HTTP binary with no `[dev-dependencies]` above it, CRLF, the fixed
+  point, and a `# [[bin]]` comment ranking nothing.
+- `verticals/dev-container.test.ts`: on an HTTP project the upgrade
+  writes the attached render byte for byte on the JVM under Gradle and
+  Maven, Go, Rust, and TypeScript under pnpm and npm, and on Go
+  carrying `arch.cli` as well, the tags a CLI project grows to; in a
+  CRLF definition, in its own endings; and around a user's edits (a
+  renamed `"name"`, a feature spread over lines, a comment closing the
+  features, a `"customizations"` block), which stay; below the brace
+  of a features object with no entry, every line kept; after a last
+  feature with a comment trailing it, the comma going ahead of the
+  comment and the file still parsing; past a block comment the last
+  feature's line opens, with or without its trailing comma; after one
+  that already carries its trailing comma; first where the object
+  closes on its last entry's line, or on the line a comment that entry
+  opens ends, and last where it closes on a line of its own at its
+  entries' indent, each followed by a multi-line `"customizations"`
+  that stays as it was; the note above the Compose fields once
+  `"name"` is no longer the line above the image; and a features
+  object commented out above the real one, or a brace in a comment
+  inside it, read as none of it. On a CLI it keeps the old shape, and
+  on either a docker feature the user already listed stays where it
+  is, once.
+
+With the JVM and TypeScript writers back on an append, 38 of the 75
+cases in the arrival, JVM and TypeScript suites fail; with the Rust
+binary appended, three of its seven; with the dev container's tag
+branch off, seventeen of that suite's thirty-four. The new cases add
+about a second to `verify`.
+
+Beyond the text above:
+
+- **The Rust binary is proven on its patch alone.** The crate's
+  `Cargo.toml` is `rust-bootstrap`'s own whole file, which `keel add
+walking-skeleton --reapply` writes afresh, and without
+  observability's dependencies, as blocker 8 says of other files. So
+  no command reaches the ranked branch before R.2b's growth, and
+  `rank-arrival.test.ts` holds no Rust cell. A first draft had one,
+  and it failed on observability's missing dependencies, not on the
+  binary.
+- **What ranks.** The text reads each list's entries and does not say
+  which lines count. Only a line holding one entry ranks. An include
+  or a module inside a comment ranks nothing, since the rule would
+  otherwise put an entrypoint's lines inside the comment a user hid a
+  module in. `settings.gradle.kts` is read as code alone (`util.ts`'s
+  `codeOnly`), so a `//` comment holding `/*` hides no include below
+  it; `pom.xml`'s `<!-- -->` is read by hand. In `pom.xml` only the
+  lines before the first `</modules>` rank, so a profile's modules
+  never draw an entry into the profile. A Cargo table header ranks
+  only on a line of its own. Where nothing ranks, the entry is
+  appended as before. `docs/cli.md` says so.
+- **One rank per module, not per entrypoint.** The table gives all of
+  an entrypoint's modules one rank, and equal ranks keep their arrival
+  order, so one of an entrypoint's several that the user deleted alone
+  came back below the sibling still there: `:application:rest:contract`
+  below `:application:rest:executable`, or the modulith's
+  `:modules:greeting:user-side:cli` below `:application:cli`, as R.1a's
+  lone README section does. A module ranks instead by its place in the
+  order one run writes, the seed's list, then the CLI's, then REST's,
+  anything else after them all, and each missing one is placed on its
+  own. The groups keep the table's order, so no scaffold moved, and a
+  lone module goes back where it was, which `docs/cli.md` and the
+  CHANGELOG say.
+- **Scripts without the formatter.** Every keel preset carries
+  `code-style`, whose `web-format` sorts the scripts after the
+  entrypoints, so no scaffold moved. A plugin preset that installs
+  keel's TypeScript entrypoints without it got `start:cli` and the
+  REST scripts after `test` and `typecheck`; it now gets them sorted.
+  The CHANGELOG and `docs/plugins.md` say so.
+- **A plugin preset's dev container.** One tagged `arch.server-http`
+  that lists `dev-container` before `dev-env` got the CLI's shape from
+  the upgrade; it now gets the definition as keel's HTTP presets
+  render it attached. The CHANGELOG and `docs/plugins.md` say so too.
+- **The dev container keeps what the user wrote.** `"name"` moves
+  below the note only while it is still the line above the image; the
+  docker feature follows the object's last entry, ahead of any comment
+  closing it, and a features object with no entry takes it below its
+  brace, every line kept. The object is read as code alone
+  (`util.ts`'s `codeOnly`), so a comment is never taken for its last
+  entry, and the comma that entry takes goes where its code ends,
+  ahead of a comment trailing it: appended to the line, it would have
+  landed inside the comment, and the file would no longer parse. The
+  feature itself goes on the first line after that entry that no
+  comment holds, so a block comment the entry's line opens closes
+  above it rather than swallowing it. The object ends at the brace
+  that matches its opener, counted over that code: a first draft took
+  the next `  }` line for it, and a features object closing anywhere
+  else handed the feature to the object after it, a multi-line
+  `"customizations"`, in a file that still parsed. Where that brace
+  is not the first code on its line (`{} },`), or no line between the
+  last entry and it is out of a comment (`{} /* pinned` … `*/ },`),
+  the feature goes first, as the CLI's shape lists it, rather than
+  nowhere.
+  `docs/verticals/dev-container.md` describes both shapes.
+- **`gradleIncludeLines` is no longer exported**: the modulith reaches
+  the lists through `placeIncludes` now.
+- **The weekly sweep was not run.** No extra reaches a ranked branch.
+  Persistence's JVM modules, the peer's and a context's still append
+  after the entrypoints, and a dev environment is an extra only on CLI
+  and SPA presets, where the upgrade keeps its old shape, so the lane
+  has no finding R.1b could move.
+
+Not done here: the drift `Error` in `attachDevContainerToDevEnv`,
+which stays a plain throw until R.2b makes it a `path-conflict`
+refusal.
+
 ### R.2 — the command
 
 #### R.2a — The growth reading, with no caller yet (M)
@@ -5147,10 +5357,16 @@ refused.
 - **The verticals to install**: the twin's `verticals` minus the
   installed ones, in the twin's order. That is `dev-env` and
   `observability` when adding HTTP, and nothing when adding CLI.
-- **The re-renders**: `agent-harness` wherever it is installed. It also
-  includes `dev-container` when dev-env is among the verticals to
-  install and dev-container is already there, but only if R.1b fell
-  back to DR2's re-render.
+- **The re-renders**: `agent-harness` wherever it is installed.
+  `dev-container` is never among them: R.1b took DR2's first option,
+  so where growth installs dev-env, its in-place upgrade on the grown
+  tags writes the twin's `devcontainer.json`. On a CLI project that
+  took dev-env as an extra (`--with dev-env`), growth installs none,
+  and the definition keeps the shape that extra's upgrade wrote:
+  `"name"` above the Compose note, the docker feature first. That
+  differs from the twin's, knowingly: re-rendering it would be DR2's
+  (b), overwriting what the user wrote, and I10, which has no extras,
+  does not measure it.
 
 **The refusal is structural.** It is read off the adapter set the way
 `context-support.ts`'s `emitsFor` reads it. For each context marker the
@@ -5249,8 +5465,11 @@ an identity tag, and no vertical may promote one
      through `admit`, which adds nothing on a shipped cell but keeps D1
      for a plugin's prerequisites. They run in the twin's order, not in
      `admit`'s id order.
-   - **`dev-container`, re-rendered after dev-env**, only where
-     `growthOf` says so, which it does only under DR2's fallback.
+   - **No `dev-container` re-render.** R.1b took DR2's first option:
+     where growth installs dev-env, its in-place upgrade, on the grown
+     tags, writes the twin's `devcontainer.json`. A dev environment
+     installed earlier as an extra keeps the shape its upgrade wrote
+     (R.2a).
 
    After the run come `retrofitHarness` for everything that did not
    run, one `finalizeHarness`, and the generation restamp, as
@@ -5608,7 +5827,11 @@ recommendation.
   - (d) Exempt the file from I10 permanently.
 
   **Recommend (a), falling back to (b)** if the upgrade cannot reach
-  the template's bytes.
+  the template's bytes. Taken in R.1b as (a): the upgrade reaches the
+  attached template's bytes on every family, so (b) is not needed. It
+  runs only where growth installs dev-env: a CLI project that took
+  dev-env as an extra keeps the shape that extra wrote, knowingly
+  unlike the twin and outside I10 (R.2a).
 
 - **DR3 — The harness re-render versus D12** ("proposed, never
   automatic").
@@ -5697,7 +5920,8 @@ agent-harness --reapply`.
 - **One e2e suite per cell.** R keeps it by proof (I10).
 - **D12 still governs every refresh R does not name.**
 - **R.1 and R.3 move no greenfield byte of a keel preset.** A plugin
-  preset's README now takes keel's section order (R.1a).
+  preset's README now takes keel's section order (R.1a), and its root
+  scripts and its dev container keel's order too (R.1b).
 
 ---
 

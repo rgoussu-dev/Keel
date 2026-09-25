@@ -37,10 +37,19 @@ vertical is on the manifest:
 `dev-env`, the definition lands attached; installed before it,
 [`dev-env`](dev-env.md) upgrades the standalone definition to the
 attached shape when it arrives (adding the compose overlay and the
-`docker-outside-of-docker` feature). The one exception is a
-definition you have customized away from the scaffolded shape (e.g.
-a different base image) — the upgrade then refuses to rewrite it and
-names the manual recipe instead of silently losing your changes.
+`docker-outside-of-docker` feature). On a project with an HTTP
+server, where every preset installs the dev environment first, the
+upgrade writes the definition exactly as the attached shape renders
+it — the Compose note above `"name"`, the docker feature after the
+toolchain's, or first where your `"features"` object no longer closes
+on a line of its own. On a CLI or SPA project, where the dev
+environment is an extra installed after the dev container, it keeps
+the shape `--with dev-env` has always written there: `"name"` above
+the note, the docker feature first. Either way, anything else you
+wrote into the file stays. The one exception is a definition you have
+customized away from the scaffolded shape (e.g. a different base
+image) — the upgrade then refuses to rewrite it and names the manual
+recipe instead of silently losing your changes.
 
 ## Dimensions & adapters
 

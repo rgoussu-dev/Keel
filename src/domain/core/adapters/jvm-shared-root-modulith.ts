@@ -19,11 +19,11 @@
  *
  * - **The seed is a bounded context, not a layer cake.** `basic`
  *   seeds the domain trisection (`domain/{kernel,contract,core}`) and
- *   each entrypoint appends its `application/…` modules. Here the
+ *   each entrypoint adds its `application/…` modules. Here the
  *   seed is `platform/kernel` plus the skeleton context's own
  *   hexagon — `modules/greeting/domain/{contract,core}` and the
  *   `user-side/service` seam that makes the context extractable — and
- *   an entrypoint appends **two** things: its driving adapter
+ *   an entrypoint adds **two** things: its driving adapter
  *   *inside* the context (`user-side/cli`, or `user-side/api/…`) and
  *   its assembly under `application/`. The list is per-context, so it
  *   grows sideways as contexts are added rather than downwards as
@@ -48,33 +48,20 @@ import type { ContributionPatch } from '../../contract/composition.js';
 import { readmeUpsert } from './adopted-files.js';
 import {
   addReadmeSection,
-  appendMissingLines,
   FRAMEWORKS,
   gradleBuildSeed,
-  gradleIncludeLines,
   gradlePropertiesSeed,
   gradleSettingsSeed,
-  insertModules,
   mavenPomSeed,
+  placeIncludes,
+  placeModules,
   type JvmRootArch,
   type JvmRootInputs,
+  type RootModules,
 } from './jvm-shared-root.js';
 import { jvmLayout, MODULITH_LAYOUT_TAG, SKELETON_MODULE } from './jvm-module-layout.js';
 
 const LAYOUT = jvmLayout([MODULITH_LAYOUT_TAG]);
-
-/**
- * The modules every modulith entrypoint shares: the platform kernel
- * and the skeleton context's own hexagon, seam included. This is the
- * project with no entrypoint yet — a bounded context nothing drives.
- */
-const SEED_MODULES: readonly string[] = [
-  LAYOUT.kernel,
-  LAYOUT.domainContract,
-  LAYOUT.domainCore,
-  // Non-null by construction: `service` is absent only under `basic`.
-  LAYOUT.service as string,
-];
 
 /**
  * The CLI's driving adapter inside the context. `jvmLayout` names the
@@ -85,12 +72,24 @@ const SEED_MODULES: readonly string[] = [
 const CLI_ADAPTER = `modules/${SKELETON_MODULE}/user-side/cli`;
 
 /**
- * What one arch adds to the seed: its driving adapter inside the
- * context, then the assembly that mounts it.
+ * The modulith's modules. Every entrypoint shares the seed: the
+ * platform kernel and the skeleton context's own hexagon, seam
+ * included — the project with no entrypoint yet, a bounded context
+ * nothing drives. What one arch adds to it is its driving adapter
+ * inside the context, then the assembly that mounts it.
  */
-const ARCH_MODULES: Readonly<Record<JvmRootArch, readonly string[]>> = {
-  cli: [CLI_ADAPTER, LAYOUT.cliRuntime],
-  rest: [LAYOUT.restContract, LAYOUT.restAdapters, LAYOUT.restRuntime],
+const MODULES: RootModules = {
+  seed: [
+    LAYOUT.kernel,
+    LAYOUT.domainContract,
+    LAYOUT.domainCore,
+    // Non-null by construction: `service` is absent only under `basic`.
+    LAYOUT.service as string,
+  ],
+  arch: {
+    cli: [CLI_ADAPTER, LAYOUT.cliRuntime],
+    rest: [LAYOUT.restContract, LAYOUT.restAdapters, LAYOUT.restRuntime],
+  },
 };
 
 /**
@@ -149,7 +148,7 @@ const ARCHIVE_NOTE = `    // Archive *file* names must be unique for the same re
  * under the modulith layout. Every entrypoint of the same
  * (framework, language, build system) triple supplies the identical
  * seed for each target, so whichever resolves first creates the file
- * and the rest compose onto it in adapter-resolution order.
+ * and the rest compose onto it, each entry at its rank.
  */
 export function jvmModulithRootPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   return inputs.buildSystem === 'gradle' ? gradlePatches(inputs) : mavenPatches(inputs);
@@ -159,9 +158,8 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   return [
     {
       target: 'settings.gradle.kts',
-      seed: gradleSettingsSeed(inputs.projectName, SEED_MODULES),
-      apply: (existing) =>
-        appendMissingLines(existing, gradleIncludeLines(ARCH_MODULES[inputs.arch])),
+      seed: gradleSettingsSeed(inputs.projectName, MODULES.seed),
+      apply: (existing) => placeIncludes(existing, MODULES, inputs.arch),
     },
     {
       target: 'build.gradle.kts',
@@ -194,10 +192,10 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
         basePackage: inputs.basePackage,
         projectName: inputs.projectName,
         frameworkProperties: FRAMEWORKS[inputs.framework].mavenProperties,
-        modules: SEED_MODULES,
+        modules: MODULES.seed,
         dependencyManagement: MAVEN_DEPENDENCY_MANAGEMENT[inputs.framework],
       }),
-      apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
+      apply: (existing) => placeModules(existing, MODULES, inputs.arch),
     },
     readmeUpsert(readmeSeed(inputs, './mvnw test'), (existing) =>
       addReadmeSection(existing, mavenReadmeSection(inputs), inputs.tags),

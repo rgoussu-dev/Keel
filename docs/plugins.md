@@ -436,6 +436,28 @@ keel writes — `### cli`, `### rest`, `### http`, `### Dev environment`,
 own, and stands in for keel's section of that name, which is then not
 added.
 
+### keel's entries in your build files, and the dev container
+
+The entries keel's entrypoints write into the lists they share go in
+keel's order too, whatever order your stack lists its verticals in
+([cli.md](cli.md#keel-add)): the `include(…)` lines of
+`settings.gradle.kts` and the `<module>` entries of the root
+`pom.xml` — the seed's, then the CLI's, then REST's — and the root
+`package.json` scripts, by name, in the order keel's formatter sorts
+them into, whether or not your stack installs `code-style`. keel gives
+an entry of yours no rank of its own: an include or a module your
+vertical adds ranks after every entrypoint's, so an entrypoint's
+arriving later goes above it, and a script of yours ranks by its name
+as keel's do. Your entries go wherever your patch puts them, and keel
+never moves them.
+
+The dev environment's upgrade of an existing dev container reads the
+tags as the dev container's README section does. On a stack tagged
+`arch.server-http` that installs `dev-container` before `dev-env`, it
+writes the definition exactly as keel's HTTP presets render it
+attached — the Compose note above `"name"`, the docker feature last;
+elsewhere, the shape an extra dev environment has always written.
+
 ### What an adapter promotes, and what a vertical reads
 
 Two optional fields tell keel's planner how your pieces relate to the

@@ -119,7 +119,7 @@ export function beforeFirstImport(existing: string, lines: string): string {
   return `${existing.slice(0, match.index)}${lines}\n${existing.slice(match.index)}`;
 }
 
-/** Java, Kotlin or TypeScript source as {@link codeOnly} reads it. */
+/** C-family source — Java, Kotlin, TypeScript — or JSONC, as {@link codeOnly} reads it. */
 export interface CodeOnly {
   /**
    * The source with every comment, and the inside of every string and
@@ -132,15 +132,15 @@ export interface CodeOnly {
 }
 
 /**
- * Reads source as code alone, for the patches that read a list in a
- * composition root — brackets, commas, the last entry — rather than
- * match a line: a `,` or `)` inside `"a, b"`, or `//` inside a URL,
- * is not the list's.
+ * Reads source as code alone, for the patches that read a list rather
+ * than match a line — a composition root's handlers, a dev container's
+ * features, a Gradle settings file's includes: its brackets, its
+ * commas, its last entry. A `,` or `)` inside `"a, b"`, `//` inside a
+ * URL, or an entry inside a comment is not the list's.
  *
  * C-family comments and literals are all it knows — `"…"`, `'…'`,
- * `` `…` ``, and a `"""…"""` block — which is enough for a list of
- * constructor calls, not a grammar: a template's `${…}` reads as part
- * of its literal.
+ * `` `…` ``, and a `"""…"""` block — which is enough for those lists,
+ * not a grammar: a template's `${…}` reads as part of its literal.
  */
 export function codeOnly(source: string): CodeOnly {
   const code = source.split('');

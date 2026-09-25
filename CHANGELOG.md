@@ -518,7 +518,9 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
-- **A section keel adds to an existing README lands in keel's order.**
+- **A section keel adds to an existing README, an entry it adds to a
+  build file's list, and what a later dev environment adds to the dev
+  container land in keel's order.**
   A section a later `keel add` wrote into the root `README.md`, or one
   `--reapply` put back after you deleted it, was appended at the end,
   after every section installed since: `keel add persistence` on a
@@ -547,6 +549,35 @@ new` the terminal adds the way past it (move it aside, or start in
   README it did; a plugin preset whose README seed has a `## ` heading
   now gets keel's order whatever order it lists its verticals in, and
   one with none gets its own list's order, as before.
+
+  The lists an entrypoint writes into its build files take the same
+  rule. Its entries were appended too: `keel add walking-skeleton
+--reapply` put an `include(":application:cli")` you had deleted back
+  below the port fake's, a `<module>application/cli</module>` below
+  every module after it, and a `start:cli` script last. The JVM's
+  `settings.gradle.kts` includes and root `pom.xml` modules now go in as
+  one run writes them — the seed's, then the CLI's, then REST's, each
+  entrypoint's in its own order, then everything after them (the port
+  fake, the peer context, persistence, an added context) — so one of
+  an entrypoint's several modules deleted alone comes back beside the
+  others where it was; and the TypeScript root `package.json` scripts
+  go in the order the formatter sorts them. An entry already there
+  never moves, and only a root's own list ranks: an include or a
+  module on a line of its own, outside a comment, and never a Maven
+  profile's `<modules>`. And `keel add dev-env` on a project with
+  an HTTP server and a dev container but no dev environment attached
+  the definition in the shape it writes on a CLI: `"name"` above the
+  Compose note, the docker feature first. It now writes the definition
+  exactly as `keel new` renders it there — the note above `"name"`,
+  the docker feature after the toolchain's — and keeps anything else
+  you wrote into it; on a CLI or SPA project it keeps the shape it
+  always wrote. A scaffold of any of keel's presets writes the build files
+  and the dev container it did. A plugin preset gets keel's order in
+  two more places: one that installs keel's TypeScript entrypoints
+  without `code-style`, whose formatter sorts the scripts, now gets
+  them sorted, and one tagged `arch.server-http` that installs the dev
+  container before the dev environment now gets the definition as
+  `keel new` renders it attached, where it got the CLI's shape.
 
 - **`keel add` at a monorepo product root says what its services
   already have, rather than refusing it.** At the root of a monorepo

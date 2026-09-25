@@ -32,7 +32,7 @@ import type {
   ContributionPatch,
 } from '../../contract/composition.js';
 import type { Tag } from '../../contract/tags.js';
-import { placeReadmeSection } from '../rank.js';
+import { placeReadmeSection, rankedIndex } from '../rank.js';
 import { eolOf, withEol } from '../util.js';
 import { readmeUpsert, toUpsertPatches } from './adopted-files.js';
 import type { TsWorkspaceShell } from './ts-bootstrap.js';
@@ -191,25 +191,55 @@ function packageJsonSeed(inputs: TsRootInputs): string {
 
 /**
  * Merges one entrypoint's own scripts into the root `package.json` —
- * and, on npm, the vitest override the seed carries, so a root that
- * predates it (a brownfield root, or one seeded before the override
- * existed) gets the same protection from npm's peer walk without its
- * other overrides being touched. A real JSON round-trip rather than
- * text splicing, since `existing` may already carry the sibling
- * entrypoint's scripts in any order.
+ * each at its rank ({@link placeScripts}) — and, on npm, the vitest
+ * override the seed carries, so a root that predates it (a brownfield
+ * root, or one seeded before the override existed) gets the same
+ * protection from npm's peer walk without its other overrides being
+ * touched. A real JSON round-trip rather than text splicing, since
+ * `existing` may already carry the sibling entrypoint's scripts in any
+ * order.
  */
 function mergeRoot(existing: string, inputs: TsRootInputs): string {
   const pkg = JSON.parse(existing) as {
     scripts?: Record<string, string>;
     overrides?: Record<string, string>;
   };
-  const scripts = { ...(pkg.scripts ?? {}), ...ownScripts(inputs.arch) };
+  const scripts = placeScripts(pkg.scripts ?? {}, ownScripts(inputs.arch));
   const merged =
     inputs.pm === 'npm'
       ? { ...pkg, scripts, overrides: { ...(pkg.overrides ?? {}), vitest: VITEST } }
       : { ...pkg, scripts };
   const eol = eolOf(existing);
   return withEol(`${JSON.stringify(merged, null, 2)}\n`, eol);
+}
+
+/**
+ * `scripts` with `own` merged in. A script already there keeps its
+ * place and takes its value from `own`; a new one goes in at its rank
+ * (`rank.ts`), scripts ranking by name in `localeCompare` order: before
+ * the first script there whose name sorts after its own, or last where
+ * none does. That is the order `web-format` sorts a scaffold's scripts
+ * into, so a script an entrypoint brings in a later run — `start:cli`
+ * on a REST project — lands where one run puts it.
+ */
+function placeScripts(
+  scripts: Readonly<Record<string, string>>,
+  own: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const byName = (a: string, b: string): number => a.localeCompare(b);
+  const names = Object.keys(scripts);
+  const order = [...new Set([...names, ...Object.keys(own)])].sort(byName);
+  const added = Object.keys(own).filter((n) => !Object.hasOwn(scripts, n));
+  for (const name of added.sort(byName)) {
+    const at = rankedIndex(
+      names.map((n) => order.indexOf(n)),
+      order.indexOf(name),
+    );
+    names.splice(at === -1 ? names.length : at, 0, name);
+  }
+  return Object.fromEntries(
+    names.map((n) => [n, Object.hasOwn(own, n) ? (own[n] as string) : (scripts[n] as string)]),
+  );
 }
 
 function readmeSeed(inputs: TsRootInputs): string {

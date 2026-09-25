@@ -110,7 +110,9 @@ export const devEnvComposeAdapter: Adapter = {
         ...(base.patches ?? []),
         {
           target: '.devcontainer/devcontainer.json',
-          apply: eolAware((existing) => attachDevContainerToDevEnv(existing, projectName)),
+          apply: eolAware((existing) =>
+            attachDevContainerToDevEnv(existing, projectName, ctx.manifest.tags),
+          ),
         },
         {
           target: overlay.path,

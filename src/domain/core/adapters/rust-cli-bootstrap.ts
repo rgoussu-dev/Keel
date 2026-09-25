@@ -19,7 +19,8 @@
  * differs —
  *
  * - under `basic` the unit is a `[[bin]]` target of the project's
- *   single crate, appended to the root `Cargo.toml`;
+ *   single crate, placed in the root `Cargo.toml` at its rank: above
+ *   the HTTP unit's tables, appended where there are none;
  * - under the modulith it is a **crate of its own** under
  *   `application/`, so it needs a manifest of its own and an entry in
  *   the workspace's `members`.
@@ -31,7 +32,7 @@
 import { RUST_BOOTSTRAP_ID, rustBootstrapAnswers } from './rust-bootstrap.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import type { Tag } from '../../contract/tags.js';
-import { placeReadmeSection } from '../rank.js';
+import { placeReadmeSection, rankedIndex } from '../rank.js';
 import { eolOf, withEol } from '../util.js';
 import { addWorkspaceMembers, rustLayout, type RustLayoutPaths } from './rust-module-layout.js';
 
@@ -110,16 +111,39 @@ function srcDirOf(layout: RustLayoutPaths): string {
   return rootFile.slice(0, rootFile.lastIndexOf('/'));
 }
 
-/** Registers the unit as a `[[bin]]` of the single `basic` crate. */
+/**
+ * Registers the unit as a `[[bin]]` of the single `basic` crate, at
+ * its rank (`rank.ts`): before the first table the HTTP unit brings —
+ * its `[dev-dependencies]`, its `[[bin]]` — or appended where there is
+ * none, as it always was. One run installs the CLI first, so its binary
+ * follows the dependencies and precedes those; one arriving on an HTTP
+ * project in a later run lands there too. A table header ranks only on
+ * a line of its own.
+ */
 function rootBinPatch(binName: string, rootFile: string): ContributionPatch {
   return {
     target: 'Cargo.toml',
     apply: (existing) => {
       if (existing.includes(binMarker(rootFile))) return existing;
-      return `${existing.trimEnd()}${withEol(`\n${binSection(binName, rootFile)}`, eolOf(existing))}`;
+      const eol = eolOf(existing);
+      const section = binSection(binName, rootFile);
+      const lines = existing.split('\n');
+      const at = rankedIndex(
+        lines.map((line) => (AFTER_THE_CLI.includes(line.trim()) ? 2 : undefined)),
+        1,
+      );
+      if (at === -1) return `${existing.trimEnd()}${withEol(`\n${section}`, eol)}`;
+      const before = lines.slice(0, at).join('\n').trimEnd();
+      return `${before}${withEol(`\n${section}\n`, eol)}${lines.slice(at).join('\n')}`;
     },
   };
 }
+
+/**
+ * The tables the HTTP unit adds to the `basic` crate, which one run
+ * puts after the CLI's binary.
+ */
+const AFTER_THE_CLI: readonly string[] = ['[dev-dependencies]', '[[bin]]'];
 
 /** Registers the assembly crate as a workspace member. */
 function membersPatch(dir: string): ContributionPatch {

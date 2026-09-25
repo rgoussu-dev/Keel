@@ -520,6 +520,22 @@ that is appended at the end, as before. A heading named like keel's —
 a `### Dev container` of yours — still stands in for keel's own, which
 is then not added.
 
+An entrypoint's entries in the lists its build files share go in the
+same way: the JVM's `settings.gradle.kts` includes and root `pom.xml`
+modules — the seed's, then the CLI's, then REST's, each entrypoint's
+in its own order, then everything after them, such as the port fake,
+the peer context or persistence — the TypeScript root `package.json`
+scripts, in the order the formatter sorts them, and the basic Rust
+crate's CLI `[[bin]]`, above the HTTP unit's tables. So
+`keel add walking-skeleton --reapply` puts an include, a module or a
+script you deleted back where it was, one of an entrypoint's several
+included, and an entry already there never moves. Only the lines keel
+reads as entries rank: an include or a module on a line of its own,
+outside a comment, and in `pom.xml` only the root's own `<modules>`,
+never a profile's; in `Cargo.toml`, a table header on a line of its
+own. Where none ranks, the entry goes at the end of its list, as
+before.
+
 | Option            | Meaning                                                                                                                                      |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-y, --yes`       | Non-interactive — defaults for every question.                                                                                               |

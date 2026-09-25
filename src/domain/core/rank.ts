@@ -18,9 +18,11 @@
  * writes, so no scaffold of theirs moves a byte
  * (`tests/domain/core/shared-files.golden.test.ts` holds that on every
  * single-service preset); only a later arrival lands elsewhere, and a
- * plugin preset's README takes keel's order. A caller keeps its own marker guard in front of the rule,
- * so each patch stays its own fixed point. The rule works on LF text
- * and restores the file's line endings, as `util.ts`'s `eolAware` does.
+ * plugin preset's README, and its root `package.json` scripts, take
+ * keel's order. A caller keeps its own marker guard in front of the
+ * rule, so each patch stays its own fixed point. The rule works on LF
+ * text and restores the file's line endings, as `util.ts`'s `eolAware`
+ * does.
  */
 
 import type { Tag } from '../contract/tags.js';

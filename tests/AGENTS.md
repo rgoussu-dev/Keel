@@ -246,8 +246,15 @@ byte-identical: a cell a rank moves is a rank that moved a scaffold,
 fixed in the rank, never regenerated away. On every one of its cells
 the rule and an append write the same bytes, so it cannot see a writer
 that stopped going through the rule; `domain/core/rank-arrival.test.ts`
-holds each README writer where they differ — a section a later
-`keel add` brings, or `--reapply` puts back, against one run.
+holds each README writer, and the JVM and TypeScript build-file lists,
+where they differ — a section a later `keel add` brings, or an entry
+`--reapply` puts back, against one run. Two writers no later run
+reaches before epic R's growth are held by their own suites: the
+basic Rust crate's CLI `[[bin]]`, in a `Cargo.toml` a reapply writes
+afresh (`domain/core/adapters/rust-cli-bootstrap.test.ts`), and the
+dev container's attach on an HTTP project, which every preset
+installs with its dev environment
+(`domain/core/verticals/dev-container.test.ts`).
 Every cell is a dry run, read back through the Tree that staged it,
 except the ten scaffolds `keel add dev-env` runs on, which are written
 for real so the add has a project on disk; a real run adds only the
