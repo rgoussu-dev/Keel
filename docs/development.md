@@ -292,7 +292,10 @@ whichever of the three is missing.
   services under both repository layouts, and holds the invariants of
   roadmap epic Q over them: a golden of every verdict, and a
   known-violations file that can only shrink. How to read and
-  regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md).
+  regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md). What it
+  leaves out to stay fast — every other dial setting, every extras set,
+  every pair's arrival order, every answer choice — is the weekly
+  [composition sweep](#the-composition-sweep).
 
 ### End-to-end tests
 
@@ -566,6 +569,146 @@ stable" — so those pins rot silently. Two pieces keep that honest
 ```sh
 KEEL_RUN_CURRENCY=1 pnpm vitest run tests/currency
 ```
+
+### The composition sweep
+
+The composition grid (above, and [`tests/AGENTS.md`](../tests/AGENTS.md))
+holds keel's composition surface in `verify`, so it reads each preset's
+opening dials only — each extra alone, and the whole menu — and answers
+one non-default choice per question. The weekly lane under
+`tests/sweep/` asks the same engine the rest, on **every dial setting
+`keel.dials` offers** every preset: each build system, module layout,
+peer context and, on a product, each repository layout and each
+service's build system, every one again with the agent harness left out
+where it may be. The settings are walked from the replies
+(`tests/support/dial-walk.ts`, the walk the `keel ui` API test makes
+too), never listed. Three suites, each a test per preset:
+
+- **`extras`** — every set of offered extras: the full powerset of the
+  setting's menu (a product's per service), each set ticked as the page
+  ticks it, so each box brings what it needs. Each set must be one
+  `keel.dials` keeps as it is. Its preview must be Ok (I1, I2), and a
+  dry-run install must stage the same paths, kinds and bytes (I9).
+  Named backwards, in every order for up to three extras, and in every
+  order its boxes can be ticked in for up to three boxes (what a user
+  ticks, before what those bring), it must stage the same too (I8). On
+  a product, a set whose every extra the product also takes without a
+  service (`--with persistence` for `--with backend:persistence`) is
+  sent that way as well, to a preview and a dry-run install, and must
+  stage what it stages per service.
+- **`arrival`** — every ordered pair `(x, y)` of offered extras, with
+  what each needs, installed for real into scratch directories: one run
+  naming both, against `keel new --with x` then `keel add y` (in `y`'s
+  service directory on a product, with the `--refresh` the add's
+  preview proposes). Each extra also arrives on its own the same way,
+  `keel new` then `keel add y` against `keel new --with y`, the path a
+  user takes most. The two trees must hold the same bytes, file for
+  file, and each manifest is compared with its timestamps, key order
+  and arrival-ordered lists normalised. The planner sorts whatever set
+  it is given, so no naming order can catch a vertical whose
+  `contribute()` reads another without declaring it
+  (`Vertical.reads`). Arrival can: the undeclared read writes one thing
+  when the other vertical is already there and another when it is not,
+  and a refresh does not hide it, since a refresh re-renders only the
+  verticals that declare the read. A declared read shows as the
+  refresh the later add proposes. A read is a fact about two verticals,
+  so pairs are exhaustive for it.
+- **`choices`** — previewed with no answers, three ways: the whole menu
+  ticked, no extra, and each offered extra ticked alone with what it
+  needs. The whole menu alone would miss questions: an extra can answer
+  another's (`ci` decides distribution's CI provider) or move it onto
+  another adapter (a container image takes a CLI's distribution off
+  the native binary, and its targets), and a whole menu that throws
+  asks nothing. Then every question an adapter asks is answered with
+  each choice it offers (for a `multi-select`: none, each one alone,
+  and all; for a free-form question, one sample), one answer per body,
+  on the first of those targets that offers it. Each body must preview
+  and install as a dry run without a throw or a refusal, the preview
+  must read the answer, and both must stage the same changes.
+
+Opt-in (`KEEL_RUN_SWEEP=1`); every suite self-skips otherwise, so
+`pnpm test` and `verify` never run it — only `machinery.test.ts` beside
+them, which holds the lane's helpers there in about a second, so one
+that rots is caught on a PR. `KEEL_SWEEP_STACKS` narrows a run to the
+presets it names, and a name the catalog lacks, or a list that names
+none, fails the run rather than sweeping nothing:
+
+```sh
+KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep                                   # every preset: about an hour
+KEEL_RUN_SWEEP=1 KEEL_SWEEP_STACKS=go-http,ts-cli pnpm vitest run tests/sweep  # two presets, about half a minute
+KEEL_RUN_SWEEP=1 KEEL_SWEEP_STACKS=fullstack pnpm vitest run tests/sweep/arrival.test.ts
+```
+
+**What it costs.** It was measured in full when it landed
+(2026-09-25, four vCPUs). `tests/sweep` took 57 minutes of wall time,
+with the three files running in three workers.
+
+- `extras` is the long pole, at 57 minutes. Over 340 dial settings it
+  ticked 96,160 subsets, which came to 28,288 distinct sets. Each set
+  went to `keel.dials`, a preview and a dry-run install: 79,740
+  previews in all, counting the reorderings and the 120 sets spelled
+  without services, and 28,408 dry-run installs. Most of that time is
+  the products. A polyrepo product offers twelve extras, six in each
+  service, which makes 1,024 sets on each of its settings. The four
+  products with a build-system dial in both services ran side by side
+  and took about 47 minutes each.
+- `arrival` took 21 minutes, measured again on its own once each extra
+  also arrived alone: 8,928 pairs and 1,844 extras alone, 6,288
+  scaffolds and 10,496 adds, all written to disk.
+- `choices` took 8 minutes: 6,346 answers to 3,974 questions.
+
+That is about 179,000 dispatches, all through the mediator. The
+workflow's limit is three hours. Swept alone, a preset takes from
+seconds to some eleven minutes — `KEEL_SWEEP_STACKS=fullstack`, a
+product with a build-system dial in each service, nearly all of it
+`extras` — and `KEEL_SWEEP_STACKS=go-http,ts-cli` runs all three
+suites in about half a minute.
+
+**Reading a red run.** There is no golden and no known file: a red run
+is the report. Each failing test is a preset. Its message counts what
+it found, groups the findings by kind (what does not hold, and which
+paths differ), and lists under each kind every command line that
+reproduces it: `keel new …`, with the `--set` that answered a question,
+or for an `arrival` pair, the one run naming both `; against` the two
+runs (`keel new … then keel add …`). It also gives the sizes of the
+two change lists or trees it compared. Nothing a dispatch answers ends
+a preset early: a throw or a refusal from `keel.dials`, on a setting
+or a set, is a finding like one from a preview or an install, and the
+preset goes on. The one exception is the blank preview a product's
+repository layouts are read from, which the composite grid already
+holds in `verify`. An `arrival` finding names each extra as `--with`
+does (`backend:persistence` on a product) and says what kind of
+difference it is, from which way the two trees differ:
+
+- `the manifest records them otherwise` — the same files, another
+  record;
+- `lines … in another order` — an adapter whose output follows the
+  order it runs in;
+- `leaves files … never writes` — files only the two runs hold, and
+  nothing else but a record, where the add's refresh moves a vertical
+  onto another adapter: the refresh does not take back what the first
+  adapter wrote;
+- `other files` — anything else: a file only one run holds, or one
+  holding other bytes, refresh or none. That is what an undeclared read
+  looks like, or an order-dependent adapter.
+
+A pair that differs only as `y` does arriving on its own is listed
+under one heading, `arriving after another extra … only as it does
+arriving on its own`, so a fact about `keel add y` reads once, not once
+per `x`. Each preset logs one summary line
+(`[sweep:<suite>] <preset>: … settings, … sets, … previews …`), and
+each suite logs its totals once at the end. A setting that offers more
+extras than the powerset bound (twelve, `POWERSET_BOUND`) is swept over
+every set of up to three, the whole menu less each one, and the whole
+menu, with a warning in the log. No shipped setting passes it: a
+polyrepo product offers exactly twelve, and is swept whole.
+
+What a run found when the lane landed, and what is left to plan from it,
+is in [`roadmap.md`](roadmap.md) → Q3.4.
+
+CI runs it in `.github/workflows/composition-sweep.yml`: weekly, Monday
+04:41 UTC, and on dispatch (its `stacks` input is `KEEL_SWEEP_STACKS`).
+It is never on a PR, and it needs Node alone.
 
 ### The toolchain real-install suite
 

@@ -614,6 +614,11 @@ each with a diff; a diverging patch refuses the run). Its recorded
 answers are frozen, but an adapter it now resolves to has none — the
 container image's release pipeline above — so that adapter's questions
 are asked (and shown in `keel ui`'s preview), and `--set` reaches it.
+A re-render onto another adapter writes the new adapter's files and
+removes none of the old one's: on `quarkus-cli-rest`, the native
+release's `native-build.yml` and `release.yml` stay beside the image
+pipeline — its `release.yml` releasing on each `v*` tag as the image's
+does — until you delete them ([distribution](verticals/distribution.md)).
 Refreshing a vertical that is not installed is refused as
 `keel.vertical-not-installed`.
 

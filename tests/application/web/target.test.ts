@@ -71,11 +71,13 @@ import {
   restart,
   retarget,
   settle,
+  serviceBuild,
   serviceExtrasOf,
   toggleExtra,
   toggleRefresh,
   toggleVertical,
   verticalsOf,
+  withServiceBuild,
 } from '../../../assets/web/src/target.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
@@ -481,6 +483,19 @@ describe('a greenfield control', () => {
     expect(next.answers).toEqual({});
     expect(next.held).toEqual([]);
     expect(next.dials).toBeNull();
+  });
+
+  it("moves one service's build system on a product, keeping the other's", () => {
+    // One field carries a pair per service, so a control that posted
+    // its own pair alone would leave `keel.dials` to fill the other
+    // with its default, and undo the move that service had made.
+    const both = 'backend=gradle,frontend=npm';
+    expect(withServiceBuild(both, 'backend', 'maven')).toBe('backend=maven,frontend=npm');
+    expect(withServiceBuild(undefined, 'frontend', 'pnpm')).toBe('frontend=pnpm');
+    expect(serviceBuild(withServiceBuild(both, 'frontend', 'pnpm'), 'backend')).toBe('gradle');
+    expect(serviceBuild(both, 'frontend')).toBe('npm');
+    expect(serviceBuild(both, 'worker')).toBeUndefined();
+    expect(serviceBuild(undefined, 'backend')).toBeUndefined();
   });
 });
 

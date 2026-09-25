@@ -74,6 +74,7 @@ import {
   OK,
   eachStack,
   holdCard,
+  layoutsOf,
   settle,
   sweepGrid,
   type Grid,
@@ -95,7 +96,9 @@ describe('composition grid: composite', () => {
         const served = new Map<string, string>();
         // The same, for each service's extras as `keel new` names them.
         const named = new Map<string, string>();
-        for (const layout of await layoutsOf(grid, stack)) {
+        const layouts = await layoutsOf(grid, stack);
+        if (layouts.length === 0) throw new Error(`'${stack}' asks no repository layout`);
+        for (const layout of layouts) {
           const product = `${stack}/${layout}`;
           for (const [key, cell] of await holdServiceMenus(grid, product, stack, layout)) {
             named.set(`${layout}/${key}`, cell);
@@ -237,22 +240,4 @@ async function holdServiceMenus(
     }
   }
   return swept;
-}
-
-/**
- * The repository layouts a product's install offers: the choices of
- * the question its preview binds to the layout, asked because the
- * target leaves it unset.
- */
-async function layoutsOf(grid: Grid, stack: string): Promise<readonly RepoLayout[]> {
-  const preview = await grid.read(
-    previewQuery({
-      cwd: await grid.scratch(),
-      target: { kind: 'new-project', stack },
-      answers: {},
-    }),
-  );
-  const question = preview.questions.find((q) => q.binding.kind === 'layout');
-  if (question?.choices === undefined) throw new Error(`'${stack}' asks no repository layout`);
-  return question.choices.map((choice) => choice.value as RepoLayout);
 }

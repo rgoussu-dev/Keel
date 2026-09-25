@@ -401,6 +401,45 @@ export function serviceExtrasOf(target, path) {
   return Array.isArray(extras) ? extras.map(String) : [];
 }
 
+/**
+ * The build system a product's `buildSystem` holds for its service at
+ * `path` — undefined where it names none. A product's build system is
+ * one dial per service, travelling as `path=id` pairs in one field
+ * rather than a parallel shape the API would have to learn.
+ *
+ * @param {string | undefined} raw
+ * @param {string} path
+ * @returns {string | undefined}
+ */
+export function serviceBuild(raw, path) {
+  if (!raw) return undefined;
+  for (const entry of raw.split(',')) {
+    const [name, id] = entry.split('=');
+    if (name?.trim() === path) return id?.trim();
+  }
+  return undefined;
+}
+
+/**
+ * A product's `buildSystem` with the pair for its service at `path`
+ * set to `id` and every other pair kept — what one service's control
+ * posts when it moves.
+ *
+ * @param {string | undefined} raw
+ * @param {string} path
+ * @param {string} id
+ * @returns {string}
+ */
+export function withServiceBuild(raw, path, id) {
+  const pairs = new Map();
+  for (const entry of (raw ?? '').split(',')) {
+    const [name, value] = entry.split('=');
+    if (name?.trim() && value?.trim()) pairs.set(name.trim(), value.trim());
+  }
+  pairs.set(path, id);
+  return [...pairs].map(([name, value]) => `${name}=${value}`).join(',');
+}
+
 /** Every extra a target holds: its own, then each service's, each once. */
 function allExtrasOf(target) {
   const services = Object.keys(target?.services ?? {});

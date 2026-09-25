@@ -1,14 +1,15 @@
 # Agent conventions — tests
 
-<!-- keel:purpose: how a test is built, the guard suites, the composition grid, mutation testing -->
+<!-- keel:purpose: how a test is built, the guard suites, the composition grid and its weekly sweep, mutation testing -->
 
 What lives here: vitest suites mirroring `src/` (`domain/`, `contract/`
 pieces under it, `application/`, `infrastructure/`, `toolchain/`), the
 shared test `support/factory.ts`, the browser harness the `keel ui`
 suites drive (`support/ui-e2e.ts`), the fixture trees under
 `support/fixtures/`, the fixture plugins the `plugins/` suite loads from
-disk, the guard tests that keep this repo's registries honest, and the
-composition grid (`domain/core/composition-grid/`).
+disk, the guard tests that keep this repo's registries honest, the
+composition grid (`domain/core/composition-grid/`), and its weekly
+sweep (`sweep/`).
 
 <!-- keel:children:begin -->
 
@@ -40,7 +41,10 @@ it guards:
 
 - `ci-workflow.test.ts` — the `e2e` shard matrix against `tests/e2e/`. A
   suite in no shard never runs, and that looks exactly like a suite that
-  passed.
+  passed. The same file holds `composition-sweep.yml` to running
+  `tests/sweep/` opted in, with no `if:` to skip it and no
+  `continue-on-error` to pass it red, and to a schedule and dispatch
+  only (the weekly sweep, below).
 - `version-pins.test.ts` — `assets/composition/version-pins.json` against
   the templates. Extend the registry, never the sweep's blind spots; see
   [`assets/`](../assets/AGENTS.md).
@@ -149,13 +153,67 @@ About 25 s wall on its own, greenfield the longest at ~23 s, of which
 I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
 dispatches — about 14 s.
 
-Only I9 posts answers, and only one non-default choice per question,
-so an answer choice offered where it is refused is invisible to the
-grid. That class has a focused sweep instead, in
-`handlers/preview.test.ts`: every stack whose menu offers
-`persistence`, every non-default choice its dials declare, posted to a
-preview and to a dry-run install — Ok from both where the preview
-offers it, `keel.invalid-answer` from both where it does not.
+**The weekly sweep beside it.** The grid reads each preset's opening
+dials only, each extra alone and the whole menu, because `verify` has
+to stay fast. What that leaves out is `sweep/`: three opt-in suites over
+`support/composition-sweep.ts`, self-skipping unless `KEEL_RUN_SWEEP=1`,
+run weekly by `.github/workflows/composition-sweep.yml` and never on a
+PR. They sweep every dial setting `keel.dials` offers. The settings come
+from `support/dial-walk.ts`, the walk `application/web/dials.test.ts`
+makes too, started from each repository layout on a product and taken
+again with the agent harness left out wherever that is allowed.
+
+- `extras` takes every set of offered extras (the full powerset, a
+  product's per service), ticked through the page's own `toggleExtra`.
+  Each set is sent to `keel.dials`, which must keep it as it is, then
+  to a preview, which must be Ok, and to a dry-run install, which must
+  stage the same changes (I1, I2, I9). It is also named backwards, in
+  every order for up to three extras, and in every order its boxes can
+  be ticked in for up to three boxes (I8).
+- `arrival` installs every ordered pair of offered extras for real,
+  once in one run and once in two runs (`keel new --with x`, then
+  `keel add y` with the `--refresh` its preview proposes), and each
+  extra on its own the same way (`keel new`, then `keel add y`). The
+  two trees must match, manifests normalised. This is the one
+  comparison an undeclared `Vertical.reads` cannot pass, because the
+  planner sorts a set whatever order it is named in. A pair that
+  differs only as `y` does on its own is said so, under one heading.
+- `choices` answers every choice of every question asked by the whole
+  menu, by no extra, or by any one extra with what it needs, one answer
+  per body, then previews it and installs it as a dry run. The whole
+  menu alone would miss some: `ci` answers distribution's CI provider,
+  and a container image moves a CLI's distribution off the native
+  binary and its targets.
+
+There is no golden and no known file. Each preset is a test that fails
+with every finding it collected, grouped by kind, with the command line
+that reproduces each one listed underneath; a dispatch that throws or
+refuses, `keel.dials` on a setting included, is a finding, never the
+end of the preset — all but the blank preview a product's repository
+layouts are read from, which the composite grid holds in `verify`.
+`KEEL_SWEEP_STACKS=go-http,ts-cli` narrows a run. What a full run
+costs, and how to read one, is in `docs/development.md` → The
+composition sweep. `sweep/machinery.test.ts` is the one file there
+that is not opted in. It holds the lane's helpers in `verify` (the
+settings walked, a setting `keel.dials` refuses, the powerset and its
+cap, a tick and its closure, a product's ticks and keys per service,
+its two spellings, the read-back of what a dispatch staged, both
+comparisons, the report), so a helper that rots shows on a PR rather
+than as a weekly run that swept nothing. The skipped suites read
+nothing when they are collected, but they still import the engine, a
+couple of seconds each.
+
+Only I9 posts answers, and only one non-default choice per question on
+each preset's opening dials, so the grid cannot see an answer choice
+that is offered and then refused. The sweep's `choices` suite covers
+every offered choice of every question the whole menu, no extra or one
+extra asks, on every dial setting. `verify` keeps a focused slice of
+that class in `handlers/preview.test.ts`: every stack whose menu
+offers `persistence`, and every non-default choice its dials declare,
+posted to a preview and to a dry-run install. Both must be Ok where
+the preview offers the choice, and both must be `keel.invalid-answer`
+where it does not. That second half, a hidden choice refused, is one
+the sweep never posts.
 
 **The planner's readiness golden.** `domain/core/planner-readiness.golden.json`
 records what `planner.ts` reads for every single-service preset × every
@@ -175,11 +233,13 @@ the install) for the offered choice. It never re-derives the gate from
 the menu's blind spots. `application/web/dials.test.ts` held the page's
 bodies to `assemblyRefusal`, the function the menu itself filters by,
 and an offered extra that throws passed it. Its walk now posts every
-body it reaches — each dial setting of every preset, each extra
-ticked and unticked through the page's own `toggleExtra`, and the
-agent harness left out once per single preset — to
-`POST /api/preview`: some 330 previews, about 10 s, under a timeout of
-its own.
+body it reaches to `POST /api/preview`: each dial setting of every
+preset (`support/dial-walk.ts`, which moves one service's build system
+of a product and keeps the others', through the page's own
+`withServiceBuild`), each extra ticked and unticked through the page's
+own `toggleExtra`, and the agent harness left out once per single
+preset. That is some 370 previews, about 10 s, under a timeout of its
+own.
 
 ## Mutation testing
 

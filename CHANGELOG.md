@@ -988,6 +988,43 @@ distribution iac`) — _Not for this project_, collapsed, each with the
 
 ### Added
 
+- **A weekly composition sweep covers what the grid cannot afford to.**
+  The composition grid in `verify` reads each preset on its opening
+  dials only, each extra alone and the whole menu, and answers one
+  choice per question. The rest was planned under epic Q and never
+  swept: every other dial setting, every set of offered extras, every
+  pair of them arriving in one run and in two, and every answer a
+  question offers. `.github/workflows/composition-sweep.yml` now
+  sweeps it weekly (Monday 04:41 UTC, and on dispatch). It is
+  report-only and never a PR gate. It runs three opt-in suites under
+  `tests/sweep/` (`KEEL_RUN_SWEEP=1`; `KEEL_SWEEP_STACKS=go-http,ts-cli`
+  narrows a run), each on every dial setting `keel.dials` offers every
+  preset, products included:
+  - `extras` takes the full powerset of the menu, each set ticked as
+    the page ticks it. Each set goes to `keel.dials`, to a preview and
+    to a dry-run install, and is named backwards and, for up to three,
+    in every order.
+  - `arrival` installs every ordered pair of extras for real, in one
+    run and in two (`keel new --with x`, then `keel add y` with the
+    `--refresh` it proposes), and each extra on its own the same way
+    (`keel new`, then `keel add y`), then compares the trees. This is
+    the one comparison an undeclared `Vertical.reads` cannot pass.
+  - `choices` answers every choice of every question that the whole
+    menu, no extra, or any one extra asks.
+
+  A red run is the report: one failing test per preset, its findings
+  grouped by kind, each with the command lines that reproduce it.
+  A full run takes 57 minutes on four vCPUs, about 179,000
+  dispatches. What it found when it landed is recorded in
+  `docs/roadmap.md` → Q3.4, for later steps. The first run turned up
+  one throw on a dial setting the grid never reads: `persistence` on
+  the modulith layout with the peer context, on the Micronaut REST
+  presets and the TypeScript HTTP presets. It also found that moving
+  a native-binary distribution onto the image's release pipeline
+  (`keel add containerization --refresh distribution` on
+  `quarkus-cli-rest`) leaves the native release's workflows behind;
+  `docs/verticals/distribution.md` now says so.
+
 - **An unknown `--stack` or vertical id names the one it most likely
   meant.** `keel new --stack=quarkus-cli-http` answered with the 34
   ids there are and left the reader to spot `quarkus-cli-rest`. The

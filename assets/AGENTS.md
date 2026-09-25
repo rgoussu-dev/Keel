@@ -25,8 +25,10 @@ it compiled.
   dials and the request generation it clears, which dials and extras a
   new preset carries, where the answers it holds land once the new
   preset is previewed, what the line under the preset picker says a
-  move could not keep, and which boxes an "Also scaffold" tick moves
-  (`toggleExtra` on a new project, `toggleVertical` on a keel project:
+  move could not keep, how one service's build system moves a
+  product's (`withServiceBuild`, keeping the other services' pairs),
+  and which boxes an "Also scaffold" tick moves (`toggleExtra` on a
+  new project, `toggleVertical` on a keel project:
   a tick brings what the vertical needs, an untick takes what needs it,
   and what the project has is locked; `rerender` and `toggleRefresh`
   for an installed vertical). That group is one control, drawn by

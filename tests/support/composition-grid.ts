@@ -60,6 +60,7 @@ import {
   type InstallTarget,
   type NewProjectTarget,
   type PresetAnswers,
+  type RepoLayout,
 } from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
 import type { Tree, TreeChange } from '../../src/domain/contract/ports/tree.js';
@@ -185,7 +186,7 @@ export interface Outcome<T> {
  * The prefix of a {@link Outcome.verdict} that fell off the `Err`
  * rail — an I1 violation wherever it appears.
  */
-const THROWN = 'thrown:';
+export const THROWN = 'thrown:';
 
 /** An identity tag, which no command can add to a project. */
 const IDENTITY_TAG = /\b(?:lang|framework|runtime|pkg|layout|arch)\.[a-z0-9*]/;
@@ -221,9 +222,9 @@ export class Grid {
   private readonly found = new Map<Invariant, Set<string>>();
   private readonly scratches: string[] = [];
   /**
-   * Roots whose Trees {@link staged} is reading, and the Trees opened
-   * there or under it — a product's services open theirs one level
-   * down — each with the directory it is rooted at.
+   * Roots whose Trees {@link staged} or {@link stages} is reading, and
+   * the Trees opened there or under it — a product's services open
+   * theirs one level down — each with the directory it is rooted at.
    */
   private readonly watched = new Map<string, { readonly at: string; readonly tree: Tree }[]>();
 
@@ -308,12 +309,37 @@ export class Grid {
     if (this.outcomes.has(id)) {
       throw new Error(`staged: cell '${id}' was swept already, so what it staged is gone`);
     }
+    return (await this.watching(root, () => this.cell(id, action))).staged;
+  }
+
+  /**
+   * Dispatches `action` as {@link twin} does, recording nothing, and
+   * reads back what it staged under `root` as {@link staged} does —
+   * null when it did not come back Ok. For a sweep too large to keep
+   * every outcome (the weekly lane, `tests/sweep/`), which compares
+   * what two dispatches staged and keeps only the difference. `root`
+   * must be a directory no other dispatch stages into meanwhile.
+   */
+  async stages<A extends Action>(
+    action: A,
+    root: string,
+  ): Promise<{
+    readonly outcome: Outcome<ResultOf<A>>;
+    readonly staged: readonly string[] | null;
+  }> {
+    return this.watching(root, () => this.twin(action));
+  }
+
+  private async watching<T>(
+    root: string,
+    dispatch: () => Promise<Outcome<T>>,
+  ): Promise<{ readonly outcome: Outcome<T>; readonly staged: readonly string[] | null }> {
     const trees: { readonly at: string; readonly tree: Tree }[] = [];
     this.watched.set(root, trees);
     try {
-      const outcome = await this.cell(id, action);
-      if (outcome.verdict !== OK) return null;
-      return trees
+      const outcome = await dispatch();
+      if (outcome.verdict !== OK) return { outcome, staged: null };
+      const staged = trees
         .flatMap(({ at, tree }) =>
           tree.changes().map((change) => {
             const bytes = tree.read(change.path);
@@ -323,6 +349,7 @@ export class Grid {
           }),
         )
         .sort();
+      return { outcome, staged };
     } finally {
       this.watched.delete(root);
     }
@@ -392,6 +419,25 @@ export async function settle(
         .map((vertical) => vertical.id),
     ),
   };
+}
+
+/**
+ * The repository layouts a product's install offers: the choices of
+ * the question its preview binds to the layout, asked because the
+ * target leaves it unset — so a third layout joins every sweep the day
+ * the install asks about it. Empty for a single-service preset, which
+ * asks none.
+ */
+export async function layoutsOf(grid: Grid, stack: string): Promise<readonly RepoLayout[]> {
+  const preview = await grid.read(
+    previewQuery({
+      cwd: await grid.scratch(),
+      target: { kind: 'new-project', stack },
+      answers: {},
+    }),
+  );
+  const question = preview.questions.find((q) => q.binding.kind === 'layout');
+  return (question?.choices ?? []).map((choice) => choice.value as RepoLayout);
 }
 
 /**
@@ -570,6 +616,17 @@ function sampleOf(question: PendingQuestion): readonly [string, string] | null {
     return [first, values.find((value) => value !== first) ?? first];
   }
   if (question.shared === undefined) return null;
+  return identitySamples(question);
+}
+
+/**
+ * The two values {@link IDENTITY_SAMPLES} keeps for an identity
+ * question (`Question.shared`), for any sweep that answers one — the
+ * grid's I9 bodies, and the weekly lane's every choice of every
+ * question. A shared question with no entry fails the sweep, naming
+ * itself.
+ */
+export function identitySamples(question: PendingQuestion): readonly [string, string] {
   const sample = IDENTITY_SAMPLES[question.id];
   if (sample === undefined) {
     throw new Error(

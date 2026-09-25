@@ -149,7 +149,12 @@ or whose adapters resolve differently on the tags the run left (a
 native-only distribution once a JVM image arrives). Proposed, never
 done — a re-render overwrites what the vertical owns — and
 `keel add … --refresh <ids>` takes it up in the same run, ordered like
-any other vertical of the set.
+any other vertical of the set. Whether a later add with the refresh it
+proposes leaves the tree one run naming both writes, for every pair
+of extras and each extra on its own, on every dial setting, is what
+the weekly composition sweep's `arrival` suite measures
+([development](development.md#the-composition-sweep)); what it found
+when it landed is in the roadmap, under Q3.4.
 
 ### Refusals
 

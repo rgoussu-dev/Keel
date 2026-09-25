@@ -21,13 +21,14 @@ held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
 items below each carry an issue of their own.
 
-**Q** (supple composition) has landed its Phases 0 to 2: proposed from
+**Q** (supple composition) has landed, Phases 0 to 3: proposed from
 an audit of how `keel new`, `keel add`, the presets and `keel ui`
 exercise the composition model, it was sliced into the steps its
 section lists and landed one commit per step. Its Phase 3 — the open
-ends found once it had merged — is under way, one step each. Its
-successors — **R**, **S**, **T** and **U** — are named there, not yet
-sliced into issues or ordered against the backlog.
+ends found once it had merged — landed one step each, the last of them
+the weekly composition sweep its measure had planned. Its successors —
+**R**, **S**, **T** and **U** — are named there, not yet sliced into
+issues or ordered against the backlog.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -2177,15 +2178,15 @@ init` and a resolved toolchain, not a zip. A remote service would
 
 ---
 
-## Q — Supple composition: one answer, asked everywhere
+## Q — Supple composition: one answer, asked everywhere ✅
 
-**Proposed 2026-09-23 from an audit, and landed** — Phase 0 to Phase 2
+**Proposed 2026-09-23 from an audit, and landed** — Phase 0 to Phase 3
 below, one commit per step, every decision taken as recommended
-(_Decisions on record_); Phase 3 holds the open ends found once it had
-merged (#169), one step each. **R**, **S**, **T** and **U** remain:
-named at the end of this section, not part of Q. Anchored on [#117] ("one
-declaration, read twice"), which it extends from the stack drill-down
-to every vertical, in both phases.
+(_Decisions on record_); Phase 3 held the open ends found once it had
+merged (#169), one step each, and landed too. **R**, **S**, **T** and
+**U** remain: named at the end of this section, not part of Q. Anchored
+on [#117] ("one declaration, read twice"), which it extends from the
+stack drill-down to every vertical, in both phases.
 
 [#117]: https://github.com/rgoussu-dev/keel/issues/117
 
@@ -2321,12 +2322,15 @@ the distribution throw got through).
 monorepo services' image cells (PHASE-3) read ready and meet the files
 the product root wrote, and reach zero with Q1.10.
 
-A weekly report-only lane beside mutation — the full powerset of
-offered extras (~1.8k previews, where an undeclared soft read would
-show as an I8 diff) and every choice of every question (~1.5k
-previews) — was planned and not built: the grid reads each stack's
-default dials only, and sends one non-default choice per question
-(I9). The lane is one of Phase 3's steps.
+The grid reads each stack's default dials only, and sends one
+non-default choice per question (I9), because it runs in `verify`. A
+weekly report-only lane beside mutation was planned at the audit for the
+rest — the full powerset of offered extras, where an undeclared soft
+read would show as an I8 diff, and every choice of every question —
+and landed with Phase 3 (Q3.4): `tests/sweep/`, on every dial setting of
+every preset, with arrival order — a pair installed in one run and in
+two — as the comparison that catches the soft read, since naming order
+cannot.
 
 ### Phase 0 — stop the bleeding (defects only, no model change; ~1.5–2 weeks)
 
@@ -3378,7 +3382,7 @@ and the page's notice do, each saying every add but that one is
 refused — and a fourth Q3.2 left, `keel add module`, `keel link` and
 `keel toolchain` inside a project still saying to run `keel new` first
 (all four Q3.3); and the weekly report-only lane _The measure_ planned
-and did not build. One step each, the grid naming what moves.
+and did not build (Q3.4). One step each, the grid naming what moves.
 
 #### Q3.1 — "Already there" at a monorepo product root (S) ✅
 
@@ -3870,6 +3874,236 @@ sends the user into a service (_run 'keel add module <name>' inside
 the service directory instead_) without asking whether any takes a
 bounded context — the front door reads the root's manifest alone
 there, and the status's `moduleRefusal` is held to it.
+
+#### Q3.4 — The weekly composition sweep: every extras set, every dial, every choice (M) ✅
+
+The lane _The measure_ planned at the audit and never built: a
+scheduled workflow beside `mutation.yml`, never a PR gate, running two
+sweeps on every dial setting of every preset through `keel.preview`
+and a dry-run install — the full powerset of offered extras, comparing
+change lists across permutations (I8 generalised, to catch an
+undeclared `Vertical.reads`), and every choice of every question (to
+catch a choice offered where it throws). Report-only, like
+`version-currency.yml`, and documented beside it.
+
+Landed as three opt-in suites under `tests/sweep/` — `extras`, `arrival`
+and `choices`, three files so vitest runs them in three workers — over
+`tests/support/composition-sweep.ts`, and
+`.github/workflows/composition-sweep.yml`: Monday 04:41 UTC and on
+dispatch (a `stacks` input), `contents: read`, the action SHAs `ci.yml`
+pins, Node alone, 180 minutes. Each suite self-skips unless
+`KEEL_RUN_SWEEP=1` and reads nothing when collected, so `verify` gains
+three skipped files — each still imports the engine, a couple of
+seconds of collection — and the twelve tests of `machinery.test.ts`
+(below), about a second; `KEEL_SWEEP_STACKS` narrows a run, and a
+name the catalog lacks, or a list naming none, fails it. Each preset is
+a test that collects every finding, grouped by what does not hold and
+which paths differ, each group listing the command lines that
+reproduce it (the page's `command.js`; an `arrival` pair's one run
+`; against` its two) and the sizes of the two change lists or trees.
+No golden, no known file: a red run is the report. Nothing is kept per
+dispatch — the grid's support gained `Grid.stages`, its `staged`
+read-back recording nothing — and it exports `THROWN` and
+`identitySamples`; the page's own `settle` and `toggleExtra` tick each
+set, so a set is what the page can build.
+
+The settings are walked, never listed. The breadth-first walk
+`application/web/dials.test.ts` made inline is
+`tests/support/dial-walk.ts`' `walkDials`, which both call — the page's
+test over `POST /api/dials`, the lane over the mediator, seeded with
+each repository layout a product's preview asks (`layoutsOf`, moved out
+of the composite suite into the grid's support) and crossed with the
+agent harness left out wherever `keel.dials` lets it be. Sharing it
+showed a gap in the walk: a move of one service's build system posted
+that service's pair alone, which `keel.dials` fills with the other's
+default, so it reached three of a product's four build-system
+combinations (`backend=maven,frontend=pnpm` never); it now composes the
+field with the page's own `withServiceBuild`, and the page's walk posts
+367 bodies, four more: one per product with a build-system dial in each
+service. 340 dial settings in all: twelve on a JVM or TypeScript single
+preset, six on Go and Rust, eight on a product with a build-system dial
+in each service, four on one with one.
+
+- `extras` ticks every subset of each setting's menu (a product's per
+  service), and each distinct set the ticks come to, once, is held to
+  `keel.dials` keeping it as it is, a preview that is Ok and a dry-run
+  install staging the same paths, kinds and bytes (I1, I2, I9), and —
+  named backwards, in every order for up to three, in every order its
+  boxes can be ticked in for up to three boxes (the subset the text
+  above calls S: what a user ticks, before what those bring), and on a
+  product whose every extra of the set it also takes without a
+  service, named so — to staging the same (I8); spelled without
+  services, it goes to a dry-run install as well (I2, I9). A single
+  preset offers six extras at most, 32 or 40 sets once ticked; a
+  polyrepo product twelve, six a service, 1,024 sets on each of its
+  settings — within the bound (`POWERSET_BOUND`, twelve), past which a
+  setting would be swept over sets of up to three, the whole menu less
+  each one and the whole menu, with a warning.
+- `arrival` is the part the text above did not have. `admit` sorts
+  the ids it is handed, so a naming permutation of one set is the same
+  plan by construction, and no permutation can show an undeclared
+  read. What varies the order verticals install in is their arrival:
+  for every ordered pair `(x, y)` of offered extras, each with what it
+  needs, the suite installs for real `keel new --with x,y` and `keel new
+--with x` then `keel add y` — in `y`'s service directory on a
+  product, with the `--refresh` the add's preview proposes — and holds
+  the two trees to each other, file for file, each manifest with its
+  timestamps, key order and arrival-ordered lists normalised. Each `y`
+  arrives on its own first, `keel new` then `keel add y` against `keel
+new --with y`, and a pair that differs only as `y` alone does is
+  listed under one heading rather than as a fact about `x`. A pair
+  whose `y` is among what `x` needs is left out. A difference is read
+  from which way the trees differ: `record` (only a manifest's record),
+  `order` (lines in another order), files only the two runs hold where
+  the add's refresh moves a vertical onto another adapter (a refresh
+  that does not take back what the first adapter wrote), and anything
+  else, refresh or none — a file only one run holds, or other bytes —
+  as what an undeclared read looks like, since a refresh re-renders
+  only the verticals that declare theirs.
+- `choices` reads the questions off previews with no answers — of the
+  whole menu ticked, of no extra, and of each offered extra ticked
+  alone with what it needs — and answers each question an adapter asks
+  with each choice it offers (a `multi-select`: none, each, all; a
+  free-form question: the grid's identity sample, or the lane's
+  `FREE_FORM_SAMPLES` — `remote` and `defaultBranch` — for the two
+  that are not), one answer a body, on the first of those targets that
+  offers it, to a preview and a dry-run install: no throw, no refusal,
+  the answer read, the same changes.
+
+Measured in full on this container, as landed (four vCPUs,
+2026-09-25): 57 minutes of wall time for `tests/sweep`, with the three
+files in three workers. `extras` took 57 minutes: 96,160 subsets
+ticked to 28,288 sets over 340 dial settings, giving 28,288
+`keel.dials` reads, 79,740 previews counting the reorderings and the
+120 sets spelled without services, and 28,408 dry-run installs.
+`arrival` took 21 minutes, measured again on its own once review gave
+each extra an arrival of its own: 8,928 pairs and 1,844 extras alone,
+6,288 scaffolds, 10,652 add previews and 10,496 adds, all on disk.
+`choices` took 8 minutes: 6,346 answers to 3,974 questions, giving
+8,870 previews and 6,346 dry-run installs. That is some 179,000
+dispatches. Most of `extras` is the
+products: the four with a build-system dial in each service took about
+47 minutes each, side by side, at 4,160 sets apiece. So the workflow's
+limit is three hours, and a preset's own 90 minutes. Swept alone, a
+preset takes from seconds to eleven minutes (`fullstack`, nearly all of
+it `extras`); `go-http` and `ts-cli` together take about half a minute.
+
+What the run found: 46 of the lane's 105 tests red, and every preset
+red in `arrival`. It comes to five things. None is fixed here, since
+none is a one-line declaration that leaves the greenfield bytes alone;
+each is left for a step of its own:
+
+1. **A throw on a dial setting the grid never reads.** `persistence`
+   throws on the modulith layout with the peer context, on
+   `micronaut-rest`, `micronaut-cli-rest`, their Kotlin twins,
+   `ts-http` and `ts-cli-http`, with either build system and with the
+   harness on or off. The throw comes from its adapter's patch of the
+   composition root (`persistence/micronaut-persistence`: _the
+   composition root has drifted from the walking-skeleton shape — add
+   "com.example.greeting.domain.core.greetinglog" to the @Import
+   packages on MediatorFactory…_, with `…-kotlin` and
+   `persistence/ts-persistence` alike). It happens in a preview, a
+   dry-run install, `keel new` and `keel add persistence`, so it breaks
+   I1 and I2. The lane met it in 64 sets per preset in `extras`, in
+   `choices` in the whole menu and in persistence alone on four
+   settings a preset (the settings' other questions it reads off the
+   other extras' previews), and in 24 scaffolds and 24 add previews in
+   `arrival`. The peer context's second context changes the root the
+   patch anchors on; Quarkus, Spring, Go and Rust take persistence
+   there. The fix is for the patch to read that root, not a
+   declaration: declaring persistence unavailable there would take away
+   what the other families give.
+2. **A refresh that changes adapters leaves the first one's files.**
+   On `quarkus-cli-rest` and its Kotlin twin under Gradle, distribution
+   alone resolves to the native binary (D3). `keel add
+containerization` then proposes `--refresh distribution`, which
+   re-renders it as the image's release pipeline. The native build's
+   `.github/workflows/native-build.yml` and `release.yml` stay behind,
+   and so do its answer and its tags in the manifest; one run naming
+   both never writes any of them. `keel add distribution --reapply`
+   after the image leaves the same two behind. The refresh D3 counted
+   on does cover the image arriving later, but it cannot take back what
+   the first adapter wrote: that is L's missing merge base. Until then,
+   `docs/verticals/distribution.md` and `docs/cli.md` → `--refresh` say
+   so, and that the native `release.yml` still runs on each `v*` tag.
+3. **An add refused where one run is Ok.** On the same presets, `keel
+add iac` after `keel new --with distribution` is refused as
+   `keel.needs-refresh` (_Infrastructure as code needs Container image,
+   then Distribution re-rendered_), while `keel add containerization`
+   in the same place proposes that refresh instead. The lane takes up
+   proposals, not a refusal's remedy, so the pair goes no further. This
+   is by design (D12); it is recorded so a later step can decide
+   whether it should be a proposal.
+4. **README sections in arrival order.** Where `toolchain` arrives
+   before `persistence` or `dev-env`, its README section comes before
+   theirs. One run installs by id and puts it after. This holds on every
+   HTTP preset, every CLI preset, web-components and each product's
+   services: the same lines in another order, from an adapter whose
+   output follows the order it runs in. The grid's I8 already holds one
+   run to itself for this shared file. The rank-anchored upserts for
+   shared files that **R** names would settle it across runs.
+5. **The manifest records keel's own later write as drift.** Whenever
+   `persistence` arrives in a later run — `keel new` then `keel add
+persistence` included, no other extra needed — it writes its section
+   into a directory document the agent harness tracks
+   (`internal/infra/AGENTS.md` on Go). Two runs leave the harness's
+   entry for that document with the first run's `sha256Shipped` and the
+   new `sha256Current`, so keel's own write reads as the user's. One run
+   records the patched bytes as shipped. This holds on every preset that
+   offers persistence, with the harness on.
+
+No undeclared read: no pair's trees differed in a file one run holds
+and two do not, or in a file's bytes, and the one pair whose two runs
+hold files one run does not is (2), where the refresh moves
+distribution onto another adapter.
+`extras` found no naming order, bare spelling or dry-run install that
+staged otherwise, and `keel.dials` kept every set. `choices` found no
+offered choice refused or left unread, only the throw in (1) in the
+previews it reads its questions off — the 940 answers it gained in
+review, to the questions the whole menu hid, all Ok.
+
+Beyond the text above: `extras` also holds each set to `keel.dials`
+keeping it — the powerset form of the page walk's check that a gesture
+leaves `adjustments` empty. That read, like the walk's own, goes through
+`Grid.twin`: `keel.dials` refusing or throwing on a set, or on a setting
+the walk reached, is a finding, and the preset goes on. The two
+spellings of a product's extras mixed in one `--with` are refused
+(`keel.invalid-extra-verticals`), so the bare spelling is swept only
+where every extra of a set has one: to a preview and a dry-run install
+(I2, I9) and against the set as ticked (I8), but not to `keel.dials`,
+which routes a bare id onto its service (the page never posts one).
+`choices` reads its questions off more than the whole menu the text
+above names, since review found the whole menu hid some: one extra
+answers a question another asks (Continuous integration decides
+Distribution's CI provider, on every container family), or moves it onto
+another adapter (a container image takes a composed CLI's distribution
+off the native binary, and its `targets`), and on the settings where it
+throws — (1) above — it asked nothing. The page's `serviceBuild` and
+`withServiceBuild` moved, unchanged, from `keel-new-form.js` into
+`target.js`, so the walk moves a service's build system with the page's
+own code, as it ticks with the page's own `toggleExtra`; `dial-walk.ts`
+also holds the page's settled run and the boxes it draws, which the page
+walk and the lane had each copied. `tests/sweep/machinery.test.ts` is
+not opted in: it holds the lane's helpers in `verify` — the settings
+walked (each again with the harness left out, a product's every layout
+and build-system combination, and a setting `keel.dials` refuses
+recorded once while the walk goes on past it), the powerset and its
+cap (each subset once), a tick bringing what it needs, a product's
+ticks and keys per service, its two spellings, the answers a question
+gets, what a preview and a dry-run install stage, read back with a
+product's services, the comparison of two change lists (a path staged
+twice included) and of two trees (which way they differ included), a
+manifest read by what it records, and the report — so a helper that
+rots shows on a PR rather than as a Monday run that swept nothing. `tests/ci-workflow.test.ts`
+holds the workflow to a schedule and a dispatch, never a push or a pull
+request, and to running the whole of `tests/sweep` opted in, on every
+preset unless a dispatch names some — reading the step's environment as
+Actions does, the workflow's and the job's under its own — with no
+`if:` that could skip it and no `continue-on-error` that would pass a
+red run. The grid
+itself moved no verdict: the greenfield, brownfield, composite and
+planner-readiness goldens and the docs matrix regenerate byte-identical,
+and the known files stay as they were.
 
 ### Decisions on record
 
