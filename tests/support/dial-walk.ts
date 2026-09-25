@@ -11,12 +11,15 @@
  *
  * One enumeration, shared: `application/web/dials.test.ts` walks it
  * over `POST /api/dials`, the page's own route, and the weekly
- * composition sweep (`tests/sweep/`) over the mediator. Neither keeps a
- * list of settings: what a preset offers is whatever the replies offer,
- * so a dial or a rule registered tomorrow is walked without an edit.
- * Both then tick the extras on what they reached as the page does,
- * from the run it holds once a reply has settled ({@link settledRun}),
- * over the boxes it draws ({@link offeredAsExtra}).
+ * composition sweep (`tests/sweep/`) and the shared-file byte golden
+ * (`domain/core/shared-files.golden.test.ts`) over the mediator. None
+ * keeps a list of settings: what a preset offers is whatever the
+ * replies offer, so a dial or a rule registered tomorrow is walked
+ * without an edit. The first two then tick the extras on what they
+ * reached as the page does, from the run it holds once a reply has
+ * settled ({@link settledRun}), over the boxes it draws
+ * ({@link offeredAsExtra}); the golden names those boxes to
+ * `keel.dials`.
  */
 
 import { settle, withServiceBuild } from '../../assets/web/src/target.js';

@@ -225,6 +225,36 @@ is a record of the planner, not an oracle for the gate: the menus and
 both front doors read the planner, and the grid holds each of them to
 the install through preview.
 
+**The shared-file byte golden.** `domain/core/shared-files.golden.json`
+records the sha256 of each file more than one adapter writes into —
+the root `README.md`, `settings.gradle.kts`, `pom.xml`, `package.json`,
+`Cargo.toml` and `.devcontainer/devcontainer.json` — on every
+single-service preset, every dial setting `keel.dials` offers it
+(`support/dial-walk.ts`), and three extras sets: none, the whole menu,
+and `dev-env` alone where it is an extra. On each preset's opening
+setting it also records `keel add dev-env` on the scaffold wherever
+dev-env is an extra (every CLI and SPA preset), the whole menu with
+Liquibase chosen wherever the preview offers it (the one writer of
+these files no default answer reaches), and the whole menu over a
+README of the user's whose `### Toolchain` and `### Dev container`
+headings sit above keel's part. Roadmap epic R moves those writers
+from appending to a ranked place (R.1), with ranks chosen to reproduce
+the order a scaffold already has. This golden landed before any of
+that code, and it holds R.1 to leaving every cell byte-identical.
+Every cell is a dry run, read back through the Tree that staged it,
+except the ten scaffolds `keel add dev-env` runs on, which are written
+for real so the add has a project on disk; a real run adds only the
+commit. The agent harness is left on: it writes none of these files,
+and leaving it out moves no cell. A failure names the cell, as the
+command line that makes it, and the file. A new single-service preset,
+dial or extra adds or moves cells here as well as in the grid, as does
+any template or pin change that reaches one of these files, and the
+same change regenerates the golden:
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/shared-files.golden.test.ts`.
+It reads no other golden, so the order does not matter. Its installs
+run in a `beforeAll`, so mutation testing leaves it out, as it does
+the grid.
+
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial
 menu, the extras list, a brownfield card — dispatches `keel.preview` (or

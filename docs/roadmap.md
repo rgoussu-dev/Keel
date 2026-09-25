@@ -4782,6 +4782,69 @@ restoring it, now lands in keel's order instead of at the end.
 - the marker guards' whole-file reach (a user heading
   `### Dev container` still suppresses keel's own, as today).
 
+**Landed first: the golden alone**, in a commit of its own with no
+`src/` change. The rule, its call sites and the DR1 guard make up the
+second commit, and the step's ✅ waits for it.
+`shared-files.golden.test.ts` records 398 cells and 1,167 hashes:
+
+- the 150 dial settings of the 28 single-service presets, with no
+  extras and with the whole menu. The settings come from `walkDials`,
+  the walk the weekly sweep makes;
+- `--with dev-env` on the 54 settings of the ten presets where dev-env
+  is an extra: the six JVM CLIs, `go-cli`, `rust-cli`, `ts-cli` and
+  `web-components`;
+- `keel add dev-env` on those ten presets' opening scaffolds;
+- the whole menu with `migrations=liquibase` on the opening setting of
+  the six presets whose preview offers it (Go, Rust and TypeScript,
+  HTTP and CLI+HTTP);
+- the whole menu on every preset's opening setting over a user README
+  whose `### Toolchain` and `### Dev container` headings sit above
+  keel's part.
+
+Every cell writes `README.md` and `.devcontainer/devcontainer.json`.
+`keel.dials` snaps each set, and on no setting does it add to the whole
+menu or drop anything from it; the cell's key names the set in install
+order, then the answer it is sent. A failure names the cell, as the
+command line that makes it, and the file. The Factory is the grid's,
+`installMediator` with a fake process runner and no deferred action;
+the port is `Mediator.dispatch`. No existing golden or known file
+moved.
+
+Beyond the text above:
+
+- **Greenfield cells are dry runs**, read back through the Tree that
+  staged them. The brownfield scaffolds are real, so that `keel add`
+  has a project on disk. Written to disk, the first 364 cells took
+  about 21.5 s on their own; as dry runs they take about 14 s. The
+  first recording was made on disk, and the dry-run reading reproduced
+  every cell of it, since a commit is the only thing a real run adds.
+- **Liquibase and a seeded README.** Every other cell answers the
+  defaults, so none reached `liquibase-migrations.ts`'s `### Database`
+  patch, one of this step's call sites. Every non-default choice the
+  opening whole menus offer was measured against the default. Only
+  `migrations=liquibase` swaps the writer of one of the six files;
+  `engine=mariadb` rewords Flyway's section, whose writer the defaults
+  already run. No cell seeded a README either, so an adopted one, where
+  the rule's `## ` scoping decides, was pinned nowhere by bytes. Both
+  kinds of cell read the opening setting alone, as I9 does: learning
+  where Liquibase is offered takes a preview, and one on every setting
+  added about a quarter to the suite's time. The 398 cells take about
+  15 s on their own.
+- **The agent harness is not an axis.** With it left out, all 364
+  first cells hash the same, since it writes none of the six files,
+  and the run saves under two seconds of the 21.5. It stays on.
+- **The key is spelled by the test**, not by the page's `command.js`,
+  so a change to how the page prints a command moves no key.
+- **Mutation testing leaves the golden out**, as it does the grid
+  (`vitest.stryker.config.ts`). Its installs run in a `beforeAll`,
+  which Stryker credits to no test, so the golden could kill no
+  mutant, and a mutant only it reaches would be scored Ignored instead
+  of NoCoverage.
+
+`tests/AGENTS.md` records the golden beside the planner's readiness
+golden, and `docs/development.md` names the command that regenerates
+it.
+
 #### R.1b — Ranked build-file lists: includes, modules, scripts, the CLI binary (S)
 
 This step applies the same rule to the lists the entrypoints share.

@@ -464,7 +464,7 @@ recorded there too:
   stronger check of that declarative surface than a mutant re-running
   the unit suite.
 - **Mutants run against `vitest.stryker.config.ts`**, which is the
-  ordinary config minus three suites — all excluded by construction,
+  ordinary config minus four suites — all excluded by construction,
   not by environment. `tests/e2e/` decides for itself whether to run,
   and on a box with a JDK on PATH it would happily build a real
   project once per mutant. `tests/version-pins.test.ts` is a text
@@ -486,7 +486,9 @@ recorded there too:
   `beforeAll`, which the runner attributes to no test: its own tests
   cover nothing, so it could kill no mutant, and a mutant only it
   reaches would count as static — Ignored under `ignoreStatic`,
-  rather than reported as uncovered.
+  rather than reported as uncovered. The shared-file byte golden
+  (`tests/domain/core/shared-files.golden.test.ts`) runs its installs
+  in a `beforeAll` too, and is left out for the same reason.
 
 Incremental mode is on: `reports/stryker-incremental.json`
 (gitignored) records what was tested against which code, so a re-run
@@ -1052,7 +1054,15 @@ the operator's machine would report it as a harness finding.
   Regenerate the grid's goldens (`KEEL_UPDATE_GOLDEN=1` over
   `tests/domain/core/composition-grid`, greenfield first — brownfield's
   I5 reads its golden) and read the verdict diff; a cell that breaks
-  an invariant fails the grid rather than joining its known file.
+  an invariant fails the grid rather than joining its known file. A
+  single-service stack, or a vertical one installs or offers, also
+  adds or moves cells of `tests/domain/core/shared-files.golden.json`,
+  the byte golden of the files several adapters write into
+  (`README.md`, the build files, `devcontainer.json`), as does any
+  template or pin change that reaches one of those files. That golden
+  reads no other, so regenerate it on its own —
+  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/shared-files.golden.test.ts`
+  — and check that only the files you meant to change moved.
 
 See the [composition model](composition.md) for the vocabulary, and
 the [roadmap](roadmap.md) for what's wanted next.
