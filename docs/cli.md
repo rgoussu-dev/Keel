@@ -498,6 +498,28 @@ is refused (`keel.invalid-verticals`), and so is a tie between two
 verticals that would each supply what one needs
 (`keel.missing-prerequisites`, naming both).
 
+A section an add writes into the project's `README.md` goes where one
+run would have put it. keel's sections keep one order — the
+entrypoints, then the dev environment, monitoring and the dev
+container in the order keel's presets install them, then persistence,
+then the toolchain — so `keel add persistence` on a project scaffolded
+`--with toolchain` puts `### Persistence` above `### Toolchain`, as
+`keel new --with toolchain,persistence` does, and `--reapply` puts a
+section you deleted back in its place. Two sections that share a
+place — `### Observability` and `### Monitoring stack`, `### Database`
+and `### Persistence` — keep the order they arrive in, so one put back
+alone follows the other. A section already there never moves.
+
+keel reads as its own sections only the `### ` headings after the
+README's last `## ` heading, outside code blocks and HTML comments. So
+a heading of yours above that `## ` heading never decides where keel's
+sections go, and neither does a section of keel's you commented out.
+A `## ` section of your own added below keel's — a `## License` —
+leaves none of them after the last `## `, so a section keel adds after
+that is appended at the end, as before. A heading named like keel's —
+a `### Dev container` of yours — still stands in for keel's own, which
+is then not added.
+
 | Option            | Meaning                                                                                                                                      |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-y, --yes`       | Non-interactive — defaults for every question.                                                                                               |

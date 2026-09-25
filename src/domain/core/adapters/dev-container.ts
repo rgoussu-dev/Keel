@@ -37,6 +37,7 @@
  * so the attachment knowledge lives here either way.
  */
 
+import { placeReadmeSection } from '../rank.js';
 import { anyProjectName, eolAware } from '../util.js';
 import { loadToolchainPins, type ToolchainPins } from './version-pins.js';
 import type {
@@ -124,7 +125,7 @@ export async function devContainerDefinition(
         target: 'README.md',
         apply: eolAware((existing) => {
           if (existing.includes(README_MARKER)) return existing;
-          return `${existing.trimEnd()}\n${readmeSection(attachDevEnv)}`;
+          return placeReadmeSection(existing, readmeSection(attachDevEnv), ctx.manifest.tags);
         }),
       },
     ],

@@ -200,6 +200,7 @@ export function jvmBootstrapAdapter(spec: JvmBootstrapSpec): Adapter {
         buildSystem,
         basePackage,
         projectName,
+        tags: ctx.manifest.tags,
       };
       return {
         files: [...appFiles, ...ownFiles],

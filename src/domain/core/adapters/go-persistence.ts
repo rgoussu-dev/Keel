@@ -41,6 +41,7 @@
 import { goBootstrapAnswers } from './go-bootstrap.js';
 import { addProjectImports, goLayout, type GoLayoutPaths } from './go-module-layout.js';
 import { databaseName, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-engine.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 import { persistenceDoc } from './persistence-doc.js';
@@ -225,7 +226,7 @@ export const goPersistenceAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(layout)}`;
+            return placeReadmeSection(existing, readmeSection(layout), ctx.manifest.tags);
           }),
         },
       ],

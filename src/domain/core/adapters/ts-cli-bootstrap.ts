@@ -55,6 +55,7 @@ export const tsCliBootstrapAdapter: Adapter = {
       projectName: shell.projectName,
       shell,
       own,
+      tags: ctx.manifest.tags,
     });
   },
 };

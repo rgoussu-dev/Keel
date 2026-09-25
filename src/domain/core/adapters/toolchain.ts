@@ -22,6 +22,7 @@
  * install`, the bounded context under `domain/toolchain`).
  */
 
+import { placeReadmeSection } from '../rank.js';
 import { eolAware } from '../util.js';
 import { loadToolchainPins, type ToolchainPins } from './version-pins.js';
 import type { Adapter, Contribution, Ctx, Tag } from '../../contract/composition.js';
@@ -68,7 +69,7 @@ export function toolchainAdapter(
             target: 'README.md',
             apply: eolAware((existing) => {
               if (existing.includes(README_MARKER)) return existing;
-              return `${existing.trimEnd()}\n${README_NOTE}`;
+              return placeReadmeSection(existing, README_NOTE, ctx.manifest.tags);
             }),
           },
         ],

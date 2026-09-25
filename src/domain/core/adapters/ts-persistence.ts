@@ -41,6 +41,7 @@ import { databaseName, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-eng
 import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
 import { tsLayout, TS_MEDIATOR_ANCHOR, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
+import { placeReadmeSection } from '../rank.js';
 import { codeOnly, eolAware, eolOf, withEol } from '../util.js';
 import { PathConflictError } from '../../contract/refusal.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
@@ -434,7 +435,7 @@ export const tsPersistenceAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(layout)}`;
+            return placeReadmeSection(existing, readmeSection(layout), ctx.manifest.tags);
           }),
         },
       ],

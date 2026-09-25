@@ -36,6 +36,7 @@ import {
   sqlEngine,
   type SqlEngineSpec,
 } from './persistence-engine.js';
+import { placeReadmeSection } from '../rank.js';
 import { anyProjectName, eolAware } from '../util.js';
 import type { Adapter } from '../../contract/composition.js';
 
@@ -126,7 +127,7 @@ export const liquibaseMigrationsAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(database, engine)}`;
+            return placeReadmeSection(existing, readmeSection(database, engine), ctx.manifest.tags);
           }),
         },
       ],

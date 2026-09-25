@@ -5,8 +5,8 @@
  * `internal/app/resthttp` (the primary adapter mapping
  * `GET /greet?name=…` → greet command → driving port → JSON, with
  * domain errors rendered as RFC 9457 problem documents and a
- * fake-backed `httptest` adapter test). Appends the unit's
- * build-and-run instructions to the README.
+ * fake-backed `httptest` adapter test). Adds the unit's
+ * build-and-run instructions to the README, at its rank (`rank.ts`).
  *
  * Covers the `entrypoint` dimension under `arch.server-http` — the
  * CLI sibling covers it under `arch.cli`, and a project tagged with
@@ -16,6 +16,7 @@
 import { GO_BOOTSTRAP_ID, goBootstrapAnswers } from './go-bootstrap.js';
 import { goLayout, goTemplateVars, type GoLayoutPaths } from './go-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolOf, withEol } from '../util.js';
 
 export const GO_HTTP_BOOTSTRAP_ID = 'walking-skeleton/go-http-bootstrap';
@@ -62,9 +63,8 @@ export const goHttpBootstrapAdapter: Adapter = {
           apply: (existing) => {
             // The marker is matched in the file's own line endings: a
             // README checked out as CRLF still has its section.
-            const eol = eolOf(existing);
-            if (existing.includes(withEol(README_MARKER, eol))) return existing;
-            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eol)}`;
+            if (existing.includes(withEol(README_MARKER, eolOf(existing)))) return existing;
+            return placeReadmeSection(existing, readmeSection(projectName), ctx.manifest.tags);
           },
         },
       ],

@@ -31,6 +31,8 @@ import type {
   ContributionFile,
   ContributionPatch,
 } from '../../contract/composition.js';
+import type { Tag } from '../../contract/tags.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolOf, withEol } from '../util.js';
 import { readmeUpsert, toUpsertPatches } from './adopted-files.js';
 import type { TsWorkspaceShell } from './ts-bootstrap.js';
@@ -48,6 +50,8 @@ export interface TsRootInputs {
   /** The npm scope, without the leading `@` — the README names it. */
   readonly npmScope: string;
   readonly layout: TsLayoutPaths;
+  /** The project's tags, which rank its README section among the others. */
+  readonly tags: readonly Tag[];
 }
 
 /** The dependency-cruiser release the modulith's `lint` script runs. */
@@ -87,6 +91,7 @@ export function tsEntrypointContribution(inputs: {
   readonly projectName: string;
   readonly shell: TsWorkspaceShell;
   readonly own: readonly ContributionFile[];
+  readonly tags: readonly Tag[];
 }): Contribution {
   return {
     files: [...inputs.own],
@@ -98,6 +103,7 @@ export function tsEntrypointContribution(inputs: {
         projectName: inputs.projectName,
         npmScope: inputs.shell.vars.npmScope as string,
         layout: inputs.shell.layout,
+        tags: inputs.tags,
       }),
     ],
   };
@@ -114,11 +120,12 @@ export function tsSharedRootPatches(inputs: TsRootInputs): readonly Contribution
     readmeUpsert(
       inputs.layout.layout === 'modulith' ? modulithReadmeSeed(inputs) : readmeSeed(inputs),
       (existing) =>
-        appendReadmeSection(
+        addReadmeSection(
           existing,
           inputs.layout.layout === 'modulith'
             ? modulithReadmeSection(inputs)
             : readmeSection(inputs),
+          inputs.tags,
         ),
     ),
   ];
@@ -254,14 +261,14 @@ function readmeMarker(arch: TsRootArch): string {
   return `\n### ${arch}\n`;
 }
 
-function appendReadmeSection(
+function addReadmeSection(
   existing: string,
   section: { arch: TsRootArch; body: string },
+  tags: readonly Tag[],
 ): string {
   const marker = readmeMarker(section.arch);
-  const eol = eolOf(existing);
-  if (existing.includes(withEol(marker, eol))) return existing;
-  return `${existing.trimEnd()}${withEol(`\n${marker}${section.body}`, eol)}`;
+  if (existing.includes(withEol(marker, eolOf(existing)))) return existing;
+  return placeReadmeSection(existing, `${marker}${section.body}`, tags);
 }
 
 function readmeSection(inputs: TsRootInputs): { arch: TsRootArch; body: string } {
@@ -314,7 +321,7 @@ from \`PORT\`).
 /**
  * The modulith README with no entrypoint yet: the platform package,
  * the context that owns a whole hexagon behind one `exports` map, and
- * the two rules that map cannot hold. Each entrypoint appends its own
+ * the two rules that map cannot hold. Each entrypoint adds its own
  * deployment unit under a `### <arch>` marker.
  */
 function modulithReadmeSeed(inputs: TsRootInputs): string {

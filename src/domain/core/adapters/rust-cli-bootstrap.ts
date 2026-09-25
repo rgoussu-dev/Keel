@@ -3,8 +3,8 @@
  * deployment unit onto the Rust skeleton: the assembly point wiring
  * the hexagon by hand, and beside it the primary adapter mapping
  * flags → greet command → driving port → streams + exit code, with
- * fake-backed adapter tests. Appends the unit's build-and-run
- * instructions to the README.
+ * fake-backed adapter tests. Adds the unit's build-and-run
+ * instructions to the README, at its rank (`rank.ts`).
  *
  * Covers the `entrypoint` dimension under `arch.cli`. The HTTP
  * sibling covers the same dimension under `arch.server-http`; the
@@ -30,6 +30,8 @@
 
 import { RUST_BOOTSTRAP_ID, rustBootstrapAnswers } from './rust-bootstrap.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import type { Tag } from '../../contract/tags.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolOf, withEol } from '../util.js';
 import { addWorkspaceMembers, rustLayout, type RustLayoutPaths } from './rust-module-layout.js';
 
@@ -78,7 +80,10 @@ export const rustCliBootstrapAdapter: Adapter = {
     if (layout.layout === 'basic') {
       return {
         files,
-        patches: [rootBinPatch(binName, assembly.rootFile), readmePatch(binName)],
+        patches: [
+          rootBinPatch(binName, assembly.rootFile),
+          readmePatch(binName, ctx.manifest.tags),
+        ],
       };
     }
     const manifest = await ctx.templates.render(`${TEMPLATE_ROOT}/manifest`, assembly.crate.dir, {
@@ -89,7 +94,7 @@ export const rustCliBootstrapAdapter: Adapter = {
     });
     return {
       files: [...files, ...manifest],
-      patches: [membersPatch(assembly.crate.dir), readmePatch(binName)],
+      patches: [membersPatch(assembly.crate.dir), readmePatch(binName, ctx.manifest.tags)],
     };
   },
 };
@@ -124,15 +129,14 @@ function membersPatch(dir: string): ContributionPatch {
   };
 }
 
-function readmePatch(binName: string): ContributionPatch {
+function readmePatch(binName: string, tags: readonly Tag[]): ContributionPatch {
   return {
     target: 'README.md',
     apply: (existing) => {
       // The marker is matched in the file's own line endings: a
       // README checked out as CRLF still has its section.
-      const eol = eolOf(existing);
-      if (existing.includes(withEol(README_MARKER, eol))) return existing;
-      return `${existing.trimEnd()}${withEol(`\n${readmeSection(binName)}`, eol)}`;
+      if (existing.includes(withEol(README_MARKER, eolOf(existing)))) return existing;
+      return placeReadmeSection(existing, readmeSection(binName), tags);
     },
   };
 }

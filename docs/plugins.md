@@ -411,6 +411,31 @@ printed by the terminal as its message and answered by `keel ui` as a
 500; and where there is no keel to import at all — `keel new` into an
 empty directory — the import fails and the plugin does not load.
 
+### keel's sections in your README
+
+A `### ` section one of keel's verticals adds to the root `README.md`
+goes in keel's order, whatever order your stack lists its verticals in
+([cli.md](cli.md#keel-add)): the entrypoints, then the dev
+environment, monitoring and the dev container, then persistence, then
+the toolchain. On a stack tagged `arch.server-http` the dev
+container's section follows the dev environment's, as every one of
+keel's HTTP presets installs them; elsewhere it precedes it.
+
+keel reads as its sections only the `### ` headings after the README's
+last `## ` heading, so a README your bootstrap seeds needs a `## `
+heading for them to follow, as each of keel's seeds has. With none,
+keel's sections keep the order they arrive in, as before.
+
+A section your own vertical writes under a heading keel does not use
+goes wherever your patch puts it: keel passes it over when it places
+one of its own, and never moves it. keel knows its sections by their
+heading alone, whoever wrote them, so one of yours under a heading
+keel writes — `### cli`, `### rest`, `### http`, `### Dev environment`,
+`### Monitoring stack`, `### Observability`, `### Dev container`,
+`### Database`, `### Persistence` or `### Toolchain` — ranks as keel's
+own, and stands in for keel's section of that name, which is then not
+added.
+
 ### What an adapter promotes, and what a vertical reads
 
 Two optional fields tell keel's planner how your pieces relate to the

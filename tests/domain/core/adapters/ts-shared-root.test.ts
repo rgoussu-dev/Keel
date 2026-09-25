@@ -10,16 +10,16 @@ import { describe, expect, it } from 'vitest';
 import { tsSharedRootPatches } from '../../../../src/domain/core/adapters/ts-shared-root.js';
 import { tsLayout } from '../../../../src/domain/core/adapters/ts-module-layout.js';
 
+const TAGS = ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'];
+
 const rootPatch = (pm: 'npm' | 'pnpm') => {
   const patch = tsSharedRootPatches({
     arch: 'rest',
     pm,
     projectName: 'api',
     npmScope: '@acme',
-    layout: tsLayout(
-      ['lang.typescript', 'runtime.node', 'arch.hexagonal', 'arch.server-http'],
-      '@acme',
-    ),
+    layout: tsLayout(TAGS, '@acme'),
+    tags: TAGS,
   }).find((p) => p.target === 'package.json');
   expect(patch).toBeDefined();
   return patch!;

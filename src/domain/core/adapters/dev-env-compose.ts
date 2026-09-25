@@ -28,6 +28,7 @@
  * `dev-container.ts`, which owns that knowledge.
  */
 
+import { placeReadmeSection } from '../rank.js';
 import { anyProjectName, eolAware } from '../util.js';
 import {
   attachDevContainerToDevEnv,
@@ -91,7 +92,7 @@ export const devEnvComposeAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection()}`;
+            return placeReadmeSection(existing, readmeSection(), ctx.manifest.tags);
           }),
         },
       ],

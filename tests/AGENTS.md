@@ -238,9 +238,16 @@ Liquibase chosen wherever the preview offers it (the one writer of
 these files no default answer reaches), and the whole menu over a
 README of the user's whose `### Toolchain` and `### Dev container`
 headings sit above keel's part. Roadmap epic R moves those writers
-from appending to a ranked place (R.1), with ranks chosen to reproduce
-the order a scaffold already has. This golden landed before any of
-that code, and it holds R.1 to leaving every cell byte-identical.
+from appending to a ranked place (`src/domain/core/rank.ts`: the README
+sections since R.1a, the build-file lists with R.1b), with ranks chosen
+to reproduce the order a scaffold already has. This golden landed
+before any of that code, and it holds R.1 to leaving every cell
+byte-identical: a cell a rank moves is a rank that moved a scaffold,
+fixed in the rank, never regenerated away. On every one of its cells
+the rule and an append write the same bytes, so it cannot see a writer
+that stopped going through the rule; `domain/core/rank-arrival.test.ts`
+holds each README writer where they differ — a section a later
+`keel add` brings, or `--reapply` puts back, against one run.
 Every cell is a dry run, read back through the Tree that staged it,
 except the ten scaffolds `keel add dev-env` runs on, which are written
 for real so the add has a project on disk; a real run adds only the

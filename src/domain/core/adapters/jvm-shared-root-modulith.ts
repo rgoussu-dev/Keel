@@ -47,8 +47,8 @@
 import type { ContributionPatch } from '../../contract/composition.js';
 import { readmeUpsert } from './adopted-files.js';
 import {
+  addReadmeSection,
   appendMissingLines,
-  appendReadmeSection,
   FRAMEWORKS,
   gradleBuildSeed,
   gradleIncludeLines,
@@ -180,7 +180,7 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       apply: (existing) => existing,
     },
     readmeUpsert(readmeSeed(inputs, './gradlew test'), (existing) =>
-      appendReadmeSection(existing, gradleReadmeSection(inputs)),
+      addReadmeSection(existing, gradleReadmeSection(inputs), inputs.tags),
     ),
   ];
 }
@@ -200,15 +200,15 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
     },
     readmeUpsert(readmeSeed(inputs, './mvnw test'), (existing) =>
-      appendReadmeSection(existing, mavenReadmeSection(inputs)),
+      addReadmeSection(existing, mavenReadmeSection(inputs), inputs.tags),
     ),
   ];
 }
 
 /**
  * The README with no entrypoint yet: the platform, the context, and
- * how a second context would reach it. Each entrypoint appends its
- * own driving adapter and assembly under a `### <arch>` marker.
+ * how a second context would reach it. Each entrypoint adds its own
+ * driving adapter and assembly under a `### <arch>` marker.
  */
 function readmeSeed(inputs: JvmRootInputs, testCmd: string): string {
   return `# ${inputs.projectName}

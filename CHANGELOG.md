@@ -14,6 +14,15 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`--reapply` no longer adds a second monitoring section to a CRLF
+  README.** On a README with CRLF line endings — one cloned on Windows
+  under `core.autocrlf` — `keel add observability --reapply` on an HTTP
+  project did not find its `### Monitoring stack` section and added it
+  again at the end. That section was written in LF, and the dev
+  container's patch, which runs after it, rewrote it in CRLF, where the
+  monitoring stack's check looked for it in LF alone. The section now
+  comes in the README's own line endings, and a reapply finds it.
+
 - **Persistence installs beside the peer context.** On the modulith
   with the peer context — `keel new --module-layout modulith
 --with-peer-context --with persistence`, or `keel add persistence` on
@@ -508,6 +517,36 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **A section keel adds to an existing README lands in keel's order.**
+  A section a later `keel add` wrote into the root `README.md`, or one
+  `--reapply` put back after you deleted it, was appended at the end,
+  after every section installed since: `keel add persistence` on a
+  project scaffolded `--with toolchain` put `### Persistence` below
+  `### Toolchain`, where `keel new --with toolchain,persistence` puts it
+  above, and `keel add dev-env` did the same to `### Dev environment`
+  on a CLI or SPA project. Such a section now goes before the first of
+  keel's sections ranked after it — the entrypoints (`### cli`, then
+  `### rest` or `### http`), then the dev environment, monitoring and
+  the dev container in the order keel's presets install them, then
+  `### Database` and `### Persistence`, then `### Toolchain` — so a
+  project built over several runs reads as one built in one. Two
+  sections that share a place (`### Observability` and
+  `### Monitoring stack`, `### Database` and `### Persistence`) keep
+  the order they arrive in, so one put back alone follows the other. A
+  section already there never moves. keel's sections are the `### `
+  headings after the README's last `## ` heading, outside code blocks
+  and HTML comments: a heading of your own above that `## ` heading, or
+  a section of keel's you commented out, never decides where keel's go,
+  and a `## ` section of your own below keel's (a `## License`) leaves
+  none to rank, so a section keel adds after it is appended as before.
+  A heading named like keel's still stands in for it, as before, and
+  now ranks as keel's, whoever wrote it. A plugin's own section under
+  a heading keel does not write goes where its patch puts it, and
+  keel's pass it over. A scaffold of any of keel's presets writes the
+  README it did; a plugin preset whose README seed has a `## ` heading
+  now gets keel's order whatever order it lists its verticals in, and
+  one with none gets its own list's order, as before.
 
 - **`keel add` at a monorepo product root says what its services
   already have, rather than refusing it.** At the root of a monorepo

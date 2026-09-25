@@ -307,7 +307,7 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
                 : patchGreetControllerTest(engine.testFixtureClass, controllerTest),
             ),
           },
-          persistenceReadmePatch(layout, engine),
+          persistenceReadmePatch(layout, engine, ctx.manifest.tags),
         ],
         tagsAdd: [engine.tag],
       };

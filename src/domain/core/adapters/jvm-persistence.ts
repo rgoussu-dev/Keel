@@ -37,8 +37,10 @@ import {
   widenKotlinMediator,
 } from './micronaut-root.js';
 import type { SqlEngineSpec } from './persistence-engine.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware, eolOf, packageToPath, withEol } from '../util.js';
 import { PathConflictError } from '../../contract/refusal.js';
+import type { Tag } from '../../contract/tags.js';
 import type {
   ContributionFile,
   ContributionPatch,
@@ -294,16 +296,20 @@ ${modules.map((m) => `    testImplementation(project("${layout.gradleProject(m)}
   };
 }
 
-/** The guarded `### Persistence` README section, shared verbatim. */
+/**
+ * The guarded `### Persistence` README section, shared verbatim, at its
+ * rank among the project's others (`rank.ts`).
+ */
 export function persistenceReadmePatch(
   layout: JvmLayoutPaths,
   engine: SqlEngineSpec,
+  tags: readonly Tag[],
 ): ContributionPatch {
   return {
     target: 'README.md',
     apply: eolAware((existing) => {
       if (existing.includes(README_MARKER)) return existing;
-      return `${existing.trimEnd()}\n${readmeSection(layout, engine)}`;
+      return placeReadmeSection(existing, readmeSection(layout, engine), tags);
     }),
   };
 }

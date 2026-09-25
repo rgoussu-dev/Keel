@@ -4045,7 +4045,8 @@ add iac` after `keel new --with distribution` is refused as
    services: the same lines in another order, from an adapter whose
    output follows the order it runs in. The grid's I8 already holds one
    run to itself for this shared file. The rank-anchored upserts for
-   shared files that **R** names would settle it across runs.
+   shared files that **R** names would settle it across runs. Fixed by
+   R.1a, which ranks those sections (`rank.ts`).
 5. **The manifest records keel's own later write as drift.** Whenever
    `persistence` arrives in a later run — `keel new` then `keel add
 persistence` included, no other extra needed — it writes its section
@@ -4667,7 +4668,7 @@ named.
 
 ### R.1 — shared files, each entry in its place
 
-#### R.1a — Rank-anchored README sections, pinned first by a byte golden (M)
+#### R.1a — Rank-anchored README sections, pinned first by a byte golden (M) ✅
 
 **The golden lands first**, in its own commit, green on today's code:
 `tests/domain/core/shared-files.golden.test.ts` with
@@ -4844,6 +4845,210 @@ Beyond the text above:
 `tests/AGENTS.md` records the golden beside the planner's readiness
 golden, and `docs/development.md` names the command that regenerates
 it.
+
+**Landed second: the rule**, and no golden moved.
+`src/domain/core/rank.ts` holds it in three exports:
+
+- `rankedIndex`, the rule over the ranks of the entries a file already
+  has, in file order. It is kept apart from any file's syntax so that
+  R.1b's lists can read their own entries into it.
+- `readmeSectionRank`, the table above.
+- `placeReadmeSection`, which reads the `### ` headings after the last
+  `## ` line, outside fenced blocks (backticks or tildes, each closed
+  only by a fence of its own character at least as long) and HTML
+  comments. It puts the section before the first heading ranked above
+  it, with one blank line either side, and otherwise appends it
+  exactly as the callers did. It works on LF text and restores the
+  file's endings through `eolAware`.
+
+Eighteen writers moved onto it. Each passes `ctx.manifest.tags`, and
+each keeps its marker guard:
+
+- the JVM entrypoints' `addReadmeSection`, which is
+  `appendReadmeSection` renamed and serves both build systems under
+  both layouts (`JvmRootInputs` gained `tags`);
+- the TypeScript one (`TsRootInputs` and `tsEntrypointContribution`
+  gained `tags`);
+- the four in the Go and Rust bootstraps;
+- `dev-env-compose.ts`, `monitoring-compose.ts` and the four
+  observability adapters;
+- the Go, Rust and TypeScript persistence adapters, and
+  `jvm-persistence.ts`'s `persistenceReadmePatch`, which the Quarkus,
+  Spring and Micronaut adapters share and which now takes the tags;
+- `flyway-migrations.ts` and `liquibase-migrations.ts`.
+
+Two more, `dev-container.ts` and `toolchain.ts`, moved onto it as
+well, which the text did not ask for (below).
+
+The proof is the golden. `shared-files.golden.json` passes unchanged,
+all 398 cells and 1,167 hashes, and was never regenerated. It does
+catch a rank that moves a scaffold: a trial that ranked `Dev container`
+35 on a project without `arch.server-http`, not kept, moved 118
+`README.md` hashes. `agent-harness.golden.json` and
+`run-skill.golden.json` pass as they were. The greenfield, brownfield,
+composite and planner-readiness goldens and the docs matrix regenerate
+byte-identical, and the known files stay as they were. No template
+changed, so no e2e suite was run.
+
+`rank.test.ts` holds the rule:
+
+- `rankedIndex` passing unranked lines and equal ranks, and reading
+  entries in file order, so the first ranked above wins over a lower
+  one after it;
+- a section appended exactly as before when nothing ranks above it,
+  including a heading keel does not write, such as a plugin's;
+- a section already there left in place: `### Persistence` goes above
+  a `### Toolchain` the user moved above `### http`, which stays below
+  both; and a heading keel does not write, below keel's sections,
+  passed over;
+- a later arrival placed where one run puts it: `### cli` above an
+  existing `### http`, `### Persistence` above `### Toolchain`, and
+  `### Dev environment` above `### Toolchain` on a CLI;
+- the dev container ranked by the tags: the dev environment and both
+  monitoring sections go above it on HTTP, and the dev environment
+  goes below it elsewhere;
+- equal ranks in arrival order;
+- the fixed point behind the guard;
+- a CRLF README, placed in its own endings and still a fixed point;
+- a heading inside a fenced block — backticks, tildes, a tilde fence
+  around a backtick line, a longer fence around a shorter one, an
+  indented one — and a `## ` line inside a shell block, which would
+  otherwise hide the sections below it;
+- a heading inside an HTML comment, and a `## ` line there, which
+  would otherwise hide the sections above it, while a comment closed
+  on its own line, or an opener inside a fenced block, hides nothing;
+- the user's `### Toolchain` above the last `## `, alone or under a
+  `## ` heading of the user's, so the scope starts at the last `## `
+  and not the first; a README with no `## ` line, and one whose last
+  `## ` section is the user's own below keel's (a `## License`), which
+  rank nothing;
+- an empty file.
+
+Its DR1 guard reads the registry: every single-service preset lists
+`dev-env` before `dev-container` exactly where its tags carry
+`arch.server-http`, and lists no `dev-env` otherwise.
+
+`rank-arrival.test.ts` holds each writer to the rule where it and an
+append part ways, which the golden cannot: on every one of the
+golden's cells both write the same bytes, and a review that put two
+writers back on an append found every suite still green. Its 21 cells
+go through `Mediator.dispatch` with the grid's wiring and compare
+`README.md` byte for byte:
+
+- seven projects grown over two runs, against one run:
+  `keel new --with toolchain`, then `keel add persistence` on
+  `quarkus-rest`, `go-http` (once more with Liquibase), `rust-http`
+  and `ts-http`, and `keel add dev-env` on `go-cli` and
+  `web-components`;
+- fourteen scaffolds whose sections the user deleted, each put back by
+  `--reapply` in its place, against the scaffold: both entrypoints'
+  sections on `quarkus-cli-rest` under each build system and layout,
+  since the JVM's basic and modulith roots and their Gradle and Maven
+  patches each add them apart, and on `go-cli-http`, `rust-cli-http`
+  and `ts-cli-http`; observability's and monitoring's on
+  `quarkus-rest`, `go-http`, `rust-http` and `ts-http`; the dev
+  environment's with both of those on `go-http`, reapplied together,
+  so it comes back first, with only the dev container ranked after it,
+  which reads the tags; and the dev container's on `go-http` with
+  persistence and the toolchain, and on `go-cli` with the dev
+  environment.
+
+Every one of the 21 fails on the appending code. With
+`go-persistence.ts`, `dev-env-compose.ts` and `dev-container.ts` back
+on an append, the seven cells that reach them fail. Each of the four
+JVM root patches back on an append fails its own cell, and so does
+`dev-env-compose.ts` passing no tags. The suite takes about two
+seconds.
+
+Q3.4's finding 4 is gone on one preset per family. The `arrival`
+suite ran filtered, before and after, in two runs of about a minute
+each (`quarkus-rest,go-cli,rust-cli-http`, then
+`ts-http,web-components`).
+
+- **Before:** 123 findings. 48 of them were `README.md` in arrival
+  order after `toolchain`:
+  - `dev-env` after it: 6 on `go-cli` and 12 on `web-components`;
+  - `persistence` after it: 12 on `quarkus-rest`, 12 on `ts-http` and
+    6 on `rust-cli-http`.
+- **After:** 90 findings. There are none on `go-cli` or
+  `web-components`, and 36, 36 and 18 on the other three. Every one is
+  finding 5, the manifest recording persistence's later write, which
+  R.2a takes. The 15 pairs with the harness on had differed in both
+  `README.md` and the manifest; they now differ in the manifest alone,
+  and are listed under finding 5's heading.
+
+Beyond the text above:
+
+- **The guards read their marker in the file's own endings.**
+  `monitoring-compose.ts`'s patch was the one README writer whose guard
+  read its marker in LF alone, neither under `eolAware` nor through
+  `withEol`. On a CRLF README it appended LF lines. On every HTTP
+  preset the dev container's patch runs after it and rewrote them in
+  CRLF, so the guard missed its own section, and
+  `keel add observability --reapply` added a second one. That was so
+  before the rule; the rule, which writes in the file's own endings,
+  would have made the guard miss on every CRLF README. The patch now
+  runs under `eolAware` like the others: its section comes in CRLF,
+  and a reapply finds it. The CHANGELOG lists it under _Fixed_.
+  `new-project-adoption.test.ts`'s CRLF case now scaffolds four
+  families' CLI+HTTP presets with persistence and the toolchain,
+  `go-cli-http` with Liquibase, and `go-cli` with the dev environment
+  and the toolchain, and reapplies every vertical that wrote a
+  section. It fails on the old guard, and on each of the thirteen other
+  patches outside the bootstraps with its `eolAware` taken off.
+- **The dev container's and the toolchain's sections take the rule
+  too.** The text kept both as appends, since every preset brings the
+  dev container before any extra and the toolchain ranks highest. That
+  holds for a section's first arrival, not for one `--reapply` puts
+  back. A deleted `### Dev container` came back last: below
+  `### Database`, `### Persistence` and `### Toolchain` on `go-http`,
+  and below `### Dev environment` on `go-cli`. The CHANGELOG line the
+  text asks for says such a section lands in keel's order.
+  `dev-container.ts` now passes the tags like the others, so DR1's rank
+  decides a restore too, and `shared-files.golden.json` passed
+  unchanged with it. `toolchain.ts` moved so that every writer keeps
+  one rule; ranked highest, its section is still appended exactly as
+  before.
+- **Equal ranks and a lone restore.** Sections that share a rank
+  (`Monitoring stack` and `Observability`, `Database` and
+  `Persistence`) keep their arrival order, as the text says. So one of
+  a pair put back alone follows the other, where one run may put it
+  first: a deleted `### Observability` on `go-http` comes back below
+  `### Monitoring stack`. Ranking either monitoring section below the
+  other would move the scaffolds that put it second, 160 or 352 of
+  them, so this is kept, and `docs/cli.md` and the CHANGELOG say so.
+- **A plugin preset's README takes keel's order.** The ranks reproduce
+  keel's own presets, and the DR1 guard holds only those. A plugin
+  preset that lists `dev-container` before `dev-env` on
+  `arch.server-http`, or `toolchain` before `persistence`, now gets
+  keel's order where it got its own list's, provided its README seed
+  has a `## ` heading (below). A section a plugin writes ranks by its
+  heading alone: under one keel writes (a `### Database`) it ranks as
+  keel's, so a later section of keel's ranked below it goes above it,
+  where it was appended; under any other, keel's pass it over.
+  `docs/plugins.md` says all of this, and that a seed needs a `## `
+  heading. No shipped preset moved.
+- **A README with no `## ` line after keel's sections ranks nothing.**
+  The text above scopes ranking to the `###` headings after the last
+  `## ` line, and does not say what happens when none of keel's
+  sections follows one. Every keel seed has one, so this happens only
+  where the user deleted the `## ` headings, added a `## ` section of
+  their own below keel's (a `## License`, the likelier case), or a
+  plugin's seed has none. There, every section is appended, as before.
+  `docs/cli.md` and the CHANGELOG say so.
+- **HTML comments hide headings too.** The text names fenced blocks.
+  Commenting a section out is how a user hides one of keel's for good,
+  since deleting it brings it back on the next `--reapply`, while a
+  commented-out marker still satisfies the guard. Read as live, a
+  commented-out `### Toolchain` drew a later `### Persistence` inside
+  the comment, where the append had put it after `-->`. A line opening
+  `<!--` now hides every line up to the one holding `-->`, as a
+  CommonMark HTML block does. No keel README writes a comment.
+- **The DR1 guard reads the registry** (`shippedRegistry.stacks()`),
+  because `keel.catalog`'s descriptors carry no list of verticals.
+
+Not done here: R.1b's build-file lists and the dev container's
+in-place upgrade.
 
 #### R.1b — Ranked build-file lists: includes, modules, scripts, the CLI binary (S)
 
@@ -5385,7 +5590,9 @@ recommendation.
   - (c) No rank, with R.2b moving the section instead. That breaks the
     rule that R never moves what is already there.
 
-  **Recommend (a).**
+  **Recommend (a).** Taken in R.1a: `readmeSectionRank` ranks it 40
+  on `arch.server-http` and 25 elsewhere, and `rank.test.ts` holds
+  every single-service preset to the order that reading assumes.
 
 - **DR2 — `devcontainer.json`.**
   - (a) Rank the in-place upgrade by the tags (R.1b). The docker
@@ -5489,7 +5696,8 @@ agent-harness --reapply`.
   drill-down's reading, and R adds no tag; `ENTRYPOINTS` gains a word.
 - **One e2e suite per cell.** R keeps it by proof (I10).
 - **D12 still governs every refresh R does not name.**
-- **R.1 and R.3 move no greenfield project byte.**
+- **R.1 and R.3 move no greenfield byte of a keel preset.** A plugin
+  preset's README now takes keel's section order (R.1a).
 
 ---
 

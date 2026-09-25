@@ -4,7 +4,7 @@
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
 `nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `dials`, `answers`,
-`supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`), the composition
+`supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
 add-vertical, docs-sync, docs-check), `registry.ts` (`registryOf` and
@@ -46,6 +46,21 @@ the shipped source, every refusal naming its origin) and
   own (their content kept, keel's part added once) and refuses any
   other file in the way. The grid's seeded `keel new` cells hold
   every stack to it.
+- A patch that adds a `### ` section to the root `README.md` places it
+  with `rank.ts`'s `placeReadmeSection`: a heading keel writes has a
+  rank in `readmeSectionRank`, chosen so that one run of a keel preset
+  does not move (`tests/domain/core/shared-files.golden.test.ts` holds
+  every scaffold to it), and a section arriving in a later run — a
+  `keel add`, or a `--reapply` putting back one the user deleted —
+  lands where one run puts it (`rank-arrival.test.ts` holds each
+  writer to it). Equal ranks keep their arrival order, so of two
+  sections that share one, the one put back alone follows the other.
+  The marker guard in front reads the marker in the file's own line
+  endings (`eolAware`, or `withEol` over `eolOf`): the rule writes in
+  them, so a guard looking for an LF marker in a CRLF README misses
+  its own section on every application, and a reapply is refused as a
+  divergence (`keel.reapply-conflict`); the CRLF cells of
+  `new-project-adoption.test.ts` hold every writer to it.
 - A patch that adds to a list in source another command may have grown
   — a composition root's handlers — reads the list as it finds it, its
   brackets and commas found in `util.ts`'s `codeOnly` (comments and

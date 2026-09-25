@@ -37,6 +37,8 @@
  */
 
 import type { ContributionPatch } from '../../contract/composition.js';
+import type { Tag } from '../../contract/tags.js';
+import { placeReadmeSection } from '../rank.js';
 import { readmeUpsert } from './adopted-files.js';
 import type { JvmBuildSystem } from './jvm-build-system.js';
 import { eolOf, withEol } from '../util.js';
@@ -58,6 +60,8 @@ export interface JvmRootInputs {
   readonly buildSystem: JvmBuildSystem;
   readonly basePackage: string;
   readonly projectName: string;
+  /** The project's tags, which rank its README section among the others. */
+  readonly tags: readonly Tag[];
 }
 
 export interface FrameworkMeta {
@@ -178,7 +182,7 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       apply: (existing) => existing,
     },
     readmeUpsert(readmeSeed(meta.label, inputs.projectName, './gradlew test'), (existing) =>
-      appendReadmeSection(existing, gradleReadmeSection(inputs)),
+      addReadmeSection(existing, gradleReadmeSection(inputs), inputs.tags),
     ),
   ];
 }
@@ -198,7 +202,7 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
     },
     readmeUpsert(readmeSeed(meta.label, inputs.projectName, './mvnw test'), (existing) =>
-      appendReadmeSection(existing, mavenReadmeSection(inputs)),
+      addReadmeSection(existing, mavenReadmeSection(inputs), inputs.tags),
     ),
   ];
 }
@@ -511,20 +515,20 @@ function readmeMarker(arch: JvmRootArch): string {
 }
 
 /**
- * Appends one entrypoint's README section unless its marker is
- * already there — the idempotence the shared-file upsert needs. The
- * marker is matched in the file's own line endings, so a README
- * checked out as CRLF still has its section and a reapply adds
- * nothing.
+ * Adds one entrypoint's README section at its rank among the others
+ * (`rank.ts`), unless its marker is already there — the idempotence
+ * the shared-file upsert needs. The marker is matched in the file's
+ * own line endings, so a README checked out as CRLF still has its
+ * section and a reapply adds nothing.
  */
-export function appendReadmeSection(
+export function addReadmeSection(
   existing: string,
   section: { arch: JvmRootArch; body: string },
+  tags: readonly Tag[],
 ): string {
   const marker = readmeMarker(section.arch);
-  const eol = eolOf(existing);
-  if (existing.includes(withEol(marker, eol))) return existing;
-  return `${existing.trimEnd()}${withEol(`\n${marker}${section.body}`, eol)}`;
+  if (existing.includes(withEol(marker, eolOf(existing)))) return existing;
+  return placeReadmeSection(existing, `${marker}${section.body}`, tags);
 }
 
 function gradleReadmeSection(inputs: JvmRootInputs): { arch: JvmRootArch; body: string } {
