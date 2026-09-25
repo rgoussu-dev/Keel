@@ -3375,8 +3375,10 @@ product root, which names `keel add agent-harness` as the way forward
 where that add installs nothing and is refused in turn (the refusal of
 that very add names itself), as `keel add --list`'s generation line
 and the page's notice do, each saying every add but that one is
-refused; and the weekly report-only lane _The measure_ planned and did
-not build. One step each, the grid naming what moves.
+refused — and a fourth Q3.2 left, `keel add module`, `keel link` and
+`keel toolchain` inside a project still saying to run `keel new` first
+(all four Q3.3); and the weekly report-only lane _The measure_ planned
+and did not build. One step each, the grid naming what moves.
 
 #### Q3.1 — "Already there" at a monorepo product root (S) ✅
 
@@ -3630,15 +3632,244 @@ add`'s sentence, unreleased, pointed at it. Not done, and not yet
 planned: a polyrepo product's own directory holds no manifest and
 sits inside no project, so `keel new` there still scaffolds a project
 over the product's services, where `keel add` already points at them
-(`nearbyProjects`' `below`) — said in `docs/cli.md`; run in the home
-directory itself, keel still reads `~/.claude` as that directory's own
-scope root, as before; and `keel.not-initialised` from `keel add module`,
-`keel link` and `keel toolchain` still says to run `keel new` first,
-which in a directory inside a project is now refused — `keel add`'s
-sentence (`refusals.ts`' `notInitialisedSentence`) names the project
-instead, but `keel add module`'s is also the status's
-`moduleRefusal`, and the toolchain context may not import
-`domain/core`, where the walk lives.
+(`nearbyProjects`' `below`) — said in `docs/cli.md`; and, run in the
+home directory itself, keel still reads `~/.claude` as that directory's
+own scope root, as before.
+
+#### Q3.3 — Refusals name what they know (S) ✅
+
+Four refusals that know more than they say. `keel new
+--stack=quarkus-cli --with observability` is hinted towards
+`--stack=quarkus-cli-rest --with observability`, a `--with` that preset
+only sets aside, since observability comes with it; `--with
+frontend:persistence` is refused as if the front end were a project
+alone, naming no sibling that could take it; at a stale monorepo
+product root the harness-generation refusal names `keel add
+agent-harness`, which installs nothing there and is refused in the same
+words, as `keel add --list`'s line and the page's notice do; and `keel
+add module`, `keel link` and `keel toolchain` inside a project say to
+run `keel new` first, which Q3.2 refuses there. Record on the refusal
+which nearest stacks come with the vertical and which of the product's
+other services could take it, word the hint (and, where it is then
+wrong, the sentence) from those fields, name a way forward that works
+at a product root, and point the three commands at the project above as
+`keel add` points.
+
+Landed as two optional fields on `UnavailableRefusal`, a truthful
+sentence at the product root, and one sentence moved into the contract.
+`comesWith` — among `carriedBy`, in its order, the stacks whose preset
+installs the vertical as one of its own — is the planner's
+(`ReadinessGap.comesWith`, read in `gapOf` off each nearest stack's
+`verticals` through the registry), and `unavailableRefusal` carries it.
+The sentence did not change: _the nearest stack that carries it_ is
+still true of a stack that comes with it, it is one sentence for both
+phases (I5), and changing it would move every such sentence for a
+difference only the hint acts on. `hint.ts` words by the first nearest
+stack, as it names only that one: a stack that comes with it is
+scaffolded naming nothing more (_…, or scaffold quarkus-cli-rest, which
+comes with it: 'keel new --stack=quarkus-cli-rest'_), and `keel add`'s
+entrypoint-only hint reads _quarkus-cli-rest has this project's
+entrypoints and comes with observability_; one that carries it only as
+an extra keeps `--with` — persistence, which no preset installs, is the
+shipped case, and the hint table pins a first nearest that carries it
+as an extra beside a second that comes with it.
+
+`elsewhere` — the product's other services, each an `ElsewhereService`
+with its readiness there, present only where one of them can take the
+vertical or has it — is filled wherever a front door can read the
+siblings: `admit`, `foresee` and `planRefusal` take an optional
+`siblings` (`ProductServiceScope`, new in `scope.ts`: a service's path,
+preset and the scope a plan there reads), whose readiness
+`readinessAmong` reads, as `routeExtra` and `productRootReading` now
+read theirs. Greenfield, `dials.ts`' `siblingScopes` hands each service
+the others from the scopes `routeExtra` reads — to `stageComposite`'s
+admission, to `compositeDials`' per-service menus (`scopeOptions`) and
+to its snap (`snapOnto`) — so `keel new`, the page's _Not for
+frontend/_ and the reason a pick is dropped say one sentence.
+Brownfield, `scopeOf` reads a monorepo service's siblings once, from
+the root's list, each with its own manifest
+(`DirectoryScope.siblings`), and `siblingsOf` hands them to the card
+(`addReadiness`) and to the add front door alike. The sentence goes on
+from the service's own, which is a single project's word for word where
+no sibling could: _Persistence has no adapter for this project's stack;
+backend/ can take it_, _…; backend/ has it already_ — never after a
+placement or a re-render gap, which say what to do in the service
+itself. The code is unchanged (the service cannot carry it; it is not
+the wrong scope). The hint under a `--with path:id` adds the pair to
+type instead (_drop 'frontend:persistence' from --with, or name
+backend/: '--with backend:persistence'_), never a service already named
+for it, and spells the pair to drop from the service refused, the one
+`elsewhere` leaves out. A polyrepo service has no product root to list
+its siblings, so `keel add` there is refused as a project of its own;
+`keel new` of a polyrepo product names backend/ all the same, since the
+preset lists its services.
+
+At a stale product root nothing brings the harness forward: the root's
+is the product glue's (`fullstack/product-harness`), `fullstack` is no
+vertical `keel add` names, `keel add agent-harness` there adds nothing
+to services that have it (and is gated since Q3.1), and the services'
+own `--reapply` restamps only them. A real remedy would have made `keel
+add agent-harness` at a stale root re-render the whole glue — its
+`compose.yaml` and README with its harness, since an install runs
+verticals and the harness is one adapter of one — and mean an Ok naming
+the services at a current root but a re-render at a stale one, which
+the root's `provided` card (held by I4 to an add staging nothing) could
+not say. So the refusal says what is true instead:
+`harness-generation.ts` reads a manifest listing services as a product
+root — _this product root was scaffolded by an older keel (keel@…): … A
+product root's harness is the product's own, and no 'keel add' brings
+it forward — the agent harness is its services', each brought forward
+in its own directory — so pin keel@…, the keel that scaffolded it, to
+run '…' here_ — for an add the root runs itself (`dev-env`, or a
+re-render of what it has: `vcs --reapply`) and `keel docs`. An add
+naming only what is there already — what its services have (the
+root's `included`: `agent-harness`, `code-style`, …), or what the root
+has installed (`vcs`) with neither `--reapply` nor `--refresh`
+re-rendering it — runs nothing at the root in any keel, so pinning one
+would not help: its refusal, told who has it by the add front door
+(`harnessGenerationRefusal`'s `already`: the services, the root, or
+both), ends _— and its services have what 'keel add agent-harness'
+names already, so there is nothing to run here_ (_this root has_, for
+`keel add vcs`; _this root and its services have_, for `keel add
+code-style vcs`). What the root cannot carry never
+reaches the gate: `productRootReading` refuses it first, as in any
+generation (`persistence`, `toolchain` and `iac` as
+`keel.wrong-scope`, pointing into the services, which the root's
+marker does not stop; `ci` and `distribution` as
+`keel.uncoverable-vertical`), and `keel add module` now does the same,
+refused as `keel.invalid-module` before the gate at a product root, as
+the status's `moduleRefusal` there already said. `keel add --list`'s
+line and `project.js`' `harnessNotice` read the same fields (the
+status's `harnessGeneration`, and its `services`, which tell a product
+root) and say it once, with which refusal each add there meets — _what
+is not for this root as it says below, what it or its services have
+already as nothing to run, and anything else naming the keel that
+scaffolded it, to pin_, the page's of its cards (_one in its services
+as theirs_: it offers no add of what the root has, only its re-render);
+the status contract's TSDoc, `docs/cli.md` and `docs/ui.md` say it
+where they described the gap.
+
+`notInitialisedSentence` moved from `refusals.ts` into the contract
+(`nearby.ts`, with `NearbyProjects` and `NOT_INITIALISED_CODE`), since
+the toolchain context refuses with it and may not import the engine;
+the walk stays `scope.ts`' `nearbyProjects`. `keel add module` reads it
+once where it finds no manifest and words it through `add-module.ts`'
+`notInitialised`, which `moduleRefusal` — the status's reading of a
+directory holding none, with the same walk (`ProjectStatusDeps.home`
+added) — calls too, so the status's `moduleRefusal` and the click stay
+one sentence: _run 'keel add module' there_, with no name, so the two
+are byte-identical. (The page shows that control only in a project, so
+there it is a status field, not a control greyed out on screen.) `keel
+link` reads it too, and the toolchain handlers are handed it as
+`ToolchainDeps.nearby`, a function the composition root and the test
+factory wire from `nearbyProjects` — required, so `tsc` holds the
+composition root to wiring it. Inside a monorepo product root, in a
+directory no service is, the project above is the root, which takes
+no bounded context and declares no toolchain: the walk reports those
+of its services that hold a project (`NearbyProjects.services` — not a
+listed one holding none, such as the one a command is run in), and
+`keel add module` and `keel
+toolchain`, whose sentence says a product root refuses them too
+(`notInitialisedSentence`'s `serviceScoped`), name those instead —
+_this directory is inside the keel product at ../, whose services are
+../backend/ and ../frontend/; run 'keel toolchain install' in one of
+them_ — while `keel add` and `keel link`, which run at a root, still
+name the root. A project named can refuse `keel add module` too — the
+flat layout, which scaffolds default to, takes no bounded context — so
+the walk hands back the manifest of each project it names (`scope.ts`'
+`NearbyReading.manifests`: the one above, read on the way up; its
+services; those below, read to find them), and `notInitialised` asks
+`moduleRefusal` of each (`notInitialisedSentence`'s `refusedAt`): where
+every one refuses it, for one reason, the sentence gives the reason
+instead of pointing — _this directory is inside the keel project at
+../, which refuses 'keel add module' too, since a bounded context needs
+the modulith layout: …_, _…whose services are ../backend/ and
+../frontend/, each refusing 'keel add module' too, since …_ — and where
+one takes a context, or cannot be read, or they refuse it for different
+reasons, it points as before. And at the root itself, which declares no
+toolchain, `keel toolchain install|check` said to run `keel add
+toolchain` first, which is refused there (`keel.wrong-scope`):
+`engine.ts`' no-block refusal reads a manifest listing services as a
+product root and names them — _this is a product root, which declares
+no toolchain: a toolchain belongs to a service — run 'keel toolchain
+install' in backend/ or frontend/_ — under the same code.
+
+Grid: no verdict moved — the codes are unchanged, the greenfield,
+brownfield and composite goldens regenerate byte-identical and the
+known files stay as they were. The sentences of 36 composite cells
+moved, which the goldens do not keep: each of the six products' front
+end refusing persistence (_backend/ can take it_) and observability
+(_backend/ has it already_), in `keel new` under both layouts and in
+`keel add` in the monorepo front end, whose cards I4 holds to them.
+I5's single-service sentences are unmoved: no single project carries
+`elsewhere`, and `comesWith` changes no sentence. The planner-readiness
+golden records `comesWith` now (_— comes with …_), and moved on exactly
+the observability cells of the nine CLI-only presets, whose nearest
+HTTP sibling comes with it. The docs matrix regenerates byte-identical.
+
+Held by `hint.test.ts` (both hints with and without each field, a first
+nearest stack that carries it only as an extra, three services, a pair
+named for two of them, and on the command line `quarkus-cli --with
+observability` and `fullstack --with frontend:persistence` under both
+layouts), `refusals.test.ts` (each sentence with and without
+`elsewhere`, the sentence alike with `comesWith`, no field where no
+sibling could or the gap is a placement or a re-render), `plan-refusal.test.ts`
+(`admit` and `foresee` alike over siblings that can, have, cannot or
+are unknown), `planner.test.ts`, `new-project.test.ts` (the refusal of
+`quarkus-cli --with observability` records `comesWith`),
+`composite-scope.test.ts` (the greenfield refusal under both layouts,
+the page's menu entry and dropped pick for it; the monorepo frontend's
+cards and adds, before and after the backend takes persistence; the
+polyrepo frontend's unchanged; `keel add module`, `keel link` and both
+`keel toolchain` commands in a service's subdirectory, at a polyrepo
+product's directory and in a monorepo product root's subdirectory that
+is no service — `keel add module` saying why each flat project there
+refuses it too, and pointing at a modulith above — both `keel
+toolchain` commands at the root itself, the status's `moduleRefusal`
+equal to the click's, and `keel add module` and `keel link` where no
+project is near), `scope.test.ts` (`siblings`, `siblingsOf`, and
+`nearbyProjects` from two levels under a product root, leaving out a
+listed service that holds no project, at a polyrepo product's
+directory, under a single project and at a manifest it cannot read),
+`nearby.test.ts` (the sentence over every shape the walk hands it,
+with every project it names refusing, one, or for different reasons),
+`new-project.test.ts`' home directory (`keel add module` and the
+status's `moduleRefusal` walking up no further than it),
+`harness-generation.test.ts` (at a stale root, under both markers,
+`agent-harness` and `code-style` saying the services have them, `vcs`
+that the root has it and `code-style vcs` that both do, `dev-env`
+naming the pin — alone, beside `code-style`, and under `code-style
+--refresh vcs`, where the root's own is re-rendered — as `vcs
+--reapply`, `keel docs sync` and `keel docs check` do, `persistence`
+refused for its scope and `keel add module` as at any root, equal to
+the status's; and the function on a product's manifest), the CLI's
+`add.test.ts` (`--list` at a stale root, beside the refusals it
+names), `project.test.ts` (the page's notice there, and a card not for
+the root refused as the click is), the toolchain's `install.test.ts`
+(told where the project is, and not; a product root's manifest naming
+one, two or three services), and `ui-compose` in a browser (the front end's refused
+persistence naming backend/).
+
+Beyond the text above: `routeExtra` and `productRootReading` now read
+each service's readiness through `readinessAmong`, the function the
+sibling field is filled by, where each spelled the same map. A pair
+named for two services, `--with frontend:persistence,backend:persistence`,
+was hinted as _drop 'persistence' from --with_ — bare, since two
+services named it — and is now spelled for the one refused. Where no
+project is near, the refusals of `keel add module`, `keel link` and
+`keel toolchain` end _first to create one_, as `keel add`'s did; and
+`keel docs sync|check` refuse under `NOT_INITIALISED_CODE` rather than
+their own spelling of it. Not done: `keel add` in a monorepo service
+names no `cd` into the sibling that can take it —
+`ElsewhereService.path` is relative to the product root, and the hint
+cannot tell where the command ran relative to it — so the sentence
+carries it there; `keel docs sync|check` where no project is still say
+only that none is, since they never named `keel new`; and `keel add
+module` at a product root itself, which predates this step, still
+sends the user into a service (_run 'keel add module <name>' inside
+the service directory instead_) without asking whether any takes a
+bounded context — the front door reads the root's manifest alone
+there, and the status's `moduleRefusal` is held to it.
 
 ### Decisions on record
 

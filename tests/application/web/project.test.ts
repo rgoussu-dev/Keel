@@ -108,6 +108,45 @@ describe('harnessNotice', () => {
     await stamp(HARNESS_GENERATION + 1);
     expect(harnessNotice(await status())).toContain('upgrade keel before adding to it');
   });
+
+  it('says at a product root that no card brings its harness forward, and what each refusal says', async () => {
+    await scaffold('fullstack', { layout: 'monorepo' });
+    await stamp(null);
+    const stale = await status();
+    expect(harnessNotice(stale)).toBe(
+      `This product root’s harness carries no generation marker, and this keel writes generation ${String(HARNESS_GENERATION)}: no card brings a product root’s harness forward, and every card is refused — one not for this root as it says, one in its services as theirs, and any other naming the keel that scaffolded it, to pin.`,
+    );
+    const refused = async (vertical: string) =>
+      expectErr(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            verticals: [vertical],
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      );
+    // The card the root can carry names the pin; the harness it has in
+    // its services says they have it.
+    const own = await refused('dev-env');
+    expect(own.code).toBe('keel.harness-generation');
+    expect(own.message).toContain("no 'keel add' brings it forward");
+    expect(own.message).toContain('pin keel@');
+    const theirs = await refused('agent-harness');
+    expect(theirs.code).toBe('keel.harness-generation');
+    expect(theirs.message).toContain("its services have what 'keel add agent-harness' names");
+    expect(theirs.message).not.toContain('pin ');
+    // A card not for the root says so as it would anyway, its own
+    // refusal the click's.
+    const notHere = await refused('persistence');
+    expect(notHere.code).toBe('keel.wrong-scope');
+    expect(stale.available.find((card) => card.id === 'persistence')?.refusal).toMatchObject({
+      code: notHere.code,
+      message: notHere.message,
+    });
+  });
 });
 
 describe('stampsHarnessGeneration', () => {

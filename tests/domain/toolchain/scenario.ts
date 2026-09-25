@@ -7,6 +7,7 @@
  */
 
 import { projectScopeRoot, emptyManifestV2 } from '../../../src/domain/contract/manifest.js';
+import { NO_PROJECT_NEARBY } from '../../../src/domain/contract/nearby.js';
 import type { ToolchainBlock } from '../../../src/domain/contract/toolchain.js';
 import type { ToolchainDeps } from '../../../src/domain/toolchain/core/engine.js';
 import { FakeManifestStore } from '../../../src/infrastructure/manifest/fake.js';
@@ -124,6 +125,12 @@ export async function scenario(
     manifests,
     processes,
     prompt,
-    deps: { trees: () => tree, manifests, processes, prompt },
+    deps: {
+      trees: () => tree,
+      manifests,
+      processes,
+      prompt,
+      nearby: () => Promise.resolve(NO_PROJECT_NEARBY),
+    },
   };
 }

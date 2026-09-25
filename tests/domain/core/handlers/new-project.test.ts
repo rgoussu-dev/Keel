@@ -13,7 +13,11 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import {
+  addModuleCommand,
+  addVerticalCommand,
+  newProjectCommand,
+} from '../../../../src/domain/contract/commands.js';
 import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
@@ -599,7 +603,8 @@ describe('keel.new-project inside a keel project', () => {
  * manifest, migrated). That directory is the user's own, never a
  * project's scope: a walk up ends at the home directory unread, so
  * `keel new` below it scaffolds, and `keel add` there points at `keel
- * new`, not at the home directory.
+ * new`, not at the home directory — as `keel add module` does, and the
+ * status's `moduleRefusal`, each walking up with the home it is handed.
  */
 describe('keel.new-project under a home directory keel once installed into', () => {
   it.each([[['my-app']], [['code', 'my-app']]])(
@@ -645,6 +650,22 @@ describe('keel.new-project under a home directory keel once installed into', () 
       expect(add.message).toBe(
         `no project initialised at ${projectScopeRoot(dir)} — run 'keel new --stack=<id>' first to create one`,
       );
+      const module = expectErr(
+        await mediator.dispatch(
+          addModuleCommand({
+            cwd: dir,
+            module: 'billing',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      );
+      expect(module.message).toBe(
+        `no project initialised at ${projectScopeRoot(dir)} — run 'keel new --stack=<id> --module-layout=modulith' first to create one`,
+      );
+      const status = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: dir })));
+      expect(status.moduleRefusal).toEqual({ code: module.code, message: module.message });
     },
   );
 });
@@ -1748,6 +1769,37 @@ describe('keel.new-project extra verticals', () => {
       missing: { entrypoint: ['arch.server-http'] },
       carriedBy: ['quarkus-cli-rest'],
     });
+  });
+
+  it('records that the stack carrying it comes with it, where its preset installs it', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli',
+          answers: bootstrapAnswers,
+          interactive: false,
+          dryRun: true,
+          extraVerticals: ['observability'],
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.uncoverable-vertical');
+    // Read off the preset's own verticals: quarkus-cli-rest installs
+    // observability of its own, so naming it there would be set aside
+    // — the hint says to scaffold it, naming nothing more. The
+    // sentence is the one a stack carrying it only as an extra gets.
+    expect(error.message).toBe(
+      'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'unavailable',
+      vertical: 'observability',
+      missing: { entrypoint: ['arch.server-http'] },
+      carriedBy: ['quarkus-cli-rest'],
+      comesWith: ['quarkus-cli-rest'],
+    });
+    expect(STACKS['quarkus-cli-rest']?.verticals.map((own) => own.id)).toContain('observability');
   });
 
   it('names the missing entrypoint, not a framework swap, when both would do', async () => {

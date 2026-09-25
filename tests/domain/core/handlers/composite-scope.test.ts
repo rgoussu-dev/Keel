@@ -21,20 +21,28 @@
  *
  * **Port.** `Mediator.dispatch`: `keel.project-status` for what a
  * card reads, and the add or new command — dry run unless it says so
- * — for what the click does. Every card is held to its add, code and
- * sentence, as the composition grid holds every cell (I4, I7); these
- * pin the sentences a user reads.
+ * — for what the click does; `keel.dials` for a product's service
+ * menus; and `keel add module`, `keel link` and both `keel toolchain`
+ * commands where no project is. Every card is held to its add, code
+ * and sentence, as the composition grid holds every cell (I4, I7);
+ * these pin the sentences a user reads.
  */
 
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import {
+  addModuleCommand,
+  addVerticalCommand,
+  linkPeerCommand,
+  newProjectCommand,
+} from '../../../../src/domain/contract/commands.js';
 import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { ManifestStore } from '../../../../src/domain/contract/ports/manifest-store.js';
 import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
 import {
+  dialsQuery,
   previewQuery,
   projectStatusQuery,
   type AvailableVerticalDescriptor,
@@ -50,6 +58,11 @@ import {
   shippedSource,
 } from '../../../../src/domain/core/registry.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
+import {
+  toolchainCheckQuery,
+  toolchainInstallCommand,
+} from '../../../../src/domain/toolchain/contract/commands.js';
+import type { Action } from '../../../../src/domain/kernel/action.js';
 import type { Mediator } from '../../../../src/domain/kernel/mediator.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -463,6 +476,34 @@ describe('a monorepo service', () => {
     expect(card(backend, 'persistence').readiness).toBe('ready');
   });
 
+  it('refuses what it cannot carry naming the service that can, or has it, card and add alike', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const frontend = await status(mediator, at('frontend'));
+    // Read from the root's list of services, each from its own
+    // manifest: the card carries the refusal the add gives.
+    const persistence = await refusedAlike(mediator, at('frontend'), frontend, 'persistence');
+    expect(persistence.code).toBe('keel.uncoverable-vertical');
+    expect(persistence.message).toBe(
+      "Persistence has no adapter for this project's stack; backend/ can take it",
+    );
+    expect(persistence.refusal).toMatchObject({
+      elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'ready' }],
+    });
+    const observability = await refusedAlike(mediator, at('frontend'), frontend, 'observability');
+    expect(observability.message).toBe(
+      "Observability has no adapter for this project's stack; backend/ has it already",
+    );
+
+    // Once the backend has it, that is what the front end says.
+    expectOk(await add(mediator, at('backend'), ['persistence'], false));
+    const after = await status(mediator, at('frontend'));
+    const had = await refusedAlike(mediator, at('frontend'), after, 'persistence');
+    expect(had.message).toBe(
+      "Persistence has no adapter for this project's stack; backend/ has it already",
+    );
+  });
+
   it('answers a re-render of what it does not install with where it is, not with an install', async () => {
     const mediator = mediatorOver();
     await scaffold(mediator, 'fullstack', 'monorepo');
@@ -521,6 +562,15 @@ describe('a polyrepo service', () => {
     expect(await fs.pathExists(at('backend', '.github', 'workflows', 'release-image.yml'))).toBe(
       true,
     );
+  });
+
+  it('refuses what it cannot carry as a project of its own: no root lists another service', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'polyrepo');
+    const frontend = await status(mediator, at('frontend'));
+    const persistence = await refusedAlike(mediator, at('frontend'), frontend, 'persistence');
+    expect(persistence.message).toBe("Persistence has no adapter for this project's stack");
+    expect(persistence.refusal).not.toHaveProperty('elsewhere');
   });
 });
 
@@ -700,6 +750,9 @@ describe('keel new in a service the product lists', () => {
 });
 
 describe('keel add where no project is', () => {
+  /** Why a project on the flat layout, as scaffolds default to, takes no bounded context. */
+  const contextless = `a bounded context needs the modulith layout: contexts meet only at the peer-facing seam the modulith puts between them, and the flat layout is one hexagon for the whole service with no seam for a second context to meet the first at. "keel add module" needs a project scaffolded with --module-layout=modulith`;
+
   it('points a subdirectory of a project at the project it is in', async () => {
     const mediator = mediatorOver();
     await scaffold(mediator, 'fullstack', 'polyrepo');
@@ -719,6 +772,167 @@ describe('keel add where no project is', () => {
     expect(parent.message).toBe(
       `no project initialised at ${at('.claude')} — backend/ and frontend/ below hold keel projects; run 'keel add' in one of them`,
     );
+  });
+
+  it('points keel add module, keel link and keel toolchain there too, or says why the project refuses a context as well, the status as the click', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'polyrepo');
+    const scripts = at('backend', 'scripts');
+    await fs.ensureDir(scripts);
+    const refused = async (action: Action): Promise<string> => {
+      const error = expectErr(await mediator.dispatch(action));
+      expect(error.code).toBe('keel.not-initialised');
+      return error.message;
+    };
+    const here = `no project initialised at ${path.join(scripts, '.claude')} — this directory is inside the keel project at ../`;
+    const inside = (command: string) => `${here}; run '${command}' there`;
+    const module = (dir: string) =>
+      addModuleCommand({
+        cwd: dir,
+        module: 'billing',
+        answers: {},
+        interactive: false,
+        dryRun: true,
+      });
+    // The backend is on the flat layout, as scaffolds default to: it
+    // takes no bounded context either, so it is not pointed at.
+    const refusesToo = `${here}, which refuses 'keel add module' too, since ${contextless}`;
+    expect(await refused(module(scripts))).toBe(refusesToo);
+    // The status reports the click's own sentence.
+    expect((await status(mediator, scripts)).moduleRefusal).toEqual({
+      code: 'keel.not-initialised',
+      message: refusesToo,
+    });
+    expect(await refused(linkPeerCommand({ cwd: scripts, ref: '../../frontend' }))).toBe(
+      inside('keel link'),
+    );
+    expect(await refused(toolchainInstallCommand({ cwd: scripts, interactive: false }))).toBe(
+      inside('keel toolchain install'),
+    );
+    expect(await refused(toolchainCheckQuery({ cwd: scripts }))).toBe(
+      inside('keel toolchain check'),
+    );
+
+    // Above a polyrepo product's services, at them; and where no
+    // project is near, at scaffolding one.
+    const holding = `no project initialised at ${at('.claude')} — backend/ and frontend/ below hold keel projects`;
+    const below = (command: string) => `${holding}; run '${command}' in one of them`;
+    const eachRefusing = `${holding}, each refusing 'keel add module' too, since ${contextless}`;
+    expect(await refused(module(cwd))).toBe(eachRefusing);
+    expect((await status(mediator, cwd)).moduleRefusal?.message).toBe(eachRefusing);
+    expect(await refused(linkPeerCommand({ cwd, ref: 'frontend' }))).toBe(below('keel link'));
+    expect(await refused(toolchainInstallCommand({ cwd, interactive: false }))).toBe(
+      below('keel toolchain install'),
+    );
+    expect(await refused(toolchainCheckQuery({ cwd }))).toBe(below('keel toolchain check'));
+    const nowhere = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-nowhere-'));
+    try {
+      const first = (command: string) =>
+        `no project initialised at ${path.join(nowhere, '.claude')} — run '${command}' first to create one`;
+      expect(await refused(module(nowhere))).toBe(
+        first('keel new --stack=<id> --module-layout=modulith'),
+      );
+      expect(await refused(linkPeerCommand({ cwd: nowhere, ref: '..' }))).toBe(
+        first('keel new --stack=<id>'),
+      );
+    } finally {
+      await fs.remove(nowhere);
+    }
+  });
+
+  it('points keel add module and keel toolchain inside a monorepo product root at its services, or says why they refuse it too', async () => {
+    // The root refuses a bounded context and declares no toolchain: a
+    // directory under it, in no service, is sent where they run.
+    // `keel add` and `keel link` run at the root, and are sent there.
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const notes = at('notes');
+    await fs.ensureDir(notes);
+    const refused = async (action: Action): Promise<string> => {
+      const error = expectErr(await mediator.dispatch(action));
+      expect(error.code).toBe('keel.not-initialised');
+      return error.message;
+    };
+    const none = `no project initialised at ${path.join(notes, '.claude')}`;
+    const product = `${none} — this directory is inside the keel product at ../, whose services are ../backend/ and ../frontend/`;
+    const services = (command: string) => `${product}; run '${command}' in one of them`;
+    const module = addModuleCommand({
+      cwd: notes,
+      module: 'billing',
+      answers: {},
+      interactive: false,
+      dryRun: true,
+    });
+    // Neither service, on the flat layout, takes a bounded context: said,
+    // with why, rather than sending the user into one to be refused.
+    const eachRefusing = `${product}, each refusing 'keel add module' too, since ${contextless}`;
+    expect(await refused(module)).toBe(eachRefusing);
+    expect((await status(mediator, notes)).moduleRefusal).toEqual({
+      code: 'keel.not-initialised',
+      message: eachRefusing,
+    });
+    expect(await refused(toolchainInstallCommand({ cwd: notes, interactive: false }))).toBe(
+      services('keel toolchain install'),
+    );
+    expect(await refused(toolchainCheckQuery({ cwd: notes }))).toBe(
+      services('keel toolchain check'),
+    );
+    const root = (command: string) =>
+      `${none} — this directory is inside the keel project at ../; run '${command}' there`;
+    expect(await refused(linkPeerCommand({ cwd: notes, ref: '../backend' }))).toBe(
+      root('keel link'),
+    );
+    expect(expectErr(await add(mediator, notes, ['dev-env'])).message).toBe(root('keel add'));
+    // What the root says of each, where they are sent from here.
+    expect(expectErr(await mediator.dispatch({ ...module, cwd })).code).toBe('keel.invalid-module');
+    // And at the root itself, which declares no toolchain: its services.
+    for (const [action, command] of [
+      [toolchainInstallCommand({ cwd, interactive: false }), 'keel toolchain install'],
+      [toolchainCheckQuery({ cwd }), 'keel toolchain check'],
+    ] as const) {
+      const undeclared = expectErr(await mediator.dispatch(action));
+      expect(undeclared.code).toBe('keel.toolchain-not-declared');
+      expect(undeclared.message).toBe(
+        `this is a product root, which declares no toolchain: a toolchain belongs to a service — run '${command}' in backend/ or frontend/`,
+      );
+    }
+  });
+
+  it('points keel add module at a project above that takes a bounded context, the status as the click', async () => {
+    const mediator = mediatorOver();
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          moduleLayout: 'modulith',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const tools = at('tools');
+    await fs.ensureDir(tools);
+    const error = expectErr(
+      await mediator.dispatch(
+        addModuleCommand({
+          cwd: tools,
+          module: 'billing',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.not-initialised');
+    expect(error.message).toBe(
+      `no project initialised at ${path.join(tools, '.claude')} — this directory is inside the keel project at ../; run 'keel add module' there`,
+    );
+    expect((await status(mediator, tools)).moduleRefusal).toEqual({
+      code: error.code,
+      message: error.message,
+    });
   });
 });
 
@@ -934,6 +1148,78 @@ describe("keel new: a product's extras, each in its service", () => {
           await recorded(path.join(added, dir)),
         );
       }
+    },
+  );
+
+  it.each(['monorepo', 'polyrepo'] as const)(
+    'refuses what one service cannot carry naming the one that can, as its menu does (%s)',
+    async (layout) => {
+      const mediator = mediatorOver();
+      const target = {
+        kind: 'new-project' as const,
+        stack: 'fullstack',
+        layout,
+        services: { frontend: { extraVerticals: ['persistence'] } },
+      };
+      const error = expectErr(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            layout,
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            services: target.services,
+          }),
+        ),
+      );
+      // Not the product's scope: the front end's own refusal, with the
+      // sibling that can take it named after what stops it here.
+      expect(error.code).toBe('keel.uncoverable-vertical');
+      expect(error.message).toBe(
+        "Persistence has no adapter for this project's stack; backend/ can take it",
+      );
+      expect((error as RefusalError).refusal).toMatchObject({
+        kind: 'unavailable',
+        vertical: 'persistence',
+        elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'ready' }],
+      });
+      expect(await fs.readdir(cwd)).toEqual([]);
+
+      // The page's menu for the front end, and the reason it drops the
+      // pick, say the same.
+      const dials = expectOk(await mediator.dispatch(dialsQuery({ target })));
+      const frontend = dials.services.find((service) => service.path === 'frontend');
+      expect(frontend?.verticals.find((option) => option.id === 'persistence')?.refusal).toEqual({
+        code: error.code,
+        message: error.message,
+        refusal: (error as RefusalError).refusal,
+      });
+      expect(dials.adjustments).toContainEqual({
+        id: 'persistence',
+        change: 'dropped',
+        because: error.message,
+        service: 'frontend',
+      });
+
+      // One the backend has already is named as had, not as to take.
+      const had = expectErr(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            layout,
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            services: { frontend: { extraVerticals: ['observability'] } },
+          }),
+        ),
+      );
+      expect(had.message).toBe(
+        "Observability has no adapter for this project's stack; backend/ has it already",
+      );
     },
   );
 

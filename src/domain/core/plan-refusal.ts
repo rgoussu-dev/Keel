@@ -43,11 +43,13 @@ import {
   addedPrerequisitesNote,
   dependencyOrderNote,
   elsewhereRefusal,
+  elsewhereService,
   incompatibleRefusal,
   productRootPlacementRefusal,
   tiedRefusal,
   unavailableRefusal,
 } from './refusals.js';
+import type { ProductServiceScope } from './scope.js';
 
 /** A request the planner can install, closed over its prerequisites. */
 export interface AdmittedSet {
@@ -93,11 +95,17 @@ export interface AdmittedSet {
  * its own words, and set one already there aside with a note of their
  * own, before they plan. Its order changes nothing but
  * {@link AdmittedSet.reordered}.
+ *
+ * `siblings` are, where `scope` is one service of a product, the
+ * product's other services: a vertical this one cannot carry is
+ * refused naming one of them that could take it, or has it
+ * ({@link planRefusal}).
  */
 export function admit(
   registry: Registry,
   scope: PlanScope,
   requested: readonly Vertical[],
+  siblings: readonly ProductServiceScope[] = [],
 ): Result<AdmittedSet> {
   const named = requested.map((vertical) => vertical.id);
   const set = [...requested].sort(idOrder);
@@ -134,7 +142,7 @@ export function admit(
     case 'unknown':
       throw new Error(`admit: '${planned.vertical}' is not registered — refuse it before planning`);
     default:
-      return err(planRefusal(registry, set, planned, scope.rules));
+      return err(planRefusal(registry, set, planned, scope.rules, siblings));
   }
 }
 
@@ -155,9 +163,14 @@ export interface Foreseen {
  * {@link admit} words the plan of that one vertical, so a card or a
  * menu read ahead of time and the refusal met on the click are one
  * sentence under one code. `vertical` is registered and not on the
- * scope already.
+ * scope already; `siblings` are as {@link admit} reads them.
  */
-export function foresee(registry: Registry, scope: PlanScope, vertical: Vertical): Foreseen {
+export function foresee(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+  siblings: readonly ProductServiceScope[] = [],
+): Foreseen {
   const ready = readiness(registry, scope, vertical.id);
   switch (ready.kind) {
     case 'unavailable':
@@ -168,6 +181,7 @@ export function foresee(registry: Registry, scope: PlanScope, vertical: Vertical
           [vertical],
           { kind: 'unavailable', vertical: vertical.id, gap: ready.gap },
           scope.rules,
+          siblings,
         ),
       };
     case 'needs':
@@ -186,6 +200,29 @@ export function foresee(registry: Registry, scope: PlanScope, vertical: Vertical
     default:
       return { readiness: ready, refusal: null };
   }
+}
+
+/**
+ * How ready vertical `id` is in each of `services`, in their order, as
+ * a refusal names them: a service with no scope reads as unable to
+ * take it; one the product root gives it to (`PlanScope.member`) is
+ * marked so.
+ */
+export function readinessAmong(
+  registry: Registry,
+  services: readonly ProductServiceScope[],
+  id: string,
+): readonly ElsewhereService[] {
+  return services.map(({ path, stack, scope }) =>
+    scope === null
+      ? { path, stack, readiness: 'unavailable' }
+      : elsewhereService(
+          path,
+          stack,
+          readiness(registry, scope, id),
+          scope.member?.provided.includes(id),
+        ),
+  );
 }
 
 /** {@link amongServices}' answer: there already, in `paths`; or refused, and why. */
@@ -237,7 +274,10 @@ export function amongServices(
 /**
  * The refusal a plan that is not `planned` is written as, for
  * `requested` — the set it was asked of, by id — on a scope whose
- * pieces declare `rules` (`PlanScope.rules`), which a gap may name.
+ * pieces declare `rules` (`PlanScope.rules`), which a gap may name,
+ * and which is one service of a product whose other services are
+ * `siblings`, which an unavailable vertical's refusal names where one
+ * could take it or has it (`UnavailableRefusal.elsewhere`).
  * What `keel.dials` drops an extra with too, so a page's reason and a
  * front door's refusal are one sentence.
  */
@@ -246,6 +286,7 @@ export function planRefusal(
   requested: readonly Vertical[],
   planned: Exclude<Plan, { readonly kind: 'planned' } | { readonly kind: 'unknown' }>,
   rules: readonly Conflict[] = [],
+  siblings: readonly ProductServiceScope[] = [],
 ): RefusalError {
   const byId = (id: string): Vertical => {
     const found = registry.vertical(id);
@@ -256,7 +297,13 @@ export function planRefusal(
   };
   switch (planned.kind) {
     case 'unavailable':
-      return unavailableRefusal(registry, byId(planned.vertical), planned.gap, rules);
+      return unavailableRefusal(
+        registry,
+        byId(planned.vertical),
+        planned.gap,
+        rules,
+        readinessAmong(registry, siblings, planned.vertical),
+      );
     case 'tied':
       return tiedRefusal(
         registry,

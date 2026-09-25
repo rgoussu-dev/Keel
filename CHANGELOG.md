@@ -44,6 +44,75 @@ use to keep a long-lived changelog scannable — and the root keeps
   product does not list, and a manifest keel could not read there or
   in a listed service, were `keel.inside-product`.
 
+- **A refusal names the stack that comes with what you asked for, and
+  the service that can take it.** `keel new --stack=quarkus-cli --with
+observability` was refused with the hint _"…, or scaffold
+  quarkus-cli-rest, which carries it: 'keel new
+  --stack=quarkus-cli-rest --with observability'"_ — a `--with` that
+  preset only sets aside, since observability comes with it. The hint
+  now reads _"…, which comes with it: 'keel new
+  --stack=quarkus-cli-rest'"_, and `keel add observability` on the
+  scaffolded project _"quarkus-cli-rest has this project's
+  entrypoints and comes with observability"_; the refusal records it
+  (`comesWith`, beside `carriedBy`), and its sentence is unchanged. A
+  vertical one service of a product cannot carry was refused as if the
+  service were a project alone — `keel new --stack=fullstack --with
+frontend:persistence` said _"Persistence has no adapter for this
+  project's stack"_, the hint only _"drop 'frontend:persistence' from
+  --with"_. The sentence now names another service that can take it,
+  or has it — _"…; backend/ can take it"_, _"…; backend/ has it
+  already"_ — and the hint the pair to type instead: _"…, or name
+  backend/: '--with backend:persistence'"_. `keel ui`'s per-service
+  _Not for frontend/_ says the same, as do `keel add` in a monorepo
+  product's service and its card; the refusal carries the product's
+  other services (`elsewhere`), and its code is unchanged. A pair named
+  for two services, one of them refused (`--with
+frontend:persistence,backend:persistence`), was hinted to drop by the
+  bare id, _"drop 'persistence' from --with"_; it is now spelled for
+  the one refused, _"drop 'frontend:persistence' from --with"_.
+
+- **A product root from an older harness generation no longer points
+  at a command it refuses.** At a monorepo product root whose manifest
+  carries an older harness-generation marker, or none, every `keel add`
+  the root did not refuse for its scope first — `keel add
+agent-harness` included — `keel add module` and `keel docs` said to
+  move the harness aside and run `keel add agent-harness`, which is
+  refused there in the same words, and `keel add --list` and `keel ui`
+  said every add but that one was refused. A product root's harness is
+  the product's own, and no `keel add` brings it forward: the refusal
+  now says so, and names the way forward that works — for what the
+  root runs itself, pinning the keel that scaffolded it; for what is
+  there already — its services', `keel add agent-harness` among it, or
+  the root's own, not re-rendered — who has it, with nothing to run
+  there. `keel add module` is refused as at any
+  product root (`keel.invalid-module`), as the status says, and
+  `keel add --list`'s line and the page's notice say which refusal
+  each add there meets.
+
+- **`keel add module`, `keel link` and `keel toolchain` inside a
+  project name it.** Run in a directory under a keel project that holds
+  none of its own, each said to run `keel new` first, which is refused
+  there (`keel.inside-project`). Each now points at the project above —
+  _"this directory is inside the keel project at ../; run 'keel add
+  module' there"_ — or at a polyrepo product's services below, as
+  `keel add` does; inside a monorepo product root, which takes no
+  bounded context and declares no toolchain, `keel add module` and
+  `keel toolchain` name its services instead. Where every project it
+  would name takes no bounded context either — the flat layout,
+  scaffolds' default — `keel add module` says so, and why, rather than
+  sending you there to be refused: _"…inside the keel project at ../,
+  which refuses 'keel add module' too, since a bounded context needs
+  the modulith layout: …"_. `keel.project-status` there reports the
+  same sentence as its `moduleRefusal`. Where no project is near, each
+  still names `keel new`, now ending _"first to create one"_ as `keel
+add`'s sentence does. And at a monorepo product root itself, `keel
+toolchain install|check` said to run `keel add toolchain` first,
+  which is refused there (`keel.wrong-scope`); it now names the
+  services, where a toolchain goes — _"this is a product root, which
+  declares no toolchain: a toolchain belongs to a service — run 'keel
+  toolchain install' in backend/ or frontend/"_ — under the same code,
+  `keel.toolchain-not-declared`.
+
 - **`keel new` no longer merges into a file of yours that it patches.**
   Into a directory that was not empty, a file keel writes through a
   patch rather than whole was merged with the one already there:
@@ -435,9 +504,7 @@ new` the terminal adds the way past it (move it aside, or start in
   for the root" now sees success — but at a root from an older harness
   generation, where `keel add agent-harness` is refused by the
   generation gate like every other add (`keel.harness-generation`),
-  since it installs nothing there to bring forward; the refusal still
-  names that add as the way forward, and pinning the keel that
-  scaffolded the product is the one there is.
+  since it installs nothing there to bring forward.
 
 - **An answer an older keel recorded is the one read.** An older
   keel merged every `--set` into the manifest, so a project can record

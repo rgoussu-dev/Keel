@@ -137,9 +137,20 @@ Infrastructure as code`); what the service already has — from its
 preset, or from the product (`backend: Container image already comes
 with fullstack`, under the monorepo layout) — is set aside with a
 note; and what it cannot take is refused in the words `keel add` in
-that service would use, the hint under it naming the pair to drop
-(`hint: drop 'frontend:persistence' from --with`) rather than another
-stack to scaffold, which would be another product. A pipeline or a
+that service would use, going on to name another service of the
+product that can take it, or has it — the hint under it naming the
+pair to drop, and the one to type instead, rather than another stack
+to scaffold, which would be another product:
+
+```
+$ keel new --stack=fullstack --with frontend:persistence --yes
+Persistence has no adapter for this project's stack; backend/ can take it
+  hint: drop 'frontend:persistence' from --with, or name backend/:
+  '--with backend:persistence'
+```
+
+A service that has it already is named as having it (_"…; backend/
+has it already"_), with nothing more to type. A pipeline or a
 release in a monorepo
 service is the wrong scope there (`keel.wrong-scope`), as `keel add
 ci` inside it is. `fullstack --with backend:persistence` writes what
@@ -331,6 +342,13 @@ add` would refuse it with on the scaffolded project (see
     which carries it: 'keel new --stack=quarkus-cli-rest --with persistence'
   ```
 
+  Where that stack comes with the vertical — its preset installs it of
+  its own, as every HTTP preset does observability — the hint names
+  nothing more to add, since `--with` of it there would only be set
+  aside as already there: _"…, or scaffold quarkus-cli-rest, which
+  comes with it: 'keel new --stack=quarkus-cli-rest'"_. With several
+  nearest stacks, the hint names the first, and is worded by it.
+
 - and so is a set whose extras need a capability that two verticals
   each supply, equally well — a tie only you can settle, by naming the
   one you want (`keel.missing-prerequisites`, naming both). None of
@@ -418,7 +436,15 @@ planner `keel new --with` and its menu read, before a file moves, and
 the refusal is the same sentence `keel new --with` gives, under the
 same code — the remedy only `keel add` has is the `hint:` line under
 it (_"quarkus-cli-rest carries both this project's entrypoints and
-persistence"_). At the root of a composite product, a vertical the
+persistence"_, or, for a vertical that stack comes with, _"…has
+this project's entrypoints and comes with observability"_). In a
+monorepo product's service, a vertical it cannot carry is refused
+naming another service of the product that can take it, or has it
+(_"Persistence has no adapter for this project's stack; backend/ can
+take it"_), read from the product root's list of services — the card
+in `keel add --list` and the page say the same; a polyrepo service
+has no product root to read them from, and is refused as a project of
+its own. At the root of a composite product, a vertical the
 root cannot carry is refused under `keel.wrong-scope`, naming the
 services that can take it, read from each service's own manifest, and
 the hint says where to `cd` (`cd backend && keel add persistence`).
@@ -515,8 +541,11 @@ refused until you name one, but it is listed with the verticals that
 need something first, in the sentence that names the choice. A project
 from another harness generation — which `keel add` refuses everything
 but `agent-harness` on until it is brought forward, and at a monorepo
-product root that too — is said once, first, rather than on every
-line. Outside a keel project there is
+product root that too, where nothing brings it forward: there what is
+not for the root is refused as the list says, what it or its services
+have already as nothing to run, and anything else naming the keel to
+pin — is said once,
+first, rather than on every line. Outside a keel project there is
 nothing to ask about, and it prints the catalog: every id with its
 one-line description.
 
@@ -542,7 +571,18 @@ whose manifest keel cannot read, where `keel add` reports the broken
 file; in a polyrepo product's directory, which holds no manifest of
 its own, the services below (_"backend/ and frontend/ below hold keel
 projects; run 'keel add' in one of them"_); only where neither is,
-`keel new`.
+`keel new`. `keel add module`, `keel link` and `keel toolchain` say the
+same, each naming itself (_"…; run 'keel add module' there"_) — but
+inside a monorepo product root, which takes no bounded context and
+declares no toolchain, `keel add module` and `keel toolchain` name its
+services instead (_"this directory is inside the keel product at ../,
+whose services are ../backend/ and ../frontend/; run 'keel toolchain
+install' in one of them"_). Where every project it would name takes no
+bounded context either — the flat layout, which scaffolds default to —
+`keel add module` says so, and why, rather than sending you there to be
+refused: _"this directory is inside the keel project at ../, which
+refuses 'keel add module' too, since a bounded context needs the
+modulith layout: …"_.
 
 ### `--refresh`: what an add changes
 
@@ -617,9 +657,25 @@ restamps the marker, then re-run the command — or pin the keel that
 scaffolded the project. `keel add agent-harness` is the one command
 the gate lets through — but not at a monorepo product root, whose
 services have the harness: it installs nothing there, so the gate
-refuses it too, and the way forward there is the pin, whatever the
-refusal names (a wording gap the [roadmap](roadmap.md) lists under
-Q's Phase 3). A newer marker asks for a newer keel.
+refuses it too. A product root's harness is the product glue's own,
+which no `keel add` names, so nothing brings it forward, and the
+refusal says so: for what the root runs itself the way forward is the
+pin, which it names (_"… so pin keel@0.4.0-alpha, the keel that
+scaffolded it, to run 'keel add dev-env' here"_), and each service's
+harness is brought forward in that service. An add naming only what
+is there already — what the services have, `keel add agent-harness`
+itself or code style, or what the root has installed, unless
+`--reapply` or `--refresh` re-renders it — names no pin, since no keel
+runs anything for it at the root, and says who has it: _"… and its
+services have what 'keel add agent-harness' names already, so there is
+nothing to run here"_, _"… and this root has what 'keel add vcs' names
+already, …"_. What the root cannot carry at all is
+refused as in any generation, before the gate — pointing into a
+service where one can take it (`keel add persistence`), or saying keel
+installs it at no monorepo product's root yet (`ci`, `distribution`) —
+and `keel add module` as at any product root. `keel add --list` and
+`keel ui` say the same at such a root, once. A newer marker asks for a
+newer keel.
 
 ### `--reapply`: the update path
 
@@ -726,7 +782,12 @@ says so rather than emitting a gateway to nothing.
 
 The front door refuses, with a reason, when: the name is not a
 lowercase word `[a-z][a-z0-9]*` or is a keyword in one of the target
-languages; there is no keel project here; the project uses the flat
+languages; there is no keel project here (in a directory inside one,
+naming it, as `keel add` does, or, inside a product root, which takes
+no bounded context, its services — or, where each project it would
+name is on the flat layout too, saying so, and why — and
+`keel.project-status`'s `moduleRefusal` there is the same sentence);
+the project uses the flat
 `basic` layout, which has no seam for a second context to meet the
 first at (the rule's own reason, as a sentence — _"A bounded context
 needs the modulith layout: …"_ — with its id,
@@ -755,6 +816,9 @@ cd ../my-backend && keel add gateway      # backend half (CORS + OpenAPI contrac
 Each project's manifest records the other's projected tags
 (`peer.api.rest`, `peer.ui.spa`); see
 [peers in the composition model](composition.md#peer-tags-and-products).
+Run where there is no keel project, it is refused as
+`keel.not-initialised`, pointing at the project the directory is
+inside, or the services below it, as `keel add` does.
 
 ## `keel ui`
 
@@ -1033,8 +1097,12 @@ the same reason a partial choice is never offered. Use `check` when
 you need an exit code.
 
 Refused with a reason when there is no keel project here
-(`keel.not-initialised`), the manifest declares no toolchain block
-(`keel.toolchain-not-declared` — run `keel add toolchain` first),
+(`keel.not-initialised` — in a directory inside one, naming it, as
+`keel add` does, or inside a product root its services), the manifest
+declares no toolchain block
+(`keel.toolchain-not-declared` — run `keel add toolchain` first; at a
+monorepo product root, which declares none and where `keel add
+toolchain` is refused, it names the services, where a toolchain goes),
 nothing on the dial covers the declaration whole
 (`keel.toolchain-uncovered-need`), or the requested (or recorded)
 choice does not — `keel.toolchain-choice-unavailable`, naming what

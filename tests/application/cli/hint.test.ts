@@ -29,6 +29,24 @@ const persistenceOnCli: Refusal = {
   carriedBy: ['quarkus-cli-rest'],
 };
 
+/** The nearest stack comes with it: its preset installs it of its own. */
+const observabilityOnCli: Refusal = {
+  kind: 'unavailable',
+  vertical: 'observability',
+  missing: { entrypoint: ['arch.server-http'] },
+  carriedBy: ['quarkus-cli-rest'],
+  comesWith: ['quarkus-cli-rest'],
+};
+
+/** Refused in a product's front end, whose backend could take it. */
+const persistenceInFrontend: Refusal = {
+  kind: 'unavailable',
+  vertical: 'persistence',
+  missing: { identity: ['runtime.node'] },
+  carriedBy: [],
+  elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'ready' }],
+};
+
 const TABLE: readonly {
   readonly why: string;
   readonly refusal: Refusal;
@@ -46,6 +64,30 @@ const TABLE: readonly {
     refusal: persistenceOnCli,
     command: 'new',
     hint: "drop 'persistence' from --with, or scaffold quarkus-cli-rest, which carries it: 'keel new --stack=quarkus-cli-rest --with persistence'",
+  },
+  {
+    why: 'a missing entrypoint on keel add names the stack that comes with it, as coming with it',
+    refusal: observabilityOnCli,
+    command: 'add',
+    hint: "quarkus-cli-rest has this project's entrypoints and comes with observability; a project's entrypoints are fixed at 'keel new'",
+  },
+  {
+    // Naming it there would only be set aside, as already there.
+    why: 'a missing entrypoint on keel new scaffolds the stack that comes with it, naming nothing',
+    refusal: observabilityOnCli,
+    command: 'new',
+    hint: "drop 'observability' from --with, or scaffold quarkus-cli-rest, which comes with it: 'keel new --stack=quarkus-cli-rest'",
+  },
+  {
+    // The hint names the first nearest stack, and is worded by it.
+    why: 'several nearest stacks are worded by the first, which carries it only as an extra',
+    refusal: {
+      ...observabilityOnCli,
+      carriedBy: ['acme-cli-rest', 'quarkus-cli-rest'],
+      comesWith: ['quarkus-cli-rest'],
+    },
+    command: 'new',
+    hint: "drop 'observability' from --with, or scaffold acme-cli-rest, which carries it: 'keel new --stack=acme-cli-rest --with observability'",
   },
   {
     why: 'an identity gap on keel add leaves it to the sentence, which names the stacks',
@@ -279,6 +321,44 @@ describe('refusalHint', () => {
       "quarkus-cli-rest carries both this project's entrypoints and persistence; a project's entrypoints are fixed at 'keel new'",
     );
   });
+
+  it("names back a product's service that can take what another cannot, and none that has it", () => {
+    const named = { frontend: { extraVerticals: ['persistence'] } };
+    expect(refusalHint(persistenceInFrontend, 'new', named)).toBe(
+      "drop 'frontend:persistence' from --with, or name backend/: '--with backend:persistence'",
+    );
+    const three: Refusal = {
+      ...persistenceInFrontend,
+      elsewhere: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'worker', stack: 'quarkus-rest', readiness: 'needs' },
+        { path: 'admin', stack: 'web-components', readiness: 'unavailable' },
+      ],
+    };
+    expect(refusalHint(three, 'new', named)).toBe(
+      "drop 'frontend:persistence' from --with, or name another service: '--with backend:persistence' or '--with worker:persistence'",
+    );
+    // One that has it already needs nothing named.
+    const having: Refusal = {
+      ...persistenceInFrontend,
+      vertical: 'observability',
+      elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'included' }],
+    };
+    expect(refusalHint(having, 'new', { frontend: { extraVerticals: ['observability'] } })).toBe(
+      "drop 'frontend:observability' from --with",
+    );
+    // Named for the service that takes it too: dropping the refused
+    // pair is all there is, spelled for the service refused.
+    expect(
+      refusalHint(persistenceInFrontend, 'new', {
+        ...named,
+        backend: { extraVerticals: ['persistence'] },
+      }),
+    ).toBe("drop 'frontend:persistence' from --with");
+    // Without the field, the pair to drop, as before.
+    const { elsewhere: _dropped, ...alone } = persistenceInFrontend;
+    expect(refusalHint(alone, 'new', named)).toBe("drop 'frontend:persistence' from --with");
+  });
 });
 
 describe('a refusal at the command line', () => {
@@ -335,21 +415,54 @@ describe('a refusal at the command line', () => {
     }
   });
 
+  it('scaffolds the stack that comes with it, naming nothing more', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-hint-'));
+    try {
+      const { run } = program(cwd);
+      await expect(
+        run(['new', '--stack', 'quarkus-cli', '--with', 'observability', '--yes', '--dry-run']),
+      ).rejects.toThrow(
+        "Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: drop 'observability' from --with, or scaffold quarkus-cli-rest, which comes with it: 'keel new --stack=quarkus-cli-rest'",
+      );
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+
   it("names the service back in a product's --with pair, not a stack to scaffold instead", async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-hint-'));
     try {
       const { run } = program(cwd);
+      for (const layout of ['monorepo', 'polyrepo']) {
+        await expect(
+          run([
+            'new',
+            '--stack',
+            'fullstack',
+            '--layout',
+            layout,
+            '--with',
+            'frontend:persistence',
+            '--yes',
+            '--dry-run',
+          ]),
+        ).rejects.toThrow(
+          "Persistence has no adapter for this project's stack; backend/ can take it\n  hint: drop 'frontend:persistence' from --with, or name backend/: '--with backend:persistence'",
+        );
+      }
       await expect(
         run([
           'new',
           '--stack',
           'fullstack',
           '--with',
-          'frontend:persistence',
+          'frontend:observability',
           '--yes',
           '--dry-run',
         ]),
-      ).rejects.toThrow(/\n {2}hint: drop 'frontend:persistence' from --with$/);
+      ).rejects.toThrow(
+        "Observability has no adapter for this project's stack; backend/ has it already\n  hint: drop 'frontend:observability' from --with",
+      );
       await expect(
         run(['new', '--stack', 'fullstack', '--with', 'backend:ci', '--yes', '--dry-run']),
       ).rejects.toThrow(/\n {2}hint: drop 'backend:ci' from --with$/);

@@ -541,12 +541,13 @@ function printOptionList(
  * the project's status, which is computed by the function the add
  * front door refuses by, so the list and the command cannot disagree.
  * A harness from another generation, which stops every add but the
- * harness's own, is said once, first.
+ * harness's own — at a product root, that one too — is said once,
+ * first.
  */
 function printReadiness(status: ProjectStatus, log: Logger): void {
   const generation = status.harnessGeneration;
   if (generation !== undefined && generation.found !== generation.expected) {
-    log.warn(generationLine(generation));
+    log.warn(generationLine(generation, status.services.length > 0));
   }
   const width = Math.max(0, ...status.available.map((vertical) => vertical.id.length));
   const row = (id: string, text: string): string => `  ${id.padEnd(width)}  ${text}`;
@@ -597,13 +598,23 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
   }
 }
 
-/** The line `keel add --list` opens with on a project from another harness generation. */
-function generationLine(generation: HarnessGenerationStatus): string {
+/**
+ * The line `keel add --list` opens with on a project from another
+ * harness generation — at a product root (`productRoot`, a status
+ * listing services), whose harness no `keel add` brings forward, what
+ * the refusals there say: every add refused — what is not for the root
+ * as the list says, what it or its services have already as nothing to
+ * run, and anything else naming the keel to pin.
+ */
+function generationLine(generation: HarnessGenerationStatus, productRoot: boolean): string {
   const { found, expected } = generation;
   if (found !== null && found > expected) {
     return `this project's harness is generation ${String(found)}, newer than the generation ${String(expected)} this keel writes — upgrade keel before adding to it`;
   }
   const marker = found === null ? 'carries no generation marker' : `is generation ${String(found)}`;
+  if (productRoot) {
+    return `this product root's harness ${marker}, and this keel writes generation ${String(expected)} — no 'keel add' brings a product root's harness forward, and 'keel add' refuses everything here: what is not for this root as it says below, what it or its services have already as nothing to run, and anything else naming the keel that scaffolded it, to pin`;
+  }
   return `this project's harness ${marker}, and this keel writes generation ${String(expected)} — 'keel add' refuses everything but 'keel add agent-harness' until the harness is brought forward; any other 'keel add' says how`;
 }
 

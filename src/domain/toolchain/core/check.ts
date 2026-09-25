@@ -55,7 +55,7 @@ export class ToolchainCheckHandler implements Handler<ToolchainCheckQuery> {
 
   async handle(query: ToolchainCheckQuery): Promise<Result<ToolchainCheckReport>> {
     const cwd = path.resolve(query.cwd);
-    const loaded = await loadBlock(this.deps, cwd);
+    const loaded = await loadBlock(this.deps, cwd, 'keel toolchain check');
     if (!loaded.ok) return loaded;
     const { block } = loaded.value;
 

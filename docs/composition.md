@@ -157,14 +157,14 @@ Every refusal of a vertical or a file is **data first**: a `Refusal`
 ([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
 `RefusalError` beside its code and the sentence written from it.
 
-| Kind            | Carries                                                                                                                                                  | Raised when                                                                                       |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own                                         | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
-| `needs`         | the verticals, and each equally small set of prerequisites                                                                                               | two sets would each do — a tie, which is the user's to settle                                     |
-| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry, or that the root builds it for the service) | it is asked of a composite product rather than one of its services                                |
-| `incompatible`  | the verticals                                                                                                                                            | each installs alone, but no order installs them together                                          |
-| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                                                                    | a file the run would write, or patch inside, is in the way                                        |
-| `path-missing`  | the file, and the adapter that patches it                                                                                                                | a file the run patches is gone                                                                    |
+| Kind            | Carries                                                                                                                                                                                                                                             | Raised when                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it and which of those come with it (`comesWith`), in a product's service the other services that can take it or have it (`elsewhere`), a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                                                                                                                                                          | two sets would each do — a tie, which is the user's to settle                                     |
+| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry, or that the root builds it for the service)                                                                                            | it is asked of a composite product rather than one of its services                                |
+| `incompatible`  | the verticals                                                                                                                                                                                                                                       | each installs alone, but no order installs them together                                          |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                                                                                                                                                               | a file the run would write, or patch inside, is in the way                                        |
+| `path-missing`  | the file, and the adapter that patches it                                                                                                                                                                                                           | a file the run patches is gone                                                                    |
 
 One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
 that data as a sentence, and every surface speaks it: the planner's
@@ -180,8 +180,11 @@ refused in the same words under the same code, and the composition
 grid's I5 holds every single-service stack to that. It never says
 `--with` or `keel add`: the remedy one command has is its front end's,
 built from the refusal's fields — the CLI prints it on a `hint:` line
-(_drop it from `--with`, or scaffold go-cli-http, which carries it_;
-_`keel link <path>` first_; _`cd backend && keel add persistence`_;
+(_drop it from `--with`, or scaffold go-cli-http, which carries it_ —
+or _which comes with it_, naming no `--with`, where the refusal's
+`comesWith` says that stack's preset installs it of its own; _or name
+backend/: `--with backend:persistence`_, where a product's other
+service can take it; _`keel link <path>` first_; _`cd backend && keel add persistence`_;
 _move `go.mod` aside_ before `keel new`, never after, where the file
 may be a product root's own), and `keel ui` receives the refusal itself
 in the 422 body, as `error.refusal`.
@@ -212,6 +215,16 @@ add. So the sentence sorts it first, naming the vertical by its title:
 - any other tag is a **capability** some vertical adds, named by that
   vertical — _"Distribution needs what Continuous integration adds,
   which this project does not have yet"_.
+
+Where the project is one service of a product and another of its
+services could take the vertical, or has it, the sentence goes on to
+name it — _"Persistence has no adapter for this project's stack;
+backend/ can take it"_, _"…; backend/ has it already"_ — from the
+refusal's `elsewhere`, the product's other services with their
+readiness. `keel new --with frontend:persistence` fills it from the
+product's preset, and `keel add` in a monorepo service from the root's
+list of services; a polyrepo service, with no root to read, and any
+single project are refused in the sentence they always were.
 
 One gap is not about the project at all but about how an installed
 vertical was rendered: a Distribution that shipped a Quarkus CLI as

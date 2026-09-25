@@ -209,7 +209,9 @@ Generate posts only what the ticks add — the delta — as `keel add`:
   `keel add <id>` would refuse it with, word for word. _Observability
   needs an entrypoint this project does not have: HTTP server — a REST
   endpoint._ Kept rather than hidden, because an absent option answers
-  "why can I not have observability?" with nothing.
+  "why can I not have observability?" with nothing. In a monorepo
+  service, a vertical another service of the product can take, or has,
+  names that service there too: _…; backend/ can take it_.
 - **Belongs in a service** — at a composite product's root, an
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
   points the page at that directory and opens its Options; then what
@@ -224,7 +226,11 @@ without a database. Once the preview has said so, the vertical appears
 in the group as a **proposed re-render**: ticked, it is re-rendered
 in the same run (`--refresh`); left, the report says how to take it up
 later. A project another harness generation wrote is said once, above
-the group, rather than on each card it refuses.
+the group, rather than on each card it refuses — at a product root,
+that no card brings its harness forward, and what each refusal there
+says: a card not for the root as it says anyway, one in its services
+that they have it, any other the keel that scaffolded the root, to
+pin.
 
 "Add a bounded context" is always there, and disabled — with the
 refusal `keel add module` would give — on the flat layout and at a
@@ -423,7 +429,11 @@ product's extras for it (the service gateway) as _Comes with backend/_
 chips, and under the monorepo layout what the product root gives it —
 its version control, the image the root builds — as well; a pipeline
 or a release, whose place is the repository root, is under _Not for
-backend/_, in the sentence `keel add ci` there refuses it with. Ticks
+backend/_, in the sentence `keel add ci` there refuses it with — and
+what one service cannot take that another can, or has, names it:
+_Persistence has no adapter for this project's stack; backend/ can
+take it_, under _Not for frontend/_, as `keel new --with
+frontend:persistence` refuses it. Ticks
 move that service's selection (`target.services`, keyed by path) and
 nothing else; the command under the plan spells them as `path:id`
 pairs (`--with backend:persistence,frontend:dev-env`), the review row
@@ -636,8 +646,13 @@ present exactly when `canAddModule` is false. `harnessGeneration` is
 the marker the manifest carries (`found`, null when none) beside the
 generation this keel writes: where they differ, every add but
 `agent-harness` is refused until the harness is brought forward — at a
-monorepo product root, whose services have the harness, that one too —
-one fact, reported once rather than on every card. An installed entry is
+monorepo product root, whose services have the harness, that one too,
+and there nothing brings the root's own forward, so the refusal of an
+add the root runs names the keel that scaffolded it, to pin (one of
+only what its services or the root have already, not re-rendered,
+says who has it, and one the root cannot carry is refused as in any
+generation, first) — one fact, reported
+once rather than on every card. An installed entry is
 `reapplicable` where `keel add <id> --reapply` can re-render it — not a
 product's glue (`fullstack`) nor a bounded context, which the manifest
 records and no `keel add` names. At a composite product's root,

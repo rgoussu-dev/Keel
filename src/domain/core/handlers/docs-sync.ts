@@ -20,6 +20,7 @@ import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { DocsReport, DocsSyncCommand } from '../../contract/commands.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
+import { NOT_INITIALISED_CODE } from '../../contract/nearby.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
 import { docsIndexDrift } from '../docs-index.js';
 import { projectDocs } from '../docs-projection.js';
@@ -42,7 +43,7 @@ export class DocsSyncHandler implements Handler<DocsSyncCommand> {
       return err(
         new DomainError(
           `no project initialised at ${scopeRoot} — 'keel docs sync' projects the index of a keel project`,
-          'keel.not-initialised',
+          NOT_INITIALISED_CODE,
         ),
       );
     }

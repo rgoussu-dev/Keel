@@ -130,6 +130,7 @@ import {
   productScopes,
   productIncludedNote,
   routeExtra,
+  siblingScopes,
   serviceIncludedNote,
   switchesHarnessOn,
   verticalOptions,
@@ -945,8 +946,10 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * stack's are: one already there set aside with a note, the rest
    * closed over their prerequisites in plan order, or refused in the
    * sentence `keel add` there would give (`keel.wrong-scope` for a
-   * pipeline in a monorepo service). The notes are prefixed with the
-   * service, as its deferred actions are in the report.
+   * pipeline in a monorepo service) — naming the product's other
+   * services that could take it, or have it, where one could or does.
+   * The notes are prefixed with the service, as its deferred actions
+   * are in the report.
    */
   private resolveServiceExtras(
     command: NewProjectCommand,
@@ -984,7 +987,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       const present = chosen.filter((vertical) => scope.installed.includes(vertical.id));
       const incoming = chosen.filter((vertical) => !scope.installed.includes(vertical.id));
       if (incoming.length > 0) {
-        const set = admit(registry, scope, incoming);
+        const set = admit(registry, scope, incoming, siblingScopes(scopes, service.path));
         if (!set.ok) return set;
         admitted.set(service.path, set.value);
         notes.push(...admissionNotes(set.value).map((note) => `${service.path}: ${note}`));

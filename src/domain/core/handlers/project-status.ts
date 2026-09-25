@@ -62,15 +62,26 @@ import { addReadiness, productRootReading } from '../add-readiness.js';
 import { projectProfile, serviceLabel } from '../profile.js';
 import { inServicesNote, providedNote } from '../refusals.js';
 import { installedVertical, verticalTitle } from '../registry.js';
-import { provisionsHere, scopeOf, type DirectoryScope } from '../scope.js';
+import {
+  nearbyProjects,
+  provisionsHere,
+  scopeOf,
+  type DirectoryScope,
+  type NearbyReading,
+} from '../scope.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import { moduleRefusal } from './add-module.js';
 
-/** The two ports this query needs. */
+/** The ports this query needs. */
 export interface ProjectStatusDeps {
   readonly manifests: ManifestStore;
   /** Resolves the descriptions of the verticals a manifest names. */
   readonly registry: Registry;
+  /**
+   * The user's home directory, where a walk up for the project a
+   * directory sits in ends, unread (`../scope.ts`' `projectAbove`).
+   */
+  readonly home?: string;
 }
 
 /** Executes {@link ProjectStatusQuery}s. */
@@ -87,7 +98,11 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
     // which each card's refusal names the services from.
     const where = await scopeOf(this.deps, query.cwd);
     const manifest = where.manifest;
-    return ok(manifest ? this.statusOf(where, scopeRoot, manifest) : uninitialised(scopeRoot));
+    return ok(
+      manifest
+        ? this.statusOf(where, scopeRoot, manifest)
+        : uninitialised(scopeRoot, await nearbyProjects(this.deps, query.cwd)),
+    );
   }
 
   private statusOf(where: DirectoryScope, scopeRoot: string, manifest: ManifestV2): ProjectStatus {
@@ -154,8 +169,13 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
   }
 }
 
-function uninitialised(scopeRoot: string): ProjectStatus {
-  const module = moduleRefusal(null, scopeRoot);
+/**
+ * The status of a directory holding no project: nothing applies, and
+ * `keel add module` is refused as its front door refuses it there —
+ * pointing at `nearby`, the projects nearest it.
+ */
+function uninitialised(scopeRoot: string, nearby: NearbyReading): ProjectStatus {
+  const module = moduleRefusal(null, scopeRoot, '<name>', nearby);
   return {
     scopeRoot,
     initialised: false,

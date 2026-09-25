@@ -161,7 +161,8 @@ offers it, `keel.invalid-answer` from both where it does not.
 records what `planner.ts` reads for every single-service preset × every
 registered vertical on default dials. `KEEL_UPDATE_GOLDEN=1` rewrites
 it, and a change to a declaration — a predicate, an adapter's
-`promotes`, a vertical's `reads` — shows there as a diff to review. It
+`promotes`, a vertical's `reads`, a preset's own verticals (which the
+nearest stacks' `comesWith` reads) — shows there as a diff to review. It
 is a record of the planner, not an oracle for the gate: the menus and
 both front doors read the planner, and the grid holds each of them to
 the install through preview.

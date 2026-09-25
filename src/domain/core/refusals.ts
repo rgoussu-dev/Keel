@@ -230,12 +230,21 @@ export function moduleRulesRefusal(vertical: Vertical, broken: readonly Conflict
  * id — one of the vertical's own, or one of `rules`, those the pieces
  * already on the project declare (`PlanScope.rules`), which its tags
  * would break; any other gap as {@link UNCOVERED_CODE}.
+ *
+ * `elsewhere` is, where the project is one service of a product, the
+ * product's other services with how ready the vertical is in each
+ * ({@link elsewhereService}): where one could take it or has it, the
+ * refusal carries them and its sentence names it — but for a gap that
+ * is where the service stands in the repository, or a re-render, which
+ * say what to do here. Where none could, the refusal is the one a
+ * single project gets, word for word.
  */
 export function unavailableRefusal(
   names: RefusalNames,
   vertical: Vertical,
   gap: ReadinessGap,
   rules: readonly Conflict[] = [],
+  elsewhere: readonly ElsewhereService[] = [],
 ): RefusalError {
   const placed = gap.repositoryOnly ?? [];
   if (placed.length > 0) {
@@ -272,6 +281,8 @@ export function unavailableRefusal(
     vertical: vertical.id,
     missing: missingOf(gap.entrypoint, gap.peer, gap.identity),
     carriedBy: gap.nearestStacks,
+    ...(gap.comesWith === undefined ? {} : { comesWith: gap.comesWith }),
+    ...(elsewhere.some((service) => service.readiness !== 'unavailable') ? { elsewhere } : {}),
     ...(broken.length > 0
       ? { because: rulesSentence(broken), rules: broken.map((conflict) => conflict.id) }
       : {}),
@@ -456,39 +467,6 @@ export function productRootPlacementRefusal(names: RefusalNames, vertical: Verti
     UNCOVERED_CODE,
     names,
   );
-}
-
-/**
- * The sentence a command that needs a keel project is refused with in
- * a directory that holds none (`keel.not-initialised`): pointing at the
- * project it sits inside, or at the services below it that are
- * projects, where there are — `keel new` there is refused inside
- * another project, and would scaffold one over a polyrepo product's
- * services — and at `first`, the command that creates one, where there
- * are not.
- */
-export function notInitialisedSentence(
-  scopeRoot: string,
-  nearby: { readonly above: string | null; readonly below: readonly string[] },
-  command: string,
-  first: string,
-): string {
-  const none = `no project initialised at ${scopeRoot}`;
-  if (nearby.above !== null) {
-    return `${none} — this directory is inside the keel project at ${nearby.above}/; run '${command}' there`;
-  }
-  if (nearby.below.length > 0) {
-    const dirs = directories(
-      nearby.below.map((path) => ({ path })),
-      'and',
-    );
-    const [verb, where] =
-      nearby.below.length === 1
-        ? ['holds a keel project', 'in it']
-        : ['hold keel projects', 'in one of them'];
-    return `${none} — ${dirs} below ${verb}; run '${command}' ${where}`;
-  }
-  return `${none} — run '${first}' first to create one`;
 }
 
 /** The code a re-render of a vertical this project has not installed is refused with. */
@@ -798,9 +776,18 @@ export function refreshProposalNote(
  * for itself first; then the project's kind, when that is what is
  * wrong — a mixed gap reads as that, since adding the entrypoint alone
  * would not help; then the entrypoints it lacks; then the linked
- * project it lacks; then the capabilities some vertical adds.
+ * project it lacks; then the capabilities some vertical adds. Where
+ * the project is one service of a product, and another of its
+ * services could take the vertical or has it (`elsewhere`), the
+ * sentence goes on to name it ({@link siblingsClause}).
  */
 function unavailableSentence(refusal: UnavailableRefusal, names: RefusalNames): string {
+  const own = ownSentence(refusal, names);
+  return refusal.elsewhere === undefined ? own : `${own}; ${siblingsClause(refusal.elsewhere)}`;
+}
+
+/** An {@link UnavailableRefusal} in words, as far as this project goes. */
+function ownSentence(refusal: UnavailableRefusal, names: RefusalNames): string {
   const title = titleOf(names, refusal.vertical);
   const placed = refusal.repositoryOnly ?? [];
   if (placed.length > 0) return placementSentence(title, refusal.vertical, placed, names);
@@ -964,6 +951,23 @@ function whereItGoes(
   }
   const needed = listed(placed.repositoryOnly.map((other) => titleOf(names, other)));
   return `none of its services can carry it, since it needs ${needed}, which cannot go in a monorepo service: ${because}`;
+}
+
+/**
+ * Where a vertical one service of a product cannot carry can be had
+ * instead, among the product's other services: those that could take
+ * it, then those that have it — _backend/ can take it_, _backend/ has
+ * it already_. A service that could do neither is not named.
+ */
+function siblingsClause(services: readonly ElsewhereService[]): string {
+  const carriers = services.filter(
+    (service) => service.readiness === 'ready' || service.readiness === 'needs',
+  );
+  const having = services.filter((service) => service.readiness === 'included');
+  return [
+    ...(carriers.length > 0 ? [`${directories(carriers, 'or')} can take it`] : []),
+    ...(having.length > 0 ? [`${haveIt(having)} already`] : []),
+  ].join('; ');
 }
 
 /** `backend/ has it`, `backend/ and frontend/ have it`. */

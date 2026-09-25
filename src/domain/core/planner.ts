@@ -640,7 +640,8 @@ function stepsOf(
  * nearest adapter, each traced back — a capability some vertical
  * could add is replaced by what that vertical's nearest adapter lacks
  * here, to the same depth the planner searches — and sorted into what
- * would change the answer, with the nearest stacks that carry it; and
+ * would change the answer, with the nearest stacks that carry it and
+ * which of those come with it; and
  * the rules it breaks — its own, against the scope's tags, and the
  * scope's, against what it would add. `alongside` is the request it
  * was asked in (itself included), which a re-render would plan with.
@@ -687,6 +688,10 @@ function gapOf(
     }
   };
   explain(unmetOf(vertical, tags, acquirable), 0, new Set());
+  const nearest = nearestStacks(registry, scope, vertical);
+  const comesWith = nearest.filter((id) =>
+    (registry.stack(id)?.verticals ?? []).some((own) => own.id === vertical.id),
+  );
   return {
     entrypoint: [...entrypoint].sort(),
     peer: [...peer].sort(),
@@ -699,7 +704,8 @@ function gapOf(
         ].map((conflict) => conflict.id),
       ),
     ],
-    nearestStacks: nearestStacks(registry, scope, vertical),
+    nearestStacks: nearest,
+    ...(comesWith.length > 0 ? { comesWith } : {}),
   };
 }
 

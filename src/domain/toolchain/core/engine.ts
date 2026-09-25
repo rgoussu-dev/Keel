@@ -14,6 +14,11 @@ import type { Asker, Prompt } from '../../contract/ports/prompt.js';
 import type { Tree, TreeFactory } from '../../contract/ports/tree.js';
 import type { ToolchainBlock, ToolchainNeed, ToolchainTool } from '../../contract/toolchain.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
+import {
+  NOT_INITIALISED_CODE,
+  notInitialisedSentence,
+  type NearbyProjects,
+} from '../../contract/nearby.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { ProvisionedTool, RenderedConfig, UnresolvedPrefix } from '../contract/commands.js';
 import {
@@ -51,6 +56,14 @@ export interface ToolchainDeps {
   readonly manifests: ManifestStore;
   readonly processes: ProcessRunner;
   readonly prompt: Prompt;
+  /**
+   * Where the keel projects nearest a directory holding none are —
+   * the engine's walk (`domain/core/scope.ts` `nearbyProjects`), which
+   * this context may not import, handed in by the composition root —
+   * so a directory inside a project is pointed at it, or inside a
+   * product root at its services, as the contract's sentence words it.
+   */
+  readonly nearby: (cwd: string) => Promise<NearbyProjects>;
 }
 
 /** The project's declaration, as both handlers read it. */
@@ -61,28 +74,49 @@ export interface LoadedBlock {
 
 /**
  * Reads the project's declaration, or the reason there is none to
- * provision: no project, or no block.
+ * provision: no project — pointing at the nearest, where `command`
+ * applies instead — or no block, which at a monorepo product root (a
+ * manifest listing services) points into its services: a toolchain is
+ * a service's, and `keel add toolchain` there is refused as one.
  */
-export async function loadBlock(deps: ToolchainDeps, cwd: string): Promise<Result<LoadedBlock>> {
+export async function loadBlock(
+  deps: ToolchainDeps,
+  cwd: string,
+  command: string,
+): Promise<Result<LoadedBlock>> {
   const scopeRoot = projectScopeRoot(cwd);
   const manifest = await deps.manifests.read(scopeRoot);
   if (!manifest) {
+    // A product root declares no toolchain: inside one, its services
+    // are where to run it.
     return err(
       new DomainError(
-        `no project initialised at ${scopeRoot} — run 'keel new --stack=<id>' first`,
-        'keel.not-initialised',
+        notInitialisedSentence(
+          scopeRoot,
+          await deps.nearby(cwd),
+          command,
+          'keel new --stack=<id>',
+          true,
+        ),
+        NOT_INITIALISED_CODE,
       ),
     );
   }
   if (!manifest.toolchain) {
-    return err(
-      new DomainError(
-        "the manifest declares no toolchain block — run 'keel add toolchain' first",
-        'keel.toolchain-not-declared',
-      ),
-    );
+    return err(new DomainError(undeclared(manifest, command), 'keel.toolchain-not-declared'));
   }
   return ok({ manifest, block: manifest.toolchain });
+}
+
+/** Why `manifest` has no block to provision — at a product root, where `command` goes instead. */
+function undeclared(manifest: ManifestV2, command: string): string {
+  const services = manifest.services.map((service) => `${service.path}/`);
+  const last = services.pop();
+  if (last === undefined) {
+    return "the manifest declares no toolchain block — run 'keel add toolchain' first";
+  }
+  const where = services.length === 0 ? last : `${services.join(', ')} or ${last}`;
+  return `this is a product root, which declares no toolchain: a toolchain belongs to a service — run '${command}' in ${where}`;
 }
 
 /** A resolved manager choice, and whether it is new to the manifest. */

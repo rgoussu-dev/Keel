@@ -175,7 +175,8 @@ export class KeelAddForm extends HTMLElement {
   #optionFields() {
     const fields = [];
     // Once, above everything it stops: a project from another harness
-    // generation refuses every card but the harness's own. A note, not
+    // generation refuses every card but the harness's own — and, at a
+    // product root, that one too. A note, not
     // a live region: it does not change while the page is on this
     // project, and the form is rebuilt on every pick — a region
     // inserted anew each time would be announced on none of them, or

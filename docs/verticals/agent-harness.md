@@ -277,8 +277,11 @@ The generation marker is manifest machinery, not a harness element
 generation, or with none, before a file moves; the remediation is
 `keel add agent-harness` (`--reapply` when it is installed), which
 re-renders the harness and restamps the marker — but not at a monorepo
-product root, where that add installs nothing and pinning the keel
-that scaffolded the product is the way forward. See
+product root, whose harness is the product glue's and which no `keel
+add` brings forward: there the refusal names the keel that scaffolded
+the root, to pin, for what the root runs itself, and says the services
+have it for what is theirs (`keel add agent-harness` among it); `keel
+add module` there is refused as at any product root. See
 [`keel add`](../cli.md#keel-add).
 
 **agent-harness (the vertical itself: claude-core + family kits' shared surface)**

@@ -334,6 +334,45 @@ describe('keel add --list', () => {
         '  containerization  Container image is already there: the product root builds it for this service',
         '  vcs               Version control is already there: the product root has it, for the one repository its services share',
       ]);
+
+      // A product root from another harness generation: no `keel add`
+      // brings its harness forward, and the line says so — and what
+      // the refusals there say: one not for the root as the list says,
+      // one it or its services have already as nothing to run, any
+      // other naming the pin.
+      const file = path.join(projectScopeRoot(cwd), MANIFEST_FILENAME);
+      const { harnessGeneration: _dropped, ...unmarked } = JSON.parse(
+        await fs.readFile(file, 'utf8'),
+      ) as Record<string, unknown>;
+      await fs.writeFile(file, JSON.stringify(unmarked));
+      logger.entries.length = 0;
+      await program(mediator, logger, cwd).parseAsync(['add', '--list'], { from: 'user' });
+      expect(logger.messages('warn')).toEqual([
+        `this product root's harness carries no generation marker, and this keel writes generation ${String(HARNESS_GENERATION)} — no 'keel add' brings a product root's harness forward, and 'keel add' refuses everything here: what is not for this root as it says below, what it or its services have already as nothing to run, and anything else naming the keel that scaffolded it, to pin`,
+      ]);
+      const refusal = async (vertical: string) =>
+        expectErr(
+          await mediator.dispatch(
+            addVerticalCommand({
+              cwd,
+              verticals: [vertical],
+              answers: {},
+              interactive: false,
+              dryRun: true,
+            }),
+          ),
+        );
+      const theirs = await refusal('agent-harness');
+      expect(theirs.message).toContain("no 'keel add' brings it forward");
+      expect(theirs.message).toContain("its services have what 'keel add agent-harness' names");
+      expect((await refusal('vcs')).message).toContain(
+        "this root has what 'keel add vcs' names already, so there is nothing to run here",
+      );
+      expect((await refusal('dev-env')).message).toContain('pin keel@0.4.0-alpha');
+      const notHere = await refusal('persistence');
+      expect(notHere.code).toBe('keel.wrong-scope');
+      const row = logger.messages('info').find((line) => /^ {2}persistence /.test(line));
+      expect(row?.replace(/^ {2}persistence +/, '')).toBe(notHere.message);
     } finally {
       await fs.remove(cwd);
     }

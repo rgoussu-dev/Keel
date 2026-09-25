@@ -6,7 +6,9 @@
  * persistence` on a CLI preset and `keel add persistence` on the
  * project it scaffolds are refused in the same words. What the user
  * can *do* about it is not neutral — drop it from `--with`, or scaffold
- * the stack that carries it; link a project first; `cd` into the
+ * the stack that carries it (with nothing to name, where that stack
+ * comes with it), or name the product's service that can take it;
+ * link a project first; `cd` into the
  * service it belongs to — or, to re-render it, the one that installed
  * it — or name that service in `--with`; move a file
  * aside before `keel new` but not after, where it may be the product
@@ -31,8 +33,9 @@ export type HintedCommand = 'new' | 'add';
  * `services` is what `keel new --with` named for each service of a
  * product (`--with backend:persistence`). A vertical refused there is
  * that service's, and so is the remedy: spelled in the `path:id` form
- * it was named in, and never another stack to scaffold instead — that
- * would be another product, not this one's service.
+ * it was named in — dropping it, or naming it for another service of
+ * the product that can take it — and never another stack to scaffold
+ * instead: that would be another product, not this one's service.
  */
 export function refusalHint(
   refusal: Refusal,
@@ -52,7 +55,7 @@ export function refusalHint(
     }
     case 'unavailable':
       return Object.keys(named).length > 0
-        ? `drop '${spelling([refusal.vertical], named)(refusal.vertical)}' from --with`
+        ? serviceHint(refusal, named)
         : unavailableHint(refusal, command);
     case 'elsewhere':
       return elsewhereHint(refusal.vertical, refusal.services, command);
@@ -83,12 +86,45 @@ function spelling(
   return paths.length === 1 && only !== undefined ? (id) => `${only}:${id}` : (id) => id;
 }
 
+/**
+ * The remedy for a vertical one service of a product cannot carry,
+ * named for that service in `--with`: drop the pair — or name the
+ * vertical for another service the refusal says can take it
+ * (`elsewhere`), one it was not already named for. A service that has
+ * it already needs nothing named.
+ */
+function serviceHint(
+  refusal: Extract<Refusal, { kind: 'unavailable' }>,
+  named: Readonly<Record<string, ServiceExtras>>,
+): string {
+  const { vertical } = refusal;
+  // The services it lists are the product's others: the one refused
+  // is among the rest, however many named the vertical.
+  const others = new Set((refusal.elsewhere ?? []).map((service) => service.path));
+  const here = Object.fromEntries(Object.entries(named).filter(([path]) => !others.has(path)));
+  const drop = `drop '${spelling([vertical], here)(vertical)}' from --with`;
+  const carriers = (refusal.elsewhere ?? []).filter(
+    (service) =>
+      (service.readiness === 'ready' || service.readiness === 'needs') &&
+      !(named[service.path]?.extraVerticals ?? []).includes(vertical),
+  );
+  const [only] = carriers;
+  if (only === undefined) return drop;
+  const pairs = carriers.map((service) => `'--with ${service.path}:${vertical}'`).join(' or ');
+  return carriers.length === 1
+    ? `${drop}, or name ${only.path}/: ${pairs}`
+    : `${drop}, or name another service: ${pairs}`;
+}
+
 function unavailableHint(
   refusal: Extract<Refusal, { kind: 'unavailable' }>,
   command: HintedCommand,
 ): string | null {
   const { vertical, missing, carriedBy } = refusal;
   const [nearest] = carriedBy;
+  // The hint names the first nearest stack, and is worded by it: one
+  // that comes with the vertical needs nothing named beside it.
+  const comesWith = nearest !== undefined && (refusal.comesWith ?? []).includes(nearest);
   const entrypointOnly =
     (missing.entrypoint ?? []).length > 0 && (missing.identity ?? []).length === 0;
   const peerOnly =
@@ -107,7 +143,9 @@ function unavailableHint(
     if (refusal.because !== undefined) return null;
     if (peerOnly) return `link a project it can wire first — 'keel link <path>' — then add it`;
     if (entrypointOnly && nearest !== undefined) {
-      return `${nearest} carries both this project's entrypoints and ${vertical}; a project's entrypoints are fixed at 'keel new'`;
+      return comesWith
+        ? `${nearest} has this project's entrypoints and comes with ${vertical}; a project's entrypoints are fixed at 'keel new'`
+        : `${nearest} carries both this project's entrypoints and ${vertical}; a project's entrypoints are fixed at 'keel new'`;
     }
     return null;
   }
@@ -125,7 +163,9 @@ function unavailableHint(
     return `${drop}; scaffold this project, 'keel link <path>' the one it should reach, then 'keel add ${vertical}'`;
   }
   if (nearest === undefined) return drop;
-  return `${drop}, or scaffold ${nearest}, which carries it: 'keel new --stack=${nearest} --with ${vertical}'`;
+  return comesWith
+    ? `${drop}, or scaffold ${nearest}, which comes with it: 'keel new --stack=${nearest}'`
+    : `${drop}, or scaffold ${nearest}, which carries it: 'keel new --stack=${nearest} --with ${vertical}'`;
 }
 
 function elsewhereHint(

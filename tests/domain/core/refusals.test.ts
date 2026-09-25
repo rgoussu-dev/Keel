@@ -71,7 +71,12 @@ const unavailable = (
   missing: Extract<Refusal, { kind: 'unavailable' }>['missing'],
   carriedBy: readonly string[] = [],
   id = 'observability',
-): Refusal => ({ kind: 'unavailable', vertical: id, missing, carriedBy });
+): Extract<Refusal, { kind: 'unavailable' }> => ({
+  kind: 'unavailable',
+  vertical: id,
+  missing,
+  carriedBy,
+});
 
 /** A tag of any namespace a sentence could leak. */
 const ANY_TAG = /\b(?:lang|framework|runtime|pkg|layout|arch|peer|deploy|dist|ci)\.[a-z]/;
@@ -192,6 +197,61 @@ const TABLE: readonly {
     },
     sentence:
       "Observability cannot be installed here: a probe needs a server to answer it (rule 'acme/probe-needs-server')",
+  },
+  {
+    // The hint says so (`--with` of it there is set aside); the
+    // sentence of what carries it stays true, and the same.
+    why: 'a nearest stack that comes with it as carrying it, word for word',
+    refusal: {
+      ...unavailable({ identity: ['framework.quarkus'] }, ['spring-cli-rest']),
+      comesWith: ['spring-cli-rest'],
+    },
+    sentence:
+      "Observability has no adapter for this project's stack; the nearest stack that carries it: spring-cli-rest",
+  },
+  {
+    why: "a product's other service that can take it, after what stops it here",
+    refusal: {
+      ...unavailable({ identity: ['runtime.node'] }, [], 'persistence'),
+      elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'ready' }],
+    },
+    sentence: "Persistence has no adapter for this project's stack; backend/ can take it",
+  },
+  {
+    why: "a product's other service that has it already",
+    refusal: {
+      ...unavailable({ identity: ['runtime.node'] }),
+      elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'included' }],
+    },
+    sentence: "Observability has no adapter for this project's stack; backend/ has it already",
+  },
+  {
+    why: 'the services that can take it, then those that have it, and none that can do neither',
+    refusal: {
+      ...unavailable({ entrypoint: ['arch.server-http'] }, [], 'persistence'),
+      elsewhere: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'ready' },
+        { path: 'admin', stack: 'web-components', readiness: 'unavailable' },
+        { path: 'worker', stack: 'quarkus-rest', readiness: 'needs' },
+        { path: 'api', stack: 'quarkus-rest', readiness: 'included', fromProduct: true },
+      ],
+    },
+    sentence:
+      'Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint; backend/ or worker/ can take it; api/ has it already',
+  },
+  {
+    why: 'a rule of its own, then a service that can take it',
+    refusal: {
+      kind: 'unavailable',
+      vertical: 'observability',
+      missing: {},
+      carriedBy: [],
+      because: "a probe needs a server to answer it (rule 'acme/probe-needs-server')",
+      rules: ['acme/probe-needs-server'],
+      elsewhere: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'ready' }],
+    },
+    sentence:
+      "Observability cannot be installed here: a probe needs a server to answer it (rule 'acme/probe-needs-server'); backend/ can take it",
   },
   {
     why: 'an unregistered vertical by its id spelled out',
@@ -422,6 +482,69 @@ describe('the refusals built from a gap', () => {
       carriedBy: ['quarkus-cli-rest'],
     });
     expect(refusal.message).toBe(refusalSentence(refusal.refusal, names));
+  });
+
+  it('records which nearest stacks come with it, and nothing where none does', () => {
+    const refusal = unavailableRefusal(names, observability, {
+      ...gap,
+      nearestStacks: ['acme-cli-rest', 'quarkus-cli-rest'],
+      comesWith: ['quarkus-cli-rest'],
+    });
+    expect(refusal.refusal).toMatchObject({
+      carriedBy: ['acme-cli-rest', 'quarkus-cli-rest'],
+      comesWith: ['quarkus-cli-rest'],
+    });
+    expect(unavailableRefusal(names, observability, gap).refusal).not.toHaveProperty('comesWith');
+  });
+
+  it("names a product's other service only where one can take it or has it", () => {
+    const backend = { path: 'backend', stack: 'quarkus-rest' };
+    const alone = unavailableRefusal(names, observability, gap);
+    const noneCan = unavailableRefusal(
+      names,
+      observability,
+      gap,
+      [],
+      [{ ...backend, readiness: 'unavailable' }],
+    );
+    // A service that could not take it either changes nothing: the
+    // refusal is the one a single project gets, word for word.
+    expect(noneCan.refusal).toEqual(alone.refusal);
+    expect(noneCan.message).toBe(alone.message);
+    const oneCan = unavailableRefusal(
+      names,
+      observability,
+      gap,
+      [],
+      [{ ...backend, readiness: 'needs' }],
+    );
+    expect(oneCan.code).toBe(alone.code);
+    expect(oneCan.refusal).toMatchObject({
+      elsewhere: [{ ...backend, readiness: 'needs' }],
+    });
+    expect(oneCan.message).toBe(`${alone.message}; backend/ can take it`);
+    // Where the service stands is the whole gap, and says what to do
+    // here: no other service is named.
+    const placed = unavailableRefusal(
+      names,
+      observability,
+      { ...gap, repositoryOnly: ['observability'] },
+      [],
+      [{ ...backend, readiness: 'ready' }],
+    );
+    expect(placed.refusal).not.toHaveProperty('elsewhere');
+    // So is a re-render this service can make: said as it would be
+    // with no other service at all.
+    const rerender = { ...gap, refresh: { verticals: ['distribution'], prerequisites: [] } };
+    const refreshed = unavailableRefusal(
+      names,
+      observability,
+      rerender,
+      [],
+      [{ ...backend, readiness: 'ready' }],
+    );
+    expect(refreshed.refusal).not.toHaveProperty('elsewhere');
+    expect(refreshed.message).toBe(unavailableRefusal(names, observability, rerender).message);
   });
 
   it('refuses a vertical one of its own rules forbids as that rule', () => {

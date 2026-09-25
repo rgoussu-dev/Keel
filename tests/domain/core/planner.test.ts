@@ -860,6 +860,7 @@ function verdict(ready: Readiness): string {
         ['identity', gap.identity],
         ['rules', gap.rules],
         ['nearest', gap.nearestStacks],
+        ['comes with', gap.comesWith ?? []],
       ] as const;
       return [
         'unavailable',
@@ -890,6 +891,17 @@ describe('the shipped registry', () => {
       'unavailable — entrypoint arch.server-http — nearest quarkus-cli-rest',
     );
     expect(cells['quarkus-cli+distribution']).toBe('ready');
+  });
+
+  it('records which nearest stacks come with it: their preset installs it of its own', () => {
+    expect(cells['quarkus-cli+observability']).toBe(
+      'unavailable — entrypoint arch.server-http — nearest quarkus-cli-rest — comes with quarkus-cli-rest',
+    );
+    // Persistence is no preset's own: the nearest stack carries it only
+    // as an extra.
+    expect(cells['quarkus-cli+persistence']).toBe(
+      'unavailable — entrypoint arch.server-http — nearest quarkus-cli-rest',
+    );
   });
 
   it('reads the image distribution builds on as its prerequisite on an HTTP stack', () => {

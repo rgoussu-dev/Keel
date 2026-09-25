@@ -377,6 +377,10 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       expect(await page.locator('#extras-frontend-refused li[data-id="persistence"]').count()).toBe(
         1,
       );
+      // …naming the service that can, as `keel new` refuses the pair.
+      expect(
+        await page.locator('#extras-frontend-refused li[data-id="persistence"]').textContent(),
+      ).toContain("Persistence has no adapter for this project's stack; backend/ can take it");
       expect(
         await page.locator('#extras-backend-refused li[data-id="ci"]').textContent(),
       ).toContain('cannot go in a monorepo service');

@@ -13,7 +13,9 @@
  * **What stops everything.** One fact stops every card alike: a project written by another
  * harness generation, which `keel add` refuses to half-patch — every
  * vertical but the agent harness, whose re-render is what brings the
- * project forward. Picking card after card to meet the same refusal
+ * project forward; at a monorepo product root, whose harness no card
+ * brings forward, every vertical it does not refuse anyway. Picking
+ * card after card to meet the same refusal
  * each time is the trial and error the status exists to spare, so the
  * status reports the generation once (`harnessGeneration`), and the
  * page says so once, above the cards.
@@ -87,8 +89,12 @@ export function projectHeadline(status) {
  * The sentence a keel project's Options step opens with on a project from
  * another harness generation, or null where the generations match —
  * and where there is no project, which has no generation to compare.
+ * At a product root — a status listing services — no card brings the
+ * harness forward, the root's being the product's own: it says so, and
+ * what the refusals there say — one not for the root as its card does,
+ * one in its services as theirs, any other naming the keel to pin.
  *
- * @param {{ harnessGeneration?: HarnessGeneration }|null} status the `/api/project` payload
+ * @param {{ harnessGeneration?: HarnessGeneration, services?: ReadonlyArray<unknown> }|null} status the `/api/project` payload
  * @returns {string|null}
  */
 export function harnessNotice(status) {
@@ -99,6 +105,9 @@ export function harnessNotice(status) {
     return `This project’s harness is generation ${found}, newer than the generation ${expected} this keel writes: upgrade keel before adding to it.`;
   }
   const marker = found === null ? 'carries no generation marker' : `is generation ${found}`;
+  if ((status?.services ?? []).length > 0) {
+    return `This product root’s harness ${marker}, and this keel writes generation ${expected}: no card brings a product root’s harness forward, and every card is refused — one not for this root as it says, one in its services as theirs, and any other naming the keel that scaffolded it, to pin.`;
+  }
   return `This project’s harness ${marker}, and this keel writes generation ${expected}: every card but Agent harness is refused until the harness is brought forward, and the refusal on any of them says how.`;
 }
 

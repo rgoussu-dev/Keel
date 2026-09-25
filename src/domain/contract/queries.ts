@@ -523,6 +523,14 @@ export interface ReadinessGap {
    */
   readonly nearestStacks: readonly string[];
   /**
+   * Among {@link nearestStacks}, the stacks that come with the
+   * vertical — their preset installs it as one of its own — in the
+   * same order; absent when none does. Scaffolding one of those is
+   * how to have it: naming it as an extra there would be set aside,
+   * as already there.
+   */
+  readonly comesWith?: readonly string[];
+  /**
    * Ids of the verticals whose place is a repository root
    * (`Vertical.placement`), which this scope — a service of a
    * monorepo product — is not: the vertical itself, or the
@@ -951,11 +959,18 @@ export interface ProjectStatus {
   /**
    * The harness generation the manifest was stamped at, and the one
    * this keel writes. Where they differ, `keel add` refuses every
-   * vertical but `agent-harness` (at a monorepo product root, whose
-   * services have the harness, that one too) — and `keel add module` —
-   * until the harness is brought forward: one fact, reported once here
-   * rather than as the same refusal on every card. Absent when the
-   * directory is not a keel project.
+   * vertical but `agent-harness` — and `keel add module` — until the
+   * harness is brought forward: one fact, reported once here rather
+   * than as the same refusal on every card. At a monorepo product root
+   * (one with {@link services}) it refuses that one too, since its
+   * services have the harness, and nothing brings the root's forward —
+   * its harness is the product glue's own, which no `keel add` names —
+   * so the refusal of an add the root runs names the keel that
+   * scaffolded it, to pin; of one naming only what its services or the
+   * root have already, not re-rendered, who has it; and what the root
+   * cannot carry is refused as in any generation, before this — as is
+   * `keel add module`, which no product root takes. A front end reading
+   * this says as much. Absent when the directory is not a keel project.
    */
   readonly harnessGeneration?: HarnessGenerationStatus;
 }

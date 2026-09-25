@@ -257,6 +257,37 @@ describe('foresee', () => {
     }
   });
 
+  it("names a product's other service that can take or has it, as admit does, and none other", () => {
+    const here = scope(['lang.beta']);
+    const siblings = [
+      { path: 'api', stack: 'acme-api', scope: scope() },
+      { path: 'web', stack: 'beta-web', scope: scope(['lang.beta']) },
+      { path: 'jobs', stack: 'acme-jobs', scope: { tags: ['lang.acme'], installed: [image.id] } },
+      { path: 'lost', stack: 'acme-gone', scope: null },
+    ];
+    const admitted = refusal(admit(registry, here, [image], siblings));
+    const foreseen = foresee(registry, here, image, siblings).refusal;
+    expect(foreseen?.message).toBe(admitted.message);
+    expect(admitted.message).toBe(
+      "Image has no adapter for this project's stack; api/ can take it; jobs/ has it already",
+    );
+    expect(admitted.code).toBe('keel.uncoverable-vertical');
+    expect((admitted as RefusalError).refusal).toMatchObject({
+      elsewhere: [
+        { path: 'api', stack: 'acme-api', readiness: 'ready' },
+        { path: 'web', stack: 'beta-web', readiness: 'unavailable' },
+        { path: 'jobs', stack: 'acme-jobs', readiness: 'included' },
+        { path: 'lost', stack: 'acme-gone', readiness: 'unavailable' },
+      ],
+    });
+    // Where none of them could either, the refusal of a project alone.
+    const alone = refusal(admit(registry, here, [image]));
+    const unable = siblings.filter((sibling) => sibling.path === 'web' || sibling.path === 'lost');
+    const none = refusal(admit(registry, here, [image], unable));
+    expect((none as RefusalError).refusal).toEqual((alone as RefusalError).refusal);
+    expect(none.message).toBe(alone.message);
+  });
+
   it('carries no refusal where admit admits: ready alone, or needing others first', () => {
     expect(foresee(registry, scope(), image)).toEqual({
       readiness: { kind: 'ready' },

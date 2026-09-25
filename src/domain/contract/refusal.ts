@@ -101,6 +101,26 @@ export interface UnavailableRefusal {
    */
   readonly carriedBy: readonly string[];
   /**
+   * Among {@link carriedBy}, the stacks that come with the vertical —
+   * their preset installs it as one of its own — in the same order;
+   * absent when none does. Scaffolding one of those is how to have it,
+   * with nothing to name: `--with` of it there is set aside as already
+   * there. Absent too wherever {@link carriedBy} is empty.
+   */
+  readonly comesWith?: readonly string[];
+  /**
+   * Where this project is one service of a product, the product's
+   * other services, in its order, each with how ready the vertical is
+   * there — present only when one of them could take it or has it
+   * already, which is what the sentence names; absent anywhere else,
+   * and then the sentence is the one a single project gets. Filled
+   * where a front door can read the product's services from the
+   * service it was asked in: `keel new` of a product's service extras,
+   * and `keel add` in a monorepo product's service, whose root lists
+   * them.
+   */
+  readonly elsewhere?: readonly ElsewhereService[];
+  /**
    * The reason a rule gives — one of the vertical's own this project
    * breaks, or one a piece already installed here declares that the
    * vertical's tags would break — standing in for the gap when there
@@ -136,7 +156,11 @@ export interface ElsewhereRefusal {
   readonly services: readonly ElsewhereService[];
 }
 
-/** One service of an {@link ElsewhereRefusal}. */
+/**
+ * One service of an {@link ElsewhereRefusal} — or of an
+ * {@link UnavailableRefusal}'s `elsewhere`, the product's other
+ * services.
+ */
 export interface ElsewhereService {
   /** Directory of the service, relative to the product root. */
   readonly path: string;

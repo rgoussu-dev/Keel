@@ -19,7 +19,9 @@
  *     rules those declare, and in a monorepo service what the product
  *     gives it and where it stands in the repository — through
  *     `./plan-refusal.ts`, whose {@link foresee} words a vertical asked
- *     alone exactly as `admit` words the plan of it.
+ *     alone exactly as `admit` words the plan of it: in a monorepo
+ *     service, naming one of the product's other services that could
+ *     take what this one cannot, or has it (`./scope.ts` `siblingsOf`).
  *
  * {@link addReadiness} composes them for one vertical, as a card reads
  * it; the front door composes them for the set it was given. The
@@ -32,10 +34,9 @@
 import type { Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { ElsewhereService, RefusalError } from '../contract/refusal.js';
-import { amongServices, foresee } from './plan-refusal.js';
+import { amongServices, foresee, readinessAmong } from './plan-refusal.js';
 import { readiness } from './planner.js';
-import { elsewhereService } from './refusals.js';
-import { planScopeOf, serviceScopeOf, type DirectoryScope } from './scope.js';
+import { planScopeOf, productServiceScopes, siblingsOf, type DirectoryScope } from './scope.js';
 
 /** How ready one vertical is for `keel add` here, as a card reads it. */
 export interface AddReadiness {
@@ -73,7 +74,12 @@ export function addReadiness(
     throw new Error(`addReadiness: '${vertical.id}' is there already, in the product's services`);
   }
   if (atRoot !== null) return { readiness: 'unavailable', requires: [], refusal: atRoot.refusal };
-  const { readiness: ready, refusal } = foresee(registry, planScopeOf(registry, where), vertical);
+  const { readiness: ready, refusal } = foresee(
+    registry,
+    planScopeOf(registry, where),
+    vertical,
+    siblingsOf(registry, where),
+  );
   switch (ready.kind) {
     case 'ready':
       return { readiness: 'ready', requires: [], refusal: null };
@@ -141,17 +147,11 @@ export function productRootReading(
   if (readiness(registry, planScopeOf(registry, where), vertical.id).kind !== 'unavailable') {
     return null;
   }
-  const services: ElsewhereService[] = where.services.map((service) => {
-    const scope = serviceScopeOf(registry, root, service);
-    return scope === null
-      ? { path: service.ref.path, stack: service.ref.stack, readiness: 'unavailable' }
-      : elsewhereService(
-          service.ref.path,
-          service.ref.stack,
-          readiness(registry, scope, vertical.id),
-          scope.member?.provided.includes(vertical.id),
-        );
-  });
+  const services = readinessAmong(
+    registry,
+    productServiceScopes(registry, root, where.services),
+    vertical.id,
+  );
   // Only a monorepo product writes a root manifest.
   const answer = amongServices(registry, vertical, services, true);
   return answer.kind === 'included' ? { ...answer, services } : answer;

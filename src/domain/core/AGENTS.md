@@ -24,7 +24,14 @@ the shipped source, every refusal naming its origin) and
 - Where a directory sits is one walk up, `scope.ts`'s `projectAbove`:
   `scopeOf` bounds it at the deepest service path a registered product
   declares — the product a project is part of, for `keel add` and the
-  status — while `nearbyProjects` and `keel new` walk to the
+  status, and in a monorepo service the product's other services, read
+  once from the root's list, which a refusal of what this one cannot
+  carry names (`siblingsOf`; `keel new` hands a product's service the
+  same, `dials.ts` `siblingScopes`) — while `nearbyProjects` (which
+  `keel add`, `keel add module`, `keel link` and `keel toolchain` word
+  through the contract's `notInitialisedSentence`, `keel add module`
+  asking each project it names, off the manifest read, whether it takes
+  a context) and `keel new` walk to the
   filesystem's root and stop at a manifest keel cannot read. Every walk
   ends at the user's home directory unread (`home`, which the
   composition root passes): 0.1.0-alpha's `keel install --global` left

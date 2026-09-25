@@ -6,7 +6,8 @@ What lives here: the commands and `InstallReport`; the composition
 vocabulary (`Adapter`, `Vertical`, …); the `Stack` vocabulary
 (`stack.ts`) and the plugin contract (`plugin.ts`); the harness seams
 (`skill.ts`, `hook.ts`, `doc.ts`, `region.ts`); the refusal vocabulary
-(`refusal.ts`); the manifest types and their zod schemas; and `ports/`
+(`refusal.ts`); where the projects nearest a directory holding none are
+(`nearby.ts`); the manifest types and their zod schemas; and `ports/`
 — `Tree`, `Prompt`, `Logger`, `Clock`, `ManifestStore`,
 `TemplateSource`, `ProcessRunner`, `Registry`.
 
@@ -31,3 +32,17 @@ DomainError`, which carries one beside its code and sentence. It
   are `domain/core/refusals.ts`'s, except the two about files, spelled
   here (`pathSentence`) because an adapter raises `PathConflictError`
   and `PathMissingError` — a plugin's too, through `plugin.ts`.
+- **`keel.not-initialised` is worded here** (`nearby.ts`
+  `notInitialisedSentence`), not in `domain/core/refusals.ts`: the
+  provisioning context refuses with it too (`keel toolchain`), and may
+  not import the engine. The walk that fills `NearbyProjects` stays the
+  engine's (`scope.ts` `nearbyProjects`); the composition root hands it
+  to the toolchain handlers as `ToolchainDeps.nearby`. A command a
+  product root refuses too (`keel add module`, `keel toolchain`) says so
+  (`serviceScoped`), and inside a product root is pointed at those of
+  its services that hold a project (`NearbyProjects.services`) rather
+  than at the root. One a
+  project can refuse as well says why each it names does
+  (`refusedAt`): where all of them refuse it for one reason, the
+  sentence gives the reason rather than pointing — `keel add module`
+  inside a project on the flat layout.
