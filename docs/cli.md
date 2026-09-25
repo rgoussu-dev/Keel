@@ -67,11 +67,12 @@ near nothing is refused with the list alone. An unknown vertical, in
 (`container` finds `containerization`, the Container image;
 `persistance` finds `persistence`).
 
-**A directory that is not empty.** `keel new` needs only the absence
-of a keel manifest, and it never overwrites a file it did not write.
-Two files are adopted instead, on every stack keel ships, because a
-repository created on a hosting service and cloned usually holds
-them:
+**A directory that is not empty.** `keel new` needs only that no keel
+project holds the directory — no manifest there, and none above it
+(see _A directory inside a keel project_, below) — and it never
+overwrites a file it did not write. Two files are adopted instead, on
+every stack keel ships, because a repository created on a hosting
+service and cloned usually holds them:
 
 - a `README.md` keeps its content, title included, and gains keel's
   own README after it, less keel's title, with the entrypoints'
@@ -89,18 +90,40 @@ where you ran the command, so a file in a composite's service reads
 move it aside, or start in an empty directory. Nothing is written
 before the refusal, not even the adoption.
 
-**A directory inside a product.** `keel new` in a subdirectory of a
-monorepo product root that the product does not list as a service —
-`keel new --stack=go-http` in `my-product/worker/` — is refused as
-`keel.inside-product` before anything is asked: _"this directory is
-inside the product at ../, which lists no service here; adding a
-service to a product is not supported yet"_. A project scaffolded there
-would be neither a service of the product nor a repository of its own.
-So is a service the product does list that no longer holds its
-project — `backend/` emptied — whatever stack is named: _"this
-directory is backend/ of the product at ../, recorded as quarkus-rest;
-re-scaffolding a service is not supported yet"_. Scaffolded, it would
-be a second repository's hooks and changelog inside the product's.
+**A directory inside a keel project.** A directory that holds no
+project of its own but sits inside one, at any depth, is refused
+before anything is asked, naming the nearest project above it:
+
+- **Inside a project** — `keel new` in `my-app/tools/` or
+  `my-app/tools/scripts/`, in a directory keel wrote there such as
+  `my-app/domain/`, or in a directory inside one of a product's
+  services, such as `my-product/backend/scripts/` — as
+  `keel.inside-project`: _"this directory is inside the keel project
+  at ../; scaffolding a project inside another is not supported —
+  scaffold it elsewhere and move it here"_. A project scaffolded there
+  would be a second repository's history, hooks and harness inside the
+  first's. A project whose manifest keel cannot read is one all the
+  same. Moved in whole, a project is one of its own: `keel add` runs in
+  it, and `keel new` there is refused as `keel.already-initialised`
+  before anything is asked, as in any project's own directory.
+- **Inside a monorepo product** — in a directory the product root does
+  not list as a service, `keel new --stack=go-http` in
+  `my-product/worker/` or in `my-product/docs/notes/` — as
+  `keel.inside-product`: _"this directory is inside the product at ../,
+  which lists no service here; adding a service to a product is not
+  supported yet"_. A project scaffolded there would be neither a service
+  of the product nor a repository of its own. So is a service the
+  product does list that no longer holds its project — `backend/`
+  emptied — whatever stack is named: _"this directory is backend/ of the
+  product at ../, recorded as quarkus-rest; re-scaffolding a service is
+  not supported yet"_. Scaffolded, it would be a second repository's
+  hooks and changelog inside the product's.
+
+Looking up, keel stops at your home directory without reading it, so
+a `~/.claude/.keel-manifest.json` left by 0.1.0-alpha's `keel install
+--global` makes no project of it. A polyrepo product's own directory
+holds no manifest and sits inside no project, so `keel new` there is
+not refused yet.
 
 **A product's extras are its services'.** On a composite stack each
 service is a project of its own, so `--with` names the service an
@@ -514,10 +537,12 @@ so a script can name what it needs, and run twice. Named with
 Run where there is no keel project, `keel add` is refused as
 `keel.not-initialised`, and the sentence says where one is: in a
 subdirectory of a project, the project above (_"this directory is
-inside the keel project at ../; run 'keel add' there"_); in a polyrepo
-product's directory, which holds no manifest of its own, the services
-below (_"backend/ and frontend/ below hold keel projects; run 'keel
-add' in one of them"_); only where neither is, `keel new`.
+inside the keel project at ../; run 'keel add' there"_), even one
+whose manifest keel cannot read, where `keel add` reports the broken
+file; in a polyrepo product's directory, which holds no manifest of
+its own, the services below (_"backend/ and frontend/ below hold keel
+projects; run 'keel add' in one of them"_); only where neither is,
+`keel new`.
 
 ### `--refresh`: what an add changes
 

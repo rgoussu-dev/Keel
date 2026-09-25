@@ -886,7 +886,12 @@ export interface HarnessGenerationStatus {
 export interface ProjectStatus {
   /** The scope root inspected, i.e. `<cwd>/.claude`. */
   readonly scopeRoot: string;
-  /** False when no manifest is there — only `keel new` applies. */
+  /**
+   * False when no manifest is there: no brownfield command applies, and
+   * `keel new` does unless the directory sits inside a keel project —
+   * refused there (`keel.inside-project`, `keel.inside-product`), which
+   * its preview carries.
+   */
   readonly initialised: boolean;
   readonly tags: readonly Tag[];
   /**

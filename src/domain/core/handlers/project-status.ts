@@ -36,7 +36,9 @@
  *     same refusal on every card.
  *
  * Reading only. An uninitialised directory is not an error here: it
- * is the answer, and it means only `keel new` applies.
+ * is the answer — no brownfield command applies, and `keel new` does
+ * unless the directory sits inside a keel project, where its preview
+ * carries the refusal.
  */
 
 import type { Action } from '../../kernel/action.js';

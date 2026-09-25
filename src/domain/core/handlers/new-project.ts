@@ -4,24 +4,28 @@
  *
  * Non-interactive pipeline (`--yes`, or any run with `interactive:
  * false`):
+ *   0. Before anything is asked, refuse a directory that is no
+ *      greenfield: one holding a manifest (`keel.already-initialised`
+ *      — `keel new` is greenfield-only; brownfield is `keel add`), and
+ *      one holding none that sits inside a project, at any depth —
+ *      inside that project (`keel.inside-project`), or inside the
+ *      product it is the root of (`keel.inside-product`, below).
  *   1. Resolve the stack (the `--stack` flag, or the default preset
  *      when omitted).
- *   2. Refuse if a manifest already exists under the project scope —
- *      `keel new` is greenfield-only; brownfield is `keel add`.
- *   3. Build an empty v2 manifest seeded with the stack's tags and
+ *   2. Build an empty v2 manifest seeded with the stack's tags and
  *      its declared peer projections.
- *   4. Install each vertical in stack order against a fresh Tree
+ *   3. Install each vertical in stack order against a fresh Tree
  *      (`installVerticals`, the loop `keel add` installs through).
  *      Tags emitted by adapters via `tagsAdd` accumulate into the
  *      manifest snapshot the next vertical sees. A pre-supplied
  *      answer reaches only the adapters keyed to it (or borrowing
  *      from it), which record what they resolve — so a scope's
  *      manifest holds only the answers of adapters that ran there.
- *   5. Refuse a pre-supplied answer no adapter of the run read
+ *   4. Refuse a pre-supplied answer no adapter of the run read
  *      (`../supplied-answers.ts`) — dry run or not, so a preview
  *      never approves what the install would refuse.
- *   6. Under dry-run: report the plan, commit nothing.
- *   7. Otherwise: commit the Tree, persist the manifest, then run
+ *   5. Under dry-run: report the plan, commit nothing.
+ *   6. Otherwise: commit the Tree, persist the manifest, then run
  *      the deferred actions. Persisting the manifest *before*
  *      actions keeps the workspace recoverable if an action throws
  *      (e.g. `gradle wrapper` with no `gradle` on PATH) — files and
@@ -45,9 +49,10 @@
  * named without a service that one service alone can take — are
  * planned onto that service's scope once the layout and its build
  * system are settled, as a single stack's are onto the preset. A
- * directory inside an existing product that it lists no service in, or
- * a service it lists that holds no project, is refused before anything
- * is asked (`keel.inside-product`), and a file
+ * directory holding no project whose nearest project above is an
+ * existing product's root — one it lists no service in, or a service
+ * it lists, emptied — is refused before anything is asked
+ * (`keel.inside-product`, step 0), and a file
  * two scopes would both write is refused once every scope is staged,
  * before the plan is reported (`keel.cross-scope-write`). Commit
  * order matches the single flow, per scope: trees, then manifests,
@@ -174,11 +179,13 @@ import { readiness } from '../planner.js';
 import { PathConflictError, PathMissingError } from '../../contract/refusal.js';
 import { NOTHING_INSTALLED, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import {
-  enclosingProduct,
   memberScope,
+  productAround,
+  projectAbove,
   projectScope,
   provisionsFor,
   type PresetService,
+  type ProjectAbove,
 } from '../scope.js';
 import { WizardPrompt, type RecordedAnswer } from '../wizard-prompt.js';
 import type { InstallDeps } from './deps.js';
@@ -370,22 +377,18 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   /** Resolves the stack and runs the matching staging pipeline. Commits nothing. */
   private async stage(command: NewProjectCommand, prompt: Prompt): Promise<Result<StagedPlan>> {
     // Before a question is asked: nothing about the stack changes it.
-    const product = await enclosingProduct(this.deps, command.cwd);
-    if (product !== null && product.service === null) {
-      return err(insideProduct(path.relative(command.cwd, product.root)));
+    // A directory holding a manifest is a project of its own, whatever
+    // holds it — a product's service, or a tree moved in whole — and
+    // one keel cannot read there is reported as the broken file, as it
+    // is anywhere.
+    const scopeRoot = projectScopeRoot(command.cwd);
+    if ((await this.deps.manifests.read(scopeRoot)) !== null) {
+      return err(alreadyInitialised(scopeRoot));
     }
-    // A service the product lists, emptied: scaffolded here, it would
-    // be a repository root inside the product's repository — a second
-    // history's hooks and changelog — of whatever stack was named,
-    // whatever the product records. One that still holds its manifest
-    // is refused below as already initialised.
-    if (
-      product !== null &&
-      product.service !== null &&
-      (await this.deps.manifests.read(projectScopeRoot(command.cwd)).catch(() => null)) === null
-    ) {
-      return err(insideProductService(path.relative(command.cwd, product.root), product.service));
-    }
+    // Holding none, it is refused inside the nearest project above it,
+    // at any depth — one whose manifest keel cannot read too.
+    const above = await projectAbove(this.deps, command.cwd, { unreadable: 'stop' });
+    if (above !== null) return err(enclosedBy(above, command.cwd));
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
     const registered = this.deps.registry.stack(resolved.value);
@@ -604,10 +607,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     stack: Stack,
     prompt: Prompt,
   ): Promise<Result<StagedPlan>> {
-    const scopeRoot = projectScopeRoot(command.cwd);
-    if ((await this.deps.manifests.read(scopeRoot)) !== null) {
-      return err(alreadyInitialised(scopeRoot));
-    }
     const named = Object.keys(command.services ?? {});
     if (named.length > 0) {
       return err(
@@ -747,10 +746,6 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     const builds = await this.resolveServiceBuildSystems(command, stack, resolved, prompt);
     if (!builds.ok) return builds;
 
-    const rootScope = projectScopeRoot(command.cwd);
-    if ((await this.deps.manifests.read(rootScope)) !== null) {
-      return err(alreadyInitialised(rootScope));
-    }
     for (const service of resolved) {
       const scope = projectScopeRoot(path.join(command.cwd, service.path));
       if ((await this.deps.manifests.read(scope)) !== null) {
@@ -2018,6 +2013,49 @@ const INVALID_EXTRAS_CODE = 'keel.invalid-extra-verticals';
  * project.
  */
 export const INSIDE_PRODUCT_CODE = 'keel.inside-product';
+
+/**
+ * The code `keel new` inside any other keel project is refused with:
+ * in a directory under it, at any depth, that holds no project of its
+ * own.
+ */
+export const INSIDE_PROJECT_CODE = 'keel.inside-project';
+
+/**
+ * The refusal of `keel new` in `cwd`, a directory holding no project
+ * of its own, under `above`, the nearest keel project above it: inside
+ * that project — one whose manifest keel cannot read too, which cannot
+ * say it is a product root — or, where it is one, inside the product,
+ * in a directory it lists no service in or in a service it lists.
+ */
+function enclosedBy(above: ProjectAbove, cwd: string): DomainError {
+  const root = path.relative(cwd, above.root);
+  const product = productAround(above, cwd);
+  if (product === null) return insideProject(root);
+  if (product.service === null) return insideProduct(root);
+  // A service the product lists, emptied: scaffolded here, it would
+  // be a repository root inside the product's repository — a second
+  // history's hooks and changelog — of whatever stack was named,
+  // whatever the product records.
+  return insideProductService(root, product.service);
+}
+
+/**
+ * The refusal of `keel new` in a directory inside a keel project that
+ * is no product root — a subdirectory the user made, or one keel wrote,
+ * at any depth — or inside one of a product's services: a project
+ * scaffolded there would be a second repository's history, hooks and
+ * harness inside the first's, and in a directory keel wrote a
+ * `CLAUDE.md` into it would meet that file. Nesting one is still a
+ * move away.
+ * `root` is the project, relative to where `keel new` ran.
+ */
+function insideProject(root: string): DomainError {
+  return new DomainError(
+    `this directory is inside the keel project at ${toPosix(root)}/; scaffolding a project inside another is not supported — scaffold it elsewhere and move it here`,
+    INSIDE_PROJECT_CODE,
+  );
+}
 
 /**
  * The refusal of `keel new` in a directory inside a product root that

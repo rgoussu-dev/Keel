@@ -462,9 +462,10 @@ export function productRootPlacementRefusal(names: RefusalNames, vertical: Verti
  * The sentence a command that needs a keel project is refused with in
  * a directory that holds none (`keel.not-initialised`): pointing at the
  * project it sits inside, or at the services below it that are
- * projects, where there are — `keel new` there would scaffold a project
- * inside another, or over a product's services — and at `first`, the
- * command that creates one, where there are not.
+ * projects, where there are — `keel new` there is refused inside
+ * another project, and would scaffold one over a polyrepo product's
+ * services — and at `first`, the command that creates one, where there
+ * are not.
  */
 export function notInitialisedSentence(
   scopeRoot: string,

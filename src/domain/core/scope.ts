@@ -53,6 +53,14 @@ import { stackTagsFor, type Stack } from './stacks.js';
 export interface ProjectReadDeps {
   readonly registry: Registry;
   readonly manifests: ManifestStore;
+  /**
+   * The user's home directory, where a walk up ({@link projectAbove})
+   * ends without reading it: its `.claude` is the user's own, never a
+   * keel project's scope — though 0.1.0-alpha's `keel install --global`
+   * left a manifest there. Omitted, the walk reads every directory to
+   * the filesystem's root.
+   */
+  readonly home?: string;
 }
 
 /** What {@link scopeOf} read about one directory. */
@@ -158,24 +166,20 @@ export interface NearbyProjects {
 
 /**
  * The keel projects nearest `cwd`, a directory that holds none: the
- * nearest one above it — `cwd` is a subdirectory of a project — and
- * the directories a registered product puts its services in, below it,
- * that hold one — `cwd` is a polyrepo product's parent directory, which
- * has no manifest of its own. What a command that needs a project
- * points at there, rather than at `keel new`, which would scaffold a
- * project inside another, or over a product's services.
+ * nearest one above it ({@link projectAbove}) — `cwd` is a
+ * subdirectory of a project, one whose manifest keel cannot read too,
+ * which a command run there reports — and the directories a registered product
+ * puts its services in, below it, that hold one — `cwd` is a polyrepo
+ * product's parent directory, which has no manifest of its own. What a
+ * command that needs a project points at there, rather than at `keel
+ * new`, which is refused inside another project and would scaffold one
+ * over a polyrepo product's services.
  */
 export async function nearbyProjects(deps: ProjectReadDeps, cwd: string): Promise<NearbyProjects> {
   const read = (directory: string) =>
     deps.manifests.read(projectScopeRoot(directory)).catch(() => null);
-  let above: string | null = null;
-  for (let directory = path.dirname(cwd); ; directory = path.dirname(directory)) {
-    if ((await read(directory)) !== null) {
-      above = path.relative(cwd, directory).split(path.sep).join('/');
-      break;
-    }
-    if (path.dirname(directory) === directory) break;
-  }
+  const found = await projectAbove(deps, cwd, { unreadable: 'stop' });
+  const above = found === null ? null : path.relative(cwd, found.root).split(path.sep).join('/');
   const paths = [
     ...new Set(
       deps.registry
@@ -194,30 +198,90 @@ export async function nearbyProjects(deps: ProjectReadDeps, cwd: string): Promis
 /**
  * The product root above `cwd`, when the nearest keel project above it
  * is one — see {@link scopeOf}, which this is the upward half of, for
- * where the walk stops. What `keel new` asks before scaffolding into a
- * directory, since it has no manifest of its own to read.
+ * where the walk stops.
  */
 export async function enclosingProduct(
   deps: ProjectReadDeps,
   cwd: string,
 ): Promise<EnclosingProduct | null> {
+  const above = await projectAbove(deps, cwd, { levels: deepestService(deps.registry) });
+  return above === null ? null : productAround(above, cwd);
+}
+
+/** The nearest keel project above a directory. @see projectAbove */
+export interface ProjectAbove {
+  /** The project's directory. */
+  readonly root: string;
+  /**
+   * Its manifest; null where keel cannot read it, which only a walk
+   * told to stop there returns ({@link WalkUp.unreadable}).
+   */
+  readonly manifest: ManifestV2 | null;
+}
+
+/** How far {@link projectAbove} looks, and what it makes of a manifest it cannot read. */
+export interface WalkUp {
+  /** At most this many directories up; every one to the filesystem's root when omitted. */
+  readonly levels?: number;
+  /**
+   * `pass`, the default, goes on past a manifest keel cannot read, as
+   * not this directory's to report; `stop` ends the walk at it — a
+   * project all the same, whatever it is.
+   */
+  readonly unreadable?: 'pass' | 'stop';
+}
+
+/**
+ * The nearest keel project above `cwd`: the first directory up from
+ * its parent that holds a manifest, looking as far as `walk` says —
+ * by default every directory to the filesystem's root, passing over a
+ * manifest keel cannot read; null where none does. It ends at the
+ * user's home directory, unread ({@link ProjectReadDeps.home}).
+ *
+ * The one walk up every reader asks: {@link scopeOf}, bounded, for the
+ * product a directory is part of; and, unbounded and stopping at a
+ * manifest keel cannot read, {@link nearbyProjects}, for the project a
+ * command that needs one points at, and `keel new`, before it
+ * scaffolds into a directory that holds no project — a directory
+ * inside a project, at any depth, is refused there, as inside that
+ * project or inside the product it is the root of
+ * ({@link productAround}).
+ */
+export async function projectAbove(
+  deps: Pick<ProjectReadDeps, 'manifests' | 'home'>,
+  cwd: string,
+  { levels = Number.POSITIVE_INFINITY, unreadable = 'pass' }: WalkUp = {},
+): Promise<ProjectAbove | null> {
   let directory = cwd;
-  for (let level = 0; level < deepestService(deps.registry); level++) {
+  for (let level = 0; level < levels; level++) {
     const parent = path.dirname(directory);
-    if (parent === directory) return null;
+    if (parent === directory || parent === deps.home) return null;
     directory = parent;
-    const found = await deps.manifests.read(projectScopeRoot(directory)).catch(() => null);
-    if (found === null) continue;
-    if (found.services.length === 0) return null;
-    const relative = path.relative(directory, cwd).split(path.sep).join('/');
-    return {
-      root: directory,
-      relative,
-      manifest: found,
-      service: found.services.find((service) => samePath(service.path, relative)) ?? null,
-    };
+    try {
+      const manifest = await deps.manifests.read(projectScopeRoot(directory));
+      if (manifest !== null) return { root: directory, manifest };
+    } catch {
+      if (unreadable === 'stop') return { root: directory, manifest: null };
+    }
   }
   return null;
+}
+
+/**
+ * The product `above` makes `cwd`, a directory under it, part of —
+ * when `above` is a product root, which only a monorepo product writes;
+ * null when it is any other project, which is no product's business,
+ * or one whose manifest keel cannot read, which cannot say it is one.
+ */
+export function productAround(above: ProjectAbove, cwd: string): EnclosingProduct | null {
+  if (above.manifest === null || above.manifest.services.length === 0) return null;
+  const relative = path.relative(above.root, cwd).split(path.sep).join('/');
+  return {
+    root: above.root,
+    relative,
+    manifest: above.manifest,
+    service: above.manifest.services.find((service) => samePath(service.path, relative)) ?? null,
+  };
 }
 
 /**

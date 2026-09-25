@@ -34,6 +34,13 @@ export interface InstallDeps {
   /** keel version recorded into new manifests. */
   readonly keelVersion: string;
   /**
+   * The user's home directory: a walk up for the project a directory
+   * sits in ends there, unread (`../scope.ts`' `projectAbove`). The
+   * composition root passes `os.homedir()`; omitted, the walk reads
+   * every directory to the filesystem's root.
+   */
+  readonly home?: string;
+  /**
    * Deferred-action runner — overridable so tests can filter or wrap
    * individual actions (e.g. skip `gradle wrapper`, retry flaky CDN
    * downloads) while the rest run for real. Defaults to `runActions`.

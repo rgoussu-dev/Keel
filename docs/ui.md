@@ -118,8 +118,8 @@ click, not four. A product generated under the polyrepo layout leaves
 none: it is its services, each a repository with a manifest of its own,
 and its root holds only their directories — so the page opens that
 directory on **Directory**, the report beside it, each service one
-click away in the folder list. `keel ui` run inside a keel project
-opens on Options too; in an empty directory it opens on **Directory**,
+click away in the folder list. `keel ui` run in a keel project's own
+directory opens on Options too; in an empty directory it opens on **Directory**,
 where a new project starts. Moving to another directory while a read
 or an install is out leaves the page on the last one moved to: a late
 reply about a directory the page has left changes nothing, and one that
@@ -130,6 +130,13 @@ installed that put nothing on disk, and the review says so instead —
 except re-rendering the agent harness of a project from an older
 harness generation, which writes nothing when its files are current and
 still stamps the generation, the one thing every other card waits on.
+
+A directory under a keel project that holds none of its own —
+`tools/`, or `domain/` — reads as no project, so it gets a new
+project's steps, and its plan column holds the refusal `keel new`
+there gives, naming the project above it (`keel.inside-project`, or
+`keel.inside-product` where a monorepo product root lists no service):
+the project's own directory is where to add to it.
 
 **A refusal is shown where the plan would be.** When the engine refuses
 the run as it stands, the plan column says why — the refusal's own

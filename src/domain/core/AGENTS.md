@@ -21,6 +21,19 @@ the shipped source, every refusal naming its origin) and
 - Composition adapters render templates via `ctx.templates` and probe
   tools via `ctx.processes`; deferred actions use their env's
   `processes`. No direct `spawn`/`fs` anywhere.
+- Where a directory sits is one walk up, `scope.ts`'s `projectAbove`:
+  `scopeOf` bounds it at the deepest service path a registered product
+  declares — the product a project is part of, for `keel add` and the
+  status — while `nearbyProjects` and `keel new` walk to the
+  filesystem's root and stop at a manifest keel cannot read. Every walk
+  ends at the user's home directory unread (`home`, which the
+  composition root passes): 0.1.0-alpha's `keel install --global` left
+  a manifest in `~/.claude` that still parses. `keel new` refuses a
+  directory holding no manifest inside a project at any depth
+  (`keel.inside-project`, or `keel.inside-product` at a product root,
+  `productAround`), so it never reads the bounded walk, which stops
+  short of `<product>/docs/notes/`; one that holds a manifest, even
+  one keel cannot read, is its own, whatever holds it.
 - A bootstrap writes the root `README.md` and `.gitignore` through
   `adapters/adopted-files.ts`, never whole: `keel new` adopts a user's
   own (their content kept, keel's part added once) and refuses any

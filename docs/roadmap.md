@@ -3369,7 +3369,7 @@ as they were.
 What Q's final review and D4 left open once #169 had merged: a
 monorepo product root still refused what `keel new --with` on the same
 product set aside as already there (Q3.1); `keel new` run inside a
-project that already exists; two refusals whose words still fall
+project that already exists (Q3.2); two refusals whose words still fall
 short, and a third Q3.1 met — the harness-generation refusal at a
 product root, which names `keel add agent-harness` as the way forward
 where that add installs nothing and is refused in turn (the refusal of
@@ -3500,6 +3500,145 @@ re-render at the root whose hint names in each service a `--reapply`
 that runs, the image's naming none), `additions.test.ts` and
 `project.test.ts`, and `ui-compose` in a browser (the root's **In its
 services**, locked, naming both).
+
+#### Q3.2 — `keel new` inside a keel project is refused up front (S) ✅
+
+`keel new` in a subdirectory of an existing single keel project is not
+refused: it trips over keel's own `CLAUDE.md` as a file in the way.
+Refuse it up front with a coded refusal, `keel.inside-project`, worded
+like `keel.inside-product` and naming the enclosing project, found by
+the same unbounded walk up `keel add`'s `keel.not-initialised`
+sentence reads. Nesting stays possible by scaffolding elsewhere and
+moving the tree; a directory holding its own manifest stays
+`keel.already-initialised`.
+
+Landed after reproducing it, which showed the defect wider than
+stated: in a directory the user made under a `go-cli`, `ts-cli` or
+`quarkus-cli` project — `tools/`, `tools/scripts/` — or one keel wrote
+that holds no `CLAUDE.md`, `.claude/` itself, `keel new` was not
+refused at all, dry run or real, and scaffolded a second repository
+inside the first, its own `.git`, `.claude/` and manifest; only in a
+directory keel wrote a `CLAUDE.md` into (`internal/app/` on Go,
+`domain/` on the others) did it meet that file, as
+`keel.path-conflict`. So `keel ui`'s preview there answered a plan, or
+that conflict. Inside a monorepo product, `enclosingProduct` looked no
+further up than the deepest service path a product declares — one
+level, for keel's own — and stopped at the first project it met, so
+`<product>/docs/notes/` and `<product>/backend/tools/` scaffolded too.
+`scope.ts` now has one walk up, `projectAbove` — the nearest manifest
+above a directory, as far as a `WalkUp` says: at most `levels` up,
+every one to the filesystem's root by default, passing over a manifest
+keel cannot read unless told to stop there (`unreadable: 'stop'`, a
+project whose manifest is null) — and `productAround`, the product
+that project makes the directory part of when it is a product root:
+`enclosingProduct` is the walk bounded as before, so `scopeOf`, `keel
+add` and the status read what they did, and `nearbyProjects`' `above`
+the walk unbounded, stopping at a manifest it cannot read. Every walk
+ends at the user's home directory, unread. `new-project.ts`'s
+`stage()` reads the directory's own manifest first, before the stack
+is resolved or a question asked: holding one, it is
+`keel.already-initialised` there and then — the check `stageSingle`
+and `stageComposite` each made on this one scope root once the stack
+and its dials were settled, moved up and made once — and one keel
+cannot read throws from that read, the broken file reported as
+anywhere. Holding none, the unbounded walk
+decides, stopping at a manifest it cannot read: no project above, the
+run goes on; a product root, `keel.inside-product` for a directory it
+does not list (now at any depth: `docs/notes/` names `../../`) or for a
+listed service emptied, as before; any other project — a product's
+service included (`backend/tools/` names `../`, the service), and one
+whose manifest keel cannot read, which cannot say it is a product root
+— the new `keel.inside-project`: _this directory is inside the keel
+project at ../; scaffolding a project inside another is not supported
+— scaffold it elsewhere and move it here_. It is a plain
+`DomainError`, its code `INSIDE_PROJECT_CODE` exported beside
+`INSIDE_PRODUCT_CODE`, as `keel.inside-product` is: neither is about a
+vertical or a file, which is what the `Refusal` union carries. The
+remedy is in the sentence; `hint.ts` builds a hint from a
+`RefusalError`'s fields only and has none for either code, so `keel
+new` prints the sentence alone. `keel.preview` of a new project runs
+the same handler, so it is refused alike: `keel ui`'s Directory step
+reads such a directory as `initialised: false`, the page offers a new
+project's steps, and the preview answers a 422 carrying the code,
+which `response.js` reads as a refusal and the plan column shows where
+the plan would be — no page change, no e2e suite touched. Held by
+`new-project.test.ts` (a `go-cli` project's `tools/`, `tools/scripts/`,
+`tools/scripts/lint/` and `internal/app/`, each refused naming `../`,
+`../../` or `../../../` with no question asked and nothing written; the
+preview refused in the same words, `keel add` there naming the same
+project and the status reading none; a project moved in whole, and the
+project's own directory, already initialised; a manifest keel cannot
+read, in `tools/` and in a directory no project holds, reported alike;
+`tools/scripts/` under a project whose manifest keel cannot read,
+refused naming `../../`, where `keel add` names it too — each of the
+last three interactive, with no `--stack` and no question asked; and
+`my-app/` and `code/my-app/` under a home directory holding a
+0.1.0-alpha global manifest, scaffolded and previewed, `keel add`
+there pointing at `keel new`), `composite-scope.test.ts`
+(`docs/notes/` and `docs/notes/drafts/` inside the product,
+`backend/tools/` inside its service, and — with no question asked — a
+project moved into `worker/` and a listed service whose manifest
+cannot be read), `scope.test.ts` (over the fake store: `projectAbove`
+unbounded four levels up and stopped by `levels`, passing over a
+manifest it cannot read or stopping at it when told to, ending at the
+home directory unread, and `productAround` for a service, an unlisted
+directory two levels down, a project that is no product root and one
+it cannot read), and
+`server.test.ts` (over a socket and the real engine, `tools/` and
+`domain/` under a scaffolded project: the status reads no project, the
+preview is a 422 the page reads as a refusal). No verdict moved — the
+grid scaffolds each greenfield and composite cell into a fresh scratch
+directory and asks each brownfield one at a project's root: the
+greenfield, brownfield, composite and planner-readiness goldens and the
+docs matrix regenerate byte-identical, and the known files stay as
+they were.
+
+Beyond the text above: a directory holding a manifest is refused
+first, whatever holds it, and `keel.already-initialised` with it. In a
+project's own directory, a run with no `--stack` asked the whole stack
+drill-down — and on a composite, its layout and build systems — before
+refusing; it now asks nothing, and wins over a refusal of what was
+named (an unknown `--stack` there is `keel.already-initialised` now).
+Inside a monorepo product, a directory directly under the root that
+the product does not list, holding a project moved in, was
+`keel.inside-product`, read before its own manifest; and a manifest
+keel could not read there or in a listed service was
+`keel.inside-product` too — the unlisted directory's sentence, or the
+listed service's _re-scaffolding_ one — while one deeper, such as
+`docs/notes/`'s, was reported as the broken file. Now the first is
+`keel.already-initialised`, the one rule for a directory holding a
+manifest, and a manifest keel cannot read in the directory itself is
+reported as the broken file wherever it sits, as in a directory no
+project holds. Read as no manifest, it would have been
+`keel.inside-project` inside a project, whose remedy — scaffold it
+elsewhere and move it here — is what the user already did. A manifest
+keel cannot read above the directory is the other way round: `scopeOf`
+passes over it as not this directory's to report, but `keel new`'s
+walk stops at it, since passed over it let a run under a project with
+a broken manifest scaffold a second repository inside it — and so
+does `nearbyProjects`', so that `keel add` there names that project,
+where the broken file is reported, and not the `keel new` refused
+there. And a walk ends at the user's home directory without reading
+it: `ProjectReadDeps.home` and `InstallDeps.home`, which the
+composition root sets to `os.homedir()`. 0.1.0-alpha's `keel install
+--global` wrote `~/.claude/.keel-manifest.json`, which `parseManifest`
+still reads — a v1 manifest, migrated with no services — so an
+unbounded walk would make the home directory a project and refuse
+`keel new` anywhere under it, where `enclosingProduct`'s one level
+read it only directly under home, as no product's root; and `keel
+add`'s sentence, unreleased, pointed at it. Not done, and not yet
+planned: a polyrepo product's own directory holds no manifest and
+sits inside no project, so `keel new` there still scaffolds a project
+over the product's services, where `keel add` already points at them
+(`nearbyProjects`' `below`) — said in `docs/cli.md`; run in the home
+directory itself, keel still reads `~/.claude` as that directory's own
+scope root, as before; and `keel.not-initialised` from `keel add module`,
+`keel link` and `keel toolchain` still says to run `keel new` first,
+which in a directory inside a project is now refused — `keel add`'s
+sentence (`refusals.ts`' `notInitialisedSentence`) names the project
+instead, but `keel add module`'s is also the status's
+`moduleRefusal`, and the toolchain context may not import
+`domain/core`, where the walk lives.
 
 ### Decisions on record
 

@@ -953,9 +953,12 @@ deliberately **not a tag**: no adapter behaves differently by topology
 exists) belongs to the orchestrator, and where a vertical may go is its
 own declared placement (above): under monorepo, `vcs` runs once at the
 product root because it declares the repository root as its place.
-`keel new` in a directory inside a product that lists no service there
-is refused (`keel.inside-product`): adding a service to a product is
-not supported yet.
+`keel new` in a directory of a monorepo product that holds no project
+of its own is refused before anything is asked: where the product root
+lists no service, at any depth, as `keel.inside-product` — adding a
+service to a product is not supported yet — and inside one of its
+services as `keel.inside-project`, naming the service
+([`keel new`](cli.md#keel-new) → A directory inside a keel project).
 
 A service's extras (`--with backend:persistence`) are planned on one
 scope before anything is written (`scope.ts`'s `presetServiceScope`):

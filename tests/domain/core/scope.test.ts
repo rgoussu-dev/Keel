@@ -5,19 +5,22 @@
  *
  * **Scenario.** Manifests held at chosen directories: a monorepo
  * product root listing `backend` and `frontend`, a service manifest
- * under one of them, and — for a plugin product — a service two
- * directories down. The root's installed verticals are the shipped
- * product's (`vcs`, `fullstack`), so what the root gives a service is
- * read from keel's own declarations: `vcs`'s placement, and the
- * product glue's `providesInServices`.
+ * under one of them, for a plugin product a service two directories
+ * down, a single project several directories above the one asked
+ * about, and one in a home directory a walk up ends at. The root's
+ * installed verticals are the shipped product's (`vcs`, `fullstack`),
+ * so what the root gives a service is read from keel's own
+ * declarations: `vcs`'s placement, and the product glue's
+ * `providesInServices`.
  *
  * **Factory.** The shipped `FakeManifestStore`, and — for a manifest
  * that cannot be read — a store of the same port that throws for one
  * directory, the way the filesystem adapter throws on a broken file.
  *
- * **Port.** `scopeOf`, `enclosingProduct`, `planScopeOf`,
- * `provisionsFor` — and, before `keel new` has written a manifest,
- * `presetServiceScope` over the shipped `fullstack` preset's services.
+ * **Port.** `scopeOf`, `enclosingProduct`, `projectAbove`,
+ * `productAround`, `planScopeOf`, `provisionsFor` — and, before `keel
+ * new` has written a manifest, `presetServiceScope` over the shipped
+ * `fullstack` preset's services.
  */
 
 import path from 'node:path';
@@ -36,6 +39,8 @@ import {
   planScopeOf,
   presetServiceScope,
   presetServiceTags,
+  productAround,
+  projectAbove,
   provisionsFor,
   scopeOf,
   type PresetService,
@@ -179,6 +184,66 @@ describe('scopeOf', () => {
     expect(await enclosingProduct({ registry: shippedRegistry, manifests }, at('backend'))).toBe(
       null,
     );
+  });
+});
+
+describe('projectAbove', () => {
+  it('walks up from the parent to the filesystem root by default, and no further than told', async () => {
+    const manifests = await storeWith({ [ROOT]: backend });
+    const deep = at('a', 'b', 'c', 'd');
+    expect(await projectAbove({ manifests }, deep)).toEqual({ root: ROOT, manifest: backend });
+    expect(await projectAbove({ manifests }, deep, { levels: 3 })).toBeNull();
+    expect(await projectAbove({ manifests }, deep, { levels: 4 })).toMatchObject({ root: ROOT });
+    // A directory's own manifest is not above it, and with none higher
+    // up the walk ends at the root.
+    expect(await projectAbove({ manifests }, ROOT)).toBeNull();
+  });
+
+  it('passes over a manifest above it that cannot be read, for the next one up', async () => {
+    const store = await storeWith({ [ROOT]: productRoot(), [at('backend')]: backend });
+    expect(
+      await projectAbove({ manifests: unreadableAt(store, at('backend')) }, at('backend', 'tools')),
+    ).toEqual({ root: ROOT, manifest: productRoot() });
+  });
+
+  it('stops at a manifest it cannot read when told to, as a project it cannot read', async () => {
+    const store = await storeWith({ [ROOT]: productRoot(), [at('backend')]: backend });
+    const above = await projectAbove(
+      { manifests: unreadableAt(store, at('backend')) },
+      at('backend', 'tools'),
+      { unreadable: 'stop' },
+    );
+    expect(above).toEqual({ root: at('backend'), manifest: null });
+  });
+
+  it('ends at the home directory without reading it, or anything above it', async () => {
+    // A 0.1.0-alpha global install's manifest, or a project above home.
+    const manifests = await storeWith({ [ROOT]: backend, [at('home')]: backend });
+    expect(
+      await projectAbove({ manifests, home: at('home') }, at('home', 'code', 'app')),
+    ).toBeNull();
+    expect(await projectAbove({ manifests, home: at('home') }, at('elsewhere', 'app'))).toEqual({
+      root: ROOT,
+      manifest: backend,
+    });
+  });
+});
+
+describe('productAround', () => {
+  it('makes a directory part of a product root at any depth, and of no other project', () => {
+    const product = { root: ROOT, manifest: productRoot() };
+    expect(productAround(product, at('backend'))).toMatchObject({
+      relative: 'backend',
+      service: SERVICES[0],
+    });
+    expect(productAround(product, at('docs', 'notes'))).toMatchObject({
+      root: ROOT,
+      relative: 'docs/notes',
+      service: null,
+    });
+    expect(productAround({ root: ROOT, manifest: backend }, at('tools'))).toBeNull();
+    // Nor of one it cannot read, which cannot say it is a product root.
+    expect(productAround({ root: ROOT, manifest: null }, at('backend'))).toBeNull();
   });
 });
 

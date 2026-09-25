@@ -55,7 +55,7 @@
  * the page previews again rather than draw it.
  *
  * **One page for both phases; the directory decides the flow.** No
- * manifest there and only `keel new` applies: the preset steps narrow
+ * manifest there, and the flow is `keel new`'s: the preset steps narrow
  * to one, and Options sets its dials and its **Also scaffold** extras
  * (`<keel-new-form>`). A manifest there, and the preset steps collapse
  * into one read-only **Project** step, what the project already is,

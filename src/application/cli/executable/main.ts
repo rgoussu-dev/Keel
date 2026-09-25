@@ -5,6 +5,7 @@
  * process-level failure transport (stderr + exit code 1). No logic.
  */
 
+import os from 'node:os';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -99,6 +100,7 @@ async function run(argv: string[]): Promise<void> {
     processes: spawnProcessRunner,
     registry,
     keelVersion,
+    home: os.homedir(),
   };
   const mediator = new RegistryMediator([
     new NewProjectHandler(deps),

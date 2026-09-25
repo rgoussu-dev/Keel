@@ -3,7 +3,8 @@
  * points into its services, or says which of them have what it is
  * asked for already, a monorepo service says what it has from the
  * product and what only a repository root may carry, and `keel new`
- * refuses a directory the product does not list.
+ * refuses a directory the product does not list, at any depth, or one
+ * inside a service.
  *
  * **Scenario.** Real products scaffolded into a temporary directory —
  * `fullstack` under both repository layouts, and a plugin's product
@@ -30,7 +31,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { ManifestStore } from '../../../../src/domain/contract/ports/manifest-store.js';
 import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
 import {
@@ -573,6 +574,68 @@ describe('keel new inside a product', () => {
       ).code,
     ).toBe('keel.inside-product');
   });
+
+  it('refuses a directory at any depth: in the product, or in one of its services', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const refused = async (...segments: string[]) =>
+      expectErr(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd: at(...segments),
+            stack: 'go-http',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      );
+    // Deeper than any service the product lists: still the product's.
+    const deep = await refused('docs', 'notes');
+    expect(deep.code).toBe('keel.inside-product');
+    expect(deep.message).toBe(
+      'this directory is inside the product at ../../, which lists no service here; adding a service to a product is not supported yet',
+    );
+    expect((await refused('docs', 'notes', 'drafts')).message).toContain(
+      'inside the product at ../../../,',
+    );
+    // Inside a service, the nearest project is the service.
+    const inService = await refused('backend', 'tools');
+    expect(inService.code).toBe('keel.inside-project');
+    expect(inService.message).toBe(
+      'this directory is inside the keel project at ../; scaffolding a project inside another is not supported — scaffold it elsewhere and move it here',
+    );
+  });
+
+  it('refuses a project moved into a directory it does not list as already initialised', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    const elsewhere = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-elsewhere-'));
+    try {
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd: elsewhere,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      await fs.move(elsewhere, at('worker'));
+      const prompt = new FakePrompt({});
+      const error = expectErr(
+        await installMediator({ prompt }).dispatch(
+          newProjectCommand({ cwd: at('worker'), answers: {}, interactive: true, dryRun: true }),
+        ),
+      );
+      expect(error.code).toBe('keel.already-initialised');
+      expect(prompt.asked).toEqual([]);
+    } finally {
+      await fs.remove(elsewhere);
+    }
+  });
 });
 
 describe('keel new in a service the product lists', () => {
@@ -617,6 +680,22 @@ describe('keel new in a service the product lists', () => {
       ),
     );
     expect(error.code).toBe('keel.already-initialised');
+  });
+
+  it('leaves one whose manifest it cannot read to be reported, as anywhere', async () => {
+    const mediator = mediatorOver();
+    await scaffold(mediator, 'fullstack', 'monorepo');
+    // Not emptied: the broken file is what the run says, not the
+    // service the product records there.
+    const manifest = path.join(projectScopeRoot(at('backend')), MANIFEST_FILENAME);
+    await fs.writeFile(manifest, '{ broken');
+    const prompt = new FakePrompt({});
+    await expect(
+      installMediator({ prompt }).dispatch(
+        newProjectCommand({ cwd: at('backend'), answers: {}, interactive: true, dryRun: true }),
+      ),
+    ).rejects.toThrow(manifest);
+    expect(prompt.asked).toEqual([]);
   });
 });
 

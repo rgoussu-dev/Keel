@@ -13,8 +13,9 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
@@ -411,6 +412,241 @@ describe('keel.new-project (keel new)', () => {
     );
     expect(await fs.readdir(cwd)).toEqual([]);
   });
+});
+
+/**
+ * `keel new` in a directory under a keel project scaffolded a second
+ * project there — its own repository, hooks and harness inside the
+ * first's — in a directory the user made, and in one keel wrote a
+ * `CLAUDE.md` into met it as a file in the way. Both are refused
+ * before anything is asked, naming the project, at any depth — a
+ * project whose manifest keel cannot read too; a project moved in
+ * whole is already initialised, as anywhere, and one whose manifest
+ * cannot be read is reported as anywhere, each before anything is
+ * asked.
+ */
+describe('keel.new-project inside a keel project', () => {
+  const quietly = (overrides: Parameters<typeof installMediator>[0] = {}) =>
+    installMediator({ runDeferred: () => Promise.resolve(), ...overrides });
+
+  beforeEach(async () => {
+    expectOk(
+      await quietly().dispatch(
+        newProjectCommand({ cwd, stack: 'go-cli', answers: {}, interactive: false, dryRun: false }),
+      ),
+    );
+  });
+
+  it.each([
+    [['tools'], '../'],
+    [['tools', 'scripts'], '../../'],
+    [['tools', 'scripts', 'lint'], '../../../'],
+    // A directory keel wrote, whose `CLAUDE.md` was the file in the way.
+    [['internal', 'app'], '../../'],
+  ])('refuses %j before anything is asked, naming the project at %s', async (segments, root) => {
+    const dir = path.join(cwd, ...segments);
+    await fs.ensureDir(dir);
+    const before = await fs.readdir(dir);
+    const prompt = new FakePrompt({});
+    const error = expectErr(
+      await quietly({ prompt }).dispatch(
+        newProjectCommand({ cwd: dir, answers: {}, interactive: true, dryRun: false }),
+      ),
+    );
+    expect(error.code).toBe('keel.inside-project');
+    expect(error.message).toBe(
+      `this directory is inside the keel project at ${root}; scaffolding a project inside another is not supported — scaffold it elsewhere and move it here`,
+    );
+    expect(prompt.asked).toEqual([]);
+    expect(await fs.readdir(dir)).toEqual(before);
+  });
+
+  it('refuses the preview alike, where keel add points at the same project', async () => {
+    const dir = path.join(cwd, 'tools', 'scripts');
+    await fs.ensureDir(dir);
+    const mediator = quietly();
+    const run = expectErr(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd: dir,
+          stack: 'go-cli',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    const preview = expectErr(
+      await mediator.dispatch(
+        previewQuery({ cwd: dir, target: { kind: 'new-project', stack: 'go-cli' }, answers: {} }),
+      ),
+    );
+    expect([preview.code, preview.message]).toEqual([run.code, run.message]);
+    // One walk up, read by both: the project `keel new` will not nest
+    // in is the one `keel add` sends the user to, and the directory
+    // still reads as no project of its own.
+    const add = expectErr(
+      await mediator.dispatch(
+        addVerticalCommand({
+          cwd: dir,
+          verticals: ['ci'],
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(add.code).toBe('keel.not-initialised');
+    expect(add.message).toBe(
+      `no project initialised at ${projectScopeRoot(dir)} — this directory is inside the keel project at ../../; run 'keel add' there`,
+    );
+    const status = expectOk(await mediator.dispatch(projectStatusQuery({ cwd: dir })));
+    expect(status.initialised).toBe(false);
+  });
+
+  it('refuses a project moved in whole as already initialised, as anywhere', async () => {
+    const elsewhere = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-elsewhere-'));
+    try {
+      expectOk(
+        await quietly().dispatch(
+          newProjectCommand({
+            cwd: elsewhere,
+            stack: 'ts-cli',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      const nested = path.join(cwd, 'tools', 'cli');
+      await fs.move(elsewhere, nested);
+      // The project's own directory as well: before anything is asked.
+      for (const dir of [nested, cwd]) {
+        const prompt = new FakePrompt({});
+        const error = expectErr(
+          await quietly({ prompt }).dispatch(
+            newProjectCommand({ cwd: dir, answers: {}, interactive: true, dryRun: true }),
+          ),
+        );
+        expect(error.code).toBe('keel.already-initialised');
+        expect(prompt.asked).toEqual([]);
+      }
+    } finally {
+      await fs.remove(elsewhere);
+    }
+  });
+
+  it('leaves a manifest it cannot read to be reported, inside a project as anywhere', async () => {
+    const elsewhere = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-elsewhere-'));
+    try {
+      // Not a directory holding no project, so not one to move a
+      // project into: the broken file is what the run says, before
+      // anything is asked.
+      for (const dir of [path.join(cwd, 'tools'), elsewhere]) {
+        const manifest = path.join(projectScopeRoot(dir), MANIFEST_FILENAME);
+        await fs.outputFile(manifest, '{ broken');
+        const prompt = new FakePrompt({});
+        await expect(
+          quietly({ prompt }).dispatch(
+            newProjectCommand({ cwd: dir, answers: {}, interactive: true, dryRun: true }),
+          ),
+        ).rejects.toThrow(manifest);
+        expect(prompt.asked).toEqual([]);
+      }
+    } finally {
+      await fs.remove(elsewhere);
+    }
+  });
+
+  it('refuses a directory inside a project whose manifest it cannot read, as inside it', async () => {
+    // Broken, it is a project all the same: passed over, the run would
+    // scaffold a second repository inside it.
+    await fs.writeFile(path.join(projectScopeRoot(cwd), MANIFEST_FILENAME), '{ broken');
+    const dir = path.join(cwd, 'tools', 'scripts');
+    await fs.ensureDir(dir);
+    const prompt = new FakePrompt({});
+    const error = expectErr(
+      await quietly({ prompt }).dispatch(
+        newProjectCommand({ cwd: dir, answers: {}, interactive: true, dryRun: false }),
+      ),
+    );
+    expect(error.code).toBe('keel.inside-project');
+    expect(error.message).toContain('inside the keel project at ../../;');
+    expect(prompt.asked).toEqual([]);
+    expect(await fs.readdir(dir)).toEqual([]);
+    // And `keel add` there sends the user to it, where the broken file
+    // is reported, rather than to a `keel new` refused here.
+    const add = expectErr(
+      await quietly().dispatch(
+        addVerticalCommand({
+          cwd: dir,
+          verticals: ['ci'],
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(add.message).toBe(
+      `no project initialised at ${projectScopeRoot(dir)} — this directory is inside the keel project at ../../; run 'keel add' there`,
+    );
+  });
+});
+
+/**
+ * 0.1.0-alpha's `keel install --global` wrote a manifest into the
+ * home directory's `.claude`, which still reads as a project's (a v1
+ * manifest, migrated). That directory is the user's own, never a
+ * project's scope: a walk up ends at the home directory unread, so
+ * `keel new` below it scaffolds, and `keel add` there points at `keel
+ * new`, not at the home directory.
+ */
+describe('keel.new-project under a home directory keel once installed into', () => {
+  it.each([[['my-app']], [['code', 'my-app']]])(
+    'scaffolds in %j, reading no project above it',
+    async (segments) => {
+      await fs.outputJson(path.join(projectScopeRoot(cwd), MANIFEST_FILENAME), {
+        kitVersion: '0.1.0-alpha',
+        scope: 'global',
+        installedAt: '2026-04-01T00:00:00Z',
+        updatedAt: '2026-04-01T00:00:00Z',
+        entries: [],
+      });
+      const dir = path.join(cwd, ...segments);
+      await fs.ensureDir(dir);
+      const mediator = installMediator({ home: cwd });
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd: dir,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator.dispatch(
+          previewQuery({ cwd: dir, target: { kind: 'new-project', stack: 'go-cli' }, answers: {} }),
+        ),
+      );
+      const add = expectErr(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd: dir,
+            verticals: ['ci'],
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      );
+      expect(add.message).toBe(
+        `no project initialised at ${projectScopeRoot(dir)} — run 'keel new --stack=<id>' first to create one`,
+      );
+    },
+  );
 });
 
 describe('keel.new-project build-system selection', () => {

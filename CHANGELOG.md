@@ -14,6 +14,36 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel new` inside a keel project is refused up front.** Run in a
+  directory under a keel project that holds no project of its own —
+  `my-app/tools/`, `my-app/tools/scripts/`, or a directory inside one
+  of a monorepo product's services — `keel new` scaffolded a second
+  project there, its own repository, hooks and harness inside the
+  first's; in a directory keel wrote a `CLAUDE.md` into, such as
+  `my-app/domain/`, it was refused over that file, as one in the way
+  (`keel.path-conflict`); and a directory deeper inside a monorepo
+  product than any of its services, such as `my-product/docs/notes/`,
+  was not found to be inside the product at all. Each is now refused
+  before anything is asked, naming the nearest project above it, even
+  one whose manifest keel cannot read: as `keel.inside-project` —
+  _this directory is inside the keel project at ../; scaffolding a
+  project inside another is not supported — scaffold it elsewhere and
+  move it here_ — or, where a monorepo product root lists no service,
+  `keel.inside-product`. `keel ui`'s preview there is refused alike,
+  and the page shows it where the plan would be. `keel add` there names
+  the same project — under one whose manifest keel cannot read, it
+  said to run `keel new` first — and neither looks into your home
+  directory: a `~/.claude/.keel-manifest.json` left by 0.1.0-alpha's
+  `keel install --global` is no project. A directory holding a
+  manifest is one of its own, whatever holds it, and is refused before
+  anything is asked as well: as `keel.already-initialised`, which a run
+  with no `--stack` in a project's own directory said only after the
+  whole stack drill-down, or, where keel cannot read the manifest, with
+  the broken file reported, as anywhere. Inside a monorepo product, a
+  project moved into a directory directly under the root that the
+  product does not list, and a manifest keel could not read there or
+  in a listed service, were `keel.inside-product`.
+
 - **`keel new` no longer merges into a file of yours that it patches.**
   Into a directory that was not empty, a file keel writes through a
   patch rather than whole was merged with the one already there:
