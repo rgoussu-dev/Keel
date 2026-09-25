@@ -184,6 +184,18 @@ Rust or Go context has no container to lose a handler in.
   shard provisions no JDK, and a real Quarkus install queues
   `gradle wrapper`. The one Generate is `ui-compose`'s, on a `ts-http`
   project seeded in-process, adding what queues no action there.
+- **Persistence is built on three families, and the other three compile
+  nowhere.** `modulith-persistence` and `-mariadb` (Quarkus),
+  `modulith-go-persistence` and `-liquibase`, and
+  `modulith-rust-persistence` build the slice for real — `dev-compose`
+  scaffolds it on Quarkus but builds nothing, booting the compose
+  database alone; no suite builds it on Spring, Micronaut or the
+  TypeScript stacks. Roadmap Q3.5 built Micronaut's by hand and found its
+  `MicronautTxUnitOfWorkTest` (Java and Kotlin) no longer compiling
+  against the Micronaut Data the platform resolves, on the default dials
+  too — green in CI, because nothing compiled it. A persistence suite
+  for each of those families is a step of its own, as Quarkus, Go and
+  Rust each have theirs.
 
 ## Cost — what is measured, and what inverted the guess
 

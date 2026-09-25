@@ -398,7 +398,11 @@ if (!existing.includes('plugins {')) {
 ```
 
 The user then gets `keel.path-conflict` naming the file, in the
-sentence keel uses for its own. Unlike the helpers beside them these
+sentence keel uses for its own. Where the file has what your lines go
+inside, but already uses a name you would add something under — a
+parameter of that name — pass the name as a fourth argument instead
+(`new PathConflictError(path, id, undefined, 'clock')`), and the
+sentence says it is taken. Unlike the helpers beside them these
 are classes, and keel knows them by identity: a helper works as well
 bundled into the plugin, but these hold only when imported from the
 very copy of keel that runs it — a project that depends on keel and

@@ -49,6 +49,20 @@
  * `keel.project-status` asks too, so a front end greys the control out
  * by the front door's own gates, and says why in its own words.
  *
+ * What the front door cannot read is the files the context is wired
+ * into. A composition root that no longer holds its list in a shape
+ * keel can read, or a Kotlin mediator already taking a parameter of
+ * the context's name — `clock`, where persistence injects its `Clock`
+ * — is a fact about that file, which the user may have edited, not
+ * about the manifest: the adapter patching it refuses it as
+ * `keel.path-conflict`, naming the file, before anything is written.
+ * The same clash in the other order is where a card and its add part:
+ * after `keel add module clock` on Micronaut Kotlin, persistence's card
+ * reads the manifest and shows it ready, and only its preview and its
+ * add meet the mediator's `clock` and refuse it. Nothing declares the
+ * names a stack's root takes for its own, which is what would let this
+ * front door refuse `clock` there first (roadmap Q3.5).
+ *
  * Pipeline after that is the `add-vertical` shape: install against a
  * Tree rooted at cwd, and under a real run commit the tree, persist
  * the manifest, then run deferred actions — manifest before actions,

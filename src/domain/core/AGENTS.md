@@ -46,6 +46,12 @@ the shipped source, every refusal naming its origin) and
   own (their content kept, keel's part added once) and refuses any
   other file in the way. The grid's seeded `keel new` cells hold
   every stack to it.
+- A patch that adds to a list in source another command may have grown
+  — a composition root's handlers — reads the list as it finds it, its
+  brackets and commas found in `util.ts`'s `codeOnly` (comments and
+  literals blanked), and refuses what it cannot write back as it was as
+  `keel.path-conflict` with an `anchor`, never a plain throw
+  (`adapters/micronaut-root.ts`, `ts-persistence.ts`, `ts-context.ts`).
 - Tests follow Scenario + Factory + port (`tests/support/factory.ts`)
   with the shipped fakes — no mocking libraries.
 

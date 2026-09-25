@@ -1951,7 +1951,8 @@ function peerContextStackIds(registry: Registry): readonly string[] {
 /**
  * `thrown`, with a file refusal's path moved under the service
  * directory `prefix` — what the user sees from the product root they
- * ran `keel new` in. Anything else is passed through as it is.
+ * ran `keel new` in — and whatever else it names kept. Anything else
+ * is passed through as it is.
  */
 function underService(thrown: unknown, prefix: string): unknown {
   if (thrown instanceof PathConflictError) {
@@ -1959,6 +1960,7 @@ function underService(thrown: unknown, prefix: string): unknown {
       path.posix.join(prefix, thrown.path),
       thrown.adapterId,
       thrown.refusal.anchor,
+      thrown.refusal.taken,
     );
   }
   if (thrown instanceof PathMissingError) {

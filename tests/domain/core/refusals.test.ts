@@ -441,6 +441,17 @@ const TABLE: readonly {
       "'pom.xml' has no <build> element — keel adds its lines inside it and does not rewrite the file; add one, then re-run",
   },
   {
+    why: 'a file already using the name keel adds something under',
+    refusal: {
+      kind: 'path-conflict',
+      path: 'MediatorFactory.kt',
+      adapterId: 'bounded-context/micronaut-context-kotlin',
+      taken: 'clock',
+    },
+    sentence:
+      "'MediatorFactory.kt' already has a 'clock' where keel adds one of that name — keel renames neither, and the two would not build; rename the one there, then re-run",
+  },
+  {
     why: 'a patch target gone',
     refusal: { kind: 'path-missing', path: 'README.md', adapterId: 'toolchain/mise' },
     sentence: "'README.md' is missing — keel patches it and does not recreate it; restore it",

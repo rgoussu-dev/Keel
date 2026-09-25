@@ -14,6 +14,48 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **Persistence installs beside the peer context.** On the modulith
+  with the peer context — `keel new --module-layout modulith
+--with-peer-context --with persistence`, or `keel add persistence` on
+  such a project — `micronaut-rest`, `micronaut-cli-rest`, their Kotlin
+  twins, `ts-http` and `ts-cli-http` crashed, with either build system,
+  and `keel ui`, which offers persistence there, answered its preview
+  with `keel.internal`; `keel add persistence` after a `keel add
+module` on those stacks crashed alike. Persistence wired its handlers
+  into the composition root by matching the line the walking skeleton
+  wrote, and the other context had rewritten it. It now reads the list
+  it finds — `@Import(packages = …)` on Micronaut Java, the hand-wired
+  `mediator(…)` on Kotlin, `createRegistryMediator([…])` in `main.ts` —
+  and adds the greeting log's entries after the contexts already there,
+  so the root registers both, in one run or two. On the TypeScript
+  stacks, `keel add module` after persistence spliced the new context's
+  handler in after persistence's trailing comma, leaving a hole in that
+  array, and the project no longer typechecked — as it did after a
+  comment ending any such array; the handler now follows the array's
+  last entry, on a line of its own after a trailing comma, and a
+  comment there stays where it is. A root rewritten so that it no
+  longer holds the list, or edited so that keel cannot read it back as
+  one — a comment among its entries, a Kotlin mediator given a block
+  body — or a `server.ts`, Micronaut controller test or root `pom.xml`
+  missing what persistence patches inside, crashed the same way; each
+  is now refused as `keel.path-conflict` before anything is written,
+  naming the file and what it lacks — _'…/MediatorFactory.java' has no
+  '@Import(packages = …)' list holding only package names — keel adds
+  its lines inside it and does not rewrite the file; add one, then
+  re-run_ — as `keel add module` over such a root on Micronaut now is,
+  where it used to
+  rewrite a list with a comment in it, or a block-bodied mediator, into
+  source that no longer compiled, and split a handler taking a string
+  with a comma in it (`Echo("a, b")`) in two; what is inside a string is
+  now the string's. So, on Micronaut Kotlin, is a context named for a
+  port the mediator already takes, in either order —
+  _'…/MediatorFactory.kt' already has a 'clock' where keel adds one
+  of that name — keel renames neither, and the two would not build;
+  rename the one there, then re-run_: `keel add module clock` after
+  persistence, which takes its `Clock` under that name, used to be
+  wired in as a second `clock` parameter, as `welcome` after the peer
+  context was, and the root no longer compiled.
+
 - **`keel new` inside a keel project is refused up front.** Run in a
   directory under a keel project that holds no project of its own —
   `my-app/tools/`, `my-app/tools/scripts/`, or a directory inside one

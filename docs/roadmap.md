@@ -3381,8 +3381,10 @@ that very add names itself), as `keel add --list`'s generation line
 and the page's notice do, each saying every add but that one is
 refused — and a fourth Q3.2 left, `keel add module`, `keel link` and
 `keel toolchain` inside a project still saying to run `keel new` first
-(all four Q3.3); and the weekly report-only lane _The measure_ planned
-and did not build (Q3.4). One step each, the grid naming what moves.
+(all four Q3.3); the weekly report-only lane _The measure_ planned
+and did not build (Q3.4); and the first thing that lane found,
+persistence throwing on the peer context's modulith (Q3.5). One step
+each, the grid naming what moves.
 
 #### Q3.1 — "Already there" at a monorepo product root (S) ✅
 
@@ -4012,7 +4014,7 @@ each is left for a step of its own:
    patch anchors on; Quarkus, Spring, Go and Rust take persistence
    there. The fix is for the patch to read that root, not a
    declaration: declaring persistence unavailable there would take away
-   what the other families give.
+   what the other families give. Fixed by Q3.5, which does that.
 2. **A refresh that changes adapters leaves the first one's files.**
    On `quarkus-cli-rest` and its Kotlin twin under Gradle, distribution
    alone resolves to the native binary (D3). `keel add
@@ -4104,6 +4106,214 @@ red run. The grid
 itself moved no verdict: the greenfield, brownfield, composite and
 planner-readiness goldens and the docs matrix regenerate byte-identical,
 and the known files stay as they were.
+
+#### Q3.5 — Persistence survives the peer context (S) ✅
+
+Q3.4's first finding, and only it. `persistence` throws a plain `Error`
+— a crash at the terminal, a `keel.internal` in `keel ui` — on the
+modulith with the peer context, on `micronaut-rest`,
+`micronaut-cli-rest`, their Kotlin twins, `ts-http` and `ts-cli-http`,
+with either build system and the harness on or off, wherever the menu
+offers it: its patch of the composition root matches the line the
+walking skeleton rendered, and the peer context has rewritten that line.
+Make each patch read the root as it is — after the peer context, after
+a `keel add module`, in one run or two — and add to the list it finds,
+leaving the bytes alone wherever persistence already worked; refuse a
+root a user rewrote as `keel.path-conflict` with an `anchor`, as
+`jvm-format` does, rather than throw.
+
+Landed as a read of each list. Micronaut's two — Java's
+`@Import(packages = …)` and Kotlin's hand-wired `mediator(…)` — moved
+out of `micronaut-context.ts` into `micronaut-root.ts`, which `keel add
+module` and persistence now both read them through:
+`widenImportPackages` (the added context's `rewriteList` over its
+`IMPORT_REGION`, re-emitting the fenced list one entry a line) and
+`widenKotlinMediator`, which now takes several parameters and elements
+and adds each only where it is missing. `jvm-persistence.ts`'s
+`patchMicronautImportPackages` still turns the skeleton's single string
+into the one-line pair it always wrote, and widens any other list;
+`patchKotlinCompositionRoot` still replaces the skeleton's one-liner,
+and otherwise widens the mediator — the three ports after the parameters
+there, the two handlers after the handlers there — its imports going
+under `GreetHandler`'s either way. `ts-persistence.ts`'s `patchMainTs`
+reads `createRegistryMediator([…])` bracket by bracket and re-emits it
+with the pool and the greeting log declared above and the greeting-log
+handlers after whatever it registered — over the skeleton's one-handler
+line, byte for byte what it wrote before, so it has one path. On the
+peer context's modulith the root now registers both:
+`…greeting.domain.core.greet`, `…guestbook.domain.core.signing` and
+`…greeting.domain.core.greetinglog` in `@Import`, the note inside the
+fence once where the peer context's own rewrite had repeated it;
+`welcome` beside the three ports, and `SignHandler(welcome)` before the
+two greeting-log handlers, in Kotlin; `createGuestbookHandler()` before
+them in `main.ts`. A root without its list is a `PathConflictError`, its
+`path` the file and its `anchor` what the file lacks —
+`'@Import(packages = …)' list holding only package names`, `'fun
+mediator(…): Mediator = RegistryMediator(listOf(…))' holding only
+parameters and handlers`, `'createRegistryMediator([…])' call holding
+only handlers`, or the import each patch puts its own imports under —
+and the other plain drift throws in the three persistence files took
+the same one-line change: `server.ts`'s two anchors, the Micronaut
+`GreetControllerTest` in both languages, and the root pom's `<modules>
+element`. Nothing is written before one.
+
+The grid moved nothing, since it reads default dials only: the
+greenfield, brownfield, composite and planner-readiness goldens and the
+docs matrix regenerate byte-identical, and the known files stay as they
+were. The bytes were held past the verdicts, too: HEAD's build and this
+one rendered 167 scenarios to 15,806 byte-identical files, before review
+and again after each round of the fixes below it — the four Micronaut
+and two TypeScript presets with `quarkus-rest` and `spring-rest-kotlin` beside
+them, on each build system, layout and harness setting, persistence in
+one run and in two; the peer context alone, and two `keel add module`s
+with and without it, on eleven modulith presets; and the three products
+carrying persistence under both repository layouts. Held by
+`handlers/persistence-peer-context.test.ts` (each of the six presets,
+the lines of its root that matter pinned, and one run against two byte
+for byte; persistence before and after a `keel add module` on Micronaut
+Java and Kotlin and `ts-http`, the TypeScript array read so that a hole
+in it shows, and the array the project's formatter wraps after the
+peer context and a `keel add module`, trailing comma and all; a
+rewritten root, and a Kotlin context named `clock`, refused to
+persistence and to `keel add module`, untouched and nothing written; a
+root edited past what keel reads as a list refused alike, to `keel add
+module` on Micronaut, where on `ts-http` it splices in with the comment
+kept; a rewritten `GreetControllerTest` in each
+language, refused naming that file; and over the skeleton's own
+root, `ts-http`'s mediator and `micronaut-rest-kotlin`'s under both
+layouts, byte for byte what persistence always wrote),
+`adapters/micronaut-root.test.ts` (each helper over the bootstrap's
+shape, the peer context's and its own re-emit, adding only what is
+missing, naming a name taken, a handler taking a URL or a comma in a
+string widened, and null on a comment in a list, a block body or
+anything beside the list in `RegistryMediator(…)`),
+`adapters/ts-context.test.ts` (an entry after a trailing comma on a line
+of its own, and after the last entry where a comment follows it or ends
+the array), `verticals/persistence.test.ts` (a grown `@Import` list
+widened; each refusal's path, adapter and anchor, the `main.ts` import
+each layout's own, and a block comment in the array refused),
+`util.test.ts` (`codeOnly` over each literal and comment),
+`handlers/composite-scope.test.ts` (a plugin's refusal in a product's
+service keeping its anchor, and its name taken, under the service's
+path), and `refusals.test.ts` and `cli/hint.test.ts` (the sentence of a
+name taken, and no advice to move the file aside).
+
+The lane, filtered, before and after. Before, `micronaut-rest`,
+`micronaut-rest-kotlin` and `ts-http` each had 64 findings in `extras`
+and 8 in `choices`, every one this throw. After, the six presets in one
+run of all three suites, 6 minutes on this container: `extras` 0
+findings over 2,304 sets on 72 dial settings (8,928 previews, 2,304
+dry-run installs); `choices` 0 over 1,608 answers to 984 questions,
+which now include the questions persistence asks on the peer settings
+(276 answers on `micronaut-rest`, where there were 264); and `arrival`
+no throw over 1,944 pairs, 432 arrivals alone, 1,368 scaffolds and
+2,376 adds, where Q3.4 met it in 24 scaffolds and 24 add previews a
+preset. `arrival` stays red, 42 findings a preset in four kinds, every
+one Q3.4's (4) or (5): `README.md`'s lines in arrival order after
+`toolchain`, and the manifest recording persistence's later write.
+
+The real toolchain: no e2e suite builds persistence on Micronaut or the
+TypeScript stacks, with the peer context or without, and none was added
+(J's one-e2e-per-cell rule). Built by hand instead, from a build of this
+tree: `ts-http` and `ts-cli-http` with the peer context and persistence
+typecheck, pass dependency-cruiser and run their tests (the
+Testcontainers ones skipping without Docker), `main.ts` prettier-clean;
+`keel add module ordering` on top typechecks too, where the splice it
+replaced gave TS2345. `micronaut-rest` compiles its main sources and
+packs its runnable jar, the annotation processor writing bean
+definitions for `GreetHandler`, `SignHandler`, `RecordGreetingHandler`
+and `ListGreetingsHandler` out of the three packages, and
+`micronaut-rest-kotlin`, whose mediator constructs its handlers by hand,
+compiles its main sources and packs its jar too. That first run could
+not resolve the assembly's test classpath — Maven Central answered 429 —
+so the application module's test sources went uncompiled; a second,
+after review, compiled them on both (`:application:api:compileTestJava`
+and `compileTestKotlin`), the `GreetControllerTest` persistence patched
+to extend `PostgresTestFixture` among them. Neither ran its tests, which
+boot the datasource and need Docker, which this container lacks. The
+build found something older, too: the persistence template's
+`MicronautTxUnitOfWorkTest`, in both languages, no longer compiles
+against the Micronaut Data the platform resolves
+(`TransactionOperations` gained `managesTransaction` and narrowed
+`findTransactionStatus`), on the default dials as well, where this step
+changed no byte. No suite compiles it, so CI never saw it
+(`tests/e2e/AGENTS.md` now says so); it is left for a step of its own.
+
+Beyond the text above: the other order. `keel add module` after
+persistence on the TypeScript stacks spliced `, create<Name>ContextHandler()`
+in before the `])` persistence's array ends on — after its trailing
+comma, a hole in the array, and TS2345 — as it did, before this step
+too, after a comment ending an array a user wrote. `ts-context.ts` now
+places the entry by the array's last token, comments and literals aside:
+on a line of its own after a trailing comma, and otherwise straight
+after the last entry, ahead of any comment there — the one-line splice
+unchanged, and a comment kept where it is. The added contexts' own throws for a root with no list —
+Micronaut's two, and `ts-context`'s for a `main.ts` with no mediator
+call — became the same `PathConflictError`, in the files the list
+reading passes through. Left as they were: the build-file throws in
+`jvm-context.ts` and `ts-context`'s `package.json` one, the Spring and
+web-components contexts' throws for a root with no list
+(`spring-context.ts`'s `@ComponentScan`, `wc-context.ts`'s context-port
+map), the Spring, Go and Rust persistence adapters' drift throws, and
+the peer context's own patches, whose anchors match the skeleton's
+rendering and whose fragility R's research names.
+
+And a name clash the list reading reached. `keel add module clock` on
+Micronaut Kotlin injects `clock: ClockHandler`, where persistence
+injects `clock: Clock`, and `widenKotlinMediator` counted a parameter as
+there only by its whole text — so either order wrote two parameters of
+one name, which does not compile: persistence after the context newly,
+since the drift throw had stopped it there before, and the context after
+persistence, like `welcome` after the peer context, as it already had.
+It now reads a parameter by name and type, and returns `{ taken }` for a
+name another type holds, which both callers refuse as a
+`PathConflictError` carrying it. That is a fact of its own, not a block
+the file lacks, so the contract's `PathConflictRefusal` gained an
+optional `taken`, and `pathSentence` a case for it — _'…/MediatorFactory.kt'
+already has a 'clock' where keel adds one of that name — keel renames
+neither, and the two would not build; rename the one there, then
+re-run_ — which `refusalHint` does not advise moving aside before `keel
+new`. It is refused as the file's, when the context's adapter patches
+it, rather than at `keel add module`'s front door: which names a root's
+mediator takes is the file's to say, and a user may have renamed one.
+That leaves one card that reads otherwise than its add on a project
+only keel has written: after `keel add module clock` on Micronaut
+Kotlin, persistence's card reads the manifest and shows it ready, where
+its preview and its add are refused. Before this step the add threw
+there. The grid names no context and does not reach it; refusing `clock`
+at that front door needs the names a stack's root takes for its own
+declared, which nothing does yet, and is left for a step of its own
+(`add-module.ts` says so). No scenario the byte comparison rendered
+names a context so, and none of its files moved. And `keel new`'s
+re-wrap of a refusal from a product's service, which moves its path
+under the service's directory, carried the `anchor` and dropped the new
+`taken`; it carries both now, so a plugin's adapter refusing a
+service's file over a name is refused from the product root in the
+same words.
+
+And what the lists hold. `splitEntries`, `splitHandlers` and
+`rewriteList` split on commas outside brackets, reading a list, not
+Java, Kotlin or TypeScript: a comment among the entries was split on
+its own commas and re-emitted as code, a handler taking a string with a
+comma in it (`Echo("a, b")`) was split in two, and a Kotlin mediator
+given a block body lost its `return` and gained a stray brace — `keel add
+module` had done so to Micronaut roots already, and persistence, whose
+exact-line anchor had thrown at each of them, came to as well,
+reporting Ok over a root that no longer compiled. Each reader now takes
+only what it can write back as it was, and is null on the rest, which
+its callers refuse as the file in the way: `widenImportPackages` a list
+with a comment in its braces, `widenKotlinMediator` a mediator that is
+not `fun mediator(…): Mediator = RegistryMediator(listOf(…))` with
+nothing beside the list, or with a comment among its parameters or
+handlers, and `ts-persistence`'s reader an array with a comment in it —
+which is what each anchor above now says it lacks. What is inside a
+string or a character literal is the literal's: `widenKotlinMediator`,
+`ts-persistence`'s reader and `ts-context`'s splice find their brackets,
+commas and comments in `util.ts`'s `codeOnly`, the source with its
+comments and literals blanked, and `widenImportPackages` its comments,
+so a handler taking `"https://…"` is widened rather than taken for a
+comment, as `keel add module` had widened it before. No keel
+rendering holds any of them, and no byte moved.
 
 ### Decisions on record
 

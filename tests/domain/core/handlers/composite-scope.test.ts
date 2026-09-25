@@ -12,8 +12,9 @@
  * the root, from a service, and from a directory beside them. And
  * `keel new` asked for a service's own extras (`--with
  * backend:persistence`), held to scaffolding then adding them there,
- * and a preset whose monorepo backend installs the image its root
- * already builds: two scopes, one file.
+ * a preset whose monorepo backend installs the image its root
+ * already builds — two scopes, one file — and a plugin's extra that
+ * refuses the service's file it patches.
  *
  * **Factory.** `installMediator` over the real templates and
  * filesystem, deferred actions recorded rather than run — and, where
@@ -48,7 +49,8 @@ import {
   type AvailableVerticalDescriptor,
   type ProjectStatus,
 } from '../../../../src/domain/contract/queries.js';
-import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import type { Vertical } from '../../../../src/domain/contract/composition.js';
+import { PathConflictError, RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Stack } from '../../../../src/domain/contract/stack.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import type { InstallDeps } from '../../../../src/domain/core/handlers/deps.js';
@@ -1308,5 +1310,82 @@ describe("keel new: a product's extras, each in its service", () => {
         }),
       ),
     );
+  });
+
+  it("names a service's file from the product root, keeping what its refusal says of it", async () => {
+    // A plugin's extra whose patch of the service's README meets the
+    // file lacking its block, or already using its name. The service's
+    // Tree is rooted at `backend/`; the user ran `keel new` one level up.
+    const refusing = (id: string, anchor?: string, taken?: string): Vertical => ({
+      id,
+      description: `Patches README.md, and finds it wanting (${id}).`,
+      dimensions: [],
+      adapters: [
+        {
+          id: `${id}/readme`,
+          vertical: id,
+          covers: [],
+          predicate: {},
+          contribute: () => ({
+            patches: [
+              {
+                target: 'README.md',
+                apply: () => {
+                  throw new PathConflictError('README.md', `${id}/readme`, anchor, taken);
+                },
+              },
+            ],
+          }),
+        },
+      ],
+    });
+    const mediator = mediatorOver(
+      registryOf([
+        shippedSource,
+        {
+          origin: "plugin 'acme'",
+          verticals: [
+            refusing('acme-anchored', "'## Acme' section"),
+            refusing('acme-named', undefined, 'acme'),
+          ],
+        },
+      ]),
+    );
+    const refusedWith = async (extra: string): Promise<Error> =>
+      expectErr(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            answers: {},
+            interactive: false,
+            dryRun: true,
+            services: { backend: { extraVerticals: [extra] } },
+          }),
+        ),
+      );
+
+    const anchored = await refusedWith('acme-anchored');
+    expect((anchored as RefusalError).refusal).toEqual({
+      kind: 'path-conflict',
+      path: 'backend/README.md',
+      adapterId: 'acme-anchored/readme',
+      anchor: "'## Acme' section",
+    });
+    expect(anchored.message).toBe(
+      "'backend/README.md' has no '## Acme' section — keel adds its lines inside it and does not rewrite the file; add one, then re-run",
+    );
+
+    const named = await refusedWith('acme-named');
+    expect((named as RefusalError).refusal).toEqual({
+      kind: 'path-conflict',
+      path: 'backend/README.md',
+      adapterId: 'acme-named/readme',
+      taken: 'acme',
+    });
+    expect(named.message).toBe(
+      "'backend/README.md' already has a 'acme' where keel adds one of that name — keel renames neither, and the two would not build; rename the one there, then re-run",
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
   });
 });

@@ -208,6 +208,13 @@ export interface PathConflictRefusal {
    * there at all.
    */
   readonly anchor?: string;
+  /**
+   * A name the file already gives something of its own, where keel
+   * would add one of that name — a Kotlin mediator's `clock`
+   * parameter, beside the `clock` keel injects — when the conflict is
+   * that clash: keel renames neither, and the two would not build.
+   */
+  readonly taken?: string;
 }
 
 /** {@link Refusal} for a patch target the project no longer holds. */
@@ -253,7 +260,8 @@ export const PATH_MISSING_CODE = 'keel.path-missing';
  * would have to overwrite or cannot patch: a hosted repository's
  * `README.md` before `keel new`, a hand-written `Dockerfile` before
  * `keel add containerization`, a build script with no block for keel's
- * plugin line (`anchor`).
+ * plugin line (`anchor`), a composition root already using the name
+ * keel would add a parameter under (`taken`).
  *
  * A composition adapter throws it — one of keel's or a plugin's — and
  * it reaches the user as a coded refusal rather than a crash: the
@@ -266,17 +274,20 @@ export class PathConflictError extends RefusalError {
    * @param path the file, relative to the directory the Tree is rooted at
    * @param adapterId the adapter that would have written it
    * @param anchor what the file lacks for keel to patch inside it, if that is the conflict
+   * @param taken the name the file already gives something of its own, if that is the conflict
    */
   constructor(
     readonly path: string,
     readonly adapterId: string,
     anchor?: string,
+    taken?: string,
   ) {
     const refusal: PathConflictRefusal = {
       kind: 'path-conflict',
       path,
       adapterId,
       ...(anchor === undefined ? {} : { anchor }),
+      ...(taken === undefined ? {} : { taken }),
     };
     super(pathSentence(refusal), PATH_CONFLICT_CODE, refusal);
     this.name = 'PathConflictError';
@@ -316,6 +327,9 @@ export class PathMissingError extends RefusalError {
 export function pathSentence(refusal: PathConflictRefusal | PathMissingRefusal): string {
   if (refusal.kind === 'path-missing') {
     return `'${refusal.path}' is missing — keel patches it and does not recreate it; restore it`;
+  }
+  if (refusal.taken !== undefined) {
+    return `'${refusal.path}' already has a '${refusal.taken}' where keel adds one of that name — keel renames neither, and the two would not build; rename the one there, then re-run`;
   }
   if (refusal.anchor !== undefined) {
     return `'${refusal.path}' has no ${refusal.anchor} — keel adds its lines inside it and does not rewrite the file; add one, then re-run`;

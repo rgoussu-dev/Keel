@@ -787,10 +787,15 @@ to. So do the ones about the directory itself: a file keel would write
 that is already there (`keel.path-conflict`) — your own `go.mod`
 before a new Go project, your own `Dockerfile` before
 containerization, though never a `README.md` or `.gitignore`, which a
-new project adopts ([cli.md](cli.md#keel-new)) — and a file keel
-patches that has been deleted (`keel.path-missing`). Each names the
-file, so the live preview shows what is in the way before Review. Each
-used to be a plain throw, and so a 500.
+new project adopts ([cli.md](cli.md#keel-new)) — a file keel patches
+that lacks what keel adds its lines inside, a build file's block or the
+list a composition root registers its handlers in (`keel.path-conflict`
+too, naming what it lacks), or already uses a name keel would add one
+of — a Micronaut Kotlin mediator's `clock` (`keel.path-conflict`,
+naming it) — and a file keel patches that has been deleted
+(`keel.path-missing`). Each names the file, so the live preview
+shows what is in the way before Review. Each used to be a plain throw,
+and so a 500.
 
 A malformed request is a **400**, a missing or wrong token a **401**,
 and a failed `Host`/`Origin` guard a **403**.

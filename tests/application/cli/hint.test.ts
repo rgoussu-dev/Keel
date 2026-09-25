@@ -280,6 +280,17 @@ const TABLE: readonly {
     hint: "move 'go.mod' aside, or start in an empty directory",
   },
   {
+    why: 'a name a patched file already uses is not a file to move aside: the sentence says to rename it',
+    refusal: {
+      kind: 'path-conflict',
+      path: 'MediatorFactory.kt',
+      adapterId: 'x/y',
+      taken: 'clock',
+    },
+    command: 'new',
+    hint: null,
+  },
+  {
     why: 'a file in the way under keel add may be keel’s own, so no advice',
     refusal: { kind: 'path-conflict', path: 'Dockerfile', adapterId: 'x/y' },
     command: 'add',

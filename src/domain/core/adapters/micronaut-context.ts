@@ -31,23 +31,29 @@
  *
  * Both list edits parse what is there, add to it, and re-emit
  * something they can parse again — the round-trip property described
- * in [`jvm-context.ts`](./jvm-context.ts).
+ * in [`jvm-context.ts`](./jvm-context.ts) — through
+ * [`micronaut-root.ts`](./micronaut-root.ts), which persistence reads
+ * the same lists through. A root without a list they can read is a
+ * file in the way, refused naming what it lacks — as is a Kotlin
+ * mediator that already has a parameter of the context's name, the
+ * peer context's `welcome` or persistence's `clock`, refused naming
+ * that.
  */
 
 import type { JvmLanguage } from './jvm-bootstrap.js';
-import {
-  fenceClose,
-  fenceOpen,
-  jvmContextAdapter,
-  rewriteList,
-  FENCE_ON_TAIL,
-  type JvmContextBinding,
-} from './jvm-context.js';
+import { jvmContextAdapter, type JvmContextBinding } from './jvm-context.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
 import { MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID } from './micronaut-cli-kotlin-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
 import { MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID } from './micronaut-rest-kotlin-bootstrap.js';
+import {
+  IMPORT_ANCHOR,
+  MEDIATOR_ANCHOR,
+  widenImportPackages,
+  widenKotlinMediator,
+} from './micronaut-root.js';
 import { beforeFirstImport } from '../util.js';
+import { PathConflictError } from '../../contract/refusal.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 
 export const MICRONAUT_CONTEXT_ID = 'bounded-context/micronaut-context';
@@ -56,134 +62,19 @@ export const MICRONAUT_CONTEXT_KOTLIN_ID = 'bounded-context/micronaut-context-ko
 /** Micronaut's composition root, under both languages. */
 const ROOT_CLASS = 'MediatorFactory';
 
-/** Why the list is explicit; carried inside the fence. */
-export const IMPORT_NOTE: readonly string[] = [
-  'One entry per aggregate package, per context: @Import does',
-  'not recurse into subpackages, so a package missing here',
-  'yields no bean definition and its handler is never',
-  'dispatched to.',
-];
-
-/**
- * The `packages` member of `@Import` in either of its renderings —
- * the bootstrap's single string, or the brace list left by
- * `--with-peer-context` or by this adapter's own previous run. Any
- * leading `//` note is swallowed so re-emitting it cannot stack up
- * copies.
- */
-const IMPORT_REGION = new RegExp(
-  `^(?:[ \\t]*\\/\\/[^\\n]*\\n)*[ \\t]*packages = (?:\\{([\\s\\S]*?)\\}|("[^"]*")),${FENCE_ON_TAIL}`,
-  'm',
-);
-
 /** Widens `@Import(packages = …)` to the new context's core package. */
 function importPackagesPatch(binding: JvmContextBinding): ContributionPatch {
-  const indent = ' '.repeat(4);
-  const entry = `"${binding.names.corePkg}"`;
-  const render = (entries: readonly string[]): string =>
-    [
-      ...fenceOpen(indent, IMPORT_NOTE),
-      `${indent}packages = {`,
-      ...entries.map((e, i) => `${indent}    ${e}${i === entries.length - 1 ? '' : ','}`),
-      `${indent}},`,
-      fenceClose(indent),
-    ].join('\n');
+  const target = binding.sourceFile(ROOT_CLASS);
   return {
-    target: binding.sourceFile(ROOT_CLASS),
+    target,
     apply: (existing) => {
-      const widened = rewriteList(existing, IMPORT_REGION, entry, render);
+      const widened = widenImportPackages(existing, `"${binding.names.corePkg}"`);
       if (widened === null) {
-        throw new Error(
-          `${MICRONAUT_CONTEXT_ID}: could not find the @Import packages entry in ${ROOT_CLASS} — add ${entry} manually or ${binding.names.Module}Handler is never discovered`,
-        );
+        throw new PathConflictError(target, MICRONAUT_CONTEXT_ID, IMPORT_ANCHOR);
       }
       return widened;
     },
   };
-}
-
-/**
- * Index of the `)` closing the bracket opened at `open`.
- *
- * A regex cannot do this: the shortest match of `listOf\((.*?)\)`
- * stops at the `)` inside `GreetHandler()`, and the longest one runs
- * past the end of the call. The list this reads is a list of
- * constructor calls, so nesting is the normal case rather than the
- * exotic one.
- */
-function closeOf(source: string, open: number): number {
-  let depth = 0;
-  for (let i = open; i < source.length; i += 1) {
-    const c = source[i];
-    if (c === '(') depth += 1;
-    else if (c === ')') {
-      depth -= 1;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
-}
-
-/**
- * Adds one handler to the hand-wired Kotlin mediator: a parameter the
- * container injects, and an entry in the list it builds.
- *
- * Re-emits the whole factory method in a canonical multi-line form
- * rather than splicing into whatever shape it found. Both edits have
- * to agree — a parameter with no list entry compiles and dispatches
- * nothing — so making them together, from one parse, is the only way
- * they cannot drift. The emitted form is the one this same function
- * parses on the next `keel add module`, which is what makes it
- * repeatable; the bootstrap's one-liner and the peer context's
- * two-handler form are the other two inputs it accepts.
- */
-function widenKotlinMediator(source: string, param: string, element: string): string | null {
-  const funAt = source.indexOf('fun mediator(');
-  if (funAt === -1) return null;
-  const paramsOpen = funAt + 'fun mediator'.length;
-  const paramsClose = closeOf(source, paramsOpen);
-  if (paramsClose === -1) return null;
-  const registryAt = source.indexOf('RegistryMediator(', paramsClose);
-  if (registryAt === -1) return null;
-  const registryClose = closeOf(source, registryAt + 'RegistryMediator'.length);
-  const listAt = source.indexOf('listOf(', registryAt);
-  if (registryClose === -1 || listAt === -1 || listAt > registryClose) return null;
-  const listClose = closeOf(source, listAt + 'listOf'.length);
-  if (listClose === -1) return null;
-
-  const params = splitEntries(source.slice(paramsOpen + 1, paramsClose));
-  const elements = splitEntries(source.slice(listAt + 'listOf'.length + 1, listClose));
-  if (params.includes(param)) return source;
-
-  const rewritten = [
-    'fun mediator(',
-    ...[...params, param].map((p) => `        ${p},`),
-    '    ): Mediator =',
-    '        RegistryMediator(',
-    '            listOf(',
-    ...[...elements, element].map((e) => `                ${e},`),
-    '            ),',
-    '        )',
-  ].join('\n');
-  return `${source.slice(0, funAt)}${rewritten}${source.slice(registryClose + 1)}`;
-}
-
-/** Splits a Kotlin parameter or argument list on its top-level commas. */
-function splitEntries(list: string): readonly string[] {
-  const out: string[] = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < list.length; i += 1) {
-    const c = list[i];
-    if (c === '(' || c === '<') depth += 1;
-    else if (c === ')' || c === '>') depth -= 1;
-    else if (c === ',' && depth === 0) {
-      out.push(list.slice(start, i));
-      start = i + 1;
-    }
-  }
-  out.push(list.slice(start));
-  return out.map((item) => item.trim()).filter((item) => item.length > 0);
 }
 
 /**
@@ -211,19 +102,21 @@ function withProjectImport(source: string, basePackage: string, fqn: string): st
 /** Adds the new context's handler to the Kotlin composition root. */
 function mediatorListPatch(binding: JvmContextBinding): ContributionPatch {
   const handler = `${binding.names.Module}Handler`;
+  const target = binding.sourceFile(ROOT_CLASS);
   return {
-    target: binding.sourceFile(ROOT_CLASS),
+    target,
     apply: (existing) => {
       const imported = withProjectImport(existing, binding.basePackage, binding.names.handler);
       const widened = widenKotlinMediator(
         imported,
-        `${binding.added.name}: ${handler}`,
-        binding.added.name,
+        [`${binding.added.name}: ${handler}`],
+        [binding.added.name],
       );
       if (widened === null) {
-        throw new Error(
-          `${MICRONAUT_CONTEXT_KOTLIN_ID}: could not find the explicit handler list in ${ROOT_CLASS} — add ${handler} manually or it is never dispatched to`,
-        );
+        throw new PathConflictError(target, MICRONAUT_CONTEXT_KOTLIN_ID, MEDIATOR_ANCHOR);
+      }
+      if (typeof widened !== 'string') {
+        throw new PathConflictError(target, MICRONAUT_CONTEXT_KOTLIN_ID, undefined, widened.taken);
       }
       return widened;
     },

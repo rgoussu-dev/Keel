@@ -58,6 +58,7 @@ import {
   type SqlEngineSpec,
 } from './persistence-engine.js';
 import { eolAware } from '../util.js';
+import { PathConflictError } from '../../contract/refusal.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { persistenceDoc } from './persistence-doc.js';
 
@@ -158,15 +159,22 @@ const TEST_CLASS_ANCHOR = '@MicronautTest\nclass GreetControllerTest {';
  * Points the walking skeleton's controller test at the
  * Testcontainers database — once the executable carries a
  * datasource, every embedded-server boot needs one. The fixture is
- * named per engine (`PostgresTestFixture`, `MariaDbTestFixture`).
- * Exported for the vertical tests.
+ * named per engine (`PostgresTestFixture`, `MariaDbTestFixture`). A
+ * test that no longer declares the class as the skeleton did is
+ * refused as a file in the way, naming `target`. Exported for the
+ * vertical tests.
  */
-export function patchGreetControllerTest(fixture: string): (existing: string) => string {
+export function patchGreetControllerTest(
+  fixture: string,
+  target: string,
+): (existing: string) => string {
   return (existing) => {
     if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
     if (!existing.includes(TEST_CLASS_ANCHOR)) {
-      throw new Error(
-        `${MICRONAUT_PERSISTENCE_ID}: GreetControllerTest.java has drifted from the walking-skeleton shape — extend ${fixture} manually so the embedded server has a database`,
+      throw new PathConflictError(
+        target,
+        MICRONAUT_PERSISTENCE_ID,
+        "'@MicronautTest class GreetControllerTest {' declaration",
       );
     }
     return existing.replace(
@@ -216,12 +224,17 @@ const KOTLIN_TEST_CLASS_ANCHOR =
  * The Kotlin twin of {@link patchGreetControllerTest}. Exported for
  * the vertical tests.
  */
-export function patchGreetControllerTestKotlin(fixture: string): (existing: string) => string {
+export function patchGreetControllerTestKotlin(
+  fixture: string,
+  target: string,
+): (existing: string) => string {
   return (existing) => {
     if (existing.includes(TEST_EXTENDS_GUARD)) return existing;
     if (!existing.includes(KOTLIN_TEST_CLASS_ANCHOR)) {
-      throw new Error(
-        `${MICRONAUT_PERSISTENCE_KOTLIN_ID}: GreetControllerTest.kt has drifted from the walking-skeleton shape — extend ${fixture} manually so the embedded server has a database`,
+      throw new PathConflictError(
+        target,
+        MICRONAUT_PERSISTENCE_KOTLIN_ID,
+        "'class GreetControllerTest(…)' declaration",
       );
     }
     return existing.replace(
@@ -262,8 +275,9 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
         ctx.templates.render(`${BUILD_TEMPLATE_ROOT}${suffix}/${buildSystem}`, '', vars),
       ]);
       const database = databaseName(ctx.manifest);
-      const mainRoot = assemblySourceRoot(layout, sourceDir, basePackage, 'main');
-      const testRoot = assemblySourceRoot(layout, sourceDir, basePackage, 'test');
+      const extension = kotlin ? 'kt' : 'java';
+      const compositionRoot = `${assemblySourceRoot(layout, sourceDir, basePackage, 'main')}/MediatorFactory.${extension}`;
+      const controllerTest = `${assemblySourceRoot(layout, sourceDir, basePackage, 'test')}/GreetControllerTest.${extension}`;
       return {
         files: [...shared, ...sources, ...build],
         docs: [persistenceDoc(ctx.manifest.tags)],
@@ -280,17 +294,17 @@ function makeMicronautPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
             }),
           },
           {
-            target: `${mainRoot}/MediatorFactory.${kotlin ? 'kt' : 'java'}`,
+            target: compositionRoot,
             apply: kotlin
-              ? patchKotlinCompositionRoot(id, basePackage, layout)
-              : patchMicronautImportPackages(id, basePackage, layout),
+              ? patchKotlinCompositionRoot(id, basePackage, layout, compositionRoot)
+              : patchMicronautImportPackages(id, basePackage, layout, compositionRoot),
           },
           {
-            target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
+            target: controllerTest,
             apply: eolAware(
               kotlin
-                ? patchGreetControllerTestKotlin(engine.testFixtureClass)
-                : patchGreetControllerTest(engine.testFixtureClass),
+                ? patchGreetControllerTestKotlin(engine.testFixtureClass, controllerTest)
+                : patchGreetControllerTest(engine.testFixtureClass, controllerTest),
             ),
           },
           persistenceReadmePatch(layout, engine),

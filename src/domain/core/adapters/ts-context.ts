@@ -63,13 +63,15 @@ import {
   tsContextPackage,
   tsLayout,
   tsSeamPackage,
+  TS_MEDIATOR_ANCHOR,
   TS_SKELETON_HANDLER_FACTORY,
   TS_SKELETON_SEAM_METHOD,
   type TsAssemblyPaths,
   type TsLayoutPaths,
 } from './ts-module-layout.js';
 import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
-import { beforeFirstImport, eolAware } from '../util.js';
+import { beforeFirstImport, codeOnly, eolAware } from '../util.js';
+import { PathConflictError } from '../../contract/refusal.js';
 
 export const TS_CONTEXT_ID = 'bounded-context/ts-context';
 
@@ -220,7 +222,14 @@ function dependencyPatch(
  * Splices into the mediator's argument list rather than replacing a
  * known line. `ts-peer-context` can replace, because it runs at most
  * once and knows what the bootstrap wrote; this adapter runs once per
- * context and would find its own previous edit in the way.
+ * context and would find its own previous edit in the way. Where the
+ * entry goes turns on the array's last token, comments and literals
+ * aside (`codeOnly`): after a trailing comma — persistence's list, one
+ * entry a line, ends on one — or into an empty array, it gets a line of
+ * its own before the close, and otherwise it follows the last entry,
+ * ahead of any comment after it. Spliced in after that comma, or after a comment, as `, x()`
+ * it would leave a hole in the array. A `main.ts` with no mediator call
+ * is a file in the way, refused naming it.
  *
  * This patch is what binds the context. An unimported TypeScript
  * module is never loaded — the context would typecheck, lint and run
@@ -236,18 +245,18 @@ function wiringPatch(assembly: TsAssemblyPaths, context: string): ContributionPa
     target,
     apply: eolAware((existing) => {
       if (existing.includes(wiringImport)) return existing;
-      const start = existing.indexOf(open);
-      if (start === -1) {
-        throw new Error(
-          `${TS_CONTEXT_ID}: could not find the mediator assembly call in '${target}' — the context would be emitted and loaded by nothing`,
-        );
-      }
-      const close = existing.indexOf('])', start);
+      const { code } = codeOnly(existing);
+      const start = code.indexOf(open);
+      const close = start === -1 ? -1 : code.indexOf('])', start);
       if (close === -1) {
-        throw new Error(`${TS_CONTEXT_ID}: unterminated mediator assembly call in '${target}'`);
+        throw new PathConflictError(target, TS_CONTEXT_ID, TS_MEDIATOR_ANCHOR);
       }
-      const withEntry = `${existing.slice(0, close)}, ${factory}()${existing.slice(close)}`;
-      return beforeFirstImport(withEntry, wiringImport);
+      const last = code.slice(0, close).trimEnd();
+      const [at, entry] = /[,[]$/.test(last)
+        ? [close, `  ${factory}(),\n`]
+        : [last.length, `, ${factory}()`];
+      const spliced = `${existing.slice(0, at)}${entry}${existing.slice(at)}`;
+      return beforeFirstImport(spliced, wiringImport);
     }),
   };
 }

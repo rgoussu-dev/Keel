@@ -70,6 +70,8 @@ async function addModule(module: string, consumes?: string): Promise<void> {
 
 const read = (rel: string): Promise<string> => fs.readFile(path.join(cwd, rel), 'utf8');
 
+const MAIN = 'application/rest/src/main.ts';
+
 describe('the ts-http added context', () => {
   it('publishes ./service, which the peer context does not', async () => {
     await scaffold();
@@ -105,6 +107,62 @@ describe('the ts-http added context', () => {
       expect(main).toMatch(/createOrderingContextHandler\(\)/);
       expect(main).toMatch(/createShippingContextHandler\(\)/);
       expect(main).toMatch(/createGreetHandler\(\)/);
+      expect(main).toContain(
+        'createRegistryMediator([createGreetHandler(), createOrderingContextHandler(), createShippingContextHandler()]);',
+      );
+    });
+
+    it('puts its entry on a line of its own after a trailing comma, leaving no hole', async () => {
+      // A list written one entry a line ends on a trailing comma —
+      // persistence's does. Spliced in inline after that comma, the
+      // entry would leave `, ,` in the array.
+      await scaffold();
+      const oneLine = 'createRegistryMediator([createGreetHandler()]);';
+      const skeleton = await read(MAIN);
+      expect(skeleton).toContain(oneLine);
+      await fs.writeFile(
+        path.join(cwd, MAIN),
+        skeleton.replace(oneLine, 'createRegistryMediator([\n  createGreetHandler(),\n]);'),
+      );
+      await addModule('ordering');
+
+      expect(await read(MAIN)).toContain(
+        'createRegistryMediator([\n  createGreetHandler(),\n  createOrderingContextHandler(),\n]);',
+      );
+    });
+
+    // The entry follows the array's last entry, not its last line: a
+    // comment after that entry, or on a line of its own before the
+    // close, would take `, x()` in after it — a hole, or the entry
+    // commented out.
+    it.each([
+      {
+        shape: 'a line comment after the last entry’s comma',
+        array: 'createRegistryMediator([\n  createGreetHandler(), // the skeleton\n]);',
+        spliced:
+          'createRegistryMediator([\n  createGreetHandler(), // the skeleton\n  createOrderingContextHandler(),\n]);',
+      },
+      {
+        shape: 'a comment line before the close',
+        array: 'createRegistryMediator([\n  createGreetHandler(),\n  // more contexts here\n]);',
+        spliced:
+          'createRegistryMediator([\n  createGreetHandler(),\n  // more contexts here\n  createOrderingContextHandler(),\n]);',
+      },
+      {
+        shape: 'a comment after the last entry, no comma',
+        array: 'createRegistryMediator([createGreetHandler() /* the skeleton */]);',
+        spliced:
+          'createRegistryMediator([createGreetHandler(), createOrderingContextHandler() /* the skeleton */]);',
+      },
+    ])('splices past $shape, leaving no hole', async ({ array, spliced }) => {
+      await scaffold();
+      const oneLine = 'createRegistryMediator([createGreetHandler()]);';
+      const skeleton = await read(MAIN);
+      expect(skeleton).toContain(oneLine);
+      await fs.writeFile(path.join(cwd, MAIN), skeleton.replace(oneLine, array));
+      await addModule('ordering');
+
+      expect(await read(MAIN)).toContain(spliced);
     });
 
     it('imports each context wiring module, without which nothing loads it', async () => {

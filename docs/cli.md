@@ -639,11 +639,13 @@ the vertical would write that the project already holds — your own
 `.github/workflows/ci.yml` before `keel add ci` — is refused as
 `keel.path-conflict`, naming it, in the sentence `keel new` uses —
 with no advice to move it, since under `keel add` the file may be
-keel's own; so is a build file keel patches that lacks the block keel
-adds its line to. (What a composite product root writes into a service
-— its image files — is declared by the root, so `keel add
-containerization` there reads it as already there rather than meeting
-the files.) A file keel patches that has
+keel's own; so is a file keel patches that lacks what keel adds its
+lines inside — a build file's block, or the list a composition root
+registers its handlers in, in a shape keel can read back — naming what
+it lacks. (What a composite
+product root writes into a service — its image files — is declared by
+the root, so `keel add containerization` there reads it as already
+there rather than meeting the files.) A file keel patches that has
 been deleted — a `README.md`, a `build.gradle.kts` — is refused as
 `keel.path-missing`: restore it, then re-run. Either way nothing is
 written.
@@ -801,6 +803,22 @@ the name is already taken; `--consumes` names something that does not
 exist, is the context being added, or publishes no seam; or the
 project's stack has no bounded-context adapter, in which case the
 command would otherwise scaffold nothing at all and report success.
+
+On Micronaut and on `ts-cli`, `ts-http` and `ts-cli-http`, keel adds
+the context to the list its assembly's composition root registers
+handlers in — `@Import(packages = …)` or the hand-wired `mediator(…)`
+on Micronaut, `createRegistryMediator([…])` in `main.ts` — read as it
+finds it, after the peer context or persistence. A root there that no
+longer holds that list is refused as `keel.path-conflict`, naming the
+file and what it lacks, before anything is written, as `keel add`
+refuses one — and so, on Micronaut, is a list keel cannot read back
+as one: a comment among its entries, or a Kotlin mediator with a block
+body. (On the TypeScript stacks the entry is spliced in after the
+array's last one rather than the list rewritten, so a comment there
+stays where it is.) So is a Micronaut Kotlin mediator that already
+takes a parameter of the context's name (`clock`, where persistence
+injects its `Clock`; `welcome`, beside the peer context), naming it:
+rename that parameter, or give the context another name.
 
 Supported on every stack that ships a modulith: the twelve JVM stacks,
 `go-cli`/`go-http`/`go-cli-http`, `rust-cli`/`rust-http`/`rust-cli-http`,

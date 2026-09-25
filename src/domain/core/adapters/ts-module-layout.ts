@@ -484,6 +484,14 @@ export const TS_SKELETON_SEAM_METHOD = 'greet';
 export const TS_SKELETON_HANDLER_FACTORY = 'createGreetHandler';
 
 /**
+ * What an assembly's `main.ts` lacks, as a `PathConflictError` names
+ * it, when it builds no mediator keel can add a handler to — the
+ * array persistence adds to under either layout, and `keel add
+ * module` under the modulith.
+ */
+export const TS_MEDIATOR_ANCHOR = "'createRegistryMediator([…])' call holding only handlers";
+
+/**
  * The seam entry point of an existing context — what a gateway
  * imports. Every context publishes it at `<pkg>/service`, the
  * skeleton included, so this needs no special case.

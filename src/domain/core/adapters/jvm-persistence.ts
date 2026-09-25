@@ -30,8 +30,15 @@
 
 import { jvmBuildSystem, type JvmBuildSystem } from './jvm-build-system.js';
 import type { JvmLayoutPaths } from './jvm-module-layout.js';
+import {
+  IMPORT_ANCHOR,
+  MEDIATOR_ANCHOR,
+  widenImportPackages,
+  widenKotlinMediator,
+} from './micronaut-root.js';
 import type { SqlEngineSpec } from './persistence-engine.js';
 import { eolAware, eolOf, packageToPath, withEol } from '../util.js';
+import { PathConflictError } from '../../contract/refusal.js';
 import type {
   ContributionFile,
   ContributionPatch,
@@ -176,9 +183,7 @@ export function moduleRegistrationPatch(
       apply: eolAware((existing) => {
         if (existing.includes(`<module>${guardModule}</module>`)) return existing;
         if (!existing.includes(MAVEN_MODULES_END)) {
-          throw new Error(
-            `${adapterId}: could not find the <modules> block in the root pom.xml — add the four ${layout.infra('')} modules manually`,
-          );
+          throw new PathConflictError('pom.xml', adapterId, '<modules> element');
         }
         return existing.replace(MAVEN_MODULES_END, `${entries}\n${MAVEN_MODULES_END}`);
       }),
@@ -313,25 +318,31 @@ export function persistenceReadmePatch(
  * resolves DI at compile time and `@Import` does not scan
  * sub-packages, so each new core aggregate package must be named —
  * the one framework where a vertical still edits the composition
- * root. Throws when the anchor drifted so the user gets a precise
- * manual instruction instead of a silently unwired slice.
+ * root.
+ *
+ * The walking skeleton's single string becomes a one-line pair, as it
+ * always has. A list that has grown since — the peer context's, or one
+ * `keel add module` re-emitted — is read as it is and widened
+ * (`micronaut-root.ts`), so the greeting log joins every package
+ * already there. A root with no list it can read is refused as a file
+ * in the way — `target`, and what it lacks — rather than left with a
+ * silently unwired slice.
  */
 export function patchMicronautImportPackages(
   adapterId: string,
   basePackage: string,
   layout: JvmLayoutPaths,
+  target: string,
 ): (existing: string) => string {
   const corePkg = `${basePackage}.${layout.domainCorePkg}`;
   const anchor = `    packages = "${corePkg}.greet",`;
   const wiring = `    packages = {"${corePkg}.greet", "${corePkg}.greetinglog"},`;
   return eolAware((existing) => {
     if (existing.includes(`${corePkg}.greetinglog`)) return existing;
-    if (!existing.includes(anchor)) {
-      throw new Error(
-        `${adapterId}: the composition root has drifted from the walking-skeleton shape — add "${corePkg}.greetinglog" to the @Import packages on MediatorFactory so the greeting-log handlers are discovered`,
-      );
-    }
-    return existing.replace(anchor, wiring);
+    if (existing.includes(anchor)) return existing.replace(anchor, wiring);
+    const widened = widenImportPackages(existing, `"${corePkg}.greetinglog"`);
+    if (widened === null) throw new PathConflictError(target, adapterId, IMPORT_ANCHOR);
+    return widened;
   });
 }
 
@@ -344,13 +355,25 @@ export function patchMicronautImportPackages(
  * cannot discover `@DomainHandler` — that would need its KSP
  * processor over the domain's implementation face — and the
  * `@Import` escape hatch its Java sibling uses is documented as
- * Java-only. Throws when the anchors drifted so the user gets a
- * precise manual instruction instead of a silently unwired slice.
+ * Java-only.
+ *
+ * The walking skeleton's one-liner is replaced as it always has been.
+ * A mediator that has grown since — the peer context's, or one `keel
+ * add module` re-emitted — is read as it is and widened
+ * (`micronaut-root.ts`): the three ports join its parameters and the
+ * two handlers its list, after everything already there. Either way
+ * the imports land under the greeting handler's. A root lacking that
+ * import or a mediator it can read is refused as a file in the way,
+ * `target` and what it lacks; so is one whose mediator already gives
+ * one of the ports' names to another parameter — a context named
+ * `clock` — naming it. Either is refused rather than left with a slice
+ * that is silently unwired or does not compile.
  */
 export function patchKotlinCompositionRoot(
   adapterId: string,
   basePackage: string,
   layout: JvmLayoutPaths,
+  target: string,
 ): (existing: string) => string {
   const corePkg = `${basePackage}.${layout.domainCorePkg}`;
   const contractPkg = `${basePackage}.${layout.domainContractPkg}`;
@@ -371,14 +394,24 @@ import ${contractPkg}.greetinglog.GreetingLog`;
         )`;
   return eolAware((existing) => {
     if (existing.includes('RecordGreetingHandler')) return existing;
-    if (!existing.includes(importAnchor) || !existing.includes(bodyAnchor)) {
-      throw new Error(
-        `${adapterId}: the composition root has drifted from the walking-skeleton shape — register RecordGreetingHandler and ListGreetingsHandler with the mediator manually (inject GreetingLog, Clock and UnitOfWork)`,
-      );
+    if (!existing.includes(importAnchor)) {
+      throw new PathConflictError(target, adapterId, `'${importAnchor}' line`);
     }
-    return existing
-      .replace(importAnchor, `${importAnchor}\n${imports}`)
-      .replace(bodyAnchor, bodyWiring);
+    const wired = existing.includes(bodyAnchor)
+      ? existing.replace(bodyAnchor, bodyWiring)
+      : widenKotlinMediator(
+          existing,
+          ['greetingLog: GreetingLog', 'clock: Clock', 'unitOfWork: UnitOfWork'],
+          [
+            'RecordGreetingHandler(greetingLog, clock, unitOfWork)',
+            'ListGreetingsHandler(greetingLog)',
+          ],
+        );
+    if (wired === null) throw new PathConflictError(target, adapterId, MEDIATOR_ANCHOR);
+    if (typeof wired !== 'string') {
+      throw new PathConflictError(target, adapterId, undefined, wired.taken);
+    }
+    return wired.replace(importAnchor, `${importAnchor}\n${imports}`);
   });
 }
 

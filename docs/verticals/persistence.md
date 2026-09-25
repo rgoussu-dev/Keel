@@ -154,6 +154,28 @@ it belongs to no context, and a `Clock` filed under `modules/greeting`
 would make one context own everybody's time. That is where
 `--module-layout=modulith` already puts the `Clock` port and its fake.
 
+On Micronaut and the TypeScript HTTP stacks (`ts-http`,
+`ts-cli-http`), the assembly's composition root is the one source file
+whose list persistence and the modulith's other commands both add to.
+Micronaut Java names the greeting log's package in
+`@Import(packages = …)` on `MediatorFactory`, Micronaut Kotlin adds
+its two handlers — and the ports they take — to the hand-wired
+`mediator(…)`, and the TypeScript stacks add them to `main.ts`'s
+`createRegistryMediator([…])`. `--with-peer-context` and `keel add
+module` add their contexts to the same lists, so persistence reads
+each list as it finds it and adds after what is there, in either
+order, in one run or two. A root that no longer holds the list, or
+not in a shape keel can read back — a comment among its entries, a
+Kotlin mediator with a block body — is refused as `keel.path-conflict`,
+naming the file and what it lacks, before anything is written. So, on
+Micronaut Kotlin, is persistence beside a context named `clock`, or
+that context beside persistence — whichever comes second: the mediator
+takes persistence's `Clock` port under that name, and a second
+parameter of it would not compile. The project's status reads the
+manifest, not the file, so after `keel add module clock` it still
+shows persistence as ready to add; the preview is where that refusal
+first shows.
+
 ## Prerequisites
 
 | Requirement                            | When                                                                                                            |
