@@ -531,7 +531,8 @@ function printOptionList(
  * grouped by what `keel add <id>` would do with it — install it, install
  * it with what it needs first, or refuse it, in the refusal's own
  * sentence — then, in a monorepo service, what the product gives it,
- * then what is installed, what `--reapply` re-renders apart
+ * or at a product root what its services have, then what is
+ * installed, what `--reapply` re-renders apart
  * from what it does not (a product's glue, a bounded context). A
  * vertical two sets of
  * prerequisites tie on is refused until one is named, but it is no
@@ -567,10 +568,15 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
     log.info('Not for this project:');
     for (const v of refused) log.info(row(v.id, v.refusal?.message ?? ''));
   }
-  // A monorepo service has these from its product, and adding one is
-  // an Ok that installs nothing: said, with where each comes from.
+  // A monorepo service has these from its product, and a product root
+  // in its services; adding one is an Ok that installs nothing: said,
+  // with where each is.
   if (status.provided.length > 0) {
-    log.info('From the product, nothing to add:');
+    log.info(
+      status.services.length > 0
+        ? 'In its services, nothing to add:'
+        : 'From the product, nothing to add:',
+    );
     const at = Math.max(0, ...status.provided.map((vertical) => vertical.id.length));
     for (const v of status.provided) log.info(`  ${v.id.padEnd(at)}  ${v.note}`);
   }

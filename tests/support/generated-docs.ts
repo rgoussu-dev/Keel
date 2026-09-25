@@ -195,13 +195,13 @@ export async function gridFacts(
       const root = verdicts(composite, `${stack.id}/${layout}`);
       layouts.push({
         layout,
-        // What the root itself comes with is the product preset's own
-        // verticals: `keel.dials` reads a vertical every service has as
-        // coming with the product too, which `keel add` at the root —
-        // no service's — still sends to them.
+        // What the root comes with is what `keel.dials` reads as coming
+        // with the product: its own verticals, and what the services
+        // that could have it have — where `keel add` at the root is an
+        // Ok that adds nothing (the composite grid holds the two equal).
         root: Object.values(root).every((verdict) => verdict === NOT_A_PROJECT)
           ? null
-          : { verdicts: root, included: (preset?.verticals ?? []).map((vertical) => vertical.id) },
+          : { verdicts: root, included: includedIn(options.verticals) },
         services: Object.fromEntries(
           services.map((service) => [
             service.path,
@@ -270,7 +270,7 @@ const GLYPHS: readonly { readonly glyph: string; readonly means: string }[] = [
   {
     glyph: '●',
     means:
-      'comes with it: `keel new` installs it, or, in a monorepo service, the product root gives it',
+      'comes with it: `keel new` installs it — in a monorepo service, the product root gives it; at a product root, its services have it',
   },
   { glyph: '➕', means: '`keel add` installs it, with anything it needs first' },
   { glyph: '⛔', means: `refused: nothing keel has installs it there (\`${UNCOVERED_CODE}\`)` },

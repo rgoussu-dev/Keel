@@ -55,13 +55,11 @@ import {
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
 import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
-import { foresee, planRefusal } from './plan-refusal.js';
+import { amongServices, foresee, planRefusal } from './plan-refusal.js';
 import {
   alreadyIncludedNote,
   alreadyInServicesNote,
-  elsewhereRefusal,
   elsewhereService,
-  productRootPlacementRefusal,
   routedExtraNote,
 } from './refusals.js';
 import {
@@ -809,13 +807,14 @@ export type Routed =
 /**
  * Where `vertical`, named for a composite product without a service,
  * goes: to the one service whose scope admits it — ready, or ready
- * once its prerequisites are in. Where none does but some service has
- * it already, it is there — `included`, set aside with a note, as a
- * vertical a single stack comes with is, so a `--with` list that names
- * it runs on a product as it does on a single preset. Otherwise it
- * goes nowhere, and the refusal is the one `keel add` gives it at the
- * product root: a vertical whose place is a repository root, asked of
- * a monorepo product, cannot go in any of its services
+ * once its prerequisites are in. Otherwise the product's answer is the
+ * one `keel add` gives it at the product root (`./plan-refusal.ts`
+ * `amongServices`, which both read): where none admits it but some
+ * service has it already, it is there — `included`, set aside with a
+ * note, as a vertical a single stack comes with is, so a `--with` list
+ * that names it runs on a product as it does on a single preset; a
+ * vertical whose place is a repository root, asked of a monorepo
+ * product, cannot go in any of its services
  * (`keel.uncoverable-vertical`); any other belongs to a service, and
  * the refusal names each with its readiness there
  * (`keel.wrong-scope`) — so a vertical two services could each take
@@ -828,21 +827,19 @@ export function routeExtra(
   monorepo: boolean,
 ): Routed {
   const read = scopes.map(({ service, scope }) =>
-    elsewhereService(service.path, service.stack.id, readiness(registry, scope, vertical.id)),
+    elsewhereService(
+      service.path,
+      service.stack.id,
+      readiness(registry, scope, vertical.id),
+      scope.member?.provided.includes(vertical.id),
+    ),
   );
   const admitting = read.filter(
     (service) => service.readiness === 'ready' || service.readiness === 'needs',
   );
   const [only] = admitting;
   if (admitting.length === 1 && only !== undefined) return { kind: 'routed', path: only.path };
-  if (monorepo && vertical.placement?.scope === 'repository') {
-    return { kind: 'refused', refusal: productRootPlacementRefusal(registry, vertical) };
-  }
-  const having = read.filter((service) => service.readiness === 'included');
-  if (admitting.length === 0 && having.length > 0) {
-    return { kind: 'included', paths: having.map((service) => service.path) };
-  }
-  return { kind: 'refused', refusal: elsewhereRefusal(registry, vertical, read) };
+  return amongServices(registry, vertical, read, monorepo);
 }
 
 /**

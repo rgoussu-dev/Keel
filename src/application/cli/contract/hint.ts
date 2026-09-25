@@ -7,7 +7,8 @@
  * project it scaffolds are refused in the same words. What the user
  * can *do* about it is not neutral — drop it from `--with`, or scaffold
  * the stack that carries it; link a project first; `cd` into the
- * service it belongs to, or name that service in `--with`; move a file
+ * service it belongs to — or, to re-render it, the one that installed
+ * it — or name that service in `--with`; move a file
  * aside before `keel new` but not after, where it may be the product
  * root's own. That is a command
  * line's to say, so it is said here, under the sentence, from the same
@@ -136,7 +137,18 @@ function elsewhereHint(
     (service) => service.readiness === 'ready' || service.readiness === 'needs',
   );
   if (carriers.length === 0) {
-    return command === 'new' ? `drop '${vertical}' from --with` : null;
+    if (command === 'new') return `drop '${vertical}' from --with`;
+    // Adding what the services have is no refusal at a product root —
+    // it is there — so what met this one is a re-render: in a service
+    // that installed it, not in one the product root builds it for.
+    const having = services.filter(
+      (service) => service.readiness === 'included' && service.fromProduct !== true,
+    );
+    return having.length === 0
+      ? null
+      : having
+          .map((service) => `'cd ${service.path} && keel add ${vertical} --reapply'`)
+          .join(' or ');
   }
   if (command === 'new') {
     // Refused because more than one service can take it: which one is

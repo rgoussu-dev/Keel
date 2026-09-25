@@ -149,6 +149,13 @@ export interface ElsewhereService {
    */
   readonly readiness: 'included' | 'ready' | 'needs' | 'unavailable';
   /**
+   * Where the vertical is `included` in the service because the
+   * product root gives it the service — the image the root builds for
+   * it — rather than because the service installed it: `true`, since
+   * the service then has nothing of it to re-render. Absent otherwise.
+   */
+  readonly fromProduct?: true;
+  /**
    * Where the vertical is `unavailable` in the service because the
    * service is part of a monorepo and the vertical — or one it needs —
    * has its place at a repository root: those verticals' ids

@@ -12,17 +12,23 @@
  *
  * **Factory.** `registryOf`, the one door any piece comes in by.
  *
- * **Port.** `admit` and `foresee`, pure functions; the handlers' own
- * suites drive them through the mediator on the shipped registry.
+ * **Port.** `admit`, `foresee` and `amongServices`, pure functions;
+ * the handlers' own suites drive them through the mediator on the
+ * shipped registry.
  */
 
 import { describe, expect, it } from 'vitest';
 import type { Adapter, Tag, Vertical } from '../../../src/domain/contract/composition.js';
-import { admissionNotes, admit, foresee } from '../../../src/domain/core/plan-refusal.js';
+import {
+  admissionNotes,
+  admit,
+  amongServices,
+  foresee,
+} from '../../../src/domain/core/plan-refusal.js';
 import type { PlanScope } from '../../../src/domain/core/planner.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
 import { DomainError, type Result } from '../../../src/domain/kernel/result.js';
-import { RefusalError } from '../../../src/domain/contract/refusal.js';
+import { RefusalError, type ElsewhereService } from '../../../src/domain/contract/refusal.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
@@ -82,13 +88,16 @@ const strict = vertical('acme-strict', 'Strict', [adapter('acme-strict', ['lang.
 const loosen = vertical('acme-loosen', 'Loosen', [adapter('acme-loosen', ['lang.acme'])], {
   promotes: ['acme.loose'],
 });
+const hooks = vertical('acme-hooks', 'Hooks', [adapter('acme-hooks', [])], {
+  placement: { scope: 'repository', because: 'its hooks are read at the repository root' },
+});
 
 /* ---- Factory ----------------------------------------------------- */
 
 const registry = registryOf([
   {
     origin: pluginOrigin('acme'),
-    verticals: [image, release, deploy, redis, session, fat, sign, bridge, strict, loosen],
+    verticals: [image, release, deploy, redis, session, fat, sign, bridge, strict, loosen, hooks],
   },
   { origin: pluginOrigin('other'), verticals: [memcached] },
 ]);
@@ -256,6 +265,58 @@ describe('foresee', () => {
     expect(foresee(registry, scope(), deploy)).toEqual({
       readiness: { kind: 'needs', prerequisites: ['acme-image', 'acme-release'] },
       refusal: null,
+    });
+  });
+});
+
+describe('amongServices', () => {
+  const service = (path: string, readiness: ElsewhereService['readiness']): ElsewhereService => ({
+    path,
+    stack: `${path}-stack`,
+    readiness,
+  });
+
+  it('reads what no service could take and those that could have as there, naming them', () => {
+    expect(
+      amongServices(
+        registry,
+        redis,
+        [service('api', 'included'), service('web', 'unavailable'), service('job', 'included')],
+        true,
+      ),
+    ).toEqual({ kind: 'included', paths: ['api', 'job'] });
+  });
+
+  it('refuses one a service could still take, even where another has it', () => {
+    const answer = amongServices(
+      registry,
+      redis,
+      [service('api', 'included'), service('web', 'needs')],
+      true,
+    );
+    expect(answer.kind).toBe('refused');
+    if (answer.kind !== 'refused') return;
+    expect(answer.refusal.code).toBe('keel.wrong-scope');
+    expect(answer.refusal.message).toBe(
+      'Redis belongs to a service, not to the product root — it goes in web/',
+    );
+  });
+
+  it('refuses one no service has or could take', () => {
+    const answer = amongServices(registry, redis, [service('web', 'unavailable')], false);
+    expect(answer.kind === 'refused' && answer.refusal.message).toBe(
+      'Redis belongs to a service, not to the product root — none of its services can carry it',
+    );
+  });
+
+  it('sends a repository-root vertical nowhere on a monorepo product, whatever its services read', () => {
+    const answer = amongServices(registry, hooks, [service('api', 'included')], true);
+    expect(answer.kind === 'refused' && answer.refusal.code).toBe('keel.uncoverable-vertical');
+    // A polyrepo product's services are repositories: the placement
+    // stops nothing there.
+    expect(amongServices(registry, hooks, [service('api', 'included')], false)).toEqual({
+      kind: 'included',
+      paths: ['api'],
     });
   });
 });

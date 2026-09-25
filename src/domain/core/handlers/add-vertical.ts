@@ -10,15 +10,17 @@
  *      refuse to run if no project has been initialised under the
  *      project scope — the product above it, and at a product root its
  *      services'. At a product root, refuse what the root cannot
- *      carry, naming the services that can (`keel.wrong-scope`).
+ *      carry, naming the services that can (`keel.wrong-scope`) —
+ *      unless no service could take it and those that could have it:
+ *      then it is there already.
  *   3. Set a vertical already installed aside, with a note naming
  *      what re-renders it (`--reapply`): asking for what is there has
  *      one sensible reading, so it is Ok, not a refusal, and the rest
  *      of the set installs. So is one a monorepo service has from its
  *      product — the repository's version control, the image the
- *      product root builds — with a note saying where it comes from.
- *      Refuse a `--reapply` or a `--refresh` of one that is not
- *      installed.
+ *      product root builds — and one a product root's services have,
+ *      each with a note saying where it is. Refuse a `--reapply` or a
+ *      `--refresh` of one that is not installed.
  *   4. Plan the named set with the planner (`../planner.ts`), the
  *      reading the extras menu, `keel new --with` and this project's
  *      cards share (`../plan-refusal.ts`, `../add-readiness.ts`):
@@ -94,7 +96,7 @@ import type {
   RefreshProposal,
 } from '../../contract/commands.js';
 import { effectiveTags, HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
-import { productRootRefusal } from '../add-readiness.js';
+import { productRootReading, type ProductRootReading } from '../add-readiness.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import type { Tree } from '../../contract/ports/tree.js';
 import { runActions } from '../actions.js';
@@ -106,6 +108,8 @@ import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
 import {
   alreadyInstalledNote,
+  elsewhereRefusal,
+  inServicesNote,
   notInitialisedSentence,
   notInstalledSentence,
   placementRefusal,
@@ -171,18 +175,29 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       );
     }
 
+    // At a product root, what the root cannot carry belongs to its
+    // services: refused, naming them — or, where no service could take
+    // it and those that could have it, there already, and set aside
+    // below with a note naming them; a re-render of it is refused
+    // below, as not installed here.
+    const atRoot = (v: Vertical) => productRootReading(registry, where, v);
+    const inServices: { readonly vertical: Vertical; readonly paths: readonly string[] }[] = [];
     for (const vertical of named.value) {
-      const misplaced = productRootRefusal(registry, where, vertical);
-      if (misplaced !== null) return err(misplaced);
+      const reading = atRoot(vertical);
+      if (reading === null) continue;
+      if (reading.kind === 'refused') return err(reading.refusal);
+      inServices.push({ vertical, paths: reading.paths });
     }
 
     // Only the command that brings a harness forward may run on a
     // project from another generation; everything else refuses
-    // before a file moves.
+    // before a file moves. At a product root, whose services have the
+    // harness, `keel add agent-harness` brings nothing forward.
     const bringsHarness =
       named.value.length === 1 &&
       named.value[0]?.id === 'agent-harness' &&
-      refresh.value.length === 0;
+      refresh.value.length === 0 &&
+      inServices.length === 0;
     const stale = bringsHarness ? null : harnessGenerationRefusal(stored, commandLine(command));
     if (stale !== null) return err(stale);
 
@@ -196,16 +211,22 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     const member = where.product !== null && where.product.service !== null;
     for (const vertical of reapply ? named.value : []) {
       if (!installed.has(vertical.id))
-        return err(this.notInstalled(vertical, 'reapply', given, member));
+        return err(this.notInstalled(vertical, 'reapply', given, member, atRoot));
     }
     // What the run installs: the verticals named, less those the
     // project has already. Each of those is set aside with a note
     // naming what does re-render it — unless `--refresh` re-renders it
     // in this very run. In a monorepo service, so is what the product
-    // gives it: it is there, and nothing here installs it again.
+    // gives it, and at a product root what its services have: it is
+    // there, and nothing here installs it again.
     const adding = reapply
       ? []
-      : named.value.filter((v) => !installed.has(v.id) && given(v) === undefined);
+      : named.value.filter(
+          (v) =>
+            !installed.has(v.id) &&
+            given(v) === undefined &&
+            !inServices.some((there) => there.vertical.id === v.id),
+        );
     const present = reapply
       ? []
       : named.value.filter(
@@ -219,7 +240,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         });
     for (const vertical of refresh.value) {
       if (!installed.has(vertical.id))
-        return err(this.notInstalled(vertical, 'refresh', given, member));
+        return err(this.notInstalled(vertical, 'refresh', given, member, atRoot));
     }
 
     // A re-render plans nothing, so its rules are read here: each
@@ -303,6 +324,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     const already = [
       ...present.map(alreadyInstalledNote),
       ...provided.map((provision) => providedNote(provision.vertical, provision.by)),
+      ...inServices.map((there) => inServicesNote(there.vertical, there.paths)),
     ];
     // Everything named is here already, and nothing is re-rendered:
     // the plan is empty, and the project is not touched — nothing is
@@ -489,7 +511,10 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
    * project has not installed: in a monorepo service, one the product
    * gives it is the product root's to re-render, and one whose place is
    * the repository root is refused as `keel add` of it is
-   * (`keel.wrong-scope`) — each where installing it here, the remedy
+   * (`keel.wrong-scope`); at a product root, one the root cannot carry
+   * is refused as `keel add` of it is, and one its services have with
+   * the root's `elsewhere` refusal (`keel.wrong-scope`), naming them and
+   * where each has it from — each where installing it here, the remedy
    * anywhere else, would be a no-op or a refusal of its own.
    */
   private notInstalled(
@@ -497,7 +522,14 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     verb: 'reapply' | 'refresh',
     given: (v: Vertical) => Provision | undefined,
     member: boolean,
+    atRoot: (v: Vertical) => ProductRootReading | null,
   ): DomainError {
+    const reading = atRoot(vertical);
+    if (reading !== null) {
+      return reading.kind === 'refused'
+        ? reading.refusal
+        : elsewhereRefusal(this.deps.registry, vertical, reading.services);
+    }
     const provision = given(vertical);
     if (provision !== undefined) {
       return new DomainError(

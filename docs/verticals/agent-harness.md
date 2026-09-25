@@ -276,7 +276,9 @@ The generation marker is manifest machinery, not a harness element
 `keel add` and `keel add module` refuse a project stamped with another
 generation, or with none, before a file moves; the remediation is
 `keel add agent-harness` (`--reapply` when it is installed), which
-re-renders the harness and restamps the marker. See
+re-renders the harness and restamps the marker — but not at a monorepo
+product root, where that add installs nothing and pinning the keel
+that scaffolded the product is the way forward. See
 [`keel add`](../cli.md#keel-add).
 
 **agent-harness (the vertical itself: claude-core + family kits' shared surface)**
@@ -353,7 +355,7 @@ re-renders the harness and restamps the marker. See
 
 **fullstack (product root)**
 
-- Root pair + shims + `keel:map` over `manifest.services[]` (shipped, #142: `fullstack/product-harness`, which promotes `agentic.harness` at the root because `agent-harness` refuses to install there). Every row resolves without a membership gate, because `keel new` refuses `--no-agent-harness` on a composite stack — every service of a product keel scaffolded carries the pair. No hooks/settings/skills hoisted to the root, and no `keel:skills-index` slot either _(decided here, confirming #142's "likely"; the emitted document states the reason, since a reader who does not find it will conclude the root was forgotten)_.
+- Root pair + shims + `keel:map` over `manifest.services[]` (shipped, #142: `fullstack/product-harness`, which promotes `agentic.harness` at the root because `agent-harness` does not install there — `keel add agent-harness` at the root answers that the services have it). Every row resolves without a membership gate, because `keel new` refuses `--no-agent-harness` on a composite stack — every service of a product keel scaffolded carries the pair. No hooks/settings/skills hoisted to the root, and no `keel:skills-index` slot either _(decided here, confirming #142's "likely"; the emitted document states the reason, since a reader who does not find it will conclude the root was forgotten)_.
 - **→ #152:** `run-product` skill (the one-command compose story; the two env knobs `BACKEND_URL` / `API_BASE_URL`; a frontend change rebuilds only the assets image — may fold into #142).
 
 **Engine (reserved identity, #133)**

@@ -15,6 +15,7 @@ import type { ReadinessGap } from '../../../src/domain/contract/queries.js';
 import { RefusalError, type Refusal } from '../../../src/domain/contract/refusal.js';
 import {
   elsewhereRefusal,
+  inServicesNote,
   productRootPlacementRefusal,
   providedNote,
   refusalSentence,
@@ -235,7 +236,7 @@ const TABLE: readonly {
       'Observability belongs to a service, not to the product root — it goes in backend/ or worker/',
   },
   {
-    why: 'a product root whose services have it already',
+    why: 'a product root whose services have it, re-rendered there',
     refusal: {
       kind: 'elsewhere',
       vertical: 'ci',
@@ -245,7 +246,7 @@ const TABLE: readonly {
       ],
     },
     sentence:
-      'Continuous integration belongs to a service, not to the product root — backend/ and frontend/ have it already',
+      'Continuous integration belongs to a service, not to the product root — backend/ and frontend/ have it already, and it is re-rendered there',
   },
   {
     why: 'a product root with one service that has it',
@@ -258,7 +259,34 @@ const TABLE: readonly {
       ],
     },
     sentence:
-      'Observability belongs to a service, not to the product root — backend/ has it already',
+      'Observability belongs to a service, not to the product root — backend/ has it already, and it is re-rendered there',
+  },
+  {
+    why: 'a product root that builds it for every service having it, as its own',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'containerization',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'included', fromProduct: true },
+        { path: 'frontend', stack: 'web-components', readiness: 'included', fromProduct: true },
+        { path: 'docs', stack: 'go-cli', readiness: 'unavailable' },
+      ],
+    },
+    sentence:
+      'Container image is not installed at the product root, which builds it for backend/ and frontend/: nothing to re-render here',
+  },
+  {
+    why: 'a product root one service of which installed it, and the root builds it for another',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'containerization',
+      services: [
+        { path: 'backend', stack: 'spring-rest-kotlin', readiness: 'included' },
+        { path: 'frontend', stack: 'web-components', readiness: 'included', fromProduct: true },
+      ],
+    },
+    sentence:
+      'Container image belongs to a service, not to the product root — backend/ has it already, and it is re-rendered there; frontend/ has it already, built by the product root',
   },
   {
     why: 'a product root none of whose services can take it',
@@ -500,6 +528,15 @@ describe('the refusals and notes of a scope', () => {
     );
     expect(unbuiltInServiceNote('backend', containerization as Vertical)).toBe(
       "backend/ has no Container image from the product root, which builds one only for the stacks it knows — 'keel add containerization' there adds its own",
+    );
+  });
+
+  it('says which services a product root’s vertical is already in, by directory, naming no command', () => {
+    expect(inServicesNote(containerization as Vertical, ['backend', 'frontend'])).toBe(
+      'Container image is already there: backend/ and frontend/ have it',
+    );
+    expect(inServicesNote(ci as Vertical, ['backend'])).toBe(
+      'Continuous integration is already there: backend/ has it',
     );
   });
 });

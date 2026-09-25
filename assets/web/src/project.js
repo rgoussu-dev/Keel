@@ -33,7 +33,9 @@
  * the preset first, then the drill-down's answers and the dials, as the
  * status words them — then a row per service of a product, the bounded
  * contexts, and what the project has, by title: what its manifest
- * records, then what a monorepo service has from its product.
+ * records, then what a monorepo service has from its product — but not
+ * what a product root's services have, which is theirs: the root lists
+ * each service instead.
  *
  * @param {{ profile?: { preset: string|null, facts: ReadonlyArray<Row> }, services?: ReadonlyArray<{ path: string, label: string }>, modules?: ReadonlyArray<{ name: string }>, installed?: ReadonlyArray<{ id: string, title?: string }>, provided?: ReadonlyArray<{ id: string, title?: string }> }|null} status the `/api/project` payload
  * @returns {ProjectSummary}
@@ -59,7 +61,10 @@ export function projectSummary(status) {
             },
           ]),
     ],
-    installed: [...(status?.installed ?? []), ...(status?.provided ?? [])].map(had),
+    installed: [
+      ...(status?.installed ?? []),
+      ...((status?.services ?? []).length > 0 ? [] : (status?.provided ?? [])),
+    ].map(had),
   };
 }
 

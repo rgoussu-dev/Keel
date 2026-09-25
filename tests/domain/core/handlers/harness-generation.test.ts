@@ -4,7 +4,8 @@
  * project stamped with an older one — or none, having been scaffolded
  * before the marker existed — is refused with the story of how to bring
  * it forward, and nothing on disk moves. `keel add agent-harness` is the
- * way forward, and restamps the marker.
+ * way forward, and restamps the marker — but at a product root, whose
+ * services have the harness, where it installs nothing, and is refused.
  *
  * One case per stack family, each over a real scaffold of its cheapest
  * stack with deferred actions faked: the marker is the same for all
@@ -47,7 +48,10 @@ afterEach(async () => {
 
 const mediator = () => installMediator({ runDeferred: () => Promise.resolve() });
 
-const scaffold = async (stack: string, extra: { moduleLayout?: string } = {}) =>
+const scaffold = async (
+  stack: string,
+  extra: { moduleLayout?: string; layout?: 'monorepo' | 'polyrepo' } = {},
+) =>
   expectOk(
     await mediator().dispatch(
       newProjectCommand({ cwd, stack, answers: {}, interactive: false, dryRun: false, ...extra }),
@@ -144,6 +148,21 @@ describe('the harness-generation gate — the other refusals', () => {
     );
     expect(error.message).toContain("re-run 'keel add ci --reapply'");
     expect(await snapshot()).toEqual(before);
+  });
+
+  it('refuses keel add agent-harness at a product root, whose services have the harness', async () => {
+    // There it installs nothing and so stamps nothing: an Ok would say
+    // the way forward worked, and leave every other add refused.
+    await scaffold('fullstack', { layout: 'monorepo' });
+    await stampMarker(undefined);
+    const before = await snapshot();
+    for (const vertical of ['agent-harness', 'code-style']) {
+      const error = expectErr(await add(vertical));
+      expect(error.code).toBe(HARNESS_GENERATION_CODE);
+      expect(error.message).toContain(`'keel add ${vertical}' refuses rather than half-patch it`);
+    }
+    expect(await snapshot()).toEqual(before);
+    expect((await readManifest()).harnessGeneration).toBeUndefined();
   });
 
   it('refuses keel add module too, before a context is emitted', async () => {

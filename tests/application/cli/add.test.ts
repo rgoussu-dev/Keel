@@ -12,7 +12,9 @@
  * is already there — an empty plan, over the real engine — must
  * return, printing why. And that `keel add --list` is the project's
  * status — one dispatch of `keel.project-status` — printed as what
- * each add would do, so the list and the command cannot disagree.
+ * each add would do, so the list and the command cannot disagree. And
+ * that a re-render refused at a product root sends the user only where
+ * one runs.
  */
 
 import os from 'node:os';
@@ -283,7 +285,7 @@ describe('keel add --list', () => {
     }
   });
 
-  it('lists what is installed and not re-rendered by id apart, at a product root', async () => {
+  it('lists apart what a product root installed, what it does not re-render, and what its services have', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-list-'));
     try {
       const logger = new FakeLogger();
@@ -308,6 +310,16 @@ describe('keel add --list', () => {
       const printed = logger.messages('info');
       expect(printed.at(-2)).toBe("Installed: vcs — 'keel add <id> --reapply' re-renders one");
       expect(printed.at(-1)).toBe("Also installed, which 'keel add' does not re-render: fullstack");
+      // What its services have is no refusal of the root's, and nothing
+      // it installed: said apart, in the note the add answers with.
+      const there = printed.indexOf('In its services, nothing to add:');
+      expect(there).toBeGreaterThan(printed.indexOf('Not for this project:'));
+      expect(printed).toContain(
+        '  code-style        Code style is already there: backend/ and frontend/ have it',
+      );
+      expect(printed.slice(printed.indexOf('Not for this project:'), there).join('\n')).not.toMatch(
+        /code-style|containerization|agent-harness/,
+      );
 
       // One directory down, a service: what the product gives it is
       // said apart, each with where it comes from.
@@ -366,6 +378,73 @@ function program(mediator: Mediator, logger: FakeLogger, cwd: string) {
     },
   });
 }
+
+describe('keel add --reapply, at a product root', () => {
+  /** The message `run` is refused with at the command line. */
+  const refusedWith = async (run: Promise<unknown>): Promise<string> => {
+    try {
+      await run;
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected the command line to be refused');
+  };
+
+  it('sends a re-render of what its services installed into each, and names none for the image the root builds', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-reapply-'));
+    try {
+      const logger = new FakeLogger();
+      const mediator = installMediator({
+        logger,
+        processes: new FakeProcessRunner(),
+        runDeferred: async () => {},
+      });
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            layout: 'monorepo',
+          }),
+        ),
+      );
+      const keel = (dir: string, args: readonly string[]) =>
+        program(mediator, logger, dir).parseAsync([...args, '--yes', '--dry-run'], {
+          from: 'user',
+        });
+
+      // Each re-render the hint names is one that runs.
+      const style = await refusedWith(keel(cwd, ['add', 'code-style', '--reapply']));
+      const [, hint = ''] = style.split('\n  hint: ');
+      expect(hint).toBe(
+        "'cd backend && keel add code-style --reapply' or 'cd frontend && keel add code-style --reapply'",
+      );
+      const hinted = [...hint.matchAll(/'cd (\S+) && keel ([^']+)'/g)];
+      expect(hinted).toHaveLength(2);
+      for (const [, dir = '', args = ''] of hinted) {
+        await expect(keel(path.join(cwd, dir), args.split(' '))).resolves.toBeDefined();
+      }
+
+      // The image the root builds for them has no re-render to name,
+      // at the root or in a service.
+      expect(await refusedWith(keel(cwd, ['add', 'containerization', '--reapply']))).toBe(
+        'Container image is not installed at the product root, which builds it for backend/ and frontend/: nothing to re-render here',
+      );
+      expect(
+        await refusedWith(
+          keel(path.join(cwd, 'backend'), ['add', 'containerization', '--reapply']),
+        ),
+      ).toBe(
+        'Container image is not installed in this service — the product root builds it for this service: nothing to reapply here',
+      );
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+});
 
 describe('keel add, of what is there already', () => {
   it('returns — exit code 0 — printing the note that says why nothing changed', async () => {

@@ -130,7 +130,8 @@ the one service of fullstack that can take it`). One the services
 that could have it have already is set aside too, naming what each
 has it with (`note: Code style already comes with quarkus-rest in
 backend/ and web-components in frontend/`), so a `--with` list that
-runs on a single preset runs on a product. Where two services could
+runs on a single preset runs on a product — and `keel add` of it at
+the product root, later, is the same Ok that adds nothing. Where two services could
 each take it — a toolchain — or none can, it is refused as belonging
 to a service (`keel.wrong-scope`), in the words `keel add` gives it at
 the product root, and the hint names the pairs to type instead:
@@ -398,6 +399,23 @@ persistence"_). At the root of a composite product, a vertical the
 root cannot carry is refused under `keel.wrong-scope`, naming the
 services that can take it, read from each service's own manifest, and
 the hint says where to `cd` (`cd backend && keel add persistence`).
+One no service could take and the services that could have it have
+already — code style, the agent harness, the image the root builds for
+each, observability in the one service that carries it — is there, as
+`keel new --with` of it on the product sets it aside: the add is an Ok
+that writes nothing, exits 0, and says where it is:
+
+```
+$ keel add code-style      # at a fullstack monorepo root
+keel add code-style: planned changes
+  note: Code style is already there: backend/ and frontend/ have it
+```
+
+Named beside a vertical the root does carry (`keel add code-style
+dev-env`), it is set aside with that note and the rest install; beside
+one the root refuses, the refusal still wins. Where one service could
+take it and another has it, it is still refused, naming the one that
+can.
 
 In a **monorepo product's service**, a directory of the product's
 repository, two things differ from a project of its own. What the
@@ -462,8 +480,10 @@ Installed: vcs, walking-skeleton, agent-harness, … — 'keel add <id> --reappl
 At a product root the list ends with what is recorded as installed
 and no `keel add` names — the product's glue, `fullstack` — and a
 project with a bounded context lists `bounded-context` there too:
-`Also installed, which 'keel add' does not re-render: fullstack`. In a
-monorepo service, what the product gives it is listed apart, under
+`Also installed, which 'keel add' does not re-render: fullstack`; what
+its services have is listed apart, under `In its services, nothing to
+add:`, each naming them. In a monorepo service, what the product gives
+it is listed apart the same way, under
 `From the product, nothing to add:`, each with where it comes from.
 
 A refusal is printed in the words `keel add <id>` would refuse it
@@ -471,8 +491,9 @@ with. A vertical that two sets of prerequisites would each serve is
 refused until you name one, but it is listed with the verticals that
 need something first, in the sentence that names the choice. A project
 from another harness generation — which `keel add` refuses everything
-but `agent-harness` on until it is brought forward — is said once,
-first, rather than on every line. Outside a keel project there is
+but `agent-harness` on until it is brought forward, and at a monorepo
+product root that too — is said once, first, rather than on every
+line. Outside a keel project there is
 nothing to ask about, and it prints the catalog: every id with its
 one-line description.
 
@@ -569,7 +590,11 @@ the way forward — move `AGENTS.md`, `CLAUDE.md` and `.claude/` aside
 (`--reapply` when it is installed), which re-renders the harness and
 restamps the marker, then re-run the command — or pin the keel that
 scaffolded the project. `keel add agent-harness` is the one command
-the gate lets through. A newer marker asks for a newer keel.
+the gate lets through — but not at a monorepo product root, whose
+services have the harness: it installs nothing there, so the gate
+refuses it too, and the way forward there is the pin, whatever the
+refusal names (a wording gap the [roadmap](roadmap.md) lists under
+Q's Phase 3). A newer marker asks for a newer keel.
 
 ### `--reapply`: the update path
 
@@ -605,16 +630,28 @@ deliberately conservative:
 
 Reapplying a vertical that is not installed errors with
 `keel.vertical-not-installed`. In a monorepo service, one the product
-gives it (the repository's version control, the image the product
-root builds) is refused under that code saying the product root has
-it and re-renders it there, and one only a repository root reads (a
-pipeline, a release) as `keel add` of it there is
-(`keel.wrong-scope`) — neither with advice to install it here, which
-would change nothing, or be refused in turn. `--refresh` of either
-reads the same. Tags the original install promoted are
-re-promoted idempotently (they never double), and the vertical keeps
-its original `installedAt`. A three-way merge that preserves your
-edits to template-owned files is on the [roadmap](roadmap.md) —
+gives it is refused under that code saying where it comes from — the
+repository's version control, which the product root has and
+re-renders there; the image the product root builds for it, _"… the
+product root builds it for this service: nothing to reapply here"_ —
+and one only a repository root reads (a pipeline, a release) as
+`keel add` of it there is (`keel.wrong-scope`) — neither with advice
+to install it here, which would change nothing, or be refused in
+turn. `--refresh` of either reads the same. At a composite product's
+root, a vertical the root does not carry is refused as `keel add` of
+it there is — and one its services have, which `keel add` answers as
+there already, saying where each has it from (`keel.wrong-scope`):
+one they installed is re-rendered there, _"Code style belongs to a
+service, not to the product root — backend/ and frontend/ have it
+already, and it is re-rendered there"_, the hint naming the re-render
+in each (`cd backend && keel add code-style --reapply`); the image the
+root builds for each of them is neither theirs to re-render nor an
+install of the root's, _"Container image is not installed at the
+product root, which builds it for backend/ and frontend/: nothing to
+re-render here"_, with no hint. Tags the original install promoted
+are re-promoted idempotently (they never double), and the vertical
+keeps its original `installedAt`. A three-way merge that preserves
+your edits to template-owned files is on the [roadmap](roadmap.md) —
 today the diff tells you exactly what an overwrite would replace.
 
 ## `keel add module`

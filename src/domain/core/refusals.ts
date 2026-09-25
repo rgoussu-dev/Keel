@@ -68,6 +68,7 @@ import type { Readiness, ReadinessGap } from '../contract/queries.js';
 import {
   pathSentence,
   RefusalError,
+  type ElsewhereRefusal,
   type ElsewhereService,
   type Refusal,
   type UnavailableRefusal,
@@ -178,7 +179,7 @@ export function refusalSentence(refusal: Refusal, names: RefusalNames): string {
     case 'unavailable':
       return unavailableSentence(refusal, names);
     case 'elsewhere':
-      return `${titleOf(names, refusal.vertical)} belongs to a service, not to the product root — ${whereItGoes(refusal.vertical, refusal.services, names)}`;
+      return elsewhereSentence(refusal, names);
     case 'incompatible':
       return `${listed(refusal.verticals.map((id) => titleOf(names, id)))} cannot be installed together here — each installs on its own, but no order installs them all; drop one`;
     case 'path-conflict':
@@ -389,6 +390,14 @@ export function incompatibleRefusal(
  * carries almost none, so its nearest adapter is whichever family
  * happens to sit closest to an empty set, and its gap is advice for a
  * different product. Under {@link WRONG_SCOPE_CODE}, in both phases.
+ *
+ * A vertical the services that could have it all have already is not
+ * refused at all — it is there ({@link inServicesNote}) — but for a
+ * re-render of it at the root: that refusal names the services having
+ * it, and where each has it from — its own install, re-rendered there,
+ * or the product root, which builds it for them; where the root builds
+ * it for each that has it, it is said as the root's, which has no
+ * install of it to re-render.
  */
 export function elsewhereRefusal(
   names: RefusalNames,
@@ -407,14 +416,22 @@ export function elsewhereRefusal(
  * ready the vertical is there — with, where what stops it is the
  * service being part of a monorepo, the verticals whose place is the
  * repository root, which is what the sentence's way forward is read
- * from.
+ * from; and, where the service has it because the product root gives
+ * it (`fromProduct`, the service's `PlanScope.member`), that it has
+ * nothing of it to re-render.
  */
-export function elsewhereService(path: string, stack: string, ready: Readiness): ElsewhereService {
+export function elsewhereService(
+  path: string,
+  stack: string,
+  ready: Readiness,
+  fromProduct = false,
+): ElsewhereService {
   const placed = ready.kind === 'unavailable' ? (ready.gap.repositoryOnly ?? []) : [];
   return {
     path,
     stack,
     readiness: ready.kind,
+    ...(ready.kind === 'included' && fromProduct ? { fromProduct: true as const } : {}),
     ...(placed.length > 0 ? { repositoryOnly: placed } : {}),
   };
 }
@@ -489,7 +506,10 @@ export function notInstalledSentence(vertical: Vertical, verb: 'reapply' | 'refr
  * The sentence a re-render of a vertical a monorepo service has from
  * its product (`providedNote`'s `by`) is refused with: it is not this
  * service's to re-render, and installing it here would change
- * nothing — the product root has it, and re-renders it there.
+ * nothing — `repository`: the product root has it installed, and
+ * re-renders it there; `product`: the product root builds it for the
+ * service, which is no install of the root's either, so the sentence
+ * names nowhere else to re-render it.
  */
 export function providedNotInstalledSentence(
   vertical: Vertical,
@@ -498,9 +518,9 @@ export function providedNotInstalledSentence(
 ): string {
   const where =
     by === 'repository'
-      ? 'the product root has it, for the one repository its services share'
+      ? 'the product root has it, for the one repository its services share, and it is re-rendered there'
       : 'the product root builds it for this service';
-  return `${verticalTitle(vertical)} is not installed in this service — ${where}, and it is re-rendered there: nothing to ${verb} here`;
+  return `${verticalTitle(vertical)} is not installed in this service — ${where}: nothing to ${verb} here`;
 }
 
 /**
@@ -695,6 +715,20 @@ export function providedNote(vertical: Vertical, by: 'repository' | 'product'): 
 }
 
 /**
+ * The note `keel add` gives at a monorepo product's root for a vertical
+ * the root cannot carry itself, that no service of it could take, and
+ * that the services that could have it have — `paths`, in the
+ * product's order: "Code style is already there: backend/ and frontend/
+ * have it". The root's reading of what `keel new --with` sets aside on
+ * the product ({@link alreadyInServicesNote}), so it is Ok, as for one
+ * installed here already; a status lists it as provided with these
+ * words.
+ */
+export function inServicesNote(vertical: Vertical, paths: readonly string[]): string {
+  return `${verticalTitle(vertical)} is already there: ${haveIt(paths.map((path) => ({ path })))}`;
+}
+
+/**
  * The note `keel new` gives for a service of a monorepo product that a
  * vertical the product root builds for its services
  * (`Adapter.providesInServices`) is not built for — a stack the root's
@@ -865,11 +899,42 @@ function nearest(carriedBy: readonly string[]): string {
 }
 
 /**
+ * The sentence of an `elsewhere` refusal: the vertical belongs to a
+ * service, and where it goes ({@link whereItGoes}). But for one no
+ * service could take and each service having it has from the product
+ * root (`fromProduct`) — met only by a re-render at the root, which
+ * builds it for them: that is no service's, and no install of the
+ * root's, so it is said as the root's, naming them.
+ */
+function elsewhereSentence(refusal: ElsewhereRefusal, names: RefusalNames): string {
+  const title = titleOf(names, refusal.vertical);
+  const having = refusal.services.filter((service) => service.readiness === 'included');
+  const builtForAll =
+    having.length > 0 &&
+    having.every((service) => service.fromProduct === true) &&
+    !refusal.services.some(
+      (service) => service.readiness === 'ready' || service.readiness === 'needs',
+    );
+  if (builtForAll) {
+    return `${title} is not installed at the product root, which builds it for ${directories(having, 'and')}: nothing to re-render here`;
+  }
+  return `${title} belongs to a service, not to the product root — ${whereItGoes(refusal.vertical, refusal.services, names)}`;
+}
+
+/**
  * Where an elsewhere-refused vertical goes, by its services' readiness
  * — and, where none can carry it because each is a monorepo service
  * and it needs what only a repository root may carry, why, in that
  * vertical's own words, which end in the way forward (the polyrepo
- * layout), as the service's own refusal does.
+ * layout), as the service's own refusal does. Where the services that
+ * could have it have it, only a re-render is refused (see
+ * {@link elsewhereRefusal}), so the clause says where each has it
+ * from: its own install, re-rendered there, or the product root, which
+ * builds it for the service (`fromProduct` — a vertical placed at a
+ * repository root, the other thing a root gives its services, is
+ * refused as placed before it gets here; and where the root builds it
+ * for every service having it, {@link elsewhereSentence} says so
+ * instead).
  */
 function whereItGoes(
   id: string,
@@ -882,7 +947,12 @@ function whereItGoes(
   if (carriers.length > 0) return `it goes in ${directories(carriers, 'or')}`;
   const having = services.filter((service) => service.readiness === 'included');
   if (having.length > 0) {
-    return `${directories(having, 'and')} ${having.length === 1 ? 'has' : 'have'} it already`;
+    const own = having.filter((service) => service.fromProduct !== true);
+    const built = having.filter((service) => service.fromProduct === true);
+    return [
+      ...(own.length > 0 ? [`${haveIt(own)} already, and it is re-rendered there`] : []),
+      ...(built.length > 0 ? [`${haveIt(built)} already, built by the product root`] : []),
+    ].join('; ');
   }
   const placed = services.find((service) => (service.repositoryOnly ?? []).length > 0);
   if (placed?.repositoryOnly === undefined) return 'none of its services can carry it';
@@ -893,6 +963,11 @@ function whereItGoes(
   }
   const needed = listed(placed.repositoryOnly.map((other) => titleOf(names, other)));
   return `none of its services can carry it, since it needs ${needed}, which cannot go in a monorepo service: ${because}`;
+}
+
+/** `backend/ has it`, `backend/ and frontend/ have it`. */
+function haveIt(services: readonly { readonly path: string }[]): string {
+  return `${directories(services, 'and')} ${services.length === 1 ? 'has' : 'have'} it`;
 }
 
 /** `backend/`, `backend/ or frontend/`, `a/, b/ and c/`. */

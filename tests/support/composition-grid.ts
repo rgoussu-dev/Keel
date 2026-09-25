@@ -84,7 +84,7 @@ export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
   I2: 'every extra keel.dials offers, posted with its prerequisites, previews Ok',
   I3: 'every extras set the CLI accepts is reachable from the menu',
-  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code and sentence',
+  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code and sentence, provided ⇔ Ok staging nothing with its note; and at a monorepo product root, what keel.dials shows as coming with the product ⇔ an add that stages and runs nothing',
   I5: 'keel new --with v and keel add v on the same stack reach the same outcome, code and sentence',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
   I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
@@ -397,12 +397,13 @@ export async function settle(
 /**
  * Holds a project's cards to the add each stands for (I4), in the
  * directory `status` was read from: every vertical of `verticals` is
- * installed there, given by the product it is part of, or a card, and
- * a card agrees with the preview of `keel add <id>` — `outcome`, the
- * cell already swept for it.
+ * installed there, provided — given by the product it is part of, or
+ * at a monorepo product root in its services — or a card, and a card
+ * agrees with the preview of `keel add <id>` — `outcome`, the cell
+ * already swept for it.
  *
- * - a vertical the product gives (`provided`) previews Ok, stages
- *   nothing and runs nothing, and says the card's note;
+ * - a vertical in `provided` previews Ok, stages nothing and runs
+ *   nothing, and says its note;
  * - `ready` previews Ok;
  * - `needs` previews Ok, and stages exactly what naming its
  *   prerequisites with it stages ({@link Grid.twin}, which records

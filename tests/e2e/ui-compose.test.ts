@@ -71,13 +71,14 @@
  * no action there at all, so it needs nothing the shard does not have.
  * The CLI project is seeded the same way and never generated.
  *
- * **A product.** At a composite product's root, "Belongs in a
- * service" opens with a button into each service; the click points
- * the page one directory down, onto that service's Options, where what
- * the product gives it is locked with where it comes from and a
- * pipeline — read only at the repository root — is under "Not for
- * this project". Seeded in-process, a TypeScript product, and never
- * generated.
+ * **A product.** At a composite product's root, what its services
+ * have is locked under "In its services", naming them, rather than
+ * refused; "Belongs in a service" opens with a button into each
+ * service; the click points the page one directory down, onto that
+ * service's Options, where what the product gives it is locked with
+ * where it comes from and a pipeline — read only at the repository
+ * root — is under "Not for this project". Seeded in-process, a
+ * TypeScript product, and never generated.
  *
  * Skip rules are the shared ones (`skipE2E`), and each `describe`
  * carries the browser guard because its `beforeAll` launches one.
@@ -916,7 +917,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
   });
 
   it(
-    'opens a service from the root, where what the product gives it is said, not offered',
+    'shows at the root what its services have, and opens one, where what the product gives it is said, not offered',
     async () => {
       await openProject(productUi.url, tab, seen);
       const elsewhere = tab.locator('#extras-elsewhere');
@@ -933,6 +934,17 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
       expect(await elsewhere.locator('li[data-id="iac"]').textContent()).toMatch(
         /none of its services can carry it, since it needs Distribution, .*per-service releases need the polyrepo layout$/,
       );
+      // What both services have is there, not somewhere to go: locked
+      // apart from what the root installed, naming them.
+      const there = tab.locator('#extras-in-services [data-id="containerization"]');
+      expect(await there.textContent()).toContain(
+        'Container image is already there: backend/ and frontend/ have it',
+      );
+      expect(await there.locator('input').isDisabled()).toBe(true);
+      expect(await there.locator('input').isChecked()).toBe(true);
+      expect(await elsewhere.locator('li[data-id="containerization"]').count()).toBe(0);
+      expect(await locked(tab, 'containerization').count()).toBe(0);
+      expect(await tab.locator('#extras-in-services-title').textContent()).toBe('In its services');
 
       await act(seen, () => services.first().click());
       const image = tab.locator('#extras-installed [data-id="containerization"]');

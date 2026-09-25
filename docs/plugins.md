@@ -515,7 +515,13 @@ const productGlueAdapter = {
   vertical then reads as already there, and `keel add` of it adds
   nothing rather than meeting your files as `keel.path-conflict`; in
   one whose stack is not listed it stays to add, and the product's
-  `keel new` report says so. A preset that installs that vertical in a
+  `keel new` report says so. At the product root, `keel add` of it is
+  refused naming the service that could still take it, until each
+  service that could has it; then it reads as there already — an Ok
+  naming the services, as `keel new --with` of it on the product sets
+  it aside — and a re-render of it at the root says, for each service,
+  whether it installed the vertical or has it from your glue
+  (`fromProduct`, in the refusal's data). A preset that installs that vertical in a
   monorepo service anyway (its `services[].extraVerticals`) would have
   two scopes write one file: `keel new` refuses it before it reports
   the plan, as `keel.cross-scope-write`, naming both adapters and where

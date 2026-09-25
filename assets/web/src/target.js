@@ -440,7 +440,8 @@ function menusOf(dials) {
  * {@link rerender} is for.
  *
  * **What the project has is locked.** An installed vertical — or one a
- * monorepo service has from its product — is drawn ticked, and no
+ * monorepo service has from its product, or a product root has in its
+ * services — is drawn ticked, and no
  * gesture moves it: the run is what goes on top, `keel add` of the
  * delta, and the box of a vertical already there neither joins that
  * set nor leaves the project. The run comes back as it was, not even
@@ -471,7 +472,10 @@ export function toggleVertical(run, status, id, ticked) {
   );
 }
 
-/** Whether `id` is a vertical the project already has: installed, or given it by its product. */
+/**
+ * Whether `id` is a vertical the project already has: installed, given
+ * it by its product, or at a product root in its services.
+ */
 function locked(status, id) {
   return [...status.installed, ...(status.provided ?? [])].some((vertical) => vertical.id === id);
 }

@@ -27,18 +27,24 @@
  * What is still refused, under `keel.missing-prerequisites`, is
  * a tie: two sets of prerequisites exactly as small, which only the
  * user can choose between.
+ *
+ * A composite product asks one more question of its services, the same
+ * in both phases: what a vertical the product's root does not carry is
+ * — there already, or refused ({@link amongServices}).
  */
 
 import { err, ok, type Result } from '../kernel/result.js';
 import type { Conflict, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { Readiness } from '../contract/queries.js';
-import type { RefusalError } from '../contract/refusal.js';
+import type { ElsewhereService, RefusalError } from '../contract/refusal.js';
 import { plan, readiness, type Plan, type PlanScope, type PlannedVertical } from './planner.js';
 import {
   addedPrerequisitesNote,
   dependencyOrderNote,
+  elsewhereRefusal,
   incompatibleRefusal,
+  productRootPlacementRefusal,
   tiedRefusal,
   unavailableRefusal,
 } from './refusals.js';
@@ -180,6 +186,52 @@ export function foresee(registry: Registry, scope: PlanScope, vertical: Vertical
     default:
       return { readiness: ready, refusal: null };
   }
+}
+
+/** {@link amongServices}' answer: there already, in `paths`; or refused, and why. */
+export type AmongServices =
+  | { readonly kind: 'included'; readonly paths: readonly string[] }
+  | { readonly kind: 'refused'; readonly refusal: RefusalError };
+
+/**
+ * What a composite product makes of `vertical` where its root does not
+ * carry it, from how ready it is in each service (`services`, in the
+ * product's order) — the one reading `keel new --with` on a product
+ * (`./dials.ts` `routeExtra`, once it has sent a vertical exactly one
+ * service admits there) and `keel add` at a product root
+ * (`./add-readiness.ts`, which sends nothing anywhere) both answer by,
+ * so the two phases cannot tell one fact apart:
+ *
+ *   - placed at a repository root, asked of a monorepo product: no
+ *     service can take it, since each is a directory of the repository
+ *     the root is — refused as nothing keel has installing it there
+ *     (`keel.uncoverable-vertical`);
+ *   - admitted by no service, and one or more has it: it is there
+ *     already — `included`, naming those services — set aside with a
+ *     note rather than refused, as what a single project comes with is;
+ *   - otherwise it belongs to a service, and the refusal names each
+ *     with its readiness (`keel.wrong-scope`): one a service could take
+ *     goes there, the refusal naming where — even where another service
+ *     has it — one several could take is the user's to place, and one
+ *     none has or can take is said so.
+ */
+export function amongServices(
+  registry: Registry,
+  vertical: Vertical,
+  services: readonly ElsewhereService[],
+  monorepo: boolean,
+): AmongServices {
+  if (monorepo && vertical.placement?.scope === 'repository') {
+    return { kind: 'refused', refusal: productRootPlacementRefusal(registry, vertical) };
+  }
+  const admitting = services.some(
+    (service) => service.readiness === 'ready' || service.readiness === 'needs',
+  );
+  const having = services.filter((service) => service.readiness === 'included');
+  if (!admitting && having.length > 0) {
+    return { kind: 'included', paths: having.map((service) => service.path) };
+  }
+  return { kind: 'refused', refusal: elsewhereRefusal(registry, vertical, services) };
 }
 
 /**

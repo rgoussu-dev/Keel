@@ -21,12 +21,13 @@ held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
 items below each carry an issue of their own.
 
-**Q** (supple composition) has landed: proposed from an audit of how
-`keel new`, `keel add`, the presets and `keel ui` exercise the
-composition model, it was sliced into the steps its section lists and
-landed one commit per step. Its successors — **R**, **S**, **T** and
-**U** — are named there, not yet sliced into issues or ordered against
-the backlog.
+**Q** (supple composition) has landed its Phases 0 to 2: proposed from
+an audit of how `keel new`, `keel add`, the presets and `keel ui`
+exercise the composition model, it was sliced into the steps its
+section lists and landed one commit per step. Its Phase 3 — the open
+ends found once it had merged — is under way, one step each. Its
+successors — **R**, **S**, **T** and **U** — are named there, not yet
+sliced into issues or ordered against the backlog.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -2176,12 +2177,13 @@ init` and a resolved toolchain, not a zip. A remote service would
 
 ---
 
-## Q — Supple composition: one answer, asked everywhere ✅
+## Q — Supple composition: one answer, asked everywhere
 
 **Proposed 2026-09-23 from an audit, and landed** — Phase 0 to Phase 2
 below, one commit per step, every decision taken as recommended
-(_Decisions on record_). **R**, **S**, **T** and **U** remain: named at
-the end of this section, not part of Q. Anchored on [#117] ("one
+(_Decisions on record_); Phase 3 holds the open ends found once it had
+merged (#169), one step each. **R**, **S**, **T** and **U** remain:
+named at the end of this section, not part of Q. Anchored on [#117] ("one
 declaration, read twice"), which it extends from the stack drill-down
 to every vertical, in both phases.
 
@@ -2324,7 +2326,7 @@ offered extras (~1.8k previews, where an undeclared soft read would
 show as an I8 diff) and every choice of every question (~1.5k
 previews) — was planned and not built: the grid reads each stack's
 default dials only, and sends one non-default choice per question
-(I9). The lane is listed under Successors.
+(I9). The lane is one of Phase 3's steps.
 
 ### Phase 0 — stop the bleeding (defects only, no model change; ~1.5–2 weeks)
 
@@ -3362,6 +3364,143 @@ Infrastructure-as-code line ends on the polyrepo layout). No verdict
 moved: the goldens regenerate byte-identical and the known files stay
 as they were.
 
+### Phase 3 — open ends, after #169
+
+What Q's final review and D4 left open once #169 had merged: a
+monorepo product root still refused what `keel new --with` on the same
+product set aside as already there (Q3.1); `keel new` run inside a
+project that already exists; two refusals whose words still fall
+short, and a third Q3.1 met — the harness-generation refusal at a
+product root, which names `keel add agent-harness` as the way forward
+where that add installs nothing and is refused in turn (the refusal of
+that very add names itself), as `keel add --list`'s generation line
+and the page's notice do, each saying every add but that one is
+refused; and the weekly report-only lane _The measure_ planned and did
+not build. One step each, the grid naming what moves.
+
+#### Q3.1 — "Already there" at a monorepo product root (S) ✅
+
+`keel add <v>` at a monorepo product root, for a vertical every service
+that could take it already has — code style, the harness, the image the
+root builds — is refused as `keel.wrong-scope`, while `keel new --with
+v` on the product sets the same fact aside with a note (Q2.3). Make it
+an Ok that adds nothing, its note naming the services, as D4 has it
+everywhere else; list it in `ProjectStatus.provided`, so the page shows
+it locked rather than refused; have I4 hold it; keep
+`keel.wrong-scope` for a vertical some service could still take.
+
+Landed as one reading both phases ask, `plan-refusal.ts`'s
+`amongServices`, over how ready a vertical is in each service: one
+placed at a repository root, asked of a monorepo product, is the
+placement refusal; one no service admits and some service has is
+`included`, naming those; any other is the `elsewhere` refusal.
+`dials.ts`'s `routeExtra` still sends a vertical exactly one service
+admits there and hands it the rest, unchanged (the greenfield golden
+regenerates byte-identical); `add-readiness.ts`'s `productRootRefusal`
+became `productRootReading`, the same reads over each service's
+manifest, answering `included` — with the paths, and each service's
+readiness — or `refused`. The add front door sets an `included`
+vertical aside with `refusals.ts`'s new `inServicesNote` — _Code style
+is already there: backend/ and frontend/ have it_ — beside what is
+installed and what a monorepo service has from its product, and
+returns before it stages when nothing is left, so nothing is written
+and the manifest is not rewritten; named beside one the root carries
+(`keel add code-style dev-env`) the rest install, and beside one it
+refuses (`persistence`) the refusal wins. `keel.project-status` lists
+each in `provided` with the same note, so the status, the preview, the
+report and `keel add --list` (under _In its services, nothing to add:_)
+say one sentence, and `addReadiness` is no longer asked of one. No
+field was added to the status: a front end tells a product root by its
+`services`, and the note names the directories. On the page,
+`additions.js` puts a root's `provided` in a part of its own,
+`inServices`, which `<keel-add-form>` locks under **In its services**
+(`#extras-in-services`) — not _Installed_, since the root installed
+none of it, nor _Belongs in a service_, since it is no refusal — and
+the Project step's _Installed_ chips leave it out at a root, whose
+rows name the services. Grid: 42 composite cells moved from
+`keel.wrong-scope` to Ok, `add:<product>/monorepo+<v>` for each of the
+six products and seven verticals, each the rule's `included` —
+`agent-harness`, `code-style`, `dev-container` and `walking-skeleton`
+(both services' presets install them), `containerization` (the root
+builds both services' images), `gateway` (each service's product
+extra) and `observability` (the backend has it; the web-components
+front end cannot carry it). `persistence` (the backend could take it),
+`toolchain` (both could) and `iac` (none has or can take it) stay
+`keel.wrong-scope`, and `ci` and `distribution`
+`keel.uncoverable-vertical`. I4 holds each through `holdCard`'s
+`provided` branch, and the composite suite now holds the root to the
+product's `keel.dials` too: what the menu shows as coming with the
+product under that layout is exactly what the root's add answers with
+an Ok that stages and runs nothing — recorded under I4, whose text
+now says so, since I4 is hard and I5 is not and would give the axis an
+allowance. The docs
+matrix's product-root column moved on those seven rows from ↪ to ●,
+its `included` now read from `keel.dials` rather than the preset's own
+verticals — the renderer throws where `keel.dials` has one as coming
+with the scope and its add is not Ok, and the composite suite holds
+the other direction — and the legend says a ● there is what the
+services have. The greenfield,
+brownfield and planner-readiness goldens regenerate byte-identical,
+and the known files stay as they were.
+
+Beyond the text above: a re-render at the root. `--reapply` of such a
+vertical stays `keel.wrong-scope`, the root's `elsewhere` refusal as
+before, answered where a re-render of anything not installed is —
+after the harness-generation gate, as `--refresh` is. The clause its
+sentence has for services that have it, now reached only by a
+re-render, says where each has it from, since _included_ covers two
+facts: one a service installed ends _… have it already, and it is
+re-rendered there_, and `hint.ts` spells the re-render in each
+(`'cd backend && keel add code-style --reapply' or …`); one the root
+builds for a service ends _… has it already, built by the product
+root_, with no hint. Where the root builds it for every service having
+it — the shipped products' image — the `elsewhere` lead would be
+false, and the sentence is the root's own instead: _Container image is
+not installed at the product root, which builds it for backend/ and
+frontend/: nothing to re-render here_. And the service's own
+re-render of it, which since Q1.10 said the product root re-renders
+it — nothing at the root does: the glue, `fullstack`, is no vertical
+`keel add` names — now says only _… the product root builds it for
+this service: nothing to reapply here_, so neither sentence sends the
+user to the other. That difference is carried in the refusal, not
+inferred: a new optional `ElsewhereService.fromProduct`, set in both
+phases from the service scope's `PlanScope.member` — greenfield, it
+reaches a refusal only where two services could take the vertical and
+the root builds it for a third, which a three-service plugin product
+pins. `--refresh` of a vertical the root does not carry fell through
+to `keel.vertical-not-installed`, advising a `keel add` that is now an
+Ok adding nothing, or a refusal; it reads through `productRootReading`
+too, so it is refused as `--reapply` of it is (`keel.wrong-scope`, or
+`keel.uncoverable-vertical` for a pipeline or a release). And the generation gate: `keel add
+agent-harness` alone skips it, as the command that brings a harness
+forward, but at a product root it installs nothing, so there it is
+gated like every other add rather than an Ok that restamps nothing.
+The generation refusal still names `keel add agent-harness` as the
+way forward there — for that very add too, refused as
+`keel.wrong-scope` before this step — and it cannot restamp a root
+whose harness is the product glue's: the third wording gap the Phase 3
+intro names, left to its step with `keel add --list`'s line and the
+page's notice, and said in `docs/cli.md`, `docs/ui.md` and the status
+contract's TSDoc meanwhile.
+Held by `plan-refusal.test.ts` (`amongServices`, each of its
+answers), `composite-scope.test.ts` (the root's `provided` and its
+notes; the preview, a dry run and a real run of each staging nothing,
+files untouched and the manifest store asked for no write; the mixed
+sets; both re-renders, the
+image's at the root and in each service, and one each service runs,
+`persistence` beside them; a plugin's product whose root sends the
+image to the backend that could take it while the frontend has it,
+then, once the backend has added it, says where each has it from; and
+a three-service one whose `keel new --with` refusal and root add
+refusal carry `fromProduct` alike), `harness-generation.test.ts` (the
+stale root), `fullstack.test.ts` (the harness at the root, and
+`persistence` there once the backend has it), `refusals.test.ts`,
+`hint.test.ts`, the CLI's `add.test.ts` (`--list` at a root, and a
+re-render at the root whose hint names in each service a `--reapply`
+that runs, the image's naming none), `additions.test.ts` and
+`project.test.ts`, and `ui-compose` in a browser (the root's **In its
+services**, locked, naming both).
+
 ### Decisions on record
 
 Each taken as the audit recommended; the step that carries it is named.
@@ -3417,11 +3556,6 @@ Each taken as the audit recommended; the step that carries it is named.
 - **U — A release story for monorepo products.** Decide the image
   owner, one root Tree across scopes, a product-level pipeline,
   `keel add service`.
-- **The weekly report-only lane.** Planned under _The measure_ and
-  not built: beside mutation, the full powerset of offered extras on
-  every dial setting, and every choice of every question, report-only.
-  Until it exists those combinations are not covered — the grid reads
-  each stack's default dials and one non-default choice per question.
 
 ### Deliberately kept
 

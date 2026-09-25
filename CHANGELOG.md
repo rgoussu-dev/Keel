@@ -160,13 +160,13 @@ use to keep a long-lived changelog scannable — and the root keeps
   cannot go there. `keel.project-status`, `keel add --list` and
   `keel ui` say so before the click. A `--reapply` or a `--refresh` of
   either says the same, rather than advising an install there: what
-  the product gives is the product root's to re-render
-  (`keel.vertical-not-installed`, saying so), and what only a
-  repository root reads is `keel.wrong-scope`. A polyrepo product's services are
+  the product gives is not the service's to re-render
+  (`keel.vertical-not-installed`, saying where it comes from), and
+  what only a repository root reads is `keel.wrong-scope`. A polyrepo product's services are
   repositories of their own and are unchanged. At a product root,
-  `gateway` is sent to the services that have it, like every other
-  vertical the root cannot carry, rather than refused as needing an
-  HTTP entrypoint.
+  `gateway` is answered from the services, which have it, like every
+  other vertical the root cannot carry, rather than refused as needing
+  an HTTP entrypoint.
 
 - **A plugin's rule binds what comes after its piece.** A `Conflict`
   was read, on a project already on disk, only for the vertical being
@@ -368,6 +368,47 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`keel add` at a monorepo product root says what its services
+  already have, rather than refusing it.** At the root of a monorepo
+  product, `keel add code-style` was refused as belonging to a service
+  (`keel.wrong-scope`, exit 1: _Code style belongs to a service, not to
+  the product root — backend/ and frontend/ have it already_), and so
+  were `agent-harness`, `walking-skeleton`, `dev-container`, `gateway`,
+  `containerization` (the image the root builds for each service) and
+  `observability` (which the one service that can carry it has) —
+  while `keel new --with code-style` on the same product set it aside
+  with a note. Both phases now give one answer: where no service could
+  take it and those that could have it, the add is an Ok that writes
+  nothing — no file, the manifest untouched — and exits 0, its note
+  naming them: _Code style is already there: backend/ and frontend/
+  have it_. Named beside a vertical the root does carry, it is set
+  aside and the rest install; beside one the root refuses, the refusal
+  still wins. A vertical a service could still take (`persistence`,
+  `toolchain`) is refused as before. `keel.project-status` lists these
+  under `provided`, each with that note, rather than as refused cards;
+  `keel add --list` prints them under _In its services, nothing to
+  add:_, and `keel ui` locks them under _In its services_ rather than
+  listing them under _Belongs in a service_. A re-render of one at the
+  root stays refused (`keel.wrong-scope`), now saying where each
+  service has it from: one it installed, _… have it already, and it is
+  re-rendered there_, with a hint naming the re-render in each
+  (`'cd backend && keel add code-style --reapply'`); the image the root
+  builds for them, _Container image is not installed at the product
+  root, which builds it for backend/ and frontend/: nothing to
+  re-render here_ (`fromProduct` on each such service, in the
+  refusal's data), with no hint; and a service's own re-render of it
+  says _… the product root builds it for this service: nothing to
+  reapply here_, naming no re-render at the root, where there is none.
+  And `--refresh` of a vertical the root does not carry is refused as
+  `--reapply` of it is, where it was `keel.vertical-not-installed`
+  advising _install it with 'keel add code-style'_. A script that read exit code 1 there as "not
+  for the root" now sees success — but at a root from an older harness
+  generation, where `keel add agent-harness` is refused by the
+  generation gate like every other add (`keel.harness-generation`),
+  since it installs nothing there to bring forward; the refusal still
+  names that add as the way forward, and pinning the keel that
+  scaffolded the product is the one there is.
+
 - **An answer an older keel recorded is the one read.** An older
   keel merged every `--set` into the manifest, so a project can record
   an answer for a vertical it never installed — `keel new --set
@@ -471,8 +512,9 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
   with a note naming what each has it with (_Code style already comes
   with quarkus-rest in backend/ and web-components in frontend/_),
   as a single preset sets aside what it comes with, so one `--with`
-  list runs on either; `keel add` of it at the product root is still
-  sent to the services.
+  list runs on either; `keel add` of it at the product root now gives
+  the same answer (see _`keel add` at a monorepo product root says what
+  its services already have_, above).
   Each service's readiness is now read on the build system chosen for
   it and with the product's own extras for it (the service gateway)
   in place, where it used to be read on the defaults. `keel.dials`

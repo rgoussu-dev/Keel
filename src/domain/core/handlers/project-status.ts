@@ -23,8 +23,10 @@
  *     not for this project and why. Nothing is hidden: a card this
  *     project cannot carry says so before it is picked.
  *   - `provided` — in a monorepo service, what the product gives it
- *     without an install of its own (`../scope.ts`), each with the note
- *     `keel add` answers it with: there already, nothing to add.
+ *     without an install of its own (`../scope.ts`); at a product root,
+ *     what the services that could have it have (`../add-readiness.ts`
+ *     `productRootReading`) — each with the note `keel add` answers it
+ *     with: there already, nothing to add.
  *   - `services` — at a product root, each service with the directory
  *     a front end opens it at.
  *   - `canAddModule` / `moduleRefusal` — `keel add module`'s gates that
@@ -54,9 +56,9 @@ import type {
 } from '../../contract/queries.js';
 import { RefusalError } from '../../contract/refusal.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
-import { addReadiness } from '../add-readiness.js';
+import { addReadiness, productRootReading } from '../add-readiness.js';
 import { projectProfile, serviceLabel } from '../profile.js';
-import { providedNote } from '../refusals.js';
+import { inServicesNote, providedNote } from '../refusals.js';
 import { installedVertical, verticalTitle } from '../registry.js';
 import { provisionsHere, scopeOf, type DirectoryScope } from '../scope.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
@@ -99,6 +101,14 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
         provided.push({
           ...describe(registry, vertical.id),
           note: providedNote(vertical, given.by),
+        });
+        continue;
+      }
+      const atRoot = productRootReading(registry, where, vertical);
+      if (atRoot?.kind === 'included') {
+        provided.push({
+          ...describe(registry, vertical.id),
+          note: inServicesNote(vertical, atRoot.paths),
         });
         continue;
       }

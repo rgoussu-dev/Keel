@@ -168,12 +168,19 @@ describe('projectSummary', () => {
 
   it('names a product root’s services, and a monorepo service’s gifts beside its own', async () => {
     await scaffold('fullstack-ts', { layout: 'monorepo' });
-    const root = projectSummary(await status());
+    const reported = await status();
+    const root = projectSummary(reported);
     expect(root.rows[0]).toEqual({ label: 'Preset', value: 'fullstack-ts' });
     expect(root.rows.slice(-2)).toEqual([
       { label: 'backend/', value: 'ts-http · npm' },
       { label: 'frontend/', value: 'web-components · npm' },
     ]);
+    // What its services have is theirs, not the root's: the rows name
+    // them, and the root lists only what it installed itself.
+    expect(reported.provided.map((vertical) => vertical.id)).toContain('code-style');
+    expect(root.installed.map((vertical) => vertical.id)).toEqual(
+      reported.installed.map((vertical) => vertical.id),
+    );
 
     const backend = expectOk(
       await mediator.dispatch(projectStatusQuery({ cwd: path.join(cwd, 'backend') })),

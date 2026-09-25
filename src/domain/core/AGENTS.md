@@ -87,7 +87,13 @@ product's service is one scope too, `presetServiceScope` — read by that
 service's extras menu (`keel.dials`), by a bare `--with`'s routing to
 the one service that takes it — or aside, with a note, where the
 services that could have it have it already (`routeExtra`) — and by the install of its
-`--with path:id` extras alike; after a `keel add`,
+`--with path:id` extras alike; what a product makes of a vertical its
+root does not carry, once `--with` has sent one only one service takes
+there, is one function both phases read
+(`plan-refusal.ts`'s `amongServices`: there already, or refused), so
+`keel add` at a product root answers what `--with` sets aside as there
+too — an Ok, listed in the status as `provided`
+(`add-readiness.ts`'s `productRootReading`); after a `keel add`,
 `refreshProposals` names the installed verticals the run changed and
 did not re-render — proposed, never done; and where re-rendering one
 is all that stands in the way of a vertical asked for, its gap names it

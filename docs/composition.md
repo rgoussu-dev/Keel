@@ -157,14 +157,14 @@ Every refusal of a vertical or a file is **data first**: a `Refusal`
 ([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
 `RefusalError` beside its code and the sentence written from it.
 
-| Kind            | Carries                                                                                                          | Raised when                                                                                       |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
-| `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle                                     |
-| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry)     | it is asked of a composite product rather than one of its services                                |
-| `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together                                          |
-| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way                                        |
-| `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                                                    |
+| Kind            | Carries                                                                                                                                                  | Raised when                                                                                       |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own                                         | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                                                               | two sets would each do — a tie, which is the user's to settle                                     |
+| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry, or that the root builds it for the service) | it is asked of a composite product rather than one of its services                                |
+| `incompatible`  | the verticals                                                                                                                                            | each installs alone, but no order installs them together                                          |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                                                                    | a file the run would write, or patch inside, is in the way                                        |
+| `path-missing`  | the file, and the adapter that patches it                                                                                                                | a file the run patches is gone                                                                    |
 
 One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
 that data as a sentence, and every surface speaks it: the planner's
@@ -252,7 +252,21 @@ ends on the same way forward: _"Infrastructure as code belongs to a
 service, not to the product root — none of its services can carry it,
 since it needs Distribution, which cannot go in a monorepo service: …
 per-service releases need the polyrepo layout"_ (each such service's
-`repositoryOnly`, in the refusal's data).
+`repositoryOnly`, in the refusal's data). Where no service could take
+it and those that could have it have it already, it is no refusal at
+all: it is there, and the root's add is an Ok that adds nothing —
+_"Code style is already there: backend/ and frontend/ have it"_ — the
+reading `keel new --with` gives it on the product, from one function
+(`plan-refusal.ts`'s `amongServices`) both read, so the two phases
+cannot tell the fact apart. Only a re-render of it at the root is
+refused, saying where each service has it from: its own install,
+re-rendered there — _"… backend/ and frontend/ have it already, and it
+is re-rendered there"_ — or the root, which builds it for the service
+(`fromProduct`, in the refusal's data). Where the root builds it for
+every service that has it, that is no service's and no install of the
+root's, and the sentence says so: _"Container image is not installed
+at the product root, which builds it for backend/ and frontend/:
+nothing to re-render here"_.
 
 A broken rule reads as its reason with its id — _"… (rule
 'walking-skeleton/peer-context-needs-modulith')"_ — so it can be looked
@@ -400,7 +414,9 @@ not, because the thing they turn on is not a tag:
 - `manifest.services` being non-empty is the same fact brownfield, and
   why `keel add module` sends the user into a service directory — and
   `keel add` too, for any vertical the planner reads the root as unable
-  to carry (`keel.wrong-scope`, naming the services that can).
+  to carry (`keel.wrong-scope`, naming the services that can), or
+  answers that it is there already, where the services that could have
+  it have it.
 - `manifest.modules` already holding the name, or holding a
   `--consumes` target with no seam, is manifest **state**: it takes a
   name to check, and a name is not a tag.

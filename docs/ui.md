@@ -187,6 +187,17 @@ Generate posts only what the ticks add — the delta — as `keel add`:
   same way, saying where it comes from; a CI pipeline or a release,
   which only a repository root reads, is under _Not for this project_,
   saying so.
+- **In its services** — at a composite product's root, what the
+  services that could have it have already — code style, the agent
+  harness, the image the root builds for each, observability in the
+  one service that carries it — locked the same way, each naming them
+  (_Code style is already there: backend/ and frontend/ have it_). The
+  root installed none of it, so it is not under _Installed_; and adding
+  one is an Ok that adds nothing, as `keel new --with` of it on the
+  product sets it aside, so it is no refusal under _Belongs in a
+  service_ either. It has no **Re-render** button: one a service
+  installed is re-rendered in that service, and the image is the
+  product root's own build.
 - **Not for this project** — collapsed, one line each: the sentence
   `keel add <id>` would refuse it with, word for word. _Observability
   needs an entrypoint this project does not have: HTTP server — a REST
@@ -195,8 +206,7 @@ Generate posts only what the ticks add — the delta — as `keel add`:
 - **Belongs in a service** — at a composite product's root, an
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
   points the page at that directory and opens its Options; then what
-  goes in one of the services, each saying which — Container image and
-  the agent harness read as there already in both. What no service can
+  goes in one of the services, each saying which. What no service can
   take says why, and the way forward: in a monorepo, Infrastructure as
   code needs Distribution, which only the repository root may carry, so
   its line ends _per-service releases need the polyrepo layout_.
@@ -618,18 +628,21 @@ is why `keel add module` would be refused before it reads a name,
 present exactly when `canAddModule` is false. `harnessGeneration` is
 the marker the manifest carries (`found`, null when none) beside the
 generation this keel writes: where they differ, every add but
-`agent-harness` is refused until the harness is brought forward — one
-fact, reported once rather than on every card. An installed entry is
+`agent-harness` is refused until the harness is brought forward — at a
+monorepo product root, whose services have the harness, that one too —
+one fact, reported once rather than on every card. An installed entry is
 `reapplicable` where `keel add <id> --reapply` can re-render it — not a
 product's glue (`fullstack`) nor a bounded context, which the manifest
 records and no `keel add` names. At a composite product's root,
 `services` lists each service as the product recorded it (`path`,
 `stack`, `buildSystem`) with the `directory` to open it at and a
-`label` for its button (`quarkus-rest · Gradle`); in a monorepo
-service, `provided` lists what the product gives it — its
-repository's version control, the image the product root builds —
-each with the `note` `keel add <id>` answers there, an Ok that stages
-nothing. Both are empty anywhere else. `keel add --list` prints the
+`label` for its button (`quarkus-rest · Gradle`), and `provided` lists
+what its services have that none of them could take again — each with
+the `note` `keel add <id>` answers at the root, an Ok that stages
+nothing, naming them; in a monorepo service, `provided` lists what the
+product gives it — its repository's version control, the image the
+product root builds — each with the `note` `keel add <id>` answers
+there. Both are empty anywhere else. `keel add --list` prints the
 same status.
 
 `add-vertical` names its verticals as `verticals` — a set, planned
@@ -734,7 +747,8 @@ have: HTTP server — a REST endpoint"_ — never a tag no command can
 add. Pointed at a composite product's root, a vertical the root cannot
 carry is refused naming the services that can take it
 (`keel.wrong-scope`), and listed under _Belongs in a service_ beside a
-button into each service.
+button into each service; one they already have is no refusal, and is
+listed under _In its services_, locked.
 
 A vertical that installs only once another has is no longer refused
 at all: distribution on a project with no container image yet

@@ -778,13 +778,15 @@ export interface AvailableVerticalDescriptor extends VerticalDescriptor {
 }
 
 /**
- * A vertical a directory has from the product it is part of rather
- * than from an install of its own. @see ProjectStatus.provided
+ * A vertical a directory has from the product it is part of — or, at a
+ * product root, that its services have — rather than from an install of
+ * its own. @see ProjectStatus.provided
  */
 export interface ProvidedVerticalDescriptor extends VerticalDescriptor {
   /**
    * What `keel add <id>` answers here, word for word: the note of an Ok
-   * that installs nothing, saying where the vertical comes from.
+   * that installs nothing, saying where the vertical is — the product
+   * root, or the services that have it, by directory.
    */
   readonly note: string;
 }
@@ -907,9 +909,13 @@ export interface ProjectStatus {
    * The verticals this directory has without having installed them:
    * a monorepo service's, from the product that holds it — what the
    * repository root installed (`vcs`), and what the product root builds
-   * for it (its image, which the root's `compose.yaml` builds). Neither
-   * `installed` nor `available`: nothing here re-renders one, and
-   * `keel add <id>` of one is an Ok that installs nothing and says
+   * for it (its image, which the root's `compose.yaml` builds); and a
+   * monorepo product root's, in its services — each vertical the root
+   * cannot carry that no service could take and those that could have
+   * it have (the harness, code style, the images the root builds): what `keel
+   * new --with` of it on the product sets aside as there already.
+   * Neither `installed` nor `available`: nothing here re-renders one,
+   * and `keel add <id>` of one is an Ok that installs nothing and says
    * {@link ProvidedVerticalDescriptor.note}. Empty anywhere else.
    */
   readonly provided: readonly ProvidedVerticalDescriptor[];
@@ -940,10 +946,11 @@ export interface ProjectStatus {
   /**
    * The harness generation the manifest was stamped at, and the one
    * this keel writes. Where they differ, `keel add` refuses every
-   * vertical but `agent-harness` — and `keel add module` — until the
-   * harness is brought forward: one fact, reported once here rather
-   * than as the same refusal on every card. Absent when the directory
-   * is not a keel project.
+   * vertical but `agent-harness` (at a monorepo product root, whose
+   * services have the harness, that one too) — and `keel add module` —
+   * until the harness is brought forward: one fact, reported once here
+   * rather than as the same refusal on every card. Absent when the
+   * directory is not a keel project.
    */
   readonly harnessGeneration?: HarnessGenerationStatus;
 }

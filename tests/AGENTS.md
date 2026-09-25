@@ -103,11 +103,16 @@ holds. Three suites, split so vitest runs them in parallel:
   in a `keel new` preview — offered ⇒ Ok (I2), neither offered nor the
   service's own ⇒ refused (I3), and I7 against its polyrepo twin as
   below — then scaffolded, at the root and in each service, its cards
-  held to I4 as brownfield's are — a vertical a monorepo service has from its product
-  (`ProjectStatus.provided`) held to an add that stages nothing and says
-  the card's note — and every service cell to I7: never refused for a
-  file in the way, and Ok or `keel.wrong-scope` under the monorepo
-  layout wherever its polyrepo twin, a repository of its own, is Ok.
+  held to I4 as brownfield's are — a vertical a monorepo service has from its product,
+  or a monorepo root's services have (`ProjectStatus.provided`), held
+  to an add that stages nothing and says the card's note, and at the
+  root, what `keel.dials` shows as coming with the product under that
+  layout held to be exactly what the add answers with that empty Ok,
+  so both phases read one answer there (recorded under I4, which is
+  hard: I5 is not, and would give this axis an allowance) — and every
+  service cell to I7: never refused for a file in the way, and Ok or
+  `keel.wrong-scope` under the monorepo layout wherever its polyrepo
+  twin, a repository of its own, is Ok.
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an

@@ -28,6 +28,10 @@
  *     run of its own, never a box in the add's set; a product's glue or
  *     a bounded context, which no `keel add` names, without one; what a
  *     monorepo service has from its product, saying where from.
+ *   - **In its services** — at a product root, what its services have
+ *     that the root does not carry, locked the same way and naming
+ *     them: adding one is an Ok that adds nothing, not a refusal, so it
+ *     is not under _Belongs in a service_.
  *   - **Not for this project** — collapsed, one sentence each, the
  *     refusal `keel add` would give. Not a control: there is nothing to
  *     pick.
@@ -253,7 +257,8 @@ export class KeelAddForm extends HTMLElement {
         group.refused.length +
         group.elsewhere.length +
         group.services.length +
-        group.installed.length ===
+        group.installed.length +
+        group.inServices.length ===
       0;
     if (nothing) return note('Nothing left to install here.');
 
@@ -303,6 +308,13 @@ export class KeelAddForm extends HTMLElement {
                 chosen: vertical.pressed,
                 action: vertical.rerender ? this.#rerenderButton(vertical) : null,
               })),
+            }),
+        group.inServices.length === 0
+          ? null
+          : lockedPart({
+              id: 'extras-in-services',
+              title: 'In its services',
+              items: group.inServices,
             }),
         group.refused.length === 0
           ? null

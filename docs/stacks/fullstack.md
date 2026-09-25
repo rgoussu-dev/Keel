@@ -94,7 +94,10 @@ the repository), while `keel add ci`, `distribution` and `iac` are
 refused as the wrong scope — per-service pipelines, releases and IaC
 need `--layout polyrepo`, where each service is a repository of its
 own. `keel new --with backend:ci` reads the same placement and is
-refused the same way, before anything is written. `keel new` in a
+refused the same way, before anything is written. At the product root,
+what the services have and none could take again — the image, the
+harness, code style — adds nothing either, each note naming the
+services; what one of them could take is refused there, naming it. `keel new` in a
 directory of the product that is not one of its services is refused
 (`keel.inside-product`).
 

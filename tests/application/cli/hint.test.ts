@@ -180,11 +180,53 @@ const TABLE: readonly {
     hint: "drop 'gateway' from --with",
   },
   {
-    why: 'a product root whose services have it already has nothing to add',
+    // Adding it there is an Ok that adds nothing; only a re-render of
+    // it at the root is refused, and it is theirs.
+    why: 'a product root whose services have it re-renders it in each',
     refusal: {
       kind: 'elsewhere',
-      vertical: 'vcs',
-      services: [{ path: 'backend', stack: 'quarkus-rest', readiness: 'included' }],
+      vertical: 'code-style',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'included' },
+        { path: 'frontend', stack: 'web-components', readiness: 'included' },
+      ],
+    },
+    command: 'add',
+    hint: "'cd backend && keel add code-style --reapply' or 'cd frontend && keel add code-style --reapply'",
+  },
+  {
+    // A service the root builds it for has nothing of it to re-render.
+    why: 'a product root re-renders it only in the services that installed it',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'containerization',
+      services: [
+        { path: 'backend', stack: 'spring-rest-kotlin', readiness: 'included' },
+        { path: 'frontend', stack: 'web-components', readiness: 'included', fromProduct: true },
+      ],
+    },
+    command: 'add',
+    hint: "'cd backend && keel add containerization --reapply'",
+  },
+  {
+    why: 'a product root that builds it for every service has no re-render to name',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'containerization',
+      services: [
+        { path: 'backend', stack: 'quarkus-rest', readiness: 'included', fromProduct: true },
+        { path: 'frontend', stack: 'web-components', readiness: 'included', fromProduct: true },
+      ],
+    },
+    command: 'add',
+    hint: null,
+  },
+  {
+    why: 'a product root none of whose services has or takes it has nothing to add',
+    refusal: {
+      kind: 'elsewhere',
+      vertical: 'observability',
+      services: [{ path: 'frontend', stack: 'web-components', readiness: 'unavailable' }],
     },
     command: 'add',
     hint: null,

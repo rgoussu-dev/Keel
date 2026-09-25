@@ -177,10 +177,34 @@ describe('a keel project’s "Also scaffold" group', () => {
       meta: '',
       rerender: false,
     });
-    // What the services have is in them, not a gap of the root's.
-    expect(group.elsewhere.map((line) => line.id)).toEqual(
-      expect.arrayContaining(['agent-harness', 'containerization', 'gateway', 'persistence']),
+    // What the services have is in them — not a gap of the root's, nor
+    // anything the root installed: a part of its own, locked, each in
+    // the words the add answers it with, and with no Re-render.
+    expect(group.elsewhere.map((line) => line.id)).toEqual(['iac', 'persistence', 'toolchain']);
+    expect(values(group.inServices)).toEqual(
+      expect.arrayContaining(['agent-harness', 'code-style', 'containerization', 'gateway']),
     );
+    expect(values(group.installed)).not.toContain('containerization');
+    for (const line of group.inServices) {
+      expect(line).toMatchObject({ meta: '', rerender: false, pressed: false });
+      const added = expectOk(
+        await mediator.dispatch(
+          previewQuery({
+            cwd,
+            target: { kind: 'add-vertical', verticals: [line.value] },
+            answers: {},
+          }),
+        ),
+      );
+      expect(added.changes).toEqual([]);
+      expect(added.notes).toEqual([line.doc]);
+    }
+    expect(group.inServices.find((line) => line.value === 'code-style')?.doc).toBe(
+      'Code style is already there: backend/ and frontend/ have it',
+    );
+    // Ticking one moves nothing: it is there.
+    const run = opened();
+    expect(toggleVertical(run, reported, 'code-style', true)).toBe(run);
     // And the way into each: the directory the status reports whole,
     // named by the service's directory and what it is.
     expect(group.services).toEqual([
@@ -201,6 +225,7 @@ describe('a keel project’s "Also scaffold" group', () => {
     const provided = group.installed.slice(reported.installed.length);
     expect(values(provided)).toEqual(['containerization', 'vcs']);
     expect(group.services).toEqual([]);
+    expect(group.inServices).toEqual([]);
     for (const line of provided) {
       expect(line.rerender).toBe(false);
       const added = expectOk(

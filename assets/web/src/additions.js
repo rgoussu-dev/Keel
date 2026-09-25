@@ -24,6 +24,11 @@
  *     context — with none; and in a monorepo service, what the product
  *     gives it — its repository's version control, the image the
  *     product root builds — each saying where from.
+ *   - **In its services** — at a product's root, what the services
+ *     that could have it have — code style, the harness, the images
+ *     the root builds — ticked and locked the same way, each naming
+ *     the services: the root installed none of it, and adding one
+ *     would add nothing.
  *   - **Not for this project** — collapsed, one sentence each: the
  *     refusal `keel add` would give, word for word.
  *   - **Belongs in a service** — at a product's root, a way into each
@@ -39,7 +44,7 @@
  * @typedef {{ value: string, label: string, meta: string, doc: string, badge?: string }} AddCard
  * @typedef {{ value: string, label: string, meta: string, doc: string, rerender: boolean, pressed: boolean }} Installed
  * @typedef {{ path: string, label: string }} ServiceLink
- * @typedef {{ ready: AddCard[], needs: AddCard[], refused: Refused[], elsewhere: Refused[], services: ServiceLink[], installed: Installed[], chosen: string[], rerendering: string | null }} AdditionsGroup
+ * @typedef {{ ready: AddCard[], needs: AddCard[], refused: Refused[], elsewhere: Refused[], services: ServiceLink[], installed: Installed[], inServices: Installed[], chosen: string[], rerendering: string | null }} AdditionsGroup
  * @typedef {{ value: string, label: string, doc: string }} RefreshChoice
  */
 
@@ -53,7 +58,9 @@ import { refreshOf, rerendering, verticalsOf } from './target.js';
  * them, then what the product gives a monorepo service: each a box the
  * page draws ticked and locked, `rerender` where `keel add <id>
  * --reapply` re-renders it — and `pressed` on the one the target is
- * re-rendering.
+ * re-rendering. At a product root, what the status reports as provided
+ * is its services' rather than anything the root installed, so it is
+ * `inServices` instead, locked the same way; empty anywhere else.
  *
  * @param {{ installed: ReadonlyArray<{ id: string, title: string, description: string, reapplicable?: boolean }>, available: ReadonlyArray<{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string, refusal?: { kind: string } } }>, provided?: ReadonlyArray<{ id: string, title: string, note: string }>, services?: ReadonlyArray<{ path: string, directory: string, label: string }> }} status
  * @param {object | null} target
@@ -69,6 +76,15 @@ export function additionsGroup(status, target) {
   });
   const again = rerendering(target);
   const installed = status.installed;
+  const provided = (status.provided ?? []).map((vertical) => ({
+    value: vertical.id,
+    label: vertical.title || vertical.id,
+    meta: '',
+    doc: vertical.note,
+    rerender: false,
+    pressed: false,
+  }));
+  const root = (status.services ?? []).length > 0;
   return {
     ready: status.available.filter((vertical) => vertical.readiness === 'ready').map(card),
     needs: status.available
@@ -89,15 +105,9 @@ export function additionsGroup(status, target) {
           pressed: rerender && vertical.id === again,
         };
       }),
-      ...(status.provided ?? []).map((vertical) => ({
-        value: vertical.id,
-        label: vertical.title || vertical.id,
-        meta: '',
-        doc: vertical.note,
-        rerender: false,
-        pressed: false,
-      })),
+      ...(root ? [] : provided),
     ],
+    inServices: root ? provided : [],
     chosen: again === null ? verticalsOf(target) : [],
     rerendering: again,
   };
