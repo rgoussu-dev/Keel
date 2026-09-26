@@ -6,11 +6,11 @@
  * The walk that finds them is the engine's (`domain/core/scope.ts`'
  * `nearbyProjects`); the sentence is spelled here, beside the shape it
  * reads, because two hexagons refuse with it — the engine's commands
- * (`keel add`, `keel add module`, `keel link`) and the provisioning
- * context's (`keel toolchain`), which reaches keel only through this
- * contract and is handed the walk by the composition root. One
- * sentence, so a directory inside a project points at that project
- * whichever of them was run there.
+ * (`keel add`, `keel add module`, `keel add entrypoint`, `keel link`)
+ * and the provisioning context's (`keel toolchain`), which reaches
+ * keel only through this contract and is handed the walk by the
+ * composition root. One sentence, so a directory inside a project
+ * points at that project whichever of them was run there.
  */
 
 /** The code every command needing a project is refused with where none is. */
@@ -43,12 +43,13 @@ export const NO_PROJECT_NEARBY: NearbyProjects = { above: null, below: [] };
  * services — and at `first`, the command that creates one, where there
  * are not. `command` is the one refused, as it is run there;
  * `serviceScoped` says a product root refuses it too (`keel add
- * module`, `keel toolchain`), so inside one it points at the root's
- * services instead.
+ * module`, `keel add entrypoint`, `keel toolchain`), so inside one it
+ * points at the root's services instead.
  *
  * `refusedAt`, for a command a project can refuse as well (`keel add
- * module`, on a project that takes no bounded context), is why the
- * project the sentence names by `named` (`..`, `../backend`,
+ * module`, on a project that takes no bounded context; `keel add
+ * entrypoint`, in a monorepo product or where growth refuses), is why
+ * the project the sentence names by `named` (`..`, `../backend`,
  * `backend`) refuses it — null where it would not, or where that is
  * not known. Where every project the sentence points at refuses it,
  * for one reason, the sentence says so and why, rather than sending

@@ -72,7 +72,8 @@ it guards:
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
 measure behind roadmap epic Q, whose invariants (I1–I9) it
-holds. Three suites, split so vitest runs them in parallel:
+holds, and epic R's I10. Four suites, split so vitest runs them in
+parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -117,6 +118,25 @@ holds. Three suites, split so vitest runs them in parallel:
   service cell to I7: never refused for a file in the way, and Ok or
   `keel.wrong-scope` under the monorepo layout wherever its polyrepo
   twin, a repository of its own, is Ok.
+- `growth` — every single-entrypoint backend preset the stack finder
+  lists, on every dial setting `keel.dials` offers it (build system,
+  module layout, the peer context, each again with the agent harness
+  left out: `support/dial-walk.ts`'s `harnessSettings`), with no
+  extras, grown for real by `keel add entrypoint` with each entrypoint
+  its framework offers and it lacks — 192 cells, 96 each way. Each is
+  held to its twin, the preset carrying both, scaffolded by `keel new`
+  on the same dials: every file byte for byte, the manifest included
+  (the pinned clock makes its timestamps equal), and the deferred
+  actions' descriptions in order, less the twin's repository setup
+  (version control's: `git init`, the hooks path — read off `vcs`
+  itself, not the handler's own rule of what settles) — or refused,
+  under the code `domain/core/growth.golden.json` (R.2a's record of
+  `growthOf`) reads for the cell (I10, over the actions the
+  grid's deferred runner records, `Grid.queued`). The add also
+  previews as it installs on the scaffold (I9, over no answers and
+  over the monitoring stack answered away from its default). 128 cells
+  grow and 64 are refused as `keel.contexts-need-rewiring` — every
+  setting with the peer context — until epic R's R.3 lifts them.
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
@@ -138,27 +158,38 @@ the record can only shrink. Beside each suite:
   onto the planner, I6 since Q1.7, when every refusal came to be
   worded by one builder that prints no tag, I4 and I7 since Q1.10,
   when a monorepo service came to read what its product gives it and
-  what only a repository root may carry, and I9 since Q2.1, when the
-  preview came to read the answers it is sent as the install does.
-  Every known file is empty now but brownfield's I5 key.
+  what only a repository root may carry, I9 since Q2.1, when the
+  preview came to read the answers it is sent as the install does,
+  and I10 hard from the day it landed, with R.2b's command. Every
+  known file is empty now but brownfield's I5 key; growth's holds only
+  hard invariants, and is `{}` because `sweepGrid` reads each axis's
+  known file whatever it holds.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
   nothing) for the sentence the golden does not keep.
+- The growth axis reads `domain/core/growth.golden.json` (R.2a's
+  record) for each refused cell's code, so when a change moves both,
+  regenerate that golden before the grid.
 - The docs' compatibility matrix is rendered from the brownfield and
   composite goldens (`generated-docs.test.ts`, above), so a change that
   moves a verdict regenerates the docs last, after the grid.
 
-About 25 s wall on its own, greenfield the longest at ~23 s, of which
-I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
-dispatches — about 14 s.
+About 30 s wall on its own, growth and greenfield the longest: growth
+about 21 s alone and 27 s beside the others (256 real scaffolds —
+192 cells and 64 twins, one per setting, which both directions share —
+192 real adds and 512 dry-run dispatches for I9), greenfield ~23 s, of
+which I8's orderings are about 3.5 s and I9's bodies — some 260
+whole-menu dispatches — about 14 s.
 
-**The weekly sweep beside it.** The grid reads each preset's opening
-dials only, each extra alone and the whole menu, because `verify` has
-to stay fast. What that leaves out is `sweep/`: three opt-in suites over
-`support/composition-sweep.ts`, self-skipping unless `KEEL_RUN_SWEEP=1`,
-run weekly by `.github/workflows/composition-sweep.yml` and never on a
-PR. They sweep every dial setting `keel.dials` offers. The settings come
+**The weekly sweep beside it.** The grid's preview axes read each
+preset's opening dials only, each extra alone and the whole menu, and
+its growth axis every dial setting with no extras, because `verify`
+has to stay fast. What that leaves out is `sweep/`: three opt-in
+suites over `support/composition-sweep.ts`, self-skipping unless
+`KEEL_RUN_SWEEP=1`, run weekly by
+`.github/workflows/composition-sweep.yml` and never on a PR. They
+sweep every dial setting `keel.dials` offers. The settings come
 from `support/dial-walk.ts`, the walk `application/web/dials.test.ts`
 makes too, started from each repository layout on a product and taken
 again with the agent harness left out wherever that is allowed.
@@ -203,11 +234,12 @@ than as a weekly run that swept nothing. The skipped suites read
 nothing when they are collected, but they still import the engine, a
 couple of seconds each.
 
-Only I9 posts answers, and only one non-default choice per question on
-each preset's opening dials, so the grid cannot see an answer choice
-that is offered and then refused. The sweep's `choices` suite covers
-every offered choice of every question the whole menu, no extra or one
-extra asks, on every dial setting. `verify` keeps a focused slice of
+Only I9 posts answers, and only one non-default choice per question —
+on each preset's opening dials, and on every dial setting of a grown
+one — so the grid cannot see an answer choice that is offered and then
+refused. The sweep's `choices` suite covers every offered choice of
+every question the whole menu, no extra or one extra asks, on every
+dial setting. `verify` keeps a focused slice of
 that class in `handlers/preview.test.ts`: every stack whose menu
 offers `persistence`, and every non-default choice its dials declare,
 posted to a preview and to a dry-run install. Both must be Ok where

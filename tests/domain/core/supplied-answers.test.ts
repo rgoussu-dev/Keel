@@ -203,6 +203,26 @@ describe('strayAnswerRefusal', () => {
     );
   });
 
+  it('refuses one for an installed adapter the plan does not run as frozen, though its vertical’s other adapter runs', () => {
+    // `keel add entrypoint` installs the other bootstrap alone and
+    // re-renders nothing of the one the project has.
+    const restBootstrap = adapter('walking-skeleton/acme-rest-bootstrap', ['basePackage']);
+    const skeleton = vertical('walking-skeleton', 'Walking skeleton', [
+      cliBootstrap,
+      restBootstrap,
+    ]);
+    const answer = { 'walking-skeleton/acme-rest-bootstrap': { basePackage: 'org.acme' } };
+    expect(unusedAnswers(answer, plan, owning([skeleton], answer))).toEqual([
+      {
+        adapter: 'walking-skeleton/acme-rest-bootstrap',
+        question: 'basePackage',
+        code: FROZEN_ANSWER_CODE,
+        message:
+          'Walking skeleton is installed; its answers are frozen — reconfiguring is not supported yet (drop the answer for walking-skeleton/acme-rest-bootstrap:basePackage)',
+      },
+    ]);
+  });
+
   it('passes over a key with no answer under it', () => {
     expect(strayAnswerRefusal({ 'nobody/here': {} }, plan, NOTHING_INSTALLED)).toBeNull();
   });

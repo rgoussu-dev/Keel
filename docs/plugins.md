@@ -458,6 +458,27 @@ writes the definition exactly as keel's HTTP presets render it
 attached — the Compose note above `"name"`, the docker feature last;
 elsewhere, the shape an extra dev environment has always written.
 
+### Growing a project of your stack
+
+`keel add entrypoint <cli|http>` grows a project into the preset that
+carries both entrypoints on its dials ([cli.md](cli.md#keel-add-entrypoint)),
+found on the stack finder's tree as `keel new` finds it. A family of
+yours grows when it registers that preset too — a CLI, an HTTP preset
+and the one carrying both, with the same build systems and module
+layouts — and when growing adds files and removes none: the other
+entrypoint's bootstrap newly matches, and nothing that matched stops
+matching. A project with no such preset on its dials is refused as
+`keel.uncoverable-entrypoint`, and one where the entrypoint would
+break a [conflict](#conflicts) a vertical of yours declares, as
+`keel.incompatible` — as `keel new` of the twin with that vertical is.
+Your adapters that matched before are not re-rendered, so one that
+reads the entrypoint tags inside `contribute()` writes its files for
+the project as it was; only its harness elements (skills, doc
+sections, hooks) are replayed on the grown tags, wherever the agent
+harness is installed — the ones that matched before of a vertical
+whose adapters only partly newly match included — and recorded where
+`keel new` of the twin records them.
+
 ### What an adapter promotes, and what a vertical reads
 
 Two optional fields tell keel's planner how your pieces relate to the
@@ -628,8 +649,15 @@ loads there is no name to quote, so those messages name the path.
 | A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
 | A `placement` with no reason                | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                |
 | A question `shared` with anything else      | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …` |
+| A vertical id of `module` or `entrypoint`   | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`    |
 | An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
 | An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
+
+`keel add module <name>` and `keel add entrypoint <cli|http>` are
+commands of their own, read off the first word, so a vertical of
+either id could never be added with `keel add <id>`, though `keel new
+--with` could still name it; neither names a capability, so the two
+are reserved rather than left half-working.
 
 The dimension check is the static half of the resolver's. `coversFor`
 asks whether a dimension is covered _for a tag set_ and answers "no"

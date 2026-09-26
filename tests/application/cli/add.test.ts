@@ -6,15 +6,15 @@
  * CLI half of the contract — that `keel add a b` is **one** dispatch
  * naming both, so the planner sees the set whole (a second dispatch
  * would install `a` before anyone asked what `b` needs), that
- * `--refresh` travels as a list, and that `module` stays a reserved
- * first word. And what a run that has nothing to do exits with: the
- * executable turns a thrown error into exit code 1, so an add of what
- * is already there — an empty plan, over the real engine — must
- * return, printing why. And that `keel add --list` is the project's
- * status — one dispatch of `keel.project-status` — printed as what
- * each add would do, so the list and the command cannot disagree. And
- * that a re-render refused at a product root sends the user only where
- * one runs.
+ * `--refresh` travels as a list, and that `module` and `entrypoint`
+ * stay reserved first words. And what a run that has nothing to do
+ * exits with: the executable turns a thrown error into exit code 1,
+ * so an add of what is already there — an empty plan, over the real
+ * engine — must return, printing why. And that `keel add --list` is
+ * the project's status — one dispatch of `keel.project-status` —
+ * printed as what each add would do, so the list and the command
+ * cannot disagree. And that a re-render refused at a product root
+ * sends the user only where one runs.
  */
 
 import os from 'node:os';
@@ -114,6 +114,82 @@ describe('keel add, as a command line', () => {
     await expect(run(['add', 'module', 'billing', 'shipping'])).rejects.toThrow(/one name/);
     await expect(run(['add', 'module', 'billing', '--refresh', 'ci'])).rejects.toThrow(
       /--refresh applies to verticals/,
+    );
+  });
+});
+
+describe('keel add entrypoint, as a command line', () => {
+  it("keeps 'entrypoint' as the first word that means an entrypoint, the word after it the domain's", async () => {
+    const dispatched = await run(['add', 'entrypoint', 'http', '--yes', '--dry-run']);
+    expect(dispatched).toEqual([
+      {
+        kind: 'keel.add-entrypoint',
+        intent: 'command',
+        cwd: '/tmp/demo',
+        entrypoint: 'http',
+        answers: {},
+        interactive: false,
+        dryRun: true,
+      },
+    ]);
+  });
+
+  it('carries --set answers as any add does', async () => {
+    const [command] = await run([
+      'add',
+      'entrypoint',
+      'http',
+      '--set',
+      'observability/monitoring-compose:stack=lgtm',
+    ]);
+    expect(command).toMatchObject({
+      answers: { 'observability/monitoring-compose': { stack: 'lgtm' } },
+      interactive: true,
+    });
+  });
+
+  it.each([
+    [['add', 'entrypoint'], /missing entrypoint/],
+    [['add', 'entrypoint', 'cli', 'http'], /takes one entrypoint, got 2: cli http/],
+    [['add', 'entrypoint', 'http', '--reapply'], /--reapply applies to verticals/],
+    [['add', 'entrypoint', 'http', '--refresh', 'ci'], /--refresh applies to verticals/],
+    [
+      ['add', 'entrypoint', 'http', '--consumes', 'greeting'],
+      /--consumes applies to 'keel add module'/,
+    ],
+  ])('refuses %j before dispatching', async (args, message) => {
+    const mediator = new RecordingMediator();
+    await expect(
+      buildProgram({
+        mediator,
+        logger: new FakeLogger(),
+        version: 'test',
+        availableStacks: [],
+        availableVerticals: [],
+        cwd: () => '/tmp/demo',
+        serveUi: () => {
+          throw new Error('unexpected UI start');
+        },
+      }).parseAsync([...args], { from: 'user' }),
+    ).rejects.toThrow(message);
+    expect(mediator.dispatched).toEqual([]);
+  });
+
+  it('names the third form where the target is missing, and in its help', async () => {
+    await expect(run(['add'])).rejects.toThrow(/'entrypoint <cli\|http>'/);
+    const add = buildProgram({
+      mediator: new RecordingMediator(),
+      logger: new FakeLogger(),
+      version: 'test',
+      availableStacks: [],
+      availableVerticals: [],
+      cwd: () => '/tmp/demo',
+      serveUi: () => {
+        throw new Error('unexpected UI start');
+      },
+    }).commands.find((command) => command.name() === 'add');
+    expect(add?.description()).toContain(
+      "the entrypoint a project lacks with 'keel add entrypoint <cli|http>'",
     );
   });
 });

@@ -38,11 +38,16 @@ const HOLDERS = {
  * the root itself (a vertical its manifest records, run without a
  * re-render), or each some of it — which a pinned keel would run
  * nothing for there either, and the refusal says who has it instead.
+ *
+ * `pinnable` is false where the keel that scaffolded the project has
+ * no `command` to run, a command newer than it: the refusal then
+ * names no pin.
  */
 export function harnessGenerationRefusal(
   manifest: ManifestV2,
   command: string,
   already?: 'services' | 'root' | 'both',
+  pinnable = true,
 ): DomainError | null {
   const found = manifest.harnessGeneration;
   if (found === HARNESS_GENERATION) return null;
@@ -62,16 +67,18 @@ export function harnessGenerationRefusal(
   if (productRoot) {
     const forward = `A product root's harness is the product's own, and no 'keel add' brings it forward — the agent harness is its services', each brought forward in its own directory`;
     return new DomainError(
-      already === undefined
-        ? `${lead} ${forward} — so pin ${scaffoldedBy}, the keel that scaffolded it, to run '${command}' here.`
-        : `${lead} ${forward} — and ${HOLDERS[already]} what '${command}' names already, so there is nothing to run here.`,
+      already !== undefined
+        ? `${lead} ${forward} — and ${HOLDERS[already]} what '${command}' names already, so there is nothing to run here.`
+        : pinnable
+          ? `${lead} ${forward} — so pin ${scaffoldedBy}, the keel that scaffolded it, to run '${command}' here.`
+          : `${lead} ${forward}.`,
       HARNESS_GENERATION_CODE,
     );
   }
   const installed = manifest.verticals.some((v) => v.id === 'agent-harness');
   const adopt = installed ? 'keel add agent-harness --reapply' : 'keel add agent-harness';
   return new DomainError(
-    `${lead} Move AGENTS.md, CLAUDE.md and .claude/ (keeping .claude/.keel-manifest.json) out of the way, run '${adopt}' to re-render the harness and stamp the marker, then re-run '${command}' — or pin ${scaffoldedBy}.`,
+    `${lead} Move AGENTS.md, CLAUDE.md and .claude/ (keeping .claude/.keel-manifest.json) out of the way, run '${adopt}' to re-render the harness and stamp the marker, then re-run '${command}'${pinnable ? ` — or pin ${scaffoldedBy}` : ''}.`,
     HARNESS_GENERATION_CODE,
   );
 }

@@ -332,4 +332,21 @@ describe('the harness-generation gate — the other refusals', () => {
       )?.message,
     ).toContain('upgrade keel');
   });
+
+  it('names no pin for a command the keel that scaffolded the project does not have', () => {
+    const { harnessGeneration: _dropped, ...unmarked } = emptyManifestV2(
+      '2026-09-13T00:00:00Z',
+      '0.5.0-alpha',
+    );
+    const root = { ...unmarked, services: [{ path: 'backend', stack: 'go-http' }] };
+    const [project, product] = [unmarked, root].map(
+      (manifest) =>
+        harnessGenerationRefusal(manifest, 'keel add entrypoint http', undefined, false)?.message,
+    );
+    expect(project).toMatch(/, then re-run 'keel add entrypoint http'\.$/);
+    expect(product).toMatch(
+      /the agent harness is its services', each brought forward in its own directory\.$/,
+    );
+    for (const message of [project, product]) expect(message).not.toMatch(/\bpin\b/);
+  });
 });

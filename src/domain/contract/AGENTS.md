@@ -38,11 +38,13 @@ DomainError`, which carries one beside its code and sentence. It
   not import the engine. The walk that fills `NearbyProjects` stays the
   engine's (`scope.ts` `nearbyProjects`); the composition root hands it
   to the toolchain handlers as `ToolchainDeps.nearby`. A command a
-  product root refuses too (`keel add module`, `keel toolchain`) says so
-  (`serviceScoped`), and inside a product root is pointed at those of
-  its services that hold a project (`NearbyProjects.services`) rather
-  than at the root. One a
+  product root refuses too (`keel add module`, `keel toolchain`,
+  `keel add entrypoint`) says so (`serviceScoped`), and inside a
+  product root is pointed at those of its services that hold a project
+  (`NearbyProjects.services`) rather than at the root. One a
   project can refuse as well says why each it names does
   (`refusedAt`): where all of them refuse it for one reason, the
   sentence gives the reason rather than pointing — `keel add module`
-  inside a project on the flat layout.
+  inside a project on the flat layout, `keel add entrypoint` inside a
+  monorepo product, whose services refuse it too, or inside a project
+  growth refuses (a modulith with a peer context).

@@ -1961,6 +1961,7 @@ function underService(thrown: unknown, prefix: string): unknown {
       thrown.adapterId,
       thrown.refusal.anchor,
       thrown.refusal.taken,
+      thrown.refusal.manual,
     );
   }
   if (thrown instanceof PathMissingError) {

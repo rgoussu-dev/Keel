@@ -206,6 +206,7 @@ describe('the keel ui API', () => {
     for (const target of [
       { kind: 'add-vertical', vertical: 'ci' },
       { kind: 'add-module', module: 'billing', consumes: 'greeting' },
+      { kind: 'add-entrypoint', entrypoint: 'http' },
     ]) {
       await call(mediator, {
         method: 'POST',
@@ -216,8 +217,10 @@ describe('the keel ui API', () => {
     expect(mediator.dispatched.map((action) => action.kind)).toEqual([
       'keel.add-vertical',
       'keel.add-module',
+      'keel.add-entrypoint',
     ]);
     expect(mediator.dispatched[1]).toMatchObject({ module: 'billing', consumes: 'greeting' });
+    expect(mediator.dispatched[2]).toMatchObject({ cwd: '/tmp/demo', entrypoint: 'http' });
     // `vertical` is the alias for a list of one.
     expect(mediator.dispatched[0]).toMatchObject({ verticals: ['ci'] });
   });
@@ -302,16 +305,15 @@ describe('the keel ui API', () => {
     expect(response.body).toContain('target');
   });
 
-  it('rejects an add-module target with an empty name', async () => {
+  it.each([
+    ['an add-module target with an empty name', { kind: 'add-module', module: '' }],
+    ['an add-entrypoint target naming none', { kind: 'add-entrypoint', entrypoint: '' }],
+  ])('rejects %s', async (_, target) => {
     const mediator = new RecordingMediator();
     const response = await call(mediator, {
       method: 'POST',
       path: '/api/preview',
-      body: JSON.stringify({
-        cwd: '/tmp/demo',
-        target: { kind: 'add-module', module: '' },
-        answers: {},
-      }),
+      body: JSON.stringify({ cwd: '/tmp/demo', target, answers: {} }),
     });
     expect(response.status).toBe(400);
     expect(mediator.dispatched).toEqual([]);

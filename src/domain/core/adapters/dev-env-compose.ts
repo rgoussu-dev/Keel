@@ -32,6 +32,7 @@ import { placeReadmeSection } from '../rank.js';
 import { anyProjectName, eolAware } from '../util.js';
 import {
   attachDevContainerToDevEnv,
+  DEV_CONTAINER_TARGET,
   attachReadmeSection,
   devContainerInstalled,
   renderDevContainerOverlay,
@@ -109,9 +110,14 @@ export const devEnvComposeAdapter: Adapter = {
       patches: [
         ...(base.patches ?? []),
         {
-          target: '.devcontainer/devcontainer.json',
+          target: DEV_CONTAINER_TARGET,
           apply: eolAware((existing) =>
-            attachDevContainerToDevEnv(existing, projectName, ctx.manifest.tags),
+            attachDevContainerToDevEnv(
+              existing,
+              projectName,
+              ctx.manifest.tags,
+              DEV_ENV_COMPOSE_ID,
+            ),
           ),
         },
         {

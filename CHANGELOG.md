@@ -14,6 +14,19 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A dev container you customized is refused, not crashed on, when a
+  dev environment arrives.** `keel add dev-env` on a project whose
+  `.devcontainer/devcontainer.json` no longer carried the image keel
+  scaffolded — a base image of your own — threw a plain error naming
+  the manual recipe: the terminal printed it, and `keel ui` answered the
+  preview with `keel.internal`, as a bug to report. It is now refused as
+  `keel.path-conflict` before anything is written, as any file keel
+  cannot patch is, saying the file changed since keel scaffolded it
+  and that attaching it to the dev environment is yours to do — never
+  the `"image"` line the attach replaces, since putting it back would
+  leave your image beside the compose fields, where it is ignored;
+  `docs/verticals/dev-container.md` has the recipe.
+
 - **The manifest records a harness file as keel leaves it.** Each file
   the agent harness writes has a record in `.keel-manifest.json`'s
   `entries`, whose hashes say what keel shipped. The family kit's
@@ -535,6 +548,14 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **A plugin vertical may no longer be named `module` or
+  `entrypoint`.** `keel add` reads either word as a command of its own
+  — `keel add module <name>`, and now `keel add entrypoint
+<cli|http>` — so a plugin vertical of that id could be installed with
+  `keel new --with` but never with `keel add`. A plugin registering one
+  is now refused when it loads (`keel.invalid-piece`), naming the
+  plugin; rename the vertical.
 
 - **A section keel adds to an existing README, an entry it adds to a
   build file's list, and what a later dev environment adds to the dev
@@ -1117,6 +1138,56 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **A project's entrypoints can grow: `keel add entrypoint <cli|http>`.**
+  A project's entrypoints were fixed at `keel new`: `keel add
+observability` on a CLI project was refused, its hint naming the
+  preset that carries both, and the only way to an HTTP server was to
+  scaffold that preset afresh and move the code across. `keel add
+entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
+  HTTP one, now grows the project into that preset, its twin, and
+  leaves byte for byte the tree `keel new` of the twin writes on the
+  same build system, module layout and agent-harness setting —
+  `keel new --stack=quarkus-cli && keel add entrypoint http` is
+  `keel new --stack=quarkus-cli-rest`, manifest included but for its
+  timestamps, and queues the same deferred actions — the JVM's build
+  wrapper and formatter, `go mod tidy`, `pnpm install` or
+  `cargo check` — without the repository's setup (`git init`, the
+  hooks path). It installs the other entrypoint's bootstrap and writes
+  nothing of the one already there — an edited `Main` stays as it is,
+  though on the JVM the queued formatter formats the whole project as
+  the pre-commit hook does, and a file of yours where the new one goes
+  is refused as `keel.path-conflict` before anything is written —
+  then, adding HTTP, the dev environment and observability, asking
+  only for the monitoring stack's shape. On a project that took
+  extras, the part of an extra that applies to the new entrypoint
+  comes too, asking its own questions, as in the twin with that
+  extra: a native Quarkus image with distribution, grown a CLI, gains
+  the native CLI's release workflows and asks their `targets`. It
+  re-renders the agent harness, whose runbook and skills speak of the
+  entrypoints, and shows the diffs. An entrypoint the project has
+  already is an Ok that writes nothing, and refuses an answer supplied
+  for it, as `keel add` does where there is nothing to run. It is
+  refused on a project another keel generation scaffolded
+  (`keel.harness-generation`, as every `keel add` is, naming no keel
+  to pin where the project has no marker, since no keel that writes
+  none has the command), in a product's root or monorepo service
+  (`keel.wrong-scope`), for a word naming no entrypoint
+  (`keel.unknown-entrypoint`), for a front end or a project
+  no preset grows into (`keel.uncoverable-entrypoint`), where the
+  entrypoint would break a plugin vertical's rule, as `keel new` of
+  the twin with that vertical is (`keel.incompatible`), and, for now,
+  on a modulith whose peer context or added modules are wired into its
+  entrypoints (`keel.contexts-need-rewiring`, naming them). Where the
+  project is linked to another that now gets an HTTP server it never
+  recorded, the report names the `keel link` that records it.
+  `keel ui`'s API takes it as the target
+  `{ "kind": "add-entrypoint", "entrypoint": "http" }`, which it
+  previews and installs as the CLI does; the page does not offer it
+  yet. The composition grid holds all 192 single-entrypoint backend
+  cells to their twins, both ways, on every dial setting (I10, hard):
+  128 grow, and the 64 with the peer context are refused. See
+  `docs/cli.md` → `keel add entrypoint`.
 
 - **A weekly composition sweep covers what the grid cannot afford to.**
   The composition grid in `verify` reads each preset on its opening

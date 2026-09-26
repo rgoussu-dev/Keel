@@ -48,8 +48,19 @@ the shape `--with dev-env` has always written there: `"name"` above
 the note, the docker feature first. Either way, anything else you
 wrote into the file stays. The one exception is a definition you have
 customized away from the scaffolded shape (e.g. a different base
-image) — the upgrade then refuses to rewrite it and names the manual
-recipe instead of silently losing your changes.
+image): the upgrade then refuses to rewrite it rather than silently
+lose your changes — `keel.path-conflict`, before anything is written,
+saying the file changed since keel scaffolded it and that attaching it
+is yours to do. Putting keel's `"image"` line back beside yours would
+only have the upgrade replace keel's and leave yours beside the
+compose fields, where a dev container in compose mode ignores it. To
+attach it yourself: replace its `"image"` with
+`"dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"]`,
+`"service": "workspace"`, `"workspaceFolder": "/workspaces/<project>"`
+and `"overrideCommand": true`, move the image into a
+`.devcontainer/compose.yaml` `workspace` service, and add the
+`docker-outside-of-docker` feature — then re-run: keel leaves an
+attached definition as it is.
 
 ## Dimensions & adapters
 

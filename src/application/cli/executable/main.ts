@@ -15,6 +15,7 @@ import { CatalogHandler } from '../../../domain/core/handlers/catalog.js';
 import { DialsHandler } from '../../../domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../../domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../../domain/core/handlers/project-status.js';
+import { AddEntrypointHandler } from '../../../domain/core/handlers/add-entrypoint.js';
 import { AddModuleHandler } from '../../../domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.js';
 import { DocsCheckHandler } from '../../../domain/core/handlers/docs-check.js';
@@ -110,6 +111,7 @@ async function run(argv: string[]): Promise<void> {
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
+    new AddEntrypointHandler(deps),
     new DocsSyncHandler(deps),
     new DocsCheckHandler(deps),
     new LinkPeerHandler(deps),

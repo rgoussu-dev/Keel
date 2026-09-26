@@ -8,10 +8,10 @@
  * dials: its **twin**. Growth adds files and never removes one — the
  * other entrypoint's bootstrap newly matches, and the twin's verticals
  * the project lacks install — so the whole answer is a reading of the
- * adapter set before and after one tag. The command, its preview,
- * `keel.project-status` and the refusal builder are to read this one
- * function (roadmap R.2b, R.2c) — none does yet — as every surface
- * reads readiness through `./planner.ts`.
+ * adapter set before and after one tag. The command and its preview
+ * read this one function (roadmap R.2b); `keel.project-status` and the
+ * refusal builder are to (R.2c) — as every surface reads readiness
+ * through `./planner.ts`.
  *
  * **The twin** is found through the drill-down `./profile.ts` walks:
  * the tags less anything a vertical can add, plus the new entrypoint,
@@ -41,16 +41,17 @@
  * is to refuse under.
  */
 
-import type { Tag, Vertical } from '../contract/composition.js';
+import type { Conflict, Tag, Vertical } from '../contract/composition.js';
 import { effectiveTags, type ManifestV2 } from '../contract/manifest.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { Stack } from '../contract/stack.js';
 import { CONTEXT_TAG } from './adapters/added-context.js';
 import { emitsFor } from './adapters/context-support.js';
 import { PEER_CONTEXT_TAG, PEER_MODULE } from './adapters/module-layout.js';
-import { assemblyRefusal } from './compatibility.js';
+import { assemblyRefusal, conflictsOf, wouldViolate } from './compatibility.js';
 import { harnessActivatedBy, peerContextOffered, piecesOf, withoutHarness } from './dials.js';
 import { acquirableIn, matchingIds } from './planner.js';
+import type { UncoverableEntrypointReason } from './refusals.js';
 import { assemblableStacks, installedVertical } from './registry.js';
 import { axesOf, entrypointNamed, pathFor, wizardPaths } from './stack-wizard.js';
 import { stackTagsFor } from './stacks.js';
@@ -86,6 +87,9 @@ export interface GrowthContext {
  *   the grown project on no single-service preset `keel new` makes it
  *   of on its dials (`no-twin`), or an adapter it matches would stop
  *   matching (`drops`), and keel removes nothing;
+ * - `keel.incompatible` — the entrypoint would break a rule a vertical
+ *   the project has declares: `keel new` of the twin with that vertical
+ *   is refused alike, and so is `keel add` of it on the grown project;
  * - `keel.contexts-need-rewiring` — bounded contexts already wired
  *   into the existing assemblies would need rewiring into the new one.
  */
@@ -94,9 +98,15 @@ export type GrowthRefusal =
   | {
       readonly code: 'keel.uncoverable-entrypoint';
       readonly entrypoint: string;
-      readonly reason: 'front-end' | 'no-twin' | 'drops';
+      readonly reason: UncoverableEntrypointReason;
       /** Where `reason` is `drops`: the adapters that would stop matching. */
       readonly drops?: readonly GrowthAdapters[];
+    }
+  | {
+      readonly code: 'keel.incompatible';
+      readonly entrypoint: string;
+      /** The rules the entrypoint would newly break, in declaration order. */
+      readonly rules: readonly Conflict[];
     }
   | {
       readonly code: 'keel.contexts-need-rewiring';
@@ -119,7 +129,8 @@ export interface GrowthPlan {
   /**
    * The adapters the grown tags newly match, per installed vertical,
    * in the order the manifest records them — on every shipped preset
-   * one: the other entrypoint's bootstrap.
+   * one: the other entrypoint's bootstrap; an extra's may newly match
+   * too, as the native CLI's release does on a native Quarkus image.
    */
   readonly adapters: readonly GrowthAdapters[];
   /**
@@ -159,10 +170,7 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
   const entry = entrypointNamed(word);
   if (entry === null) return refused({ code: 'keel.unknown-entrypoint', word });
   if (manifest.tags.includes(entry.tag)) return { kind: 'present', entrypoint: entry.id };
-  const uncoverable = (
-    reason: 'front-end' | 'no-twin' | 'drops',
-    drops?: readonly GrowthAdapters[],
-  ) =>
+  const uncoverable = (reason: UncoverableEntrypointReason, drops?: readonly GrowthAdapters[]) =>
     refused({
       code: 'keel.uncoverable-entrypoint',
       entrypoint: entry.id,
@@ -196,6 +204,8 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
     if (lost.length > 0) drops.push({ vertical: vertical.id, adapters: lost });
   }
   if (drops.length > 0) return uncoverable('drops', drops);
+  const rules = wouldViolate(conflictsOf(installed), before, [entry.tag]);
+  if (rules.length > 0) return refused({ code: 'keel.incompatible', entrypoint: entry.id, rules });
 
   const contexts = unwired(registry, installed, manifest, entry.tag, [...after]);
   if (contexts.length > 0) {

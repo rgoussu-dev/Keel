@@ -141,6 +141,34 @@ export interface InstallVerticalInputs {
   /** Replay recorded answers for harness declarations only; never apply domain changes or actions. */
   readonly harnessOnly?: boolean;
   /**
+   * The adapters that install, by id. The vertical still resolves
+   * whole, so `after` orders them among the rest as on a full install;
+   * any other adapter is neither applied nor recorded, and its actions
+   * are kept only under {@link actionsOnly}. Absent, every adapter the
+   * vertical resolves to installs. `keel add entrypoint` installs what
+   * the grown tags newly match this way, and never reads the files the
+   * adapters that matched before wrote.
+   *
+   * The vertical counts as run, so no harness replay reaches the
+   * adapters left out: each is contributed from what the manifest
+   * records, and its harness elements go into the buffer as a replay
+   * would put them (re-rendered, in the `reapply` posture).
+   */
+  readonly only?: ReadonlySet<string>;
+  /**
+   * Replay for the deferred actions alone, the sibling of
+   * {@link harnessOnly}: each adapter that does not install — outside
+   * {@link only}, or every one where there is none — is contributed,
+   * its actions kept in their place, and nothing of it applied or
+   * recorded: no file, answer, tag, toolchain need or harness element.
+   * It resolves its answers from what the manifest records, asking
+   * nothing, and reads no supplied answer. A grown project settles
+   * this way — it queues the `gradle wrapper`, `go mod tidy` or
+   * `pnpm install` its twin queues, which belong to adapters that
+   * matched before the entrypoint did.
+   */
+  readonly actionsOnly?: boolean;
+  /**
    * What the run composes from — read only to word a refusal: a
    * vertical whose dimension is left uncovered for want of a
    * capability names the vertical that adds it. Absent, the refusal
@@ -158,7 +186,8 @@ export interface InstallVerticalResult {
   /**
    * The adapters the verticals resolved to, in the order they ran —
    * what a caller holds supplied answers against once the run is
-   * staged.
+   * staged. One that did not install (`only`, `actionsOnly`) is not
+   * among them: it read no answer.
    */
   readonly adapters: readonly Adapter[];
   /**
@@ -173,7 +202,7 @@ export interface InstallVerticalResult {
 /** Inputs to {@link installVerticals}: one install's inputs, over a list of verticals. */
 export interface InstallVerticalsInputs extends Omit<
   InstallVerticalInputs,
-  'vertical' | 'harnessOnly'
+  'vertical' | 'harnessOnly' | 'only' | 'actionsOnly'
 > {
   /**
    * The verticals to install, in the order they run. Each resolves
@@ -195,6 +224,18 @@ export interface InstallVerticalsInputs extends Omit<
    * installed verticals' after every vertical. Absent, none.
    */
   readonly rules?: readonly Conflict[];
+  /**
+   * Per vertical id among {@link verticals}, the adapters that install
+   * ({@link InstallVerticalInputs.only}). A vertical absent here
+   * installs every adapter it resolves to.
+   */
+  readonly only?: Readonly<Record<string, ReadonlySet<string>>>;
+  /**
+   * Ids among {@link verticals} replayed for their deferred actions
+   * alone ({@link InstallVerticalInputs.actionsOnly}) — every adapter
+   * of each, or each one outside its {@link only}. Absent, none.
+   */
+  readonly actionsOnly?: readonly string[];
 }
 
 /**
@@ -215,7 +256,14 @@ export interface InstallVerticalsInputs extends Omit<
 export async function installVerticals(
   inputs: InstallVerticalsInputs,
 ): Promise<InstallVerticalResult> {
-  const { verticals, rerender = [], rules: around = [], ...run } = inputs;
+  const {
+    verticals,
+    rerender = [],
+    rules: around = [],
+    only = {},
+    actionsOnly = [],
+    ...run
+  } = inputs;
   const owners = inputs.owners ?? newOwnership();
   const harness = inputs.harness ?? [];
   let manifest = inputs.manifest;
@@ -227,6 +275,7 @@ export async function installVerticals(
   const broken = new Set(violatedBy(rules, effectiveTags(manifest)).map((rule) => rule.id));
 
   for (const vertical of verticals) {
+    const installs = only[vertical.id];
     const result = await installVertical({
       ...run,
       vertical,
@@ -234,6 +283,8 @@ export async function installVerticals(
       owners,
       harness,
       ...(rerender.includes(vertical.id) ? { apply: 'reapply' as const } : {}),
+      ...(installs === undefined ? {} : { only: installs }),
+      ...(actionsOnly.includes(vertical.id) ? { actionsOnly: true } : {}),
     });
     manifest = result.manifest;
     const newly = violatedBy(rules, effectiveTags(manifest)).filter((rule) => !broken.has(rule.id));
@@ -313,8 +364,41 @@ export async function installVertical(
   const reads: AnswerRead[] = [];
   let skipped = 0;
 
+  const installed: Adapter[] = [];
+
   for (const adapter of ordered) {
     const tags = effectiveTags(running);
+    const installs =
+      inputs.only === undefined ? inputs.actionsOnly !== true : inputs.only.has(adapter.id);
+    if (!installs) {
+      const resolution = await resolveAdapterAnswers(
+        adapter,
+        memoryOf(running, {}, adapter, tags).answers,
+        'non-interactive',
+        inputs.prompt,
+        tags,
+        true,
+      );
+      const contribution = await adapter.contribute(
+        makeCtx(adapter, resolution.answers, {
+          manifest: running,
+          logger: inputs.logger,
+          cwd: inputs.cwd,
+          templates: inputs.templates,
+          processes: inputs.processes,
+        }),
+      );
+      if (inputs.only !== undefined) {
+        // The vertical counts as run, so no harness replay reaches this
+        // adapter: its elements are replayed into the buffer here, as
+        // that replay would, or they would be lost.
+        assertDeclared('skills', inputs.vertical, adapter, contribution.skills ?? []);
+        assertDeclared('hooks', inputs.vertical, adapter, contribution.hooks ?? []);
+        collectHarness(adapter, contribution, harness, 'reapply');
+      }
+      if (inputs.actionsOnly === true) collectedActions.push(...(contribution.actions ?? []));
+      continue;
+    }
     // A re-render is "from the recorded answers" for an adapter that
     // has some: they are frozen, so nothing supplied reaches it and
     // nothing is asked — a question it grew since takes its default.
@@ -322,7 +406,6 @@ export async function installVertical(
     // asked like any first install rather than left to its defaults.
     const frozen = inputs.apply === 'reapply' && recordsAnswers(inputs.manifest, adapter);
     const memory = memoryOf(running, frozen ? {} : (inputs.supplied ?? {}), adapter, tags);
-    reads.push(...memory.reads);
     const resolution = await resolveAdapterAnswers(
       adapter,
       memory.answers,
@@ -331,6 +414,8 @@ export async function installVertical(
       tags,
       inputs.harnessOnly === true,
     );
+    installed.push(adapter);
+    reads.push(...memory.reads);
 
     running = foldAnswers(running, adapter.id, resolution.answers, resolution.updates);
 
@@ -371,9 +456,13 @@ export async function installVertical(
     skipped = finalized.skipped;
     collectedSkills.push(...finalized.skills);
   }
-  const final = inputs.harnessOnly
-    ? running
-    : recordVertical(running, inputs.vertical, inputs.now());
+  // A vertical that only replayed its actions installed nothing, and
+  // is recorded as it was.
+  const partial = inputs.only !== undefined || inputs.actionsOnly === true;
+  const final =
+    inputs.harnessOnly || (partial && installed.length === 0)
+      ? running
+      : recordVertical(running, inputs.vertical, inputs.now());
 
   return {
     manifest: final,
@@ -383,7 +472,7 @@ export async function installVertical(
       actions: collectedActions,
       ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     },
-    adapters: ordered,
+    adapters: installed,
     reads,
   };
 }
@@ -449,7 +538,11 @@ function assertDeclared(
 /**
  * Finalizes a shared install run and records every realized harness
  * file's provenance, as the run leaves the file: see
- * {@link foldHarnessEntries}.
+ * {@link foldHarnessEntries}. An entry recorded anew goes after every
+ * recorded one; `realized` is the order one run writing every file
+ * the pass realized, and every directory pointer it kept, would record
+ * them in, by `source` and `target` — for a caller that places a new
+ * entry elsewhere (`keel add entrypoint`, where the twin records it).
  */
 export function finalizeHarness(inputs: {
   readonly manifest: ManifestV2;
@@ -462,6 +555,7 @@ export function finalizeHarness(inputs: {
   readonly manifest: ManifestV2;
   readonly skills: readonly StagedSkill[];
   readonly skipped: number;
+  readonly realized: readonly Pick<ManifestEntry, 'source' | 'target'>[];
 } {
   const realized = realizeHarness(
     inputs.harness,
@@ -475,6 +569,7 @@ export function finalizeHarness(inputs: {
     manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.tree, inputs.now()),
     skills: realized.skills,
     skipped: realized.skipped,
+    realized: realized.order.map((file) => ({ source: file.adapterId, target: file.path })),
   };
 }
 

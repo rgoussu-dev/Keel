@@ -28,10 +28,11 @@ the shipped source, every refusal naming its origin) and
   once from the root's list, which a refusal of what this one cannot
   carry names (`siblingsOf`; `keel new` hands a product's service the
   same, `dials.ts` `siblingScopes`) — while `nearbyProjects` (which
-  `keel add`, `keel add module`, `keel link` and `keel toolchain` word
-  through the contract's `notInitialisedSentence`, `keel add module`
-  asking each project it names, off the manifest read, whether it takes
-  a context) and `keel new` walk to the
+  `keel add`, `keel add module`, `keel add entrypoint`, `keel link` and
+  `keel toolchain` word through the contract's `notInitialisedSentence`,
+  `keel add module` asking each project it names, off the manifest
+  read, whether it takes a context, and `keel add entrypoint` whether
+  it sits in a monorepo product) and `keel new` walk to the
   filesystem's root and stop at a manifest keel cannot read. Every walk
   ends at the user's home directory unread (`home`, which the
   composition root passes): 0.1.0-alpha's `keel install --global` left
@@ -195,8 +196,22 @@ context is structural — no adapter requiring the context's marker also
 requires the entrypoint's tag — and `tests/domain/core/growth-render.test.ts`
 holds it to what the adapters render: an adapter that matched before
 the entrypoint and renders otherwise after it must be one growth
-re-renders or one whose context it refuses. See `docs/cli.md` →
-Finding a stack.
+re-renders or one whose context it refuses. `handlers/add-entrypoint.ts`
+runs that reading and nothing else: it installs only the adapters that
+newly match (`installVerticals`' `only`), replays the twin's other
+verticals for their deferred actions alone (`actionsOnly`), and records
+what is new where the twin records it — so the grid can hold the grown
+project to the twin byte for byte, manifest included (I10). A vertical
+installed in part counts as run, so no harness replay reaches the
+adapters it leaves out: the install replays their harness elements into
+the buffer itself. The handler realizes the buffer in the twin's order,
+and places a harness entry it records anew by that realization
+(`finalizeHarness`' `realized`, which counts a directory pointer the
+pass kept where it would have written it), as the twin records it.
+A rule the entrypoint's tag breaks is `growthOf`'s to refuse
+(`keel.incompatible`): `installVerticals` takes every rule the manifest
+it is handed breaks as standing, and the handler hands it the grown
+one. See `docs/cli.md` → Finding a stack, and → `keel add entrypoint`.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

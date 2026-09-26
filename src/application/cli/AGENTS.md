@@ -22,6 +22,12 @@ no logic.
   `--with` example out of the program, plans it on two stacks and
   holds `docs/cli.md` to it; `persistence,iac` sat in the help,
   refused on every stack, until it did.
+- `keel add module <name>` and `keel add entrypoint <cli|http>` are
+  reserved first words of `add`, not commander subcommands: a nested
+  command would stop `keel add persistence` resolving. So the registry
+  refuses `module` and `entrypoint` as vertical ids
+  (`registry.ts`'s `RESERVED_VERTICAL_IDS`); a third form adds a word
+  to both.
 - `keel add --list` inside a project prints `keel.project-status` —
   one dispatch, the readiness the add front door plans by — never a
   list of its own; `availableVerticals` is only the catalog it prints

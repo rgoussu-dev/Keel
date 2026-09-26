@@ -490,7 +490,8 @@ export interface ReadinessNeeds {
 export interface ReadinessGap {
   /**
    * Entrypoints the scope lacks — `arch.*` tags the stack finder
-   * offers as a way in (`arch.server-http`). Fixed at `keel new`.
+   * offers as a way in (`arch.server-http`). No vertical adds one:
+   * `keel new` chooses them, and `keel add entrypoint` adds a back one.
    */
   readonly entrypoint: readonly Tag[];
   /**

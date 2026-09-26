@@ -2,7 +2,7 @@
  * The composition grid: every cell of keel's composition surface,
  * dispatched through the real mediator, and the ratchet that holds
  * epic Q's invariants over them (`docs/roadmap.md` → "The measure:
- * the composition grid").
+ * the composition grid"), and epic R's I10 ("The measure", under R).
  *
  * **Scenario.** Cells are derived, never listed: stacks and verticals
  * from `keel.catalog`, the extras menu from `keel.dials`, the
@@ -21,7 +21,9 @@
  * **Factory.** {@link installMediator} over the real templates and
  * filesystem, with a {@link FakeProcessRunner} and a deferred-action
  * runner that runs nothing: a scaffold is every staged file, with no
- * `git init`, no `gradle wrapper` and no network.
+ * `git init`, no `gradle wrapper` and no network. What a real run
+ * queued is kept, per directory, for an axis to compare
+ * ({@link Grid.queued}).
  *
  * **Port.** `Mediator.dispatch`, and nothing else. The oracle is
  * always the engine's own answer — a preview, or an install — never a
@@ -43,7 +45,7 @@
  *     rejects that. A {@link HARD} invariant has no entry at all.
  *
  * One file per axis rather than one for the grid, because vitest runs
- * the three suites in parallel workers and each rewrites its own files
+ * the axes' suites in parallel workers and each rewrites its own files
  * under `KEEL_UPDATE_GOLDEN=1` — a shared file would be a race.
  */
 
@@ -54,7 +56,7 @@ import fs from 'fs-extra';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { Action, ResultOf } from '../../src/domain/kernel/action.js';
 import type { Mediator } from '../../src/domain/kernel/mediator.js';
-import type { Adapter, Vertical } from '../../src/domain/contract/composition.js';
+import type { Adapter, DeferredAction, Vertical } from '../../src/domain/contract/composition.js';
 import {
   installCommandFor,
   type InstallTarget,
@@ -91,6 +93,7 @@ export const INVARIANTS = {
   I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
   I9: 'the same body previews and installs (dry run) alike: the same bytes, or the same refusal — the one the preview reports an unread answer with',
+  I10: 'keel new X then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) keel new of the twin leaves on the same dials — or is refused as growth reads it',
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -108,9 +111,10 @@ export type Invariant = keyof typeof INVARIANTS;
  * no tag; I4 with Q1.10, when a monorepo service came to read what its
  * product gives it and what its repository root keeps from it — and
  * I7 landed hard, with the same step; I9 landed hard with Q2.1, when
- * the preview came to read the answers it is sent as the install does.
+ * the preview came to read the answers it is sent as the install does;
+ * I10 landed hard with R.2b, with the command it holds to its twins.
  */
-export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'I9'];
+export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'I9', 'I10'];
 
 /**
  * The codes a refusal about a file in the way carries — the one kind
@@ -227,6 +231,8 @@ export class Grid {
    * theirs one level down — each with the directory it is rooted at.
    */
   private readonly watched = new Map<string, { readonly at: string; readonly tree: Tree }[]>();
+  /** What the last real run in each directory queued, in order. */
+  private readonly deferred = new Map<string, readonly DeferredAction[]>();
 
   /**
    * @param holds the invariants this axis measures — recording any
@@ -241,7 +247,9 @@ export class Grid {
     this.mediator = installMediator({
       registry,
       processes: new FakeProcessRunner(),
-      runDeferred: async () => {},
+      runDeferred: async ({ actions, cwd }) => {
+        this.deferred.set(cwd, actions);
+      },
       trees: (root) => {
         const tree = fsTreeFactory(root);
         for (const [watched, trees] of this.watched) {
@@ -353,6 +361,14 @@ export class Grid {
     } finally {
       this.watched.delete(root);
     }
+  }
+
+  /**
+   * The deferred actions the last real run in `cwd` queued — none of
+   * which ran — in the order it queued them; empty where none has run.
+   */
+  queued(cwd: string): readonly DeferredAction[] {
+    return this.deferred.get(cwd) ?? [];
   }
 
   /** Records that `cell` breaks `invariant`. */
@@ -650,8 +666,9 @@ function adaptersById(registry: Registry): ReadonlyMap<string, Adapter> {
 /**
  * Holds one body to I9, as the cells `cell` (its preview) and
  * `cell!install` (a dry-run install of it, non-interactive as `keel ui`
- * installs): each stages into a directory of its own, and they agree
- * when
+ * installs): each stages into a directory of its own — or both into
+ * `cwd`, the project a target that adds to one runs in, which neither
+ * writes — and they agree when
  *
  * - the preview refuses, and the install refuses under the same code in
  *   the same sentence;
@@ -665,9 +682,10 @@ export async function holdParity(
   cell: string,
   target: InstallTarget,
   answers: PresetAnswers,
+  cwd?: string,
 ): Promise<void> {
-  const previewAt = await grid.scratch();
-  const installAt = await grid.scratch();
+  const previewAt = cwd ?? (await grid.scratch());
+  const installAt = cwd ?? (await grid.scratch());
   const previewing = previewQuery({ cwd: previewAt, target, answers });
   const installing = installCommandFor(target, {
     cwd: installAt,

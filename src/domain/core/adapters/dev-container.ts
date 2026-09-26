@@ -43,6 +43,7 @@
  * written.
  */
 
+import { PathConflictError } from '../../contract/refusal.js';
 import { placeReadmeSection } from '../rank.js';
 import { anyProjectName, codeOnly, eolAware } from '../util.js';
 import { loadToolchainPins, type ToolchainPins } from './version-pins.js';
@@ -63,6 +64,9 @@ const TEMPLATE_ID = 'composition/dev-container/definition/templates';
 
 /** The compose overlay, only written in the attached shape. */
 export const DEV_CONTAINER_COMPOSE_TARGET = '.devcontainer/compose.yaml';
+
+/** The definition itself, in either shape. */
+export const DEV_CONTAINER_TARGET = '.devcontainer/devcontainer.json';
 
 /** True when the dev-env vertical is recorded on the manifest. */
 export function devEnvInstalled(manifest: ManifestV2): boolean {
@@ -163,11 +167,15 @@ const DOCKER_FEATURE = '    "ghcr.io/devcontainers/features/docker-outside-of-do
  * Upgrades a standalone `devcontainer.json` to the attached shape —
  * the dev-env vertical applies this when it is installed *after*
  * the dev container, so brownfield install order does not matter.
- * Idempotent on an already-attached definition. Throws when the
- * definition has drifted from the scaffolded standalone shape
- * (e.g. a custom base image): an automatic rewrite would silently
- * lose the customization, so the attachment is left to the user
- * with the recipe in the message.
+ * Idempotent on an already-attached definition. Refuses a definition
+ * that has drifted from the scaffolded standalone shape — no `"image"`
+ * line keel wrote, a custom base image — as `keel.path-conflict`
+ * naming the file and `by`, the adapter whose patch attaches it: the
+ * attachment replaces that line, so an automatic rewrite would silently
+ * lose the customization. The run stops before anything is written,
+ * and the attachment is the user's (`docs/verticals/dev-container.md`
+ * has the recipe) — which is what the refusal says, rather than naming
+ * the line, whose return would undo their change.
  *
  * Where the upgrade puts what it adds is ranked by `tags`. On a
  * project carrying `arch.server-http` every preset installs the dev
@@ -186,14 +194,17 @@ export function attachDevContainerToDevEnv(
   existing: string,
   projectName: string,
   tags: readonly Tag[],
+  by: string,
 ): string {
   if (existing.includes('"dockerComposeFile"')) return existing;
   const anchor = `  "image": "${BASE_IMAGE}",`;
   if (!existing.includes(anchor)) {
-    throw new Error(
-      `.devcontainer/devcontainer.json has drifted from the scaffolded shape — attach it to the dev environment manually: replace its "image" with ` +
-        `"dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"], "service": "workspace", "workspaceFolder": "/workspaces/${projectName}", "overrideCommand": true, ` +
-        `move the image into a .devcontainer/compose.yaml workspace service, and add the docker-outside-of-docker feature`,
+    throw new PathConflictError(
+      DEV_CONTAINER_TARGET,
+      by,
+      undefined,
+      undefined,
+      'attach it to the dev environment',
     );
   }
   if (tags.includes('arch.server-http')) return attachedAsRendered(existing, anchor, projectName);

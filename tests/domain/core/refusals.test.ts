@@ -15,10 +15,13 @@ import type { ReadinessGap } from '../../../src/domain/contract/queries.js';
 import { RefusalError, type Refusal } from '../../../src/domain/contract/refusal.js';
 import {
   elsewhereRefusal,
+  entrypointPresentNote,
   inServicesNote,
   productRootPlacementRefusal,
   providedNote,
+  reapplyConflictSentence,
   refusalSentence,
+  relinkNote,
   ruleRefusal,
   unbuiltInServiceNote,
   uncoveredRefusal,
@@ -452,6 +455,17 @@ const TABLE: readonly {
       "'MediatorFactory.kt' already has a 'clock' where keel adds one of that name — keel renames neither, and the two would not build; rename the one there, then re-run",
   },
   {
+    why: 'a file whose change keel would rewrite, leaving the step to the user',
+    refusal: {
+      kind: 'path-conflict',
+      path: '.devcontainer/devcontainer.json',
+      adapterId: 'dev-env/compose-base',
+      manual: 'attach it to the dev environment',
+    },
+    sentence:
+      "'.devcontainer/devcontainer.json' has changed since keel scaffolded it, and keel does not rewrite what you changed there — attach it to the dev environment yourself, then re-run",
+  },
+  {
     why: 'a patch target gone',
     refusal: { kind: 'path-missing', path: 'README.md', adapterId: 'toolchain/mise' },
     sentence: "'README.md' is missing — keel patches it and does not recreate it; restore it",
@@ -671,6 +685,32 @@ describe('the refusals and notes of a scope', () => {
     );
     expect(inServicesNote(ci as Vertical, ['backend'])).toBe(
       'Continuous integration is already there: backend/ has it',
+    );
+  });
+});
+
+describe('the notes of an entrypoint added', () => {
+  it('names an entrypoint by its label, never its tag', () => {
+    expect(entrypointPresentNote('cli')).toBe('CLI is already an entrypoint of this project');
+  });
+
+  it('sends each linked project that records what this one offered before to `keel link`', () => {
+    expect(relinkNote('server-http', ['../front'])).toBe(
+      "the project linked at ../front still records what this one offered it before its HTTP server — 'keel link ../front' brings that record up to date",
+    );
+    expect(relinkNote('server-http', ['../front', '../admin'])).toBe(
+      "the projects linked at ../front and ../admin still record what this one offered them before its HTTP server — 'keel link ../front' and 'keel link ../admin' bring those records up to date",
+    );
+  });
+});
+
+describe('a re-render stopped by a conflict', () => {
+  it('names the verticals it re-rendered, then the conflict in its own words', () => {
+    expect(reapplyConflictSentence(['agent-harness'], "'README.md' keeps changing")).toBe(
+      "reapply of 'agent-harness' refused: 'README.md' keeps changing",
+    );
+    expect(reapplyConflictSentence(['ci', 'distribution'], 'two writers')).toBe(
+      "reapply of 'ci', 'distribution' refused: two writers",
     );
   });
 });

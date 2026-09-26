@@ -11,6 +11,7 @@ import type { Mediator } from '../../../domain/kernel/mediator.js';
 import type { Result } from '../../../domain/kernel/result.js';
 import type { Logger } from '../../../domain/contract/ports/logger.js';
 import {
+  addEntrypointCommand,
   addModuleCommand,
   addVerticalCommand,
   docsSyncCommand,
@@ -90,6 +91,15 @@ export interface CliDeps {
  * and `module` names no dimension.
  */
 const MODULE_TARGET = 'module';
+
+/**
+ * The first argument of `keel add` that means "an entrypoint" — `keel
+ * add entrypoint http` — rather than a vertical id: reserved as
+ * {@link MODULE_TARGET} is, for the same reason, and refused as a
+ * vertical id by the registry alike. The word after it is the
+ * domain's to read.
+ */
+const ENTRYPOINT_TARGET = 'entrypoint';
 
 /** Builds the commander program over the wired mediator. */
 export function buildProgram(deps: CliDeps): Command {
@@ -186,7 +196,7 @@ export function buildProgram(deps: CliDeps): Command {
   program
     .command('add [targets...]')
     .description(
-      `Install verticals onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}) — several at once, with what they need — or add a bounded context with 'keel add module <name>'.`,
+      `Install verticals onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}) — several at once, with what they need — or add a bounded context with 'keel add module <name>', or the entrypoint a project lacks with 'keel add entrypoint <cli|http>'.`,
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
@@ -235,19 +245,33 @@ export function buildProgram(deps: CliDeps): Command {
         const [first, ...rest] = targets;
         if (first === undefined) {
           throw new Error(
-            "keel add: missing target — pass vertical ids, 'module <name>', or --list",
+            "keel add: missing target — pass vertical ids, 'module <name>', 'entrypoint <cli|http>', or --list",
           );
         }
         const module = first === MODULE_TARGET;
-        if (module && opts.reapply) {
-          throw new Error("--reapply applies to verticals; 'keel add module' does not support it");
+        const entrypoint = first === ENTRYPOINT_TARGET;
+        const form = module ? 'keel add module' : 'keel add entrypoint';
+        if ((module || entrypoint) && opts.reapply) {
+          throw new Error(`--reapply applies to verticals; '${form}' does not support it`);
         }
-        if (module && opts.refresh !== undefined) {
-          throw new Error("--refresh applies to verticals; 'keel add module' does not support it");
+        if ((module || entrypoint) && opts.refresh !== undefined) {
+          throw new Error(`--refresh applies to verticals; '${form}' does not support it`);
+        }
+        if (entrypoint && opts.consumes !== undefined) {
+          throw new Error(
+            "--consumes applies to 'keel add module'; 'keel add entrypoint' does not support it",
+          );
         }
         if (module && rest.length > 1) {
           throw new Error(
             `keel add module takes one name, got ${String(rest.length)}: ${rest.join(' ')}`,
+          );
+        }
+        if (entrypoint && rest.length !== 1) {
+          throw new Error(
+            rest.length === 0
+              ? "keel add entrypoint: missing entrypoint — name one, as in 'keel add entrypoint http'"
+              : `keel add entrypoint takes one entrypoint, got ${String(rest.length)}: ${rest.join(' ')}`,
           );
         }
         const result = await deps.mediator.dispatch(
@@ -260,16 +284,26 @@ export function buildProgram(deps: CliDeps): Command {
                 interactive: !opts.yes,
                 dryRun: opts.dryRun,
               })
-            : addVerticalCommand({
-                cwd: cwd(),
-                // `ci,persistence`, as `--with` and `--refresh` spell a list.
-                verticals: targets.flatMap(parseVerticalList),
-                answers: parseSetAnswers(opts.set),
-                interactive: !opts.yes,
-                dryRun: opts.dryRun,
-                ...(opts.refresh === undefined ? {} : { refresh: parseVerticalList(opts.refresh) }),
-                ...(opts.reapply ? { reapply: true } : {}),
-              }),
+            : entrypoint
+              ? addEntrypointCommand({
+                  cwd: cwd(),
+                  entrypoint: rest[0] ?? '',
+                  answers: parseSetAnswers(opts.set),
+                  interactive: !opts.yes,
+                  dryRun: opts.dryRun,
+                })
+              : addVerticalCommand({
+                  cwd: cwd(),
+                  // `ci,persistence`, as `--with` and `--refresh` spell a list.
+                  verticals: targets.flatMap(parseVerticalList),
+                  answers: parseSetAnswers(opts.set),
+                  interactive: !opts.yes,
+                  dryRun: opts.dryRun,
+                  ...(opts.refresh === undefined
+                    ? {}
+                    : { refresh: parseVerticalList(opts.refresh) }),
+                  ...(opts.reapply ? { reapply: true } : {}),
+                }),
         );
         const report = unwrap(result, 'add');
         const label = module ? `module ${report.subject}` : report.subject;

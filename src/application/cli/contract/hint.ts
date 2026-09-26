@@ -62,7 +62,10 @@ export function refusalHint(
     case 'incompatible':
       return command === 'new' ? 'drop one of them from --with' : null;
     case 'path-conflict':
-      return command === 'new' && refusal.anchor === undefined && refusal.taken === undefined
+      return command === 'new' &&
+        refusal.anchor === undefined &&
+        refusal.taken === undefined &&
+        refusal.manual === undefined
         ? `move '${refusal.path}' aside, or start in an empty directory`
         : null;
     case 'path-missing':

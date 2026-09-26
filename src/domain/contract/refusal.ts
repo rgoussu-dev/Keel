@@ -215,6 +215,15 @@ export interface PathConflictRefusal {
    * that clash: keel renames neither, and the two would not build.
    */
   readonly taken?: string;
+  /**
+   * What keel would have done to the file, left to the user — `attach
+   * it to the dev environment` — when the conflict is that doing it
+   * would rewrite what the user changed since keel scaffolded it (a
+   * dev container's base image of their own): keel does not, and
+   * pointing at the line it would rewrite would only lead the user to
+   * undo their change.
+   */
+  readonly manual?: string;
 }
 
 /** {@link Refusal} for a patch target the project no longer holds. */
@@ -275,12 +284,14 @@ export class PathConflictError extends RefusalError {
    * @param adapterId the adapter that would have written it
    * @param anchor what the file lacks for keel to patch inside it, if that is the conflict
    * @param taken the name the file already gives something of its own, if that is the conflict
+   * @param manual what keel leaves to the user rather than rewrite their change, if that is the conflict
    */
   constructor(
     readonly path: string,
     readonly adapterId: string,
     anchor?: string,
     taken?: string,
+    manual?: string,
   ) {
     const refusal: PathConflictRefusal = {
       kind: 'path-conflict',
@@ -288,6 +299,7 @@ export class PathConflictError extends RefusalError {
       adapterId,
       ...(anchor === undefined ? {} : { anchor }),
       ...(taken === undefined ? {} : { taken }),
+      ...(manual === undefined ? {} : { manual }),
     };
     super(pathSentence(refusal), PATH_CONFLICT_CODE, refusal);
     this.name = 'PathConflictError';
@@ -327,6 +339,9 @@ export class PathMissingError extends RefusalError {
 export function pathSentence(refusal: PathConflictRefusal | PathMissingRefusal): string {
   if (refusal.kind === 'path-missing') {
     return `'${refusal.path}' is missing — keel patches it and does not recreate it; restore it`;
+  }
+  if (refusal.manual !== undefined) {
+    return `'${refusal.path}' has changed since keel scaffolded it, and keel does not rewrite what you changed there — ${refusal.manual} yourself, then re-run`;
   }
   if (refusal.taken !== undefined) {
     return `'${refusal.path}' already has a '${refusal.taken}' where keel adds one of that name — keel renames neither, and the two would not build; rename the one there, then re-run`;

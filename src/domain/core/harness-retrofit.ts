@@ -4,6 +4,7 @@ import type { Registry } from '../contract/ports/registry.js';
 import { DomainError } from '../kernel/result.js';
 import { addModuleInputs, CONTEXT_TAG } from './adapters/added-context.js';
 import { installVertical, type InstallVerticalInputs } from './install.js';
+import { missingHarnessContributorSentence } from './refusals.js';
 import { installedVertical } from './registry.js';
 import { boundedContextVertical } from './verticals/bounded-context.js';
 
@@ -30,6 +31,13 @@ export async function retrofitHarness(
     readonly registry: Registry;
     /** Defaults to `adopting`, the posture `keel add agent-harness` replays under. */
     readonly scope?: HarnessReplayScope;
+    /**
+     * The command line of the run that replays, which a refusal of a
+     * recorded vertical nothing registered provides names to re-run.
+     * Defaults to `keel docs sync` under `complete`, and to `keel add
+     * agent-harness` otherwise.
+     */
+    readonly line?: string;
   },
 ): Promise<void> {
   const replay = async (vertical: Vertical, manifest: ManifestV2) => {
@@ -49,7 +57,10 @@ export async function retrofitHarness(
     const vertical = installedVertical(inputs.registry, installed.id);
     if (!vertical) {
       throw new DomainError(
-        `cannot restore harness elements from installed vertical '${installed.id}' — restore the plugin that provides it and re-run '${scope === 'complete' ? 'keel docs sync' : 'keel add agent-harness'}'`,
+        missingHarnessContributorSentence(
+          installed.id,
+          inputs.line ?? (scope === 'complete' ? 'keel docs sync' : 'keel add agent-harness'),
+        ),
         'keel.missing-harness-contributor',
       );
     }

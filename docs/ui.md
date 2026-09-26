@@ -554,14 +554,14 @@ The page is a client, not a privileged one — everything it can do is a
 route, and every route is one dispatch through the same mediator the
 CLI uses. Useful if you would rather script it than click it.
 
-| Route               | Body / query               | Dispatches                                        |
-| ------------------- | -------------------------- | ------------------------------------------------- |
-| `GET  /api/catalog` | —                          | `keel.catalog` — stacks, verticals, dials, finder |
-| `GET  /api/project` | `?path=<abs>`              | `keel.project-status`                             |
-| `GET  /api/browse`  | `?path=<abs>`              | directory listing for the picker                  |
-| `POST /api/dials`   | `{ target }`               | `keel.dials` — legal menus + the settled target   |
-| `POST /api/preview` | `{ cwd, target, answers }` | `keel.preview` — writes nothing                   |
-| `POST /api/install` | the identical body         | `keel new` / `keel add` / `keel add module`       |
+| Route               | Body / query               | Dispatches                                                          |
+| ------------------- | -------------------------- | ------------------------------------------------------------------- |
+| `GET  /api/catalog` | —                          | `keel.catalog` — stacks, verticals, dials, finder                   |
+| `GET  /api/project` | `?path=<abs>`              | `keel.project-status`                                               |
+| `GET  /api/browse`  | `?path=<abs>`              | directory listing for the picker                                    |
+| `POST /api/dials`   | `{ target }`               | `keel.dials` — legal menus + the settled target                     |
+| `POST /api/preview` | `{ cwd, target, answers }` | `keel.preview` — writes nothing                                     |
+| `POST /api/install` | the identical body         | `keel new` / `keel add` / `keel add module` / `keel add entrypoint` |
 
 `dials` reads only `target`, so the page posts the same object to all
 three routes and nothing is re-derived between them. It never refuses:
@@ -580,7 +580,11 @@ the target is broken is a menu that cannot be used to fix it.
 { "kind": "add-vertical", "verticals": ["persistence", "ci"], "refresh": ["distribution"] }
 { "kind": "add-vertical", "vertical": "ci", "reapply": false }
 { "kind": "add-module", "module": "billing", "consumes": "greeting" }
+{ "kind": "add-entrypoint", "entrypoint": "http" }
 ```
+
+The page does not offer `add-entrypoint` yet; the API takes it, so a
+script can preview and run `keel add entrypoint` as the CLI does.
 
 `GET /api/project` is what the brownfield half reads before it offers
 anything — the answer each brownfield command's own front door would
@@ -792,10 +796,12 @@ that lacks what keel adds its lines inside, a build file's block or the
 list a composition root registers its handlers in (`keel.path-conflict`
 too, naming what it lacks), or already uses a name keel would add one
 of — a Micronaut Kotlin mediator's `clock` (`keel.path-conflict`,
-naming it) — and a file keel patches that has been deleted
-(`keel.path-missing`). Each names the file, so the live preview
-shows what is in the way before Review. Each used to be a plain throw,
-and so a 500.
+naming it) — a dev container definition you customized, which keel
+will not rewrite to attach it to a dev environment
+(`keel.path-conflict`, leaving the attach to you), and a file keel
+patches that has been deleted (`keel.path-missing`). Each names the
+file, so the live preview shows what is in the way before Review. Each
+used to be a plain throw, and so a 500.
 
 A malformed request is a **400**, a missing or wrong token a **401**,
 and a failed `Host`/`Origin` guard a **403**.

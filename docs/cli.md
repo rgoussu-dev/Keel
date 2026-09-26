@@ -609,10 +609,11 @@ whose manifest keel cannot read, where `keel add` reports the broken
 file; in a polyrepo product's directory, which holds no manifest of
 its own, the services below (_"backend/ and frontend/ below hold keel
 projects; run 'keel add' in one of them"_); only where neither is,
-`keel new`. `keel add module`, `keel link` and `keel toolchain` say the
-same, each naming itself (_"…; run 'keel add module' there"_) — but
-inside a monorepo product root, which takes no bounded context and
-declares no toolchain, `keel add module` and `keel toolchain` name its
+`keel new`. `keel add module`, `keel add entrypoint`, `keel link` and
+`keel toolchain` say the same, each naming itself (_"…; run 'keel add
+module' there"_) — but inside a monorepo product root, which takes no
+bounded context, declares no toolchain and grows no entrypoint, `keel
+add module`, `keel add entrypoint` and `keel toolchain` name its
 services instead (_"this directory is inside the keel product at ../,
 whose services are ../backend/ and ../frontend/; run 'keel toolchain
 install' in one of them"_). Where every project it would name takes no
@@ -620,7 +621,11 @@ bounded context either — the flat layout, which scaffolds default to —
 `keel add module` says so, and why, rather than sending you there to be
 refused: _"this directory is inside the keel project at ../, which
 refuses 'keel add module' too, since a bounded context needs the
-modulith layout: …"_.
+modulith layout: …"_. `keel add entrypoint` does the same inside a
+monorepo product, whose services refuse it as its root does, and inside
+a project that refuses to grow — a modulith with a peer context: _"…
+which refuses 'keel add entrypoint http' too, since HTTP server cannot
+be added here yet: …"_.
 
 ### `--refresh`: what an add changes
 
@@ -691,15 +696,19 @@ written.
 **A project from another harness generation is refused.** Every
 manifest keel creates records the generation of the agent harness it
 wrote (`harnessGeneration`). `keel add <vertical>` — with or without
-`--reapply` — and `keel add module` refuse a project stamped with an
-older generation, or with none, with `keel.harness-generation`, before
-a file moves: its sentinels and agent documents live where this keel
-no longer looks, and a half-patch would corrupt them. The message names
-the way forward — move `AGENTS.md`, `CLAUDE.md` and `.claude/` aside
+`--reapply` — `keel add module` and `keel add entrypoint` refuse a
+project stamped with an older generation, or with none, with
+`keel.harness-generation`, before a file moves: its sentinels and
+agent documents live where this keel no longer looks, and a
+half-patch would corrupt them. The message names the way forward —
+move `AGENTS.md`, `CLAUDE.md` and `.claude/` aside
 (keeping `.claude/.keel-manifest.json`), run `keel add agent-harness`
 (`--reapply` when it is installed), which re-renders the harness and
 restamps the marker, then re-run the command — or pin the keel that
-scaffolded the project. `keel add agent-harness` is the one command
+scaffolded the project. It names no pin for `keel add entrypoint` on a
+project with no marker: the marker and that command arrived in one
+release, so no keel that writes no marker has the command.
+`keel add agent-harness` is the one command
 the gate lets through — but not at a monorepo product root, whose
 services have the harness: it installs nothing there, so the gate
 refuses it too. A product root's harness is the product glue's own,
@@ -862,6 +871,157 @@ Supported on every stack that ships a modulith: the twelve JVM stacks,
 `go-cli`/`go-http`/`go-cli-http`, `rust-cli`/`rust-http`/`rust-cli-http`,
 `ts-cli`/`ts-http` and `web-components`.
 
+## `keel add entrypoint`
+
+Add the **entrypoint a project lacks**: an HTTP server to a CLI
+project, or a CLI to an HTTP one.
+
+```sh
+keel add entrypoint <cli|http> [options]
+keel add entrypoint http        # a CLI project grows an HTTP server
+keel add entrypoint cli         # an HTTP project grows a CLI
+```
+
+An entrypoint is part of what a project _is_, so no vertical adds one,
+and it has a command of its own. A project with both entrypoints is
+the preset that carries both — its **twin** — and growing into it
+writes what `keel new` of the twin writes on the same dials: the same
+build system, module layout and agent-harness setting. So
+
+```sh
+keel new --stack=quarkus-cli && keel add entrypoint http
+keel new --stack=quarkus-cli-rest
+```
+
+leave the same tree, byte for byte, the manifest included but for its
+timestamps, and queue the same deferred actions but the repository's
+own setup (`git init`, the hooks path), which the project has
+already. The composition grid holds every single-entrypoint backend
+preset to it on every dial setting, both ways (invariant I10,
+[`tests/AGENTS.md`](../tests/AGENTS.md)).
+
+What it adds, and nothing else:
+
+- **The other entrypoint's bootstrap**, and only it: on the basic
+  layout a CLI project gains `application/rest/` (JVM and TypeScript),
+  `cmd/http/` (Go) or `src/bin/http/` (Rust). keel never reads the
+  files of the entrypoint already there, let alone writes them — an
+  edited `Main` stays as you left it, but for one thing: on the JVM the
+  queued formatter (`./gradlew spotlessApply`, or `./mvnw
+spotless:apply` on Maven) formats the whole project, as the
+  pre-commit hook does, so an edit the formatter would change comes
+  out formatted (commit before growing to see it). A file of yours
+  where the new one goes stops the run before anything is written
+  (`keel.path-conflict`, naming it). On a project that took extras,
+  the part of an extra that applies to the new entrypoint comes with
+  it, as in `keel new` of the twin with that extra: a Quarkus REST
+  project on Gradle with a native image and
+  [distribution](verticals/distribution.md) that grows the CLI gains
+  the native CLI's release workflows
+  (`.github/workflows/native-build.yml` and `release.yml`).
+- **The twin's verticals the project lacks** — adding HTTP brings the
+  [dev environment](verticals/dev-env.md) and
+  [observability](verticals/observability.md) with it; adding the CLI
+  brings none. Of a project with no extras it asks one question, the
+  monitoring stack's shape (`observability/monitoring-compose:stack`,
+  `granular` by default); an extra's part that comes with the
+  entrypoint asks its own, as the twin would — the native release
+  above, its `targets`. Every other answer is the project's, and one
+  supplied for the new bootstrap's identity (`basePackage`,
+  `projectName`) is held to what its sibling recorded
+  (`keel.frozen-answer`), as one for the entrypoint already there is.
+  `--set` is held to the rules
+  [`keel add`'s answers](#answers-stickiness-and---set) are.
+- **The agent harness, re-rendered** where the project has it: the
+  runbook, the `run` skill, the layer docs and the lifecycle skill
+  speak of the entrypoints, so they are rendered for both — reverting
+  an edit to a template-owned harness file, as `keel add agent-harness
+--reapply` would, and showing the diffs in the report. It re-renders
+  as `--reapply` does, so a patched file that would keep changing
+  refuses the run as `keel.reapply-conflict`, before anything is
+  written.
+- **The shared files**, each entry where one run puts it: the README's
+  sections, `settings.gradle.kts` includes and `pom.xml` modules, the
+  root `package.json` scripts, the basic Rust crate's `[[bin]]`
+  tables. The dev container's definition is attached to the new dev
+  environment in the shape the twin's has.
+- **The manifest**: the entrypoint's tag, and what the project now
+  offers a linked one (`projects`: `peer.api.rest` once it serves
+  HTTP), with each new vertical, answer and harness file recorded
+  where the twin records it. Nothing already recorded moves.
+- **The deferred actions** that make it build: on the JVM the build
+  wrapper and the formatter (`gradle wrapper` and `./gradlew
+spotlessApply`, or `mvn -N wrapper:wrapper` and `./mvnw
+spotless:apply` on Maven), `go mod tidy`, `pnpm install` or
+  `npm install`, `cargo check` — the twin's, run again, since the new
+  entrypoint's dependencies are not fetched yet.
+
+The word is `cli` or `http`; `server-http`, as the stack finder prints
+it, is taken too. It takes one word, and refuses `--reapply`,
+`--refresh` and `--consumes` before anything runs.
+
+| Option        | Meaning                                        |
+| ------------- | ---------------------------------------------- |
+| `-y, --yes`   | Non-interactive — defaults for every question. |
+| `--dry-run`   | Print the plan; write nothing.                 |
+| `--set <k=v>` | Preset an answer, as `keel add` takes one.     |
+
+An entrypoint the project has is no refusal: the command writes
+nothing, exits 0, and says so (_"HTTP server is already an entrypoint
+of this project"_). With nothing to run, an answer `--set` for it is
+refused, as `keel add` refuses one where everything it names is there
+already. It is refused, before a file moves, when:
+
+- there is no keel project here (`keel.not-initialised`, as `keel add`
+  words it — but inside a monorepo product, whose root and services
+  refuse this command too, or inside a project that refuses to grow,
+  it says why the projects it names refuse it, rather than sending you
+  there);
+- this is a product's root, or a service of a monorepo product
+  (`keel.wrong-scope`): the product records each service by the stack
+  it was made from, and a service grown in place would no longer be
+  that stack. A polyrepo product's service is a repository of its own,
+  with no product to record it, and grows as any project does;
+- another keel generation scaffolded the project
+  (`keel.harness-generation`, as every `keel add` is), naming no keel
+  to pin where the project carries no marker, since the keel that
+  scaffolded it has no `keel add entrypoint`;
+- the word names no entrypoint (`keel.unknown-entrypoint`, naming the
+  two it takes);
+- no preset is the project with the entrypoint as well
+  (`keel.uncoverable-entrypoint`): a browser SPA, which is a product's
+  other service rather than an entrypoint of this one; a front end
+  such as `web-components`; a plugin's preset with no twin on the
+  project's build system and module layout; verticals the project has
+  part of which would stop applying, since keel removes nothing it
+  installed;
+- the entrypoint would break a rule a vertical the project has
+  declares (`keel.incompatible`, the rule's own sentence and id), as
+  `keel new` of the twin with that vertical is refused — no shipped
+  rule mentions an entrypoint, but a plugin's may;
+- a bounded context other than the skeleton's — the peer context
+  `--with-peer-context` scaffolds, or one `keel add module` added — is
+  wired into the entrypoints already there (`keel.contexts-need-rewiring`,
+  naming the contexts): each chooses the assemblies it wires into when
+  it is rendered, and nothing keel has yet wires one into a new
+  entrypoint. A modulith with the skeleton's context alone grows.
+
+Two things stay as they are, knowingly. A project linked to another
+(`keel link`) that starts serving HTTP now offers that project what it
+did not: the other project's record of it is left alone, and the
+report says so, naming the `keel link <path>` that brings it up to
+date. And a CLI project that took the dev environment as an extra
+(`--with dev-env`) keeps the order that extra gave it: the dev
+container definition in the shape its attach wrote (`"name"` above
+the Compose note, the docker feature first), `### Dev environment`
+below `### Dev container` in its README, and its manifest's verticals
+as they were recorded. Such a project is not byte for byte `keel new`
+of the twin with the same extra; the grid's I10 covers no extras.
+
+Supported on every single-entrypoint backend preset: the twelve JVM
+stacks (Quarkus, Spring and Micronaut, in Java and Kotlin, CLI and
+REST), `go-cli`/`go-http`, `rust-cli`/`rust-http` and `ts-cli`/`ts-http`.
+
 ## `keel link`
 
 Record a sibling keel project as a **peer** (both ways), so
@@ -993,14 +1153,14 @@ pre-commit hook.
 
 ### The same-commit rule, as machinery
 
-`keel new`, `keel add <vertical>` and `keel add module` run the
-projection **inside their own apply**, so keel-driven structural
-change can never drift: the row for a bounded context lands in the
-same commit as the context. An install projects what it realized over
-the rows already there — it never saw the contributors it did not run
-— while `sync` recomputes the set outright, which is what prunes a row
-whose subject is gone. `keel new` runs every contributor, so the two
-agree on a fresh scaffold.
+`keel new`, `keel add <vertical>`, `keel add module` and `keel add
+entrypoint` run the projection **inside their own apply**, so
+keel-driven structural change can never drift: the row for a bounded
+context lands in the same commit as the context. An install projects
+what it realized over the rows already there — it never saw the
+contributors it did not run — while `sync` recomputes the set
+outright, which is what prunes a row whose subject is gone. `keel new`
+runs every contributor, so the two agree on a fresh scaffold.
 
 What is left for the net is a **human or agent** structural edit:
 that is what `check` is for.
@@ -1234,12 +1394,13 @@ alike, a run refuses:
   `ci` is installed, for `distribution`), with `keel.frozen-answer`,
   and one for a re-rendered adapter's recorded answers with
   `keel.reapply-frozen-answers`: they are frozen, and reconfiguring
-  one is not supported yet — `keel add module` holds its answers to
-  the same rules. So is an answer an older keel recorded for a
-  vertical this project never installed (it merged every `--set` into
-  the manifest): the recorded one is what is read, so a different one
-  supplied is refused under `keel.frozen-answer`, saying so — remove
-  the stale key from `.claude/.keel-manifest.json` to answer anew;
+  one is not supported yet — `keel add module` and
+  `keel add entrypoint` hold their answers to the same rules. So is an
+  answer an older keel recorded for a vertical this project never
+  installed (it merged every `--set` into the manifest): the recorded
+  one is what is read, so a different one supplied is refused under
+  `keel.frozen-answer`, saying so — remove the stale key from
+  `.claude/.keel-manifest.json` to answer anew;
 - a value outside its question's choices with `keel.invalid-answer` —
   the choices it offers this project, since a choice may declare where
   it applies: `persistence/database-compose:engine=mariadb` is taken on

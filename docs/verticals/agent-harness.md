@@ -26,6 +26,13 @@ per-module declarations too. Repeated-question answers reuse their recorded
 values during adoption; ordinary installs retain their repeat behavior.
 Older module records without a `consumes` field replay without a consumer.
 
+Growing an entrypoint re-renders an installed harness without being
+asked: [`keel add entrypoint`](../cli.md#keel-add-entrypoint) renders
+the runbook, the `run` skill, the layer docs and the lifecycle skill
+for both entrypoints, reverting an edit to a template-owned harness
+file as `keel add agent-harness --reapply` would, and shows the diffs
+in its report.
+
 ## Dimensions and activation
 
 | Dimension          | Covered by                                                                              |
@@ -273,8 +280,9 @@ realized element carries contributor provenance. See the
 The generation marker is manifest machinery, not a harness element
 (#137, shipped): every manifest keel creates carries
 `harnessGeneration`, whether or not the project installs the harness.
-`keel add` and `keel add module` refuse a project stamped with another
-generation, or with none, before a file moves; the remediation is
+`keel add`, `keel add module` and `keel add entrypoint` refuse a
+project stamped with another generation, or with none, before a file
+moves; the remediation is
 `keel add agent-harness` (`--reapply` when it is installed), which
 re-renders the harness and restamps the marker — but not at a monorepo
 product root, whose harness is the product glue's and which no `keel

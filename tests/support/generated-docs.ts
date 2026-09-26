@@ -13,14 +13,14 @@
  * grid's goldens record, so a verdict that moves is a document that
  * moves, in the same commit, or the guard goes red.
  *
- * **Scenario.** The three grid goldens
- * (`tests/domain/core/composition-grid/*.golden.json`) for every
- * verdict; `keel.dials` for what each preset, product root and service
- * comes with (`included`), on default dials; the registry for the
- * order a preset installs its verticals in. Stacks, verticals, layouts
- * and services are read from those, never listed here, so a preset or
- * a vertical registered tomorrow shows up in both documents on the
- * next regeneration.
+ * **Scenario.** The brownfield and composite grid goldens
+ * (`tests/domain/core/composition-grid/`) for every verdict;
+ * `keel.dials` for what each preset, product root and service comes
+ * with (`included`), on default dials; the registry for the order a
+ * preset installs its verticals in. Stacks, verticals, layouts and
+ * services are read from those, never listed here, so a preset or a
+ * vertical registered tomorrow shows up in both documents on the next
+ * regeneration.
  *
  * **Factory.** `installMediator` — the queries read no disk.
  *

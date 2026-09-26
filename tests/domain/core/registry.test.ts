@@ -18,6 +18,7 @@ import {
   pluginOrigin,
   registryOf,
   REGISTRY_ERROR_CODE,
+  RESERVED_VERTICAL_IDS,
   shippedRegistry,
   shippedSource,
 } from '../../../src/domain/core/registry.js';
@@ -128,6 +129,19 @@ describe('registryOf', () => {
     );
     expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
   });
+
+  it.each(['module', 'entrypoint'])(
+    "refuses a vertical id of '%s', which 'keel add' reads as a command of its own",
+    (id) => {
+      expect(RESERVED_VERTICAL_IDS).toContain(id);
+      const error = refusal(() => registryOf([{ origin: ACME, verticals: [wellFormed(id)] }]));
+      expect(error.message).toContain(`${ACME} registers vertical '${id}', a word 'keel add'`);
+      expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      expect(() =>
+        registryOf([{ origin: ACME, stacks: [stackOn('acme-stack', wellFormed(id))] }]),
+      ).toThrow(`vertical '${id}'`);
+    },
+  );
 
   it('carries the registry error code, and refuses a piece with no id at all', () => {
     const error = refusal(() =>

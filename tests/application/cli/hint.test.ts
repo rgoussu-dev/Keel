@@ -291,6 +291,17 @@ const TABLE: readonly {
     hint: null,
   },
   {
+    why: 'a step keel leaves to the user is not a file to move aside: the sentence names the step',
+    refusal: {
+      kind: 'path-conflict',
+      path: '.devcontainer/devcontainer.json',
+      adapterId: 'x/y',
+      manual: 'attach it to the dev environment',
+    },
+    command: 'new',
+    hint: null,
+  },
+  {
     why: 'a file in the way under keel add may be keel’s own, so no advice',
     refusal: { kind: 'path-conflict', path: 'Dockerfile', adapterId: 'x/y' },
     command: 'add',

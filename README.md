@@ -331,6 +331,8 @@ keel add persistence --refresh distribution  # …or beside what changes it (DB_
 keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam
 
+keel add entrypoint http      # a CLI project grows an HTTP server: the tree keel new of the CLI + REST preset writes
+
 cd my-frontend && keel link ../my-backend   # then `keel add gateway` on both sides
 
 keel docs check               # is the agents' navigation index still true? (exit 1 if not)
@@ -346,6 +348,18 @@ the driven port and the gateway over that context's seam, and is
 opt-in because a context that consumes nothing is a perfectly good
 context. Needs `--module-layout=modulith`; the flat layout has no seam
 for a second context to meet the first at, and keel says so.
+
+An **entrypoint** is part of what a project is, so it too has a
+command of its own. `keel add entrypoint http` on a CLI project, or
+`keel add entrypoint cli` on an HTTP one, leaves byte for byte the tree
+`keel new` of the preset carrying both writes on the same dials, but
+for the manifest's timestamps — the new entrypoint's bootstrap, the
+dev environment and observability that come with HTTP, the agent
+harness re-rendered for both — and writes nothing of the entrypoint
+already there (on the JVM, the queued formatter still formats the
+whole project). A modulith whose peer context or added modules are
+wired into its entrypoints is refused for now.
+→ [`keel add entrypoint`](docs/cli.md#keel-add-entrypoint)
 
 Every one of those commands re-projects the agents' **navigation
 index** — the map and skills rows in the root `AGENTS.md` — in its own

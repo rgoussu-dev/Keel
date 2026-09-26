@@ -10,6 +10,10 @@
  * realized once, after the last vertical — unless the caller supplies
  * the buffer, in which case finalizing is the caller's, as `keel add
  * agent-harness` needs to replay earlier contributors into it first.
+ * And a run over part of a vertical, as `keel add entrypoint` makes
+ * one: only the adapters it names install, and the rest are replayed
+ * for their harness elements, and for their deferred actions where it
+ * asks — never applied or recorded.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -258,5 +262,161 @@ describe('installVerticals', () => {
     });
     expect(finalized.skills.map((s) => s.name)).toEqual(['base-skill']);
     expect(tree.read(SKILL)).not.toBeNull();
+  });
+});
+
+/**
+ * Three adapters over three dimensions, each writing a file and
+ * deferring an action; `trio/late` runs after `trio/second`, whatever
+ * order they are declared in, and asks a question, whose answer its
+ * action's description reads.
+ */
+const trio: Vertical = {
+  id: 'trio',
+  description: 'the trio vertical',
+  dimensions: ['one', 'two', 'three'],
+  adapters: [
+    {
+      id: 'trio/late',
+      vertical: 'trio',
+      covers: ['three'],
+      predicate: {},
+      after: ['trio/second'],
+      questions: [
+        { id: 'name', prompt: 'Name?', doc: 'A name.', default: 'late', memory: 'sticky' },
+      ],
+      contribute: (ctx) => ({
+        files: [{ path: 'late.txt', content: ctx.answer('name') }],
+        actions: [
+          {
+            id: 'trio',
+            description: `late action (${ctx.answer('name')})`,
+            run: () => Promise.resolve(),
+          },
+        ],
+      }),
+    },
+    {
+      id: 'trio/first',
+      vertical: 'trio',
+      covers: ['one'],
+      predicate: {},
+      contribute: () => ({
+        files: [{ path: 'first.txt', content: 'first' }],
+        actions: [{ id: 'trio', description: 'first action', run: () => Promise.resolve() }],
+      }),
+    },
+    {
+      id: 'trio/second',
+      vertical: 'trio',
+      covers: ['two'],
+      predicate: {},
+      contribute: () => ({
+        files: [{ path: 'second.txt', content: 'second' }],
+        actions: [{ id: 'trio', description: 'second action', run: () => Promise.resolve() }],
+      }),
+    },
+  ],
+};
+
+describe('installVerticals, over part of a vertical', () => {
+  it('installs only the adapters named, in the order the whole vertical resolves to', async () => {
+    const tree = new FakeTree();
+    const result = await run([trio], tree, undefined, {
+      only: { trio: new Set(['trio/late', 'trio/first']) },
+    });
+
+    expect(result.adapters.map((a) => a.id)).toEqual(['trio/first', 'trio/late']);
+    expect(tree.changes().map((change) => change.path)).toEqual(['first.txt', 'late.txt']);
+    expect(result.applyResult.actions.map((a) => a.description)).toEqual([
+      'first action',
+      'late action (late)',
+    ]);
+    expect(result.manifest.verticals.map((v) => v.id)).toEqual(['trio']);
+    expect(Object.keys(result.manifest.answers)).toEqual(['trio/late']);
+  });
+
+  it('replays the rest for their actions alone, in their place, applying, reading and recording nothing of them', async () => {
+    const tree = new FakeTree();
+    const result = await run([trio], tree, undefined, {
+      only: { trio: new Set(['trio/second']) },
+      actionsOnly: ['trio'],
+      supplied: { 'trio/late': { name: 'supplied' } },
+    });
+
+    expect(tree.changes().map((change) => change.path)).toEqual(['second.txt']);
+    // What the manifest records, or the default: never an answer supplied.
+    expect(result.applyResult.actions.map((a) => a.description)).toEqual([
+      'first action',
+      'second action',
+      'late action (late)',
+    ]);
+    expect(result.adapters.map((a) => a.id)).toEqual(['trio/second']);
+    expect(result.reads).toEqual([]);
+    expect(result.manifest.answers).toEqual({});
+  });
+
+  it('replays a vertical named for its actions alone as the project records it, installing nothing', async () => {
+    const tree = new FakeTree();
+    const recorded: ManifestV2 = {
+      ...harnessed(),
+      updatedAt: 'then',
+      verticals: [{ id: 'trio', installedAt: 'then' }],
+      answers: { 'trio/late': { name: 'kept' } },
+    };
+    const result = await run([trio], tree, undefined, {
+      manifest: recorded,
+      actionsOnly: ['trio'],
+      supplied: { 'trio/late': { name: 'ignored' } },
+    });
+
+    expect(tree.changes()).toEqual([]);
+    expect(result.applyResult.actions.map((a) => a.description)).toEqual([
+      'first action',
+      'second action',
+      'late action (kept)',
+    ]);
+    expect(result.adapters).toEqual([]);
+    expect(result.reads).toEqual([]);
+    // Not recorded again: the run's clock would have moved `updatedAt`.
+    expect(result.manifest).toEqual(recorded);
+  });
+
+  it('replays the harness elements of an adapter it leaves out into the buffer, re-rendered, as no harness replay reaches it', async () => {
+    const skilled: Vertical = {
+      ...trio,
+      skills: ['trio-skill'],
+      adapters: trio.adapters.map((adapter) =>
+        adapter.id === 'trio/first'
+          ? {
+              ...adapter,
+              contribute: () => ({
+                skills: [{ name: 'trio-skill', description: 'Run the trio.', body: 'Run it.' }],
+              }),
+            }
+          : adapter,
+      ),
+    };
+    const tree = new FakeTree();
+    // Where the run that installed the adapter left its skill.
+    tree.seed('.claude/skills/trio-skill/SKILL.md', 'as an older keel wrote it\n');
+    const harness: HarnessContribution[] = [];
+
+    const result = await run([skilled], tree, harness, {
+      only: { trio: new Set(['trio/second']) },
+    });
+
+    expect(tree.changes().map((change) => change.path)).toEqual(['second.txt']);
+    expect(harness.map((c) => [c.adapter.id, c.mode])).toEqual([['trio/first', 'reapply']]);
+    const finalized = finalizeHarness({
+      manifest: result.manifest,
+      harness,
+      tree,
+      owners: newOwnership(),
+      logger: new FakeLogger(),
+      now: () => 'now',
+    });
+    expect(finalized.skills.map((s) => s.name)).toEqual(['trio-skill']);
+    expect(tree.read('.claude/skills/trio-skill/SKILL.md')?.toString('utf8')).toContain('Run it.');
   });
 });

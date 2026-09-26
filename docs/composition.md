@@ -14,7 +14,10 @@ Flat strings with hierarchical-dot naming — `lang.java`,
 `runtime.graalvm-native`, `arch.hexagonal`. Tags are **facts about the
 project**, captured in the manifest at install time and grown by
 adapters that promote new capabilities (via `tagsAdd` — e.g. every
-image adapter adds `deploy.container-image`).
+image adapter adds `deploy.container-image`). An entrypoint tag
+(`arch.cli`, `arch.server-http`) is identity, which no vertical may
+promote: the one thing that adds one is `keel add entrypoint`
+([Growing an entrypoint](#growing-an-entrypoint)).
 
 ### Adapters
 
@@ -315,6 +318,78 @@ preset naming a piece this build does not carry is dropped with a
 `PresetProblem` naming it — which is a load-time error for keel's own
 file, and will be the ordinary answer once presets can arrive from a
 plugin.
+
+### Growing an entrypoint
+
+A project with one entrypoint more is the preset carrying both: its
+**twin**, found by placing the grown tags on the stack finder's tree
+(`src/domain/core/growth.ts`, `growthOf`), among the presets `keel new`
+makes on the project's build system, module layout and agent-harness
+setting. `keel add entrypoint <cli|http>` grows a project into its twin
+and must leave exactly the tree `keel new` of the twin leaves — which
+the composition grid's growth axis holds on every single-entrypoint
+backend preset and dial setting, both ways (I10). Growth adds files
+and never removes one, so the run is the difference, read before it
+starts:
+
+- **What newly matches.** The adapters of installed verticals that the
+  grown tags match and the old ones did not — on every shipped preset
+  one, the other entrypoint's bootstrap; on a project that took
+  extras, an extra's adapter may newly match too, as in the twin with
+  that extra (a native Quarkus image with distribution, grown a CLI,
+  newly matches the native CLI's release, which asks its `targets`).
+  The vertical resolves whole, so `after` orders them as on a full
+  install, but only those install
+  (`installVerticals`' `only`): the adapters that matched before are
+  neither applied nor recorded, and the existing entrypoint's files
+  are never read — their harness elements alone are replayed, as no
+  other replay reaches them. A file already where the new entrypoint
+  goes is `keel.path-conflict`, as for any install.
+- **The twin's verticals the project lacks**, closed over their
+  prerequisites by the planner as any `keel add` is, run in the twin's
+  order: the dev environment and observability where HTTP arrives.
+- **The re-render.** A family kit matches on the language alone and
+  reads the entrypoint tags inside `contribute()` — the runbook, the
+  `run` skill, the layer docs — so nothing newly matches there, and
+  `agent-harness` is re-rendered wherever it is installed.
+- **Settling.** The actions that make a scaffold build (the JVM's
+  build wrapper and formatter, `go mod tidy`, `pnpm install`, `cargo
+check`) belong to adapters that matched before, so every other
+  vertical of the twin is replayed for its deferred actions alone
+  (`actionsOnly`), in its place in the run — all but those placed at a
+  repository root, whose `git init` the project has run already.
+- **Recording at rank.** A new `verticals` row goes before the first
+  recorded one the twin lists later, a new answer before the first key
+  of an adapter that runs later in the twin's order, and a new harness
+  entry before the first recorded one the twin realizes later — the
+  harness is realized in the twin's order for that; nothing recorded
+  moves. The manifest is then the twin's, byte for byte, but for its
+  timestamps.
+
+The shared files take each entry at its rank whenever it arrives
+(`src/domain/core/rank.ts`: the README's sections, the build files'
+lists), which is what lets an entrypoint arriving late land where one
+run puts it.
+
+Growth is refused, as data (`GrowthRefusal`) worded in
+`refusals.ts`, where no preset is the grown project
+(`keel.uncoverable-entrypoint`: a front end, a browser SPA, a plugin
+preset off the tree, an adapter that would stop matching), where the
+entrypoint's tag would break a [conflict](#conflicts) a vertical the
+project has declares (`keel.incompatible`, as `keel new` of the twin
+with that vertical is), and where a bounded context other than the
+skeleton's is wired into the existing entrypoints
+(`keel.contexts-need-rewiring`). That last is structural:
+a context adapter picks the assemblies it wires into inside
+`contribute()`, so growth refuses a context while no adapter that
+requires its marker (`modules.peer-context`, `modules.context`) also
+requires the new entrypoint's tag — a family that splits its context
+wiring per entrypoint lifts it for itself.
+`tests/domain/core/growth-render.test.ts` holds that reading to what
+the adapters render. Inside a monorepo product, at its root or in a
+service, growth is refused as `keel.wrong-scope`: the product records
+each service by its preset. A polyrepo service has no product root to
+record it, and grows as a repository of its own.
 
 ### Conflicts
 

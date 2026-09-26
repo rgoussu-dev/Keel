@@ -4626,11 +4626,13 @@ named.
     `"image"` anchor is gone, and dev-env reaches it both under
     `keel add dev-env` today and under growth. The seeded axis never
     edits that file, so the grid has never seen this. R.2b turns it
-    into a `path-conflict` refusal.
+    into a `path-conflict` refusal, and did.
 14. **Products.** A product root keys its rows by preset id
     (`services[].stack`, `product-compose.ts`, `profile.ts`
     `productOf`), and growth would leave those rows stale. R.2 refuses
-    growth in products; this is U's work.
+    growth in a monorepo product, at its root and in its services;
+    this is U's work. A polyrepo service has no product root to keep
+    true, and grows as a repository of its own (R.2b).
 15. **The command's words.**
     - `keel add entrypoint http` is read today as the vertical
       `entrypoint`, giving "unknown vertical 'entrypoint'".
@@ -5633,7 +5635,8 @@ Beyond the text above:
 - **Peer links.** Growth reads the tags a `keel link`ed sibling
   projects, before and after, as the planner does; `growth.test.ts`
   holds it. What the grown project's new `projects` mean for that
-  sibling, which never received them, is R.2b's to settle.
+  sibling, which never received them, is R.2b's to settle. R.2b
+  settled it with a note naming the `keel link` to run again.
 - **The guard's exemptions are read, not listed.** "A family kit" is
   an adapter of a vertical growth re-renders (`rerendersOf`). "One the
   refusal refuses" is an adapter requiring a refused context's marker.
@@ -5644,7 +5647,7 @@ Beyond the text above:
 
 Not done here: every caller, which R.2b and R.2c add.
 
-#### R.2b — `keel add entrypoint <cli|http>` (L)
+#### R.2b — `keel add entrypoint <cli|http>` (L) ✅
 
 **Contract.**
 
@@ -5809,6 +5812,424 @@ On disk, parity also rests on step 4 queueing the twin's actions.
 **Holds green:** every existing golden. `pnpm test:e2e` is untouched.
 
 **Leaves out:** the refusal's action and the page (R.2c).
+
+**Landed as the command, and I10 hard.** No committed golden moved.
+
+- **The contract.** `AddEntrypointCommand` (`keel.add-entrypoint`) and
+  `addEntrypointCommand`, `AddEntrypointTarget` in `InstallTarget`, the
+  command in `InstallCommand`, and its case in `installCommandFor`.
+  `InstallReport.subject` reads `entrypoint http`.
+- **The handler**, `handlers/add-entrypoint.ts`, wired in `main.ts` and
+  the test factory, and run by `keel.preview`. It reads `growthOf` and
+  derives nothing growth answers:
+  - **Gates.** No manifest is `keel.not-initialised`, worded as `keel
+add` words it — inside a monorepo product it names the services and
+    says why each refuses the command too (`serviceScoped`,
+    `refusedAt`), as `keel add module` does at a product root, and
+    below a project growth refuses it gives growth's sentence. A
+    product root, or a service of a monorepo product, is
+    `keel.wrong-scope`. The harness generation is asked after it, as
+    `keel add module` asks it, since the scope refuses in every
+    generation; on a project with no marker its refusal names no keel
+    to pin (`harnessGenerationRefusal`'s `pinnable`), since the marker
+    and this command arrive in one release. Then growth's own answers:
+    an unknown word, the
+    entrypoint already there (Ok, a note, nothing staged, the manifest
+    not written, and every supplied answer refused, as `keel add`
+    refuses one with nothing to run), and its refusals.
+  - **The run.** The grown tags and the twin's `projects` are folded
+    into the manifest first. Then one `installVerticals` run, in the
+    twin's order: the project's verticals keep their recorded order,
+    and each vertical the twin names that the project lacks goes before
+    the first recorded one the twin lists later. `walking-skeleton`
+    installs only what newly matches (`only`); `agent-harness`
+    re-renders; `dev-env` and `observability` install, closed through
+    `admit` (a prerequisite `admit` adds goes before what needs it).
+    `retrofitHarness` replays what did not run, one `finalizeHarness`
+    realizes the buffer, and the generation is restamped where the
+    harness ran. The retrofit takes the command line to re-run, so a
+    recorded vertical no loaded plugin provides any more refuses the
+    command and its preview naming `keel add entrypoint <word>`, not
+    `keel add agent-harness`.
+  - **Settling (DR5).** Every other vertical of the twin, except one
+    placed at a repository root, replays in its place for its deferred
+    actions alone (`actionsOnly`). The grown project queues the twin's
+    actions in the twin's order, less `vcs`'s: `gradle wrapper` and
+    `./gradlew spotlessApply`, `go mod tidy` and the OpenTelemetry
+    fetch, `pnpm install` or `npm install` twice, `cargo check`.
+  - **Recording at rank (DR4).** A new `verticals` row goes before the
+    first recorded one the twin lists later; a new `answers` key goes
+    before the first key of an adapter that resolves later, reading
+    the grown project's verticals in that order and each one's adapters
+    as they resolve on the grown tags; a new harness entry goes before
+    the first recorded one the harness, realized in that order, realizes
+    later. Nothing recorded moves.
+  - **The report** carries the admission notes, the refresh proposals
+    as `keel add` makes them, and the diffs of every modified file
+    wherever the harness re-rendered, as `keel add --refresh` shows
+    them. `workingTreeDiffs` moved from `add-vertical.ts` to `diff.ts`,
+    which both handlers now call.
+- **`install.ts`.** `InstallVerticalInputs` gains `only` and
+  `actionsOnly`, and `installVerticals` takes both per vertical. An
+  adapter outside `only` is neither applied nor recorded, and does not
+  appear in the result's `adapters`. It is still contributed, from
+  what the manifest records and asking nothing: its harness elements
+  go into the buffer, re-rendered, and its actions are kept in their
+  place under `actionsOnly`. A vertical that installs none of its
+  adapters this way is not recorded again. `finalizeHarness` also
+  returns the order it realized the harness in (`realized`), in which
+  `realizeHarness` counts a directory's `CLAUDE.md` pointer it kept
+  where it would have written it.
+- **The words**, in `refusals.ts`:
+  - `unknownEntrypointSentence` names the words the command takes;
+  - `uncoverableEntrypointSentence` covers a front end, no twin, and
+    verticals part of which would stop applying, named by title;
+  - `incompatibleEntrypointSentence` gives each rule the entrypoint
+    would break in its own sentence and under its id, as
+    `brokenRulesRefusal` gives a vertical's;
+  - `contextsNeedRewiringSentence` names the contexts, quoted;
+  - `entrypointScopeSentence` covers a product root and a service,
+    and `ENTRYPOINT_IN_PRODUCT_REASON` is its reason, which the
+    not-initialised sentence gives too;
+  - `entrypointPresentNote` and `relinkNote`;
+  - `reapplyConflictSentence`, the `keel.reapply-conflict` sentence
+    `add-vertical.ts` built inline, now worded here for both handlers
+    and unchanged;
+  - `missingHarnessContributorSentence`, the
+    `keel.missing-harness-contributor` sentence `harness-retrofit.ts`
+    built inline, now worded here around the command line to re-run —
+    `keel add agent-harness` and `keel docs sync` as before, the growth
+    command's own for growth.
+
+  None prints a tag. The handler's exported `growthRefusalError` maps
+  a `GrowthRefusal` onto them under its code.
+
+- **The drift refusal.** `attachDevContainerToDevEnv` takes the
+  patching adapter's id and throws a `PathConflictError` for
+  `.devcontainer/devcontainer.json`, where it threw a plain `Error`.
+  `PathConflictRefusal` gains `manual`, what keel leaves to the user
+  rather than rewrite their change, and `pathSentence` words it: the
+  file changed since keel scaffolded it, and attaching it to the dev
+  environment is the user's to do, then re-run. `keel add dev-env`
+  over a customized definition is refused before anything is written,
+  where the terminal printed the recipe and the page answered
+  `keel.internal`. `docs/verticals/dev-container.md` keeps the recipe.
+  CHANGELOG, under _Fixed_.
+- **The CLI.** `ENTRYPOINT_TARGET` sits beside `MODULE_TARGET`. It
+  takes exactly one word and refuses `--reapply`, `--refresh` and
+  `--consumes` before dispatching. The help text and the missing-target
+  error name the third form.
+- **The registry.** `RESERVED_VERTICAL_IDS` (`module`, `entrypoint`)
+  refuses either as a vertical id, naming the plugin. CHANGELOG, under
+  _Changed_: such a plugin vertical could be installed by `keel new
+--with`, never by `keel add`.
+- **The web API.** `targetSchema` and `narrow` accept
+  `{ "kind": "add-entrypoint", "entrypoint": "http" }`. The page does
+  not offer it yet (R.2c).
+
+**I10.** `composition-grid/growth.test.ts` is the grid's fourth axis.
+Its cells come from the finder's single-entrypoint backend
+combinations, each paired with the combination carrying both, on every
+setting `harnessSettings` walks. That walk, and `newCommandLine`,
+moved from `growth.golden.test.ts` into `support/dial-walk.ts`, so the
+growth golden and the grid key their cells alike. Each cell scaffolds
+the preset and holds `keel add entrypoint` to I9 on it: its preview
+and a dry-run install, over no answers and over the monitoring stack
+answered away from its default. It then grows it for real and holds
+the grown tree to `keel new` of the twin on the same dials: every
+file's sha256, the manifest's among them, and the descriptions of the
+deferred actions, which the grid's runner now records per directory
+(`Grid.queued`), less version control's — read off `vcs` itself, not
+the handler's rule of what settles, so a wrong rule shows. A cell
+that is refused must be refused under the code
+`growth.golden.json` records for it. `INVARIANTS` and `HARD` gain I10,
+and `holdParity` takes the project's directory for a target that adds
+to one.
+
+- **Cells.** 192: 128 `ok` and 64 `keel.contexts-need-rewiring`, each
+  the cell R.2a's golden reads. With them come 512 I9 cells. The new
+  `composition-grid/growth.golden.json` holds all 704 verdicts.
+  `growth.known.json` is `{}`, because `sweepGrid` reads each axis's
+  known file, whatever it holds. The other known files stay as they
+  were.
+- **Timing.** The axis takes about 21 s on its own and 27 s beside the
+  other three. The grid takes about 30 s wall (it was about 25 s). In
+  two full CI-mode runs the axis took 33 s and 28 s, and the runs 139 s
+  and 131 s, against R.2a's 128 s. That is under the research's
+  estimate of about 35 s, so it stays in `verify` whole: 256 real
+  scaffolds (the 192 cells, and 64 twins, one per setting, which both
+  directions share), 192 real adds and 512 dry-run dispatches.
+- **It catches what it is for.** With recording at rank switched off,
+  I10 failed on 120 of the 128; with the settling replay switched off,
+  on all 128.
+
+The greenfield, brownfield, composite and planner-readiness goldens,
+the docs matrix, `growth.golden.json` and `shared-files.golden.json`
+regenerate byte-identical. The keel ui browser suites (`ui-compose`,
+`ui-refusal`, `ui-stack-finder`, `ui-plugin-stack`) pass: 43 tests,
+with the target schema changed.
+
+**The tests.**
+
+- `handlers/add-entrypoint.test.ts` has 32 cases:
+  - an edited Quarkus `Main` is untouched, with the grown manifest's
+    order and the queued actions;
+  - HTTP to CLI, and the finder's `server-http` taken as the word;
+  - a user's `application/rest/executable/build.gradle.kts` is
+    `keel.path-conflict`, with the manifest, README, tree and actions
+    untouched;
+  - interactive mode asks only `observability/monitoring-compose`'s
+    `stack`;
+  - `quarkus-rest` with a native image and distribution, grown the CLI
+    at a terminal, is asked only the native release's `targets`,
+    creates its two workflows, and equals `quarkus-cli-rest` with the
+    same extras and answer byte for byte;
+  - a dry run writes nothing, and a `--no-agent-harness` growth
+    reports no diffs;
+  - an extra the project took (persistence on `go-http`) queues
+    nothing again (DR5);
+  - an identity answer supplied for the new bootstrap is
+    `keel.frozen-answer` unless it agrees, and one that agrees is
+    taken at a terminal, which asks only `stack`; one for the
+    bootstrap already there is `keel.frozen-answer` whatever it says,
+    and at a terminal before a question is asked, as a stray key is
+    `keel.unknown-answer`; one for observability, which growing an
+    HTTP project settles and never re-renders, is `keel.frozen-answer`
+    in either mode;
+  - Distribution's refresh proposed on `quarkus-cli --with
+distribution`, naming `keel add distribution --reapply`, dry run or
+    not;
+  - on a plugin family (`acme`: CLI, HTTP and both presets; notes
+    before a base observability needs, listed before it, and a runbook
+    after both whose skill names the entrypoints; the CLI's layer doc
+    speaks of the server, and observability ships a skill and a layer
+    doc): the grown tree equals the twin's byte for byte, the
+    runbook's skill rendered on the grown tags by the retrofit, the
+    CLI's doc by the replay of what `only` left out, the new harness
+    entries recorded where the twin records them, and the queue in the
+    twin's order, what the project lacks before the runbook; an answer
+    for observability, which needs what the base promotes, is taken at
+    a terminal; its harness kit's recorded answer is
+    `keel.reapply-frozen-answers` before a question is asked;
+  - an entrypoint already there is an Ok with its note, committed but
+    under a dry run, and every answer supplied for it is refused in
+    either mode, as its preview reports it;
+  - the linked-project note, and none where `projects` did not change;
+  - each refusal's code and sentence: no project, below a monorepo
+    product's root and below its service, below a modulith with the
+    peer context, a polyrepo product's directory (pointing at its
+    services, the back end growing), a monorepo product's root and
+    service — again under an older generation, the same sentences —
+    the generation (the whole sentence, naming no pin, before growth's
+    own answers), an unknown word, `spa`, a front end, a plugin
+    vertical's rule (`keel.incompatible`, as `keel new` of the twin
+    with it is), a recorded plugin vertical no longer loaded
+    (`keel.missing-harness-contributor`, naming this command, the
+    preview alike), and the peer context. The polyrepo service grows.
+  - `growthRefusalError` words the `no-twin`, `drops` and
+    `keel.incompatible` refusals, which no shipped cell reaches,
+    naming no tag.
+- `install-verticals.test.ts` adds four cases: part of a vertical,
+  in resolution order; the rest replayed for actions alone, reading no
+  supplied answer; a vertical replayed whole, from its recorded
+  answers, and not recorded again; the harness elements of an adapter
+  left out replayed into the buffer, re-rendered.
+- `registry.test.ts` adds two, `add.test.ts` eight (the third form
+  read in the help too), `api.test.ts` two, `refusals.test.ts` four,
+  `growth.test.ts`, `supplied-answers.test.ts`, `hint.test.ts` and
+  `harness-generation.test.ts` (no pin, as a project and at a product
+  root) one each, and `dev-container.test.ts` two: the
+  refusal's data and sentence, and `keel add dev-env` over a
+  customized definition refused on the `Err` rail.
+
+**The proof on disk.** One cell per family was grown on disk with its
+real deferred actions, then built and driven as its twin's combo suite
+drives it:
+
+- **Go.** `go-cli` grew HTTP and `go-http` grew the CLI. Each ran `go
+mod tidy` twice, then `go vet`, `go test` and `go build`. The CLI
+  greeted, and the HTTP unit served the whole `/greet` contract:
+  health probes and the correlation id included.
+- **TypeScript.** `ts-cli` on pnpm grew HTTP and ran `pnpm install`
+  twice. `pnpm run typecheck` and `pnpm test` passed, the CLI greeted,
+  and the REST server answered 200 and a 400 problem.
+- **Rust.** `rust-cli` grew HTTP, and `cargo check` compiled the HTTP
+  unit (16 s). `cargo test` passed, the CLI greeted, and the HTTP unit
+  answered `/greet`.
+- **The JVM.** `quarkus-cli` on Gradle grew HTTP. `keel new` and the
+  growth each ran their `gradle wrapper` and `./gradlew spotlessApply`
+  for real, with the host Gradle taken from the 9.7.0 wrapper
+  distribution: the image's own 8.14.3 cannot start on JDK 25
+  (`.github/AGENTS.md`). `./gradlew build` failed four times on Maven
+  Central's 429s while resolving Quarkus, and passed on the fifth
+  try. Every module compiled, `spotlessCheck` was up to date, and the
+  ten generated tests passed: the CLI's one, REST's seven, the
+  domain's two. The CLI jar greeted, and the REST jar served `/greet`
+  and both health probes. The jars ran under `JAVA_HOME` set to JDK
+  25; the image's `JAVA_HOME` points at 21.
+
+Covered by e2e as the step's text says: the seven basic combo suites
+are the twins of their grown cells. No suite was added, and `pnpm
+test:e2e` is untouched.
+
+A probe beyond I10: ten presets with every extra their menu offers
+(`quarkus-cli`, `quarkus-rest`, `spring-cli`, `micronaut-rest`, and
+Go, TypeScript and Rust both ways) all grew. Each newly matched only
+the other bootstrap on default answers. `quarkus-cli`, which carries a
+release, got Distribution's refresh proposed, as the text expects.
+Answered otherwise, one more adapter newly matches: over all eighteen
+single-entrypoint backend presets with every extra, on Gradle and
+Maven, with the JVM and the native image, `quarkus-rest` and
+`quarkus-rest-kotlin` on Gradle with the native image newly match
+`distribution/quarkus-cli-native` when grown the CLI, and nothing
+else does.
+
+`docs/cli.md` gets `## keel add entrypoint`, `docs/composition.md`
+gets _Growing an entrypoint_, and `docs/ui.md` the target. The
+reserved ids and a plugin family's growth go in `docs/plugins.md`, and
+the README gets its line. `tests/AGENTS.md`, `tests/e2e/AGENTS.md`,
+`docs/development.md`, `src/domain/core/AGENTS.md`,
+`src/domain/contract/AGENTS.md` and `src/application/cli/AGENTS.md`
+say what changed, and `docs/verticals/agent-harness.md` that growing
+re-renders the harness. CHANGELOG, under _Added_, _Changed_ and
+_Fixed_.
+
+Beyond the text above:
+
+- **What settles.** The text replays `walking-skeleton` and
+  `code-style`. The handler replays every vertical of the twin that
+  was installed before and is not placed at a repository root, which
+  is `vcs`'s placement. On every shipped twin those two are the ones
+  with actions, so the queue is the same. A plugin twin whose other
+  verticals queue actions gets them too; an extra the project took is
+  no vertical of the twin, and queues nothing again (DR5).
+- **What `only` leaves out is replayed, not guarded.** The text
+  leaves an adapter outside `only` neither contributed nor recorded,
+  and a guard asserting that `walking-skeleton` loses nothing from the
+  buffer. The adapter is still contributed, and its harness elements
+  go into the buffer re-rendered, as the retrofit would put them: the
+  vertical counts as run, so no retrofit reaches it. A plugin vertical
+  whose adapter that matched before ships a skill or a layer doc then
+  grows into its twin, where a guard threw off the `Err` rail — the
+  command, its dry run and the preview alike, while `growthOf` read
+  the cell as growing. No shipped adapter declares one.
+- **Harness entries at rank too.** The text ranks `verticals` and
+  `answers`. A vertical growth installs may declare a harness element
+  — none shipped does, a plugin's may — whose entry was appended after
+  every recorded one, where `keel new` of the twin records it among
+  them. The handler now realizes the harness buffer in the twin's
+  order, the retrofit's contributions among the run's, and places a
+  new entry before the first recorded one that realization puts
+  later. `finalizeHarness` returns that order; a directory's
+  `CLAUDE.md` pointer the pass kept counts where it would have been
+  written. No shipped cell moved.
+- **A polyrepo service grows.** The text refuses a product's service.
+  A monorepo service is refused: its product root records it by
+  preset. A polyrepo service has no product root, and nothing records
+  it (`scopeOf` reads no product around it), so it grows as a
+  repository of its own, and a handler test holds it.
+- **Where no project is, the refusal says why the ones it names
+  refuse too.** `keel add module` asks each project the
+  not-initialised sentence names whether it takes a context. This
+  command asks whether it is in a monorepo product and, failing that,
+  growth's own refusal of it, so a directory below a modulith with the
+  peer context is told why that project refuses the command rather
+  than sent there. Growth's sentences open with an entrypoint's label
+  or the word, so they go on from that sentence as they are.
+- **A linked project is told, not written (R.2a's open question).**
+  The sibling's manifest is left as it was. The report names the
+  `keel link` that brings its record up to date, and only where
+  `projects` changed: adding HTTP to a CLI, never the CLI to an HTTP
+  project. `keel link` upserts by ref, so running it again is the
+  whole remedy. Re-projecting from here would write another project's
+  manifest, which a dry run and the preview must never do.
+- **Refresh proposals point at a later run.** `refreshProposalNote`
+  offers `--refresh` in the same run on a dry run, which this command
+  refuses. Its notes always name `keel add <id> --reapply`.
+- **The planner closes nothing on a real twin.** The run is closed
+  through `admit`, as the text says, but `keel new` of a preset
+  refuses a vertical listed without its prerequisite, or before it
+  (measured on the `acme` family: _Acme obs needs what Acme base adds_),
+  so every prerequisite of what the project lacks is itself a vertical
+  the twin lists first, or one the project has. The admission notes,
+  and a prerequisite `admit` adds placed before what needs it, are
+  reached by no twin `keel new` accepts; the rest of the run's order
+  is held by the `acme` handler test.
+- **Answers are held as `keel add` holds them.** A re-rendered
+  harness's recorded answer is refused before the run, whatever the
+  mode, and a stray key is refused at a terminal — read against the
+  newly matching adapters and the verticals installed or re-rendered
+  whole, together, as `keel add` reads its order, so an answer for
+  one needing what another of them promotes is taken. The rest are
+  refused once the run is staged, exactly. An answer for the
+  bootstrap already there is `keel.frozen-answer`, as `keel add`
+  gives it: `supplied-answers.ts` reads an answer as one a re-render
+  freezes (`keel.reapply-frozen-answers`) only where its own adapter
+  runs, not wherever another adapter of its vertical does. Where the
+  entrypoint is there already nothing will run, so every answer is
+  refused, whatever the mode, as `keel add` refuses one where
+  everything it names is installed and as the preview reports it
+  (I9); the grid grows no preset toward the entrypoint it has, so the
+  handler test holds it.
+- **A rule the entrypoint breaks is refused.** The text names three
+  refusals. A vertical the project has may declare a rule the
+  entrypoint's tag breaks — no shipped rule mentions one, a plugin's
+  may — and `installVerticals` counts a rule the grown manifest breaks
+  already as standing, so the run did not see it. `growthOf` reads it
+  before anything runs, as `keel.incompatible` (`rules`), which
+  `keel new` of the twin with that vertical is refused under too; no
+  shipped cell moves.
+- **What the command writes of the existing entrypoint.** Nothing: it
+  never reads its files. On the JVM the queued formatter
+  (`./gradlew spotlessApply`, or `./mvnw spotless:apply` on Maven)
+  then formats the whole project, the existing entrypoint's sources
+  included, as the pre-commit hook would; the docs say so rather than
+  claim the files untouched.
+- **Where the refusal is worded.** `growthRefusalError` lives in the
+  handler and takes the registry, so a vertical is named by its title.
+  `refusals.ts` cannot import `growth.ts`'s types: dependency-cruiser
+  counts type imports, and `growth.ts` reaches `refusals.ts` through
+  the planner. R.2c's status can import it from there.
+- **No command in a refusal.** The `no-twin` sentence says "no stack
+  keel offers is this project with it as well", and names no `keel
+new`. The drift refusal has a sentence of its own
+  (`PathConflictRefusal.manual`): the generic anchor sentence would
+  have told the user to add keel's `"image"` line back, which the
+  attach replaces, leaving theirs beside the compose fields, ignored.
+  The recipe the old message spelled is in the docs.
+- **An extra's part can come with the entrypoint.** The text has
+  growth ask only the monitoring stack. On a project that took extras,
+  an adapter of an extra may newly match on the grown tags, and it
+  installs through `only` as the bootstrap does: a Quarkus REST
+  project on Gradle with a native image and distribution, grown the
+  CLI, gains `distribution/quarkus-cli-native`'s two release workflows
+  and is asked their `targets`, as `keel new` of the twin with those
+  extras asks them, and the grown tree equals that twin's. The docs
+  and the CHANGELOG say so, and a handler test holds it.
+- **The generation refusal names no pin it cannot keep.** The text
+  asks the generation as `keel add module` does, whose refusal ends
+  _"— or pin keel@…"_, the keel that scaffolded the project. No keel
+  that writes no marker has this command, the two arriving in one
+  release, so on an unmarked project that pin is a dead end and the
+  refusal leaves it out. Once the generation moves on, a project
+  stamped with an older one is named its pin again, since the keel
+  that stamped it has the command.
+- **A missing plugin names this command to re-run.** Where the
+  project records a vertical no loaded plugin provides any more, the
+  harness retrofit refuses (`keel.missing-harness-contributor`), and
+  its sentence named `keel add agent-harness`, which is installed
+  already here. `retrofitHarness` now takes the command line of the
+  run that replays, and the sentence moved into `refusals.ts`.
+
+Not done here: the refusal's action, the status field and the page
+(R.2c) — and with them the hint's closing _a project's entrypoints are
+fixed at 'keel new'_ (`hint.ts`) and `missing.entrypoint`'s doc in
+`refusal.ts`, which this command makes untrue and R.2c rewords.
+`ReadinessGap`'s own doc in `queries.ts`, which said the same, now
+says `keel add entrypoint` adds a back one. The byte identity of a
+project that took extras is not I10's; a CLI project with dev-env as
+an extra keeps its definition's shape, its README's order and its
+manifest's rows as that extra left them, which `docs/cli.md` says.
 
 #### R.2c — The refusal carries the action (M)
 
@@ -6083,7 +6504,8 @@ agent-harness --reapply`.
   - (c) Refuse where a harness file's disk hash differs from the
     recorded `sha256Current`. This is a step toward L.
 
-  **Recommend (a).**
+  **Recommend (a).** Taken in R.2b: the harness re-renders wherever it
+  is installed, and the report carries the diffs.
 
 - **DR4 — The grown manifest.**
   - (a) Record at rank, with R.2a's hash fix. The manifest is then
@@ -6096,7 +6518,9 @@ agent-harness --reapply`.
   **Recommend (a).** The hash fix landed in R.2a: every entry of a
   file a `keel new` or `keel add` writes records the bytes the run
   leaves it, so the kit hook's entry and a later write's agree with
-  disk. Recording at rank is R.2b's.
+  disk. Recording at rank landed in R.2b — the new `verticals` rows,
+  `answers` keys and harness entries — and I10 compares the grown
+  manifest with the twin's byte for byte.
 
 - **DR5 — How a grown project settles.**
   - (a) An `actionsOnly` replay. This gives the twin's actions, and I10
@@ -6107,7 +6531,13 @@ agent-harness --reapply`.
     formatter fixed point then fails the first `spotlessCheck`.
   - (c) Queue nothing, and have the report say what to run.
 
-  **Recommend (a).**
+  **Recommend (a).** Taken in R.2b: every vertical of the twin that
+  is not placed at a repository root replays for its actions
+  (`actionsOnly`), and I10 checks the queue against the twin's, less
+  version control's. An extra the project took is no vertical of the
+  twin, so it queues nothing again: with extras, the grown queue can
+  lack an extra's own fetch (persistence's `go mod tidy`), which
+  repeats the bootstrap's today. I10 has no extras.
 
 - **DR6 — How R.2 knows an already-matched adapter would need
   re-rendering.**
@@ -6135,9 +6565,11 @@ agent-harness --reapply`.
   `--reapply` or `--refresh`. The word landed in R.2a: `ENTRYPOINTS`
   carries it, `entrypointNamed` takes it or the id, and `growthOf`
   reads `spa` as `keel.uncoverable-entrypoint`. The reserved first
-  words are R.2b's.
+  words landed in R.2b: the CLI reads both, and the registry refuses
+  both as vertical ids.
 - **DR8 — I10 is hard from R.2b**, with no allowance: every cell is
-  either `ok` or its golden refusal.
+  either `ok` or its golden refusal. Taken: `HARD` lists I10, and
+  `growth.known.json` is `{}`.
 
 ### Not in scope for R
 
@@ -6145,7 +6577,9 @@ agent-harness --reapply`.
   merge base.
 - **A browser SPA.** A front end is a product's other service; that is
   U's `keel add service`.
-- **Growth anywhere inside a product.** That is U's.
+- **Growth inside a monorepo product**, at its root or in a service.
+  That is U's. A polyrepo service, which no product root records,
+  grows as a repository of its own (R.2b).
 - **Byte identity with extras installed.** A CLI or SPA project that
   already has dev-env keeps `### Dev environment` below
   `### Dev container` and keeps the attach-shape `devcontainer.json`.

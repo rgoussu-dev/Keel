@@ -12,9 +12,11 @@
  * HTTP project, for every family and on the tags a CLI project grows
  * to, it writes the bytes the template renders attached, in the
  * file's own line endings and around what the user wrote; elsewhere,
- * the shape an extra dev environment has always written. The resolution block proves every non-composite
- * stack's tag set covers the vertical, so no stack can silently lose
- * its dev container.
+ * the shape an extra dev environment has always written; and a
+ * definition customized away from keel's image refused as a file in
+ * the way, before anything is written. The resolution block proves
+ * every non-composite stack's tag set covers the vertical, so no
+ * stack can silently lose its dev container.
  */
 
 import path from 'node:path';
@@ -22,6 +24,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
@@ -29,11 +32,15 @@ import { installVertical } from '../../../../src/domain/core/install.js';
 import { devContainerVertical } from '../../../../src/domain/core/verticals/dev-container.js';
 import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
 import { attachDevContainerToDevEnv } from '../../../../src/domain/core/adapters/dev-container.js';
+import { DEV_ENV_COMPOSE_ID } from '../../../../src/domain/core/adapters/dev-env-compose.js';
 import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { PathConflictError } from '../../../../src/domain/contract/refusal.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
+import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 import { pinValue } from '../../../support/version-pins.js';
 
 let cwds: string[] = [];
@@ -345,7 +352,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
       '}',
       '',
     ].join('\n');
-    const upgraded = attachDevContainerToDevEnv(edited, 'shipper', HTTP_PROJECTS[2]!.tags);
+    const upgraded = attachDevContainerToDevEnv(
+      edited,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
     const lines = upgraded.split('\n');
     expect(lines.slice(0, 3)).toEqual(['{', '  // Ours.', '  //']);
     expect(lines[lines.indexOf('  "name": "shipper-dev",') - 1]).toMatch(/not restarted\.$/);
@@ -362,7 +374,9 @@ describe('dev-env installed after dev-container (order independence)', () => {
       ].join('\n'),
     );
     expect(upgraded).not.toContain('"image"');
-    expect(attachDevContainerToDevEnv(upgraded, 'shipper', HTTP_PROJECTS[2]!.tags)).toBe(upgraded);
+    expect(
+      attachDevContainerToDevEnv(upgraded, 'shipper', HTTP_PROJECTS[2]!.tags, DEV_ENV_COMPOSE_ID),
+    ).toBe(upgraded);
   });
 
   it('on an HTTP project, gives a features object with no entry the docker feature below its brace, every line kept', () => {
@@ -378,7 +392,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
       '}',
       '',
     ].join('\n');
-    const upgraded = attachDevContainerToDevEnv(empty, 'shipper', HTTP_PROJECTS[2]!.tags);
+    const upgraded = attachDevContainerToDevEnv(
+      empty,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
     expect(upgraded).toContain(
       [
         '  "features": {',
@@ -405,7 +424,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
       '}',
       '',
     ].join('\n');
-    const upgraded = attachDevContainerToDevEnv(commented, 'shipper', HTTP_PROJECTS[2]!.tags);
+    const upgraded = attachDevContainerToDevEnv(
+      commented,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
     expect(upgraded).toContain(
       [
         '    "ghcr.io/devcontainers/features/go:1": {"version": "1.26"}, // pinned, for now',
@@ -432,7 +456,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
       '}',
       '',
     ].join('\n');
-    const upgraded = attachDevContainerToDevEnv(trailing, 'shipper', HTTP_PROJECTS[2]!.tags);
+    const upgraded = attachDevContainerToDevEnv(
+      trailing,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
     expect(upgraded).toContain(
       [
         '    "ghcr.io/devcontainers/features/go:1": {},',
@@ -461,7 +490,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
         '}',
         '',
       ].join('\n');
-      const upgraded = attachDevContainerToDevEnv(commented, 'shipper', HTTP_PROJECTS[2]!.tags);
+      const upgraded = attachDevContainerToDevEnv(
+        commented,
+        'shipper',
+        HTTP_PROJECTS[2]!.tags,
+        DEV_ENV_COMPOSE_ID,
+      );
       expect(upgraded).toContain(
         [
           '    "ghcr.io/devcontainers/features/go:1": {}, /* pinned',
@@ -522,7 +556,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
         '}',
         '',
       ].join('\n');
-      const upgraded = attachDevContainerToDevEnv(closed, 'shipper', HTTP_PROJECTS[2]!.tags);
+      const upgraded = attachDevContainerToDevEnv(
+        closed,
+        'shipper',
+        HTTP_PROJECTS[2]!.tags,
+        DEV_ENV_COMPOSE_ID,
+      );
       expect(upgraded).toContain(['  "features": {', ...listed, ...customizations].join('\n'));
       expect(featuresOf(upgraded)).toContain(DOCKER_FEATURE);
     },
@@ -548,7 +587,7 @@ describe('dev-env installed after dev-container (order independence)', () => {
       '}',
       '',
     ].join('\n');
-    const upgraded = attachDevContainerToDevEnv(listed, 'shipper', tags);
+    const upgraded = attachDevContainerToDevEnv(listed, 'shipper', tags, DEV_ENV_COMPOSE_ID);
     expect(upgraded).toContain(features.join('\n'));
     expect(upgraded.split(DOCKER_FEATURE)).toHaveLength(2);
   });
@@ -565,7 +604,12 @@ describe('dev-env installed after dev-container (order independence)', () => {
       '}',
       '',
     ].join('\n');
-    const lines = attachDevContainerToDevEnv(moved, 'shipper', HTTP_PROJECTS[2]!.tags).split('\n');
+    const lines = attachDevContainerToDevEnv(
+      moved,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    ).split('\n');
     const fields = lines.findIndex((line) => line.startsWith('  "dockerComposeFile"'));
     expect(lines[0]).toBe('{');
     expect(lines[fields - 1]).toMatch(/not restarted\.$/);
@@ -603,7 +647,9 @@ describe('dev-env installed after dev-container (order independence)', () => {
         '',
       ].join('\n');
       expect(
-        featuresOf(attachDevContainerToDevEnv(edited, 'shipper', HTTP_PROJECTS[2]!.tags)),
+        featuresOf(
+          attachDevContainerToDevEnv(edited, 'shipper', HTTP_PROJECTS[2]!.tags, DEV_ENV_COMPOSE_ID),
+        ),
       ).toEqual(listed);
     },
   );
@@ -629,15 +675,59 @@ describe('dev-env installed after dev-container (order independence)', () => {
 
   it('leaves an already-attached definition untouched', () => {
     const attached = '{\n  "dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"]\n}\n';
-    expect(attachDevContainerToDevEnv(attached, 'shipper', [])).toBe(attached);
+    expect(attachDevContainerToDevEnv(attached, 'shipper', [], DEV_ENV_COMPOSE_ID)).toBe(attached);
   });
 
-  it('refuses to rewrite a definition with a customized image', () => {
+  it('refuses to rewrite a definition with a customized image, as a file in the way', () => {
     const custom =
       '{\n  "name": "shipper",\n  "image": "my-registry/my-base:1",\n  "features": {\n  }\n}\n';
-    expect(() => attachDevContainerToDevEnv(custom, 'shipper', [])).toThrow(
-      /attach it to the dev environment manually/,
+    const refused = (() => {
+      try {
+        attachDevContainerToDevEnv(custom, 'shipper', [], DEV_ENV_COMPOSE_ID);
+      } catch (thrown) {
+        return thrown;
+      }
+      return null;
+    })();
+    expect(refused).toBeInstanceOf(PathConflictError);
+    const error = refused as PathConflictError;
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.refusal).toEqual({
+      kind: 'path-conflict',
+      path: '.devcontainer/devcontainer.json',
+      adapterId: DEV_ENV_COMPOSE_ID,
+      manual: 'attach it to the dev environment',
+    });
+    // Never the image line to put back: the attach would replace it,
+    // and leave the user's own beside the compose fields.
+    expect(error.message).toBe(
+      "'.devcontainer/devcontainer.json' has changed since keel scaffolded it, and keel does not rewrite what you changed there — attach it to the dev environment yourself, then re-run",
     );
+  });
+
+  it('refuses `keel add dev-env` over it before a file moves, on the Err rail', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dev-container-drift-'));
+    cwds.push(cwd);
+    const mediator = installMediator({
+      processes: new FakeProcessRunner(),
+      runDeferred: async () => {},
+    });
+    const run = { cwd, answers: {}, interactive: false, dryRun: false };
+    expectOk(await mediator.dispatch(newProjectCommand({ ...run, stack: 'go-cli' })));
+    const definition = path.join(cwd, '.devcontainer/devcontainer.json');
+    const custom = (await fs.readFile(definition, 'utf8')).replace(
+      /"image": "[^"]*"/,
+      '"image": "my-registry/my-base:1"',
+    );
+    await fs.writeFile(definition, custom);
+
+    const error = expectErr(
+      await mediator.dispatch(addVerticalCommand({ ...run, verticals: ['dev-env'] })),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toMatch(/^'\.devcontainer\/devcontainer\.json' has changed since /);
+    expect(await fs.readFile(definition, 'utf8')).toBe(custom);
+    expect(await fs.pathExists(path.join(cwd, 'dev/compose.yaml'))).toBe(false);
   });
 });
 

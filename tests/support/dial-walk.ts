@@ -15,9 +15,11 @@
  * (`domain/core/shared-files.golden.test.ts`), the growth golden
  * (`domain/core/growth.golden.test.ts`) and its render guard
  * (`domain/core/growth-render.test.ts`, which keeps the opening build
- * system only) over the mediator. None keeps a list of settings: what
- * a preset offers is whatever the replies offer, so a dial or a rule
- * registered tomorrow is walked without an edit. The first two then
+ * system only), and the composition grid's growth axis
+ * (`domain/core/composition-grid/growth.test.ts`) over the mediator.
+ * None keeps a list of settings: what a preset offers is whatever the
+ * replies offer, so a dial or a rule registered tomorrow is walked
+ * without an edit. The first two then
  * tick the extras on what they reached as the page does, from the run
  * it holds once a reply has settled ({@link settledRun}), over the
  * boxes it draws ({@link offeredAsExtra}); the shared-file golden names
@@ -73,6 +75,44 @@ export async function walkDials(
     queue.push({ ...settled, withPeerContext: false });
   }
   return [...reached.values()];
+}
+
+/**
+ * Every setting `keel.dials` offers the single-service preset `stack`,
+ * as the target it settled: the {@link walkDials} walk, and each
+ * setting again with the agent harness left out wherever the reply
+ * lets it be. What the growth golden (`domain/core/growth.golden.test.ts`)
+ * reads growth on, and the composition grid's growth axis grows.
+ */
+export async function harnessSettings(
+  dials: (target: NewProjectTarget) => Promise<DialOptions>,
+  stack: string,
+): Promise<readonly NewProjectTarget[]> {
+  const walked = await walkDials(dials, [{ kind: 'new-project', stack }]);
+  const settings = new Map<string, NewProjectTarget>();
+  for (const reply of walked) {
+    const target = reply.target as NewProjectTarget;
+    settings.set(JSON.stringify(target), target);
+    if (!reply.agentHarness) continue;
+    const off = (await dials({ ...target, agentHarness: false })).target as NewProjectTarget;
+    settings.set(JSON.stringify(off), off);
+  }
+  return [...settings.values()];
+}
+
+/**
+ * A single-service setting as the command line that scaffolds it —
+ * spelled here rather than by the page's own `command.js`, so a change
+ * to how the page prints a command moves no golden's key.
+ */
+export function newCommandLine(target: NewProjectTarget): string {
+  return [
+    `keel new --stack ${target.stack ?? ''}`,
+    target.buildSystem === undefined ? '' : ` --build-system ${target.buildSystem}`,
+    target.moduleLayout === undefined ? '' : ` --module-layout ${target.moduleLayout}`,
+    target.withPeerContext === true ? ' --with-peer-context' : '',
+    target.agentHarness === false ? ' --no-agent-harness' : '',
+  ].join('');
 }
 
 /** What `<keel-app>` stores between transitions. */

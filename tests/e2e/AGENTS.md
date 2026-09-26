@@ -107,6 +107,14 @@ than a paraphrase. Each cell also asserts the root build file registers
 every module exactly once — the shared-root upsert's whole reason to
 exist, and the one failure a scaffold-and-read test cannot see.
 
+**A grown project is its twin's cell, and gets no suite.** `keel add
+entrypoint` grows a CLI or HTTP project into its combo stack, and the
+composition grid's growth axis (I10) holds the grown tree, manifest and
+queued actions to `keel new` of the combo on the same dials, byte for
+byte. So a combo cell's suite covers the cells that grow into it, and
+a combo with no suite leaves its grown cells as uncovered as its own.
+Adding one is a combo cell like any other, not a growth suite.
+
 ## The add-module grid — a job per cell, on the JVM only
 
 **On the JVM, `add-module-*` _is_ a grid — the same 24 cells, and one

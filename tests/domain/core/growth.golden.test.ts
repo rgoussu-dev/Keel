@@ -8,12 +8,12 @@
  *
  * **Scenario.** Cells are derived, never listed: the presets from
  * `keel.catalog`, every dial setting each offers from `keel.dials`
- * ({@link walkDials}: build system × module layout, and the peer
- * context wherever the modulith offers it), each again with the agent
- * harness left out wherever the reply lets it be, and on each, every
- * back-side entrypoint of `ENTRYPOINTS` the scaffold's tags lack — the
- * other one on a single-entrypoint backend, both on a front end, none
- * on a preset carrying both.
+ * (`harnessSettings` over `walkDials`: build system × module layout,
+ * and the peer context wherever the modulith offers it), each again
+ * with the agent harness left out wherever the reply lets it be, and
+ * on each, every back-side entrypoint of `ENTRYPOINTS` the scaffold's
+ * tags lack — the other one on a single-entrypoint backend, both on a
+ * front end, none on a preset carrying both.
  *
  * **Factory.** {@link installMediator} over the real templates, with a
  * fake process runner and no deferred action, as the composition grid
@@ -60,7 +60,7 @@ import { FakeManifestStore } from '../../../src/infrastructure/manifest/fake.js'
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 import { FakeTree } from '../../../src/infrastructure/tree/fake.js';
 import { eachStack } from '../../support/composition-grid.js';
-import { walkDials } from '../../support/dial-walk.js';
+import { harnessSettings, newCommandLine } from '../../support/dial-walk.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
 const GOLDEN = new URL('./growth.golden.json', import.meta.url);
@@ -88,6 +88,7 @@ type Cell =
       readonly refused: string;
       readonly reason?: string;
       readonly drops?: readonly string[];
+      readonly rules?: readonly string[];
       readonly contexts?: readonly GrowthContext[];
     };
 
@@ -110,18 +111,18 @@ describe('growth: what adding an entrypoint reads, on every shipped preset', () 
       (stack) => stack.services.length === 0 && lacking(stack.tags).length > 0,
     );
     await eachStack(growing, async (stack) => {
-      for (const target of await settingsOf(stack.id)) {
-        const cwd = path.join(SCRATCH, commandOf(target).replace(/\W+/g, '-'));
+      for (const target of await harnessSettings(dialsOf, stack.id)) {
+        const cwd = path.join(SCRATCH, newCommandLine(target).replace(/\W+/g, '-'));
         expectOk(
           await mediator.dispatch(
             installCommandFor(target, { cwd, answers: {}, interactive: false, dryRun: false }),
           ),
         );
         const manifest = await manifests.read(projectScopeRoot(cwd));
-        if (manifest === null) throw new Error(`${commandOf(target)}: no manifest written`);
+        if (manifest === null) throw new Error(`${newCommandLine(target)}: no manifest written`);
         for (const entry of lacking(manifest.tags)) {
           cells.set(
-            `${commandOf(target)} && keel add entrypoint ${entry.word}`,
+            `${newCommandLine(target)} && keel add entrypoint ${entry.word}`,
             cellOf(growthOf(shippedRegistry, manifest, entry.word)),
           );
         }
@@ -152,24 +153,6 @@ describe('growth: what adding an entrypoint reads, on every shipped preset', () 
     expect(read, 'a deliberate change is recorded by KEEL_UPDATE_GOLDEN=1').toEqual(golden);
   });
 });
-
-/**
- * Every setting `keel.dials` offers `stack`, as the target it settled:
- * the {@link walkDials} walk, and each setting again with the agent
- * harness left out wherever the reply lets it be.
- */
-async function settingsOf(stack: string): Promise<readonly NewProjectTarget[]> {
-  const walked = await walkDials(dialsOf, [{ kind: 'new-project', stack }]);
-  const settings = new Map<string, NewProjectTarget>();
-  for (const reply of walked) {
-    const target = reply.target as NewProjectTarget;
-    settings.set(JSON.stringify(target), target);
-    if (!reply.agentHarness) continue;
-    const off = (await dialsOf({ ...target, agentHarness: false })).target as NewProjectTarget;
-    settings.set(JSON.stringify(off), off);
-  }
-  return [...settings.values()];
-}
 
 async function dialsOf(target: NewProjectTarget): Promise<DialOptions> {
   return expectOk(await mediator.dispatch(dialsQuery({ target })));
@@ -203,24 +186,11 @@ function refusedCell(refusal: GrowthRefusal): Cell {
           ? {}
           : { drops: refusal.drops.flatMap((vertical) => vertical.adapters) }),
       };
+    case 'keel.incompatible':
+      return { refused: refusal.code, rules: refusal.rules.map((rule) => rule.id) };
     case 'keel.contexts-need-rewiring':
       return { refused: refusal.code, contexts: refusal.contexts };
     case 'keel.unknown-entrypoint':
       throw new Error(`growth read '${refusal.word}', a word of ENTRYPOINTS, as naming none`);
   }
-}
-
-/**
- * A setting as the command line that scaffolds it, spelled here rather
- * than by the page's own `command.js`, so a change to how the page
- * prints a command moves no key.
- */
-function commandOf(target: NewProjectTarget): string {
-  return [
-    `keel new --stack ${target.stack ?? ''}`,
-    target.buildSystem === undefined ? '' : ` --build-system ${target.buildSystem}`,
-    target.moduleLayout === undefined ? '' : ` --module-layout ${target.moduleLayout}`,
-    target.withPeerContext === true ? ' --with-peer-context' : '',
-    target.agentHarness === false ? ' --no-agent-harness' : '',
-  ].join('');
 }

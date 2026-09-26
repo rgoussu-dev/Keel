@@ -129,6 +129,10 @@ const targetSchema = z
       module: z.string().min(1),
       consumes: z.string().min(1).optional(),
     }),
+    z.object({
+      kind: z.literal('add-entrypoint'),
+      entrypoint: z.string().min(1),
+    }),
   ])
   .superRefine((target, context) => {
     if (target.kind !== 'add-vertical') return;
@@ -285,6 +289,8 @@ function narrow(target: z.infer<typeof targetSchema>): InstallTarget {
         module: target.module,
         ...(target.consumes === undefined ? {} : { consumes: target.consumes }),
       };
+    case 'add-entrypoint':
+      return { kind: 'add-entrypoint', entrypoint: target.entrypoint };
   }
 }
 

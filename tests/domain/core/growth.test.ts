@@ -444,6 +444,22 @@ describe('growthOf', () => {
     });
   });
 
+  it('refuses where the entrypoint would break a rule of a vertical the project has, and only one it newly breaks', () => {
+    const noHttp = { id: 'acme-cli-only/no-http', when: ['arch.server-http'], reason: 'no HTTP' };
+    const standing = { id: 'acme-cli-only/standing', when: ['arch.cli'], reason: 'broken already' };
+    const cliOnly: Vertical = {
+      ...vertical('acme-cli-only', [adapter('acme-cli-only', 'main', ['lang.acme'])]),
+      conflicts: [standing, noHttp],
+    };
+    const manifest = scaffoldOf(CLI, {
+      verticals: ['acme-skeleton', 'agent-harness', 'acme-cli-only'],
+    });
+    expect(growthOf(family(undefined, [cliOnly]), manifest, 'http')).toEqual({
+      kind: 'refused',
+      refusal: { code: 'keel.incompatible', entrypoint: 'server-http', rules: [noHttp] },
+    });
+  });
+
   it('leaves the harness out where the project was scaffolded without it', () => {
     const manifest = scaffoldOf(CLI, { verticals: ['acme-skeleton'] });
     expect(growthOf(family(), manifest, 'http')).toMatchObject({

@@ -18,6 +18,7 @@ import { CatalogHandler } from '../../src/domain/core/handlers/catalog.js';
 import { DialsHandler } from '../../src/domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../src/domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../src/domain/core/handlers/project-status.js';
+import { AddEntrypointHandler } from '../../src/domain/core/handlers/add-entrypoint.js';
 import { AddModuleHandler } from '../../src/domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../src/domain/core/handlers/add-vertical.js';
 import { DocsCheckHandler } from '../../src/domain/core/handlers/docs-check.js';
@@ -61,6 +62,7 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
+    new AddEntrypointHandler(deps),
     new DocsSyncHandler(deps),
     new DocsCheckHandler(deps),
     new LinkPeerHandler(deps),

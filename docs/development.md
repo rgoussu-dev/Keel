@@ -289,12 +289,15 @@ whichever of the three is missing.
 - Every public API change is accompanied by a test change.
 - **The composition grid** (`tests/domain/core/composition-grid/`)
   previews every stack × vertical in both phases and every product's
-  services under both repository layouts, and holds the invariants of
-  roadmap epic Q over them: a golden of every verdict, and a
+  services under both repository layouts, grows every
+  single-entrypoint backend preset with `keel add entrypoint` on every
+  dial setting and holds it to its twin, and holds the invariants of
+  roadmap epics Q and R over them: a golden of every verdict, and a
   known-violations file that can only shrink. How to read and
   regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md). What it
-  leaves out to stay fast — every other dial setting, every extras set,
-  every pair's arrival order, every answer choice — is the weekly
+  leaves out to stay fast — every dial setting but a preset's opening
+  one where it previews, every extras set, every pair's arrival order,
+  every answer choice — is the weekly
   [composition sweep](#the-composition-sweep).
 
 ### End-to-end tests
@@ -1068,8 +1071,10 @@ the operator's machine would report it as a harness finding.
   — and check that only the files you meant to change moved. A
   single-service stack, a dial, or an adapter keyed on an entrypoint
   tag moves `tests/domain/core/growth.golden.json` too, what adding an
-  entrypoint reads on each preset; it reads no other golden either —
-  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/growth.golden.test.ts`.
+  entrypoint reads on each preset; it reads no other golden —
+  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/growth.golden.test.ts`
+  — but the grid's growth axis reads it (I10 holds each grown cell to
+  the refusal it records), so regenerate it before the grid.
 
 See the [composition model](composition.md) for the vocabulary, and
 the [roadmap](roadmap.md) for what's wanted next.

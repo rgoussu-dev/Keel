@@ -772,6 +772,165 @@ export function refreshProposalNote(
 }
 
 /**
+ * The sentence a run that re-renders `verticals` (by id) is refused
+ * with where a contribution met a conflict it cannot settle — a patch
+ * whose re-application keeps changing its file, two writers of one
+ * file (`keel.reapply-conflict`): `detail`, the conflict's own
+ * sentence, after the re-render it stopped. `keel add --reapply` and
+ * `--refresh` re-render what they are asked to; `keel add entrypoint`
+ * re-renders the agent harness, in the same reapply posture.
+ */
+export function reapplyConflictSentence(verticals: readonly string[], detail: string): string {
+  return `reapply of '${verticals.join("', '")}' refused: ${detail}`;
+}
+
+/**
+ * The sentence a run replaying the project's harness elements is
+ * refused with where it records `vertical` (by id), which nothing
+ * registered provides any more (`keel.missing-harness-contributor`):
+ * restore the plugin, then re-run `line`, the command line of that
+ * run — `keel add agent-harness`, `keel docs sync`, or the `keel add
+ * entrypoint` that re-renders the harness.
+ */
+export function missingHarnessContributorSentence(vertical: string, line: string): string {
+  return `cannot restore harness elements from installed vertical '${vertical}' — restore the plugin that provides it and re-run '${line}'`;
+}
+
+/**
+ * The sentence `keel add entrypoint` is refused with for a word that
+ * names no entrypoint: the words it takes, each with the entrypoint it
+ * names — the back side of {@link ENTRYPOINTS}.
+ */
+export function unknownEntrypointSentence(word: string): string {
+  const words = ENTRYPOINTS.filter((entry) => entry.side === 'back').map(
+    (entry) => `'${entry.word}' (${entry.short})`,
+  );
+  return `'${word}' names no entrypoint keel adds — name ${words.join(' or ')}`;
+}
+
+/**
+ * Why no stack is a project with an entrypoint more:
+ *
+ * - `front-end` — keel grows a back end alone: the entrypoint is a
+ *   front end's, or the project is a front end;
+ * - `no-twin` — no stack keel offers is this project with the
+ *   entrypoint as well, on its build system and module layout;
+ * - `drops` — adding it would stop adapters of verticals the project
+ *   has from applying, and keel removes nothing it installed.
+ */
+export type UncoverableEntrypointReason = 'front-end' | 'no-twin' | 'drops';
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with when no stack is the project with it, for
+ * `reason`; under `drops`, `dropping` are the verticals whose adapters
+ * would stop applying, named by their titles.
+ */
+export function uncoverableEntrypointSentence(
+  entrypoint: string,
+  reason: UncoverableEntrypointReason,
+  dropping: readonly Vertical[] = [],
+): string {
+  const entry = entrypointOf(entrypoint);
+  const lead = `${entry.short} cannot be added here`;
+  switch (reason) {
+    case 'front-end':
+      return entry.side === 'back'
+        ? `${lead}: keel adds an entrypoint only to a back end, and this project is a front end`
+        : `${lead}: a front end is a project of its own, and keel adds an entrypoint only to a back end`;
+    case 'no-twin':
+      return `${lead}: no stack keel offers is this project with it as well, on its build system and module layout`;
+    case 'drops':
+      return `${lead}: part of ${listed(dropping.map(verticalTitle))} would stop applying to this project, and keel removes nothing it installed`;
+  }
+}
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with where it would newly break `broken`, rules of
+ * verticals the project has (`keel.incompatible`) — each in its own
+ * sentence and under its id, as {@link brokenRulesRefusal} gives a
+ * vertical's, never the tags that tripped it.
+ */
+export function incompatibleEntrypointSentence(
+  entrypoint: string,
+  broken: readonly { readonly id: string; readonly reason: string }[],
+): string {
+  return `${entrypointOf(entrypoint).short} cannot be added here: ${rulesSentence(broken)}`;
+}
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with while bounded contexts the project has — `contexts`,
+ * by name — are wired into its existing entrypoints alone, and nothing
+ * keel has wires one into a new entrypoint yet. Names the contexts,
+ * never the tags that select their adapters.
+ */
+export function contextsNeedRewiringSentence(
+  entrypoint: string,
+  contexts: readonly string[],
+): string {
+  const noun = contexts.length === 1 ? 'bounded context' : 'bounded contexts';
+  const verb = contexts.length === 1 ? 'is' : 'are';
+  const named = listed(contexts.map((context) => `'${context}'`));
+  return `${entrypointOf(entrypoint).short} cannot be added here yet: this project's ${noun} ${named} ${verb} wired into its existing entrypoints, and keel does not yet wire a context into a new one`;
+}
+
+/**
+ * The note `keel add entrypoint` gives for an entrypoint (an
+ * {@link ENTRYPOINTS} id) the project has already. Asking for what is
+ * there has one sensible reading, so it is Ok, not a refusal — as
+ * {@link alreadyInstalledNote} is for a vertical.
+ */
+export function entrypointPresentNote(entrypoint: string): string {
+  return `${entrypointOf(entrypoint).short} is already an entrypoint of this project`;
+}
+
+/**
+ * Why `keel add entrypoint` is refused inside a product: the product
+ * records each service by the stack it was made from, and an
+ * entrypoint added to one would leave that record out of date, so keel
+ * adds none there yet. What {@link entrypointScopeSentence} says, and
+ * why a directory holding no project inside a product is told the
+ * services it points at refuse the command too.
+ */
+export const ENTRYPOINT_IN_PRODUCT_REASON =
+  'keel adds no entrypoint inside a product yet: the product records each service by the stack it was made from, and a service grown in place would no longer be that stack';
+
+/**
+ * The sentence `keel add entrypoint` is refused with inside a product —
+ * at its root (`root`), or in one of its services (`service`) —
+ * {@link ENTRYPOINT_IN_PRODUCT_REASON}. Under {@link WRONG_SCOPE_CODE}.
+ */
+export function entrypointScopeSentence(where: 'root' | 'service'): string {
+  const what =
+    where === 'root'
+      ? "this is a product root, whose entrypoints are its services'"
+      : 'this project is a service of a product';
+  return `${what} — ${ENTRYPOINT_IN_PRODUCT_REASON}`;
+}
+
+/**
+ * The note `keel add entrypoint` gives where the entrypoint (an
+ * {@link ENTRYPOINTS} id) changed what the project offers the projects
+ * linked to it — `refs`, each as the project's manifest records it,
+ * relative to the project: each of them still records what it was
+ * offered before, and `keel link` records it again, both ways.
+ */
+export function relinkNote(entrypoint: string, refs: readonly string[]): string {
+  const one = refs.length === 1;
+  const commands = refs.map((ref) => `'keel link ${ref}'`);
+  return `${one ? 'the project' : 'the projects'} linked at ${listed(refs)} ${one ? 'still records' : 'still record'} what this one offered ${one ? 'it' : 'them'} before its ${entrypointOf(entrypoint).short} — ${listed(commands)} ${one ? 'brings that record' : 'bring those records'} up to date`;
+}
+
+/** The {@link ENTRYPOINTS} record of `id`, which is one of its ids. */
+function entrypointOf(id: string): (typeof ENTRYPOINTS)[number] {
+  const entry = ENTRYPOINTS.find((candidate) => candidate.id === id);
+  if (entry === undefined) throw new Error(`'${id}' is no entrypoint id of ENTRYPOINTS`);
+  return entry;
+}
+
+/**
  * An {@link UnavailableRefusal} in words: a reason the vertical gives
  * for itself first; then the project's kind, when that is what is
  * wrong — a mixed gap reads as that, since adding the entrypoint alone
