@@ -14,7 +14,9 @@
  * That a deep import is rejected by `tsc` and by Node, and that
  * dependency-cruiser fails on a relative bypass, are claims only the
  * real toolchain can settle; `tests/e2e/ts-walking-skeleton.test.ts`
- * settles them against a real install.
+ * settles them against a real install. Under the peer context, they
+ * hold that the peer is wired into each assembly by a wiring adapter
+ * of its own (roadmap R.3c).
  */
 
 import path from 'node:path';
@@ -31,6 +33,10 @@ import { observabilityVertical } from '../../../../src/domain/core/verticals/obs
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { tsLayout, tsPeerPackage } from '../../../../src/domain/core/adapters/ts-module-layout.js';
+import { tsPeerContextCliAdapter } from '../../../../src/domain/core/adapters/ts-peer-context.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 import {
   BASIC_LAYOUT_TAG,
   MODULITH_LAYOUT_TAG,
@@ -38,7 +44,7 @@ import {
 } from '../../../../src/domain/core/adapters/module-layout.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
-import type { Vertical } from '../../../../src/domain/contract/composition.js';
+import type { Tag, Vertical } from '../../../../src/domain/contract/composition.js';
 
 const SCOPE = 'acme';
 
@@ -57,7 +63,11 @@ const ANSWERS = {
 
 const cwds: string[] = [];
 
-const install = async (verticals: readonly Vertical[], projectTags: string[]): Promise<FsTree> => {
+const install = async (
+  verticals: readonly Vertical[],
+  projectTags: string[],
+  answers: Readonly<Record<string, Readonly<Record<string, string>>>> = ANSWERS,
+): Promise<FsTree> => {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-ts-modulith-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);
@@ -67,7 +77,7 @@ const install = async (verticals: readonly Vertical[], projectTags: string[]): P
       manifest: {
         ...emptyManifestV2('2026-08-15T00:00:00Z', '0.5.0-alpha'),
         tags: projectTags,
-        answers: ANSWERS,
+        answers,
       },
       tree,
       mode: 'non-interactive',
@@ -597,5 +607,108 @@ describe('walking-skeleton under layout.modulith (composed cli + server-http)', 
     // The shared half is seeded once, not repeated by the second
     // adapter to resolve.
     expect(readme.split('## Adding a second bounded context')).toHaveLength(2);
+  });
+});
+
+describe('the TypeScript peer context, wired per entrypoint', () => {
+  const peerTags = (...arch: Tag[]): Tag[] => [
+    'lang.typescript',
+    'runtime.node',
+    'pkg.npm',
+    'arch.hexagonal',
+    ...arch,
+    MODULITH_LAYOUT_TAG,
+    PEER_CONTEXT_TAG,
+  ];
+  const answers = {
+    'walking-skeleton/ts-cli-bootstrap': { npmScope: SCOPE, projectName: 'skel' },
+    'walking-skeleton/ts-http-bootstrap': { npmScope: SCOPE, projectName: 'skel' },
+  };
+  /**
+   * Which assemblies the context is wired into is read off the
+   * predicates, one wiring adapter per entrypoint beside the shell —
+   * so a project that grows an entrypoint installs the one that newly
+   * matches, and the wiring already there is never rendered again
+   * (roadmap R.3c).
+   */
+  it('wires each assembly by an adapter of its own, which requires that entrypoint', async () => {
+    const ids = (...arch: Tag[]): string[] =>
+      resolveVertical(walkingSkeletonVertical, peerTags(...arch))
+        .map((adapter) => adapter.id)
+        .filter((id) => id.includes('peer-context'));
+    expect(ids('arch.cli')).toEqual([
+      'walking-skeleton/ts-peer-context',
+      'walking-skeleton/ts-peer-context-cli',
+    ]);
+    expect(ids('arch.server-http')).toEqual([
+      'walking-skeleton/ts-peer-context',
+      'walking-skeleton/ts-peer-context-http',
+    ]);
+    expect(ids('arch.cli', 'arch.server-http')).toEqual([
+      'walking-skeleton/ts-peer-context',
+      'walking-skeleton/ts-peer-context-cli',
+      'walking-skeleton/ts-peer-context-http',
+    ]);
+
+    const cli = await install([walkingSkeletonVertical], peerTags('arch.cli'), answers);
+    expect(read(cli, 'application/cli/src/guestbook.ts')).toContain(
+      'export function createGuestbookHandler()',
+    );
+    expect(cli.read('application/rest/src/guestbook.ts')).toBeNull();
+    const both = await install(
+      [walkingSkeletonVertical],
+      peerTags('arch.cli', 'arch.server-http'),
+      answers,
+    );
+    // One wiring module and its test, in two assemblies, each loading it and declaring the peer.
+    for (const unit of ['cli', 'rest']) {
+      for (const file of ['src/guestbook.ts', 'tests/guestbook-wiring.test.ts']) {
+        expect(read(both, `application/${unit}/${file}`)).toBe(
+          read(cli, `application/cli/${file}`),
+        );
+      }
+      expect(read(both, `application/${unit}/src/main.ts`)).toContain(
+        'createRegistryMediator([createGreetHandler(), createGuestbookHandler()])',
+      );
+      expect(json(both, `application/${unit}/package.json`)['dependencies']).toMatchObject({
+        '@acme/guestbook': '*',
+      });
+    }
+  });
+
+  it('names the wiring adapter when its assembly has nothing to wire the peer beside', async () => {
+    const manifest = {
+      ...emptyManifestV2('2026-08-15T00:00:00Z', '0.5.0-alpha'),
+      tags: peerTags('arch.cli'),
+      answers,
+    };
+    const ctx = makeCtx(
+      tsPeerContextCliAdapter,
+      {},
+      {
+        manifest,
+        logger: new FakeLogger(),
+        cwd: os.tmpdir(),
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
+      },
+    );
+    const { patches = [] } = await tsPeerContextCliAdapter.contribute(ctx);
+    const patch = (target: string): ((existing: string) => string) | undefined =>
+      patches.find((each) => each.target === target)?.apply;
+
+    expect(() => patch('application/cli/package.json')?.('{ "dependencies": {} }\n')).toThrow(
+      "walking-skeleton/ts-peer-context-cli: no '@acme/greeting' dependency in 'application/cli/package.json' to add the peer beside",
+    );
+    expect(() => patch('application/cli/src/main.ts')?.('export {};\n')).toThrow(
+      "walking-skeleton/ts-peer-context-cli: could not find the context import in 'application/cli/src/main.ts'",
+    );
+    expect(() =>
+      patch('application/cli/src/main.ts')?.(
+        "import { createGreetHandler } from '@acme/greeting';\nexport {};\n",
+      ),
+    ).toThrow(
+      "walking-skeleton/ts-peer-context-cli: could not find the mediator assembly line in 'application/cli/src/main.ts'",
+    );
   });
 });

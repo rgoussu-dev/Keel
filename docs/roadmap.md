@@ -7108,7 +7108,7 @@ There is none for `rust-cli-http` on either layout, so growth leaves
 those cells as covered as `keel new` does, and the proof on disk
 stands in.
 
-#### R.3c — TypeScript (M)
+#### R.3c — TypeScript (M) ✅
 
 **The split.**
 
@@ -7125,6 +7125,255 @@ here, because of the `MEDIATOR_LINE` anchor.
 
 **Holds green:** `add-module-ts`, `combo-modulith-ts-cli-http-{npm,pnpm}`,
 the R.1a golden, and I10.
+
+**Landed as the split alone**, on R.3a's machinery, and the goldens
+moved only where TypeScript's contexts now grow.
+
+- **The context.** `ts-context.ts` is now three adapters. The shell,
+  `bounded-context/ts-context`, writes the context's package and,
+  under `--consumes`, its gateway, and queues the `workspaceInstall`
+  that links the package. `ts-context-cli` and `ts-context-http` each
+  require the marker and their entrypoint's tag. Each writes
+  `application/<cli|rest>/src/<context>.ts`, declares the context on
+  that assembly's `package.json` (`dependencyPatch`), and splices its
+  handler into the mediator that assembly's `main.ts` builds
+  (`wiringPatch`, Q3.5's read of the array, unchanged), after the
+  shell and that entrypoint's bootstrap. What all three read is worked
+  out once (`contextOf`).
+- **The peer.** `ts-peer-context.ts` is split the same way. The shell
+  keeps the `guestbook` package, and `ts-peer-context-cli` and `-http`
+  each write `src/guestbook.ts` and `tests/guestbook-wiring.test.ts`,
+  declare the peer on the assembly's `package.json` and put its handler
+  on the mediator, in their assembly (`peerOf`).
+- `tsAssemblies` is gone. `tsAssembly(layout, unit)` names one
+  assembly's paths, each wiring adapter its own, and the four wiring
+  adapters are registered beside their shells in `walking-skeleton`
+  and `bounded-context`. Nothing else changed: `growthOf` finds the
+  wiring adapters and lifts TypeScript's refusal with no edit (DR6),
+  and R.3a's replay wires TypeScript's added contexts as it wires Go's
+  and Rust's.
+
+The goldens moved where R.3 says a family's step moves them, on
+TypeScript's cells alone; nothing else moved:
+
+- `growth.golden.json`: 24 cells went from
+  `keel.contexts-need-rewiring` to growing. They are TypeScript's 8
+  plain peer cells (`ts-cli` and `ts-http`, on npm and pnpm, harness
+  on and off), newly matching the peer's wiring adapter beside the
+  bootstrap, and its 16 history cells, with the peer and without, each
+  recording `modules`: `orders` and `shipping`, each wired by
+  `bounded-context/ts-context-http` (or `-cli`).
+- The grid's `growth.golden.json`: 72 verdicts moved to `ok`, the 24
+  grows and their 48 default I9 bodies. 24 were added, all `ok`: the
+  I9 bodies answering the monitoring stack on the 12 cells that grow
+  HTTP, which a refused cell never reached. That makes 1,136 verdicts.
+  I10 now grows 144 of the 192 plain cells, with the 48 refused being
+  every peer setting on the JVM, and 32 of the 128 histories: Go's 8,
+  Rust's 8 and TypeScript's 16.
+- `shared-files.golden.json` changed no entry it had. It gained 156,
+  on the 60 TypeScript cells: each assembly's `package.json` and
+  `src/main.ts`, on both layouts, recorded on HEAD's code (below).
+- The greenfield, brownfield, composite and planner-readiness goldens
+  and the docs matrix regenerate byte-identical. The known files are
+  as they were: brownfield's `{"I5": {}}`, and `{}` for the others.
+
+**The proof.**
+
+- **I10.** It holds TypeScript's 8 peer cells and 16 history cells to
+  their twins byte for byte, manifest and queued actions included. The
+  order the text calls a correctness requirement is the twin's order,
+  which growth already runs in. The new assembly's `main.ts` is the one
+  its bootstrap renders in the same run, and `walking-skeleton`
+  installs the peer's wiring adapter beside that bootstrap, so the
+  peer's `MEDIATOR_LINE` anchor always finds the bootstrap's own line.
+  Observability then wraps the server, and the replay, after the run's
+  last vertical, splices each added context's handler after the
+  array's last entry, in recorded order. Each context's import goes in
+  above the last one's, and its entry in the assembly's `package.json`
+  right after the skeleton's, so both read the last added first, the
+  peer's below them. With the replay reversed, I10 failed on exactly
+  TypeScript's 16 history cells and Rust's 8, and Go's still passed.
+- **The render guard** passes, with TypeScript's peer and context
+  adapters rendering the same both ways.
+- **No greenfield byte moved.** The R.1a golden holds it on the files
+  the split rearranges: its 156 new entries, recorded on HEAD's code,
+  pass on this step's. Beyond its settings, HEAD's code and this step's
+  each scaffolded `ts-cli`, `ts-http` and `ts-cli-http` on npm and pnpm, on
+  both layouts, with and without the peer context and the agent
+  harness, and each modulith again after the history: 60 settings and
+  4,304 files, byte-identical, manifests included. They did the same
+  with the whole extras menu `keel.dials` offers (`ci`, `dev-env` and
+  `toolchain` on `ts-cli`; `ci`, `containerization`, `persistence`,
+  `distribution`, `iac` and `toolchain` on the other two), on each
+  package manager, layout, peer and history setting: 30 settings and
+  3,103 files, byte-identical, persistence's read of the mediator
+  array beside the peer and the history included.
+- **The e2e suites.** `add-module-ts`,
+  `combo-modulith-ts-cli-http-npm` and `-pnpm`,
+  `combo-basic-ts-cli-http-pnpm`, `modulith-ts-cli-npm` and `-pnpm`,
+  `modulith-ts-http-npm` and `-pnpm`, and `modulith-ts-peer-context`
+  pass: 11 tests. The combo moduliths scaffold with the peer context,
+  so TypeScript's grown peer cells now have a suite by proof, their
+  twin's: the first two of the fourteen modulith combo suites R.2b
+  counts as covering their grown cells after R.3c and R.3d. Go's and
+  Rust's have none.
+- **On disk**, with the real deferred actions, Node 22.22, npm 10.9
+  and pnpm 10.33:
+  - `ts-cli` on npm, on the modulith with the peer context and the
+    history, grew HTTP. `npm run typecheck`, `npm run lint`
+    (dependency-cruiser) and `npm test` passed, the tests 45 in 14
+    files across seven workspace packages, `application/rest`'s 12
+    among them, its guestbook wiring's through the seam. The CLI
+    greeted. The HTTP unit answered `/greet` with 200 and a
+    correlation id, a blank name with 400, and both health probes
+    with 200. Nothing under `application/cli/` changed.
+  - `ts-http` on npm with the peer context and the history grew the
+    CLI, with the same three passing and 45 tests, and the CLI greeted.
+    Nothing under `application/rest/` changed.
+  - `ts-cli` on pnpm with the peer context and a standalone `billing`
+    grew HTTP, the three passing with 39 tests in 12 files.
+  - `ts-cli` and `ts-http` on pnpm with the peer context and the
+    history grew too, and their 45 tests pass, but
+    `pnpm run typecheck` fails — as their twin's does, with the same
+    `TS2307`s (below).
+
+**The tests.**
+
+- `ts-context.test.ts` goes from 14 to 18 cases, under a `describe` of
+  their own: the context is wired into each assembly by an adapter of its
+  own, the same module in each, and on a `ts-http` project into
+  `application/rest` alone; a `keel add module` on a `ts-cli-http`
+  project queues one action, the shell's install, and the case fails
+  with the shell queuing none, which only the e2e saw before (a
+  `TS2307` on the unlinked package), or the wiring adapters one each;
+  a `keel add module` on a `ts-cli-http` project whose CLI `main.ts`
+  has no mediator is refused as `keel.path-conflict`, its refusal's
+  `adapterId` naming `bounded-context/ts-context-cli`, and writes
+  nothing; and the wiring adapter's `package.json` drift error names it
+  (below).
+- `walking-skeleton-ts-modulith.test.ts` goes from 28 to 30: the peer
+  resolves its shell and one wiring adapter per entrypoint, each
+  writing the same `guestbook.ts` and wiring test into its own
+  assembly, putting the handler on its mediator and declaring the peer
+  on its `package.json`; and the wiring adapter's three drift errors
+  name it (below).
+- `add-entrypoint.test.ts` goes from 42 to 44. One case is a
+  TypeScript peer modulith on pnpm with a history of `orders`, then
+  `billing` consuming it, then `shipping` consuming `billing`, grown
+  and equal to its twin byte for byte, the new `main.ts`'s mediator
+  listing the skeleton's handler, the peer's, `orders`', `billing`'s
+  and `shipping`'s in turn, its imports `shipping`'s, `billing`'s,
+  `orders`', the skeleton's and the peer's, and its `package.json`
+  listing `shipping` above `billing` above `orders` above the peer.
+  No sort by name, either way, and no reversal gives the recorded
+  order, so the case fails on its own with the replay sorted by name
+  either way, with it reversed, and with the peer's import or each
+  context's put elsewhere. The other is R.3a's old-manifest
+  refusal on a TypeScript modulith, whose gateway is a directory of
+  the context's package; it fails with the check blind to
+  `src/infra/`.
+- `shared-files.golden.test.ts` records each TypeScript assembly's
+  `package.json` and `src/main.ts` (below). With the peer's import put
+  above the skeleton's it fails on 26 entries, and with each context's
+  put at the end of `main.ts` on 16; before, the whole suite passed
+  with either.
+
+**The cost.** Measured alone, the growth axis takes about 43 s,
+against 41 s for HEAD's code on the same machine: 24 more cells grow
+for real, held to 12 more twins, so it scaffolds 408 projects (it
+was 396) and runs 288 `keel add module`s (272). The whole grid takes
+about 52 s wall (50 s), and the full CI-mode run 176 s (177 s), with
+3,141 tests passing where HEAD's code passes 3,133. The R.1a golden's
+new entries cost nothing measurable: it hashes four more files a cell.
+
+`docs/cli.md` (`keel add entrypoint`, and the refusal and hint
+sections), `docs/composition.md` (Growing an entrypoint, which now
+says where the order shows in TypeScript's bytes), `docs/plugins.md`,
+`docs/stacks/ts-http.md`, `docs/ui.md`, `docs/development.md`, the
+README, `tests/AGENTS.md`, `tests/e2e/AGENTS.md`,
+`src/domain/core/AGENTS.md`, `bounded-context.ts`, the render guard's
+and the R.1a golden's headers and the note on the TypeScript context
+adapters in the JVM layout say what changed, and so does
+`GrowthPlan.adapters`' doc. R.2b's CHANGELOG entry under _Added_ now
+says what TypeScript's moduliths do, with I10's new counts, and R.2c's
+under _Changed_ narrows its "for now" to the JVM families. The two
+[Unreleased] entries that named `tsAssemblies` no longer do.
+
+Beyond the text above:
+
+- **The peer's anchor stays.** Q3.5 had already moved `ts-context`'s
+  own wiring off the bootstrap's line onto a read of the array, which
+  the context's wiring adapters keep as it was; the peer's still
+  replaces that line. Growth meets the requirement the text names with
+  no code (above), and a `main.ts` that has lost the line still throws
+  as it did: the peer's wiring runs beside the bootstrap that writes
+  it, so no scaffold reaches the throw.
+- **The drift errors name the wiring adapter.** The peer's three plain
+  throws and the context's `package.json` one named the adapter that
+  patched the file, as the context's `PathConflictError` over a
+  `main.ts` with no mediator did in its `adapterId`. Each now names the
+  wiring adapter that patches the file: `ts-context.test.ts` holds the
+  context's two, the refusal's data among them, and
+  `walking-skeleton-ts-modulith.test.ts` the peer's three. A refusal's
+  sentence names no adapter, so no sentence moved.
+- **The shells' `after`.** The context's shell lists none, as Go's: it
+  patches nothing. The peer's shell keeps both bootstraps, since the
+  TypeScript family has no base bootstrap, and either renders the
+  workspace the package joins and records the scope it reads. Each
+  wiring adapter runs after its shell and its entrypoint's bootstrap.
+  In `walking-skeleton` this moves the peer's wiring after the port
+  fake, on every TypeScript peer modulith; neither writes a file the
+  other does, and no byte moved (above).
+- **The R.1a golden records TypeScript's assembly files.** As on Rust,
+  none of its six files is one the split rearranges: the peer's and
+  each context's wiring, the bootstrap and observability all write
+  each assembly's `package.json` and `src/main.ts`. It now records
+  both on every TypeScript cell, the basic layout's too, whose
+  `main.ts` observability and persistence patch. The entries were
+  generated on HEAD's code, in a copy of its tree, and this step's code
+  writes them byte-identical. The mediator array and the `package.json`
+  entries had cases of their own, but nothing held where the wiring's
+  imports go in `main.ts`: the peer's could go above the skeleton's, or
+  each context's to the end of the file, with the whole suite passing,
+  since I10 compares a grown project with a twin the same adapters
+  write.
+- **The guard on a tag set with no entrypoint went with
+  `tsAssemblies`.** Both adapters threw when the tags named no
+  assembly to wire into. On such a tag set no wiring adapter matches,
+  and the shells never get that far: `tsBootstrapAnswers` finds no
+  bootstrap and throws first. Go's and Rust's adapters never had the
+  guard; the JVM's keep theirs until R.3d.
+- **The skeleton's second declaration is gone.** Where a context
+  consumed the skeleton, `ts-context` also declared the skeleton's
+  package on the assembly's `package.json`. On the modulith that
+  package is the assembly's core package, the entry `dependencyPatch`
+  anchors on and throws without, so the second patch always found it
+  there and changed nothing. The split would have copied it into each
+  wiring adapter; it went instead, and no byte moved: the R.1a golden
+  records each assembly's `package.json` after the history, where
+  `orders` consumes the skeleton, and HEAD's code and this step's
+  scaffolded 72 TypeScript settings again, the histories and the
+  extras menus among them: 5,716 files, byte-identical, queued actions
+  included.
+- **A pnpm modulith with a `--consumes` history does not typecheck,
+  grown or not.** The context `keel add module --consumes` adds does
+  not declare the context it consumes in its `package.json`, so under
+  pnpm's isolated store its gateway's `@acme/greeting/service` import
+  is a `TS2307`, in the context and in each assembly wiring it; npm's
+  hoisting resolves it, and vitest resolves it on either. HEAD's code
+  gives the same on a `ts-http` modulith after one
+  `keel add module orders --consumes greeting`, with no growth.
+  `add-module-ts` builds on npm alone, so CI never saw it;
+  `tests/e2e/AGENTS.md` now says so, and the fix is the Backlog's _A
+  TypeScript context declares the context it consumes_.
+- **The weekly sweep was not run.** Growth is no axis of it, and the
+  step names no finding.
+
+Not done here: the JVM (R.3d), whose peer and history cells stay
+refused; the pnpm `--consumes` declaration above, now a Backlog entry;
+and an e2e suite of a grown TypeScript modulith with a history. There
+is none for `ts-cli-http` with one, so growth leaves those cells as
+covered as `keel new` does, and the proof on disk stands in.
 
 #### R.3d — JVM: Quarkus, Spring and Micronaut, in Java and Kotlin (L)
 
@@ -7264,8 +7513,8 @@ agent-harness --reapply`.
   `growth-render.test.ts` holds that reading to the renders both ways.
   R.3a narrowed it to the adapters growing runs: the installed
   verticals' for the peer, the replayed `bounded-context`'s for an
-  added context. R.3b lifted Rust's refusal with no edit to it, as (a)
-  intended.
+  added context. R.3b lifted Rust's refusal, and R.3c TypeScript's,
+  with no edit to it, as (a) intended.
 
 - **DR7 — The word.** `keel add entrypoint cli|http`, with the word
   carried by `ENTRYPOINTS`. `server-http` is also accepted, since the
@@ -7375,6 +7624,18 @@ rather than remembered-in-a-file.
   Flyway integration; Quarkus's Liquibase extension reads
   classpath-only changelogs, so this needs design, not just config).
   Serving one is dropping or widening that predicate.
+- **A TypeScript context declares the context it consumes** — found in
+  R.3c, and not yet filed as an issue. The `package.json` a
+  `keel add module --consumes` context gets declares the kernel alone,
+  while its gateway imports `@<scope>/<consumed>/service`: npm's
+  hoisting resolves that, pnpm's isolated store does not, so on pnpm
+  `pnpm run typecheck` fails with a `TS2307` in the context and in each
+  assembly wiring it, while its tests pass, vitest resolving what tsc
+  does not. It wants the consumed context declared on that manifest
+  (`workspaceDep`, as the assemblies declare theirs), and a pnpm cell
+  beside `add-module-ts`, which builds on npm alone
+  (`tests/e2e/AGENTS.md`). Growth changes nothing here: a grown pnpm
+  modulith with such a history fails as its twin does.
 - ~~**Per-service build systems in composite stacks**~~
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — **shipped**:
   composites ask the build-system question per service (pin with

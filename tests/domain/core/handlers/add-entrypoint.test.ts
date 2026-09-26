@@ -780,8 +780,9 @@ describe('keel add entrypoint on a modulith with bounded contexts', () => {
    * each added context's above them, the last added first — so the peer
    * must be wired before observability runs, and the contexts after it,
    * in recorded order, which `main.rs`'s `mod` lines read in too
-   * (roadmap R.3b). `billing` is added after `orders`, so the recorded
-   * order is neither the names' nor its reverse.
+   * (roadmap R.3b). `billing` is added after `orders`, so a replay in
+   * the names' order, or in the reverse of the recorded one, wires
+   * them otherwise.
    */
   it('wires a Rust peer and each added context into the new crate where the twin with that history lists them', async () => {
     const dials = { moduleLayout: 'modulith', withPeerContext: true } as const;
@@ -816,6 +817,68 @@ describe('keel add entrypoint on a modulith with bounded contexts', () => {
     expect(await fs.readFile(path.join(cwd, 'application/http/src/main.rs'), 'utf8')).toContain(
       'mod guestbook;\nmod orders;\nmod billing;\n',
     );
+    expect(await digests(cwd)).toEqual(await digests(twin));
+  });
+
+  /**
+   * TypeScript's peer wiring rewrites the mediator line the bootstrap
+   * rendered, and each added context's splices its handler into
+   * whatever that array then holds: the peer must be wired beside the
+   * new bootstrap, before any context, and the contexts after it, in
+   * recorded order — which the array reads in, while each context's
+   * import and manifest entry go in above the last one's (roadmap
+   * R.3c). The history is `orders`, `billing`, then `shipping`: no sort
+   * by name, either way, and no reversal gives that order.
+   */
+  it('wires a TypeScript peer and each added context into the new assembly’s mediator in the order the twin with that history has', async () => {
+    const dials = { buildSystem: 'pnpm', moduleLayout: 'modulith', withPeerContext: true } as const;
+    await scaffold('ts-cli', dials);
+    await addModule('orders', 'greeting');
+    await addModule('billing', 'orders');
+    await addModule('shipping', 'billing');
+    const twin = path.join(root, 'twin');
+    await fs.ensureDir(twin);
+    await scaffold('ts-cli-http', dials, twin);
+    await addModule('orders', 'greeting', twin);
+    await addModule('billing', 'orders', twin);
+    await addModule('shipping', 'billing', twin);
+
+    const report = expectOk(await grow('http'));
+
+    expect((report.resolvedAdapters ?? []).map((adapter) => adapter.id)).toEqual(
+      expect.arrayContaining([
+        'walking-skeleton/ts-peer-context-http',
+        'bounded-context/ts-context-http',
+      ]),
+    );
+    for (const context of ['guestbook', 'orders', 'billing', 'shipping']) {
+      expect(report.changes).toContainEqual({
+        kind: 'create',
+        path: `application/rest/src/${context}.ts`,
+      });
+    }
+    const main = await fs.readFile(path.join(cwd, 'application/rest/src/main.ts'), 'utf8');
+    expect(main).toContain(
+      'createRegistryMediator([createGreetHandler(), createGuestbookHandler(), createOrdersContextHandler(), createBillingContextHandler(), createShippingContextHandler()]);',
+    );
+    expect(main.split('\n').filter((line) => /^import \{ create\w+Handler \}/.test(line))).toEqual([
+      "import { createShippingContextHandler } from './shipping.ts';",
+      "import { createBillingContextHandler } from './billing.ts';",
+      "import { createOrdersContextHandler } from './orders.ts';",
+      "import { createGreetHandler } from '@acme/greeting';",
+      "import { createGuestbookHandler } from './guestbook.ts';",
+    ]);
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(cwd, 'application/rest/package.json'), 'utf8'),
+    ) as { dependencies: Record<string, string> };
+    expect(Object.keys(manifest.dependencies).filter((name) => name.startsWith('@acme/'))).toEqual([
+      '@acme/platform-kernel',
+      '@acme/greeting',
+      '@acme/shipping',
+      '@acme/billing',
+      '@acme/orders',
+      '@acme/guestbook',
+    ]);
     expect(await digests(cwd)).toEqual(await digests(twin));
   });
 
@@ -954,6 +1017,29 @@ describe('keel add entrypoint on a modulith with bounded contexts', () => {
     );
     expect(await manifestBytes()).toBe(manifest);
     expect(await fs.pathExists(path.join(cwd, 'application/http'))).toBe(false);
+  });
+
+  it('refuses it on a TypeScript modulith too, whose gateway is a directory of the context’s package', async () => {
+    await scaffold('ts-cli', { moduleLayout: 'modulith' });
+    await addModule('orders', 'greeting');
+    const stored = await manifestAt();
+    await fsManifestStore.write(projectScopeRoot(cwd), {
+      ...stored,
+      modules: stored.modules.map(({ consumes: _, ...module }) => module),
+    });
+    expect(
+      await fs.pathExists(path.join(cwd, 'modules/orders/src/infra/greeting-gateway/index.ts')),
+    ).toBe(true);
+    const manifest = await manifestBytes();
+
+    const error = expectErr(await grow('http'));
+
+    expect(error.code).toBe('keel.contexts-need-rewiring');
+    expect(error.message).toContain(
+      "the bounded context 'orders' holds a gateway to 'greeting', but this project's manifest",
+    );
+    expect(await manifestBytes()).toBe(manifest);
+    expect(await fs.pathExists(path.join(cwd, 'application/rest'))).toBe(false);
   });
 
   it('reads the gateway of a consumer of a context keel add module added, not only of the skeleton', async () => {

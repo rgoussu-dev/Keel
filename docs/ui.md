@@ -221,12 +221,11 @@ Generate posts only what the ticks add — the delta — as `keel add`:
   `keel add <id>` would refuse it with, word for word. _Observability
   needs an entrypoint this project does not have: HTTP server — a REST
   endpoint_, on a project that cannot grow one — a modulith whose
-  contexts are wired into its one entrypoint, on every family but Go
-  and Rust for now. Kept rather than hidden, because an absent option
-  answers "why can I not have observability?" with nothing. In a
-  monorepo service, a vertical another service of the product can
-  take, or has, names that service there too: _…; backend/ can take
-  it_.
+  contexts are wired into its one entrypoint, on the JVM families for
+  now. Kept rather than hidden, because an absent option answers "why
+  can I not have observability?" with nothing. In a monorepo service, a
+  vertical another service of the product can take, or has, names that
+  service there too: _…; backend/ can take it_.
 - **Belongs in a service** — at a composite product's root, an
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
   points the page at that directory and opens its Options; then what
@@ -259,7 +258,7 @@ never breaks inside.
 entrypoint, and disabled with the refusal `keel add entrypoint` would
 give where it would refuse — at a product root or in a monorepo
 service, on a front end, on a modulith whose contexts are wired into
-its one entrypoint, on every family but Go and Rust for now. A
+its one entrypoint, on the JVM families for now. A
 context holding a gateway its manifest record does not name — one
 that `keel add module --consumes` added before keel recorded what a
 context consumes — is read off the files, which the status does not

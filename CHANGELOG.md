@@ -573,7 +573,7 @@ new` the terminal adds the way past it (move it aside, or start in
   project is missing too: not in a monorepo product, not on a front end,
   not where growing would leave it refused for another reason, and not,
   for now, on a modulith whose contexts are wired into its one
-  entrypoint, off Go and Rust — where the hint still names the preset
+  entrypoint on the JVM families — where the hint still names the preset
   that carries both, without the old closing clause. `keel add --list`
   lists such verticals under _After 'keel add entrypoint http':_,
   each saying whether it comes with the entrypoint, rather than under
@@ -1226,17 +1226,20 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   entrypoint would break a plugin vertical's rule, as `keel new` of
   the twin with that vertical is (`keel.incompatible`), and, for now,
   on a modulith whose peer context or added modules are wired into its
-  entrypoints (`keel.contexts-need-rewiring`, naming them) — on every
-  family but Go and Rust. A Go or Rust modulith grows with its
-  contexts: the peer context and each context `keel add module` added
-  are wired into the new assembly — on Go `cmd/<unit>/<context>.go`
-  and its test, on Rust `application/<unit>/src/<context>.rs`, its
-  `mod` line and the context's crates in that crate's `Cargo.toml` —
-  in the order they were added, as the preset carrying both has them
-  after the same `keel add module` history, and the wiring already
-  there is never read. Where the project is linked to another that now
-  gets an HTTP server it never recorded, the report names the
-  `keel link` that records it.
+  entrypoints (`keel.contexts-need-rewiring`, naming them) — on the JVM
+  families. A Go, Rust or TypeScript modulith grows with its contexts:
+  the peer context and each context `keel add module` added are wired
+  into the new assembly — on Go `cmd/<unit>/<context>.go` and its
+  test, on Rust `application/<unit>/src/<context>.rs`, its `mod` line
+  and the context's crates in that crate's `Cargo.toml`, on TypeScript
+  `application/<cli|rest>/src/<context>.ts` (the peer's with its wiring
+  test), the context on that assembly's `package.json` and its handler
+  on the mediator its `main.ts` builds — in the order they were added,
+  as the preset carrying both has them after the same
+  `keel add module` history, and the wiring already there is never
+  read. Where the project is linked to another that now gets an HTTP
+  server it never recorded, the report names the `keel link` that
+  records it.
   `keel ui`'s API takes it as the target
   `{ "kind": "add-entrypoint", "entrypoint": "http" }`, which it
   previews and installs as the CLI does, and the page offers it wherever
@@ -1245,9 +1248,9 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   _Changed_). The composition grid holds all 192 single-entrypoint
   backend cells to their twins, both ways, on every dial setting, and
   every modulith among them again after a `keel add module` history
-  (I10, hard): 136 grow, and the 56 with the peer context off Go and
-  Rust are refused; of the 128 with a history, Go's 8 and Rust's 8
-  grow. See `docs/cli.md` → `keel add entrypoint`.
+  (I10, hard): 144 grow, and the 48 with the peer context on the JVM
+  are refused; of the 128 with a history, Go's 8, Rust's 8 and
+  TypeScript's 16 grow. See `docs/cli.md` → `keel add entrypoint`.
 
 - **A weekly composition sweep covers what the grid cannot afford to.**
   The composition grid in `verify` reads each preset on its opening
@@ -2550,8 +2553,7 @@ quarkus-cli-rest`) rather than leaving it to be inferred.
   - `--with-peer-context` and `keel add module <name>` wire the new
     bounded context into **every** assembly the project has rather
     than the first one an `arch.*` check matched, so a composed
-    CLI + HTTP modulith gets both wired (`jvmAssemblies`, the JVM
-    sibling of `tsAssemblies`).
+    CLI + HTTP modulith gets both wired.
   - The TypeScript root `package.json` now names each entrypoint's
     scripts explicitly rather than a bare `start`/`dev` —
     `start:cli`, `start:rest`, `dev:rest` — on every `ts-cli`,
@@ -2925,8 +2927,8 @@ ci`/`containerization`/`distribution` on a service follow the same
   the entrypoint-neutral half of the bootstrap now lives in a shared
   `walking-skeleton/ts-domain` template tree both stacks render.
   `--with-peer-context` and `keel add module` became
-  entrypoint-agnostic on TypeScript (`tsAssemblies`, the Rust/Go
-  pattern), so the modulith story carries over whole. Two new e2e
+  entrypoint-agnostic on TypeScript, as on Rust and Go, so the
+  modulith story carries over whole. Two new e2e
   cells (`modulith-ts-cli-{npm,pnpm}`) and a basic walking-skeleton
   suite ride the `web` shard.
 

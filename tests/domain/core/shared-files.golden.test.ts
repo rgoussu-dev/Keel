@@ -7,10 +7,11 @@
  * chosen to reproduce the order a scaffold already has; this golden
  * landed first, on the appending code, and R.1 leaves every cell of it
  * byte-identical. Beside them, each Rust modulith assembly's
- * `Cargo.toml` and `src/main.rs`, which the bootstrap, observability,
- * and the peer's and each context's wiring all write into: R.3b moved
- * that wiring into an adapter per entrypoint, and the bytes it leaves
- * were pinned on the code before it.
+ * `Cargo.toml` and `src/main.rs`, and each TypeScript assembly's
+ * `package.json` and `src/main.ts`, which the bootstrap, observability,
+ * and the peer's and each context's wiring all write into: R.3b and
+ * R.3c moved that wiring into an adapter per entrypoint, and the bytes
+ * it leaves were pinned on the code before each.
  *
  * **Scenario.** Cells are derived, never listed: the presets from
  * `keel.catalog`, every dial setting each offers from `keel.dials`
@@ -110,14 +111,19 @@ const SHARED_FILES = [
 ] as const;
 
 /**
- * The files of a Rust modulith's assemblies that more than one adapter
- * writes into, whose writers R.3 splits per entrypoint.
+ * The files of a Rust modulith's assemblies, and of a TypeScript
+ * project's, that more than one adapter writes into, whose writers R.3
+ * splits per entrypoint.
  */
-const RUST_ASSEMBLY_FILES = [
+const ASSEMBLY_FILES = [
   'application/cli/Cargo.toml',
   'application/cli/src/main.rs',
   'application/http/Cargo.toml',
   'application/http/src/main.rs',
+  'application/cli/package.json',
+  'application/cli/src/main.ts',
+  'application/rest/package.json',
+  'application/rest/src/main.ts',
 ] as const;
 
 /** The extra swept alone, and added to a scaffold. */
@@ -350,7 +356,7 @@ async function record(
     watched.delete(cwd);
   }
   const found: Record<string, string> = {};
-  for (const file of [...SHARED_FILES, ...RUST_ASSEMBLY_FILES]) {
+  for (const file of [...SHARED_FILES, ...ASSEMBLY_FILES]) {
     const staging = trees.find((tree) => tree.changes().some((change) => change.path === file));
     const bytes = staging === undefined ? await onDisk(path.join(cwd, file)) : staging.read(file);
     if (bytes !== null) found[file] = createHash('sha256').update(bytes).digest('hex');

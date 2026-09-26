@@ -146,6 +146,18 @@ four families stay one file per family
 `modulith-baseline`), riding their family's existing shard, because a
 Rust or Go context has no container to lose a handler in.
 
+`add-module-ts` builds on npm alone, and npm's hoisting hides what
+pnpm's store refuses (above): a context `keel add module --consumes`
+adds does not declare the context it consumes in its `package.json`,
+so on pnpm its gateway's import of `@<scope>/<consumed>/service` is a
+`TS2307`, and `pnpm run typecheck` fails in that context and in each
+assembly wiring it — while its tests pass, vitest resolving what tsc
+does not. Roadmap R.3c found it growing a pnpm modulith, whose twin
+fails alike, as does a `ts-http` modulith given the same `keel add
+module` with no growth at all. A pnpm cell for it, and the fix, are
+the roadmap Backlog's _A TypeScript context declares the context it
+consumes_.
+
 ## The suites that are not cells
 
 - **`dev-compose` is the only shard that runs an emitted

@@ -479,21 +479,21 @@ harness is installed — the ones that matched before of a vertical
 whose adapters only partly newly match included — and recorded where
 `keel new` of the twin records them. A modulith's peer context grows
 with it where it is wired into the assemblies by an adapter per
-entrypoint, as keel's Go and Rust families' are: in a vertical of
-yours the project has, a shell requiring the context's marker
-(`modules.peer-context`), and beside it one wiring adapter requiring
-the marker and `arch.cli`, another the marker and `arch.server-http`,
-each writing only that assembly's wiring — the new entrypoint's newly
-matches. A context `keel add module` adds (`modules.context`) is
-keel's alone: that command runs keel's own `bounded-context`, whose
-adapters cover keel's families, so it refuses a project of yours, and
-growing replays that same vertical for each context it added. Where no
-adapter wires a context in, growth is refused as
-`keel.contexts-need-rewiring`, naming it. Where a project of your
-family can grow, a vertical of yours that only the missing entrypoint
-stops, and that the grown project takes — read with what growing
-installs and the tags those promote — is refused carrying `keel add
-entrypoint <word>` as its action, as keel's own are
+entrypoint, as keel's Go, Rust and TypeScript families' are: in a
+vertical of yours the project has, a shell requiring the context's
+marker (`modules.peer-context`), and beside it one wiring adapter
+requiring the marker and `arch.cli`, another the marker and
+`arch.server-http`, each writing only that assembly's wiring — the
+new entrypoint's newly matches. A context `keel add module` adds
+(`modules.context`) is keel's alone: that command runs keel's own
+`bounded-context`, whose adapters cover keel's families, so it refuses
+a project of yours, and growing replays that same vertical for each
+context it added. Where no adapter wires a context in, growth is
+refused as `keel.contexts-need-rewiring`, naming it. Where a project
+of your family can grow, a vertical of yours that only the missing
+entrypoint stops, and that the grown project takes — read with what
+growing installs and the tags those promote — is refused carrying
+`keel add entrypoint <word>` as its action, as keel's own are
 ([Refusals](composition.md#refusals)).
 
 ### What an adapter promotes, and what a vertical reads

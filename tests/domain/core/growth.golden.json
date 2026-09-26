@@ -2866,17 +2866,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "ts-cli-http",
@@ -2885,69 +2888,64 @@
     "rerender": []
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout basic && keel add entrypoint http": {
     "twin": "ts-cli-http",
@@ -2968,17 +2966,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "ts-cli-http",
@@ -2987,69 +2988,64 @@
     "rerender": []
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-http", "walking-skeleton/ts-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-http"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-http --build-system npm --module-layout basic && keel add entrypoint cli": {
     "twin": "ts-cli-http",
@@ -3070,17 +3066,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "ts-cli-http",
@@ -3089,69 +3088,64 @@
     "rerender": []
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-http --build-system pnpm --module-layout basic && keel add entrypoint cli": {
     "twin": "ts-cli-http",
@@ -3172,17 +3166,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "ts-cli-http",
@@ -3191,69 +3188,64 @@
     "rerender": []
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "ts-cli-http",
+    "adapters": ["walking-skeleton/ts-peer-context-cli", "walking-skeleton/ts-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/ts-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack web-components --build-system npm --module-layout basic && keel add entrypoint cli": {
     "refused": "keel.uncoverable-entrypoint",

@@ -358,12 +358,12 @@ for the manifest's timestamps — the new entrypoint's bootstrap, the
 dev environment and observability that come with HTTP, the agent
 harness re-rendered for both — and writes nothing of the entrypoint
 already there (on the JVM, the queued formatter still formats the
-whole project). A Go or Rust modulith's peer context and added
-modules are wired into the new entrypoint too, as the preset carrying
-both has them after the same `keel add module` history; on the other
-families a modulith whose contexts are wired into its entrypoints is
-refused for now. A vertical only the missing entrypoint stops says so
-and names the command:
+whole project). A Go, Rust or TypeScript modulith's peer context and
+added modules are wired into the new entrypoint too, as the preset
+carrying both has them after the same `keel add module` history; on
+the JVM families a modulith whose contexts are wired into its
+entrypoints is refused for now. A vertical only the missing entrypoint
+stops says so and names the command:
 `keel add observability` on a CLI project is refused with the hint
 `'keel add entrypoint http' brings observability with it`, and
 `keel ui` offers **Add HTTP server** where it lists it.

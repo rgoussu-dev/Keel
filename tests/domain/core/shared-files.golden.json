@@ -2091,302 +2091,458 @@
   "keel new --stack ts-cli --build-system npm --module-layout basic": {
     "README.md": "f4476389da7a9528576360f09902e9d7c2cbdf56f5c14cd505121299567c0d87",
     "package.json": "2c9a6d345192f8151957596a0ea9b4ff61009d5bcd839ed85db868e8452ac2a8",
-    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic && keel add dev-env": {
     "README.md": "c2b3f03f18d091d8d9ef7c1e03d7b92caa4296fb49ac40002af56f8998abe146",
     "package.json": "2c9a6d345192f8151957596a0ea9b4ff61009d5bcd839ed85db868e8452ac2a8",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic --with ci,dev-env,toolchain": {
     "README.md": "1f5f7dfca06a6f9226cab5dfb2e22451d4bca6d1e273dfbcdec659efd4fdd150",
     "package.json": "2c9a6d345192f8151957596a0ea9b4ff61009d5bcd839ed85db868e8452ac2a8",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic --with ci,dev-env,toolchain (README.md seeded)": {
     "README.md": "cd0275e634fe584d1030c21abebf010cc3bc35a44aebb587a29d72f91da24c8c",
     "package.json": "2c9a6d345192f8151957596a0ea9b4ff61009d5bcd839ed85db868e8452ac2a8",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic --with dev-env": {
     "README.md": "c2b3f03f18d091d8d9ef7c1e03d7b92caa4296fb49ac40002af56f8998abe146",
     "package.json": "2c9a6d345192f8151957596a0ea9b4ff61009d5bcd839ed85db868e8452ac2a8",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith": {
     "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8",
+    "application/cli/package.json": "2735b5169bfc96a0f608c6d307e6e940c080942ff92549eb57b813b6b42fdaa0",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8",
+    "application/cli/package.json": "79f5184651547c04f623ac9e7798c6d61d23e142151fbe7f9b7d7f87f1e7cc92",
+    "application/cli/src/main.ts": "41f38e12feeb00bbcb00d4dd6b4e4ff757ede845ef6a9b3d1f5bd461d2527d52"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "4cfacdd888880683c2652e6d3b49ad8e41c19612851a44b5ebba057ce0e71083",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "2735b5169bfc96a0f608c6d307e6e940c080942ff92549eb57b813b6b42fdaa0",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with dev-env": {
     "README.md": "1907940649fae648f00f6865a24865ec4614d37562cf47a12382c604862d33e2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "2735b5169bfc96a0f608c6d307e6e940c080942ff92549eb57b813b6b42fdaa0",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context": {
     "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8",
+    "application/cli/package.json": "d3b6b0586806d5b59182b3edbee3eaa5c8222e71142823e82abd986fac565e0e",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8",
+    "application/cli/package.json": "d2daab5e24b4b01aaf88d0d08024bae5fc55262de64c000e9ac3121fc7f97dd6",
+    "application/cli/src/main.ts": "8192f84dab65577170a928873ba33042592db1d4fe5244b783a3867548974ec2"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
     "README.md": "4cfacdd888880683c2652e6d3b49ad8e41c19612851a44b5ebba057ce0e71083",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "d3b6b0586806d5b59182b3edbee3eaa5c8222e71142823e82abd986fac565e0e",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context --with dev-env": {
     "README.md": "1907940649fae648f00f6865a24865ec4614d37562cf47a12382c604862d33e2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
-    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
+    ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c",
+    "application/cli/package.json": "d3b6b0586806d5b59182b3edbee3eaa5c8222e71142823e82abd986fac565e0e",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout basic": {
     "README.md": "b4cf34b4d93959d43cd43ab2ccd785d62e1d3e68e7ea1368983f0ad74c0e3e8f",
     "package.json": "a956790e240fce48341b5df64bb9da5dabf19e0c394338d5d974ec8002d64339",
-    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790",
+    "application/cli/package.json": "cd900f43d59583a048c273fd6be53319f4df8bb10fbaa4249fc84860c2fa0833",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout basic --with ci,dev-env,toolchain": {
     "README.md": "8193c8ede85efb918b5d54e9220eff246b870daef2d4a397d109d4f1d91b59a6",
     "package.json": "a956790e240fce48341b5df64bb9da5dabf19e0c394338d5d974ec8002d64339",
-    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
+    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841",
+    "application/cli/package.json": "cd900f43d59583a048c273fd6be53319f4df8bb10fbaa4249fc84860c2fa0833",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout basic --with dev-env": {
     "README.md": "e5942792d197bae21819d564015592504b583e4495d564f406c56ca8a6d4cb54",
     "package.json": "a956790e240fce48341b5df64bb9da5dabf19e0c394338d5d974ec8002d64339",
-    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
+    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841",
+    "application/cli/package.json": "cd900f43d59583a048c273fd6be53319f4df8bb10fbaa4249fc84860c2fa0833",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith": {
     "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790",
+    "application/cli/package.json": "b1d94ab85c1fa56c3a8b34f284d0febefae3331fa60fb20910c1fded93c4df81",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790",
+    "application/cli/package.json": "fd8301d557821b61feb9697d9aefa2543d46a50bf4089c44cbe5e121d201848c",
+    "application/cli/src/main.ts": "41f38e12feeb00bbcb00d4dd6b4e4ff757ede845ef6a9b3d1f5bd461d2527d52"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "f2b56bc2b70241996b21526038d7e51fd971406e18866f2db8017d3502eecd08",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
+    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841",
+    "application/cli/package.json": "b1d94ab85c1fa56c3a8b34f284d0febefae3331fa60fb20910c1fded93c4df81",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with dev-env": {
     "README.md": "2b2a265855f8d9eeef57cdda9385a4e953d889833895599740ad2f2046ecfe20",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
+    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841",
+    "application/cli/package.json": "b1d94ab85c1fa56c3a8b34f284d0febefae3331fa60fb20910c1fded93c4df81",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context": {
     "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790",
+    "application/cli/package.json": "10cf159367e5a503b0a5db6ff1f68834853bc60653c5d5db55a16b0a60e481b2",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790",
+    "application/cli/package.json": "3fab214d3d7f3876bbb8f1e8daadcf674815f2d89842ae43492d6c21fad211f4",
+    "application/cli/src/main.ts": "8192f84dab65577170a928873ba33042592db1d4fe5244b783a3867548974ec2"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
     "README.md": "f2b56bc2b70241996b21526038d7e51fd971406e18866f2db8017d3502eecd08",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
+    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841",
+    "application/cli/package.json": "10cf159367e5a503b0a5db6ff1f68834853bc60653c5d5db55a16b0a60e481b2",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context --with dev-env": {
     "README.md": "2b2a265855f8d9eeef57cdda9385a4e953d889833895599740ad2f2046ecfe20",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
-    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
+    ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841",
+    "application/cli/package.json": "10cf159367e5a503b0a5db6ff1f68834853bc60653c5d5db55a16b0a60e481b2",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout basic": {
     "README.md": "620af94cd104f3214dd3d5f40ce427ca63eaec37007f65639590ee38eae16ea3",
     "package.json": "b39adc07a55d8ea494b3da36ffa241e8a46afcca22e932f771fc992432feb81b",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8",
+    "application/rest/package.json": "c4f127b7071d23d52e8e9378f37a45f8700c113438552b0be94ba275abe53df3",
+    "application/rest/src/main.ts": "e8dd9bee712218faec7b7afd1e9624f5ceb59333454f1b2b001cb2cedde19043"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "6f92c5c8d9235922b98073a6167b2421ecc67999c1b6c013ec0b7fc21ea89897",
     "package.json": "b39adc07a55d8ea494b3da36ffa241e8a46afcca22e932f771fc992432feb81b",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8",
+    "application/rest/package.json": "87c3d750112c40b9f6c03b33276333270c5d4f9b06205dbd0b52f4045fe9e32e",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain (README.md seeded)": {
     "README.md": "42da5accd4654ff704bb4d1f6520c89693e675e60d8ab79a68a5b746053ea8e7",
     "package.json": "b39adc07a55d8ea494b3da36ffa241e8a46afcca22e932f771fc992432feb81b",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8",
+    "application/rest/package.json": "87c3d750112c40b9f6c03b33276333270c5d4f9b06205dbd0b52f4045fe9e32e",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain --set persistence/database-compose:migrations=liquibase": {
     "README.md": "822843509c9f1454ca7d05697d827346cfb5c2198bed2c4657c70210fef20c9b",
     "package.json": "b39adc07a55d8ea494b3da36ffa241e8a46afcca22e932f771fc992432feb81b",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "9677b65bee26b9d7499363f81f916e3b0434a9c5906d902d1969f996e8343110",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8",
+    "application/rest/package.json": "87c3d750112c40b9f6c03b33276333270c5d4f9b06205dbd0b52f4045fe9e32e",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith": {
     "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "2735b5169bfc96a0f608c6d307e6e940c080942ff92549eb57b813b6b42fdaa0",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e",
+    "application/rest/package.json": "8d1ed209f18150d37315018cbef8f6fe514662e853daa557d0d85fcbc9d298ba",
+    "application/rest/src/main.ts": "0881fb4801e62359016be9875ea882ffcf12be1c97a2c8f7fee75154f8caf0cc"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "79f5184651547c04f623ac9e7798c6d61d23e142151fbe7f9b7d7f87f1e7cc92",
+    "application/cli/src/main.ts": "41f38e12feeb00bbcb00d4dd6b4e4ff757ede845ef6a9b3d1f5bd461d2527d52",
+    "application/rest/package.json": "33511316dfb167e9022bc42adabd2a2c0c201231c41562789b5b1a6c2a18fd5b",
+    "application/rest/src/main.ts": "25c25828be06d56928d10ec3f4f669b6c0d6bb3d48bd34a8b7a59fce55fee877"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "ac60cbadc7c4978bb567ca9672479b9640a7f0f57b91cf9625fc18acf2296945",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "2735b5169bfc96a0f608c6d307e6e940c080942ff92549eb57b813b6b42fdaa0",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e",
+    "application/rest/package.json": "8d1ed209f18150d37315018cbef8f6fe514662e853daa557d0d85fcbc9d298ba",
+    "application/rest/src/main.ts": "2cf0177d76cfe419ab7e92e6320bf85dab447da6eeeca9dfdbf7476149f7054e"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with-peer-context": {
     "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "d3b6b0586806d5b59182b3edbee3eaa5c8222e71142823e82abd986fac565e0e",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787",
+    "application/rest/package.json": "8290930827ea4e935da22255dc9728aa2a62356e9e407fdbced8cfccc0105c5f",
+    "application/rest/src/main.ts": "e0002566573e5a9b3d0692d1ea1098731c665c2df2d472a3fb7525187b9089a8"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "d2daab5e24b4b01aaf88d0d08024bae5fc55262de64c000e9ac3121fc7f97dd6",
+    "application/cli/src/main.ts": "8192f84dab65577170a928873ba33042592db1d4fe5244b783a3867548974ec2",
+    "application/rest/package.json": "c9c9d321a1652387f2d2641319bbe155580dcabc48fb4a49217ee32b5c987f1d",
+    "application/rest/src/main.ts": "bc1e2554c26d88246b0375f001f118ef6951967a0401bf0461db554b714c3c6b"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "ac60cbadc7c4978bb567ca9672479b9640a7f0f57b91cf9625fc18acf2296945",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/cli/package.json": "d3b6b0586806d5b59182b3edbee3eaa5c8222e71142823e82abd986fac565e0e",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787",
+    "application/rest/package.json": "8290930827ea4e935da22255dc9728aa2a62356e9e407fdbced8cfccc0105c5f",
+    "application/rest/src/main.ts": "1b06666433b58b72509c224000cc7d92509e400a1db8bb811ac9d03b6624b3dd"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout basic": {
     "README.md": "e2810f279f45e443e9bd3a944f1605f42f99a67fb22fba688c4bc76d4f76542e",
     "package.json": "5b4458c936262db56b00bf5c34f8804ac684a5057e57328cfc08b281a9fb7253",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "cd900f43d59583a048c273fd6be53319f4df8bb10fbaa4249fc84860c2fa0833",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8",
+    "application/rest/package.json": "a095779f8dbc2c1b51d0d8ba7d214cb643b8e6893404361bffc23ffd4bf706b1",
+    "application/rest/src/main.ts": "e8dd9bee712218faec7b7afd1e9624f5ceb59333454f1b2b001cb2cedde19043"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "8bf0ea9c74e054008f7f1e9f71294d6d4a929937a019712d3cbfdcfdee7888d4",
     "package.json": "5b4458c936262db56b00bf5c34f8804ac684a5057e57328cfc08b281a9fb7253",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "cd900f43d59583a048c273fd6be53319f4df8bb10fbaa4249fc84860c2fa0833",
+    "application/cli/src/main.ts": "e16d2348310c15faaa3bdc75d9932a7ef63791ec7bd5192f606964883c0dbcc8",
+    "application/rest/package.json": "579c6e608c86546b2556c9499360d650cba870c3f43989a9ac2a411c3fa442c3",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith": {
     "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "b1d94ab85c1fa56c3a8b34f284d0febefae3331fa60fb20910c1fded93c4df81",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e",
+    "application/rest/package.json": "eb33f61601fb3756f7b5ccd4db739974a1f2f35e9786186940c6341efb221aab",
+    "application/rest/src/main.ts": "0881fb4801e62359016be9875ea882ffcf12be1c97a2c8f7fee75154f8caf0cc"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "fd8301d557821b61feb9697d9aefa2543d46a50bf4089c44cbe5e121d201848c",
+    "application/cli/src/main.ts": "41f38e12feeb00bbcb00d4dd6b4e4ff757ede845ef6a9b3d1f5bd461d2527d52",
+    "application/rest/package.json": "a85c4fa7d032bc1eb0f1ba0e4a1eddb4174d23dc0bc2b816f6abdecbb847b8f2",
+    "application/rest/src/main.ts": "25c25828be06d56928d10ec3f4f669b6c0d6bb3d48bd34a8b7a59fce55fee877"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "8b7c0db78b6fb446659f432f07a7c693d63e30f3b87a488dd6d60de6d3b287e6",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "b1d94ab85c1fa56c3a8b34f284d0febefae3331fa60fb20910c1fded93c4df81",
+    "application/cli/src/main.ts": "01badc430684047c0cf721fc7506132a7e4427a54d05c27dff063ba20d04dd8e",
+    "application/rest/package.json": "eb33f61601fb3756f7b5ccd4db739974a1f2f35e9786186940c6341efb221aab",
+    "application/rest/src/main.ts": "2cf0177d76cfe419ab7e92e6320bf85dab447da6eeeca9dfdbf7476149f7054e"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with-peer-context": {
     "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "10cf159367e5a503b0a5db6ff1f68834853bc60653c5d5db55a16b0a60e481b2",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787",
+    "application/rest/package.json": "b209b9774e4545ad2f5287d01b25d1627997e4506fc9d26c3cf4f1435046aafb",
+    "application/rest/src/main.ts": "e0002566573e5a9b3d0692d1ea1098731c665c2df2d472a3fb7525187b9089a8"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "3fab214d3d7f3876bbb8f1e8daadcf674815f2d89842ae43492d6c21fad211f4",
+    "application/cli/src/main.ts": "8192f84dab65577170a928873ba33042592db1d4fe5244b783a3867548974ec2",
+    "application/rest/package.json": "ddf9f9e8c10e33ff479b6ff611e6f6d13ddb5230754c7ec520367c917d763005",
+    "application/rest/src/main.ts": "bc1e2554c26d88246b0375f001f118ef6951967a0401bf0461db554b714c3c6b"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "8b7c0db78b6fb446659f432f07a7c693d63e30f3b87a488dd6d60de6d3b287e6",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/cli/package.json": "10cf159367e5a503b0a5db6ff1f68834853bc60653c5d5db55a16b0a60e481b2",
+    "application/cli/src/main.ts": "703f0c1285b9496c3a700d9189590023f74f466e710d2a132c3bc371925bd787",
+    "application/rest/package.json": "b209b9774e4545ad2f5287d01b25d1627997e4506fc9d26c3cf4f1435046aafb",
+    "application/rest/src/main.ts": "1b06666433b58b72509c224000cc7d92509e400a1db8bb811ac9d03b6624b3dd"
   },
   "keel new --stack ts-http --build-system npm --module-layout basic": {
     "README.md": "8d171d49aab605f98fa053aba8a9cc85bb16385de216ebb8109abd3232ea967d",
     "package.json": "cf8dda06975d70cb2f6b6697f8f6fc44f3e7d01147527a7c0ab92f09a95186ca",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "c4f127b7071d23d52e8e9378f37a45f8700c113438552b0be94ba275abe53df3",
+    "application/rest/src/main.ts": "e8dd9bee712218faec7b7afd1e9624f5ceb59333454f1b2b001cb2cedde19043"
   },
   "keel new --stack ts-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "f14a6cfe87511cc375fdbeb3766bd58a1a1ee0b14b1cf84d996032efba7c1f1f",
     "package.json": "cf8dda06975d70cb2f6b6697f8f6fc44f3e7d01147527a7c0ab92f09a95186ca",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "87c3d750112c40b9f6c03b33276333270c5d4f9b06205dbd0b52f4045fe9e32e",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain (README.md seeded)": {
     "README.md": "fb3f98a22ce0d12cda42ddd8ff13c7926ba592596255a62e3a9835ac69a793da",
     "package.json": "cf8dda06975d70cb2f6b6697f8f6fc44f3e7d01147527a7c0ab92f09a95186ca",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "87c3d750112c40b9f6c03b33276333270c5d4f9b06205dbd0b52f4045fe9e32e",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain --set persistence/database-compose:migrations=liquibase": {
     "README.md": "5d17e8791e6d0f4374125094b1f71777830e7d396cffa5e0b439bf4a7aa87fbd",
     "package.json": "cf8dda06975d70cb2f6b6697f8f6fc44f3e7d01147527a7c0ab92f09a95186ca",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "87c3d750112c40b9f6c03b33276333270c5d4f9b06205dbd0b52f4045fe9e32e",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith": {
     "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "8d1ed209f18150d37315018cbef8f6fe514662e853daa557d0d85fcbc9d298ba",
+    "application/rest/src/main.ts": "0881fb4801e62359016be9875ea882ffcf12be1c97a2c8f7fee75154f8caf0cc"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "33511316dfb167e9022bc42adabd2a2c0c201231c41562789b5b1a6c2a18fd5b",
+    "application/rest/src/main.ts": "25c25828be06d56928d10ec3f4f669b6c0d6bb3d48bd34a8b7a59fce55fee877"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "4f4565e3a456f6df7729466e7ef2b0e7bb86b54cbe5c3ffb081cd7d042ce6ffc",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "8d1ed209f18150d37315018cbef8f6fe514662e853daa557d0d85fcbc9d298ba",
+    "application/rest/src/main.ts": "2cf0177d76cfe419ab7e92e6320bf85dab447da6eeeca9dfdbf7476149f7054e"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context": {
     "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "8290930827ea4e935da22255dc9728aa2a62356e9e407fdbced8cfccc0105c5f",
+    "application/rest/src/main.ts": "e0002566573e5a9b3d0692d1ea1098731c665c2df2d472a3fb7525187b9089a8"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "c9c9d321a1652387f2d2641319bbe155580dcabc48fb4a49217ee32b5c987f1d",
+    "application/rest/src/main.ts": "bc1e2554c26d88246b0375f001f118ef6951967a0401bf0461db554b714c3c6b"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "4f4565e3a456f6df7729466e7ef2b0e7bb86b54cbe5c3ffb081cd7d042ce6ffc",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
-    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4",
+    "application/rest/package.json": "8290930827ea4e935da22255dc9728aa2a62356e9e407fdbced8cfccc0105c5f",
+    "application/rest/src/main.ts": "1b06666433b58b72509c224000cc7d92509e400a1db8bb811ac9d03b6624b3dd"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout basic": {
     "README.md": "095d324116a5c227ae0e5d7c5b34c4215071106df7d1b99dae2b70fed340bd37",
     "package.json": "a298ba08714b012e447b68befc8b9d0bb330a0a20cc33627e3d9e6ba6cec95b4",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "a095779f8dbc2c1b51d0d8ba7d214cb643b8e6893404361bffc23ffd4bf706b1",
+    "application/rest/src/main.ts": "e8dd9bee712218faec7b7afd1e9624f5ceb59333454f1b2b001cb2cedde19043"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "a66d293177713055389866de8f8cae09deac08add2708f3c92fc6a588a54c39f",
     "package.json": "a298ba08714b012e447b68befc8b9d0bb330a0a20cc33627e3d9e6ba6cec95b4",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "579c6e608c86546b2556c9499360d650cba870c3f43989a9ac2a411c3fa442c3",
+    "application/rest/src/main.ts": "f6bd1d799a4b410ab0524148042571bfb8d6acd9a5288c582621ae8afd14c272"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith": {
     "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "eb33f61601fb3756f7b5ccd4db739974a1f2f35e9786186940c6341efb221aab",
+    "application/rest/src/main.ts": "0881fb4801e62359016be9875ea882ffcf12be1c97a2c8f7fee75154f8caf0cc"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "a85c4fa7d032bc1eb0f1ba0e4a1eddb4174d23dc0bc2b816f6abdecbb847b8f2",
+    "application/rest/src/main.ts": "25c25828be06d56928d10ec3f4f669b6c0d6bb3d48bd34a8b7a59fce55fee877"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "f342669b2b4b2ba0a22caf27aec83eb1c04a89b74f37b911da0db70cfb142294",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "eb33f61601fb3756f7b5ccd4db739974a1f2f35e9786186940c6341efb221aab",
+    "application/rest/src/main.ts": "2cf0177d76cfe419ab7e92e6320bf85dab447da6eeeca9dfdbf7476149f7054e"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context": {
     "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "b209b9774e4545ad2f5287d01b25d1627997e4506fc9d26c3cf4f1435046aafb",
+    "application/rest/src/main.ts": "e0002566573e5a9b3d0692d1ea1098731c665c2df2d472a3fb7525187b9089a8"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "ddf9f9e8c10e33ff479b6ff611e6f6d13ddb5230754c7ec520367c917d763005",
+    "application/rest/src/main.ts": "bc1e2554c26d88246b0375f001f118ef6951967a0401bf0461db554b714c3c6b"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "f342669b2b4b2ba0a22caf27aec83eb1c04a89b74f37b911da0db70cfb142294",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
-    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e",
+    "application/rest/package.json": "b209b9774e4545ad2f5287d01b25d1627997e4506fc9d26c3cf4f1435046aafb",
+    "application/rest/src/main.ts": "1b06666433b58b72509c224000cc7d92509e400a1db8bb811ac9d03b6624b3dd"
   },
   "keel new --stack web-components --build-system npm --module-layout basic": {
     "README.md": "e0eb5c792c0f9bcb420ec6b6db1510e3d8180dc0b5d1d6d05aef2d6b0b924d0a",
