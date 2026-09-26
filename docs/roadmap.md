@@ -4055,7 +4055,9 @@ persistence` included, no other extra needed — it writes its section
    entry for that document with the first run's `sha256Shipped` and the
    new `sha256Current`, so keel's own write reads as the user's. One run
    records the patched bytes as shipped. This holds on every preset that
-   offers persistence, with the harness on.
+   offers persistence, with the harness on. Fixed by R.2a, whose harness
+   fix records every entry of a file a run writes as the run leaves it
+   (`install.ts` `foldHarnessEntries`).
 
 No undeclared read: no pair's trees differed in a file one run holds
 and two do not, or in a file's bytes, and the one pair whose two runs
@@ -5417,6 +5419,87 @@ render guard passes on today's registry.
 
 **Leaves out:** every caller.
 
+**Landed first: the harness fix**, which touches no growth code.
+`install.ts`'s `finalizeHarness` hands the Tree to
+`foldHarnessEntries`, which hashes each realized file as the run leaves
+it, after every harness patch, doc section and index row, instead of
+taking the hash it was staged with. Every entry of a file the run
+wrote, whichever contributor it names, takes those bytes as shipped
+and as current, and keeps its `installedAt`. The same re-hash is
+exported as `rehashEntries` for `keel add module`, whose re-index
+writes the root map after the harness pass has recorded it.
+
+Before, one entry on every default JVM, Rust and TypeScript scaffold
+disagreed with its file on disk: the family kit's
+`pre-commit-format.sh`, recorded before code-style's format step
+landed in it. That held on 25 of the 28 single-service presets
+(`web-components` included; Go's three agreed) and in 11 of the 12
+services of the six products. On `quarkus-cli` the entry read `823ec43e…`
+against `a377b652…` on disk, on `rust-cli` `efc2f026…` against
+`810ec272…`, and on `ts-cli` `48deee79…` against `563860a0…`. After,
+no entry disagrees. No project file moved. No golden records a
+manifest, so none moved: the greenfield, brownfield, composite and
+planner-readiness goldens and the docs matrix regenerate
+byte-identical, the known files stay as they were, and
+`agent-harness.golden.json`, `run-skill.golden.json` and
+`shared-files.golden.json` pass as they were.
+
+Q3.4's finding 5 is gone on one preset per family. The `arrival` suite
+ran filtered, before and after, in two runs of about a minute and a
+half and under a minute (`quarkus-rest,go-http,rust-cli-http`, then
+`ts-http`). Before, it found 108: 36 on `quarkus-rest`, 18 on
+`go-http`, 18 on `rust-cli-http` and 36 on `ts-http`. Every one was
+persistence arriving in a later run, alone or after another extra,
+with the manifest's `entries` the only difference. After, it found
+none on any of the four.
+
+`handlers/agent-harness.test.ts` holds it:
+
+- the case that held a later install's baseline, _refreshes earlier
+  current hashes … while preserving their baselines_, now holds the
+  opposite: the later write is shipped on every entry of the file, and
+  each keeps its `installedAt`. A user's edit to a file the later runs
+  do not write stays visible: its entry is left as it was;
+- a hook one contributor stages with a slot another fills records the
+  filled hook, on both entries;
+- `quarkus-rest`, `go-http`, `rust-http` and `ts-http`, each scaffolded
+  `--with persistence` and again with `keel add persistence` after:
+  every entry holds its file's bytes on disk, and the two manifests'
+  entries are equal;
+- the same four, scaffolded as a modulith, a skill file then edited,
+  and given `keel add module orders`: every entry holds its file's
+  bytes on disk but the edited skill's, which stays as it was.
+
+All ten fail on the old code. `handlers/composite-scope.test.ts`,
+which compared a product's persistence in one run and in two without
+the hashes, because they differed, now compares them too.
+`docs/composition.md` → Harness contributions and `ManifestEntry`'s
+TSDoc say what the hashes record. The CHANGELOG lists it under
+_Fixed_.
+
+Beyond the text above:
+
+- **One rule, so the baseline goes.** The text names the kit hook and
+  finding 5; one rule covers both. Every entry of a file the run wrote
+  takes its final bytes, so where keel wrote last, `sha256Shipped` and
+  `sha256Current` agree. The earlier contributor's shipped hash that a
+  later install left in place is what #164 called its baseline, and a
+  test pinned it; that baseline is finding 5, so it now moves with
+  keel's write. The cost: an edit the user had already made in a file
+  keel writes into is recorded with keel's write, as the later
+  contributor's own entry always recorded it. A difference between a
+  file and its entry still means an edit keel did not record. Nothing
+  reads one yet.
+- **`keel add module` too.** The text names the harness pass. `keel
+add module` re-indexes the root map after that pass, so its entry
+  missed the new context's row on all four families; the handler now
+  records what the re-index wrote.
+
+Not done here: `keel docs sync` writes the index and no manifest, so a
+row it changes reads as an edit until a run next writes that document.
+Recording it means the sync writing the manifest, which is for
+whatever first reads these hashes (L's merge base).
+
 #### R.2b — `keel add entrypoint <cli|http>` (L)
 
 **Contract.**
@@ -5856,7 +5939,10 @@ agent-harness --reapply`.
     distinguishable, and `retrofitHarness` replays verticals in a
     different order. Whether that ever moves a byte was not measured.
 
-  **Recommend (a).**
+  **Recommend (a).** The hash fix landed in R.2a: every entry of a
+  file a `keel new` or `keel add` writes records the bytes the run
+  leaves it, so the kit hook's entry and a later write's agree with
+  disk. Recording at rank is R.2b's.
 
 - **DR5 — How a grown project settles.**
   - (a) An `actionsOnly` replay. This gives the twin's actions, and I10

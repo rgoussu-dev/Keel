@@ -594,6 +594,19 @@ code-style's format step lands in the family kit's hook whichever
 resolved first. Doc sections land after the harness patches, then
 the pointers and the root map rows.
 
+Each realized file's provenance records its hash once that whole pass
+is over — the file as the run leaves it on disk, never as it was
+staged — so the family kit's hook records code-style's format step in
+it. A run that writes into a file an earlier run realized — `keel add
+persistence` putting its section in a directory document the kit
+seeded — records its bytes as shipped on every entry for the file, an
+edit the user had already made in it included, so one run and two
+that reach one project record the same hashes, and keel's own write
+never reads as the user's edit. `keel add module`, which re-indexes
+the root map after that pass, records the documents it rewrites the
+same way. `keel docs sync` writes no manifest: a row it changes reads
+as an edit until a run next writes that document.
+
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
 collecting only their harness declarations. Domain files
@@ -631,7 +644,8 @@ malformed one naming the adapter), renders it with the one shared
 `.claude/skills/<name>/SKILL.md` — plus its `supporting` files beside
 it — as an adapter-owned whole file. Each staged file gets a
 provenance record in the manifest's `entries`: the owning adapter as
-`source`, the target path, and the pristine content hashes.
+`source`, the target path, and the hashes of the file as the run
+leaves it.
 
 Two rules the seam enforces:
 

@@ -89,7 +89,7 @@ import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
 import { conflictsOf, violatedBy } from '../compatibility.js';
 import { moduleRulesRefusal } from '../refusals.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
-import { installVertical } from '../install.js';
+import { installVertical, rehashEntries } from '../install.js';
 import { historyOf, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
 import { projectDocs } from '../docs-projection.js';
@@ -189,7 +189,8 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     // declarations because the directory the contexts live in is the
     // family kit's declaration, and the kit does not run here.
     const next: ManifestV2 = { ...result.manifest, modules: recorded };
-    await this.reindex(command.cwd, next, tree);
+    const indexed = await this.reindex(command.cwd, next, tree);
+    const manifest = rehashEntries(result.manifest, tree, indexed);
 
     const report: InstallReport = {
       subject: name.value,
@@ -206,7 +207,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
 
     await tree.commit();
     await this.deps.manifests.write(scopeRoot, {
-      ...withoutAddModuleInputs(result.manifest),
+      ...withoutAddModuleInputs(manifest),
       modules: [...recorded],
     });
     const runDeferred = this.deps.runDeferred ?? runActions;
@@ -225,9 +226,10 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
    * about to write, so the new context has its row before anything is
    * committed. Merged rather than replaced: the replay is complete,
    * but a row a person put in the slot by hand is still theirs until
-   * `keel docs sync` says otherwise.
+   * `keel docs sync` says otherwise. Returns the documents it wrote:
+   * the harness pass recorded them before the new row was in.
    */
-  private async reindex(cwd: string, manifest: ManifestV2, tree: Tree): Promise<void> {
+  private async reindex(cwd: string, manifest: ManifestV2, tree: Tree): Promise<readonly string[]> {
     const { regions } = await projectDocs({
       ...this.deps,
       manifest,
@@ -235,7 +237,9 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       cwd,
       now: () => manifest.updatedAt,
     });
-    projectDocsIndex(regions, tree, newOwnership(), { merge: true });
+    return projectDocsIndex(regions, tree, newOwnership(), { merge: true }).map(
+      (file) => file.path,
+    );
   }
 }
 

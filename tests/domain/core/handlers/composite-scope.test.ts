@@ -1095,10 +1095,9 @@ describe("keel new: a product's extras, each in its service", () => {
 
   /**
    * What a manifest records of the project — its verticals, tags,
-   * answers, peers and which harness files each contributor owns —
-   * leaving out the provenance hash an owned file is recorded with,
-   * which is the file as the run that recorded it left it: one run
-   * or two write the same file, and hash it at different moments.
+   * answers, peers, and which harness files each contributor owns with
+   * the hashes they are recorded at, which are the file as the last
+   * run that wrote it left it, one run or two.
    */
   const recorded = async (dir: string) => {
     const manifest = await fsManifestStore.read(projectScopeRoot(dir));
@@ -1108,7 +1107,12 @@ describe("keel new: a product's extras, each in its service", () => {
       answers: manifest?.answers,
       peers: manifest?.peers,
       services: manifest?.services,
-      entries: (manifest?.entries ?? []).map((entry) => `${entry.source} → ${entry.target}`).sort(),
+      entries: (manifest?.entries ?? [])
+        .map(
+          (entry) =>
+            `${entry.source} → ${entry.target} ${entry.sha256Shipped} ${entry.sha256Current}`,
+        )
+        .sort(),
     };
   };
 

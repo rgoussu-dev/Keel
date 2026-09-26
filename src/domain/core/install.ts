@@ -48,6 +48,7 @@
  * returns the next manifest. The caller commits both.
  */
 
+import { createHash } from 'node:crypto';
 import {
   answerKeys,
   answerUnder,
@@ -445,7 +446,11 @@ function assertDeclared(
   );
 }
 
-/** Finalizes a shared install run and records every realized harness file's provenance. */
+/**
+ * Finalizes a shared install run and records every realized harness
+ * file's provenance, as the run leaves the file: see
+ * {@link foldHarnessEntries}.
+ */
 export function finalizeHarness(inputs: {
   readonly manifest: ManifestV2;
   readonly harness: HarnessContribution[];
@@ -467,40 +472,93 @@ export function finalizeHarness(inputs: {
     inputs.manifest,
   );
   return {
-    manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.now()),
+    manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.tree, inputs.now()),
     skills: realized.skills,
     skipped: realized.skipped,
   };
 }
 
+/**
+ * Records the files a run realized: each contributor's entry for each,
+ * and every earlier entry for the same file, takes the hash of the
+ * bytes the run leaves it holding, as shipped and as current
+ * ({@link rehashEntries}).
+ *
+ * Read from the Tree once the whole buffer has run, not as staged: a
+ * harness patch lands in a file another contributor staged earlier in
+ * the realization (code-style's format step in the family kit's
+ * pre-commit hook), and a staged hash would record the file as it
+ * never reached disk. And keel's own later write is shipped too — a
+ * `keel add persistence` writing its section into a directory document
+ * the kit seeded — so one run and two that reach one project record
+ * the same hashes, and keel's write never reads as the user's.
+ */
 function foldHarnessEntries(
   manifest: ManifestV2,
   files: readonly HarnessFile[],
+  tree: Tree,
   now: string,
 ): ManifestV2 {
   const key = (source: string, target: string) => `${source} ${target}`;
-  const currentHashes = new Map(files.map((file) => [file.path, file.sha256]));
+  const hashes = hashesIn(
+    tree,
+    files.map((file) => file.path),
+  );
   const byTarget = new Map<string, ManifestEntry>(
-    manifest.entries.map((entry) => [
-      key(entry.source, entry.target),
-      {
-        ...entry,
-        sha256Current: currentHashes.get(entry.target) ?? entry.sha256Current,
-      },
-    ]),
+    withHashes(manifest.entries, hashes).map((entry) => [key(entry.source, entry.target), entry]),
   );
   for (const file of files) {
     const id = key(file.adapterId, file.path);
-    const prior = byTarget.get(id);
+    const hash = hashes.get(file.path) ?? file.sha256;
     byTarget.set(id, {
       source: file.adapterId,
       target: file.path,
-      sha256Shipped: file.sha256,
-      sha256Current: file.sha256,
-      installedAt: prior?.installedAt ?? now,
+      sha256Shipped: hash,
+      sha256Current: hash,
+      installedAt: byTarget.get(id)?.installedAt ?? now,
     });
   }
   return { ...manifest, entries: [...byTarget.values()] };
+}
+
+/**
+ * Records `paths`, files keel just wrote, as `tree` now holds them:
+ * every entry of `manifest` tracking one, whichever contributor it
+ * names, takes their hash as shipped and as current, and keeps its
+ * `installedAt`. So keel's write never reads as the user's edit — and
+ * an edit of the user's already in the file is recorded with it. A
+ * path `tree` holds no file at leaves its entries as they were.
+ *
+ * {@link finalizeHarness} records what its pass realized this way;
+ * `keel add module` records the index it re-projects after that pass.
+ */
+export function rehashEntries(
+  manifest: ManifestV2,
+  tree: Tree,
+  paths: readonly string[],
+): ManifestV2 {
+  return { ...manifest, entries: withHashes(manifest.entries, hashesIn(tree, paths)) };
+}
+
+function withHashes(
+  entries: readonly ManifestEntry[],
+  hashes: ReadonlyMap<string, string>,
+): ManifestEntry[] {
+  return entries.map((entry) => {
+    const hash = hashes.get(entry.target);
+    return hash === undefined ? entry : { ...entry, sha256Shipped: hash, sha256Current: hash };
+  });
+}
+
+function hashesIn(tree: Tree, paths: readonly string[]): ReadonlyMap<string, string> {
+  return new Map(
+    paths.flatMap((target) => {
+      const bytes = tree.read(target);
+      return bytes === null
+        ? []
+        : [[target, createHash('sha256').update(bytes).digest('hex')] as const];
+    }),
+  );
 }
 
 /**

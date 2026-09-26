@@ -149,7 +149,11 @@ export type ApplyMode = 'scaffold' | 'install' | 'reapply';
 export interface StagedSkillFile {
   /** Path relative to the project root (`.claude/skills/<name>/…`). */
   readonly path: string;
-  /** sha256 of the staged content, hex — the manifest's provenance hash. */
+  /**
+   * sha256 of the content as staged, hex. The manifest's provenance
+   * hashes the file as the run leaves it instead (`install.ts`
+   * `finalizeHarness`), once every later write of the run is in.
+   */
   readonly sha256: string;
 }
 

@@ -14,6 +14,24 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **The manifest records a harness file as keel leaves it.** Each file
+  the agent harness writes has a record in `.keel-manifest.json`'s
+  `entries`, whose hashes say what keel shipped. The family kit's
+  `.claude/hooks/pre-commit-format.sh` was recorded as it was staged,
+  before code-style wrote its format step into it, so on every JVM,
+  Rust and TypeScript project its record named bytes the file never
+  held. And keel's own later write went unrecorded: `keel add
+persistence`, putting its section in a directory document the kit
+  seeds, such as `internal/infra/AGENTS.md` on a basic Go project,
+  left the earlier record's shipped hash as it was, and `keel add
+module` recorded the root `AGENTS.md` before adding the new
+  context's row to its map. Either read as an edit of yours, and
+  persistence in one run or in two recorded different manifests.
+  `keel new` and `keel add` now record each harness file they write
+  as they leave it, as shipped and as current — an edit of yours
+  already in it included. Nothing in keel reads these hashes yet, and
+  no project file changes.
+
 - **`--reapply` no longer adds a second monitoring section to a CRLF
   README.** On a README with CRLF line endings — one cloned on Windows
   under `core.autocrlf` — `keel add observability --reapply` on an HTTP
