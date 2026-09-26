@@ -202,20 +202,23 @@ render: an adapter that matched before the entrypoint and renders
 otherwise after it must be one growth re-renders or one whose context
 it refuses. A family lifts it by splitting its context adapters into a
 shell and one wiring adapter per entrypoint, each writing only its
-assembly's files — Go's since R.3a. `handlers/add-entrypoint.ts` runs
-that reading and nothing else: it installs only the adapters that
-newly match (`installVerticals`' `only`), wires each added context into
-the new assembly by a run of `bounded-context` of its own
-(`GrowthPlan.modules`, in recorded order, after every vertical the twin
-lists, as `keel add module` ran it), replays the twin's other verticals
-for their deferred actions alone (`actionsOnly`), and records what is
-new where the twin records it — so the grid can hold the grown project
-to the twin byte for byte, manifest included (I10), with and without a
-module history. What a manifest cannot say it reads off the files: a
-context recorded consuming none that holds the gateway its vertical
-writes for a consumer (a `--consumes` from before #164 recorded it) is
-refused, the gateway found where `install.ts`' `contributedPaths` says
-the vertical's own render puts it — no family's layout in the handler.
+assembly's files — Go's since R.3a, Rust's since R.3b.
+`handlers/add-entrypoint.ts` runs that reading and nothing else: it
+installs only the adapters that newly match (`installVerticals`'
+`only`), wires each added context into the new assembly by a run of
+`bounded-context` of its own (`GrowthPlan.modules`, in recorded order,
+after every vertical the twin lists, as `keel add module` ran it — on
+Rust, where each wiring prepends to the new crate's `Cargo.toml` as
+observability does, that order is in the bytes), replays the twin's
+other verticals for their deferred actions alone (`actionsOnly`), and
+records what is new where the twin records it — so the grid can hold
+the grown project to the twin byte for byte, manifest included (I10),
+with and without a module history. What a manifest cannot say it reads
+off the files: a context recorded consuming none that holds the
+gateway its vertical writes for a consumer (a `--consumes` from
+before #164 recorded it) is refused, the gateway found where
+`install.ts`' `contributedPaths` says the vertical's own render puts
+it — no family's layout in the handler.
 The command's pointer from below a project reads it too; the status
 and a refusal's action read no files, so they offer the entrypoint
 there. A vertical installed in part counts as run, so no harness

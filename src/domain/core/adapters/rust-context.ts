@@ -1,5 +1,5 @@
 /**
- * `bounded-context/rust-context` adapter — the context
+ * `bounded-context/rust-context` and its wiring adapters — the context
  * `keel add module <name>` emits under the Rust modulith, and the
  * gateway `--consumes <other>` adds to it.
  *
@@ -38,10 +38,23 @@
  * `greeting` sidesteps this with an agent noun (`Greeter` beside
  * `Greeting`) and an agent noun is exactly what cannot be derived from
  * an arbitrary context name.
+ *
+ * **A shell, and one wiring adapter per entrypoint.** The shell writes
+ * the context's crates and its gateway, and adds them to the
+ * workspace's `members`, none of which an entrypoint shapes;
+ * `rust-context-cli` and `rust-context-http` each write one assembly's
+ * wiring module, declare it in that assembly's `main.rs` and add the
+ * context's crates to that assembly's `Cargo.toml`, and require that
+ * entrypoint's tag. A project carrying both matches both. What each
+ * writes is the same module in another crate, so which assemblies a
+ * context is wired into is read off the predicates, never off the tags
+ * inside `contribute()` — and `keel add entrypoint` wires every
+ * context into the new assembly by installing the one wiring adapter
+ * that newly matches (roadmap R.3b).
  */
 
-import type { Adapter, ContributionPatch } from '../../contract/composition.js';
-import { addedContext, CONTEXT_TAG } from './added-context.js';
+import type { Adapter, ContributionPatch, ManifestV2, Tag } from '../../contract/composition.js';
+import { addedContext, CONTEXT_TAG, type AddedContext } from './added-context.js';
 import { MODULITH_LAYOUT_TAG, SKELETON_MODULE } from './module-layout.js';
 import { RUST_BOOTSTRAP_ID, rustBootstrapAnswers } from './rust-bootstrap.js';
 import { RUST_CLI_BOOTSTRAP_ID } from './rust-cli-bootstrap.js';
@@ -53,13 +66,20 @@ import {
   rustLayout,
   rustSeamCrate,
   toCrateIdent,
+  type RustLayoutPaths,
+  type RustUnit,
 } from './rust-module-layout.js';
 import { eolOf, withEol } from '../util.js';
 
 export const RUST_CONTEXT_ID = 'bounded-context/rust-context';
+/** The adapter wiring an added context into the CLI's assembly. */
+export const RUST_CONTEXT_CLI_ID = 'bounded-context/rust-context-cli';
+/** The adapter wiring an added context into the HTTP server's assembly. */
+export const RUST_CONTEXT_HTTP_ID = 'bounded-context/rust-context-http';
 
 const TEMPLATE_ROOT = 'composition/bounded-context/rust-context/templates';
 
+/** The shell: the context's crates, its gateway under `--consumes`, and their workspace membership. */
 export const rustContextAdapter: Adapter = {
   id: RUST_CONTEXT_ID,
   vertical: 'bounded-context',
@@ -67,60 +87,114 @@ export const rustContextAdapter: Adapter = {
   predicate: {
     requires: ['lang.rust', MODULITH_LAYOUT_TAG, CONTEXT_TAG],
   },
-  // Ordering hints rather than requirements: under `keel add module`
-  // the bootstraps have long since run, and listing them keeps the
-  // adapter honest about what it patches into.
-  after: [RUST_BOOTSTRAP_ID, RUST_CLI_BOOTSTRAP_ID, RUST_HTTP_BOOTSTRAP_ID],
+  // An ordering hint rather than a requirement: under `keel add module`
+  // the bootstrap has long since run, and listing it keeps the shell
+  // honest about the root manifest it patches.
+  after: [RUST_BOOTSTRAP_ID],
   async contribute(ctx) {
-    const added = addedContext(ctx.manifest, RUST_CONTEXT_ID);
-    const { projectName } = rustBootstrapAnswers(ctx.manifest, RUST_CONTEXT_ID);
-    const layout = rustLayout(ctx.manifest.tags, projectName);
-    const crates = rustContextCrates(layout, added.name, added.consumes);
-    const vars = templateVars(added);
-
+    const { added, members, vars } = contextOf(ctx.manifest, RUST_CONTEXT_ID);
     const rendered = await Promise.all([
       ctx.templates.render(`${TEMPLATE_ROOT}/context`, 'modules', vars),
       ...(added.consumes === null
         ? []
         : [ctx.templates.render(`${TEMPLATE_ROOT}/gateway`, `modules/${added.name}/infra`, vars)]),
-      ...assembliesOf(ctx.manifest.tags).map((typology) => {
-        const assembly = layout.assembly(typology);
-        const dir = assembly.rootFile.slice(0, assembly.rootFile.lastIndexOf('/'));
-        return ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dir, vars);
-      }),
     ]);
-
-    const members = [
-      crates.contract,
-      crates.core,
-      crates.seam,
-      ...(crates.gateway ? [crates.gateway] : []),
-    ];
-    const patches: ContributionPatch[] = [
-      {
-        target: 'Cargo.toml',
-        apply: (existing) =>
-          addWorkspaceMembers(
-            existing,
-            members.map((unit) => unit.crate.dir),
-          ),
-      },
-    ];
-    for (const typology of assembliesOf(ctx.manifest.tags)) {
-      const assembly = layout.assembly(typology);
-      patches.push({
-        target: assembly.crate.manifest,
-        apply: (existing) => addCrateDependencies(existing, deps(layout, added, members, assembly)),
-      });
-      patches.push(assemblyModulePatch(assembly.rootFile, added.name));
-    }
-
-    return { files: rendered.flat(), patches };
+    return {
+      files: rendered.flat(),
+      patches: [
+        {
+          target: 'Cargo.toml',
+          apply: (existing) =>
+            addWorkspaceMembers(
+              existing,
+              members.map((unit) => unit.crate.dir),
+            ),
+        },
+      ],
+    };
   },
 };
 
+/** Wires the context into the CLI's assembly, `application/cli`. */
+export const rustContextCliAdapter: Adapter = wiringAdapter(
+  RUST_CONTEXT_CLI_ID,
+  'cli',
+  'arch.cli',
+  RUST_CLI_BOOTSTRAP_ID,
+);
+
+/** Wires the context into the HTTP server's assembly, `application/http`. */
+export const rustContextHttpAdapter: Adapter = wiringAdapter(
+  RUST_CONTEXT_HTTP_ID,
+  'http',
+  'arch.server-http',
+  RUST_HTTP_BOOTSTRAP_ID,
+);
+
+/**
+ * The adapter that wires the context into the assembly of the
+ * deployment unit `unit` — `src/<name>.rs`, its `mod` line in
+ * `main.rs`, and the context's crates in that assembly's `Cargo.toml`
+ * — on a project carrying `entrypoint`, after the shell and that
+ * entrypoint's bootstrap.
+ */
+function wiringAdapter(id: string, unit: string, entrypoint: Tag, bootstrap: string): Adapter {
+  return {
+    id,
+    vertical: 'bounded-context',
+    covers: [],
+    predicate: {
+      requires: ['lang.rust', MODULITH_LAYOUT_TAG, CONTEXT_TAG, entrypoint],
+    },
+    after: [RUST_CONTEXT_ID, bootstrap],
+    async contribute(ctx) {
+      const { added, layout, members, vars } = contextOf(ctx.manifest, id);
+      const assembly = layout.assembly(unit);
+      const dir = assembly.rootFile.slice(0, assembly.rootFile.lastIndexOf('/'));
+      return {
+        files: await ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dir, vars),
+        patches: [
+          {
+            target: assembly.crate.manifest,
+            apply: (existing) =>
+              addCrateDependencies(existing, deps(layout, added, members, assembly)),
+          },
+          assemblyModulePatch(assembly.rootFile, added.name),
+        ],
+      };
+    },
+  };
+}
+
+/**
+ * The context an add-module run emits, and what its adapters read: the
+ * layout, the context's own crates, and the template variables — the
+ * same values for the shell and for each assembly's wiring.
+ */
+function contextOf(
+  manifest: ManifestV2,
+  requesterId: string,
+): {
+  readonly added: AddedContext;
+  readonly layout: RustLayoutPaths;
+  readonly members: readonly RustUnit[];
+  readonly vars: Readonly<Record<string, string>>;
+} {
+  const added = addedContext(manifest, requesterId);
+  const { projectName } = rustBootstrapAnswers(manifest, requesterId);
+  const layout = rustLayout(manifest.tags, projectName);
+  const crates = rustContextCrates(layout, added.name, added.consumes);
+  const members = [
+    crates.contract,
+    crates.core,
+    crates.seam,
+    ...(crates.gateway ? [crates.gateway] : []),
+  ];
+  return { added, layout, members, vars: templateVars(added) };
+}
+
 /** What every template in this tree renders against. */
-function templateVars(added: ReturnType<typeof addedContext>): Readonly<Record<string, string>> {
+function templateVars(added: AddedContext): Readonly<Record<string, string>> {
   return {
     module: added.name,
     Module: pascal(added.name),
@@ -182,14 +256,6 @@ function pascal(name: string): string {
   return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
 }
 
-/** Which assemblies this project has, from the stack's arch tags. */
-function assembliesOf(tags: readonly string[]): readonly string[] {
-  const typologies: string[] = [];
-  if (tags.includes('arch.cli')) typologies.push('cli');
-  if (tags.includes('arch.server-http')) typologies.push('http');
-  return typologies;
-}
-
 /**
  * The dependencies an assembly needs to wire the new context.
  *
@@ -205,10 +271,10 @@ function assembliesOf(tags: readonly string[]): readonly string[] {
  * copying it into a gateway does not carry a domain edge along.
  */
 function deps(
-  layout: ReturnType<typeof rustLayout>,
-  added: ReturnType<typeof addedContext>,
-  members: readonly ReturnType<typeof rustContextCrates>['contract'][],
-  assembly: ReturnType<ReturnType<typeof rustLayout>['assembly']>,
+  layout: RustLayoutPaths,
+  added: AddedContext,
+  members: readonly RustUnit[],
+  assembly: RustUnit,
 ): readonly (readonly [string, string])[] {
   const entries: (readonly [string, string])[] = [
     [layout.kernel.crate.name, layout.kernel.crate.pathFrom(assembly.crate)],

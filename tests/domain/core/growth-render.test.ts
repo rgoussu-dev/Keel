@@ -28,10 +28,10 @@
  * adapter requiring its marker that renders otherwise, and a
  * re-rendered vertical an adapter that does. Today that is exactly the
  * family kits, and the peer-context and context adapters of every
- * family but Go: a family that splits its context adapters into a shell
- * and one wiring adapter per entrypoint (R.3, Go's since R.3a) leaves
- * them rendering the same, and growth stops refusing it, with no edit
- * here.
+ * family but Go and Rust: a family that splits its context adapters
+ * into a shell and one wiring adapter per entrypoint (R.3, Go's since
+ * R.3a, Rust's since R.3b) leaves them rendering the same, and growth
+ * stops refusing it, with no edit here.
  *
  * **Factory.** {@link installMediator} over the real templates and
  * filesystem, with a fake process runner and no deferred action — the

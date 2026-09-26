@@ -140,10 +140,11 @@ parallel:
   grid's deferred runner records, `Grid.queued`). The add also
   previews as it installs on the scaffold (I9, over no answers and
   over the monitoring stack answered away from its default). Of the
-  192, 132 grow and 60 are refused as `keel.contexts-need-rewiring` —
-  every setting with the peer context but Go's; of the 128 with a
-  history, Go's 8 grow and 120 are refused — until epic R's R.3 lifts
-  them family by family (Go's with R.3a).
+  192, 136 grow and 56 are refused as `keel.contexts-need-rewiring` —
+  every setting with the peer context but Go's and Rust's; of the 128
+  with a history, Go's 8 and Rust's 8 grow and 112 are refused — until
+  epic R's R.3 lifts them family by family (Go's with R.3a, Rust's
+  with R.3b).
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
@@ -183,9 +184,9 @@ the record can only shrink. Beside each suite:
   moves a verdict regenerates the docs last, after the grid.
 
 About 43 s wall on its own, growth and greenfield the longest: growth
-about 38 s alone (390 real scaffolds — 320 cells and 70 twins, one per
-setting and history, which both directions share — 264 real `keel add
-module` runs, 320 real adds and 780 dry-run dispatches for I9; the
+about 39 s alone (396 real scaffolds — 320 cells and 76 twins, one per
+setting and history, which both directions share — 272 real `keel add
+module` runs, 320 real adds and 792 dry-run dispatches for I9; the
 module histories are about 13 s of it), greenfield ~23 s, of which
 I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
 dispatches — about 14 s.
@@ -300,6 +301,11 @@ afresh (`domain/core/adapters/rust-cli-bootstrap.test.ts`), and the
 dev container's attach on an HTTP project, which every preset
 installs with its dev environment
 (`domain/core/verticals/dev-container.test.ts`).
+On a Rust modulith it records each assembly's `Cargo.toml` and
+`src/main.rs` too, which the bootstrap, observability and each
+context's wiring write into: R.3b split that wiring per entrypoint,
+and those entries were recorded on the code before it, so they hold
+R.3 as the root files hold R.1.
 Every cell is a dry run, read back through the Tree that staged it,
 except the ten scaffolds `keel add dev-env` runs on, and each module
 history's scaffold and first add, which are written for real so the
@@ -340,13 +346,13 @@ without and with the missing entrypoint is rendered both ways, and one
 that renders otherwise must be one growth re-renders or one whose
 context it refuses — and each refusal and re-render must rest on such
 an adapter. Today those are exactly the family kits, and the
-peer-context and context adapters of every family but Go, whose are
-split into a shell and one wiring adapter per entrypoint (R.3a). Both
-run their scaffolds in a `beforeAll`, so mutation testing leaves them
-out; `domain/core/growth.test.ts` holds each rule of the reading on a
-fixture family, and the replay of `keel add module`'s contexts on
-keel's Go presets, since that command runs keel's own
-`bounded-context` alone.
+peer-context and context adapters of every family but Go and Rust,
+whose are split into a shell and one wiring adapter per entrypoint
+(R.3a, R.3b). Both run their scaffolds in a `beforeAll`, so mutation
+testing leaves them out; `domain/core/growth.test.ts` holds each rule
+of the reading on a fixture family, and the replay of `keel add
+module`'s contexts on keel's Go presets, since that command runs
+keel's own `bounded-context` alone.
 
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial

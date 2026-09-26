@@ -150,7 +150,7 @@ export interface JvmAssemblyPaths {
 
 /**
  * Which assemblies this project has, from the stack's arch tags — the
- * JVM sibling of `tsAssemblies` and of Rust's `assembliesOf`.
+ * JVM sibling of `tsAssemblies`.
  *
  * The adapters that wire a bounded context into "the assembly"
  * (`jvm-peer-context`, `jvm-context`) iterate over this rather than

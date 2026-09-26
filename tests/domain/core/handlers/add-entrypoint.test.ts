@@ -773,6 +773,52 @@ describe('keel add entrypoint on a modulith with bounded contexts', () => {
     expect(await digests(cwd)).toEqual(await digests(twin));
   });
 
+  /**
+   * Rust's wiring prepends its crates to the new crate's
+   * `[dependencies]`, as observability does: the peer's lines sit below
+   * OpenTelemetry's in the twin, where the skeleton wired it first, and
+   * each added context's above them, the last added first — so the peer
+   * must be wired before observability runs, and the contexts after it,
+   * in recorded order, which `main.rs`'s `mod` lines read in too
+   * (roadmap R.3b). `billing` is added after `orders`, so the recorded
+   * order is neither the names' nor its reverse.
+   */
+  it('wires a Rust peer and each added context into the new crate where the twin with that history lists them', async () => {
+    const dials = { moduleLayout: 'modulith', withPeerContext: true } as const;
+    await scaffold('rust-cli', dials);
+    await addModule('orders', 'greeting');
+    await addModule('billing', 'orders');
+    const twin = path.join(root, 'twin');
+    await fs.ensureDir(twin);
+    await scaffold('rust-cli-http', dials, twin);
+    await addModule('orders', 'greeting', twin);
+    await addModule('billing', 'orders', twin);
+
+    const report = expectOk(await grow('http'));
+
+    expect((report.resolvedAdapters ?? []).map((adapter) => adapter.id)).toEqual(
+      expect.arrayContaining([
+        'walking-skeleton/rust-peer-context-http',
+        'bounded-context/rust-context-http',
+      ]),
+    );
+    const dependencies = (await fs.readFile(path.join(cwd, 'application/http/Cargo.toml'), 'utf8'))
+      .split('\n')
+      .map((line) => /^([a-z_-]+) = /.exec(line)?.[1])
+      .filter((name) => name !== undefined);
+    const oneOfEachGroup = [
+      'billing-domain-contract',
+      'orders-domain-contract',
+      'opentelemetry',
+      'guestbook-domain-contract',
+    ];
+    expect(dependencies.filter((name) => oneOfEachGroup.includes(name))).toEqual(oneOfEachGroup);
+    expect(await fs.readFile(path.join(cwd, 'application/http/src/main.rs'), 'utf8')).toContain(
+      'mod guestbook;\nmod orders;\nmod billing;\n',
+    );
+    expect(await digests(cwd)).toEqual(await digests(twin));
+  });
+
   it('never reads the wiring of the entrypoints there: an edited one stays', async () => {
     await scaffold('go-http', { moduleLayout: 'modulith' });
     await addModule('billing');
@@ -885,6 +931,29 @@ describe('keel add entrypoint on a modulith with bounded contexts', () => {
     );
     expect(await manifestBytes()).toBe(manifest);
     expect(await fs.pathExists(path.join(cwd, 'cmd/http'))).toBe(false);
+  });
+
+  it('refuses it on a Rust modulith too, whose gateway is a crate of the context’s', async () => {
+    await scaffold('rust-cli', { moduleLayout: 'modulith' });
+    await addModule('orders', 'greeting');
+    const stored = await manifestAt();
+    await fsManifestStore.write(projectScopeRoot(cwd), {
+      ...stored,
+      modules: stored.modules.map(({ consumes: _, ...module }) => module),
+    });
+    expect(
+      await fs.pathExists(path.join(cwd, 'modules/orders/infra/greeting-gateway/Cargo.toml')),
+    ).toBe(true);
+    const manifest = await manifestBytes();
+
+    const error = expectErr(await grow('http'));
+
+    expect(error.code).toBe('keel.contexts-need-rewiring');
+    expect(error.message).toContain(
+      "the bounded context 'orders' holds a gateway to 'greeting', but this project's manifest",
+    );
+    expect(await manifestBytes()).toBe(manifest);
+    expect(await fs.pathExists(path.join(cwd, 'application/http'))).toBe(false);
   });
 
   it('reads the gateway of a consumer of a context keel add module added, not only of the skeleton', async () => {

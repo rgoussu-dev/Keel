@@ -6,7 +6,11 @@
  * their writers from appending to a ranked place (R.1), with ranks
  * chosen to reproduce the order a scaffold already has; this golden
  * landed first, on the appending code, and R.1 leaves every cell of it
- * byte-identical.
+ * byte-identical. Beside them, each Rust modulith assembly's
+ * `Cargo.toml` and `src/main.rs`, which the bootstrap, observability,
+ * and the peer's and each context's wiring all write into: R.3b moved
+ * that wiring into an adapter per entrypoint, and the bytes it leaves
+ * were pinned on the code before it.
  *
  * **Scenario.** Cells are derived, never listed: the presets from
  * `keel.catalog`, every dial setting each offers from `keel.dials`
@@ -103,6 +107,17 @@ const SHARED_FILES = [
   'package.json',
   'Cargo.toml',
   '.devcontainer/devcontainer.json',
+] as const;
+
+/**
+ * The files of a Rust modulith's assemblies that more than one adapter
+ * writes into, whose writers R.3 splits per entrypoint.
+ */
+const RUST_ASSEMBLY_FILES = [
+  'application/cli/Cargo.toml',
+  'application/cli/src/main.rs',
+  'application/http/Cargo.toml',
+  'application/http/src/main.rs',
 ] as const;
 
 /** The extra swept alone, and added to a scaffold. */
@@ -236,7 +251,9 @@ describe('shared files: every writer, byte for byte', () => {
         moved.push(`${cell} — ${file}: ${pinned[file] ?? 'absent'} → ${files[file] ?? 'absent'}`);
       }
     }
-    expect(moved, 'shared files that moved — R.1 leaves every one byte-identical').toEqual([]);
+    expect(moved, 'shared files that moved — R.1 and R.3 leave every one byte-identical').toEqual(
+      [],
+    );
   });
 });
 
@@ -333,7 +350,7 @@ async function record(
     watched.delete(cwd);
   }
   const found: Record<string, string> = {};
-  for (const file of SHARED_FILES) {
+  for (const file of [...SHARED_FILES, ...RUST_ASSEMBLY_FILES]) {
     const staging = trees.find((tree) => tree.changes().some((change) => change.path === file));
     const bytes = staging === undefined ? await onDisk(path.join(cwd, file)) : staging.read(file);
     if (bytes !== null) found[file] = createHash('sha256').update(bytes).digest('hex');

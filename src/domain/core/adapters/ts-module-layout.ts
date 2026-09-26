@@ -239,11 +239,12 @@ export interface TsAssemblyPaths {
 }
 
 /**
- * Which assemblies this project has, from the stack's arch tags — the
- * TypeScript sibling of Rust's `assembliesOf`. The adapters
- * that wire a bounded context into "the assembly" (`ts-peer-context`,
- * `ts-context`) iterate over this rather than naming `application/rest`,
- * so the same wiring lands in a CLI, an HTTP service, or both.
+ * Which assemblies this project has, from the stack's arch tags. The
+ * adapters that wire a bounded context into "the assembly"
+ * (`ts-peer-context`, `ts-context`) iterate over this rather than
+ * naming `application/rest`, so the same wiring lands in a CLI, an
+ * HTTP service, or both — where Go's and Rust's pick theirs by
+ * predicate, one wiring adapter per entrypoint.
  */
 export function tsAssemblies(
   tags: readonly Tag[],

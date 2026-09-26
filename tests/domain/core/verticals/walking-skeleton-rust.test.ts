@@ -6,7 +6,9 @@
  * `src/infra/` fakes), that the CLI and HTTP entrypoints compose —
  * separately and both at once — that the module-declaration and
  * Cargo.toml patches stitch the pieces together, and that the other
- * platforms' adapters stay out of Rust projects.
+ * platforms' adapters stay out of Rust projects. Under the modulith
+ * with the peer context, it asserts that the peer is wired into each
+ * assembly by a wiring adapter of its own (roadmap R.3b).
  */
 
 import path from 'node:path';
@@ -20,6 +22,15 @@ import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
+import {
+  MODULITH_LAYOUT_TAG,
+  PEER_CONTEXT_TAG,
+} from '../../../../src/domain/core/adapters/module-layout.js';
+import { RUST_BOOTSTRAP_ID } from '../../../../src/domain/core/adapters/rust-bootstrap.js';
+import { rustPeerContextCliAdapter } from '../../../../src/domain/core/adapters/rust-peer-context.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
@@ -231,5 +242,79 @@ describe('walking-skeleton vertical (Rust)', () => {
         now: () => '2026-08-09T12:00:00Z',
       }),
     ).rejects.toBeInstanceOf(RefusalError);
+  });
+});
+
+describe('the Rust peer context', () => {
+  const peerTags = (...arch: string[]): string[] =>
+    baseTags(...arch, MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG);
+  const read = (tree: FsTree, file: string): string => tree.read(file)?.toString() ?? '';
+
+  /**
+   * Which assemblies the context is wired into is read off the
+   * predicates, one wiring adapter per entrypoint beside the shell —
+   * so a project that grows an entrypoint installs the one that newly
+   * matches, and the wiring already there is never rendered again
+   * (roadmap R.3b).
+   */
+  it('wires each assembly by an adapter of its own, which requires that entrypoint', async () => {
+    const ids = (...arch: string[]): string[] =>
+      resolveVertical(walkingSkeletonVertical, peerTags(...arch))
+        .map((adapter) => adapter.id)
+        .filter((id) => id.includes('peer-context'));
+    expect(ids('arch.cli')).toEqual([
+      'walking-skeleton/rust-peer-context',
+      'walking-skeleton/rust-peer-context-cli',
+    ]);
+    expect(ids('arch.server-http')).toEqual([
+      'walking-skeleton/rust-peer-context',
+      'walking-skeleton/rust-peer-context-http',
+    ]);
+    expect(ids('arch.cli', 'arch.server-http')).toEqual([
+      'walking-skeleton/rust-peer-context',
+      'walking-skeleton/rust-peer-context-cli',
+      'walking-skeleton/rust-peer-context-http',
+    ]);
+
+    const cli = await installWith(peerTags('arch.cli'));
+    cwds.push(cli.cwd);
+    expect(read(cli.tree, 'application/cli/src/guestbook.rs')).toContain('pub fn wire()');
+    expect(cli.tree.read('application/http/src/guestbook.rs')).toBeNull();
+    const both = await installWith(peerTags('arch.cli', 'arch.server-http'));
+    cwds.push(both.cwd);
+    // One module, in two assembly crates, each declaring it and the peer's crates.
+    for (const unit of ['cli', 'http']) {
+      expect(read(both.tree, `application/${unit}/src/guestbook.rs`)).toBe(
+        read(cli.tree, 'application/cli/src/guestbook.rs'),
+      );
+      expect(read(both.tree, `application/${unit}/src/main.rs`)).toMatch(/^mod guestbook;$/m);
+      expect(read(both.tree, `application/${unit}/Cargo.toml`)).toMatch(
+        /^guestbook-infra-greeting-gateway = \{ path/m,
+      );
+    }
+  });
+
+  it('names the wiring adapter when its assembly has no [dependencies] table to patch', async () => {
+    const manifest = {
+      ...emptyManifestV2('2026-08-09T00:00:00Z', '0.5.0-alpha'),
+      tags: peerTags('arch.cli'),
+      answers: { [RUST_BOOTSTRAP_ID]: { projectName: 'demo' } },
+    };
+    const ctx = makeCtx(
+      rustPeerContextCliAdapter,
+      {},
+      {
+        manifest,
+        logger: new FakeLogger(),
+        cwd: os.tmpdir(),
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
+      },
+    );
+    const { patches = [] } = await rustPeerContextCliAdapter.contribute(ctx);
+    const deps = patches.find((patch) => patch.target === 'application/cli/Cargo.toml');
+    expect(() => deps?.apply('[package]\nname = "cli"\n')).toThrow(
+      "walking-skeleton/rust-peer-context-cli: no [dependencies] table in 'application/cli/Cargo.toml'",
+    );
   });
 });

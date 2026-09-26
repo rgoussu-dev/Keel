@@ -6913,7 +6913,7 @@ case; and an e2e suite of a grown Go modulith. There is none for
 `go-cli-http` on the modulith, so growth leaves those cells as covered
 as `keel new` does, and the proof on disk stands in.
 
-#### R.3b — Rust (S)
+#### R.3b — Rust (S) ✅
 
 **The split.**
 
@@ -6930,6 +6930,183 @@ as `keel new` does, and the proof on disk stands in.
 
 **Holds green:** `add-module-rust`, `modulith-rust-peer-context`, the
 R.1a golden, and I10.
+
+**Landed as the split alone**, on R.3a's machinery, and the goldens
+moved only where Rust's contexts now grow.
+
+- **The context.** `rust-context.ts` is now three adapters. The shell,
+  `bounded-context/rust-context`, writes the context's crates and,
+  under `--consumes`, its gateway, and adds them to the root
+  `Cargo.toml`'s `members`. `rust-context-cli` and `rust-context-http`
+  each require the marker and their entrypoint's tag. Each writes
+  `application/<unit>/src/<context>.rs`, adds the context's crates to
+  that crate's `Cargo.toml` (`addCrateDependencies`) and declares the
+  module in its `main.rs` (`assemblyModulePatch`), after the shell and
+  that entrypoint's bootstrap. What all three read is worked out once
+  (`contextOf`).
+- **The peer.** `rust-peer-context.ts` is split the same way. The
+  shell keeps the three `guestbook` crates and their `members`, and
+  `rust-peer-context-cli` and `-http` each write `guestbook.rs`, the
+  peer's five dependency lines and `mod guestbook;` in their crate.
+- Both copies of `assembliesOf` are gone, and the four wiring
+  adapters are registered beside their shells in `walking-skeleton`
+  and `bounded-context`. Nothing else changed: `growthOf` finds the
+  wiring adapters and lifts Rust's refusal with no edit (DR6), and
+  R.3a's replay wires Rust's added contexts as it wires Go's.
+
+The goldens moved where R.3 says a family's step moves them, on Rust's
+cells alone, and the R.1a golden gained entries on them; nothing else
+moved:
+
+- `growth.golden.json`: 12 cells went from
+  `keel.contexts-need-rewiring` to growing. They are Rust's 4 plain
+  peer cells (`rust-cli` and `rust-http`, harness on and off), newly
+  matching the peer's wiring adapter beside the bootstrap, and its 8
+  history cells, each recording `modules`: `orders` and `shipping`,
+  each wired by `bounded-context/rust-context-http` (or `-cli`).
+- The grid's `growth.golden.json`: 36 verdicts moved to `ok`, the 12
+  grows and their 24 default I9 bodies. 12 were added, all `ok`: the
+  I9 bodies answering the monitoring stack on the 6 cells that grow
+  HTTP, which a refused cell never reached. That makes 1,112 verdicts.
+  I10 now grows 136 of the 192 plain cells, with the 56 refused being
+  every peer setting off Go and Rust, and 16 of the 128 histories,
+  Go's 8 and Rust's 8.
+- `shared-files.golden.json` changed no entry it had. It gained 52, on
+  the 20 Rust modulith cells: each assembly's `Cargo.toml` and
+  `src/main.rs`, recorded on HEAD's code (below). Its 6 Rust history
+  cells register their contexts in the root `Cargo.toml` as before.
+- The greenfield, brownfield, composite and planner-readiness goldens
+  and the docs matrix regenerate byte-identical. The known files are as
+  they were: brownfield's `{"I5": {}}`, and `{}` for the others.
+
+**The proof.**
+
+- **I10.** It holds Rust's 4 peer cells and 8 history cells to their
+  twins byte for byte, manifest and queued actions included. The risk
+  the text names is met by the twin's order, which growth already
+  runs in. Each wiring and observability prepend to the new crate's
+  `[dependencies]`, so the twin lists shipping's four crates, then
+  orders' four, then OpenTelemetry's seven, then the peer's five, then
+  the bootstrap's own. `walking-skeleton` wires the peer before
+  observability runs, and the replay wires the contexts after the run's
+  last vertical, in recorded order. The `mod` lines go in in that
+  order too, each after the last, so `main.rs` declares `guestbook`,
+  `orders` and `shipping` in turn. With the replay reversed, I10
+  failed on exactly Rust's 8 history cells, and Go's still passed,
+  since Go's wiring files are written whole. The order R.3a's replay
+  keeps is now in the bytes, as R.3a expected.
+- **The render guard** passes, with Rust's peer and context adapters
+  rendering the same both ways.
+- **No greenfield byte moved.** The R.1a golden holds it on the files
+  the split rearranges: its 52 new entries, recorded on HEAD's code,
+  pass on this step's. Beyond its settings, HEAD's code and this
+  step's each scaffolded every Rust preset on both layouts, with and
+  without the peer context and the agent harness, and each modulith
+  again after the history: 30 settings and 1,505 files,
+  byte-identical, manifests included. They did the same with the
+  whole extras menu `keel.dials` offers (`ci`, `dev-env` and
+  `toolchain` on `rust-cli`; `ci`, `containerization`, `persistence`,
+  `distribution`, `iac` and `toolchain` on the other two), on each
+  layout, peer and history setting: 15 settings and 1,166 files,
+  byte-identical.
+- **The e2e suites.** `add-module-rust`, `modulith-rust-cli`,
+  `modulith-rust-http` and `modulith-rust-peer-context` pass: 7 tests.
+- **On disk**, with the real deferred actions and cargo 1.94.1:
+  - `rust-cli` on the modulith, with the peer context and the history,
+    grew HTTP. `cargo test --workspace` passed 48 tests in 33 test
+    binaries. Among them are the HTTP crate's 13: the guestbook
+    wiring's, `orders`' two, and `shipping`'s two, through `orders`'
+    `wire_service()`. The CLI greeted. The HTTP unit answered `/greet`
+    with 200 and a correlation id, a blank name with 400, and both
+    health probes with 200. Nothing under `application/cli/` changed.
+  - `rust-cli` on the modulith with `orders` alone grew HTTP, with 32
+    tests passing.
+  - `rust-http` with the peer context and the history grew the CLI,
+    with 48 tests passing, the CLI crate's 8 among them, and the CLI
+    greeted.
+  - A manifest with `orders`' `consumes` removed is refused, naming
+    both contexts. R.3a's old-manifest check finds Rust's gateway crate
+    with no edit, which `add-entrypoint.test.ts` now holds (below).
+
+**The tests.**
+
+- `rust-context.test.ts` goes from 11 to 12 cases: the context is
+  wired into each assembly by an adapter of its own, the same module
+  in each crate, and on a CLI project into the CLI's alone.
+- `walking-skeleton-rust.test.ts` goes from 8 to 10: the peer resolves
+  its shell and one wiring adapter per entrypoint, each writing the
+  same `guestbook.rs`, its `mod` line and its crates into its own
+  assembly; and the wiring adapter's drift error names it (below).
+- `add-entrypoint.test.ts` goes from 40 to 42. One case is a Rust peer
+  modulith with a history of `orders`, then `billing` consuming it,
+  grown and equal to its twin byte for byte, the new crate's
+  `[dependencies]` holding billing's crates above `orders`', those
+  above OpenTelemetry's and those above the peer's, with its `mod`
+  lines in recorded order. The grid's history is also the names'
+  order, so a replay sorted by name passes I10; this case fails with
+  the replay sorted by name, and with it reversed. The other is R.3a's
+  old-manifest refusal on a Rust modulith, whose gateway is a crate:
+  every case of it scaffolded Go, so the check could stop finding
+  Rust's gateway with the suite green. It fails with the check blind
+  to a `-gateway` crate.
+- `shared-files.golden.test.ts` records each Rust modulith assembly's
+  `Cargo.toml` and `src/main.rs` (below). With the peer's five
+  dependency lines reversed it fails; before, the whole suite passed.
+
+**The cost.** Measured alone, the growth axis takes about 39 s, against
+38 s for HEAD's code on the same machine: 12 more cells grow for real,
+held to 6 more twins, so it scaffolds 396 projects (it was 390) and
+runs 272 `keel add module`s (264). The full CI-mode run took 171 s.
+
+`docs/cli.md` (`keel add entrypoint`, and the refusal and hint
+sections), `docs/composition.md` (Growing an entrypoint, which now
+says where the order shows in Rust's bytes), `docs/plugins.md`,
+`docs/stacks/rust.md`, `docs/ui.md`, `docs/development.md`, the
+README, `tests/AGENTS.md`, `src/domain/core/AGENTS.md`,
+`bounded-context.ts`, the render guard's and the R.1a golden's headers,
+and the notes on their Rust siblings in the Go peer context, the
+TypeScript context adapters and the TypeScript and JVM layouts say
+what changed. So does `GrowthPlan.adapters`' doc, which said one
+adapter newly matches on every shipped preset, as `docs/composition.md`
+did: on a Go or Rust peer modulith the peer's wiring adapter does too.
+R.2b's CHANGELOG entry under _Added_ now says what Rust's moduliths
+do, with I10's new counts, and R.2c's under _Changed_ narrows its "for
+now" to the other families.
+
+Beyond the text above:
+
+- **The shells' `after`.** Both shells ran after all three bootstraps,
+  for the wiring they wrote in each assembly. Each now runs after the
+  base bootstrap alone, whose workspace manifest it adds its crates to.
+  Go's context shell lists none, but it patches nothing. Each wiring
+  adapter runs after its shell and its entrypoint's bootstrap. In
+  `walking-skeleton` this moves the peer's shell ahead of the port
+  fake. Neither writes a file the other does, and no byte moved
+  (above).
+- **The peer's drift error names its wiring adapter.** The plain throw
+  on an assembly `Cargo.toml` with no `[dependencies]` table named the
+  peer's adapter, which patched it. It now names the wiring adapter
+  that patches it, which `walking-skeleton-rust.test.ts` holds. It
+  stays a throw, as `addCrateDependencies`' own does: no scaffold
+  reaches it.
+- **The R.1a golden records Rust's assembly files.** R.3 says that
+  golden checks greenfield bytes stay put, but none of its six files
+  is one the split rearranges on Rust: the peer's and each context's
+  wiring, the bootstrap and observability all write each assembly's
+  `Cargo.toml` and `src/main.rs`. It now records both on every Rust
+  modulith cell. The entries were generated on HEAD's code, in a copy
+  of its tree, and this step's code writes them byte-identical. Before
+  this, the peer's five dependency lines could be reversed with the
+  whole suite passing, since I10 compares a grown project with a twin
+  the same adapters write.
+- **The weekly sweep was not run.** Growth is no axis of it, and the
+  step names no finding.
+
+Not done here: TypeScript and the JVM (R.3c and R.3d), whose peer and
+history cells stay refused; and an e2e suite of a grown Rust modulith.
+There is none for `rust-cli-http` on either layout, so growth leaves
+those cells as covered as `keel new` does, and the proof on disk
+stands in.
 
 #### R.3c — TypeScript (M)
 
@@ -7087,7 +7264,8 @@ agent-harness --reapply`.
   `growth-render.test.ts` holds that reading to the renders both ways.
   R.3a narrowed it to the adapters growing runs: the installed
   verticals' for the peer, the replayed `bounded-context`'s for an
-  added context.
+  added context. R.3b lifted Rust's refusal with no edit to it, as (a)
+  intended.
 
 - **DR7 — The word.** `keel add entrypoint cli|http`, with the word
   carried by `ENTRYPOINTS`. `server-http` is also accepted, since the

@@ -24,8 +24,8 @@
  *
  * **No dimensions.** Like `gateway`, selection is purely by tag:
  * `modules.context` picks the context's adapters for the project's
- * language — its shell and, on a family that splits them (Go's), one
- * wiring adapter per entrypoint the project has —
+ * language — its shell and, on a family that splits them (Go's and
+ * Rust's), one wiring adapter per entrypoint the project has —
  * `modules.consumes` adds the gateway. With neither tag the vertical
  * installs nothing, which is what makes the coverage probe in
  * `context-support.ts` meaningful — an uncovered *dimension* would
@@ -53,7 +53,11 @@ import {
   micronautContextKotlinAdapter,
 } from '../adapters/micronaut-context.js';
 import { quarkusContextAdapter, quarkusContextKotlinAdapter } from '../adapters/quarkus-context.js';
-import { rustContextAdapter } from '../adapters/rust-context.js';
+import {
+  rustContextAdapter,
+  rustContextCliAdapter,
+  rustContextHttpAdapter,
+} from '../adapters/rust-context.js';
 import { springContextAdapter, springContextKotlinAdapter } from '../adapters/spring-context.js';
 import { tsContextAdapter } from '../adapters/ts-context.js';
 import { wcContextAdapter } from '../adapters/wc-context.js';
@@ -66,6 +70,8 @@ export const boundedContextVertical: Vertical = {
   dimensions: [],
   adapters: [
     rustContextAdapter,
+    rustContextCliAdapter,
+    rustContextHttpAdapter,
     goContextAdapter,
     goContextCliAdapter,
     goContextHttpAdapter,

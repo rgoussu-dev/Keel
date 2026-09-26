@@ -25,15 +25,16 @@
  * write. Here there is nothing to flow: the package is unreachable.
  *
  * **Binding is Go's other difference, and it removes a patch rather
- * than adding one.** `rust-peer-context` patches `mod guestbook;`
- * into the assembly root and the JVM family tells its container to
- * scan the new package, because both languages can emit a context
- * that compiles and is wired into nothing. A file in a `cmd/`
- * directory joins that directory's package by existing, so there is
- * no declaration to forget and these adapters emit **no patch at
- * all**. The equivalent Go mistake is landing the wiring somewhere
- * that is not the assembly, and that is what the emitted test and
- * `tests/e2e/modulith-go-peer-context.test.ts` assert instead.
+ * than adding one.** Rust's peer-context wiring adapters patch
+ * `mod guestbook;` into each assembly root and the JVM family tells
+ * its container to scan the new package, because both languages can
+ * emit a context that compiles and is wired into nothing. A file in a
+ * `cmd/` directory joins that directory's package by existing, so
+ * there is no declaration to forget and these adapters emit **no
+ * patch at all**. The equivalent Go mistake is landing the wiring
+ * somewhere that is not the assembly, and that is what the emitted
+ * test and `tests/e2e/modulith-go-peer-context.test.ts` assert
+ * instead.
  *
  * **A shell, and one wiring adapter per entrypoint.** The shell writes
  * the context — its contract face and core, its facade, the gateway

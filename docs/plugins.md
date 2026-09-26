@@ -479,8 +479,8 @@ harness is installed — the ones that matched before of a vertical
 whose adapters only partly newly match included — and recorded where
 `keel new` of the twin records them. A modulith's peer context grows
 with it where it is wired into the assemblies by an adapter per
-entrypoint, as keel's Go family's is: in a vertical of yours the
-project has, a shell requiring the context's marker
+entrypoint, as keel's Go and Rust families' are: in a vertical of
+yours the project has, a shell requiring the context's marker
 (`modules.peer-context`), and beside it one wiring adapter requiring
 the marker and `arch.cli`, another the marker and `arch.server-http`,
 each writing only that assembly's wiring — the new entrypoint's newly

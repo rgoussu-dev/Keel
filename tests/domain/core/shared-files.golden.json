@@ -1319,42 +1319,58 @@
   "keel new --stack rust-cli --module-layout modulith": {
     "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
     "Cargo.toml": "7dbaed2adb3857b2c956a5ed22bff7cd53c9669f0a980d4abc9f23519bb3414b",
-    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
+    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad",
+    "application/cli/Cargo.toml": "250f24d2d4393c1d458c7aef65855cc71493254ebdea13463627cba19b7c02bb",
+    "application/cli/src/main.rs": "03474727d025164300579dee4f4dc5de024bd366c109f0a75a7aab8174015933"
   },
   "keel new --stack rust-cli --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
     "Cargo.toml": "5acdce70ecac7722bcadcf3e948b030b152de502352662715269e6c5388e3876",
-    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
+    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad",
+    "application/cli/Cargo.toml": "ff42cbcb35eb921e1fbc17d5b05e08b983be0cb9566957060dcbf4f99d294bc5",
+    "application/cli/src/main.rs": "cb6a1a617070579efdd0d6c829d90645ff86151545eb9d2baf4378767e1bf6b7"
   },
   "keel new --stack rust-cli --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "a2e2c4c28a893c1704bc46506a200d0b706ad8da6497f343ef079e544d03ec1f",
     "Cargo.toml": "7dbaed2adb3857b2c956a5ed22bff7cd53c9669f0a980d4abc9f23519bb3414b",
-    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c"
+    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c",
+    "application/cli/Cargo.toml": "250f24d2d4393c1d458c7aef65855cc71493254ebdea13463627cba19b7c02bb",
+    "application/cli/src/main.rs": "03474727d025164300579dee4f4dc5de024bd366c109f0a75a7aab8174015933"
   },
   "keel new --stack rust-cli --module-layout modulith --with dev-env": {
     "README.md": "e5016523b364615a190a90f6bc7fa412fd80755882bde2c6ffd10755735131f6",
     "Cargo.toml": "7dbaed2adb3857b2c956a5ed22bff7cd53c9669f0a980d4abc9f23519bb3414b",
-    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c"
+    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c",
+    "application/cli/Cargo.toml": "250f24d2d4393c1d458c7aef65855cc71493254ebdea13463627cba19b7c02bb",
+    "application/cli/src/main.rs": "03474727d025164300579dee4f4dc5de024bd366c109f0a75a7aab8174015933"
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context": {
     "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
     "Cargo.toml": "3fbadc6ebee684b45ff8637a78934fc9e925b3b7d85b15cad098d8c88fc99172",
-    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
+    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad",
+    "application/cli/Cargo.toml": "a4101cb7836979b474c5f0bc40608e7fbd473393ec029a7c4c4c1c87cca1a9ff",
+    "application/cli/src/main.rs": "19bf5edcd08e9d1fba6748cf9475a4f3f274b1cf2fdb54dbca876df33636e0c8"
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
     "Cargo.toml": "f84a3903e798854f0feb9f5db0d25e1f95cba15f9f940f8606231023967d7ea4",
-    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
+    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad",
+    "application/cli/Cargo.toml": "ab5cfd554066605fa29beb721881b8aabf5e7ee5bfab3bd6c7591af4042b64bf",
+    "application/cli/src/main.rs": "e3d05e93d9cff3920bca690a8f0ff87f90be3868f900372e55d3b9fe4936f948"
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
     "README.md": "a2e2c4c28a893c1704bc46506a200d0b706ad8da6497f343ef079e544d03ec1f",
     "Cargo.toml": "3fbadc6ebee684b45ff8637a78934fc9e925b3b7d85b15cad098d8c88fc99172",
-    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c"
+    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c",
+    "application/cli/Cargo.toml": "a4101cb7836979b474c5f0bc40608e7fbd473393ec029a7c4c4c1c87cca1a9ff",
+    "application/cli/src/main.rs": "19bf5edcd08e9d1fba6748cf9475a4f3f274b1cf2fdb54dbca876df33636e0c8"
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context --with dev-env": {
     "README.md": "e5016523b364615a190a90f6bc7fa412fd80755882bde2c6ffd10755735131f6",
     "Cargo.toml": "3fbadc6ebee684b45ff8637a78934fc9e925b3b7d85b15cad098d8c88fc99172",
-    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c"
+    ".devcontainer/devcontainer.json": "d6e2679fa5233c02db7e4e8cb647cef8f10e5fcbca16e4c09d6460f53d0ea60c",
+    "application/cli/Cargo.toml": "a4101cb7836979b474c5f0bc40608e7fbd473393ec029a7c4c4c1c87cca1a9ff",
+    "application/cli/src/main.rs": "19bf5edcd08e9d1fba6748cf9475a4f3f274b1cf2fdb54dbca876df33636e0c8"
   },
   "keel new --stack rust-cli-http --module-layout basic": {
     "README.md": "37f5e15b3a1f0d8d65713435f77af7bf0f34d7d36e791fcc75b387eddfdf68ac",
@@ -1379,32 +1395,56 @@
   "keel new --stack rust-cli-http --module-layout modulith": {
     "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
     "Cargo.toml": "789b6fe5c0350f79daec10571d4e71e6bee06b05ab949329861986b8e2507596",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/cli/Cargo.toml": "250f24d2d4393c1d458c7aef65855cc71493254ebdea13463627cba19b7c02bb",
+    "application/cli/src/main.rs": "03474727d025164300579dee4f4dc5de024bd366c109f0a75a7aab8174015933",
+    "application/http/Cargo.toml": "3db773c0e603a6bc65ce23a8cc2e0aa341fa88db9dec5e6408b071328dc35409",
+    "application/http/src/main.rs": "31487816a6190d836f60d4f665bd5d333c16fb1e600a6e525a86cd9c78f44061"
   },
   "keel new --stack rust-cli-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
     "Cargo.toml": "6a757d4e2faf1f77bdd377a36f68864af22d5143329c1a30dcdc57453d5cf78e",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/cli/Cargo.toml": "ff42cbcb35eb921e1fbc17d5b05e08b983be0cb9566957060dcbf4f99d294bc5",
+    "application/cli/src/main.rs": "cb6a1a617070579efdd0d6c829d90645ff86151545eb9d2baf4378767e1bf6b7",
+    "application/http/Cargo.toml": "2739823d4b051df6013f4b07d71aa8b36b9b98a1853b9c57615706df05bc7db2",
+    "application/http/src/main.rs": "a4061d72bd2b6267ed162a20a360bb473aa16b07dd1619913fc063106a2c8aa2"
   },
   "keel new --stack rust-cli-http --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "45bc002a2e86d62e3088beacbda52ba5fedfd6e56ef87f6ae381e75dc7537149",
     "Cargo.toml": "2c0e72b51a179b92a97e02dddbfac91a930640947b218ee09ee93ea347cb139b",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/cli/Cargo.toml": "250f24d2d4393c1d458c7aef65855cc71493254ebdea13463627cba19b7c02bb",
+    "application/cli/src/main.rs": "03474727d025164300579dee4f4dc5de024bd366c109f0a75a7aab8174015933",
+    "application/http/Cargo.toml": "1443d467d90be42443b82ca8fdc3cb8c5129f11bf44c655e657002884dcd13e7",
+    "application/http/src/main.rs": "c5304136fa36ed5a113ca0b052d9e1b22a9881d36b5a54a27672f76b66dddddd"
   },
   "keel new --stack rust-cli-http --module-layout modulith --with-peer-context": {
     "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
     "Cargo.toml": "3a56e847369b7e5b211e253114fb1c9e90fbb8c34779ece5b329e2fc9155c541",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/cli/Cargo.toml": "a4101cb7836979b474c5f0bc40608e7fbd473393ec029a7c4c4c1c87cca1a9ff",
+    "application/cli/src/main.rs": "19bf5edcd08e9d1fba6748cf9475a4f3f274b1cf2fdb54dbca876df33636e0c8",
+    "application/http/Cargo.toml": "469d8492378dbef5534f78e58d48276fc82350bce8df0c9c12639de3eed54cee",
+    "application/http/src/main.rs": "dcc91808e7a4f923ddb9fbffa459936dc66309973539684071d01e3e032ac875"
   },
   "keel new --stack rust-cli-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
     "Cargo.toml": "f610afa6cb356ed7040592475964aa6f96996b798d14658ffbd284411e983a6a",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/cli/Cargo.toml": "ab5cfd554066605fa29beb721881b8aabf5e7ee5bfab3bd6c7591af4042b64bf",
+    "application/cli/src/main.rs": "e3d05e93d9cff3920bca690a8f0ff87f90be3868f900372e55d3b9fe4936f948",
+    "application/http/Cargo.toml": "69855e6059b31511fe67112190a9a6a4811037d734fc0249814d2499fe11fbf6",
+    "application/http/src/main.rs": "66db5d7059d3e18415307fd8bb1e5084d838ba433d7ffbfbe2c2ddf049af2ae1"
   },
   "keel new --stack rust-cli-http --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "45bc002a2e86d62e3088beacbda52ba5fedfd6e56ef87f6ae381e75dc7537149",
     "Cargo.toml": "7412aea850cab79f8b41c428feb340790cac949596098fbfd5b029c6b4865da2",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/cli/Cargo.toml": "a4101cb7836979b474c5f0bc40608e7fbd473393ec029a7c4c4c1c87cca1a9ff",
+    "application/cli/src/main.rs": "19bf5edcd08e9d1fba6748cf9475a4f3f274b1cf2fdb54dbca876df33636e0c8",
+    "application/http/Cargo.toml": "07c6d951e6330c0e4f94f9a3951dffbd7f200d8254f5b7ce647f8eb07f7c9499",
+    "application/http/src/main.rs": "9901f8b597056ff26beb9a5ce1b9e6a885db2d4b1aed04c02c467310dece521f"
   },
   "keel new --stack rust-http --module-layout basic": {
     "README.md": "0e1408a24531f1f8304c3a427db08c39840cf39333ed480900a410cf3a79adea",
@@ -1429,32 +1469,44 @@
   "keel new --stack rust-http --module-layout modulith": {
     "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
     "Cargo.toml": "ac529b8132c6e41a9fea350859d6ec51022090151a0bcca6bccb35952cdec9b7",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/http/Cargo.toml": "3db773c0e603a6bc65ce23a8cc2e0aa341fa88db9dec5e6408b071328dc35409",
+    "application/http/src/main.rs": "31487816a6190d836f60d4f665bd5d333c16fb1e600a6e525a86cd9c78f44061"
   },
   "keel new --stack rust-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
     "Cargo.toml": "c124c5b1d32d64d1894aa8e8c791e186039477b8c3d6c3982f32fb3b21c15247",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/http/Cargo.toml": "2739823d4b051df6013f4b07d71aa8b36b9b98a1853b9c57615706df05bc7db2",
+    "application/http/src/main.rs": "a4061d72bd2b6267ed162a20a360bb473aa16b07dd1619913fc063106a2c8aa2"
   },
   "keel new --stack rust-http --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "b909a57e3fc7ef98986e35978ba79ffe14cfeb6aa16fc079f4fe6fe55e3bb5a9",
     "Cargo.toml": "4c000ae79b6480d5e62fe134b6661b9684cf852727aeef916187414a7c10af23",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/http/Cargo.toml": "1443d467d90be42443b82ca8fdc3cb8c5129f11bf44c655e657002884dcd13e7",
+    "application/http/src/main.rs": "c5304136fa36ed5a113ca0b052d9e1b22a9881d36b5a54a27672f76b66dddddd"
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context": {
     "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
     "Cargo.toml": "7d07cad4deacca4750f1d3c95824ec0f518a6b526372e18b23fc05a2a11fa942",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/http/Cargo.toml": "469d8492378dbef5534f78e58d48276fc82350bce8df0c9c12639de3eed54cee",
+    "application/http/src/main.rs": "dcc91808e7a4f923ddb9fbffa459936dc66309973539684071d01e3e032ac875"
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
     "Cargo.toml": "431e00f8e3e4a9fa5f946cc9ad992ea0da460cb652f6126cf6dbe636d281717c",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/http/Cargo.toml": "69855e6059b31511fe67112190a9a6a4811037d734fc0249814d2499fe11fbf6",
+    "application/http/src/main.rs": "66db5d7059d3e18415307fd8bb1e5084d838ba433d7ffbfbe2c2ddf049af2ae1"
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "b909a57e3fc7ef98986e35978ba79ffe14cfeb6aa16fc079f4fe6fe55e3bb5a9",
     "Cargo.toml": "198d81b2aeacc88f6b04d009481ad170e0369de8d5e1e22a7ed181a0520d9a09",
-    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4",
+    "application/http/Cargo.toml": "07c6d951e6330c0e4f94f9a3951dffbd7f200d8254f5b7ce647f8eb07f7c9499",
+    "application/http/src/main.rs": "9901f8b597056ff26beb9a5ce1b9e6a885db2d4b1aed04c02c467310dece521f"
   },
   "keel new --stack spring-cli --build-system gradle --module-layout basic": {
     "README.md": "99ef164618e149b63b528ca985ce4b9f6b14a02934ce339df875fea3e5a83891",

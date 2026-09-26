@@ -456,10 +456,10 @@ manifest says (the command reads one refusal off the files), and the
 grown project would take the vertical, or would once linked where a
 linked project is missing too — never in a monorepo product or on a
 front end. On a project growth refuses (a modulith whose contexts are
-wired into its one entrypoint, on every family but Go for now), or
-where growing would still leave the vertical refused (iac beside a
-distribution taken as an extra, which would need a re-render), the
-hint names the stack that carries both instead: _"quarkus-cli-rest
+wired into its one entrypoint, on every family but Go and Rust for
+now), or where growing would still leave the vertical refused (iac
+beside a distribution taken as an extra, which would need a re-render),
+the hint names the stack that carries both instead: _"quarkus-cli-rest
 carries both this project's entrypoints and persistence"_, or, for a
 vertical that stack comes with, _"…has this project's entrypoints and
 comes with observability"_. In a monorepo product's service, a
@@ -979,15 +979,17 @@ spotless:apply` on Maven) formats the whole project, as the
   (`keel.frozen-answer`), as one for the entrypoint already there is.
   `--set` is held to the rules
   [`keel add`'s answers](#answers-stickiness-and---set) are.
-- **Its bounded contexts' wiring**, on a Go modulith: the peer context
-  `--with-peer-context` scaffolded, and each context
+- **Its bounded contexts' wiring**, on a Go or Rust modulith: the peer
+  context `--with-peer-context` scaffolded, and each context
   [`keel add module`](#keel-add-module) added, are wired into the new
-  assembly — `cmd/http/<context>.go` and its test, or `cmd/cli/` — as
-  the twin given the same `keel add module` history has them, in the
-  order they were added, a consumer's wiring calling the one it
-  consumes. The wiring already there is never read, and an edit to it
-  stays. On every other family such a modulith is refused, for now
-  (below).
+  assembly — on Go `cmd/http/<context>.go` and its test, or `cmd/cli/`;
+  on Rust `application/http/src/<context>.rs`, its `mod` line in that
+  crate's `main.rs` and the context's crates in its `Cargo.toml`, or
+  `application/cli/` — as the twin given the same `keel add module`
+  history has them, in the order they were added, a consumer's wiring
+  calling the one it consumes. The wiring already there is never read,
+  and an edit to it stays. On every other family such a modulith is
+  refused, for now (below).
 - **The agent harness, re-rendered** where the project has it: the
   runbook, the `run` skill, the layer docs and the lifecycle skill
   speak of the entrypoints, so they are rendered for both — reverting
@@ -1055,13 +1057,13 @@ already. It is refused, before a file moves, when:
   declares (`keel.incompatible`, the rule's own sentence and id), as
   `keel new` of the twin with that vertical is refused — no shipped
   rule mentions an entrypoint, but a plugin's may;
-- on every family but Go, a bounded context other than the skeleton's
-  — the peer context `--with-peer-context` scaffolds, or one `keel add
-module` added — is wired into the entrypoints already there
-  (`keel.contexts-need-rewiring`, naming the contexts): each chooses
-  the assemblies it wires into when it is rendered, and keel does not
-  yet wire that family's contexts into a new entrypoint. A modulith
-  with the skeleton's context alone grows on every family;
+- on every family but Go and Rust, a bounded context other than the
+  skeleton's — the peer context `--with-peer-context` scaffolds, or
+  one `keel add module` added — is wired into the entrypoints already
+  there (`keel.contexts-need-rewiring`, naming the contexts): each
+  chooses the assemblies it wires into when it is rendered, and keel
+  does not yet wire that family's contexts into a new entrypoint. A
+  modulith with the skeleton's context alone grows on every family;
 - a context the manifest records as consuming none holds the gateway
   keel writes for one consuming another (`keel.contexts-need-rewiring`,
   naming both): `keel add module --consumes` has recorded what a
@@ -1101,9 +1103,9 @@ Supported on every single-entrypoint backend preset: the twelve JVM
 stacks (Quarkus, Spring and Micronaut, in Java and Kotlin, CLI and
 REST), `go-cli`/`go-http`, `rust-cli`/`rust-http` and `ts-cli`/`ts-http`
 — on the modulith with bounded contexts beyond the skeleton's, Go's
-alone for now. The grid holds each modulith again after `keel add module
-orders --consumes greeting` and `keel add module shipping --consumes
-orders` to the twin given the same history.
+and Rust's alone for now. The grid holds each modulith again after
+`keel add module orders --consumes greeting` and `keel add module
+shipping --consumes orders` to the twin given the same history.
 
 ## `keel link`
 

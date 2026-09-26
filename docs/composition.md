@@ -355,18 +355,18 @@ and never removes one, so the run is the difference, read before it
 starts:
 
 - **What newly matches.** The adapters of installed verticals that the
-  grown tags match and the old ones did not — on every shipped preset
-  one, the other entrypoint's bootstrap; on a project that took
-  extras, an extra's adapter may newly match too, as in the twin with
-  that extra (a native Quarkus image with distribution, grown a CLI,
-  newly matches the native CLI's release, which asks its `targets`).
-  The vertical resolves whole, so `after` orders them as on a full
-  install, but only those install
-  (`installVerticals`' `only`): the adapters that matched before are
-  neither applied nor recorded, and the existing entrypoint's files
-  are never read — their harness elements alone are replayed, as no
-  other replay reaches them. A file already where the new entrypoint
-  goes is `keel.path-conflict`, as for any install.
+  grown tags match and the old ones did not — the other entrypoint's
+  bootstrap, with the peer context's wiring adapter where the family
+  splits it (below); on a project that took extras, an extra's adapter
+  may newly match too, as in the twin with that extra (a native
+  Quarkus image with distribution, grown a CLI, newly matches the
+  native CLI's release, which asks its `targets`). The vertical
+  resolves whole, so `after` orders them as on a full install, but
+  only those install (`installVerticals`' `only`): the adapters that
+  matched before are neither applied nor recorded, and the existing
+  entrypoint's files are never read — their harness elements alone are
+  replayed, as no other replay reaches them. A file already where the
+  new entrypoint goes is `keel.path-conflict`, as for any install.
 - **The twin's verticals the project lacks**, closed over their
   prerequisites by the planner as any `keel add` is, run in the twin's
   order: the dev environment and observability where HTTP arrives.
@@ -376,9 +376,9 @@ starts:
   `agent-harness` is re-rendered wherever it is installed.
 - **The bounded contexts.** A family whose context adapters are split
   into a shell — the context's own packages, which no entrypoint
-  shapes — and one wiring adapter per entrypoint (Go's, since roadmap
-  R.3a) wires its contexts into the new assembly by what newly
-  matches. The peer context's wiring adapter is the installed
+  shapes — and one wiring adapter per entrypoint (Go's since roadmap
+  R.3a, Rust's since R.3b) wires its contexts into the new assembly by
+  what newly matches. The peer context's wiring adapter is the installed
   skeleton's, and installs with the bootstrap. A context
   `keel add module` added matches neither before nor after — its
   marker, `modules.context`, is set only while that command runs — so
@@ -389,7 +389,11 @@ starts:
   (`GrowthPlan.modules`). They run after every vertical the twin
   lists, where the twin's own history adds them, and in the order the
   manifest records them: a context's wiring calls the wiring of the
-  one it consumes.
+  one it consumes. On Rust the order is in the bytes too: each wiring
+  prepends its crates to the new assembly's `[dependencies]`, as
+  observability does, so the peer's — wired with the bootstrap, before
+  observability runs — sit below OpenTelemetry's, and each added
+  context's above them, the last added first, as in the twin.
 - **Settling.** The actions that make a scaffold build (the JVM's
   build wrapper and formatter, `go mod tidy`, `pnpm install`, `cargo
 check`) belong to adapters that matched before, so every other
@@ -427,20 +431,20 @@ installed vertical, which newly matches; for a context `keel add
 module` added (`modules.context`), one of keel's own
 `bounded-context`, the vertical that command runs, which the replay
 runs. A family that splits its context wiring per entrypoint lifts it
-for itself; Go's is split, every other family's still refused.
-`tests/domain/core/growth-render.test.ts` holds that reading to what
-the adapters render. One refusal reads the files, which `growthOf`
-does not: a context the manifest records consuming none, though it
-holds the gateway `bounded-context` writes for a consumer of a context
-recorded before it, is `keel.contexts-need-rewiring` too, naming both.
-`consumes` has been recorded only since #164, so a context `keel add
-module --consumes` added before reads as standalone, and its replayed
-wiring would not build; the gateway is found where the vertical's own
-render for that consumer puts it, so no family's layout is known to
-the handler. Inside a monorepo product, at its root or in a service,
-growth is refused as `keel.wrong-scope`: the product records each
-service by its preset. A polyrepo service has no product root to
-record it, and grows as a repository of its own.
+for itself; Go's and Rust's are split, every other family's still
+refused. `tests/domain/core/growth-render.test.ts` holds that reading
+to what the adapters render. One refusal reads the files, which
+`growthOf` does not: a context the manifest records consuming none,
+though it holds the gateway `bounded-context` writes for a consumer of
+a context recorded before it, is `keel.contexts-need-rewiring` too,
+naming both. `consumes` has been recorded only since #164, so a
+context `keel add module --consumes` added before reads as standalone,
+and its replayed wiring would not build; the gateway is found where
+the vertical's own render for that consumer puts it, so no family's
+layout is known to the handler. Inside a monorepo product, at its
+root or in a service, growth is refused as `keel.wrong-scope`: the
+product records each service by its preset. A polyrepo service has no
+product root to record it, and grows as a repository of its own.
 
 Every surface reads that one answer. `keel.project-status` reports each
 back entrypoint (`entrypoints`): whether the project has it, and what

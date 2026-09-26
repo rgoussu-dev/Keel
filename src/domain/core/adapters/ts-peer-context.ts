@@ -31,14 +31,14 @@
  * is, and for a different reason; stating that beats implying parity.
  *
  * **Two patches per assembly, and both are load-bearing.** Which
- * assemblies exist follows the arch tags (`tsAssemblies`), exactly as
- * the Rust peer context decides it. Each assembly's manifest
- * gains the peer as a dependency, and its `main.ts` gains the wiring —
- * an unimported TypeScript module is never loaded, so without the
- * second patch the context would typecheck, lint, and run in nothing.
- * That is the JVM failure this adapter family exists to prevent, and
- * here it is one anchored replacement rather than a container
- * registration.
+ * assemblies exist follows the arch tags (`tsAssemblies`), where Go's
+ * and Rust's peer contexts pick theirs by predicate. Each assembly's
+ * manifest gains the peer as a dependency, and its `main.ts` gains the
+ * wiring — an unimported TypeScript module is never loaded, so without
+ * the second patch the context would typecheck, lint, and run in
+ * nothing. That is the JVM failure this adapter family exists to
+ * prevent, and here it is one anchored replacement rather than a
+ * container registration.
  */
 
 import { tsBootstrapAnswers, TS_CLI_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';

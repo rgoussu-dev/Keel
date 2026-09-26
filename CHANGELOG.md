@@ -573,8 +573,8 @@ new` the terminal adds the way past it (move it aside, or start in
   project is missing too: not in a monorepo product, not on a front end,
   not where growing would leave it refused for another reason, and not,
   for now, on a modulith whose contexts are wired into its one
-  entrypoint, off Go — where the hint still names the preset that
-  carries both, without the old closing clause. `keel add --list`
+  entrypoint, off Go and Rust — where the hint still names the preset
+  that carries both, without the old closing clause. `keel add --list`
   lists such verticals under _After 'keel add entrypoint http':_,
   each saying whether it comes with the entrypoint, rather than under
   _Not for this project:_, where only what growing would not let in
@@ -1227,14 +1227,16 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   the twin with that vertical is (`keel.incompatible`), and, for now,
   on a modulith whose peer context or added modules are wired into its
   entrypoints (`keel.contexts-need-rewiring`, naming them) — on every
-  family but Go. A Go modulith grows with its contexts: the peer
-  context and each context `keel add module` added are wired into the
-  new assembly (`cmd/<unit>/<context>.go` and its test), in the order
-  they were added, as the preset carrying both has them after the same
-  `keel add module` history, and the wiring already there is never
-  read. Where the project is linked to another that now gets an HTTP
-  server it never recorded, the report names the `keel link` that
-  records it.
+  family but Go and Rust. A Go or Rust modulith grows with its
+  contexts: the peer context and each context `keel add module` added
+  are wired into the new assembly — on Go `cmd/<unit>/<context>.go`
+  and its test, on Rust `application/<unit>/src/<context>.rs`, its
+  `mod` line and the context's crates in that crate's `Cargo.toml` —
+  in the order they were added, as the preset carrying both has them
+  after the same `keel add module` history, and the wiring already
+  there is never read. Where the project is linked to another that now
+  gets an HTTP server it never recorded, the report names the
+  `keel link` that records it.
   `keel ui`'s API takes it as the target
   `{ "kind": "add-entrypoint", "entrypoint": "http" }`, which it
   previews and installs as the CLI does, and the page offers it wherever
@@ -1243,9 +1245,9 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   _Changed_). The composition grid holds all 192 single-entrypoint
   backend cells to their twins, both ways, on every dial setting, and
   every modulith among them again after a `keel add module` history
-  (I10, hard): 132 grow, and the 60 with the peer context off Go are
-  refused; of the 128 with a history, Go's 8 grow. See
-  `docs/cli.md` → `keel add entrypoint`.
+  (I10, hard): 136 grow, and the 56 with the peer context off Go and
+  Rust are refused; of the 128 with a history, Go's 8 and Rust's 8
+  grow. See `docs/cli.md` → `keel add entrypoint`.
 
 - **A weekly composition sweep covers what the grid cannot afford to.**
   The composition grid in `verify` reads each preset on its opening

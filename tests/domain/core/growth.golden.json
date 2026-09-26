@@ -1850,17 +1850,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack rust-cli --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack rust-cli --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "rust-cli-http",
@@ -1869,69 +1872,64 @@
     "rerender": []
   },
   "keel new --stack rust-cli --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-http", "walking-skeleton/rust-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-http", "walking-skeleton/rust-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-http", "walking-skeleton/rust-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-http", "walking-skeleton/rust-http-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-http"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack rust-http --module-layout basic && keel add entrypoint cli": {
     "twin": "rust-cli-http",
@@ -1952,17 +1950,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack rust-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack rust-http --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "rust-cli-http",
@@ -1971,69 +1972,64 @@
     "rerender": []
   },
   "keel new --stack rust-http --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-cli", "walking-skeleton/rust-cli-bootstrap"],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-cli", "walking-skeleton/rust-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-cli", "walking-skeleton/rust-cli-bootstrap"],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "rust-cli-http",
+    "adapters": ["walking-skeleton/rust-peer-context-cli", "walking-skeleton/rust-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/rust-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli --build-system gradle --module-layout basic && keel add entrypoint http": {
     "twin": "spring-cli-rest",
