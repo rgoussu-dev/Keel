@@ -28,6 +28,7 @@ import type {
   DeferredActionEnv,
   ManifestV2,
 } from '../../contract/composition.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware } from '../util.js';
 
 export const TS_OBSERVABILITY_ID = 'observability/ts-observability';
@@ -125,7 +126,11 @@ export const tsObservabilityAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(`${observability}/context.ts`)}`;
+            return placeReadmeSection(
+              existing,
+              readmeSection(`${observability}/context.ts`),
+              ctx.manifest.tags,
+            );
           }),
         },
       ],

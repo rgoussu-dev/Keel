@@ -77,6 +77,14 @@ interface EntrypointRecord {
   /** Answer value — the tag's last segment. */
   readonly id: string;
   /**
+   * The word a user names it by: what `keel add entrypoint <word>` is
+   * to take, and a hint to print (roadmap R.2b, R.2c) — `http` where
+   * the id, a tag's segment, reads `server-http`. Resolved here, in
+   * the domain, by {@link entrypointNamed}, because a front end's
+   * contract cannot import the engine.
+   */
+  readonly word: string;
+  /**
    * Which end this adapter is driven from — what {@link shapeOf}
    * reads to decide whether a preset is a backend, a frontend or
    * both. A shape is not a fourth tag to keep in step; it is this
@@ -103,6 +111,7 @@ export const ENTRYPOINTS: readonly EntrypointRecord[] = [
   {
     tag: 'arch.cli',
     id: 'cli',
+    word: 'cli',
     side: 'back',
     short: 'CLI',
     label: 'CLI — a command-line entrypoint',
@@ -111,6 +120,7 @@ export const ENTRYPOINTS: readonly EntrypointRecord[] = [
   {
     tag: 'arch.server-http',
     id: 'server-http',
+    word: 'http',
     side: 'back',
     short: 'HTTP server',
     label: 'HTTP server — a REST endpoint',
@@ -119,12 +129,22 @@ export const ENTRYPOINTS: readonly EntrypointRecord[] = [
   {
     tag: 'arch.spa',
     id: 'spa',
+    word: 'spa',
     side: 'front',
     short: 'Browser SPA',
     label: 'Browser SPA — a single-page front end',
     doc: 'A page in a browser; the hexagon is driven by user interaction.',
   },
 ];
+
+/**
+ * The entrypoint `name` names — by its {@link EntrypointRecord.word},
+ * or by its id, which the finder prints (`server-http`) — or null
+ * where it names none.
+ */
+export function entrypointNamed(name: string): EntrypointRecord | null {
+  return ENTRYPOINTS.find((entry) => entry.word === name || entry.id === name) ?? null;
+}
 
 /** What kind of thing a preset scaffolds. @see SHAPES */
 export type ProjectShape = 'fullstack' | 'backend' | 'frontend';

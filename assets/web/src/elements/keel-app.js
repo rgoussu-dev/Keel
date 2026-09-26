@@ -55,23 +55,24 @@
  * the page previews again rather than draw it.
  *
  * **One page for both phases; the directory decides the flow.** No
- * manifest there and only `keel new` applies: the preset steps narrow
+ * manifest there, and the flow is `keel new`'s: the preset steps narrow
  * to one, and Options sets its dials and its **Also scaffold** extras
  * (`<keel-new-form>`). A manifest there, and the preset steps collapse
- * into one read-only **Project** step, what the project already is,
- * while Options draws the same **Also scaffold** group over it
- * (`<keel-add-form>`): what it has, ticked and locked, each vertical
- * with a **Re-render**; every vertical it has not installed, in the
- * part the project status read it into — ready, needing another first,
- * not for this project (collapsed, with the reason), belonging in a
- * service — several at a time. Generate posts `keel add` of what the
+ * into one **Project** step, what the project already is — read-only,
+ * but for the entrypoint it can grow — while Options draws the same
+ * **Also scaffold** group over it (`<keel-add-form>`): what it has,
+ * ticked and locked, each vertical with a **Re-render**; every vertical
+ * it has not installed, in the part the project status read it into —
+ * ready, needing another first, after the entrypoint the project can
+ * grow, not for this project (collapsed, with the reason), belonging in
+ * a service — several at a time. Generate posts `keel add` of what the
  * ticks add, the delta; the commands stay two. What the project cannot
  * take is said before the click, in the refusal's own words, rather
  * than learned from it. At a product root, an **Open backend/** button
  * per service points the page one directory down. In a monorepo
- * service, a pipeline or a release — whose place is the repository
- * root — is one of those refusals, and what the product gives the
- * service is locked beside what it has installed.
+ * service, a pipeline or a release — whose place is the repository root
+ * — is one of those refusals, and what the product gives the service is
+ * locked beside what it has installed.
  *
  * Where the page opens follows the flow: `keel ui` in a keel project
  * opens on its Options — the next thing to do there is add something —
@@ -108,7 +109,7 @@ import * as api from '../api.js';
 import { defaultStack } from '../finder.js';
 import { additionsSummary } from '../additions.js';
 import { extrasSummary, servicesExtrasSummary } from '../extras.js';
-import { projectHeadline, stampsHarnessGeneration } from '../project.js';
+import { entrypointName, projectHeadline, stampsHarnessGeneration } from '../project.js';
 import { failureOf } from '../response.js';
 import { plansNothing } from '../tree.js';
 import {
@@ -478,13 +479,23 @@ export class KeelApp extends HTMLElement {
     const questions = this.#questionsRow();
     if (this.#status?.initialised) {
       // No jump: the project is what the run adds to, not a choice it
-      // makes — its step has nothing on it to change.
+      // makes — its step changes nothing, and the entrypoint it offers
+      // is a run of its own, with a row of its own below.
       rows.push({ label: 'Project', value: projectHeadline(this.#status) });
       if (this.#target?.kind === 'add-module') {
         rows.push({ step: OPTIONS, label: 'Bounded context', value: this.#target.module || '—' });
         if (this.#target.consumes) {
           rows.push({ step: OPTIONS, label: 'Consumes', value: this.#target.consumes });
         }
+        if (questions !== null) rows.push(questions);
+        return rows;
+      }
+      if (this.#target?.kind === 'add-entrypoint') {
+        rows.push({
+          step: OPTIONS,
+          label: 'Entrypoint',
+          value: entrypointName(this.#status, this.#target.entrypoint ?? '') || '—',
+        });
         if (questions !== null) rows.push(questions);
         return rows;
       }
@@ -709,6 +720,7 @@ export class KeelApp extends HTMLElement {
   #complete() {
     if (this.#target === null) return false;
     if (this.#target.kind === 'add-module') return (this.#target.module ?? '') !== '';
+    if (this.#target.kind === 'add-entrypoint') return (this.#target.entrypoint ?? '') !== '';
     if (this.#target.kind === 'add-vertical') return verticalsOf(this.#target).length > 0;
     return (this.#target.stack ?? '') !== '';
   }
@@ -721,6 +733,7 @@ export class KeelApp extends HTMLElement {
   #hint() {
     if (this.#error !== null || this.#complete()) return '';
     if (this.#target?.kind === 'add-module') return 'Name the context to see its plan.';
+    if (this.#target?.kind === 'add-entrypoint') return 'Choose the entrypoint to see its plan.';
     if (this.#target?.kind === 'add-vertical') return 'Tick a vertical to see its plan.';
     return '';
   }

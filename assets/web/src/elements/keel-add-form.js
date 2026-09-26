@@ -1,14 +1,16 @@
 /**
  * `<keel-add-form>` — a keel project's middle steps, one at a time:
  * **Project**, what it already is, and **Options**, what goes on top of
- * it — or a bounded context.
+ * it — or a bounded context, or the entrypoint it lacks.
  *
  * The page used to have a step of its own here, "What to add", beside
  * a new project's Options: two controls asking one question — what
  * else goes in? — one per phase. The directory now decides which flow
  * the rail is (`../steps.js`). On a keel project the preset steps
  * collapse into **Project**: its settled choices, read back from its
- * manifest in words (`../project.js`), and nothing to change. Then
+ * manifest in words (`../project.js`), and nothing to change but its
+ * ways in — the Adapters line offers the back entrypoint the project
+ * lacks where `keel add entrypoint` would add it. Then
  * **Options** draws the very "Also scaffold" group a new project's
  * Options step draws its extras in (`../dom.js`'s `alsoScaffold`), in
  * the parts `../additions.js` reads off the project status — each
@@ -22,12 +24,20 @@
  *   - **Proposed re-renders** — an installed vertical the run changes
  *     and would leave as it was, as a toggle, once the preview has said
  *     so.
+ *   - **After adding an entrypoint** — what only an entrypoint the
+ *     project can grow stops, under that entrypoint's **Add** button,
+ *     each saying whether it comes with it or is added after it: the
+ *     refusal's action, taken where the refusal is read.
  *   - **Installed** — what the project has, ticked and locked, where a
  *     new project's group lists what its preset comes with: a
  *     **Re-render** beside each vertical `keel add --reapply` names, a
  *     run of its own, never a box in the add's set; a product's glue or
  *     a bounded context, which no `keel add` names, without one; what a
  *     monorepo service has from its product, saying where from.
+ *   - **In its services** — at a product root, what its services have
+ *     that the root does not carry, locked the same way and naming
+ *     them: adding one is an Ok that adds nothing, not a refusal, so it
+ *     is not under _Belongs in a service_.
  *   - **Not for this project** — collapsed, one sentence each, the
  *     refusal `keel add` would give. Not a control: there is nothing to
  *     pick.
@@ -47,7 +57,14 @@
  * `keel add module`'s tab is always there, and disabled with its
  * reason where the project status says the command would refuse —
  * the flat layout, a product root — rather than missing, which said
- * nothing about why.
+ * nothing about why. `keel add entrypoint`'s is there wherever the
+ * project lacks a back entrypoint, disabled with its reason where the
+ * project status says the command would refuse — a front end, a
+ * product, contexts wired into the one entrypoint on a family whose
+ * contexts cannot grow yet — and previewed and reviewed as a context
+ * is. Where only the command reads the refusal off the files, the tab
+ * is enabled and its preview refuses. Every **Add HTTP server** on the
+ * page is that tab's target.
  *
  * A project written by another harness generation says so once, at
  * the top of Options (`../project.js`), rather than on every card it
@@ -65,6 +82,7 @@
 
 import {
   alsoScaffold,
+  cards,
   el,
   focusIn,
   lockedPart,
@@ -74,8 +92,8 @@ import {
   sentence,
   tickPart,
 } from '../dom.js';
-import { additionsGroup, refreshChoices } from '../additions.js';
-import { harnessNotice, projectSummary } from '../project.js';
+import { additionsGroup, entrypointNotes, refreshChoices } from '../additions.js';
+import { entrypointOffers, harnessNotice, projectSummary } from '../project.js';
 import { OPTIONS, PROJECT } from '../steps.js';
 
 export class KeelAddForm extends HTMLElement {
@@ -93,7 +111,7 @@ export class KeelAddForm extends HTMLElement {
     this.#render();
   }
 
-  /** @param {object} value the current add-vertical / add-module target */
+  /** @param {object} value the current add-vertical / add-module / add-entrypoint target */
   set target(value) {
     if (value === this.#target) return;
     this.#target = value;
@@ -133,9 +151,10 @@ export class KeelAddForm extends HTMLElement {
 
   /**
    * What the project already is — where a new project's preset steps
-   * ask it — as a summary with nothing on it to change: the preset it
-   * reads as and the choices that made it, its services and contexts,
-   * then what it has installed.
+   * ask it — as a summary with nothing to change but its ways in: the
+   * preset it reads as and the choices that made it, the back
+   * entrypoint it can grow offered on its Adapters line, its services
+   * and contexts, then what it has installed.
    */
   #projectFields() {
     const summary = projectSummary(this.#status);
@@ -145,7 +164,14 @@ export class KeelAddForm extends HTMLElement {
         { id: 'project-profile', class: 'summary' },
         ...summary.rows.flatMap((row) => [
           el('dt', { text: row.label }),
-          el('dd', {}, el('span', { class: 'mono', text: row.value })),
+          el(
+            'dd',
+            {},
+            el('span', { class: 'mono', text: row.value }),
+            ...(row.offers ?? []).map((offer) =>
+              this.#entrypointButton(`offer-entrypoint-${offer.word}`, offer),
+            ),
+          ),
         ]),
       ),
       el(
@@ -171,7 +197,8 @@ export class KeelAddForm extends HTMLElement {
   #optionFields() {
     const fields = [];
     // Once, above everything it stops: a project from another harness
-    // generation refuses every card but the harness's own. A note, not
+    // generation refuses every card but the harness's own — and, at a
+    // product root, that one too. A note, not
     // a live region: it does not change while the page is on this
     // project, and the form is rebuilt on every pick — a region
     // inserted anew each time would be announced on none of them, or
@@ -187,8 +214,36 @@ export class KeelAddForm extends HTMLElement {
       );
     }
     fields.push(...this.#kindField());
-    fields.push(this.#target.kind === 'add-module' ? this.#moduleFields() : this.#verticalFields());
+    fields.push(
+      this.#target.kind === 'add-module'
+        ? this.#moduleFields()
+        : this.#target.kind === 'add-entrypoint'
+          ? this.#entrypointFields()
+          : this.#verticalFields(),
+    );
     return fields;
+  }
+
+  /**
+   * The button that grows the project by `offer`'s entrypoint — `keel
+   * add entrypoint <word>` as the page's target — pressed while it is
+   * the run. The Project step's Adapters line and each "After adding"
+   * part carry one.
+   */
+  #entrypointButton(id, offer) {
+    const pressed =
+      this.#target.kind === 'add-entrypoint' && this.#target.entrypoint === offer.word;
+    return el('button', {
+      id,
+      type: 'button',
+      class: pressed ? 'primary' : '',
+      text: `Add ${offer.name}`,
+      attrs: { 'aria-pressed': String(pressed), title: offer.meta, 'data-word': offer.word },
+      on: {
+        click: () =>
+          this.#emit('target-changed', { kind: 'add-entrypoint', entrypoint: offer.word }),
+      },
+    });
   }
 
   /**
@@ -197,30 +252,61 @@ export class KeelAddForm extends HTMLElement {
    * already open does nothing: re-opening it would start its form over.
    */
   #kindField() {
-    const adding = this.#target.kind !== 'add-module';
+    const kind = this.#target.kind;
     const refusal = this.#status.canAddModule ? null : this.#status.moduleRefusal;
+    // The entrypoint tab opens on the first the project can grow, and is
+    // off with the first one's reason where it can grow none.
+    const offers = entrypointOffers(this.#status);
+    const growable = offers.find((offer) => offer.refusal === null) ?? null;
     const row = el(
       'cluster-pk',
       { attrs: { space: 'var(--s-2)', role: 'group', 'aria-label': 'What to add' } },
-      this.#tab('tab-vertical', 'Add verticals', adding, () =>
+      this.#tab('tab-vertical', 'Add verticals', kind === 'add-vertical', () =>
         this.#emit('target-changed', { kind: 'add-vertical', verticals: [] }),
       ),
-      this.#tab('tab-module', 'Add a bounded context', !adding, () =>
+      this.#tab('tab-module', 'Add a bounded context', kind === 'add-module', () =>
         this.#emit('target-changed', { kind: 'add-module', module: '' }),
       ),
+      offers.length === 0
+        ? null
+        : this.#tab('tab-entrypoint', 'Add an entrypoint', kind === 'add-entrypoint', () =>
+            this.#emit('target-changed', {
+              kind: 'add-entrypoint',
+              entrypoint: growable?.word ?? '',
+            }),
+          ),
     );
+    const reasons = [];
     const module = row.querySelector('#tab-module');
-    if (!refusal || !(module instanceof HTMLButtonElement)) return [row];
-    module.disabled = true;
-    module.setAttribute('aria-describedby', 'module-refusal');
-    return [
-      row,
-      el(
-        'p',
-        { id: 'module-refusal', class: 'muted', attrs: { 'data-role': 'module-refusal' } },
-        sentence(refusal.message),
-      ),
-    ];
+    if (refusal && module instanceof HTMLButtonElement) {
+      module.disabled = true;
+      module.setAttribute('aria-describedby', 'module-refusal');
+      reasons.push(
+        el(
+          'p',
+          { id: 'module-refusal', class: 'muted', attrs: { 'data-role': 'module-refusal' } },
+          sentence(refusal.message),
+        ),
+      );
+    }
+    const entrypoint = row.querySelector('#tab-entrypoint');
+    const [first] = offers;
+    if (growable === null && first?.refusal && entrypoint instanceof HTMLButtonElement) {
+      entrypoint.disabled = true;
+      entrypoint.setAttribute('aria-describedby', 'entrypoint-refusal');
+      reasons.push(
+        el(
+          'p',
+          {
+            id: 'entrypoint-refusal',
+            class: 'muted',
+            attrs: { 'data-role': 'entrypoint-refusal' },
+          },
+          sentence(first.refusal),
+        ),
+      );
+    }
+    return [row, ...reasons];
   }
 
   #tab(id, label, active, onClick) {
@@ -250,10 +336,12 @@ export class KeelAddForm extends HTMLElement {
     const nothing =
       group.ready.length +
         group.needs.length +
+        group.grows.length +
         group.refused.length +
         group.elsewhere.length +
         group.services.length +
-        group.installed.length ===
+        group.installed.length +
+        group.inServices.length ===
       0;
     if (nothing) return note('Nothing left to install here.');
 
@@ -293,6 +381,7 @@ export class KeelAddForm extends HTMLElement {
               onTick: (id, ticked) => this.#emit('refresh-toggled', { id, ticked }),
               role: 'refresh',
             }),
+        ...group.grows.map((grow) => this.#growPart(grow)),
         group.installed.length === 0
           ? null
           : lockedPart({
@@ -303,6 +392,13 @@ export class KeelAddForm extends HTMLElement {
                 chosen: vertical.pressed,
                 action: vertical.rerender ? this.#rerenderButton(vertical) : null,
               })),
+            }),
+        group.inServices.length === 0
+          ? null
+          : lockedPart({
+              id: 'extras-in-services',
+              title: 'In its services',
+              items: group.inServices,
             }),
         group.refused.length === 0
           ? null
@@ -321,6 +417,70 @@ export class KeelAddForm extends HTMLElement {
             ),
       ],
     });
+  }
+
+  /**
+   * What only an entrypoint the project can grow stops, under the
+   * action its refusal names: **Add HTTP server**, the command, then
+   * each vertical and what the entrypoint makes of it. Open, not
+   * collapsed: unlike "not for this project" it is for this project,
+   * one command away.
+   */
+  #growPart(grow) {
+    const id = `extras-grow-${grow.word}`;
+    return el(
+      'stack-pk',
+      { id, attrs: { space: 'var(--s-2)', 'data-role': 'grow', 'data-word': grow.word } },
+      el('h4', { id: `${id}-title`, text: `After adding ${grow.name}` }),
+      el(
+        'cluster-pk',
+        { attrs: { space: 'var(--s-2)', align: 'center' } },
+        this.#entrypointButton(`grow-${grow.word}`, grow),
+        el('code', { class: 'mono muted', text: grow.meta }),
+      ),
+      el(
+        'ul',
+        { class: 'plain refused-list', attrs: { 'aria-labelledby': `${id}-title` } },
+        ...grow.items.map((item) =>
+          el(
+            'li',
+            { attrs: { 'data-id': item.id } },
+            el('span', { class: 'refused-title', text: item.title }),
+            el('span', { class: 'muted', text: item.note }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * The entrypoint the run adds, as cards to choose among — one on
+   * every project keel ships, which lacks one back entrypoint — then
+   * what it does to the project, what it installs and what it lets in
+   * after, by title (`../additions.js`' `entrypointNotes`). Nothing
+   * else to answer: its questions are the plan's, on the Questions step.
+   */
+  #entrypointFields() {
+    const offers = entrypointOffers(this.#status).filter((offer) => offer.refusal === null);
+    const { summary, notes } = entrypointNotes(this.#status, this.#target.entrypoint ?? '');
+    return el(
+      'stack-pk',
+      { attrs: { space: 'var(--s0)' } },
+      cards({
+        id: 'entrypoint',
+        chosen: this.#target.entrypoint ?? '',
+        choices: offers.map((offer) => ({
+          value: offer.word,
+          label: offer.name,
+          meta: offer.meta,
+          doc: offer.gloss,
+        })),
+        onChange: (word) =>
+          this.#emit('target-changed', { kind: 'add-entrypoint', entrypoint: word }),
+      }),
+      el('p', { class: 'muted', text: summary }),
+      ...notes.map((line) => note(line)),
+    );
   }
 
   /**

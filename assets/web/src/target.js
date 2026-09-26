@@ -20,19 +20,20 @@
  * whole target, and adopting one computed for the previous pick would
  * undo the pick.
  *
- * **A run is about one subject** — the stack a `keel new` builds, the
- * verticals a `keel add` layers on as such, the one it re-renders, or
- * `keel add module` as such. The old menus describe nothing about a
- * new subject, so they start afresh. Ticking another card into an
- * add, or out of it, is not a new subject — the set grows or shrinks,
- * like the greenfield extras — so the answers stay and the next
- * preview drops the ones no adapter of the new set asks
- * ({@link previewed}); moving between adding and re-rendering is,
- * and so is re-rendering another vertical, and those start their
- * answers afresh too: a re-render reads what the manifest recorded,
- * and has no business with what an add was asked. Renaming the
- * context an `add-module` run creates is not a new subject either,
- * and keeps them.
+ * **A run is about one subject** — the stack a `keel new` builds,
+ * the verticals a `keel add` layers on as such, the one it
+ * re-renders, `keel add module` as such, or the entrypoint
+ * `keel add entrypoint` grows the project by — another entrypoint
+ * is another subject. The old menus describe nothing about a new
+ * subject, so they start afresh. Ticking another card into an add, or
+ * out of it, is not a new subject — the set grows or shrinks, like the
+ * greenfield extras — so the answers stay and the next preview drops
+ * the ones no adapter of the new set asks ({@link previewed}); moving
+ * between adding and re-rendering is, and so is re-rendering another
+ * vertical, and those start their answers afresh too: a re-render reads
+ * what the manifest recorded, and has no business with what an add was
+ * asked. Renaming the context an `add-module` run creates is not a new
+ * subject either, and keeps them.
  *
  * **A new preset is the exception, and keeps everything.** A build
  * system, a module layout, the peer context, a product's repository
@@ -401,6 +402,45 @@ export function serviceExtrasOf(target, path) {
   return Array.isArray(extras) ? extras.map(String) : [];
 }
 
+/**
+ * The build system a product's `buildSystem` holds for its service at
+ * `path` — undefined where it names none. A product's build system is
+ * one dial per service, travelling as `path=id` pairs in one field
+ * rather than a parallel shape the API would have to learn.
+ *
+ * @param {string | undefined} raw
+ * @param {string} path
+ * @returns {string | undefined}
+ */
+export function serviceBuild(raw, path) {
+  if (!raw) return undefined;
+  for (const entry of raw.split(',')) {
+    const [name, id] = entry.split('=');
+    if (name?.trim() === path) return id?.trim();
+  }
+  return undefined;
+}
+
+/**
+ * A product's `buildSystem` with the pair for its service at `path`
+ * set to `id` and every other pair kept — what one service's control
+ * posts when it moves.
+ *
+ * @param {string | undefined} raw
+ * @param {string} path
+ * @param {string} id
+ * @returns {string}
+ */
+export function withServiceBuild(raw, path, id) {
+  const pairs = new Map();
+  for (const entry of (raw ?? '').split(',')) {
+    const [name, value] = entry.split('=');
+    if (name?.trim() && value?.trim()) pairs.set(name.trim(), value.trim());
+  }
+  pairs.set(path, id);
+  return [...pairs].map(([name, value]) => `${name}=${value}`).join(',');
+}
+
 /** Every extra a target holds: its own, then each service's, each once. */
 function allExtrasOf(target) {
   const services = Object.keys(target?.services ?? {});
@@ -440,7 +480,8 @@ function menusOf(dials) {
  * {@link rerender} is for.
  *
  * **What the project has is locked.** An installed vertical — or one a
- * monorepo service has from its product — is drawn ticked, and no
+ * monorepo service has from its product, or a product root has in its
+ * services — is drawn ticked, and no
  * gesture moves it: the run is what goes on top, `keel add` of the
  * delta, and the box of a vertical already there neither joins that
  * set nor leaves the project. The run comes back as it was, not even
@@ -471,7 +512,10 @@ export function toggleVertical(run, status, id, ticked) {
   );
 }
 
-/** Whether `id` is a vertical the project already has: installed, or given it by its product. */
+/**
+ * Whether `id` is a vertical the project already has: installed, given
+ * it by its product, or at a product root in its services.
+ */
 function locked(status, id) {
   return [...status.installed, ...(status.provided ?? [])].some((vertical) => vertical.id === id);
 }
@@ -828,6 +872,7 @@ function subject(target) {
       ? `add-vertical:reapply:${verticalsOf(target).join(',')}`
       : 'add-vertical';
   }
+  if (target.kind === 'add-entrypoint') return `add-entrypoint:${target.entrypoint ?? ''}`;
   return target.kind;
 }
 

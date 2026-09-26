@@ -16,13 +16,19 @@
  *     used to surface as a crash.
  *   - **A card says what the click will do** (I4), at the root and in
  *     every service that is a keel project: every vertical is
- *     installed there, given by the product (a monorepo service's
- *     version control and image — the add is an Ok that stages
- *     nothing, and says so), or a `keel.project-status` card, and the
- *     card agrees with the preview of its add — `ready` Ok, `needs` Ok
- *     with its prerequisites in the plan, a refusal the add's own,
- *     code and sentence. A polyrepo product's root is no project at
- *     all, and shows no cards.
+ *     installed there, provided (a monorepo service's version control
+ *     and image, from the product; at a monorepo root, what its
+ *     services have — the add is an Ok that stages nothing, and says
+ *     so), or a `keel.project-status` card, and the card agrees with
+ *     the preview of its add — `ready` Ok, `needs` Ok with its
+ *     prerequisites in the plan, a refusal the add's own, code,
+ *     sentence and data — the action it names included. And at the
+ *     root, both phases read one answer: what `keel.dials` shows as
+ *     coming with the product under that layout — its own verticals,
+ *     and what `keel new --with` sets aside as already in its
+ *     services — is exactly what `keel add` at the root answers with
+ *     an Ok that stages and runs nothing. A polyrepo product's root is
+ *     no project at all, and shows no cards.
  *   - **A service cell is Ok or refused for its scope** (I7): never
  *     a file in the way, and — where the same service under the
  *     polyrepo layout, a repository of its own, is Ok — Ok or
@@ -61,6 +67,7 @@ import {
   previewQuery,
   projectStatusQuery,
   type DialOptions,
+  type InstallPreview,
 } from '../../../../src/domain/contract/queries.js';
 import { WRONG_SCOPE_CODE } from '../../../../src/domain/core/refusals.js';
 import {
@@ -68,9 +75,11 @@ import {
   OK,
   eachStack,
   holdCard,
+  layoutsOf,
   settle,
   sweepGrid,
   type Grid,
+  type Outcome,
 } from '../../../support/composition-grid.js';
 
 describe('composition grid: composite', () => {
@@ -88,13 +97,15 @@ describe('composition grid: composite', () => {
         const served = new Map<string, string>();
         // The same, for each service's extras as `keel new` names them.
         const named = new Map<string, string>();
-        for (const layout of await layoutsOf(grid, stack)) {
+        const layouts = await layoutsOf(grid, stack);
+        if (layouts.length === 0) throw new Error(`'${stack}' asks no repository layout`);
+        for (const layout of layouts) {
           const product = `${stack}/${layout}`;
           for (const [key, cell] of await holdServiceMenus(grid, product, stack, layout)) {
             named.set(`${layout}/${key}`, cell);
           }
           const cwd = await grid.scratch();
-          const { target } = await settle(grid, stack, { layout });
+          const { target, included } = await settle(grid, stack, { layout });
           const run = { cwd, answers: {}, interactive: false, dryRun: false };
           const scaffold = await grid.cell(`new:${product}`, installCommandFor(target, run));
           if (scaffold.verdict !== OK) continue;
@@ -119,6 +130,9 @@ describe('composition grid: composite', () => {
                 }),
               );
               if (status.initialised) await holdCard(grid, cell, status, vertical, dir, outcome);
+              if (status.initialised && scope === product) {
+                holdThereAlready(grid, cell, included.has(vertical), outcome);
+              }
               if (scope !== product) {
                 served.set(`${layout}/${scope.slice(product.length + 1)}+${vertical}`, cell);
               }
@@ -131,6 +145,28 @@ describe('composition grid: composite', () => {
     },
   });
 });
+
+/**
+ * Holds a product root's add of a vertical to what `keel new --with` on
+ * the product makes of it (I4 at the root): `included` — the product's
+ * own, or set aside because the services that could have it have it —
+ * exactly where the add is an Ok that stages nothing and runs nothing.
+ * One reading in both phases, so a `--with` list that runs on the
+ * product and `keel add` of it at the root cannot tell a fact apart.
+ */
+function holdThereAlready(
+  grid: Grid,
+  cell: string,
+  included: boolean,
+  outcome: Outcome<InstallPreview>,
+): void {
+  const nothing =
+    outcome.verdict === OK &&
+    outcome.value !== null &&
+    outcome.value.changes.length === 0 &&
+    outcome.value.actions.length === 0;
+  if (nothing !== included) grid.violate('I4', cell);
+}
 
 /**
  * Holds one product's service cells to I7: none refused for a file in
@@ -205,22 +241,4 @@ async function holdServiceMenus(
     }
   }
   return swept;
-}
-
-/**
- * The repository layouts a product's install offers: the choices of
- * the question its preview binds to the layout, asked because the
- * target leaves it unset.
- */
-async function layoutsOf(grid: Grid, stack: string): Promise<readonly RepoLayout[]> {
-  const preview = await grid.read(
-    previewQuery({
-      cwd: await grid.scratch(),
-      target: { kind: 'new-project', stack },
-      answers: {},
-    }),
-  );
-  const question = preview.questions.find((q) => q.binding.kind === 'layout');
-  if (question?.choices === undefined) throw new Error(`'${stack}' asks no repository layout`);
-  return question.choices.map((choice) => choice.value as RepoLayout);
 }

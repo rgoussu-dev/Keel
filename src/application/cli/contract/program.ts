@@ -11,6 +11,7 @@ import type { Mediator } from '../../../domain/kernel/mediator.js';
 import type { Result } from '../../../domain/kernel/result.js';
 import type { Logger } from '../../../domain/contract/ports/logger.js';
 import {
+  addEntrypointCommand,
   addModuleCommand,
   addVerticalCommand,
   docsSyncCommand,
@@ -24,12 +25,13 @@ import {
 import {
   docsCheckQuery,
   projectStatusQuery,
+  type AvailableVerticalDescriptor,
   type HarnessGenerationStatus,
   type ProjectStatus,
 } from '../../../domain/contract/queries.js';
-import { RefusalError } from '../../../domain/contract/refusal.js';
+import { RefusalError, type GrowAction } from '../../../domain/contract/refusal.js';
 import type { ServeUi } from '../../web/contract/server.js';
-import { refusalHint, type HintedCommand } from './hint.js';
+import { growNote, refusalHint, type HintedCommand } from './hint.js';
 import {
   toolchainCheckQuery,
   toolchainInstallCommand,
@@ -90,6 +92,15 @@ export interface CliDeps {
  * and `module` names no dimension.
  */
 const MODULE_TARGET = 'module';
+
+/**
+ * The first argument of `keel add` that means "an entrypoint" — `keel
+ * add entrypoint http` — rather than a vertical id: reserved as
+ * {@link MODULE_TARGET} is, for the same reason, and refused as a
+ * vertical id by the registry alike. The word after it is the
+ * domain's to read.
+ */
+const ENTRYPOINT_TARGET = 'entrypoint';
 
 /** Builds the commander program over the wired mediator. */
 export function buildProgram(deps: CliDeps): Command {
@@ -186,13 +197,13 @@ export function buildProgram(deps: CliDeps): Command {
   program
     .command('add [targets...]')
     .description(
-      `Install verticals onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}) — several at once, with what they need — or add a bounded context with 'keel add module <name>'.`,
+      `Install verticals onto an existing keel project (available: ${deps.availableVerticals.map((v) => v.id).join(', ')}) — several at once, with what they need — or add a bounded context with 'keel add module <name>', or the entrypoint a project lacks with 'keel add entrypoint <cli|http>'.`,
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)
     .option(
       '--list',
-      'list the verticals and whether each can be added here — ready, with what it needs first, or why not — then exit',
+      'list the verticals and whether each can be added here — ready, with what it needs first, after an entrypoint the project can grow, or why not — then exit',
       false,
     )
     .option(
@@ -235,19 +246,33 @@ export function buildProgram(deps: CliDeps): Command {
         const [first, ...rest] = targets;
         if (first === undefined) {
           throw new Error(
-            "keel add: missing target — pass vertical ids, 'module <name>', or --list",
+            "keel add: missing target — pass vertical ids, 'module <name>', 'entrypoint <cli|http>', or --list",
           );
         }
         const module = first === MODULE_TARGET;
-        if (module && opts.reapply) {
-          throw new Error("--reapply applies to verticals; 'keel add module' does not support it");
+        const entrypoint = first === ENTRYPOINT_TARGET;
+        const form = module ? 'keel add module' : 'keel add entrypoint';
+        if ((module || entrypoint) && opts.reapply) {
+          throw new Error(`--reapply applies to verticals; '${form}' does not support it`);
         }
-        if (module && opts.refresh !== undefined) {
-          throw new Error("--refresh applies to verticals; 'keel add module' does not support it");
+        if ((module || entrypoint) && opts.refresh !== undefined) {
+          throw new Error(`--refresh applies to verticals; '${form}' does not support it`);
+        }
+        if (entrypoint && opts.consumes !== undefined) {
+          throw new Error(
+            "--consumes applies to 'keel add module'; 'keel add entrypoint' does not support it",
+          );
         }
         if (module && rest.length > 1) {
           throw new Error(
             `keel add module takes one name, got ${String(rest.length)}: ${rest.join(' ')}`,
+          );
+        }
+        if (entrypoint && rest.length !== 1) {
+          throw new Error(
+            rest.length === 0
+              ? "keel add entrypoint: missing entrypoint — name one, as in 'keel add entrypoint http'"
+              : `keel add entrypoint takes one entrypoint, got ${String(rest.length)}: ${rest.join(' ')}`,
           );
         }
         const result = await deps.mediator.dispatch(
@@ -260,16 +285,26 @@ export function buildProgram(deps: CliDeps): Command {
                 interactive: !opts.yes,
                 dryRun: opts.dryRun,
               })
-            : addVerticalCommand({
-                cwd: cwd(),
-                // `ci,persistence`, as `--with` and `--refresh` spell a list.
-                verticals: targets.flatMap(parseVerticalList),
-                answers: parseSetAnswers(opts.set),
-                interactive: !opts.yes,
-                dryRun: opts.dryRun,
-                ...(opts.refresh === undefined ? {} : { refresh: parseVerticalList(opts.refresh) }),
-                ...(opts.reapply ? { reapply: true } : {}),
-              }),
+            : entrypoint
+              ? addEntrypointCommand({
+                  cwd: cwd(),
+                  entrypoint: rest[0] ?? '',
+                  answers: parseSetAnswers(opts.set),
+                  interactive: !opts.yes,
+                  dryRun: opts.dryRun,
+                })
+              : addVerticalCommand({
+                  cwd: cwd(),
+                  // `ci,persistence`, as `--with` and `--refresh` spell a list.
+                  verticals: targets.flatMap(parseVerticalList),
+                  answers: parseSetAnswers(opts.set),
+                  interactive: !opts.yes,
+                  dryRun: opts.dryRun,
+                  ...(opts.refresh === undefined
+                    ? {}
+                    : { refresh: parseVerticalList(opts.refresh) }),
+                  ...(opts.reapply ? { reapply: true } : {}),
+                }),
         );
         const report = unwrap(result, 'add');
         const label = module ? `module ${report.subject}` : report.subject;
@@ -529,9 +564,12 @@ function printOptionList(
 /**
  * `keel add --list` inside a project: every vertical not installed,
  * grouped by what `keel add <id>` would do with it — install it, install
- * it with what it needs first, or refuse it, in the refusal's own
+ * it with what it needs first, install it after the entrypoint its
+ * refusal names as the way in (`keel add entrypoint http`, which it may
+ * come with), or refuse it, in the refusal's own
  * sentence — then, in a monorepo service, what the product gives it,
- * then what is installed, what `--reapply` re-renders apart
+ * or at a product root what its services have, then what is
+ * installed, what `--reapply` re-renders apart
  * from what it does not (a product's glue, a bounded context). A
  * vertical two sets of
  * prerequisites tie on is refused until one is named, but it is no
@@ -540,18 +578,23 @@ function printOptionList(
  * the project's status, which is computed by the function the add
  * front door refuses by, so the list and the command cannot disagree.
  * A harness from another generation, which stops every add but the
- * harness's own, is said once, first.
+ * harness's own — at a product root, that one too — is said once,
+ * first.
  */
 function printReadiness(status: ProjectStatus, log: Logger): void {
   const generation = status.harnessGeneration;
   if (generation !== undefined && generation.found !== generation.expected) {
-    log.warn(generationLine(generation));
+    log.warn(generationLine(generation, status.services.length > 0));
   }
   const width = Math.max(0, ...status.available.map((vertical) => vertical.id.length));
   const row = (id: string, text: string): string => `  ${id.padEnd(width)}  ${text}`;
   const ready = status.available.filter((v) => v.readiness === 'ready');
   const needs = status.available.filter((v) => v.readiness === 'needs');
-  const refused = status.available.filter((v) => v.readiness === 'unavailable');
+  const unavailable = status.available.filter((v) => v.readiness === 'unavailable');
+  const growing = (v: AvailableVerticalDescriptor): GrowAction | undefined =>
+    v.refusal?.refusal?.kind === 'unavailable' ? v.refusal.refusal.grow : undefined;
+  const refused = unavailable.filter((v) => growing(v) === undefined);
+  const words = [...new Set(unavailable.flatMap((v) => growing(v)?.entrypoint ?? []))];
   if (ready.length > 0) {
     log.info('Ready to add here:');
     for (const v of ready) log.info(row(v.id, `${v.title} — ${v.description}`));
@@ -563,14 +606,30 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
       log.info(row(v.id, v.refusal?.message ?? after));
     }
   }
+  // What an entrypoint the project can grow lets in is for this
+  // project, one command away: listed under that command, each saying
+  // whether it comes with the entrypoint or takes its own add after.
+  for (const word of words) {
+    log.info(`After 'keel add entrypoint ${word}':`);
+    for (const v of unavailable) {
+      if (growing(v)?.entrypoint !== word) continue;
+      const when = v.refusal?.refusal === undefined ? '' : growNote(v.refusal.refusal);
+      log.info(row(v.id, `${v.title}${when} — ${v.description}`));
+    }
+  }
   if (refused.length > 0) {
     log.info('Not for this project:');
     for (const v of refused) log.info(row(v.id, v.refusal?.message ?? ''));
   }
-  // A monorepo service has these from its product, and adding one is
-  // an Ok that installs nothing: said, with where each comes from.
+  // A monorepo service has these from its product, and a product root
+  // in its services; adding one is an Ok that installs nothing: said,
+  // with where each is.
   if (status.provided.length > 0) {
-    log.info('From the product, nothing to add:');
+    log.info(
+      status.services.length > 0
+        ? 'In its services, nothing to add:'
+        : 'From the product, nothing to add:',
+    );
     const at = Math.max(0, ...status.provided.map((vertical) => vertical.id.length));
     for (const v of status.provided) log.info(`  ${v.id.padEnd(at)}  ${v.note}`);
   }
@@ -591,13 +650,23 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
   }
 }
 
-/** The line `keel add --list` opens with on a project from another harness generation. */
-function generationLine(generation: HarnessGenerationStatus): string {
+/**
+ * The line `keel add --list` opens with on a project from another
+ * harness generation — at a product root (`productRoot`, a status
+ * listing services), whose harness no `keel add` brings forward, what
+ * the refusals there say: every add refused — what is not for the root
+ * as the list says, what it or its services have already as nothing to
+ * run, and anything else naming the keel to pin.
+ */
+function generationLine(generation: HarnessGenerationStatus, productRoot: boolean): string {
   const { found, expected } = generation;
   if (found !== null && found > expected) {
     return `this project's harness is generation ${String(found)}, newer than the generation ${String(expected)} this keel writes — upgrade keel before adding to it`;
   }
   const marker = found === null ? 'carries no generation marker' : `is generation ${String(found)}`;
+  if (productRoot) {
+    return `this product root's harness ${marker}, and this keel writes generation ${String(expected)} — no 'keel add' brings a product root's harness forward, and 'keel add' refuses everything here: what is not for this root as it says below, what it or its services have already as nothing to run, and anything else naming the keel that scaffolded it, to pin`;
+  }
   return `this project's harness ${marker}, and this keel writes generation ${String(expected)} — 'keel add' refuses everything but 'keel add agent-harness' until the harness is brought forward; any other 'keel add' says how`;
 }
 

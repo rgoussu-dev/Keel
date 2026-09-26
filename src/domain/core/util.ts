@@ -118,3 +118,60 @@ export function beforeFirstImport(existing: string, lines: string): string {
   if (match === null) return `${lines}\n${existing}`;
   return `${existing.slice(0, match.index)}${lines}\n${existing.slice(match.index)}`;
 }
+
+/** C-family source — Java, Kotlin, TypeScript — or JSONC, as {@link codeOnly} reads it. */
+export interface CodeOnly {
+  /**
+   * The source with every comment, and the inside of every string and
+   * character literal, blanked to spaces, line breaks kept: the same
+   * length, so an index into one is an index into the other.
+   */
+  readonly code: string;
+  /** Whether the source holds a comment. */
+  readonly hasComment: boolean;
+}
+
+/**
+ * Reads source as code alone, for the patches that read a list rather
+ * than match a line — a composition root's handlers, a dev container's
+ * features, a Gradle settings file's includes: its brackets, its
+ * commas, its last entry. A `,` or `)` inside `"a, b"`, `//` inside a
+ * URL, or an entry inside a comment is not the list's.
+ *
+ * C-family comments and literals are all it knows — `"…"`, `'…'`,
+ * `` `…` ``, and a `"""…"""` block — which is enough for those lists,
+ * not a grammar: a template's `${…}` reads as part of its literal.
+ */
+export function codeOnly(source: string): CodeOnly {
+  const code = source.split('');
+  const blank = (from: number, to: number): void => {
+    for (let k = from; k < to; k += 1) if (code[k] !== '\n') code[k] = ' ';
+  };
+  const endOf = (closer: string, from: number): number => {
+    const at = source.indexOf(closer, from);
+    return at === -1 ? source.length : at;
+  };
+  let hasComment = false;
+  let i = 0;
+  while (i < source.length) {
+    if (source.startsWith('//', i) || source.startsWith('/*', i)) {
+      const line = source[i + 1] === '/';
+      const end = line ? endOf('\n', i) : Math.min(endOf('*/', i + 2) + 2, source.length);
+      blank(i, end);
+      hasComment = true;
+      i = end;
+    } else if (source.startsWith('"""', i)) {
+      const end = endOf('"""', i + 3);
+      blank(i + 3, end);
+      i = end + 3;
+    } else if (`"'\``.includes(source[i] as string)) {
+      let end = i + 1;
+      while (end < source.length && source[end] !== source[i]) end += source[end] === '\\' ? 2 : 1;
+      blank(i + 1, Math.min(end, source.length));
+      i = end + 1;
+    } else {
+      i += 1;
+    }
+  }
+  return { code: code.join(''), hasComment };
+}

@@ -11,7 +11,13 @@ selected by predicate:
 
 - **Quarkus CLI projects on Gradle** ship as **native binaries**:
   GraalVM cross-compiles in a CI matrix and the binaries land on a
-  release on tag push. Other CLIs cannot take distribution.
+  release on tag push. Other CLIs have no release of their own: where
+  one can grow a server, its refusal names the way in —
+  `keel add entrypoint http`, then `keel add distribution`, which then
+  ships it as a server ships. A Quarkus CLI on Maven is the exception:
+  it is refused for the Gradle its native release needs, and that
+  refusal names no entrypoint, though growing a server would let the
+  container release in.
 - **Server-shaped projects** (the HTTP stacks and the SPA) ship as a
   **CI-built container image pushed to a registry on tag push**, plus
   a deployment descriptor.
@@ -62,12 +68,20 @@ containerization --refresh distribution` (or `keel add distribution
 --reapply` afterwards) takes it up — asking the image pipeline's
 questions, which the native release never had. The pipeline it then
 renders builds the JVM image's fast-jar, as a fresh project's does.
-Until distribution is re-rendered it publishes no image, so `keel add
-iac` there is refused as `keel.needs-refresh`, naming the re-render
-(_"Infrastructure as code needs Container image, then Distribution
-re-rendered — …"_), with `keel add iac --refresh distribution` as its
-hint: that one run installs the image, re-renders distribution after
-it, and installs `iac`.
+The re-render does not take back what the native release wrote,
+though: its `.github/workflows/native-build.yml` and `release.yml`
+stay, and `release.yml` still runs on every `v*` tag beside the
+image's `release-image.yml`. Delete the two by hand — keel re-renders
+what a vertical owns but removes nothing it wrote, a gap the weekly
+composition sweep found ([roadmap](../roadmap.md) → Q3.4). The
+manifest keeps the native release's answers and runtime tag too,
+which the image pipeline reads past (below). Until distribution is
+re-rendered it publishes no image, so `keel add iac` there is refused
+as `keel.needs-refresh`, naming the re-render (_"Infrastructure as
+code needs Container image, then Distribution re-rendered — …"_),
+with `keel add iac --refresh distribution` as its hint: that one run
+installs the image, re-renders distribution after it, and installs
+`iac`.
 
 What each family's pipeline does on a `v*` tag:
 

@@ -113,9 +113,10 @@ describe('the wizard’s steps', () => {
 
   it('collapses the preset steps of a keel project into one, and keeps Options for both flows', async () => {
     // The directory decides the flow: a manifest there has settled
-    // every answer the preset steps ask, so they are one read-only
-    // step — and the Options step a new project has is the same step
-    // here, where its "Also scaffold" group adds to what is there.
+    // every answer the preset steps ask, so they are one step, read-only
+    // but for the entrypoint a project can grow — and the Options step
+    // a new project has is the same step here, where its "Also
+    // scaffold" group adds to what is there.
     const state: PageState = {
       status: { initialised: true },
       catalog: await catalog(),

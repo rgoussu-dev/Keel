@@ -1,5 +1,6 @@
 /**
- * Tests for the `ts-http` bounded-context adapter.
+ * Tests for the TypeScript bounded-context adapters: the `ts-context`
+ * shell and its wiring adapters, one per entrypoint (roadmap R.3c).
  *
  * Two things here are worth more than the rest. The mediator patch has
  * to survive being run once per context, which is the property
@@ -10,7 +11,7 @@
  * differently.
  *
  * Whether the result typechecks, lints and tests is
- * `tests/e2e/add-module-ts-http-*.test.ts`.
+ * `tests/e2e/add-module-ts.test.ts`.
  */
 
 import path from 'node:path';
@@ -19,7 +20,24 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { addModuleCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { expectOk, installMediator } from '../../../support/factory.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
+import {
+  addModuleInputs,
+  CONTEXT_TAG,
+} from '../../../../src/domain/core/adapters/added-context.js';
+import { MODULITH_LAYOUT_TAG } from '../../../../src/domain/core/adapters/module-layout.js';
+import {
+  tsContextHttpAdapter,
+  TS_CONTEXT_CLI_ID,
+  TS_CONTEXT_ID,
+} from '../../../../src/domain/core/adapters/ts-context.js';
+import { TS_MEDIATOR_ANCHOR } from '../../../../src/domain/core/adapters/ts-module-layout.js';
+import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import type { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
+import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
+import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 
 const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
@@ -35,7 +53,7 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-async function scaffold(stack: 'ts-cli' | 'ts-http' = 'ts-http'): Promise<void> {
+async function scaffold(stack: 'ts-cli' | 'ts-http' | 'ts-cli-http' = 'ts-http'): Promise<void> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
   expectOk(
     await mediator.dispatch(
@@ -52,9 +70,10 @@ async function scaffold(stack: 'ts-cli' | 'ts-http' = 'ts-http'): Promise<void> 
   );
 }
 
-async function addModule(module: string, consumes?: string): Promise<void> {
+/** `keel add module <module>`, consuming `consumes` where given: the adapters it ran, by id. */
+async function addModule(module: string, consumes?: string): Promise<readonly string[]> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
-  expectOk(
+  const report = expectOk(
     await mediator.dispatch(
       addModuleCommand({
         cwd,
@@ -66,9 +85,12 @@ async function addModule(module: string, consumes?: string): Promise<void> {
       }),
     ),
   );
+  return (report.resolvedAdapters ?? []).map((adapter) => adapter.id);
 }
 
 const read = (rel: string): Promise<string> => fs.readFile(path.join(cwd, rel), 'utf8');
+
+const MAIN = 'application/rest/src/main.ts';
 
 describe('the ts-http added context', () => {
   it('publishes ./service, which the peer context does not', async () => {
@@ -105,6 +127,62 @@ describe('the ts-http added context', () => {
       expect(main).toMatch(/createOrderingContextHandler\(\)/);
       expect(main).toMatch(/createShippingContextHandler\(\)/);
       expect(main).toMatch(/createGreetHandler\(\)/);
+      expect(main).toContain(
+        'createRegistryMediator([createGreetHandler(), createOrderingContextHandler(), createShippingContextHandler()]);',
+      );
+    });
+
+    it('puts its entry on a line of its own after a trailing comma, leaving no hole', async () => {
+      // A list written one entry a line ends on a trailing comma —
+      // persistence's does. Spliced in inline after that comma, the
+      // entry would leave `, ,` in the array.
+      await scaffold();
+      const oneLine = 'createRegistryMediator([createGreetHandler()]);';
+      const skeleton = await read(MAIN);
+      expect(skeleton).toContain(oneLine);
+      await fs.writeFile(
+        path.join(cwd, MAIN),
+        skeleton.replace(oneLine, 'createRegistryMediator([\n  createGreetHandler(),\n]);'),
+      );
+      await addModule('ordering');
+
+      expect(await read(MAIN)).toContain(
+        'createRegistryMediator([\n  createGreetHandler(),\n  createOrderingContextHandler(),\n]);',
+      );
+    });
+
+    // The entry follows the array's last entry, not its last line: a
+    // comment after that entry, or on a line of its own before the
+    // close, would take `, x()` in after it — a hole, or the entry
+    // commented out.
+    it.each([
+      {
+        shape: 'a line comment after the last entry’s comma',
+        array: 'createRegistryMediator([\n  createGreetHandler(), // the skeleton\n]);',
+        spliced:
+          'createRegistryMediator([\n  createGreetHandler(), // the skeleton\n  createOrderingContextHandler(),\n]);',
+      },
+      {
+        shape: 'a comment line before the close',
+        array: 'createRegistryMediator([\n  createGreetHandler(),\n  // more contexts here\n]);',
+        spliced:
+          'createRegistryMediator([\n  createGreetHandler(),\n  // more contexts here\n  createOrderingContextHandler(),\n]);',
+      },
+      {
+        shape: 'a comment after the last entry, no comma',
+        array: 'createRegistryMediator([createGreetHandler() /* the skeleton */]);',
+        spliced:
+          'createRegistryMediator([createGreetHandler(), createOrderingContextHandler() /* the skeleton */]);',
+      },
+    ])('splices past $shape, leaving no hole', async ({ array, spliced }) => {
+      await scaffold();
+      const oneLine = 'createRegistryMediator([createGreetHandler()]);';
+      const skeleton = await read(MAIN);
+      expect(skeleton).toContain(oneLine);
+      await fs.writeFile(path.join(cwd, MAIN), skeleton.replace(oneLine, array));
+      await addModule('ordering');
+
+      expect(await read(MAIN)).toContain(spliced);
     });
 
     it('imports each context wiring module, without which nothing loads it', async () => {
@@ -177,10 +255,11 @@ describe('the ts-http added context', () => {
 
 describe('the ts-cli added context', () => {
   /**
-   * The adapter names no assembly path: `tsAssemblies` derives the
-   * wiring targets from the arch tags, so on the CLI twin the same
-   * context lands in `application/cli` — with no `application/rest`
-   * anywhere for the patches to have missed.
+   * The adapters name no assembly path: each wiring adapter's assembly
+   * is `tsAssembly`'s for its entrypoint, and which of them run is read
+   * off their predicates, so on the CLI twin the same context lands in
+   * `application/cli` — with no `application/rest` anywhere for the
+   * patches to have missed.
    */
   it('wires the context into the CLI assembly', async () => {
     await scaffold('ts-cli');
@@ -196,5 +275,136 @@ describe('the ts-cli added context', () => {
 
     expect(await read('application/cli/src/ordering.ts')).toMatch(/createGreetHandler\(\)/);
     expect(await fs.pathExists(path.join(cwd, 'application/rest'))).toBe(false);
+  });
+});
+
+describe('the TypeScript added context, wired per entrypoint', () => {
+  /**
+   * Which assemblies a context is wired into is read off the
+   * predicates, one wiring adapter per entrypoint beside the shell —
+   * so a project that grows an entrypoint installs the one that newly
+   * matches, and the wiring already there is never rendered again
+   * (roadmap R.3c).
+   */
+  it('is wired into each assembly by an adapter of its own, the same module in each', async () => {
+    await scaffold('ts-cli-http');
+    expect(await addModule('ordering', 'greeting')).toEqual([
+      'bounded-context/ts-context',
+      'bounded-context/ts-context-cli',
+      'bounded-context/ts-context-http',
+    ]);
+
+    expect(await read('application/rest/src/ordering.ts')).toBe(
+      await read('application/cli/src/ordering.ts'),
+    );
+    for (const unit of ['cli', 'rest']) {
+      expect(await read(`application/${unit}/src/main.ts`)).toContain(
+        'createRegistryMediator([createGreetHandler(), createOrderingContextHandler()]);',
+      );
+      expect(
+        (await read(`application/${unit}/package.json`)).match(/"@acme\/ordering":/g),
+      ).toHaveLength(1);
+    }
+
+    await fs.emptyDir(cwd);
+    await scaffold();
+    expect(await addModule('ordering', 'greeting')).toEqual([
+      'bounded-context/ts-context',
+      'bounded-context/ts-context-http',
+    ]);
+    expect(await fs.pathExists(path.join(cwd, 'application/rest/src/ordering.ts'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'application/cli'))).toBe(false);
+  });
+
+  /**
+   * The split moved the install into the shell, and nothing but the
+   * e2e would notice it gone: a `TS2307` on a package nothing linked.
+   * Once, because the wiring adapters ask for none.
+   */
+  it('asks for the install that links the package once, from the shell', async () => {
+    await scaffold('ts-cli-http');
+    const queued: string[] = [];
+    const mediator = installMediator({
+      runDeferred: (inputs) => {
+        queued.push(...inputs.actions.map((action) => action.id));
+        return Promise.resolve();
+      },
+    });
+
+    expectOk(
+      await mediator.dispatch(
+        addModuleCommand({
+          cwd,
+          module: 'ordering',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+
+    expect(queued).toEqual([TS_CONTEXT_ID]);
+  });
+
+  it('is refused naming the wiring adapter when an assembly has no mediator to add it to', async () => {
+    await scaffold('ts-cli-http');
+    await fs.writeFile(path.join(cwd, 'application/cli/src/main.ts'), 'export {};\n');
+    const mediator = installMediator({ runDeferred: discardDeferred() });
+
+    const error = expectErr(
+      await mediator.dispatch(
+        addModuleCommand({
+          cwd,
+          module: 'ordering',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+
+    expect(error.code).toBe('keel.path-conflict');
+    expect((error as RefusalError).refusal).toEqual({
+      kind: 'path-conflict',
+      path: 'application/cli/src/main.ts',
+      adapterId: TS_CONTEXT_CLI_ID,
+      anchor: TS_MEDIATOR_ANCHOR,
+    });
+    expect(await fs.pathExists(path.join(cwd, 'modules/ordering'))).toBe(false);
+  });
+
+  it('names the wiring adapter when its assembly declares no core package to add it beside', async () => {
+    const ctx = makeCtx(
+      tsContextHttpAdapter,
+      {},
+      {
+        manifest: {
+          ...emptyManifestV2('2026-08-15T00:00:00Z', '0.5.0-alpha'),
+          tags: [
+            'lang.typescript',
+            'runtime.node',
+            'pkg.npm',
+            'arch.hexagonal',
+            'arch.server-http',
+            MODULITH_LAYOUT_TAG,
+            CONTEXT_TAG,
+          ],
+          answers: {
+            'walking-skeleton/ts-http-bootstrap': { npmScope: 'acme', projectName: 'skel' },
+            ...addModuleInputs({ name: 'ordering', consumes: null }),
+          },
+        },
+        logger: new FakeLogger(),
+        cwd,
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
+      },
+    );
+    const { patches = [] } = await tsContextHttpAdapter.contribute(ctx);
+    const manifest = patches.find((patch) => patch.target === 'application/rest/package.json');
+
+    expect(() => manifest?.apply('{ "dependencies": {} }\n')).toThrow(
+      "bounded-context/ts-context-http: no '@acme/greeting' dependency in 'application/rest/package.json' to add '@acme/ordering' beside",
+    );
   });
 });

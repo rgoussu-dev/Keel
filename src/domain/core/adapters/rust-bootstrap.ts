@@ -18,7 +18,7 @@
  * The README and `.gitignore` are seeded upserts rather than
  * whole-file writes, so `keel new` in a directory that already holds
  * either keeps the user's file and adds keel's part to it
- * (`adopted-files.ts`); the entrypoints append their sections to the
+ * (`adopted-files.ts`); the entrypoints add their sections to the
  * README either way.
  *
  * Entrypoints are NOT emitted here: `rust-cli-bootstrap` and

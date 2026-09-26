@@ -1,17 +1,27 @@
 /**
  * A refusal on a keel project's page, driven in a real browser — the
- * one met before the click, and the one only the click can meet.
+ * one met before the click, the action it carries, and the one only
+ * the click can meet.
  *
  * **Before the click.** Picking a card used to be how the page found
  * out whether the project could carry it: about half the cards on a
  * CLI project were a refusal, shown in a banner above a step the user
  * had often scrolled past. The project status reads each card ahead
  * of time now, with the planner `keel add` plans by, so what this
- * `ts-cli` project cannot carry — Container image, which has nothing
- * to serve an image from — sits under **Not for this project** in its
- * Options step's "Also scaffold" group, collapsed, in the words
- * `keel add containerization` refuses it with, and is not a box to
- * tick. The bounded-context tab is there too, disabled, saying why.
+ * `ts-cli` project cannot carry yet — Container image, which has
+ * nothing to serve an image from — is not a box to tick, and nothing
+ * is previewed to find that out. The bounded-context tab is there too,
+ * disabled, saying why.
+ *
+ * **The action it carries.** What stops Container image is the HTTP
+ * server, and this project can grow one: the refusal carries
+ * `keel add entrypoint http` as its action, so the card sits under
+ * **After adding HTTP server**, beside the button that adds it, rather
+ * than under "Not for this project". The button, the entrypoint tab
+ * and the Project step's Adapters line each post that one run, which
+ * the page previews, spells and reviews as it does a bounded context.
+ * That the card and the click carry the same action is pinned below
+ * the page (`project-status.test.ts`); that the page takes it is this.
  *
  * **After the click.** Some refusals only the run can meet: a file of
  * the user's in the way (`keel.path-conflict`) — a
@@ -85,8 +95,9 @@ import {
  */
 const STACK = 'ts-cli';
 const UNCARRIED = 'containerization';
-const UNCARRIED_SENTENCE =
-  'Container image needs an entrypoint this project does not have: HTTP server — a REST endpoint';
+/** What the project can grow to carry it, and the one run that does. */
+const GROWN = 'http';
+const GROW_COMMAND = 'keel add entrypoint http --yes';
 
 /**
  * Installed by `keel new` on this stack, so it has a Re-render; and
@@ -215,20 +226,23 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
   });
 
   it(
-    'says before any click what this project cannot carry, in the refusal’s words',
+    'says before any click what this project cannot carry yet, beside the action that lets it in',
     async () => {
       await goToStep(traffic, page, 'options');
-      const refused = page.locator('#extras-refused');
-      expect(await refused.getAttribute('open')).toBeNull();
-      expect(await refused.locator('summary').textContent()).toMatch(
-        /^Not for this project \(\d+\)$/,
+      // Under the entrypoint that lets it in, not under "Not for this
+      // project": this CLI, scaffolded with no extras, lacks nothing
+      // else.
+      const grow = page.locator(`#extras-grow-${GROWN}`);
+      expect(await grow.locator('h4').textContent()).toBe('After adding HTTP server');
+      const line = grow.locator(`li[data-id="${UNCARRIED}"]`);
+      expect(await line.locator('.refused-title').textContent()).toBe('Container image');
+      expect(await line.textContent()).toContain('Added after it.');
+      expect(await grow.locator('li[data-id="observability"]').textContent()).toContain(
+        'Comes with it.',
       );
-      const line = refused.locator(`li[data-id="${UNCARRIED}"]`);
-      expect(await line.textContent()).toContain(UNCARRIED_SENTENCE);
+      expect(await page.locator('#extras-refused').count()).toBe(0);
       // Not a box: there is nothing to pick, so nothing to be refused on.
       expect(await card(page, UNCARRIED).count()).toBe(0);
-      await refused.locator('summary').click();
-      expect(await line.isVisible()).toBe(true);
       // Nothing was previewed to find that out.
       expect(traffic.posted('/api/preview')).toEqual([]);
 
@@ -254,6 +268,95 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
             ).getComputedStyle(node).whiteSpace,
         ),
       ).toBe('nowrap');
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'takes the action a refusal carries, and previews and reviews it as a context is',
+    async () => {
+      await goToStep(traffic, page, 'options');
+      const button = page.locator(`#grow-${GROWN}`);
+      expect(await button.textContent()).toBe('Add HTTP server');
+      expect(await button.getAttribute('aria-pressed')).toBe('false');
+      await act(traffic, () => button.click());
+
+      // One run, the one the refusal names: posted as the entrypoint,
+      // spelled as the command, planned as the preset with both.
+      const previews = traffic.posted('/api/preview') as { target: unknown }[];
+      expect(previews[previews.length - 1]?.target).toEqual({
+        kind: 'add-entrypoint',
+        entrypoint: GROWN,
+      });
+      await until(async () => (await command(page)) === GROW_COMMAND, 'the growth command');
+      await until(
+        async () => (await page.locator('keel-plan keel-file-tree li').count()) > 0,
+        'the plan of the growth',
+      );
+      expect(await refusal(page).isVisible()).toBe(false);
+      expect(await page.locator('keel-plan keel-file-tree').textContent()).toContain('rest');
+      // The tab that holds it, pressed, with what comes and what follows.
+      const tab = page.locator('#tab-entrypoint');
+      expect(await tab.getAttribute('aria-pressed')).toBe('true');
+      const chosen = page.locator(`#entrypoint input[value="${GROWN}"]`);
+      expect(await chosen.isChecked()).toBe(true);
+      // All the run installs, and the harness this project has, which
+      // it re-renders; the gateway apart, waiting on a link too.
+      const form = (await page.locator('keel-add-form').textContent()) ?? '';
+      expect(form).toContain('Comes with it: Development environment, Observability.');
+      expect(form).toContain('the agent harness is re-rendered to speak of both');
+      expect(form).toContain('Added after it, once a linked project serves it: Service gateway.');
+
+      // The review names it as it names a context, and Generate is live.
+      await goToStep(traffic, page, 'review');
+      const review = page.locator('keel-review');
+      expect(await review.locator('dt', { hasText: /^Entrypoint$/ }).count()).toBe(1);
+      expect(await review.textContent()).toContain('HTTP server');
+      expect(await page.locator('#generate').isEnabled()).toBe(true);
+
+      // The Project step's Adapters line offers the same run, pressed.
+      await goToStep(traffic, page, 'project');
+      const offer = page.locator(`#offer-entrypoint-${GROWN}`);
+      expect(await offer.getAttribute('aria-pressed')).toBe('true');
+      expect(await offer.getAttribute('title')).toBe('keel add entrypoint http');
+
+      // And back to the verticals: another subject, another plan.
+      await goToStep(traffic, page, 'options');
+      await act(traffic, () => page.locator('#tab-vertical').click());
+      await act(traffic, () => card(page, AVAILABLE).check());
+      await until(
+        async () => (await command(page)) === `keel add ${AVAILABLE} --yes`,
+        'the add command',
+      );
+      expect(await page.locator(`#grow-${GROWN}`).getAttribute('aria-pressed')).toBe('false');
+
+      // The tab opens the same run, on the entrypoint the project can grow.
+      await act(traffic, () => page.locator('#tab-entrypoint').click());
+      await until(
+        async () => (await command(page)) === GROW_COMMAND,
+        'the growth command, from the tab',
+      );
+      expect(await page.locator(`#entrypoint input[value="${GROWN}"]`).isChecked()).toBe(true);
+
+      // And so does the Project step's offer, from a vertical again.
+      await act(traffic, () => page.locator('#tab-vertical').click());
+      await act(traffic, () => card(page, AVAILABLE).check());
+      await until(
+        async () => (await command(page)) === `keel add ${AVAILABLE} --yes`,
+        'the add command, again',
+      );
+      await goToStep(traffic, page, 'project');
+      expect(await offer.getAttribute('aria-pressed')).toBe('false');
+      await act(traffic, () => offer.click());
+      await until(
+        async () => (await command(page)) === GROW_COMMAND,
+        'the growth command, from the Project step',
+      );
+      expect(await offer.getAttribute('aria-pressed')).toBe('true');
+
+      // Nothing was generated: growing a TypeScript project queues its
+      // package manager, which this suite never runs.
+      expect(traffic.posted('/api/install')).toEqual([]);
     },
     E2E_TIMEOUT_MS,
   );

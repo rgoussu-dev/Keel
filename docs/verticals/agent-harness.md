@@ -26,6 +26,13 @@ per-module declarations too. Repeated-question answers reuse their recorded
 values during adoption; ordinary installs retain their repeat behavior.
 Older module records without a `consumes` field replay without a consumer.
 
+Growing an entrypoint re-renders an installed harness without being
+asked: [`keel add entrypoint`](../cli.md#keel-add-entrypoint) renders
+the runbook, the `run` skill, the layer docs and the lifecycle skill
+for both entrypoints, reverting an edit to a template-owned harness
+file as `keel add agent-harness --reapply` would, and shows the diffs
+in its report.
+
 ## Dimensions and activation
 
 | Dimension          | Covered by                                                                              |
@@ -273,10 +280,16 @@ realized element carries contributor provenance. See the
 The generation marker is manifest machinery, not a harness element
 (#137, shipped): every manifest keel creates carries
 `harnessGeneration`, whether or not the project installs the harness.
-`keel add` and `keel add module` refuse a project stamped with another
-generation, or with none, before a file moves; the remediation is
+`keel add`, `keel add module` and `keel add entrypoint` refuse a
+project stamped with another generation, or with none, before a file
+moves; the remediation is
 `keel add agent-harness` (`--reapply` when it is installed), which
-re-renders the harness and restamps the marker. See
+re-renders the harness and restamps the marker — but not at a monorepo
+product root, whose harness is the product glue's and which no `keel
+add` brings forward: there the refusal names the keel that scaffolded
+the root, to pin, for what the root runs itself, and says the services
+have it for what is theirs (`keel add agent-harness` among it); `keel
+add module` there is refused as at any product root. See
 [`keel add`](../cli.md#keel-add).
 
 **agent-harness (the vertical itself: claude-core + family kits' shared surface)**
@@ -353,7 +366,7 @@ re-renders the harness and restamps the marker. See
 
 **fullstack (product root)**
 
-- Root pair + shims + `keel:map` over `manifest.services[]` (shipped, #142: `fullstack/product-harness`, which promotes `agentic.harness` at the root because `agent-harness` refuses to install there). Every row resolves without a membership gate, because `keel new` refuses `--no-agent-harness` on a composite stack — every service of a product keel scaffolded carries the pair. No hooks/settings/skills hoisted to the root, and no `keel:skills-index` slot either _(decided here, confirming #142's "likely"; the emitted document states the reason, since a reader who does not find it will conclude the root was forgotten)_.
+- Root pair + shims + `keel:map` over `manifest.services[]` (shipped, #142: `fullstack/product-harness`, which promotes `agentic.harness` at the root because `agent-harness` does not install there — `keel add agent-harness` at the root answers that the services have it). Every row resolves without a membership gate, because `keel new` refuses `--no-agent-harness` on a composite stack — every service of a product keel scaffolded carries the pair. No hooks/settings/skills hoisted to the root, and no `keel:skills-index` slot either _(decided here, confirming #142's "likely"; the emitted document states the reason, since a reader who does not find it will conclude the root was forgotten)_.
 - **→ #152:** `run-product` skill (the one-command compose story; the two env knobs `BACKEND_URL` / `API_BASE_URL`; a frontend change rebuilds only the assets image — may fold into #142).
 
 **Engine (reserved identity, #133)**

@@ -80,12 +80,12 @@ who does not find that reason will reasonably conclude the root was
 forgotten.
 
 The root activates the harness itself: `agent-harness` is a
-single-service vertical and refuses to install at a product root
-(`keel add agent-harness` there is refused, noting that `backend/` and
-`frontend/` have it already), so the
+single-service vertical and does not install at a product root
+(`keel add agent-harness` there installs nothing, noting that
+`backend/` and `frontend/` have it already), so the
 `agentic.harness` tag that opens the engine's final pass is promoted by
-the `fullstack` vertical. The refusal is a declaration rather than a
-special case: `fullstack` declares the rule `fullstack/one-harness`
+the `fullstack` vertical. That it is not for the root is a declaration
+rather than a special case: `fullstack` declares the rule `fullstack/one-harness`
 against a family kit's tag, so the planner reads `agent-harness` as not
 for the root even where the root's tags happen to match a family.
 

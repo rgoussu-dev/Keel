@@ -13,13 +13,13 @@
  *
  * **What only a combo cell can see.** `ts-shared-root.ts` merges each
  * entrypoint's `start:*` scripts into a root `package.json` the
- * sibling may already have written, and appends each one's README
- * section under a sentinel. The regression that guards against is a
- * second entrypoint clobbering the first's scripts or its workspace
- * glob — after which the project still installs and still
- * typechecks, and one of its two assemblies has no way to be
- * started. Both are asserted here before anything is run, then
- * proved by running both.
+ * sibling may already have written, and adds each one's README
+ * section, at its rank (`rank.ts`), under a sentinel. The regression
+ * that guards against is a second entrypoint clobbering the first's
+ * scripts or its workspace glob — after which the project still
+ * installs and still typechecks, and one of its two assemblies has no
+ * way to be started. Both are asserted here before anything is run,
+ * then proved by running both.
  */
 
 import net from 'node:net';
@@ -137,8 +137,8 @@ export async function runTsComboE2E(cell: TsComboCell, cwd: string): Promise<voi
     expect(pkg.scripts?.[script], `root package.json is missing ${script}`).toBeDefined();
   }
 
-  // …and to one README, whose per-arch sections are appended under a
-  // sentinel rather than each rewriting the file.
+  // …and to one README, whose per-arch sections are each added under
+  // a sentinel rather than each rewriting the file.
   const readme = await fs.readFile(path.join(cwd, 'README.md'), 'utf8');
   expect(readme).toContain('### cli');
   expect(readme).toContain('### rest');

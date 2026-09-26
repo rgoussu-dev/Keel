@@ -2,8 +2,9 @@
  * The same install, as the command line that would produce it.
  *
  * The page and the CLI are two primary adapters over one mediator, so
- * every state this form can reach is a `keel new` or `keel add`
- * somebody could have typed. Showing that line is the cheapest thing
+ * every state this form can reach is a `keel new` or `keel add` —
+ * of verticals, a bounded context or an entrypoint — somebody could
+ * have typed. Showing that line is the cheapest thing
  * the page can do with the fact: it is what goes in a README, what
  * gets pasted into CI, and how a user who started here learns the
  * command they will use from then on.
@@ -71,6 +72,13 @@ export function commandFor({ target, answers }) {
       { kind: 'value', text: target.module },
     );
     flag(tokens, '--consumes', target.consumes);
+  } else if (target.kind === 'add-entrypoint') {
+    if (!target.entrypoint) return [];
+    tokens.push(
+      { kind: 'command', text: 'add' },
+      { kind: 'command', text: 'entrypoint' },
+      { kind: 'value', text: quote(target.entrypoint) },
+    );
   } else {
     return [];
   }

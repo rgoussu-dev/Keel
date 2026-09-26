@@ -20,7 +20,9 @@
  * modules), and each patch's `apply` idempotently ensures its own
  * entrypoint's module/section is present. Whichever entrypoint
  * resolves first creates the file from the seed; the other composes
- * onto it. `gradle.properties` and `build.gradle.kts` need no
+ * onto it, its modules and its README section each at their rank
+ * (`rank.ts`), so an entrypoint a later run brings lands where one
+ * run puts it. `gradle.properties` and `build.gradle.kts` need no
  * per-entrypoint content at all (same seed, identity `apply`) because
  * the seed already uses the collision-safe (path-derived Gradle
  * group, `<module>`-per-entrypoint Maven) shape every framework's
@@ -37,9 +39,11 @@
  */
 
 import type { ContributionPatch } from '../../contract/composition.js';
+import type { Tag } from '../../contract/tags.js';
+import { placeReadmeSection, rankedIndex } from '../rank.js';
 import { readmeUpsert } from './adopted-files.js';
 import type { JvmBuildSystem } from './jvm-build-system.js';
-import { eolOf, withEol } from '../util.js';
+import { codeOnly, eolOf, withEol } from '../util.js';
 
 /** JVM frameworks the walking-skeleton bootstraps cover. */
 export type JvmFramework = 'quarkus' | 'spring' | 'micronaut';
@@ -58,6 +62,8 @@ export interface JvmRootInputs {
   readonly buildSystem: JvmBuildSystem;
   readonly basePackage: string;
   readonly projectName: string;
+  /** The project's tags, which rank its README section among the others. */
+  readonly tags: readonly Tag[];
 }
 
 export interface FrameworkMeta {
@@ -110,15 +116,27 @@ export const FRAMEWORKS: Readonly<Record<JvmFramework, FrameworkMeta>> = {
 };
 
 /**
- * Module paths every basic-layout entrypoint shares — the domain
- * trisection, which is the project as it looks with no entrypoint yet.
+ * The modules a layout's root build file lists by what brings them —
+ * which is what ranks them there ({@link placeIncludes},
+ * {@link placeModules}).
  */
-const SEED_MODULES: readonly string[] = ['domain/kernel', 'domain/contract', 'domain/core'];
+export interface RootModules {
+  /** The modules the seed lists: the project as it looks with no entrypoint yet. */
+  readonly seed: readonly string[];
+  /** The modules each entrypoint adds. */
+  readonly arch: Readonly<Record<JvmRootArch, readonly string[]>>;
+}
 
-/** Maven/Gradle module paths one arch's entrypoint contributes. */
-const ARCH_MODULES: Readonly<Record<JvmRootArch, readonly string[]>> = {
-  cli: ['application/cli'],
-  rest: ['application/rest/contract', 'application/rest/executable'],
+/**
+ * The basic layout's modules: the domain trisection seeds every
+ * entrypoint, and each adds its `application/…` modules.
+ */
+const MODULES: RootModules = {
+  seed: ['domain/kernel', 'domain/contract', 'domain/core'],
+  arch: {
+    cli: ['application/cli'],
+    rest: ['application/rest/contract', 'application/rest/executable'],
+  },
 };
 
 /**
@@ -146,7 +164,7 @@ const ARCHIVE_NOTE = `    // Archive file names must be unique for the same reas
  * under the basic module layout. Every entrypoint bootstrap for the
  * same (framework, buildSystem) pair supplies the identical seed for
  * each target, so whichever resolves first creates the file and the
- * rest compose onto it in adapter-resolution order.
+ * rest compose onto it, each entry at its rank.
  */
 export function jvmSharedRootPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   return inputs.buildSystem === 'gradle' ? gradlePatches(inputs) : mavenPatches(inputs);
@@ -157,9 +175,8 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
   return [
     {
       target: 'settings.gradle.kts',
-      seed: gradleSettingsSeed(inputs.projectName, SEED_MODULES),
-      apply: (existing) =>
-        appendMissingLines(existing, gradleIncludeLines(ARCH_MODULES[inputs.arch])),
+      seed: gradleSettingsSeed(inputs.projectName, MODULES.seed),
+      apply: (existing) => placeIncludes(existing, MODULES, inputs.arch),
     },
     {
       target: 'build.gradle.kts',
@@ -178,7 +195,7 @@ function gradlePatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
       apply: (existing) => existing,
     },
     readmeUpsert(readmeSeed(meta.label, inputs.projectName, './gradlew test'), (existing) =>
-      appendReadmeSection(existing, gradleReadmeSection(inputs)),
+      addReadmeSection(existing, gradleReadmeSection(inputs), inputs.tags),
     ),
   ];
 }
@@ -193,12 +210,12 @@ function mavenPatches(inputs: JvmRootInputs): readonly ContributionPatch[] {
         basePackage: inputs.basePackage,
         projectName: inputs.projectName,
         frameworkProperties: meta.mavenProperties,
-        modules: SEED_MODULES,
+        modules: MODULES.seed,
       }),
-      apply: (existing) => insertModules(existing, ARCH_MODULES[inputs.arch]),
+      apply: (existing) => placeModules(existing, MODULES, inputs.arch),
     },
     readmeUpsert(readmeSeed(meta.label, inputs.projectName, './mvnw test'), (existing) =>
-      appendReadmeSection(existing, mavenReadmeSection(inputs)),
+      addReadmeSection(existing, mavenReadmeSection(inputs), inputs.tags),
     ),
   ];
 }
@@ -222,7 +239,7 @@ ${gradleIncludeLines(modules).join('\n')}
 }
 
 /** `include(…)` lines for a set of `a/b/c` module paths. */
-export function gradleIncludeLines(modules: readonly string[]): readonly string[] {
+function gradleIncludeLines(modules: readonly string[]): readonly string[] {
   return modules.map((m) => `include(":${m.replace(/\//g, ':')}")`);
 }
 
@@ -460,25 +477,117 @@ ${kotlin?.build ?? ''}    <pluginManagement>
 }
 
 /**
- * Adds any of `modules` the reactor root does not already list,
- * immediately before the `</modules>` close. Idempotent, so the
- * second entrypoint to resolve composes onto the first's list.
+ * A module's rank in its layout's root list (`rank.ts`): its place in
+ * the order one run writes — the seed's modules, then the CLI's, then
+ * REST's, as `ENTRYPOINTS` lists them, each entrypoint's in its own
+ * order — or after all of them for any other, whatever brings it: the
+ * port fake, the peer context, persistence, an added context, the
+ * user's own. Ranked one by one, a module the user deleted from an
+ * entrypoint's several goes back beside its siblings where it was.
  */
-export function insertModules(existing: string, modules: readonly string[]): string {
-  const missing = modules.filter((m) => !existing.includes(`<module>${m}</module>`));
-  if (missing.length === 0) return existing;
-  const eol = eolOf(existing);
-  const lines = missing.map((m) => withEol(`    <module>${m}</module>\n`, eol)).join('');
-  const marker = withEol('  </modules>', eol);
-  return existing.replace(marker, `${lines}${marker}`);
+function moduleRank(modules: RootModules, path: string): number {
+  const order = [...modules.seed, ...modules.arch.cli, ...modules.arch.rest];
+  const at = order.indexOf(path);
+  return at === -1 ? order.length : at;
 }
 
-/** Appends whichever of `lines` the file does not already carry. */
-export function appendMissingLines(existing: string, lines: readonly string[]): string {
-  const missing = lines.filter((l) => !existing.includes(l));
-  if (missing.length === 0) return existing;
-  const eol = eolOf(existing);
-  return `${existing.replace(/\s*$/, '')}${withEol(`\n${missing.join('\n')}\n`, eol)}`;
+/**
+ * Adds whichever of one entrypoint's `include(…)` lines
+ * `settings.gradle.kts` lacks, each at its rank ({@link moduleRank}):
+ * before the first include ranked above it, or appended where none is,
+ * as they always were. So an entrypoint arriving in a later run — the
+ * CLI's on a REST project, REST's after the port fake — lands where
+ * one run puts it. An include is a line holding one `include("…")` and
+ * nothing else; one in a comment or a string, as `util.ts`'s
+ * `codeOnly` reads the file, ranks nothing. Idempotent, so the second
+ * entrypoint to resolve composes onto the first's list.
+ */
+export function placeIncludes(existing: string, modules: RootModules, arch: JvmRootArch): string {
+  return modules.arch[arch].reduce((text, module) => placeInclude(text, modules, module), existing);
+}
+
+function placeInclude(existing: string, modules: RootModules, module: string): string {
+  const [include] = gradleIncludeLines([module]) as [string];
+  if (existing.includes(include)) return existing;
+  const lines = existing.split('\n');
+  const code = codeOnly(existing).code.split('\n');
+  const at = rankedIndex(
+    lines.map((line, index) => {
+      const path = (code[index] as string).trim() === '' ? undefined : INCLUDE.exec(line)?.[1];
+      return path === undefined ? undefined : moduleRank(modules, path.replace(/:/g, '/'));
+    }),
+    moduleRank(modules, module),
+  );
+  if (at !== -1) return insertBeforeLine(existing, at, `${include}\n`);
+  return `${existing.replace(/\s*$/, '')}${withEol(`\n${include}\n`, eolOf(existing))}`;
+}
+
+/** A line holding one `include("…")`, its module path in Gradle's notation. */
+const INCLUDE = /^\s*include\(\s*":?([^"]+)"\s*\)\s*$/;
+
+/**
+ * Adds whichever of one entrypoint's modules the reactor root does
+ * not already list, each at its rank ({@link moduleRank}): before the
+ * first `<module>` ranked above it, or immediately before the
+ * `</modules>` close where none is, as they always were. Only the
+ * root's own list ranks — the lines before its first `</modules>`,
+ * none inside an XML comment — so a profile's modules below it, or one
+ * the user commented out, never draw an entry. Idempotent, so the
+ * second entrypoint to resolve composes onto the first's list.
+ */
+export function placeModules(existing: string, modules: RootModules, arch: JvmRootArch): string {
+  return modules.arch[arch].reduce((text, module) => placeModule(text, modules, module), existing);
+}
+
+function placeModule(existing: string, modules: RootModules, module: string): string {
+  if (existing.includes(`<module>${module}</module>`)) return existing;
+  const entry = `    <module>${module}</module>\n`;
+  const lines = existing.split('\n');
+  const comments = blockCommented(lines, '<!--', '-->');
+  const end = lines.findIndex((line) => line.includes('</modules>'));
+  const at = rankedIndex(
+    lines.map((line, index) => {
+      const path = end !== -1 && index > end ? undefined : MODULE.exec(line)?.[1];
+      return path === undefined || comments[index] === true ? undefined : moduleRank(modules, path);
+    }),
+    moduleRank(modules, module),
+  );
+  if (at !== -1) return insertBeforeLine(existing, at, entry);
+  const marker = withEol('  </modules>', eolOf(existing));
+  return existing.replace(marker, `${withEol(entry, eolOf(existing))}${marker}`);
+}
+
+/** A line holding one `<module>…</module>`, its path. */
+const MODULE = /^\s*<module>([^<]+)<\/module>\s*$/;
+
+/**
+ * Whether each of `lines` is inside a block comment between `open`
+ * and `close`, the lines holding either counted in, so that no entry
+ * is read in one.
+ */
+function blockCommented(lines: readonly string[], open: string, close: string): boolean[] {
+  let inside = false;
+  return lines.map((line) => {
+    const touched = inside || line.includes(open);
+    const opened = line.lastIndexOf(open);
+    const closed = line.lastIndexOf(close);
+    if (opened > closed) inside = true;
+    else if (closed > opened) inside = false;
+    return touched;
+  });
+}
+
+/**
+ * `existing` with `block`, LF-authored whole lines, inserted
+ * immediately before its line `index`, in the file's own line
+ * endings; every byte already there is kept.
+ */
+function insertBeforeLine(existing: string, index: number, block: string): string {
+  const offset = existing
+    .split('\n')
+    .slice(0, index)
+    .reduce((sum, line) => sum + line.length + 1, 0);
+  return `${existing.slice(0, offset)}${withEol(block, eolOf(existing))}${existing.slice(offset)}`;
 }
 
 function readmeSeed(frameworkLabel: string, projectName: string, testCmd: string): string {
@@ -511,20 +620,20 @@ function readmeMarker(arch: JvmRootArch): string {
 }
 
 /**
- * Appends one entrypoint's README section unless its marker is
- * already there — the idempotence the shared-file upsert needs. The
- * marker is matched in the file's own line endings, so a README
- * checked out as CRLF still has its section and a reapply adds
- * nothing.
+ * Adds one entrypoint's README section at its rank among the others
+ * (`rank.ts`), unless its marker is already there — the idempotence
+ * the shared-file upsert needs. The marker is matched in the file's
+ * own line endings, so a README checked out as CRLF still has its
+ * section and a reapply adds nothing.
  */
-export function appendReadmeSection(
+export function addReadmeSection(
   existing: string,
   section: { arch: JvmRootArch; body: string },
+  tags: readonly Tag[],
 ): string {
   const marker = readmeMarker(section.arch);
-  const eol = eolOf(existing);
-  if (existing.includes(withEol(marker, eol))) return existing;
-  return `${existing.trimEnd()}${withEol(`\n${marker}${section.body}`, eol)}`;
+  if (existing.includes(withEol(marker, eolOf(existing)))) return existing;
+  return placeReadmeSection(existing, `${marker}${section.body}`, tags);
 }
 
 function gradleReadmeSection(inputs: JvmRootInputs): { arch: JvmRootArch; body: string } {

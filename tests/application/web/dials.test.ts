@@ -17,11 +17,11 @@
  * that can move several boxes at once, which is why the walk makes it
  * through `target.js`'s own `toggleExtra` rather than a copy of it.
  * Every dial setting is followed from the blank target until nothing
- * new shows up; the extras are ticked one at a time on each preset's
- * opening dials, and each box a tick moved is unticked again. The
- * full powerset of extras is not covered: the weekly lane that was to
- * post it was planned and not built (`docs/roadmap.md`, "The
- * measure", and its Successors).
+ * new shows up (`support/dial-walk.ts`); the extras are ticked one at
+ * a time on each preset's opening dials, and each box a tick moved is
+ * unticked again. The full powerset of extras, on every dial setting,
+ * is the weekly composition sweep's (`tests/sweep/`, report-only):
+ * too many previews for `verify`.
  *
  * **The oracle is the route itself**: every body reached is posted to
  * `POST /api/preview` and must come back 200. It used to be the
@@ -54,8 +54,9 @@ import {
   toggleExtra,
 } from '../../../assets/web/src/target.js';
 import { catalogQuery, dialsQuery } from '../../../src/domain/contract/queries.js';
-import type { Catalog, DialOptions, VerticalOption } from '../../../src/domain/contract/queries.js';
+import type { Catalog, DialOptions } from '../../../src/domain/contract/queries.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
+import { offeredAsExtra, settledRun, walkDials } from '../../support/dial-walk.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
 const directories: DirectoryReader = {
@@ -102,25 +103,6 @@ async function previewOf(
   return response.status === 200 ? '200' : `${response.status} ${response.body}`;
 }
 
-/** What `<keel-app>` stores between transitions. */
-type Run = ReturnType<typeof settle>;
-
-/** The page's run once `keel.dials` has replied `dials`, as it holds it after `settle`. */
-const settledRun = (dials: DialOptions): Run =>
-  settle(
-    {
-      target: { kind: 'new-project' },
-      answers: {},
-      dials: null,
-      generation: 0,
-      carried: null,
-      notice: '',
-      held: [],
-      identity: [],
-    },
-    dials,
-  );
-
 /** Where the walk got to for one stack. */
 interface Walk {
   /** Every distinct body the page can post that the walk reached. */
@@ -136,10 +118,9 @@ interface Walk {
 /**
  * Every target the page can post for `stack` that the walk reaches:
  * settle the blank one, follow every dial move its controls offer
- * until nothing new shows up — breadth-first, so a stack with four
- * combinations costs four round trips rather than a tree of them —
- * then, on the dials the page opens with, tick each extra it offers
- * and untick each box that tick moved.
+ * until nothing new shows up (`walkDials`, the enumeration the weekly
+ * sweep walks too), then, on the dials the page opens with, tick each
+ * extra it offers and untick each box that tick moved.
  */
 async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
   const bodies = new Map<string, NewProjectTarget>();
@@ -151,33 +132,20 @@ async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
     return true;
   };
 
-  const queue: NewProjectTarget[] = [{ kind: 'new-project', stack }];
-  let opening: DialOptions | null = null;
-  while (queue.length > 0) {
-    const next = queue.shift();
-    if (next === undefined) break;
-    const dials = await dialsFor(mediator, next);
-    opening ??= dials;
-    if (!keep(dials)) continue;
-    const settled = dials.target as NewProjectTarget;
-    for (const build of dials.buildSystems) queue.push({ ...settled, buildSystem: build.id });
-    for (const layout of dials.moduleLayouts) queue.push({ ...settled, moduleLayout: layout.id });
-    for (const service of dials.services) {
-      for (const build of service.buildSystems) {
-        queue.push({ ...settled, buildSystem: `${service.path}=${build.id}` });
-      }
-    }
-    if (dials.peerContext) queue.push({ ...settled, withPeerContext: true });
-    queue.push({ ...settled, withPeerContext: false });
-  }
+  const settings = await walkDials(
+    (target) => dialsFor(mediator, target),
+    [{ kind: 'new-project', stack }],
+  );
+  for (const dials of settings) keep(dials);
+  const opening = settings[0] ?? null;
 
   const gestures = new Map<string, DialOptions>();
   if (opening === null) return { bodies: [...bodies.values()], gestures };
   // The agent harness's chip, pressed off once, on the dials the page
   // opens with: a field no shipped rule couples to another dial, so
-  // one body per preset holds it. Its product with every other is not
-  // covered, as the extras' powerset is not: the weekly lane that was
-  // to post both was planned and not built.
+  // one body per preset holds it. Its product with every other dial
+  // setting, and the extras' full powerset on each, are the weekly
+  // composition sweep's (`tests/sweep/`), which posts them all.
   if (opening.agentHarness) {
     keep(
       await dialsFor(mediator, {
@@ -217,10 +185,6 @@ async function reachable(mediator: Mediator, stack: string): Promise<Walk> {
   return { bodies: [...bodies.values()], gestures };
 }
 
-/** Whether a menu entry is a box the page draws: ready, or ready once others are. */
-const offeredAsExtra = (vertical: VerticalOption): boolean =>
-  vertical.readiness === 'ready' || vertical.readiness === 'needs';
-
 /**
  * The walk for each stack, made once and shared by the cases that
  * read it — it is the expensive part of this file.
@@ -238,7 +202,7 @@ const walk = (mediator: Mediator, stack: string): Promise<Walk> => {
 const sharedMediator = installMediator();
 
 /**
- * About 330 previews behind the walk — every dial setting of every
+ * About 370 previews behind the walk — every dial setting of every
  * preset, every extra ticked on each, and the harness left out once
  * per single preset — at some 10 s uncontended,
  * so the walk gets a budget of its own well above the suite's 30 s

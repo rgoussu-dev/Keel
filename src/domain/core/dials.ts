@@ -54,21 +54,15 @@ import {
   type ModuleLayoutOption,
 } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, legalWith, type ConflictSource } from './compatibility.js';
-import { plan, readiness, seedFor, type Plan, type PlanScope } from './planner.js';
-import { foresee, planRefusal } from './plan-refusal.js';
-import {
-  alreadyIncludedNote,
-  alreadyInServicesNote,
-  elsewhereRefusal,
-  elsewhereService,
-  productRootPlacementRefusal,
-  routedExtraNote,
-} from './refusals.js';
+import { plan, seedFor, type Plan, type PlanScope } from './planner.js';
+import { amongServices, foresee, planRefusal, readinessAmong } from './plan-refusal.js';
+import { alreadyIncludedNote, alreadyInServicesNote, routedExtraNote } from './refusals.js';
 import {
   presetServiceScope,
   presetServiceTags,
   presetServiceVerticals,
   type PresetService,
+  type ProductServiceScope,
 } from './scope.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
@@ -229,14 +223,20 @@ export function verticalOptions(
  * Every registered vertical as an extras control shows it on `scope` —
  * {@link verticalOptions}' reading, over a scope already in hand: a
  * service of a product ({@link presetServiceScope}) as much as a
- * preset.
+ * preset. For a service, `siblings` are the product's other services,
+ * which a refusal names where one could take it
+ * (`./plan-refusal.ts` `foresee`), as `keel new` refuses it there.
  */
-export function scopeOptions(registry: Registry, scope: PlanScope): readonly VerticalOption[] {
+export function scopeOptions(
+  registry: Registry,
+  scope: PlanScope,
+  siblings: readonly ProductServiceScope[] = [],
+): readonly VerticalOption[] {
   const options: VerticalOption[] = [];
   for (const summary of listVerticals(registry)) {
     const vertical = registry.vertical(summary.id);
     if (vertical === null) continue;
-    const { readiness: ready, refusal } = foresee(registry, scope, vertical);
+    const { readiness: ready, refusal } = foresee(registry, scope, vertical, siblings);
     options.push({
       ...summary,
       readiness: ready.kind,
@@ -427,7 +427,9 @@ export interface SnappedExtras {
 /**
  * {@link snapExtras} over a scope already in hand — a service of a
  * product as much as a preset — with `included` the sentence a
- * vertical already on it is dropped in.
+ * vertical already on it is dropped in, and, for a service, `siblings`
+ * the product's other services, which the reason a vertical is dropped
+ * with names as `keel new` does ({@link scopeOptions}).
  */
 export function snapOnto(
   registry: Registry,
@@ -435,6 +437,7 @@ export function snapOnto(
   requested: readonly string[],
   included: (vertical: Vertical) => string,
   agentHarness = true,
+  siblings: readonly ProductServiceScope[] = [],
 ): SnappedExtras {
   const kept: string[] = [];
   const adjustments: DialAdjustment[] = [];
@@ -456,7 +459,7 @@ export function snapOnto(
     const tried = plan(registry, scope, [...kept, vertical.id]);
     if (tried.kind === 'planned') kept.push(vertical.id);
     else if (tried.kind === 'tied' && retry) tied.push(vertical);
-    else drop(vertical.id, refusalOf(registry, scope, vertical, tried));
+    else drop(vertical.id, refusalOf(registry, scope, vertical, tried, siblings));
   };
   for (const vertical of candidates) keep(vertical, true);
   for (const vertical of tied) keep(vertical, false);
@@ -482,14 +485,20 @@ export function snapOnto(
  * plan that refused it — the refusal a front door would give it
  * (`./plan-refusal.ts`), word for word.
  */
-function refusalOf(registry: Registry, scope: PlanScope, vertical: Vertical, tried: Plan): string {
+function refusalOf(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+  tried: Plan,
+  siblings: readonly ProductServiceScope[],
+): string {
   switch (tried.kind) {
     case 'unknown':
       return `no vertical '${tried.vertical}' is registered`;
     case 'planned':
       throw new Error(`refusalOf: '${vertical.id}' planned`);
     default:
-      return planRefusal(registry, [vertical], tried, scope.rules).message;
+      return planRefusal(registry, [vertical], tried, scope.rules, siblings).message;
   }
 }
 
@@ -711,11 +720,14 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
   const services: ServiceDialOptions[] = [];
   const extras: Record<string, ServiceExtras> = {};
   for (const { service, scope } of scopes) {
+    const siblings = siblingScopes(scopes, service.path);
     const snapped = snapOnto(
       registry,
       scope,
       requested.get(service.path) ?? [],
       serviceIncludedNote(stack, service, monorepo),
+      true,
+      siblings,
     );
     adjustments.push(
       ...snapped.adjustments.map((adjustment) => ({ ...adjustment, service: service.path })),
@@ -725,7 +737,7 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
       path: service.path,
       stack: service.stack.id,
       buildSystems: (service.stack.buildSystems ?? []).map(asChoice),
-      verticals: scopeOptions(registry, scope),
+      verticals: scopeOptions(registry, scope, siblings),
     });
   }
   const pairs = [...builds].flatMap(([path, build]) =>
@@ -755,6 +767,27 @@ function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarg
 export interface ServicePlanScope {
   readonly service: PresetService;
   readonly scope: PlanScope;
+}
+
+/**
+ * The services of `scopes` but the one at `path`, as a refusal of a
+ * vertical that one cannot carry names them — the product's other
+ * services, in its order (`UnavailableRefusal.elsewhere`).
+ */
+export function siblingScopes(
+  scopes: readonly ServicePlanScope[],
+  path: string,
+): readonly ProductServiceScope[] {
+  return productServices(scopes.filter(({ service }) => service.path !== path));
+}
+
+/** `scopes`, as the product's services a readiness is read across. */
+function productServices(scopes: readonly ServicePlanScope[]): readonly ProductServiceScope[] {
+  return scopes.map(({ service, scope }) => ({
+    path: service.path,
+    stack: service.stack.id,
+    scope,
+  }));
 }
 
 /**
@@ -809,13 +842,14 @@ export type Routed =
 /**
  * Where `vertical`, named for a composite product without a service,
  * goes: to the one service whose scope admits it — ready, or ready
- * once its prerequisites are in. Where none does but some service has
- * it already, it is there — `included`, set aside with a note, as a
- * vertical a single stack comes with is, so a `--with` list that names
- * it runs on a product as it does on a single preset. Otherwise it
- * goes nowhere, and the refusal is the one `keel add` gives it at the
- * product root: a vertical whose place is a repository root, asked of
- * a monorepo product, cannot go in any of its services
+ * once its prerequisites are in. Otherwise the product's answer is the
+ * one `keel add` gives it at the product root (`./plan-refusal.ts`
+ * `amongServices`, which both read): where none admits it but some
+ * service has it already, it is there — `included`, set aside with a
+ * note, as a vertical a single stack comes with is, so a `--with` list
+ * that names it runs on a product as it does on a single preset; a
+ * vertical whose place is a repository root, asked of a monorepo
+ * product, cannot go in any of its services
  * (`keel.uncoverable-vertical`); any other belongs to a service, and
  * the refusal names each with its readiness there
  * (`keel.wrong-scope`) — so a vertical two services could each take
@@ -827,22 +861,13 @@ export function routeExtra(
   vertical: Vertical,
   monorepo: boolean,
 ): Routed {
-  const read = scopes.map(({ service, scope }) =>
-    elsewhereService(service.path, service.stack.id, readiness(registry, scope, vertical.id)),
-  );
+  const read = readinessAmong(registry, productServices(scopes), vertical.id);
   const admitting = read.filter(
     (service) => service.readiness === 'ready' || service.readiness === 'needs',
   );
   const [only] = admitting;
   if (admitting.length === 1 && only !== undefined) return { kind: 'routed', path: only.path };
-  if (monorepo && vertical.placement?.scope === 'repository') {
-    return { kind: 'refused', refusal: productRootPlacementRefusal(registry, vertical) };
-  }
-  const having = read.filter((service) => service.readiness === 'included');
-  if (admitting.length === 0 && having.length > 0) {
-    return { kind: 'included', paths: having.map((service) => service.path) };
-  }
-  return { kind: 'refused', refusal: elsewhereRefusal(registry, vertical, read) };
+  return amongServices(registry, vertical, read, monorepo);
 }
 
 /**

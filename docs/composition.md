@@ -14,7 +14,10 @@ Flat strings with hierarchical-dot naming — `lang.java`,
 `runtime.graalvm-native`, `arch.hexagonal`. Tags are **facts about the
 project**, captured in the manifest at install time and grown by
 adapters that promote new capabilities (via `tagsAdd` — e.g. every
-image adapter adds `deploy.container-image`).
+image adapter adds `deploy.container-image`). An entrypoint tag
+(`arch.cli`, `arch.server-http`) is identity, which no vertical may
+promote: the one thing that adds one is `keel add entrypoint`
+([Growing an entrypoint](#growing-an-entrypoint)).
 
 ### Adapters
 
@@ -149,7 +152,12 @@ or whose adapters resolve differently on the tags the run left (a
 native-only distribution once a JVM image arrives). Proposed, never
 done — a re-render overwrites what the vertical owns — and
 `keel add … --refresh <ids>` takes it up in the same run, ordered like
-any other vertical of the set.
+any other vertical of the set. Whether a later add with the refresh it
+proposes leaves the tree one run naming both writes, for every pair
+of extras and each extra on its own, on every dial setting, is what
+the weekly composition sweep's `arrival` suite measures
+([development](development.md#the-composition-sweep)); what it found
+when it landed is in the roadmap, under Q3.4.
 
 ### Refusals
 
@@ -157,14 +165,14 @@ Every refusal of a vertical or a file is **data first**: a `Refusal`
 ([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
 `RefusalError` beside its code and the sentence written from it.
 
-| Kind            | Carries                                                                                                          | Raised when                                                                                       |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it, a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
-| `needs`         | the verticals, and each equally small set of prerequisites                                                       | two sets would each do — a tie, which is the user's to settle                                     |
-| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry)     | it is asked of a composite product rather than one of its services                                |
-| `incompatible`  | the verticals                                                                                                    | each installs alone, but no order installs them together                                          |
-| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                            | a file the run would write, or patch inside, is in the way                                        |
-| `path-missing`  | the file, and the adapter that patches it                                                                        | a file the run patches is gone                                                                    |
+| Kind            | Carries                                                                                                                                                                                                                                                                                                      | Raised when                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it and which of those come with it (`comesWith`), in a product's service the other services that can take it or have it (`elsewhere`), the entrypoint a project could grow to have it (`grow`), a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                                                                                                                                                                                                                   | two sets would each do — a tie, which is the user's to settle                                     |
+| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry, or that the root builds it for the service)                                                                                                                                                     | it is asked of a composite product rather than one of its services                                |
+| `incompatible`  | the verticals                                                                                                                                                                                                                                                                                                | each installs alone, but no order installs them together                                          |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                                                                                                                                                                                                                        | a file the run would write, or patch inside, is in the way                                        |
+| `path-missing`  | the file, and the adapter that patches it                                                                                                                                                                                                                                                                    | a file the run patches is gone                                                                    |
 
 One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
 that data as a sentence, and every surface speaks it: the planner's
@@ -180,11 +188,36 @@ refused in the same words under the same code, and the composition
 grid's I5 holds every single-service stack to that. It never says
 `--with` or `keel add`: the remedy one command has is its front end's,
 built from the refusal's fields — the CLI prints it on a `hint:` line
-(_drop it from `--with`, or scaffold go-cli-http, which carries it_;
-_`keel link <path>` first_; _`cd backend && keel add persistence`_;
+(_drop it from `--with`, or scaffold go-cli-http, which carries it_ —
+or _which comes with it_, naming no `--with`, where the refusal's
+`comesWith` says that stack's preset installs it of its own; _or name
+backend/: `--with backend:persistence`_, where a product's other
+service can take it; _`keel link <path>` first_; _`cd backend && keel add persistence`_;
 _move `go.mod` aside_ before `keel new`, never after, where the file
-may be a product root's own), and `keel ui` receives the refusal itself
-in the 422 body, as `error.refusal`.
+may be a product root's own; _`keel add entrypoint http`, then `keel
+add persistence`_ on a project that can grow the entrypoint it lacks),
+and `keel ui` receives the refusal itself in the 422 body, as
+`error.refusal`.
+
+**A refusal carries the action where there is one.** On a project on
+disk, a vertical whose gap is an entrypoint — alone, or with a linked
+project — is read again by the planner over the project as `keel add
+entrypoint` would leave it (`PlanScope.grown`, the scope `growth.ts`'s
+`grownScope` gives the grown project, with what growing installs and
+the tags those promote). Where that admits it, the
+refusal carries the entrypoint as data, `grow: { entrypoint, comes }`:
+the word the command takes, and whether the vertical comes with it
+(`true` for observability, which the preset with both entrypoints
+installs of its own; `false` for persistence or a container image,
+which then install by their own `keel add`, and for the gateway, which
+then needs `keel link` too). The sentence does not change, so the two
+phases still say one thing (I5), and a card and its add carry the same
+action (`add-readiness.ts`' `addScopeOf`, which both read). It is
+offered only where the command would run: never before `keel new`,
+where an entrypoint gap still means choosing another preset; never in
+a monorepo product, on a front end, or on a project growth refuses
+(below); and never where the grown project would still refuse the
+vertical for another reason — a rule, a re-render.
 
 And it **never prints a tag.** A gap is a fact about tags — the unmet
 `requires` of the adapter nearest to matching, as `coverageGap` and the
@@ -212,6 +245,16 @@ add. So the sentence sorts it first, naming the vertical by its title:
 - any other tag is a **capability** some vertical adds, named by that
   vertical — _"Distribution needs what Continuous integration adds,
   which this project does not have yet"_.
+
+Where the project is one service of a product and another of its
+services could take the vertical, or has it, the sentence goes on to
+name it — _"Persistence has no adapter for this project's stack;
+backend/ can take it"_, _"…; backend/ has it already"_ — from the
+refusal's `elsewhere`, the product's other services with their
+readiness. `keel new --with frontend:persistence` fills it from the
+product's preset, and `keel add` in a monorepo service from the root's
+list of services; a polyrepo service, with no root to read, and any
+single project are refused in the sentence they always were.
 
 One gap is not about the project at all but about how an installed
 vertical was rendered: a Distribution that shipped a Quarkus CLI as
@@ -252,7 +295,21 @@ ends on the same way forward: _"Infrastructure as code belongs to a
 service, not to the product root — none of its services can carry it,
 since it needs Distribution, which cannot go in a monorepo service: …
 per-service releases need the polyrepo layout"_ (each such service's
-`repositoryOnly`, in the refusal's data).
+`repositoryOnly`, in the refusal's data). Where no service could take
+it and those that could have it have it already, it is no refusal at
+all: it is there, and the root's add is an Ok that adds nothing —
+_"Code style is already there: backend/ and frontend/ have it"_ — the
+reading `keel new --with` gives it on the product, from one function
+(`plan-refusal.ts`'s `amongServices`) both read, so the two phases
+cannot tell the fact apart. Only a re-render of it at the root is
+refused, saying where each service has it from: its own install,
+re-rendered there — _"… backend/ and frontend/ have it already, and it
+is re-rendered there"_ — or the root, which builds it for the service
+(`fromProduct`, in the refusal's data). Where the root builds it for
+every service that has it, that is no service's and no install of the
+root's, and the sentence says so: _"Container image is not installed
+at the product root, which builds it for backend/ and frontend/:
+nothing to re-render here"_.
 
 A broken rule reads as its reason with its id — _"… (rule
 'walking-skeleton/peer-context-needs-modulith')"_ — so it can be looked
@@ -283,6 +340,128 @@ preset naming a piece this build does not carry is dropped with a
 `PresetProblem` naming it — which is a load-time error for keel's own
 file, and will be the ordinary answer once presets can arrive from a
 plugin.
+
+### Growing an entrypoint
+
+A project with one entrypoint more is the preset carrying both: its
+**twin**, found by placing the grown tags on the stack finder's tree
+(`src/domain/core/growth.ts`, `growthOf`), among the presets `keel new`
+makes on the project's build system, module layout and agent-harness
+setting. `keel add entrypoint <cli|http>` grows a project into its twin
+and must leave exactly the tree `keel new` of the twin leaves — which
+the composition grid's growth axis holds on every single-entrypoint
+backend preset and dial setting, both ways (I10). Growth adds files
+and never removes one, so the run is the difference, read before it
+starts:
+
+- **What newly matches.** The adapters of installed verticals that the
+  grown tags match and the old ones did not — the other entrypoint's
+  bootstrap, with the peer context's wiring adapter where the family
+  splits it (below); on a project that took extras, an extra's adapter
+  may newly match too, as in the twin with that extra (a native
+  Quarkus image with distribution, grown a CLI, newly matches the
+  native CLI's release, which asks its `targets`). The vertical
+  resolves whole, so `after` orders them as on a full install, but
+  only those install (`installVerticals`' `only`): the adapters that
+  matched before are neither applied nor recorded, and the existing
+  entrypoint's files are never read — their harness elements alone are
+  replayed, as no other replay reaches them. A file already where the
+  new entrypoint goes is `keel.path-conflict`, as for any install.
+- **The twin's verticals the project lacks**, closed over their
+  prerequisites by the planner as any `keel add` is, run in the twin's
+  order: the dev environment and observability where HTTP arrives.
+- **The re-render.** A family kit matches on the language alone and
+  reads the entrypoint tags inside `contribute()` — the runbook, the
+  `run` skill, the layer docs — so nothing newly matches there, and
+  `agent-harness` is re-rendered wherever it is installed.
+- **The bounded contexts.** A family whose context adapters are split
+  into a shell — the context's own packages, which no entrypoint
+  shapes — and one wiring adapter per entrypoint (Go's since roadmap
+  R.3a, Rust's since R.3b, TypeScript's since R.3c) wires its contexts
+  into the new assembly by what newly matches. The peer context's
+  wiring adapter is the installed skeleton's, and installs with the
+  bootstrap. A context `keel add module` added matches neither before
+  nor after — its marker, `modules.context`, is set only while that
+  command runs — so each is wired in by a run of keel's
+  `bounded-context` of its own, as that command runs it: the marker
+  and the context's inputs seeded, what it consumes read off its
+  `modules` record, only the adapters that newly match installed, the
+  inputs stripped after (`GrowthPlan.modules`). They run after every
+  vertical the twin lists, where the twin's own history adds them, and
+  in the order the manifest records them: a context's wiring calls the
+  wiring of the one it consumes. On Rust the order is in the bytes
+  too: each wiring prepends its crates to the new assembly's
+  `[dependencies]`, as observability does, so the peer's — wired with
+  the bootstrap, before observability runs — sit below
+  OpenTelemetry's, and each added context's above them, the last added
+  first, as in the twin. On TypeScript it is too: the peer's wiring
+  rewrites the mediator line the new bootstrap rendered, so it must run
+  first — it does, beside the bootstrap — and each added context's
+  appends its handler to that array in recorded order, its import and
+  its entry in the assembly's `package.json` going in above the last
+  one's.
+- **Settling.** The actions that make a scaffold build (the JVM's
+  build wrapper and formatter, `go mod tidy`, `pnpm install`, `cargo
+check`) belong to adapters that matched before, so every other
+  vertical of the twin is replayed for its deferred actions alone
+  (`actionsOnly`), in its place in the run — all but those placed at a
+  repository root, whose `git init` the project has run already.
+- **Recording at rank.** A new `verticals` row goes before the first
+  recorded one the twin lists later, a new answer before the first key
+  of an adapter that runs later in the twin's order, and a new harness
+  entry before the first recorded one the twin realizes later — the
+  harness is realized in the twin's order for that; nothing recorded
+  moves. The manifest is then the twin's, byte for byte, but for its
+  timestamps.
+
+The shared files take each entry at its rank whenever it arrives
+(`src/domain/core/rank.ts`: the README's sections, the build files'
+lists), which is what lets an entrypoint arriving late land where one
+run puts it.
+
+Growth is refused, as data (`GrowthRefusal`) worded in
+`refusals.ts`, where no preset is the grown project
+(`keel.uncoverable-entrypoint`: a front end, a browser SPA, a plugin
+preset off the tree, an adapter that would stop matching), where the
+entrypoint's tag would break a [conflict](#conflicts) a vertical the
+project has declares (`keel.incompatible`, as `keel new` of the twin
+with that vertical is), and where a bounded context other than the
+skeleton's is wired into the existing entrypoints
+(`keel.contexts-need-rewiring`). That last is structural: a family's
+context adapter that picks the assemblies it wires into inside
+`contribute()` matched before, and growing would leave the new
+assembly half-wired, so growth refuses a context while no adapter it
+runs that requires the context's marker also requires the new
+entrypoint's tag — for the peer (`modules.peer-context`), one of an
+installed vertical, which newly matches; for a context `keel add
+module` added (`modules.context`), one of keel's own
+`bounded-context`, the vertical that command runs, which the replay
+runs. A family that splits its context wiring per entrypoint lifts it
+for itself; Go's, Rust's and TypeScript's are split, the JVM
+families' still refused. `tests/domain/core/growth-render.test.ts`
+holds that reading to what the adapters render. One refusal reads the
+files, which `growthOf` does not: a context the manifest records
+consuming none, though it holds the gateway `bounded-context` writes
+for a consumer of a context recorded before it, is
+`keel.contexts-need-rewiring` too, naming both. `consumes` has been
+recorded only since #164, so a context `keel add module --consumes`
+added before reads as standalone, and its replayed wiring would not
+build; the gateway is found where the vertical's own render for that
+consumer puts it, so no family's layout is known to the handler.
+Inside a monorepo product, at its root or in a service, growth is
+refused as `keel.wrong-scope`: the product records each service by its
+preset. A polyrepo service has no product root to record it, and grows
+as a repository of its own.
+
+Every surface reads that one answer. `keel.project-status` reports each
+back entrypoint (`entrypoints`): whether the project has it, and what
+the command would install, or its refusal where it would refuse — the
+scope, then growth's own, then the planner's of what growth installs
+(`handlers/add-entrypoint.ts`' `entrypointReading`), but not the one
+the command reads off the files, above. And a vertical only the
+entrypoint stops is refused carrying the command as its action
+([Refusals](#refusals), above), which the CLI's hint,
+`keel add --list` and `keel ui` offer.
 
 ### Conflicts
 
@@ -339,7 +518,7 @@ renders from that. See [`keel ui`](ui.md#the-dials-are-narrowed-by-the-same-rule
 
 Concretely, the menus that narrow as answers land. The first five are
 the same functions behind both front ends, in `domain/core/dials.ts`;
-the last two are brownfield and live with the project status:
+the last three are brownfield and live with the project status:
 
 | menu                       | filtered by                                                                        |
 | -------------------------- | ---------------------------------------------------------------------------------- |
@@ -349,17 +528,20 @@ the last two are brownfield and live with the project status:
 | extra verticals (`--with`) | the planner's readiness: ready, or needs others first — coverage, rules and order  |
 | the stack drill-down       | presets no setting of their dials can build are absent from all four steps at once |
 | `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal |
+| `keel add entrypoint`      | `entrypoints` — each back entrypoint, offered, or refused with the command's own   |
 | `keel add` cards           | the planner's readiness over the project, its installed verticals and their rules  |
 
 A preset is hidden only when **every** setting of its dials is
 refused. Anything stricter would take away a preset reachable by
 moving a dial.
 
-The last two rows are brownfield rather than menus, and the shape is
+The last three rows are brownfield rather than menus, and the shape is
 the same: `ProjectStatusHandler` answers for a project already on disk
 with the function the command's own front door refuses by, and a form
 reads the answer before the click. `canAddModule` greys the bounded
-context control out, with `moduleRefusal` saying why. Two rules say
+context control out, with `moduleRefusal` saying why; `entrypoints`
+offers each back entrypoint the project lacks, with what adding it
+installs, or greys it out with its refusal. Two rules say
 the same sentence about two doors, because two different pieces own
 them — `walking-skeleton/peer-context-needs-modulith` for the second
 context `keel new --with-peer-context` scaffolds, and
@@ -400,7 +582,9 @@ not, because the thing they turn on is not a tag:
 - `manifest.services` being non-empty is the same fact brownfield, and
   why `keel add module` sends the user into a service directory — and
   `keel add` too, for any vertical the planner reads the root as unable
-  to carry (`keel.wrong-scope`, naming the services that can).
+  to carry (`keel.wrong-scope`, naming the services that can), or
+  answers that it is there already, where the services that could have
+  it have it.
 - `manifest.modules` already holding the name, or holding a
   `--consumes` target with no seam, is manifest **state**: it takes a
   name to check, and a name is not a tag.
@@ -560,6 +744,19 @@ code-style's format step lands in the family kit's hook whichever
 resolved first. Doc sections land after the harness patches, then
 the pointers and the root map rows.
 
+Each realized file's provenance records its hash once that whole pass
+is over — the file as the run leaves it on disk, never as it was
+staged — so the family kit's hook records code-style's format step in
+it. A run that writes into a file an earlier run realized — `keel add
+persistence` putting its section in a directory document the kit
+seeded — records its bytes as shipped on every entry for the file, an
+edit the user had already made in it included, so one run and two
+that reach one project record the same hashes, and keel's own write
+never reads as the user's edit. `keel add module`, which re-indexes
+the root map after that pass, records the documents it rewrites the
+same way. `keel docs sync` writes no manifest: a row it changes reads
+as an edit until a run next writes that document.
+
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
 collecting only their harness declarations. Domain files
@@ -597,7 +794,8 @@ malformed one naming the adapter), renders it with the one shared
 `.claude/skills/<name>/SKILL.md` — plus its `supporting` files beside
 it — as an adapter-owned whole file. Each staged file gets a
 provenance record in the manifest's `entries`: the owning adapter as
-`source`, the target path, and the pristine content hashes.
+`source`, the target path, and the hashes of the file as the run
+leaves it.
 
 Two rules the seam enforces:
 
@@ -937,9 +1135,12 @@ deliberately **not a tag**: no adapter behaves differently by topology
 exists) belongs to the orchestrator, and where a vertical may go is its
 own declared placement (above): under monorepo, `vcs` runs once at the
 product root because it declares the repository root as its place.
-`keel new` in a directory inside a product that lists no service there
-is refused (`keel.inside-product`): adding a service to a product is
-not supported yet.
+`keel new` in a directory of a monorepo product that holds no project
+of its own is refused before anything is asked: where the product root
+lists no service, at any depth, as `keel.inside-product` — adding a
+service to a product is not supported yet — and inside one of its
+services as `keel.inside-project`, naming the service
+([`keel new`](cli.md#keel-new) → A directory inside a keel project).
 
 A service's extras (`--with backend:persistence`) are planned on one
 scope before anything is written (`scope.ts`'s `presetServiceScope`):

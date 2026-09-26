@@ -94,9 +94,15 @@ the repository), while `keel add ci`, `distribution` and `iac` are
 refused as the wrong scope — per-service pipelines, releases and IaC
 need `--layout polyrepo`, where each service is a repository of its
 own. `keel new --with backend:ci` reads the same placement and is
-refused the same way, before anything is written. `keel new` in a
-directory of the product that is not one of its services is refused
-(`keel.inside-product`).
+refused the same way, before anything is written. At the product root,
+what the services have and none could take again — the image, the
+harness, code style — adds nothing either, each note naming the
+services; what one of them could take is refused there, naming it. `keel new` in a
+directory of the product that holds no project of its own is refused:
+as `keel.inside-product` where the root lists no service, at any depth,
+and as `keel.inside-project` inside a service
+([`keel new`](../cli.md#keel-new)); in a service that holds its project
+it is `keel.already-initialised`.
 
 ## Brownfield: wire two existing projects instead
 

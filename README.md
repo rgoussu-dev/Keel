@@ -295,16 +295,17 @@ sits beside every step, so flipping Gradle to Maven, or `basic` to
 `modulith`, redraws it before anything is written. On a stack you have
 not used before, that tree is the documentation.
 
-It also reads what your project already is — one page for both
-phases, the directory deciding the flow. Point it at a directory
-holding a keel manifest and the preset steps collapse into one
-read-only step saying what the project is, while Options shows the same
-**Also scaffold** group a new project gets: what is installed ticked
-and locked, a **Re-render** beside each; every vertical not installed,
-ready, ready once something else is, or not for this project and why,
-before anything is clicked; several ticked into one `keel add`; and
-"add a bounded context" disabled, with the reason, wherever
-`keel add module` would refuse it.
+It also reads what your project already is — one page for both phases,
+the directory deciding the flow. Point it at a directory holding a keel
+manifest and the preset steps collapse into one step saying what the
+project is — read-only, but for the entrypoint it can grow — while
+Options shows the same **Also scaffold** group a new project gets: what
+is installed ticked and locked, a **Re-render** beside each; every
+vertical not installed, ready, ready once something else is, after the
+entrypoint the project can grow, or not for this project and why, before
+anything is clicked; several ticked into one `keel add`; and "add a
+bounded context" and "add an entrypoint" disabled, with the reason,
+wherever `keel add module` or `keel add entrypoint` would refuse them.
 
 The URL carries a per-run token, and the server binds loopback only
 and checks `Host` and `Origin` — a local port is reachable by every
@@ -331,6 +332,8 @@ keel add persistence --refresh distribution  # …or beside what changes it (DB_
 keel add module ordering                     # a second bounded context, by name
 keel add module shipping --consumes ordering # …and the gateway to its seam
 
+keel add entrypoint http      # a CLI project grows an HTTP server: the tree keel new of the CLI + REST preset writes
+
 cd my-frontend && keel link ../my-backend   # then `keel add gateway` on both sides
 
 keel docs check               # is the agents' navigation index still true? (exit 1 if not)
@@ -346,6 +349,25 @@ the driven port and the gateway over that context's seam, and is
 opt-in because a context that consumes nothing is a perfectly good
 context. Needs `--module-layout=modulith`; the flat layout has no seam
 for a second context to meet the first at, and keel says so.
+
+An **entrypoint** is part of what a project is, so it too has a
+command of its own. `keel add entrypoint http` on a CLI project, or
+`keel add entrypoint cli` on an HTTP one, leaves byte for byte the tree
+`keel new` of the preset carrying both writes on the same dials, but
+for the manifest's timestamps — the new entrypoint's bootstrap, the
+dev environment and observability that come with HTTP, the agent
+harness re-rendered for both — and writes nothing of the entrypoint
+already there (on the JVM, the queued formatter still formats the
+whole project). A Go, Rust or TypeScript modulith's peer context and
+added modules are wired into the new entrypoint too, as the preset
+carrying both has them after the same `keel add module` history; on
+the JVM families a modulith whose contexts are wired into its
+entrypoints is refused for now. A vertical only the missing entrypoint
+stops says so and names the command:
+`keel add observability` on a CLI project is refused with the hint
+`'keel add entrypoint http' brings observability with it`, and
+`keel ui` offers **Add HTTP server** where it lists it.
+→ [`keel add entrypoint`](docs/cli.md#keel-add-entrypoint)
 
 Every one of those commands re-projects the agents' **navigation
 index** — the map and skills rows in the root `AGENTS.md` — in its own

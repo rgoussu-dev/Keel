@@ -22,8 +22,16 @@ import { PEER_CONTEXT_NEEDS_MODULITH } from '../adapters/module-layout.js';
 import { goBootstrapAdapter } from '../adapters/go-bootstrap.js';
 import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
-import { goPeerContextAdapter } from '../adapters/go-peer-context.js';
-import { tsPeerContextAdapter } from '../adapters/ts-peer-context.js';
+import {
+  goPeerContextAdapter,
+  goPeerContextCliAdapter,
+  goPeerContextHttpAdapter,
+} from '../adapters/go-peer-context.js';
+import {
+  tsPeerContextAdapter,
+  tsPeerContextCliAdapter,
+  tsPeerContextHttpAdapter,
+} from '../adapters/ts-peer-context.js';
 import { wcPeerContextAdapter } from '../adapters/wc-peer-context.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
@@ -59,7 +67,11 @@ import {
   springPeerContextAdapter,
   springPeerContextKotlinAdapter,
 } from '../adapters/spring-peer-context.js';
-import { rustPeerContextAdapter } from '../adapters/rust-peer-context.js';
+import {
+  rustPeerContextAdapter,
+  rustPeerContextCliAdapter,
+  rustPeerContextHttpAdapter,
+} from '../adapters/rust-peer-context.js';
 import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
 import { springCliKotlinBootstrapAdapter } from '../adapters/spring-cli-kotlin-bootstrap.js';
 import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
@@ -98,6 +110,8 @@ export const walkingSkeletonVertical: Vertical = {
     springPeerContextKotlinAdapter,
     micronautPeerContextAdapter,
     rustPeerContextAdapter,
+    rustPeerContextCliAdapter,
+    rustPeerContextHttpAdapter,
     micronautPeerContextKotlinAdapter,
     gradleWrapperAdapter,
     mavenWrapperAdapter,
@@ -105,7 +119,11 @@ export const walkingSkeletonVertical: Vertical = {
     goCliBootstrapAdapter,
     goHttpBootstrapAdapter,
     goPeerContextAdapter,
+    goPeerContextCliAdapter,
+    goPeerContextHttpAdapter,
     tsPeerContextAdapter,
+    tsPeerContextCliAdapter,
+    tsPeerContextHttpAdapter,
     wcPeerContextAdapter,
     goPortFakeAdapter,
     rustBootstrapAdapter,

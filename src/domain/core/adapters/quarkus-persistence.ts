@@ -221,7 +221,7 @@ function makeQuarkusPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
               ).trim()}\n`;
             }),
           },
-          persistenceReadmePatch(layout, engine),
+          persistenceReadmePatch(layout, engine, ctx.manifest.tags),
         ],
         tagsAdd: [engine.tag],
       };

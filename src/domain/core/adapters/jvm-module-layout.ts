@@ -149,9 +149,9 @@ export interface JvmAssemblyPaths {
 }
 
 /**
- * Which assemblies this project has, from the stack's arch tags — the
- * JVM sibling of `tsAssemblies` and of Go's and Rust's
- * `assembliesOf`.
+ * Which assemblies this project has, from the stack's arch tags —
+ * where Go's, Rust's and TypeScript's context adapters pick theirs by
+ * predicate, one wiring adapter per entrypoint (roadmap R.3).
  *
  * The adapters that wire a bounded context into "the assembly"
  * (`jvm-peer-context`, `jvm-context`) iterate over this rather than

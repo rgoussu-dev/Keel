@@ -107,6 +107,14 @@ than a paraphrase. Each cell also asserts the root build file registers
 every module exactly once — the shared-root upsert's whole reason to
 exist, and the one failure a scaffold-and-read test cannot see.
 
+**A grown project is its twin's cell, and gets no suite.** `keel add
+entrypoint` grows a CLI or HTTP project into its combo stack, and the
+composition grid's growth axis (I10) holds the grown tree, manifest and
+queued actions to `keel new` of the combo on the same dials, byte for
+byte. So a combo cell's suite covers the cells that grow into it, and
+a combo with no suite leaves its grown cells as uncovered as its own.
+Adding one is a combo cell like any other, not a growth suite.
+
 ## The add-module grid — a job per cell, on the JVM only
 
 **On the JVM, `add-module-*` _is_ a grid — the same 24 cells, and one
@@ -138,6 +146,18 @@ four families stay one file per family
 `modulith-baseline`), riding their family's existing shard, because a
 Rust or Go context has no container to lose a handler in.
 
+`add-module-ts` builds on npm alone, and npm's hoisting hides what
+pnpm's store refuses (above): a context `keel add module --consumes`
+adds does not declare the context it consumes in its `package.json`,
+so on pnpm its gateway's import of `@<scope>/<consumed>/service` is a
+`TS2307`, and `pnpm run typecheck` fails in that context and in each
+assembly wiring it — while its tests pass, vitest resolving what tsc
+does not. Roadmap R.3c found it growing a pnpm modulith, whose twin
+fails alike, as does a `ts-http` modulith given the same `keel add
+module` with no growth at all. A pnpm cell for it, and the fix, are
+the roadmap Backlog's _A TypeScript context declares the context it
+consumes_.
+
 ## The suites that are not cells
 
 - **`dev-compose` is the only shard that runs an emitted
@@ -160,30 +180,43 @@ Rust or Go context has no container to lose a handler in.
   four files because they differ by what is on disk when the page
   opens, or by what they drive once it has:
   `ui-stack-finder` (an empty directory; the greenfield stepper),
-  `ui-plugin-stack` (a keel plugin on disk; a stack keel never
-  shipped), `ui-refusal` (a scaffolded project; what it cannot carry,
-  shown before the click, a refusal only the click meets, shown in the
-  plan column, and the re-render state) and `ui-compose` (an empty
-  directory, two scaffolded projects and a TypeScript product; the
-  Options step's "Also scaffold" group on both flows — a product's,
-  one per service; a keel project's, opened on with what it has
-  ticked and locked and its read-only Project step — a preset move
-  keeping the dials, the extras and a package, boxes ticked into one
-  run, the bodies the page posts for them — `watchTraffic` keeps what
-  went out — and a product root's **Open backend/** button into a
-  service). What they cover is the seam nothing else can: the
-  narrowing, the steps, the transitions and the groups are pure and
-  unit-tested (`finder.js`, `steps.js`, `target.js`, `extras.js`,
-  `additions.js`), but the element rebuilds its subtree on every
-  change and `<keel-app>` replaces the element itself, so keeping a
-  choice — or the focus — across a step is a claim about surviving a
-  DOM replacement. A page-level suite is
-  the only thing that sees a `pageerror` too — a throw inside a
-  listener leaves the page looking right and aborts the rest of that
-  handler. **None of them presses Generate on a JVM stack**: the `web`
-  shard provisions no JDK, and a real Quarkus install queues
-  `gradle wrapper`. The one Generate is `ui-compose`'s, on a `ts-http`
-  project seeded in-process, adding what queues no action there.
+  `ui-plugin-stack` (a keel plugin on disk; a stack keel never shipped),
+  `ui-refusal` (a scaffolded project; what it cannot carry, shown before
+  the click, the action such a refusal carries — the entrypoint the
+  project can grow, previewed and reviewed — a refusal only the click
+  meets, shown in the plan column, and the re-render state) and
+  `ui-compose` (an empty directory, two scaffolded projects and a
+  TypeScript product; the Options step's "Also scaffold" group on both
+  flows — a product's, one per service; a keel project's, opened on with
+  what it has ticked and locked and its Project step, which offers the
+  entrypoint it lacks — a preset move keeping the dials, the extras and
+  a package, boxes ticked into one run, the bodies the page posts for
+  them — `watchTraffic` keeps what went out — and a product root's
+  **Open backend/** button into a service). What they cover is the seam
+  nothing else can: the narrowing, the steps, the transitions and the
+  groups are pure and unit-tested (`finder.js`, `steps.js`, `target.js`,
+  `extras.js`, `additions.js`), but the element rebuilds its subtree on
+  every change and `<keel-app>` replaces the element itself, so keeping
+  a choice — or the focus — across a step is a claim about surviving a
+  DOM replacement. A page-level suite is the only thing that sees a
+  `pageerror` too — a throw inside a listener leaves the page looking
+  right and aborts the rest of that handler. **None of them presses
+  Generate on a JVM stack**: the `web` shard provisions no JDK, and a
+  real Quarkus install queues `gradle wrapper`. The one Generate is
+  `ui-compose`'s, on a `ts-http` project seeded in-process, adding what
+  queues no action there.
+- **Persistence is built on three families, and the other three compile
+  nowhere.** `modulith-persistence` and `-mariadb` (Quarkus),
+  `modulith-go-persistence` and `-liquibase`, and
+  `modulith-rust-persistence` build the slice for real — `dev-compose`
+  scaffolds it on Quarkus but builds nothing, booting the compose
+  database alone; no suite builds it on Spring, Micronaut or the
+  TypeScript stacks. Roadmap Q3.5 built Micronaut's by hand and found its
+  `MicronautTxUnitOfWorkTest` (Java and Kotlin) no longer compiling
+  against the Micronaut Data the platform resolves, on the default dials
+  too — green in CI, because nothing compiled it. A persistence suite
+  for each of those families is a step of its own, as Quarkus, Go and
+  Rust each have theirs.
 
 ## Cost — what is measured, and what inverted the guess
 

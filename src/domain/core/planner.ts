@@ -50,7 +50,11 @@
  * vertical would render — distribution read whether persistence was
  * there — without re-rendering it. {@link refreshProposals} names
  * those after a `keel add`, for the user to take up; the planner never
- * re-renders anything on its own.
+ * re-renders anything on its own. Where what stops a vertical on a
+ * project is an entrypoint the project could grow
+ * ({@link PlanScope.grown}), it reads the vertical again over the grown
+ * project, and the gap names that entrypoint as the way in
+ * ({@link ReadinessGap.grow}) — an action, never a vertical it plans.
  *
  * Pure: a registry and a scope in, data out. Nothing here refuses in
  * words — a refusal is a {@link Plan} kind or a {@link ReadinessGap},
@@ -61,6 +65,7 @@ import type { RefreshProposal } from '../contract/commands.js';
 import type { Adapter, Conflict, Tag, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { Readiness, ReadinessGap, RefreshGap } from '../contract/queries.js';
+import type { GrowAction } from '../contract/refusal.js';
 import { assemblyRefusal, conflictsOf, violatedBy, wouldViolate } from './compatibility.js';
 import { matches, matchesPattern } from './predicate.js';
 import { IDENTITY_NAMESPACES } from './refusals.js';
@@ -121,6 +126,29 @@ export interface PlanScope {
    * preset's verticals render in that very run.
    */
   readonly refreshable?: readonly string[];
+  /**
+   * The back entrypoints the project lacks that `keel add entrypoint`
+   * would add here, each with the scope the grown project plans on
+   * (`./growth.ts` `grownScope`). Where what stops a vertical is one of
+   * them, alone or with a linked project, its gap reads the vertical
+   * again over that scope and says whether adding the entrypoint lets
+   * it install ({@link ReadinessGap.grow}). Filled for a project on
+   * disk that growth takes (`./add-readiness.ts` `addScopeOf`); absent
+   * before `keel new` writes anything, where an entrypoint gap still
+   * means choosing another preset.
+   */
+  readonly grown?: readonly GrownScope[];
+}
+
+/** One entrypoint a project could grow, and the project as growing it would leave it. */
+export interface GrownScope {
+  /** The entrypoint's tag (`arch.server-http`). */
+  readonly entrypoint: Tag;
+  /**
+   * The grown project's scope: its tags with the entrypoint's, and what
+   * `keel add entrypoint` installs among what it has.
+   */
+  readonly scope: PlanScope;
 }
 
 /** One vertical of a planned order, and why it is in it. */
@@ -344,8 +372,12 @@ export function reachableAdapters(
   );
 }
 
-/** The ids of `vertical`'s adapters whose predicate `tags` matches, in declaration order. */
-function matchingIds(vertical: Vertical, tags: ReadonlySet<Tag>): readonly string[] {
+/**
+ * The ids of `vertical`'s adapters whose predicate `tags` matches, in
+ * declaration order — read before and after a change of tags, by
+ * {@link refreshProposals} and by growth (`./growth.ts`).
+ */
+export function matchingIds(vertical: Vertical, tags: ReadonlySet<Tag>): readonly string[] {
   return vertical.adapters
     .filter((adapter) => matches(adapter.predicate, tags))
     .map((adapter) => adapter.id);
@@ -359,8 +391,20 @@ function matchingIds(vertical: Vertical, tags: ReadonlySet<Tag>): readonly strin
  * an adapter that never runs on this stack adds nothing.
  */
 export function seedFor(stack: Stack, tags: readonly Tag[]): readonly Tag[] {
+  return tagsAfter(stack.verticals, tags);
+}
+
+/**
+ * The tags `tags` carries once `verticals` install onto it in the
+ * order given: each one's matching adapters' promotes folded in as it
+ * arrives, as a planned order folds them — so a vertical sees what the
+ * ones before it added, and an adapter that does not match adds
+ * nothing. Read by {@link seedFor}, and by growth for the project it
+ * leaves (`./growth.ts` `grownScope`).
+ */
+export function tagsAfter(verticals: readonly Vertical[], tags: readonly Tag[]): readonly Tag[] {
   const running = new Set(tags);
-  for (const vertical of stack.verticals) {
+  for (const vertical of verticals) {
     for (const tag of promotionsOn(vertical, running)) running.add(tag);
   }
   return [...running];
@@ -640,7 +684,8 @@ function stepsOf(
  * nearest adapter, each traced back — a capability some vertical
  * could add is replaced by what that vertical's nearest adapter lacks
  * here, to the same depth the planner searches — and sorted into what
- * would change the answer, with the nearest stacks that carry it; and
+ * would change the answer, with the nearest stacks that carry it and
+ * which of those come with it; and
  * the rules it breaks — its own, against the scope's tags, and the
  * scope's, against what it would add. `alongside` is the request it
  * was asked in (itself included), which a re-render would plan with.
@@ -687,7 +732,11 @@ function gapOf(
     }
   };
   explain(unmetOf(vertical, tags, acquirable), 0, new Set());
-  return {
+  const nearest = nearestStacks(registry, scope, vertical);
+  const comesWith = nearest.filter((id) =>
+    (registry.stack(id)?.verticals ?? []).some((own) => own.id === vertical.id),
+  );
+  const gap: ReadinessGap = {
     entrypoint: [...entrypoint].sort(),
     peer: [...peer].sort(),
     identity: [...identity].sort(),
@@ -699,8 +748,55 @@ function gapOf(
         ].map((conflict) => conflict.id),
       ),
     ],
-    nearestStacks: nearestStacks(registry, scope, vertical),
+    nearestStacks: nearest,
+    ...(comesWith.length > 0 ? { comesWith } : {}),
   };
+  const grow = growOf(registry, scope, vertical, gap);
+  return grow === null ? gap : { ...gap, grow };
+}
+
+/**
+ * The entrypoint whose addition lets `vertical` install — see
+ * {@link ReadinessGap.grow} — or null where none the scope could grow
+ * ({@link PlanScope.grown}) does. Asked only of a `gap` that is
+ * entrypoints, or entrypoints and a linked project: nothing else about
+ * the project changes when it grows, so no other gap closes. Read again
+ * over the grown scope, the vertical comes with the entrypoint where it
+ * is there (`included`); installs by its own add once the entrypoint is
+ * there where it is `ready` or `needs`; and after `keel link` too where
+ * all it still lacks is the linked project the gap named already. Any
+ * other answer there — a rule, a re-render — is no action to offer.
+ */
+function growOf(
+  registry: Registry,
+  scope: PlanScope,
+  vertical: Vertical,
+  gap: ReadinessGap,
+): GrowAction | null {
+  if (gap.entrypoint.length === 0 || gap.identity.length > 0 || gap.rules.length > 0) return null;
+  for (const grown of scope.grown ?? []) {
+    const entry = ENTRYPOINTS.find((candidate) => candidate.tag === grown.entrypoint);
+    if (entry === undefined || !gap.entrypoint.includes(grown.entrypoint)) continue;
+    const after = readiness(registry, grown.scope, vertical.id);
+    if (after.kind === 'included') return { entrypoint: entry.word, comes: true };
+    if (after.kind === 'ready' || after.kind === 'needs') {
+      return { entrypoint: entry.word, comes: false };
+    }
+    if (gap.peer.length > 0 && linkOnly(after.gap)) return { entrypoint: entry.word, comes: false };
+  }
+  return null;
+}
+
+/** Whether all a gap names is a linked project: `keel link` alone would close it. */
+function linkOnly(gap: ReadinessGap): boolean {
+  return (
+    gap.peer.length > 0 &&
+    gap.entrypoint.length === 0 &&
+    gap.identity.length === 0 &&
+    gap.rules.length === 0 &&
+    gap.refresh === undefined &&
+    gap.repositoryOnly === undefined
+  );
 }
 
 /**

@@ -2,7 +2,7 @@
  * The composition grid: every cell of keel's composition surface,
  * dispatched through the real mediator, and the ratchet that holds
  * epic Q's invariants over them (`docs/roadmap.md` → "The measure:
- * the composition grid").
+ * the composition grid"), and epic R's I10 ("The measure", under R).
  *
  * **Scenario.** Cells are derived, never listed: stacks and verticals
  * from `keel.catalog`, the extras menu from `keel.dials`, the
@@ -21,7 +21,9 @@
  * **Factory.** {@link installMediator} over the real templates and
  * filesystem, with a {@link FakeProcessRunner} and a deferred-action
  * runner that runs nothing: a scaffold is every staged file, with no
- * `git init`, no `gradle wrapper` and no network.
+ * `git init`, no `gradle wrapper` and no network. What a real run
+ * queued is kept, per directory, for an axis to compare
+ * ({@link Grid.queued}).
  *
  * **Port.** `Mediator.dispatch`, and nothing else. The oracle is
  * always the engine's own answer — a preview, or an install — never a
@@ -43,27 +45,30 @@
  *     rejects that. A {@link HARD} invariant has no entry at all.
  *
  * One file per axis rather than one for the grid, because vitest runs
- * the three suites in parallel workers and each rewrites its own files
+ * the axes' suites in parallel workers and each rewrites its own files
  * under `KEEL_UPDATE_GOLDEN=1` — a shared file would be a race.
  */
 
 import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import fs from 'fs-extra';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { Action, ResultOf } from '../../src/domain/kernel/action.js';
 import type { Mediator } from '../../src/domain/kernel/mediator.js';
-import type { Adapter, Vertical } from '../../src/domain/contract/composition.js';
+import type { Adapter, DeferredAction, Vertical } from '../../src/domain/contract/composition.js';
 import {
   installCommandFor,
   type InstallTarget,
   type NewProjectTarget,
   type PresetAnswers,
+  type RepoLayout,
 } from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
 import type { Tree, TreeChange } from '../../src/domain/contract/ports/tree.js';
 import { SETTINGS_TARGET } from '../../src/domain/contract/hook.js';
+import { RefusalError, type Refusal } from '../../src/domain/contract/refusal.js';
 import {
   dialsQuery,
   previewQuery,
@@ -84,12 +89,13 @@ export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
   I2: 'every extra keel.dials offers, posted with its prerequisites, previews Ok',
   I3: 'every extras set the CLI accepts is reachable from the menu',
-  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code and sentence',
+  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code, sentence and data, provided ⇔ Ok staging nothing with its note; and at a monorepo product root, what keel.dials shows as coming with the product ⇔ an add that stages and runs nothing',
   I5: 'keel new --with v and keel add v on the same stack reach the same outcome, code and sentence',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
   I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
   I9: 'the same body previews and installs (dry run) alike: the same bytes, or the same refusal — the one the preview reports an unread answer with',
+  I10: 'keel new X, and on a modulith keel new X with a keel add module history, then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) that keel new of the twin, given the same history, leaves on the same dials — or is refused as growth reads it',
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -107,9 +113,10 @@ export type Invariant = keyof typeof INVARIANTS;
  * no tag; I4 with Q1.10, when a monorepo service came to read what its
  * product gives it and what its repository root keeps from it — and
  * I7 landed hard, with the same step; I9 landed hard with Q2.1, when
- * the preview came to read the answers it is sent as the install does.
+ * the preview came to read the answers it is sent as the install does;
+ * I10 landed hard with R.2b, with the command it holds to its twins.
  */
-export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'I9'];
+export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'I9', 'I10'];
 
 /**
  * The codes a refusal about a file in the way carries — the one kind
@@ -179,13 +186,15 @@ export interface Outcome<T> {
   readonly value: T | null;
   /** The refusal's or the throw's message; null when Ok. */
   readonly message: string | null;
+  /** A refusal's structured half, where it has one (`RefusalError.refusal`). */
+  readonly refusal?: Refusal;
 }
 
 /**
  * The prefix of a {@link Outcome.verdict} that fell off the `Err`
  * rail — an I1 violation wherever it appears.
  */
-const THROWN = 'thrown:';
+export const THROWN = 'thrown:';
 
 /** An identity tag, which no command can add to a project. */
 const IDENTITY_TAG = /\b(?:lang|framework|runtime|pkg|layout|arch)\.[a-z0-9*]/;
@@ -221,11 +230,13 @@ export class Grid {
   private readonly found = new Map<Invariant, Set<string>>();
   private readonly scratches: string[] = [];
   /**
-   * Roots whose Trees {@link staged} is reading, and the Trees opened
-   * there or under it — a product's services open theirs one level
-   * down — each with the directory it is rooted at.
+   * Roots whose Trees {@link staged} or {@link stages} is reading, and
+   * the Trees opened there or under it — a product's services open
+   * theirs one level down — each with the directory it is rooted at.
    */
   private readonly watched = new Map<string, { readonly at: string; readonly tree: Tree }[]>();
+  /** What the last real run in each directory queued, in order. */
+  private readonly deferred = new Map<string, readonly DeferredAction[]>();
 
   /**
    * @param holds the invariants this axis measures — recording any
@@ -240,7 +251,9 @@ export class Grid {
     this.mediator = installMediator({
       registry,
       processes: new FakeProcessRunner(),
-      runDeferred: async () => {},
+      runDeferred: async ({ actions, cwd }) => {
+        this.deferred.set(cwd, actions);
+      },
       trees: (root) => {
         const tree = fsTreeFactory(root);
         for (const [watched, trees] of this.watched) {
@@ -308,12 +321,37 @@ export class Grid {
     if (this.outcomes.has(id)) {
       throw new Error(`staged: cell '${id}' was swept already, so what it staged is gone`);
     }
+    return (await this.watching(root, () => this.cell(id, action))).staged;
+  }
+
+  /**
+   * Dispatches `action` as {@link twin} does, recording nothing, and
+   * reads back what it staged under `root` as {@link staged} does —
+   * null when it did not come back Ok. For a sweep too large to keep
+   * every outcome (the weekly lane, `tests/sweep/`), which compares
+   * what two dispatches staged and keeps only the difference. `root`
+   * must be a directory no other dispatch stages into meanwhile.
+   */
+  async stages<A extends Action>(
+    action: A,
+    root: string,
+  ): Promise<{
+    readonly outcome: Outcome<ResultOf<A>>;
+    readonly staged: readonly string[] | null;
+  }> {
+    return this.watching(root, () => this.twin(action));
+  }
+
+  private async watching<T>(
+    root: string,
+    dispatch: () => Promise<Outcome<T>>,
+  ): Promise<{ readonly outcome: Outcome<T>; readonly staged: readonly string[] | null }> {
     const trees: { readonly at: string; readonly tree: Tree }[] = [];
     this.watched.set(root, trees);
     try {
-      const outcome = await this.cell(id, action);
-      if (outcome.verdict !== OK) return null;
-      return trees
+      const outcome = await dispatch();
+      if (outcome.verdict !== OK) return { outcome, staged: null };
+      const staged = trees
         .flatMap(({ at, tree }) =>
           tree.changes().map((change) => {
             const bytes = tree.read(change.path);
@@ -323,9 +361,18 @@ export class Grid {
           }),
         )
         .sort();
+      return { outcome, staged };
     } finally {
       this.watched.delete(root);
     }
+  }
+
+  /**
+   * The deferred actions the last real run in `cwd` queued — none of
+   * which ran — in the order it queued them; empty where none has run.
+   */
+  queued(cwd: string): readonly DeferredAction[] {
+    return this.deferred.get(cwd) ?? [];
   }
 
   /** Records that `cell` breaks `invariant`. */
@@ -395,21 +442,42 @@ export async function settle(
 }
 
 /**
+ * The repository layouts a product's install offers: the choices of
+ * the question its preview binds to the layout, asked because the
+ * target leaves it unset — so a third layout joins every sweep the day
+ * the install asks about it. Empty for a single-service preset, which
+ * asks none.
+ */
+export async function layoutsOf(grid: Grid, stack: string): Promise<readonly RepoLayout[]> {
+  const preview = await grid.read(
+    previewQuery({
+      cwd: await grid.scratch(),
+      target: { kind: 'new-project', stack },
+      answers: {},
+    }),
+  );
+  const question = preview.questions.find((q) => q.binding.kind === 'layout');
+  return (question?.choices ?? []).map((choice) => choice.value as RepoLayout);
+}
+
+/**
  * Holds a project's cards to the add each stands for (I4), in the
  * directory `status` was read from: every vertical of `verticals` is
- * installed there, given by the product it is part of, or a card, and
- * a card agrees with the preview of `keel add <id>` — `outcome`, the
- * cell already swept for it.
+ * installed there, provided — given by the product it is part of, or
+ * at a monorepo product root in its services — or a card, and a card
+ * agrees with the preview of `keel add <id>` — `outcome`, the cell
+ * already swept for it.
  *
- * - a vertical the product gives (`provided`) previews Ok, stages
- *   nothing and runs nothing, and says the card's note;
+ * - a vertical in `provided` previews Ok, stages nothing and runs
+ *   nothing, and says its note;
  * - `ready` previews Ok;
  * - `needs` previews Ok, and stages exactly what naming its
  *   prerequisites with it stages ({@link Grid.twin}, which records
  *   nothing): the closure the card shows is the one the add installs;
  * - a card carrying a refusal previews as that refusal, under the same
- *   code, in the same sentence — whatever its readiness says, since a
- *   tied `needs` is refused too.
+ *   code, in the same sentence, with the same data — the action it
+ *   names, where it names one (`grow`), included — whatever its
+ *   readiness says, since a tied `needs` is refused too.
  *
  * An `unavailable` card with no refusal to show is a violation of its
  * own. Records the cell `cell` under I4 when the card, or its absence,
@@ -452,7 +520,11 @@ async function agrees(
   outcome: Outcome<InstallPreview>,
 ): Promise<boolean> {
   if (card.refusal !== undefined) {
-    return outcome.verdict === card.refusal.code && outcome.message === card.refusal.message;
+    return (
+      outcome.verdict === card.refusal.code &&
+      outcome.message === card.refusal.message &&
+      isDeepStrictEqual(outcome.refusal, card.refusal.refusal)
+    );
   }
   if (outcome.verdict !== OK) return false;
   switch (card.readiness) {
@@ -569,6 +641,17 @@ function sampleOf(question: PendingQuestion): readonly [string, string] | null {
     return [first, values.find((value) => value !== first) ?? first];
   }
   if (question.shared === undefined) return null;
+  return identitySamples(question);
+}
+
+/**
+ * The two values {@link IDENTITY_SAMPLES} keeps for an identity
+ * question (`Question.shared`), for any sweep that answers one — the
+ * grid's I9 bodies, and the weekly lane's every choice of every
+ * question. A shared question with no entry fails the sweep, naming
+ * itself.
+ */
+export function identitySamples(question: PendingQuestion): readonly [string, string] {
   const sample = IDENTITY_SAMPLES[question.id];
   if (sample === undefined) {
     throw new Error(
@@ -592,8 +675,9 @@ function adaptersById(registry: Registry): ReadonlyMap<string, Adapter> {
 /**
  * Holds one body to I9, as the cells `cell` (its preview) and
  * `cell!install` (a dry-run install of it, non-interactive as `keel ui`
- * installs): each stages into a directory of its own, and they agree
- * when
+ * installs): each stages into a directory of its own — or both into
+ * `cwd`, the project a target that adds to one runs in, which neither
+ * writes — and they agree when
  *
  * - the preview refuses, and the install refuses under the same code in
  *   the same sentence;
@@ -607,9 +691,10 @@ export async function holdParity(
   cell: string,
   target: InstallTarget,
   answers: PresetAnswers,
+  cwd?: string,
 ): Promise<void> {
-  const previewAt = await grid.scratch();
-  const installAt = await grid.scratch();
+  const previewAt = cwd ?? (await grid.scratch());
+  const installAt = cwd ?? (await grid.scratch());
   const previewing = previewQuery({ cwd: previewAt, target, answers });
   const installing = installCommandFor(target, {
     cwd: installAt,
@@ -774,9 +859,11 @@ async function attempt<A extends Action>(
 ): Promise<Outcome<ResultOf<A>>> {
   try {
     const result = await mediator.dispatch(action);
-    return result.ok
-      ? { verdict: OK, value: result.value, message: null }
-      : { verdict: result.error.code, value: null, message: result.error.message };
+    if (result.ok) return { verdict: OK, value: result.value, message: null };
+    const { code, message } = result.error;
+    return result.error instanceof RefusalError
+      ? { verdict: code, value: null, message, refusal: result.error.refusal }
+      : { verdict: code, value: null, message };
   } catch (thrown) {
     const error = thrown instanceof Error ? thrown : new Error(String(thrown));
     return { verdict: `${THROWN}${error.name}`, value: null, message: error.message };

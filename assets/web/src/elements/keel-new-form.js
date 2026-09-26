@@ -76,6 +76,7 @@ import {
 } from '../dom.js';
 import { extrasGroup, serviceExtrasGroup } from '../extras.js';
 import { ENTRYPOINTS, FRAMEWORK, LANGUAGE, OPTIONS, SHAPE } from '../steps.js';
+import { serviceBuild, withServiceBuild } from '../target.js';
 
 export class KeelNewForm extends HTMLElement {
   #catalog = null;
@@ -608,27 +609,3 @@ function field({ id, label, doc, value, choices, onChange }) {
 const asChoice = (option) => ({ value: option.id, label: option.label });
 
 const docOf = (options, id) => options.find((option) => option.id === id)?.doc ?? '';
-
-/**
- * A composite `buildSystem` travels as `path=id` pairs, since the
- * choice is per service. These two keep the page honest about that
- * rather than inventing a parallel shape the API would have to learn.
- */
-function serviceBuild(raw, path) {
-  if (!raw) return undefined;
-  for (const entry of raw.split(',')) {
-    const [name, id] = entry.split('=');
-    if (name?.trim() === path) return id?.trim();
-  }
-  return undefined;
-}
-
-function withServiceBuild(raw, path, id) {
-  const pairs = new Map();
-  for (const entry of (raw ?? '').split(',')) {
-    const [name, value] = entry.split('=');
-    if (name?.trim() && value?.trim()) pairs.set(name.trim(), value.trim());
-  }
-  pairs.set(path, id);
-  return [...pairs].map(([name, value]) => `${name}=${value}`).join(',');
-}

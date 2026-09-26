@@ -1,5 +1,5 @@
 /**
- * `bounded-context/go-context` adapter — the context
+ * `bounded-context/go-context` and its wiring adapters — the context
  * `keel add module <name>` emits under the Go modulith, and the
  * gateway `--consumes <other>` adds to it.
  *
@@ -22,10 +22,21 @@
  * **Two things Go does that no other family does.** Binding is by
  * directory: a file in a `cmd/` directory joins that package by
  * existing, so unlike Rust's `mod` and the JVM's component scan there
- * is no declaration to patch and this adapter emits **no patch at
+ * is no declaration to patch and these adapters emit **no patch at
  * all**. And the wiring filename is the context's — `cmd/<unit>/
  * <name>.go` — which is what stops two added contexts colliding on the
  * fixed `guestbook.go` the peer adapter writes.
+ *
+ * **A shell, and one wiring adapter per entrypoint.** The shell writes
+ * the context's own packages and its gateway, which no entrypoint
+ * shapes; `go-context-cli` and `go-context-http` each write one
+ * assembly's wiring file and its test, and require that entrypoint's
+ * tag. A project carrying both matches both. What each writes is the
+ * same file in another directory, so which assemblies a context is
+ * wired into is read off the predicates, never off the tags inside
+ * `contribute()` — and `keel add entrypoint` wires every context into
+ * the new assembly by installing the one wiring adapter that newly
+ * matches (roadmap R.3a).
  *
  * **No driving adapter.** `guestbook` ships `userside/signing` because
  * the emitted main drives it and a main cannot name
@@ -35,9 +46,9 @@
  * nameable from the assembly and what a peer will want.
  */
 
-import type { Adapter } from '../../contract/composition.js';
-import { addedContext, CONTEXT_TAG } from './added-context.js';
-import { GO_BOOTSTRAP_ID, goBootstrapAnswers } from './go-bootstrap.js';
+import type { Adapter, ManifestV2, Tag } from '../../contract/composition.js';
+import { addedContext, CONTEXT_TAG, type AddedContext } from './added-context.js';
+import { goBootstrapAnswers } from './go-bootstrap.js';
 import { GO_CLI_BOOTSTRAP_ID } from './go-cli-bootstrap.js';
 import { GO_HTTP_BOOTSTRAP_ID } from './go-http-bootstrap.js';
 import {
@@ -50,9 +61,14 @@ import {
 import { MODULITH_LAYOUT_TAG, SKELETON_MODULE } from './module-layout.js';
 
 export const GO_CONTEXT_ID = 'bounded-context/go-context';
+/** The adapter wiring an added context into the CLI's assembly. */
+export const GO_CONTEXT_CLI_ID = 'bounded-context/go-context-cli';
+/** The adapter wiring an added context into the HTTP server's assembly. */
+export const GO_CONTEXT_HTTP_ID = 'bounded-context/go-context-http';
 
 const TEMPLATE_ROOT = 'composition/bounded-context/go-context/templates';
 
+/** The shell: the context's own packages, and its gateway under `--consumes`. */
 export const goContextAdapter: Adapter = {
   id: GO_CONTEXT_ID,
   vertical: 'bounded-context',
@@ -60,50 +76,9 @@ export const goContextAdapter: Adapter = {
   predicate: {
     requires: ['lang.go', MODULITH_LAYOUT_TAG, CONTEXT_TAG],
   },
-  after: [GO_BOOTSTRAP_ID, GO_CLI_BOOTSTRAP_ID, GO_HTTP_BOOTSTRAP_ID],
   async contribute(ctx) {
-    const added = addedContext(ctx.manifest, GO_CONTEXT_ID);
-    const { modulePath } = goBootstrapAnswers(ctx.manifest, GO_CONTEXT_ID);
-    const layout = goLayout(ctx.manifest.tags, modulePath);
+    const { added, vars } = contextOf(ctx.manifest, GO_CONTEXT_ID);
     const pkg = goContextPackages(added.name, added.consumes);
-    const seamAlias = aliasOf(added.name);
-    const consumedSeam = added.consumes === null ? null : goSeamPackage(layout, added.consumes);
-    const consumedAlias = added.consumes === null ? '' : aliasOf(added.consumes);
-
-    /** An import block with every seam path aliased by its context. */
-    const imports = (dirs: readonly string[]): string =>
-      layout
-        .importBlock(dirs)
-        .split('\n')
-        .map((line) => alias(line, pkg.seam, seamAlias, layout))
-        .map((line) =>
-          consumedSeam === null ? line : alias(line, consumedSeam, consumedAlias, layout),
-        )
-        .join('\n');
-
-    const vars: Record<string, string> = {
-      module: added.name,
-      Module: pascal(added.name),
-      consumes: added.consumes ?? '',
-      Consumes: added.consumes === null ? '' : pascal(added.consumes),
-      hasConsumes: added.consumes === null ? '' : '1',
-      seamAlias,
-      consumesSeamAlias: consumedAlias,
-      consumedSeamExpr: consumedSeamExpr(added.consumes, consumedAlias),
-      facadeImports: imports([pkg.domain]),
-      domainImports: imports([pkg.domainCore]),
-      domainTestImports: imports([pkg.domain]),
-      seamImports: imports([pkg.domain]),
-      // The seam's own test builds it over a fake driving port, so it
-      // names the domain rather than the facade — legal because
-      // `internal/` is scoped to this context's root, not to `domain`.
-      seamTestImports: imports([pkg.domain, pkg.seam]),
-      gatewayImports: consumedSeam === null ? '' : imports([consumedSeam]),
-      gatewayTestImports:
-        consumedSeam === null || pkg.gateway === null ? '' : imports([consumedSeam, pkg.gateway]),
-      wiringImports: imports(wiringDirs(pkg, consumedSeam, added.consumes)),
-    };
-
     const rendered = await Promise.all([
       ctx.templates.render(`${TEMPLATE_ROOT}/context`, 'internal/modules', vars),
       ...(pkg.gateway === null
@@ -115,14 +90,112 @@ export const goContextAdapter: Adapter = {
               vars,
             ),
           ]),
-      ...assembliesOf(ctx.manifest.tags).map((typology) =>
-        ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dirOf(layout.main(typology)), vars),
-      ),
     ]);
-
     return { files: rendered.flat() };
   },
 };
+
+/** Wires the context into the CLI's assembly, `cmd/cli`. */
+export const goContextCliAdapter: Adapter = wiringAdapter(
+  GO_CONTEXT_CLI_ID,
+  'cli',
+  'arch.cli',
+  GO_CLI_BOOTSTRAP_ID,
+);
+
+/** Wires the context into the HTTP server's assembly, `cmd/http`. */
+export const goContextHttpAdapter: Adapter = wiringAdapter(
+  GO_CONTEXT_HTTP_ID,
+  'http',
+  'arch.server-http',
+  GO_HTTP_BOOTSTRAP_ID,
+);
+
+/**
+ * The adapter that wires the context into the assembly of the
+ * deployment unit `unit` — `cmd/<unit>/<name>.go` and its test — on a
+ * project carrying `entrypoint`, after the shell and that entrypoint's
+ * bootstrap.
+ */
+function wiringAdapter(id: string, unit: string, entrypoint: Tag, bootstrap: string): Adapter {
+  return {
+    id,
+    vertical: 'bounded-context',
+    covers: [],
+    predicate: {
+      requires: ['lang.go', MODULITH_LAYOUT_TAG, CONTEXT_TAG, entrypoint],
+    },
+    after: [GO_CONTEXT_ID, bootstrap],
+    async contribute(ctx) {
+      const { layout, vars } = contextOf(ctx.manifest, id);
+      return {
+        files: await ctx.templates.render(
+          `${TEMPLATE_ROOT}/wiring`,
+          dirOf(layout.main(unit)),
+          vars,
+        ),
+      };
+    },
+  };
+}
+
+/**
+ * The context an add-module run emits, and what its templates read: the
+ * layout, and every import block with each seam path aliased by its
+ * context — the same values for the shell and for each assembly's
+ * wiring.
+ */
+function contextOf(
+  manifest: ManifestV2,
+  requesterId: string,
+): {
+  readonly added: AddedContext;
+  readonly layout: GoLayoutPaths;
+  readonly vars: Record<string, string>;
+} {
+  const added = addedContext(manifest, requesterId);
+  const { modulePath } = goBootstrapAnswers(manifest, requesterId);
+  const layout = goLayout(manifest.tags, modulePath);
+  const pkg = goContextPackages(added.name, added.consumes);
+  const seamAlias = aliasOf(added.name);
+  const consumedSeam = added.consumes === null ? null : goSeamPackage(layout, added.consumes);
+  const consumedAlias = added.consumes === null ? '' : aliasOf(added.consumes);
+
+  /** An import block with every seam path aliased by its context. */
+  const imports = (dirs: readonly string[]): string =>
+    layout
+      .importBlock(dirs)
+      .split('\n')
+      .map((line) => alias(line, pkg.seam, seamAlias, layout))
+      .map((line) =>
+        consumedSeam === null ? line : alias(line, consumedSeam, consumedAlias, layout),
+      )
+      .join('\n');
+
+  const vars: Record<string, string> = {
+    module: added.name,
+    Module: pascal(added.name),
+    consumes: added.consumes ?? '',
+    Consumes: added.consumes === null ? '' : pascal(added.consumes),
+    hasConsumes: added.consumes === null ? '' : '1',
+    seamAlias,
+    consumesSeamAlias: consumedAlias,
+    consumedSeamExpr: consumedSeamExpr(added.consumes, consumedAlias),
+    facadeImports: imports([pkg.domain]),
+    domainImports: imports([pkg.domainCore]),
+    domainTestImports: imports([pkg.domain]),
+    seamImports: imports([pkg.domain]),
+    // The seam's own test builds it over a fake driving port, so it
+    // names the domain rather than the facade — legal because
+    // `internal/` is scoped to this context's root, not to `domain`.
+    seamTestImports: imports([pkg.domain, pkg.seam]),
+    gatewayImports: consumedSeam === null ? '' : imports([consumedSeam]),
+    gatewayTestImports:
+      consumedSeam === null || pkg.gateway === null ? '' : imports([consumedSeam, pkg.gateway]),
+    wiringImports: imports(wiringDirs(pkg, consumedSeam, added.consumes)),
+  };
+  return { added, layout, vars };
+}
 
 /**
  * How the wiring gets hold of the consumed context's seam.
@@ -183,14 +256,6 @@ function aliasOf(context: string): string {
 /** The context name as a Go exported-identifier prefix. */
 function pascal(name: string): string {
   return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-}
-
-/** Which assemblies this project has, from the stack's arch tags. */
-function assembliesOf(tags: readonly string[]): readonly string[] {
-  const typologies: string[] = [];
-  if (tags.includes('arch.cli')) typologies.push('cli');
-  if (tags.includes('arch.server-http')) typologies.push('http');
-  return typologies;
 }
 
 /** The directory holding a `cmd/<typology>/main.go`. */

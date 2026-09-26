@@ -469,9 +469,9 @@ export function addWorkspaceMembers(existing: string, dirs: readonly string[]): 
  * any key already declared, and returns the manifest unchanged when
  * every key is already there.
  *
- * The skip is the whole point, and it is what
- * `rust-peer-context`'s own version does not need. That adapter runs
- * at most once per project, so an all-or-nothing marker guard is
+ * The skip is the whole point, and it is what the peer's wiring
+ * adapters' own version (`rust-peer-context.ts`) does not need. Each
+ * runs at most once per project, so an all-or-nothing marker guard is
  * enough. `keel add module` runs as many times as the user has
  * contexts, and every run wants `platform-kernel` in the assembly:
  * appending it a second time is a duplicate key, which Cargo rejects

@@ -5,17 +5,20 @@
  *
  * **Scenario.** Manifests held at chosen directories: a monorepo
  * product root listing `backend` and `frontend`, a service manifest
- * under one of them, and — for a plugin product — a service two
- * directories down. The root's installed verticals are the shipped
- * product's (`vcs`, `fullstack`), so what the root gives a service is
- * read from keel's own declarations: `vcs`'s placement, and the
- * product glue's `providesInServices`.
+ * under one of them, for a plugin product a service two directories
+ * down, a single project several directories above the one asked
+ * about, and one in a home directory a walk up ends at. The root's
+ * installed verticals are the shipped product's (`vcs`, `fullstack`),
+ * so what the root gives a service is read from keel's own
+ * declarations: `vcs`'s placement, and the product glue's
+ * `providesInServices`.
  *
  * **Factory.** The shipped `FakeManifestStore`, and — for a manifest
  * that cannot be read — a store of the same port that throws for one
  * directory, the way the filesystem adapter throws on a broken file.
  *
- * **Port.** `scopeOf`, `enclosingProduct`, `planScopeOf`,
+ * **Port.** `scopeOf`, `enclosingProduct`, `projectAbove`,
+ * `nearbyProjects`, `productAround`, `planScopeOf`, `siblingsOf`,
  * `provisionsFor` — and, before `keel new` has written a manifest,
  * `presetServiceScope` over the shipped `fullstack` preset's services.
  */
@@ -33,11 +36,15 @@ import type { Stack } from '../../../src/domain/contract/stack.js';
 import { registryOf, shippedRegistry, shippedSource } from '../../../src/domain/core/registry.js';
 import {
   enclosingProduct,
+  nearbyProjects,
   planScopeOf,
   presetServiceScope,
   presetServiceTags,
+  productAround,
+  projectAbove,
   provisionsFor,
   scopeOf,
+  siblingsOf,
   type PresetService,
 } from '../../../src/domain/core/scope.js';
 import { STACKS } from '../../../src/domain/core/stacks.js';
@@ -106,14 +113,31 @@ describe('scopeOf', () => {
       { ref: SERVICES[0], directory: at('backend'), manifest: backend },
       { ref: SERVICES[1], directory: at('frontend'), manifest: null },
     ]);
+    expect(where.siblings).toEqual([]);
   });
 
-  it('finds the product a listed service belongs to', async () => {
+  it('finds the product a listed service belongs to, and its other services', async () => {
     const manifests = await storeWith({ [ROOT]: productRoot(), [at('backend')]: backend });
-    const where = await scopeOf({ registry: shippedRegistry, manifests }, at('backend'));
+    const deps = { registry: shippedRegistry, manifests };
+    const where = await scopeOf(deps, at('backend'));
     expect(where.manifest).toEqual(backend);
     expect(where.services).toEqual([]);
     expect(where.product).toMatchObject({ root: ROOT, relative: 'backend', service: SERVICES[0] });
+    // Read once, from the root's list: the front end holds no manifest
+    // here, so a plan there reads its preset.
+    expect(where.siblings).toEqual([
+      { ref: SERVICES[1], directory: at('frontend'), manifest: null },
+    ]);
+    const [frontend] = siblingsOf(shippedRegistry, where);
+    expect(frontend).toMatchObject({ path: 'frontend', stack: 'web-components' });
+    expect(frontend?.scope?.member).toBeDefined();
+    // From the front end, the backend, read from its own manifest.
+    const other = await scopeOf(deps, at('frontend'));
+    expect(other.siblings).toEqual([
+      { ref: SERVICES[0], directory: at('backend'), manifest: backend },
+    ]);
+    // A directory the product lists no service in has none.
+    expect((await scopeOf(deps, at('worker'))).siblings).toEqual([]);
   });
 
   it('finds the product around a directory it lists no service in, as no service', async () => {
@@ -179,6 +203,140 @@ describe('scopeOf', () => {
     expect(await enclosingProduct({ registry: shippedRegistry, manifests }, at('backend'))).toBe(
       null,
     );
+  });
+});
+
+describe('projectAbove', () => {
+  it('walks up from the parent to the filesystem root by default, and no further than told', async () => {
+    const manifests = await storeWith({ [ROOT]: backend });
+    const deep = at('a', 'b', 'c', 'd');
+    expect(await projectAbove({ manifests }, deep)).toEqual({ root: ROOT, manifest: backend });
+    expect(await projectAbove({ manifests }, deep, { levels: 3 })).toBeNull();
+    expect(await projectAbove({ manifests }, deep, { levels: 4 })).toMatchObject({ root: ROOT });
+    // A directory's own manifest is not above it, and with none higher
+    // up the walk ends at the root.
+    expect(await projectAbove({ manifests }, ROOT)).toBeNull();
+  });
+
+  it('passes over a manifest above it that cannot be read, for the next one up', async () => {
+    const store = await storeWith({ [ROOT]: productRoot(), [at('backend')]: backend });
+    expect(
+      await projectAbove({ manifests: unreadableAt(store, at('backend')) }, at('backend', 'tools')),
+    ).toEqual({ root: ROOT, manifest: productRoot() });
+  });
+
+  it('stops at a manifest it cannot read when told to, as a project it cannot read', async () => {
+    const store = await storeWith({ [ROOT]: productRoot(), [at('backend')]: backend });
+    const above = await projectAbove(
+      { manifests: unreadableAt(store, at('backend')) },
+      at('backend', 'tools'),
+      { unreadable: 'stop' },
+    );
+    expect(above).toEqual({ root: at('backend'), manifest: null });
+  });
+
+  it('ends at the home directory without reading it, or anything above it', async () => {
+    // A 0.1.0-alpha global install's manifest, or a project above home.
+    const manifests = await storeWith({ [ROOT]: backend, [at('home')]: backend });
+    expect(
+      await projectAbove({ manifests, home: at('home') }, at('home', 'code', 'app')),
+    ).toBeNull();
+    expect(await projectAbove({ manifests, home: at('home') }, at('elsewhere', 'app'))).toEqual({
+      root: ROOT,
+      manifest: backend,
+    });
+  });
+});
+
+describe('nearbyProjects', () => {
+  const frontend = manifest({ tags: ['lang.typescript'], verticals: installed('agent-harness') });
+
+  it("names a product root's services from as deep as it is asked, each with its manifest", async () => {
+    const manifests = await storeWith({
+      [ROOT]: productRoot(),
+      [at('backend')]: backend,
+      [at('frontend')]: frontend,
+    });
+    const nearby = await nearbyProjects(
+      { registry: shippedRegistry, manifests },
+      at('docs', 'notes'),
+    );
+    expect(nearby).toMatchObject({
+      above: '../..',
+      services: ['../../backend', '../../frontend'],
+      below: [],
+    });
+    expect([...nearby.manifests]).toEqual([
+      ['../..', productRoot()],
+      ['../../backend', backend],
+      ['../../frontend', frontend],
+    ]);
+  });
+
+  it('names no listed service that holds no project, such as the one it is run in', async () => {
+    const manifests = await storeWith({ [ROOT]: productRoot(), [at('backend')]: backend });
+    const deps = { registry: shippedRegistry, manifests };
+    const nearby = await nearbyProjects(deps, at('frontend'));
+    expect(nearby).toMatchObject({ above: '..', services: ['../backend'] });
+    expect(nearby.manifests.has('../frontend')).toBe(false);
+    // Where no listed service holds one, the root alone is named.
+    const bare = await nearbyProjects(
+      { registry: shippedRegistry, manifests: await storeWith({ [ROOT]: productRoot() }) },
+      at('frontend'),
+    );
+    expect(bare).not.toHaveProperty('services');
+    expect([...bare.manifests.keys()]).toEqual(['..']);
+  });
+
+  it("names a polyrepo product's services below, and a single project above alone", async () => {
+    const polyrepo = await nearbyProjects(
+      {
+        registry: shippedRegistry,
+        manifests: await storeWith({ [at('backend')]: backend, [at('frontend')]: frontend }),
+      },
+      ROOT,
+    );
+    expect(polyrepo).toMatchObject({ above: null, below: ['backend', 'frontend'] });
+    expect(polyrepo).not.toHaveProperty('services');
+    expect([...polyrepo.manifests]).toEqual([
+      ['backend', backend],
+      ['frontend', frontend],
+    ]);
+    const single = await nearbyProjects(
+      { registry: shippedRegistry, manifests: await storeWith({ [ROOT]: backend }) },
+      at('src', 'main'),
+    );
+    expect(single).toMatchObject({ above: '../..', below: [] });
+    expect(single).not.toHaveProperty('services');
+    expect([...single.manifests]).toEqual([['../..', backend]]);
+  });
+
+  it('stops at a manifest above it that cannot be read, as a project it cannot read', async () => {
+    const store = await storeWith({ [ROOT]: productRoot() });
+    const nearby = await nearbyProjects(
+      { registry: shippedRegistry, manifests: unreadableAt(store, ROOT) },
+      at('notes'),
+    );
+    expect(nearby).toMatchObject({ above: '..', below: [] });
+    expect([...nearby.manifests]).toEqual([['..', null]]);
+  });
+});
+
+describe('productAround', () => {
+  it('makes a directory part of a product root at any depth, and of no other project', () => {
+    const product = { root: ROOT, manifest: productRoot() };
+    expect(productAround(product, at('backend'))).toMatchObject({
+      relative: 'backend',
+      service: SERVICES[0],
+    });
+    expect(productAround(product, at('docs', 'notes'))).toMatchObject({
+      root: ROOT,
+      relative: 'docs/notes',
+      service: null,
+    });
+    expect(productAround({ root: ROOT, manifest: backend }, at('tools'))).toBeNull();
+    // Nor of one it cannot read, which cannot say it is a product root.
+    expect(productAround({ root: ROOT, manifest: null }, at('backend'))).toBeNull();
   });
 });
 

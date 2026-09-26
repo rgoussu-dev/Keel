@@ -43,8 +43,8 @@ export function projectScopeRoot(cwd: string): string {
 
 /**
  * Manifest v2 — the keel state file. Adds capability-tag composition
- * to the file-tracking entries from v1 (which remain for drift
- * detection on `keel doctor`).
+ * to the file-tracking entries from v1 (which remain as the provenance
+ * a later drift reader is to compare against; nothing reads them yet).
  */
 export interface ManifestV2 {
   readonly version: 2;
@@ -57,7 +57,7 @@ export interface ManifestV2 {
   readonly versions: Readonly<Record<string, string>>;
   /** Sticky question answers: adapterId → questionId → value. */
   readonly answers: Readonly<Record<string, Readonly<Record<string, string>>>>;
-  /** File-tracking entries carried over from v1, used for drift detection. */
+  /** File-tracking entries carried over from v1: what keel wrote, for a later drift reader. */
   readonly entries: readonly ManifestEntry[];
   /**
    * Peer tags this project projects onto sibling services of the same
@@ -163,9 +163,13 @@ export interface InstalledVertical {
 }
 
 /**
- * File-tracking entry — unchanged from v1. `sha256Shipped` is the
- * hash at install time; `sha256Current` is the hash at last manifest
- * write. Divergence indicates a user edit.
+ * File-tracking entry — unchanged from v1. `sha256Shipped` and
+ * `sha256Current` both hash the file as the last keel run that wrote
+ * it left it — every contributor's write in, on every entry of the
+ * file, and an edit the user had already made in it too — and
+ * `installedAt` is when the entry was first recorded. A file whose
+ * bytes differ from them was changed since: by the user, or by `keel
+ * docs sync`, which writes no manifest.
  */
 export interface ManifestEntry {
   /**

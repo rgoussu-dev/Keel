@@ -15,7 +15,9 @@ export interface InstallReport {
   readonly skippedHarnessElements?: number;
   /**
    * What was installed: the stack id for `new`; for `add`, the vertical
-   * ids named, space-separated in the order they were named.
+   * ids named, space-separated in the order they were named; for `add
+   * module`, the context's name; for `add entrypoint`, `entrypoint`
+   * and the entrypoint's word — `entrypoint http`.
    */
   readonly subject: string;
   /** Every file the install staged, in deterministic path order. */
@@ -330,6 +332,40 @@ export function addModuleCommand(
   return { kind: 'keel.add-module', intent: 'command', ...input };
 }
 
+/**
+ * Add an **entrypoint** — a CLI, or an HTTP server — to an initialised
+ * project that has the other one.
+ *
+ * A sibling of {@link AddVerticalCommand} rather than a case of it,
+ * because what it changes is the project's identity: an entrypoint is
+ * a tag no vertical may promote, and a project with one more is the
+ * preset carrying both — its twin, which `keel new` of that preset on
+ * the same dials writes byte for byte. So the command folds the tag in
+ * itself, installs what newly matches and the twin's verticals the
+ * project lacks, and re-renders the agent harness; it never rewrites
+ * the existing entrypoint's files.
+ */
+export interface AddEntrypointCommand extends Command<InstallReport> {
+  readonly kind: 'keel.add-entrypoint';
+  readonly cwd: string;
+  /**
+   * The entrypoint as typed: its word (`cli`, `http`), or its id
+   * (`server-http`, as the stack finder prints it). Resolved by the
+   * handler, not here.
+   */
+  readonly entrypoint: string;
+  readonly answers: PresetAnswers;
+  readonly interactive: boolean;
+  readonly dryRun: boolean;
+}
+
+/** Constructs an {@link AddEntrypointCommand}. */
+export function addEntrypointCommand(
+  input: Omit<AddEntrypointCommand, 'kind' | 'intent'>,
+): AddEntrypointCommand {
+  return { kind: 'keel.add-entrypoint', intent: 'command', ...input };
+}
+
 /* ------------------------------------------------------------------ *
  * Navigation index                                                    *
  * ------------------------------------------------------------------ */
@@ -443,14 +479,15 @@ export function addVerticalCommand(
 
 /**
  * **What to install**, named independently of which command carries
- * it — a greenfield stack, a vertical layered onto a project, or a
- * bounded context added to a modulith.
+ * it — a greenfield stack, a vertical layered onto a project, a
+ * bounded context added to a modulith, or an entrypoint added to a
+ * project.
  *
- * The three install-shaped commands above are the operations; this is
+ * The four install-shaped commands above are the operations; this is
  * the *subject* of one, lifted out so a caller can hold "what the
  * user picked" before deciding what to do with it. Two callers need
  * exactly that. `keel.preview` (see `./queries.ts`) runs any of the
- * three as a dry run and reports what would happen, and a front end
+ * four as a dry run and reports what would happen, and a front end
  * that previews before it commits sends one target to both endpoints.
  * Without this type each of them would rebuild the same command from
  * the same fields, and the two copies would drift the first time a
@@ -460,7 +497,11 @@ export function addVerticalCommand(
  * its own typed option bag, and mapping that to a target only to map
  * the target back to a command would be a round trip for nothing.
  */
-export type InstallTarget = NewProjectTarget | AddVerticalTarget | AddModuleTarget;
+export type InstallTarget =
+  | NewProjectTarget
+  | AddVerticalTarget
+  | AddModuleTarget
+  | AddEntrypointTarget;
 
 /** Bootstrap a greenfield project — the subject of {@link NewProjectCommand}. */
 export interface NewProjectTarget {
@@ -498,6 +539,13 @@ export interface AddModuleTarget {
   readonly consumes?: string;
 }
 
+/** Add an entrypoint — the subject of {@link AddEntrypointCommand}. */
+export interface AddEntrypointTarget {
+  readonly kind: 'add-entrypoint';
+  /** See {@link AddEntrypointCommand.entrypoint}. */
+  readonly entrypoint: string;
+}
+
 /** How an {@link InstallTarget} is to be run. */
 export interface InstallRun {
   readonly cwd: string;
@@ -507,7 +555,11 @@ export interface InstallRun {
 }
 
 /** Every command an {@link InstallTarget} can become. */
-export type InstallCommand = NewProjectCommand | AddVerticalCommand | AddModuleCommand;
+export type InstallCommand =
+  | NewProjectCommand
+  | AddVerticalCommand
+  | AddModuleCommand
+  | AddEntrypointCommand;
 
 /**
  * Builds the command that installs `target` under `run`. The one
@@ -557,6 +609,14 @@ export function installCommandFor(target: InstallTarget, run: InstallRun): Insta
         interactive: run.interactive,
         dryRun: run.dryRun,
         ...(target.consumes === undefined ? {} : { consumes: target.consumes }),
+      });
+    case 'add-entrypoint':
+      return addEntrypointCommand({
+        cwd: run.cwd,
+        entrypoint: target.entrypoint,
+        answers: run.answers,
+        interactive: run.interactive,
+        dryRun: run.dryRun,
       });
   }
 }

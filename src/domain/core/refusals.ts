@@ -68,6 +68,7 @@ import type { Readiness, ReadinessGap } from '../contract/queries.js';
 import {
   pathSentence,
   RefusalError,
+  type ElsewhereRefusal,
   type ElsewhereService,
   type Refusal,
   type UnavailableRefusal,
@@ -178,7 +179,7 @@ export function refusalSentence(refusal: Refusal, names: RefusalNames): string {
     case 'unavailable':
       return unavailableSentence(refusal, names);
     case 'elsewhere':
-      return `${titleOf(names, refusal.vertical)} belongs to a service, not to the product root — ${whereItGoes(refusal.vertical, refusal.services, names)}`;
+      return elsewhereSentence(refusal, names);
     case 'incompatible':
       return `${listed(refusal.verticals.map((id) => titleOf(names, id)))} cannot be installed together here — each installs on its own, but no order installs them all; drop one`;
     case 'path-conflict':
@@ -229,12 +230,26 @@ export function moduleRulesRefusal(vertical: Vertical, broken: readonly Conflict
  * id — one of the vertical's own, or one of `rules`, those the pieces
  * already on the project declare (`PlanScope.rules`), which its tags
  * would break; any other gap as {@link UNCOVERED_CODE}.
+ *
+ * `elsewhere` is, where the project is one service of a product, the
+ * product's other services with how ready the vertical is in each
+ * ({@link elsewhereService}): where one could take it or has it, the
+ * refusal carries them and its sentence names it — but for a gap that
+ * is where the service stands in the repository, or a re-render, which
+ * say what to do here. Where none could, the refusal is the one a
+ * single project gets, word for word.
+ *
+ * Where the gap names the entrypoint a project could grow as the way in
+ * (`ReadinessGap.grow`), the refusal carries it as data for a front end
+ * to offer, and the sentence does not change: a command in it would
+ * tell `keel new --with` of a preset to run `keel add` (grid I5).
  */
 export function unavailableRefusal(
   names: RefusalNames,
   vertical: Vertical,
   gap: ReadinessGap,
   rules: readonly Conflict[] = [],
+  elsewhere: readonly ElsewhereService[] = [],
 ): RefusalError {
   const placed = gap.repositoryOnly ?? [];
   if (placed.length > 0) {
@@ -271,9 +286,12 @@ export function unavailableRefusal(
     vertical: vertical.id,
     missing: missingOf(gap.entrypoint, gap.peer, gap.identity),
     carriedBy: gap.nearestStacks,
+    ...(gap.comesWith === undefined ? {} : { comesWith: gap.comesWith }),
+    ...(elsewhere.some((service) => service.readiness !== 'unavailable') ? { elsewhere } : {}),
     ...(broken.length > 0
       ? { because: rulesSentence(broken), rules: broken.map((conflict) => conflict.id) }
       : {}),
+    ...(gap.grow === undefined ? {} : { grow: gap.grow }),
   };
   return refusalError(refusal, broken.length > 0 ? INCOMPATIBLE_CODE : UNCOVERED_CODE, names);
 }
@@ -389,6 +407,14 @@ export function incompatibleRefusal(
  * carries almost none, so its nearest adapter is whichever family
  * happens to sit closest to an empty set, and its gap is advice for a
  * different product. Under {@link WRONG_SCOPE_CODE}, in both phases.
+ *
+ * A vertical the services that could have it all have already is not
+ * refused at all — it is there ({@link inServicesNote}) — but for a
+ * re-render of it at the root: that refusal names the services having
+ * it, and where each has it from — its own install, re-rendered there,
+ * or the product root, which builds it for them; where the root builds
+ * it for each that has it, it is said as the root's, which has no
+ * install of it to re-render.
  */
 export function elsewhereRefusal(
   names: RefusalNames,
@@ -407,14 +433,22 @@ export function elsewhereRefusal(
  * ready the vertical is there — with, where what stops it is the
  * service being part of a monorepo, the verticals whose place is the
  * repository root, which is what the sentence's way forward is read
- * from.
+ * from; and, where the service has it because the product root gives
+ * it (`fromProduct`, the service's `PlanScope.member`), that it has
+ * nothing of it to re-render.
  */
-export function elsewhereService(path: string, stack: string, ready: Readiness): ElsewhereService {
+export function elsewhereService(
+  path: string,
+  stack: string,
+  ready: Readiness,
+  fromProduct = false,
+): ElsewhereService {
   const placed = ready.kind === 'unavailable' ? (ready.gap.repositoryOnly ?? []) : [];
   return {
     path,
     stack,
     readiness: ready.kind,
+    ...(ready.kind === 'included' && fromProduct ? { fromProduct: true as const } : {}),
     ...(placed.length > 0 ? { repositoryOnly: placed } : {}),
   };
 }
@@ -441,38 +475,6 @@ export function productRootPlacementRefusal(names: RefusalNames, vertical: Verti
   );
 }
 
-/**
- * The sentence a command that needs a keel project is refused with in
- * a directory that holds none (`keel.not-initialised`): pointing at the
- * project it sits inside, or at the services below it that are
- * projects, where there are — `keel new` there would scaffold a project
- * inside another, or over a product's services — and at `first`, the
- * command that creates one, where there are not.
- */
-export function notInitialisedSentence(
-  scopeRoot: string,
-  nearby: { readonly above: string | null; readonly below: readonly string[] },
-  command: string,
-  first: string,
-): string {
-  const none = `no project initialised at ${scopeRoot}`;
-  if (nearby.above !== null) {
-    return `${none} — this directory is inside the keel project at ${nearby.above}/; run '${command}' there`;
-  }
-  if (nearby.below.length > 0) {
-    const dirs = directories(
-      nearby.below.map((path) => ({ path })),
-      'and',
-    );
-    const [verb, where] =
-      nearby.below.length === 1
-        ? ['holds a keel project', 'in it']
-        : ['hold keel projects', 'in one of them'];
-    return `${none} — ${dirs} below ${verb}; run '${command}' ${where}`;
-  }
-  return `${none} — run '${first}' first to create one`;
-}
-
 /** The code a re-render of a vertical this project has not installed is refused with. */
 export const VERTICAL_NOT_INSTALLED_CODE = 'keel.vertical-not-installed';
 
@@ -489,7 +491,10 @@ export function notInstalledSentence(vertical: Vertical, verb: 'reapply' | 'refr
  * The sentence a re-render of a vertical a monorepo service has from
  * its product (`providedNote`'s `by`) is refused with: it is not this
  * service's to re-render, and installing it here would change
- * nothing — the product root has it, and re-renders it there.
+ * nothing — `repository`: the product root has it installed, and
+ * re-renders it there; `product`: the product root builds it for the
+ * service, which is no install of the root's either, so the sentence
+ * names nowhere else to re-render it.
  */
 export function providedNotInstalledSentence(
   vertical: Vertical,
@@ -498,9 +503,9 @@ export function providedNotInstalledSentence(
 ): string {
   const where =
     by === 'repository'
-      ? 'the product root has it, for the one repository its services share'
+      ? 'the product root has it, for the one repository its services share, and it is re-rendered there'
       : 'the product root builds it for this service';
-  return `${verticalTitle(vertical)} is not installed in this service — ${where}, and it is re-rendered there: nothing to ${verb} here`;
+  return `${verticalTitle(vertical)} is not installed in this service — ${where}: nothing to ${verb} here`;
 }
 
 /**
@@ -695,6 +700,20 @@ export function providedNote(vertical: Vertical, by: 'repository' | 'product'): 
 }
 
 /**
+ * The note `keel add` gives at a monorepo product's root for a vertical
+ * the root cannot carry itself, that no service of it could take, and
+ * that the services that could have it have — `paths`, in the
+ * product's order: "Code style is already there: backend/ and frontend/
+ * have it". The root's reading of what `keel new --with` sets aside on
+ * the product ({@link alreadyInServicesNote}), so it is Ok, as for one
+ * installed here already; a status lists it as provided with these
+ * words.
+ */
+export function inServicesNote(vertical: Vertical, paths: readonly string[]): string {
+  return `${verticalTitle(vertical)} is already there: ${haveIt(paths.map((path) => ({ path })))}`;
+}
+
+/**
  * The note `keel new` gives for a service of a monorepo product that a
  * vertical the product root builds for its services
  * (`Adapter.providesInServices`) is not built for — a stack the root's
@@ -759,13 +778,198 @@ export function refreshProposalNote(
 }
 
 /**
+ * The sentence a run that re-renders `verticals` (by id) is refused
+ * with where a contribution met a conflict it cannot settle — a patch
+ * whose re-application keeps changing its file, two writers of one
+ * file (`keel.reapply-conflict`): `detail`, the conflict's own
+ * sentence, after the re-render it stopped. `keel add --reapply` and
+ * `--refresh` re-render what they are asked to; `keel add entrypoint`
+ * re-renders the agent harness, in the same reapply posture.
+ */
+export function reapplyConflictSentence(verticals: readonly string[], detail: string): string {
+  return `reapply of '${verticals.join("', '")}' refused: ${detail}`;
+}
+
+/**
+ * The sentence a run replaying the project's harness elements is
+ * refused with where it records `vertical` (by id), which nothing
+ * registered provides any more (`keel.missing-harness-contributor`):
+ * restore the plugin, then re-run `line`, the command line of that
+ * run — `keel add agent-harness`, `keel docs sync`, or the `keel add
+ * entrypoint` that re-renders the harness.
+ */
+export function missingHarnessContributorSentence(vertical: string, line: string): string {
+  return `cannot restore harness elements from installed vertical '${vertical}' — restore the plugin that provides it and re-run '${line}'`;
+}
+
+/**
+ * The sentence `keel add entrypoint` is refused with for a word that
+ * names no entrypoint: the words it takes, each with the entrypoint it
+ * names — the back side of {@link ENTRYPOINTS}.
+ */
+export function unknownEntrypointSentence(word: string): string {
+  const words = ENTRYPOINTS.filter((entry) => entry.side === 'back').map(
+    (entry) => `'${entry.word}' (${entry.short})`,
+  );
+  return `'${word}' names no entrypoint keel adds — name ${words.join(' or ')}`;
+}
+
+/**
+ * Why no stack is a project with an entrypoint more:
+ *
+ * - `front-end` — keel grows a back end alone: the entrypoint is a
+ *   front end's, or the project is a front end;
+ * - `no-twin` — no stack keel offers is this project with the
+ *   entrypoint as well, on its build system and module layout;
+ * - `drops` — adding it would stop adapters of verticals the project
+ *   has from applying, and keel removes nothing it installed.
+ */
+export type UncoverableEntrypointReason = 'front-end' | 'no-twin' | 'drops';
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with when no stack is the project with it, for
+ * `reason`; under `drops`, `dropping` are the verticals whose adapters
+ * would stop applying, named by their titles.
+ */
+export function uncoverableEntrypointSentence(
+  entrypoint: string,
+  reason: UncoverableEntrypointReason,
+  dropping: readonly Vertical[] = [],
+): string {
+  const entry = entrypointOf(entrypoint);
+  const lead = `${entry.short} cannot be added here`;
+  switch (reason) {
+    case 'front-end':
+      return entry.side === 'back'
+        ? `${lead}: keel adds an entrypoint only to a back end, and this project is a front end`
+        : `${lead}: a front end is a project of its own, and keel adds an entrypoint only to a back end`;
+    case 'no-twin':
+      return `${lead}: no stack keel offers is this project with it as well, on its build system and module layout`;
+    case 'drops':
+      return `${lead}: part of ${listed(dropping.map(verticalTitle))} would stop applying to this project, and keel removes nothing it installed`;
+  }
+}
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with where it would newly break `broken`, rules of
+ * verticals the project has (`keel.incompatible`) — each in its own
+ * sentence and under its id, as {@link brokenRulesRefusal} gives a
+ * vertical's, never the tags that tripped it.
+ */
+export function incompatibleEntrypointSentence(
+  entrypoint: string,
+  broken: readonly { readonly id: string; readonly reason: string }[],
+): string {
+  return `${entrypointOf(entrypoint).short} cannot be added here: ${rulesSentence(broken)}`;
+}
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with while bounded contexts the project has — `contexts`,
+ * by name — are wired into its existing entrypoints alone, and nothing
+ * keel has for this stack wires one into a new entrypoint yet. Names
+ * the contexts, never the tags that select their adapters.
+ */
+export function contextsNeedRewiringSentence(
+  entrypoint: string,
+  contexts: readonly string[],
+): string {
+  const noun = contexts.length === 1 ? 'bounded context' : 'bounded contexts';
+  const verb = contexts.length === 1 ? 'is' : 'are';
+  const named = listed(contexts.map((context) => `'${context}'`));
+  return `${entrypointOf(entrypoint).short} cannot be added here yet: this project's ${noun} ${named} ${verb} wired into its existing entrypoints, and keel does not yet wire this stack's contexts into a new one`;
+}
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with where the bounded context `context` holds the
+ * gateway keel writes for a context consuming `consumed`, and the
+ * project does not record that it consumes one: a context added by a
+ * keel that did not record it. Wired into the new entrypoint as the
+ * record reads, standalone, its wiring would not build; the record is
+ * the user's to complete, since the gateway alone does not prove it.
+ */
+export function unrecordedConsumesSentence(
+  entrypoint: string,
+  context: string,
+  consumed: string,
+): string {
+  return `${entrypointOf(entrypoint).short} cannot be added here: the bounded context '${context}' holds a gateway to '${consumed}', but this project's manifest, written by an older keel, does not record that it consumes it — wired into the new entrypoint as the manifest reads, it would not build; if '${context}' consumes '${consumed}', record "consumes": "${consumed}" on it among "modules" in .claude/.keel-manifest.json`;
+}
+
+/**
+ * The note `keel add entrypoint` gives for an entrypoint (an
+ * {@link ENTRYPOINTS} id) the project has already. Asking for what is
+ * there has one sensible reading, so it is Ok, not a refusal — as
+ * {@link alreadyInstalledNote} is for a vertical.
+ */
+export function entrypointPresentNote(entrypoint: string): string {
+  return `${entrypointOf(entrypoint).short} is already an entrypoint of this project`;
+}
+
+/**
+ * Why `keel add entrypoint` is refused inside a product: the product
+ * records each service by the stack it was made from, and an
+ * entrypoint added to one would leave that record out of date, so keel
+ * adds none there yet. What {@link entrypointScopeSentence} says, and
+ * why a directory holding no project inside a product is told the
+ * services it points at refuse the command too.
+ */
+export const ENTRYPOINT_IN_PRODUCT_REASON =
+  'keel adds no entrypoint inside a product yet: the product records each service by the stack it was made from, and a service grown in place would no longer be that stack';
+
+/**
+ * The sentence `keel add entrypoint` is refused with inside a product —
+ * at its root (`root`), or in one of its services (`service`) —
+ * {@link ENTRYPOINT_IN_PRODUCT_REASON}. Under {@link WRONG_SCOPE_CODE}.
+ */
+export function entrypointScopeSentence(where: 'root' | 'service'): string {
+  const what =
+    where === 'root'
+      ? "this is a product root, whose entrypoints are its services'"
+      : 'this project is a service of a product';
+  return `${what} — ${ENTRYPOINT_IN_PRODUCT_REASON}`;
+}
+
+/**
+ * The note `keel add entrypoint` gives where the entrypoint (an
+ * {@link ENTRYPOINTS} id) changed what the project offers the projects
+ * linked to it — `refs`, each as the project's manifest records it,
+ * relative to the project: each of them still records what it was
+ * offered before, and `keel link` records it again, both ways.
+ */
+export function relinkNote(entrypoint: string, refs: readonly string[]): string {
+  const one = refs.length === 1;
+  const commands = refs.map((ref) => `'keel link ${ref}'`);
+  return `${one ? 'the project' : 'the projects'} linked at ${listed(refs)} ${one ? 'still records' : 'still record'} what this one offered ${one ? 'it' : 'them'} before its ${entrypointOf(entrypoint).short} — ${listed(commands)} ${one ? 'brings that record' : 'bring those records'} up to date`;
+}
+
+/** The {@link ENTRYPOINTS} record of `id`, which is one of its ids. */
+function entrypointOf(id: string): (typeof ENTRYPOINTS)[number] {
+  const entry = ENTRYPOINTS.find((candidate) => candidate.id === id);
+  if (entry === undefined) throw new Error(`'${id}' is no entrypoint id of ENTRYPOINTS`);
+  return entry;
+}
+
+/**
  * An {@link UnavailableRefusal} in words: a reason the vertical gives
  * for itself first; then the project's kind, when that is what is
  * wrong — a mixed gap reads as that, since adding the entrypoint alone
  * would not help; then the entrypoints it lacks; then the linked
- * project it lacks; then the capabilities some vertical adds.
+ * project it lacks; then the capabilities some vertical adds. Where
+ * the project is one service of a product, and another of its
+ * services could take the vertical or has it (`elsewhere`), the
+ * sentence goes on to name it ({@link siblingsClause}).
  */
 function unavailableSentence(refusal: UnavailableRefusal, names: RefusalNames): string {
+  const own = ownSentence(refusal, names);
+  return refusal.elsewhere === undefined ? own : `${own}; ${siblingsClause(refusal.elsewhere)}`;
+}
+
+/** An {@link UnavailableRefusal} in words, as far as this project goes. */
+function ownSentence(refusal: UnavailableRefusal, names: RefusalNames): string {
   const title = titleOf(names, refusal.vertical);
   const placed = refusal.repositoryOnly ?? [];
   if (placed.length > 0) return placementSentence(title, refusal.vertical, placed, names);
@@ -865,11 +1069,42 @@ function nearest(carriedBy: readonly string[]): string {
 }
 
 /**
+ * The sentence of an `elsewhere` refusal: the vertical belongs to a
+ * service, and where it goes ({@link whereItGoes}). But for one no
+ * service could take and each service having it has from the product
+ * root (`fromProduct`) — met only by a re-render at the root, which
+ * builds it for them: that is no service's, and no install of the
+ * root's, so it is said as the root's, naming them.
+ */
+function elsewhereSentence(refusal: ElsewhereRefusal, names: RefusalNames): string {
+  const title = titleOf(names, refusal.vertical);
+  const having = refusal.services.filter((service) => service.readiness === 'included');
+  const builtForAll =
+    having.length > 0 &&
+    having.every((service) => service.fromProduct === true) &&
+    !refusal.services.some(
+      (service) => service.readiness === 'ready' || service.readiness === 'needs',
+    );
+  if (builtForAll) {
+    return `${title} is not installed at the product root, which builds it for ${directories(having, 'and')}: nothing to re-render here`;
+  }
+  return `${title} belongs to a service, not to the product root — ${whereItGoes(refusal.vertical, refusal.services, names)}`;
+}
+
+/**
  * Where an elsewhere-refused vertical goes, by its services' readiness
  * — and, where none can carry it because each is a monorepo service
  * and it needs what only a repository root may carry, why, in that
  * vertical's own words, which end in the way forward (the polyrepo
- * layout), as the service's own refusal does.
+ * layout), as the service's own refusal does. Where the services that
+ * could have it have it, only a re-render is refused (see
+ * {@link elsewhereRefusal}), so the clause says where each has it
+ * from: its own install, re-rendered there, or the product root, which
+ * builds it for the service (`fromProduct` — a vertical placed at a
+ * repository root, the other thing a root gives its services, is
+ * refused as placed before it gets here; and where the root builds it
+ * for every service having it, {@link elsewhereSentence} says so
+ * instead).
  */
 function whereItGoes(
   id: string,
@@ -882,7 +1117,12 @@ function whereItGoes(
   if (carriers.length > 0) return `it goes in ${directories(carriers, 'or')}`;
   const having = services.filter((service) => service.readiness === 'included');
   if (having.length > 0) {
-    return `${directories(having, 'and')} ${having.length === 1 ? 'has' : 'have'} it already`;
+    const own = having.filter((service) => service.fromProduct !== true);
+    const built = having.filter((service) => service.fromProduct === true);
+    return [
+      ...(own.length > 0 ? [`${haveIt(own)} already, and it is re-rendered there`] : []),
+      ...(built.length > 0 ? [`${haveIt(built)} already, built by the product root`] : []),
+    ].join('; ');
   }
   const placed = services.find((service) => (service.repositoryOnly ?? []).length > 0);
   if (placed?.repositoryOnly === undefined) return 'none of its services can carry it';
@@ -893,6 +1133,28 @@ function whereItGoes(
   }
   const needed = listed(placed.repositoryOnly.map((other) => titleOf(names, other)));
   return `none of its services can carry it, since it needs ${needed}, which cannot go in a monorepo service: ${because}`;
+}
+
+/**
+ * Where a vertical one service of a product cannot carry can be had
+ * instead, among the product's other services: those that could take
+ * it, then those that have it — _backend/ can take it_, _backend/ has
+ * it already_. A service that could do neither is not named.
+ */
+function siblingsClause(services: readonly ElsewhereService[]): string {
+  const carriers = services.filter(
+    (service) => service.readiness === 'ready' || service.readiness === 'needs',
+  );
+  const having = services.filter((service) => service.readiness === 'included');
+  return [
+    ...(carriers.length > 0 ? [`${directories(carriers, 'or')} can take it`] : []),
+    ...(having.length > 0 ? [`${haveIt(having)} already`] : []),
+  ].join('; ');
+}
+
+/** `backend/ has it`, `backend/ and frontend/ have it`. */
+function haveIt(services: readonly { readonly path: string }[]): string {
+  return `${directories(services, 'and')} ${services.length === 1 ? 'has' : 'have'} it`;
 }
 
 /** `backend/`, `backend/ or frontend/`, `a/, b/ and c/`. */

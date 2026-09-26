@@ -30,6 +30,7 @@ import {
   ENTRYPOINTS,
   SHAPES,
   entrypointCombinations,
+  entrypointNamed,
   entrypointStep,
   entrypointsLabel,
   frameworkChoices,
@@ -356,6 +357,21 @@ describe('labels and encodings', () => {
       ['arch.server-http', 'back'],
       ['arch.spa', 'front'],
     ]);
+  });
+
+  it('names every entrypoint by a word of its own, and takes the word or the id', () => {
+    expect(ENTRYPOINTS.map((e) => [e.id, e.word])).toEqual([
+      ['cli', 'cli'],
+      ['server-http', 'http'],
+      ['spa', 'spa'],
+    ]);
+    const names = ENTRYPOINTS.flatMap((e) => [...new Set([e.id, e.word])]);
+    expect(new Set(names).size).toBe(names.length);
+    for (const entry of ENTRYPOINTS) {
+      expect(entrypointNamed(entry.word)).toBe(entry);
+      expect(entrypointNamed(entry.id)).toBe(entry);
+    }
+    expect(entrypointNamed('rest')).toBeNull();
   });
 
   it('names every shape, and spells one the way a message names it', () => {

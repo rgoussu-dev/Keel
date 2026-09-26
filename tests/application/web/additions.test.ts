@@ -36,6 +36,7 @@ import type { Mediator } from '../../../src/domain/kernel/mediator.js';
 import {
   additionsGroup,
   additionsSummary,
+  entrypointNotes,
   refreshChoices,
   serviceLinks,
 } from '../../../assets/web/src/additions.js';
@@ -59,7 +60,10 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-async function scaffold(stack: string, extra: { layout?: 'monorepo' } = {}): Promise<void> {
+async function scaffold(
+  stack: string,
+  extra: { layout?: 'monorepo'; agentHarness?: boolean } = {},
+): Promise<void> {
   expectOk(
     await mediator.dispatch(
       newProjectCommand({ cwd, stack, answers: {}, interactive: false, dryRun: false, ...extra }),
@@ -108,6 +112,8 @@ describe('a keel project’s "Also scaffold" group', () => {
     });
     // The gateway has nothing linked to wire: said, not offered.
     expect(group.refused.map((line) => line.id)).toEqual(['gateway']);
+    // The CLI it lacks stops nothing here.
+    expect(group.grows).toEqual([]);
     expect([...values(group.ready), ...values(group.needs)]).not.toContain('gateway');
     // Every vertical not installed is in exactly one part.
     expect(
@@ -134,30 +140,113 @@ describe('a keel project’s "Also scaffold" group', () => {
     expect(group.elsewhere).toEqual([]);
   });
 
-  it('says, collapsed, what a CLI project cannot take — in the words keel add refuses it with', async () => {
+  it('puts what only the entrypoint a CLI project can grow stops under that action', async () => {
     await scaffold('quarkus-cli');
-    const group = additionsGroup(await status(), { kind: 'add-vertical', verticals: [] });
-    const observability = group.refused.find((line) => line.id === 'observability');
-    const refused = expectErr(
+    const reported = await status();
+    const group = additionsGroup(reported, { kind: 'add-vertical', verticals: [] });
+    const refusedWith = async (id: string) =>
+      expectErr(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            verticals: [id],
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      ).message;
+
+    // One group, for the server, named as the finder names it, with the
+    // command its button runs.
+    expect(group.grows.map(({ word, name, meta }) => ({ word, name, meta }))).toEqual([
+      { word: 'http', name: 'HTTP server', meta: 'keel add entrypoint http' },
+    ]);
+    const [http] = group.grows;
+    const item = (id: string) => http?.items.find((line) => line.id === id);
+    // Still refused until then, in the words keel add refuses it with;
+    // what the server makes of it said beside.
+    expect(item('observability')).toEqual({
+      id: 'observability',
+      title: 'Observability',
+      sentence: await refusedWith('observability'),
+      comes: true,
+      note: 'Comes with it.',
+    });
+    expect(item('observability')?.sentence).toBe(
+      'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+    );
+    expect(item('persistence')).toMatchObject({ comes: false, note: 'Added after it.' });
+    expect(item('gateway')).toMatchObject({
+      comes: false,
+      note: 'Added after it, once a linked project serves it.',
+    });
+    // Nothing this CLI, scaffolded on Gradle with no extras, lacks is
+    // beyond it, and what the server lets in is in no other part.
+    expect(group.refused).toEqual([]);
+    expect(values(group.ready)).not.toContain('observability');
+    expect(
+      [
+        ...values(group.ready),
+        ...values(group.needs),
+        ...(http?.items ?? []).map((line) => line.id),
+      ].sort(),
+    ).toEqual(reported.available.map((card) => card.id).sort());
+  });
+
+  it('says what adding the server installs and lets in after, by title', async () => {
+    await scaffold('go-cli');
+    const { summary, notes } = entrypointNotes(await status(), 'http');
+    expect(summary).toContain(', the agent harness is re-rendered to speak of both,');
+    expect(summary).toContain('on the JVM, the queued formatter still formats the whole project');
+    // All it installs, not only what the server stopped; and the gateway
+    // apart, which Add verticals takes only once a project is linked.
+    expect(notes).toEqual([
+      'Comes with it: Development environment, Observability.',
+      'Added after it, from Add verticals: Container image, Distribution, Infrastructure as code, Persistence.',
+      'Added after it, once a linked project serves it: Service gateway.',
+    ]);
+  });
+
+  it('re-renders no harness a project has not got, and says nothing of what adds nothing', async () => {
+    await scaffold('go-cli', { agentHarness: false });
+    const { summary, notes } = entrypointNotes(await status(), 'http');
+    expect(summary).not.toContain('agent harness');
+    // What it lets in is the same with the harness or without.
+    expect(notes).toEqual([
+      'Comes with it: Development environment, Observability.',
+      'Added after it, from Add verticals: Container image, Distribution, Infrastructure as code, Persistence.',
+      'Added after it, once a linked project serves it: Service gateway.',
+    ]);
+    await fs.emptyDir(cwd);
+    // A CLI brings no vertical, and lets none in.
+    await scaffold('go-http');
+    expect(entrypointNotes(await status(), 'cli').notes).toEqual([]);
+  });
+
+  it('says, collapsed, what a CLI project that cannot grow the server cannot take', async () => {
+    expectOk(
       await mediator.dispatch(
-        addVerticalCommand({
+        newProjectCommand({
           cwd,
-          verticals: ['observability'],
+          stack: 'quarkus-cli',
           answers: {},
           interactive: false,
-          dryRun: true,
+          dryRun: false,
+          moduleLayout: 'modulith',
+          withPeerContext: true,
         }),
       ),
     );
+    const group = additionsGroup(await status(), { kind: 'add-vertical', verticals: [] });
+    expect(group.grows).toEqual([]);
+    const observability = group.refused.find((line) => line.id === 'observability');
     expect(observability).toEqual({
       id: 'observability',
       title: 'Observability',
-      sentence: refused.message,
+      sentence:
+        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
     });
-    expect(observability?.sentence).toBe(
-      'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
-    );
-    expect(values(group.ready)).not.toContain('observability');
   });
 
   it('points a product root’s verticals into its services, and locks its glue with no Re-render', async () => {
@@ -177,10 +266,34 @@ describe('a keel project’s "Also scaffold" group', () => {
       meta: '',
       rerender: false,
     });
-    // What the services have is in them, not a gap of the root's.
-    expect(group.elsewhere.map((line) => line.id)).toEqual(
-      expect.arrayContaining(['agent-harness', 'containerization', 'gateway', 'persistence']),
+    // What the services have is in them — not a gap of the root's, nor
+    // anything the root installed: a part of its own, locked, each in
+    // the words the add answers it with, and with no Re-render.
+    expect(group.elsewhere.map((line) => line.id)).toEqual(['iac', 'persistence', 'toolchain']);
+    expect(values(group.inServices)).toEqual(
+      expect.arrayContaining(['agent-harness', 'code-style', 'containerization', 'gateway']),
     );
+    expect(values(group.installed)).not.toContain('containerization');
+    for (const line of group.inServices) {
+      expect(line).toMatchObject({ meta: '', rerender: false, pressed: false });
+      const added = expectOk(
+        await mediator.dispatch(
+          previewQuery({
+            cwd,
+            target: { kind: 'add-vertical', verticals: [line.value] },
+            answers: {},
+          }),
+        ),
+      );
+      expect(added.changes).toEqual([]);
+      expect(added.notes).toEqual([line.doc]);
+    }
+    expect(group.inServices.find((line) => line.value === 'code-style')?.doc).toBe(
+      'Code style is already there: backend/ and frontend/ have it',
+    );
+    // Ticking one moves nothing: it is there.
+    const run = opened();
+    expect(toggleVertical(run, reported, 'code-style', true)).toBe(run);
     // And the way into each: the directory the status reports whole,
     // named by the service's directory and what it is.
     expect(group.services).toEqual([
@@ -201,6 +314,7 @@ describe('a keel project’s "Also scaffold" group', () => {
     const provided = group.installed.slice(reported.installed.length);
     expect(values(provided)).toEqual(['containerization', 'vcs']);
     expect(group.services).toEqual([]);
+    expect(group.inServices).toEqual([]);
     for (const line of provided) {
       expect(line.rerender).toBe(false);
       const added = expectOk(

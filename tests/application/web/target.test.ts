@@ -71,11 +71,13 @@ import {
   restart,
   retarget,
   settle,
+  serviceBuild,
   serviceExtrasOf,
   toggleExtra,
   toggleRefresh,
   toggleVertical,
   verticalsOf,
+  withServiceBuild,
 } from '../../../assets/web/src/target.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
 
@@ -359,6 +361,26 @@ describe('a keel project’s "Also scaffold" boxes', () => {
     );
   });
 
+  it('keeps the answers of an entrypoint re-picked, and starts another entrypoint afresh', () => {
+    // The monitoring stack growth asks is that entrypoint's run: picked
+    // again from the Project step or its group, it is the same run; a
+    // move to the vertical tab, or to another entrypoint, is not.
+    const growing = answer(retarget(brownfield(), { kind: 'add-entrypoint', entrypoint: 'http' }), {
+      binding: { kind: 'answer', adapter: 'observability/monitoring-compose', question: 'stack' },
+      value: 'lgtm',
+    });
+    expect(growing.answers).toEqual({ 'observability/monitoring-compose': { stack: 'lgtm' } });
+    const again = retarget(growing, { kind: 'add-entrypoint', entrypoint: 'http' });
+    expect(again.answers).toEqual(growing.answers);
+    expect(again.generation).toBeGreaterThan(growing.generation);
+    expect(retarget(growing, { kind: 'add-entrypoint', entrypoint: 'cli' }).answers).toEqual({});
+    expect(retarget(growing, { kind: 'add-vertical', verticals: [] })).toMatchObject({
+      target: { kind: 'add-vertical', verticals: [] },
+      answers: {},
+    });
+    expect(verticalsOf(growing.target)).toEqual([]);
+  });
+
   it('reads the verticals of a target, and none of any other', () => {
     expect(verticalsOf({ kind: 'add-vertical', verticals: ['ci', 'iac'] })).toEqual(['ci', 'iac']);
     expect(verticalsOf({ kind: 'add-module', module: 'billing' })).toEqual([]);
@@ -481,6 +503,19 @@ describe('a greenfield control', () => {
     expect(next.answers).toEqual({});
     expect(next.held).toEqual([]);
     expect(next.dials).toBeNull();
+  });
+
+  it("moves one service's build system on a product, keeping the other's", () => {
+    // One field carries a pair per service, so a control that posted
+    // its own pair alone would leave `keel.dials` to fill the other
+    // with its default, and undo the move that service had made.
+    const both = 'backend=gradle,frontend=npm';
+    expect(withServiceBuild(both, 'backend', 'maven')).toBe('backend=maven,frontend=npm');
+    expect(withServiceBuild(undefined, 'frontend', 'pnpm')).toBe('frontend=pnpm');
+    expect(serviceBuild(withServiceBuild(both, 'frontend', 'pnpm'), 'backend')).toBe('gradle');
+    expect(serviceBuild(both, 'frontend')).toBe('npm');
+    expect(serviceBuild(both, 'worker')).toBeUndefined();
+    expect(serviceBuild(undefined, 'backend')).toBeUndefined();
   });
 });
 

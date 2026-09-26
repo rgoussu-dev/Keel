@@ -23,18 +23,26 @@
  *     not for this project and why. Nothing is hidden: a card this
  *     project cannot carry says so before it is picked.
  *   - `provided` — in a monorepo service, what the product gives it
- *     without an install of its own (`../scope.ts`), each with the note
- *     `keel add` answers it with: there already, nothing to add.
+ *     without an install of its own (`../scope.ts`); at a product root,
+ *     what the services that could have it have (`../add-readiness.ts`
+ *     `productRootReading`) — each with the note `keel add` answers it
+ *     with: there already, nothing to add.
  *   - `services` — at a product root, each service with the directory
  *     a front end opens it at.
  *   - `canAddModule` / `moduleRefusal` — `keel add module`'s gates that
  *     turn on the project alone (`./add-module.ts` `moduleRefusal`).
+ *   - `entrypoints` — each back entrypoint, there or not, and where
+ *     it is not, what `keel add entrypoint` would install, or why it
+ *     would refuse (`./add-entrypoint.ts` `entrypointReading`); a card
+ *     only that entrypoint stops carries it as its action (`grow`).
  *   - `harnessGeneration` — the gate every brownfield command but the
  *     harness's own passes first, reported once rather than as the
  *     same refusal on every card.
  *
  * Reading only. An uninitialised directory is not an error here: it
- * is the answer, and it means only `keel new` applies.
+ * is the answer — no brownfield command applies, and `keel new` does
+ * unless the directory sits inside a keel project, where its preview
+ * carries the refusal.
  */
 
 import type { Action } from '../../kernel/action.js';
@@ -46,6 +54,7 @@ import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type {
   AvailableVerticalDescriptor,
+  EntrypointStatus,
   ProjectStatus,
   ProjectStatusQuery,
   ProvidedVerticalDescriptor,
@@ -54,19 +63,32 @@ import type {
 } from '../../contract/queries.js';
 import { RefusalError } from '../../contract/refusal.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
-import { addReadiness } from '../add-readiness.js';
+import { addReadiness, addScopeOf, productRootReading } from '../add-readiness.js';
 import { projectProfile, serviceLabel } from '../profile.js';
-import { providedNote } from '../refusals.js';
+import { inServicesNote, providedNote } from '../refusals.js';
 import { installedVertical, verticalTitle } from '../registry.js';
-import { provisionsHere, scopeOf, type DirectoryScope } from '../scope.js';
+import {
+  nearbyProjects,
+  provisionsHere,
+  scopeOf,
+  type DirectoryScope,
+  type NearbyReading,
+} from '../scope.js';
+import { ENTRYPOINTS } from '../stack-wizard.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
+import { entrypointReading } from './add-entrypoint.js';
 import { moduleRefusal } from './add-module.js';
 
-/** The two ports this query needs. */
+/** The ports this query needs. */
 export interface ProjectStatusDeps {
   readonly manifests: ManifestStore;
   /** Resolves the descriptions of the verticals a manifest names. */
   readonly registry: Registry;
+  /**
+   * The user's home directory, where a walk up for the project a
+   * directory sits in ends, unread (`../scope.ts`' `projectAbove`).
+   */
+  readonly home?: string;
 }
 
 /** Executes {@link ProjectStatusQuery}s. */
@@ -83,13 +105,18 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
     // which each card's refusal names the services from.
     const where = await scopeOf(this.deps, query.cwd);
     const manifest = where.manifest;
-    return ok(manifest ? this.statusOf(where, scopeRoot, manifest) : uninitialised(scopeRoot));
+    return ok(
+      manifest
+        ? this.statusOf(where, scopeRoot, manifest)
+        : uninitialised(scopeRoot, await nearbyProjects(this.deps, query.cwd)),
+    );
   }
 
   private statusOf(where: DirectoryScope, scopeRoot: string, manifest: ManifestV2): ProjectStatus {
     const registry = this.deps.registry;
     const installedIds = new Set(manifest.verticals.map((v) => v.id));
     const provisions = provisionsHere(registry, where);
+    const scope = addScopeOf(registry, where);
     const available: AvailableVerticalDescriptor[] = [];
     const provided: ProvidedVerticalDescriptor[] = [];
     for (const vertical of [...registry.verticals()].sort(byId)) {
@@ -102,7 +129,15 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
         });
         continue;
       }
-      const ready = addReadiness(registry, where, vertical);
+      const atRoot = productRootReading(registry, where, vertical);
+      if (atRoot?.kind === 'included') {
+        provided.push({
+          ...describe(registry, vertical.id),
+          note: inServicesNote(vertical, atRoot.paths),
+        });
+        continue;
+      }
+      const ready = addReadiness(registry, where, vertical, scope);
       available.push({
         ...describe(registry, vertical.id),
         readiness: ready.readiness,
@@ -134,6 +169,7 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
       moduleLayout: moduleLayoutOf(manifest.tags),
       canAddModule: module === null,
       ...(module === null ? {} : { moduleRefusal: describeRefusal(module) }),
+      entrypoints: entrypointsOf(registry, where, manifest),
       harnessGeneration: {
         found: manifest.harnessGeneration ?? null,
         expected: HARNESS_GENERATION,
@@ -142,8 +178,13 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
   }
 }
 
-function uninitialised(scopeRoot: string): ProjectStatus {
-  const module = moduleRefusal(null, scopeRoot);
+/**
+ * The status of a directory holding no project: nothing applies, and
+ * `keel add module` is refused as its front door refuses it there —
+ * pointing at `nearby`, the projects nearest it.
+ */
+function uninitialised(scopeRoot: string, nearby: NearbyReading): ProjectStatus {
+  const module = moduleRefusal(null, scopeRoot, '<name>', nearby);
   return {
     scopeRoot,
     initialised: false,
@@ -158,6 +199,27 @@ function uninitialised(scopeRoot: string): ProjectStatus {
     canAddModule: false,
     ...(module === null ? {} : { moduleRefusal: describeRefusal(module) }),
   };
+}
+
+/**
+ * Each back entrypoint, in the finder's order, as `keel add entrypoint`
+ * would answer it in `where`: there already, or what it would install,
+ * or its refusal where it would refuse (`./add-entrypoint.ts`
+ * `entrypointReading`).
+ */
+function entrypointsOf(
+  registry: Registry,
+  where: DirectoryScope,
+  manifest: ManifestV2,
+): readonly EntrypointStatus[] {
+  return ENTRYPOINTS.filter((entry) => entry.side === 'back').map((entry) => {
+    const described = { word: entry.word, label: entry.label };
+    if (manifest.tags.includes(entry.tag)) return { ...described, present: true };
+    const reading = entrypointReading(registry, where, entry.word);
+    return reading.ok
+      ? { ...described, present: false, installs: reading.value }
+      : { ...described, present: false, refusal: describeRefusal(reading.error) };
+  });
 }
 
 /**

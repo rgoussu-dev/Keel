@@ -1,7 +1,7 @@
 /**
  * What a keel project is, read back off its manifest in the words the
- * `keel new` wizard asked it in — the page's read-only **Project** step,
- * where a new project's preset steps would be.
+ * `keel new` wizard asked it in — the page's **Project** step, where a
+ * new project's preset steps would be.
  *
  * A single project's manifest does not record which preset scaffolded
  * it; it records the tags that preset seeded. The drill-down is a

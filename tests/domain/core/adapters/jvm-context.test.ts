@@ -24,7 +24,8 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { addModuleCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
-import { expectOk, installMediator } from '../../../support/factory.js';
+import { PathConflictError } from '../../../../src/domain/contract/refusal.js';
+import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 
 const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
@@ -294,6 +295,36 @@ describe('the JVM added context', () => {
       const list = between(root, 'listOf(', '\n            ),');
       expect(list).toContain('ordering,');
       expect(list).toContain('shipping,');
+    });
+
+    it('refuses a Kotlin context named for a port the mediator already takes', async () => {
+      // The peer context injects its `Welcome` port as `welcome`; a
+      // context of that name would be a second `welcome` parameter,
+      // which does not compile.
+      await scaffold({ stack: 'micronaut-rest-kotlin', withPeerContext: true });
+      const root = 'application/api/src/main/kotlin/com/example/application/api/MediatorFactory.kt';
+      const before = await read(root);
+      const refused = expectErr(
+        await installMediator({ runDeferred: discardDeferred() }).dispatch(
+          addModuleCommand({
+            cwd,
+            module: 'welcome',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+
+      expect(refused).toBeInstanceOf(PathConflictError);
+      expect((refused as PathConflictError).refusal).toEqual({
+        kind: 'path-conflict',
+        path: root,
+        adapterId: 'bounded-context/micronaut-context-kotlin',
+        taken: 'welcome',
+      });
+      expect(await read(root)).toBe(before);
+      expect(await exists('modules/welcome')).toBe(false);
     });
 
     it('produces the Kotlin handler as a bean, since nothing discovers it', async () => {

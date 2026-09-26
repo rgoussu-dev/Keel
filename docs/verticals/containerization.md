@@ -13,7 +13,9 @@ running it. Your CI builds; the Dockerfile packages.
 
 CLI-shaped projects are refused: nothing covers the `image` dimension
 without a server, so the refusal names the HTTP server entrypoint the
-project lacks — a CLI ships through [`distribution`](distribution.md).
+project lacks — a CLI ships through [`distribution`](distribution.md),
+or grows the server first (`keel add entrypoint http`, then `keel add
+containerization`), which its hint says where the project can.
 
 ## Dimensions & adapters
 

@@ -25,10 +25,18 @@ import { observabilityVertical } from '../../../../src/domain/core/verticals/obs
 import { persistenceVertical } from '../../../../src/domain/core/verticals/persistence.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import { agentHarnessVertical } from '../../../../src/domain/core/verticals/agent-harness.js';
-import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import {
+  PathConflictError,
+  RefusalError,
+  type PathConflictRefusal,
+} from '../../../../src/domain/contract/refusal.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { DATABASE_COMPOSE_ID } from '../../../../src/domain/core/adapters/database-compose.js';
-import { patchMicronautImportPackages } from '../../../../src/domain/core/adapters/jvm-persistence.js';
+import {
+  moduleRegistrationPatch,
+  patchKotlinCompositionRoot,
+  patchMicronautImportPackages,
+} from '../../../../src/domain/core/adapters/jvm-persistence.js';
 import { jvmLayout } from '../../../../src/domain/core/adapters/jvm-module-layout.js';
 import { FLYWAY_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/flyway-migrations.js';
 import { LIQUIBASE_MIGRATIONS_ID } from '../../../../src/domain/core/adapters/liquibase-migrations.js';
@@ -40,7 +48,11 @@ import {
   QUARKUS_PERSISTENCE_KOTLIN_ID,
 } from '../../../../src/domain/core/adapters/quarkus-persistence.js';
 import { SPRING_PERSISTENCE_KOTLIN_ID } from '../../../../src/domain/core/adapters/spring-persistence.js';
-import { MICRONAUT_PERSISTENCE_KOTLIN_ID } from '../../../../src/domain/core/adapters/micronaut-persistence.js';
+import {
+  MICRONAUT_PERSISTENCE_KOTLIN_ID,
+  patchGreetControllerTest as patchMicronautGreetControllerTest,
+  patchGreetControllerTestKotlin as patchMicronautGreetControllerTestKotlin,
+} from '../../../../src/domain/core/adapters/micronaut-persistence.js';
 import {
   patchGreetControllerTest as patchSpringGreetControllerTest,
   SPRING_PERSISTENCE_ID,
@@ -805,6 +817,21 @@ describe('persistence install on quarkus-rest (Maven)', () => {
 
 const BASIC_LAYOUT = jvmLayout([]);
 const MODULITH_LAYOUT = jvmLayout([MODULITH_LAYOUT_TAG]);
+const MICRONAUT_ROOT =
+  'application/rest/executable/src/main/java/com/example/rest/MediatorFactory.java';
+const MICRONAUT_KOTLIN_ROOT =
+  'application/rest/executable/src/main/kotlin/com/example/rest/MediatorFactory.kt';
+
+/** The refusal a patch throws, for a test to read its fields. */
+const thrownBy = (patch: () => unknown): PathConflictRefusal => {
+  try {
+    patch();
+  } catch (error) {
+    expect(error).toBeInstanceOf(PathConflictError);
+    return (error as PathConflictError).refusal;
+  }
+  throw new Error('expected the patch to refuse');
+};
 
 describe('persistence patch helpers', () => {
   it('names the new aggregate package in @Import once and only once', () => {
@@ -819,6 +846,7 @@ public class MediatorFactory {
       'persistence/micronaut-persistence',
       'com.example',
       BASIC_LAYOUT,
+      MICRONAUT_ROOT,
     )(original);
     expect(patched).toContain('"com.example.core.greet", "com.example.core.greetinglog"');
     expect(
@@ -826,18 +854,119 @@ public class MediatorFactory {
         'persistence/micronaut-persistence',
         'com.example',
         BASIC_LAYOUT,
+        MICRONAUT_ROOT,
       )(patched),
     ).toBe(patched);
   });
 
-  it('names the manual fix when the @Import list drifted from the skeleton shape', () => {
-    expect(() =>
+  it('widens an @Import list that has grown past the skeleton shape', () => {
+    const grown = `@Import(
+    packages = {
+        "com.example.core.greet",
+        "com.example.billing.domain.core"
+    },
+    annotated = "com.example.contract.DomainHandler")
+`;
+    const patched = patchMicronautImportPackages(
+      'persistence/micronaut-persistence',
+      'com.example',
+      BASIC_LAYOUT,
+      MICRONAUT_ROOT,
+    )(grown);
+    expect(patched).toContain(
+      '        "com.example.billing.domain.core",\n        "com.example.core.greetinglog"\n    },',
+    );
+  });
+
+  it('refuses a root with no @Import list as a file in the way, naming it', () => {
+    const refusal = thrownBy(() =>
       patchMicronautImportPackages(
         'persistence/micronaut-persistence',
         'com.example',
         BASIC_LAYOUT,
+        MICRONAUT_ROOT,
       )('public class Custom {}'),
-    ).toThrow(/add "com\.example\.core\.greetinglog" to the @Import packages/);
+    );
+    expect(refusal).toMatchObject({
+      path: MICRONAUT_ROOT,
+      adapterId: 'persistence/micronaut-persistence',
+      anchor: "'@Import(packages = …)' list holding only package names",
+    });
+  });
+
+  it('refuses a Kotlin root that lost what the handlers are wired beside, naming what it lacks or the name taken', () => {
+    const patch = patchKotlinCompositionRoot(
+      MICRONAUT_PERSISTENCE_KOTLIN_ID,
+      'com.example',
+      BASIC_LAYOUT,
+      MICRONAUT_KOTLIN_ROOT,
+    );
+    const refused = { path: MICRONAUT_KOTLIN_ROOT, adapterId: MICRONAUT_PERSISTENCE_KOTLIN_ID };
+    const greetImport = 'import com.example.core.greet.GreetHandler';
+
+    expect(thrownBy(() => patch('class MediatorFactory\n'))).toMatchObject({
+      ...refused,
+      anchor: `'${greetImport}' line`,
+    });
+    expect(thrownBy(() => patch(`${greetImport}\n\nclass MediatorFactory\n`))).toMatchObject({
+      ...refused,
+      anchor:
+        "'fun mediator(…): Mediator = RegistryMediator(listOf(…))' holding only parameters and handlers",
+    });
+    // A context named `clock` holds the name the Clock port is
+    // injected under, and a second `clock` parameter would not compile.
+    const clockTaken = `${greetImport}
+
+class MediatorFactory {
+    fun mediator(clock: ClockHandler): Mediator = RegistryMediator(listOf(GreetHandler(), clock))
+}
+`;
+    expect(thrownBy(() => patch(clockTaken))).toEqual({
+      kind: 'path-conflict',
+      ...refused,
+      taken: 'clock',
+    });
+  });
+
+  it('refuses a Micronaut controller test that no longer declares its class as the skeleton did', () => {
+    const javaTest =
+      'application/rest/executable/src/test/java/com/example/rest/GreetControllerTest.java';
+    const kotlinTest =
+      'application/rest/executable/src/test/kotlin/com/example/rest/GreetControllerTest.kt';
+
+    expect(
+      thrownBy(() =>
+        patchMicronautGreetControllerTest('PostgresTestFixture', javaTest)('class Other {}'),
+      ),
+    ).toMatchObject({
+      path: javaTest,
+      adapterId: MICRONAUT_PERSISTENCE_ID,
+      anchor: "'@MicronautTest class GreetControllerTest {' declaration",
+    });
+    expect(
+      thrownBy(() =>
+        patchMicronautGreetControllerTestKotlin('PostgresTestFixture', kotlinTest)('class Other'),
+      ),
+    ).toMatchObject({
+      path: kotlinTest,
+      adapterId: MICRONAUT_PERSISTENCE_KOTLIN_ID,
+      anchor: "'class GreetControllerTest(…)' declaration",
+    });
+  });
+
+  it('refuses a root pom with no <modules> element to register the modules in', () => {
+    const patch = moduleRegistrationPatch(
+      'maven',
+      QUARKUS_PERSISTENCE_ID,
+      'narayana',
+      BASIC_LAYOUT,
+    );
+
+    expect(thrownBy(() => patch.apply('<project/>\n'))).toMatchObject({
+      path: 'pom.xml',
+      adapterId: QUARKUS_PERSISTENCE_ID,
+      anchor: '<modules> element',
+    });
   });
 
   it('merges package.json dependencies without clobbering existing entries', () => {
@@ -852,16 +981,47 @@ public class MediatorFactory {
     expect(addPackageDependencies(patched, 'dependencies', { pg: '^9.9.9' })).toBe(patched);
   });
 
-  it('names the manual fix when the TS anchors drifted', () => {
+  it('refuses TS entrypoints that lost their anchors as files in the way, naming them', () => {
     // Both anchors are layout-derived — the package the assembly
     // imports the domain from is the whole difference between them —
     // so the guard is exercised under each layout rather than one.
     for (const tag of [BASIC_LAYOUT_TAG, MODULITH_LAYOUT_TAG]) {
       const layout = tsLayout([tag], 'acme');
-      expect(() => patchServerTs(layout)('const custom = true;')).toThrow(/route '\/greetings'/);
-      expect(() => patchMainTs(layout)('const custom = true;')).toThrow(
-        /wire createRecordGreetingHandler/,
-      );
+      expect(thrownBy(() => patchServerTs(layout)('const custom = true;'))).toMatchObject({
+        path: 'application/rest/src/server.ts',
+        adapterId: TS_PERSISTENCE_ID,
+        anchor: `import of greetCommand and GREET_REJECTED from '${layout.contractPkg}'`,
+      });
+      const contractImport = `import { greetCommand, GREET_REJECTED } from '${layout.contractPkg}';`;
+      expect(thrownBy(() => patchServerTs(layout)(`${contractImport}\n`))).toMatchObject({
+        path: 'application/rest/src/server.ts',
+        adapterId: TS_PERSISTENCE_ID,
+        anchor: "check for the '/greet' route",
+      });
+      expect(thrownBy(() => patchMainTs(layout)('const custom = true;'))).toMatchObject({
+        path: 'application/rest/src/main.ts',
+        adapterId: TS_PERSISTENCE_ID,
+        anchor:
+          tag === MODULITH_LAYOUT_TAG
+            ? `import of createGreetHandler from '${layout.corePkg}'`
+            : `import of createGreetHandler and createRegistryMediator from '${layout.corePkg}'`,
+      });
+      const domainImport =
+        tag === MODULITH_LAYOUT_TAG
+          ? `import { createGreetHandler } from '${layout.corePkg}';`
+          : `import { createGreetHandler, createRegistryMediator } from '${layout.corePkg}';`;
+      // No array, and an array with a comment among its entries, which
+      // splitting on commas would re-emit as an entry — a hole.
+      for (const mediator of [
+        '',
+        'const mediator = createRegistryMediator([createGreetHandler(), /* more here */]);\n',
+      ]) {
+        expect(thrownBy(() => patchMainTs(layout)(`${domainImport}\n${mediator}`))).toMatchObject({
+          path: 'application/rest/src/main.ts',
+          adapterId: TS_PERSISTENCE_ID,
+          anchor: "'createRegistryMediator([…])' call holding only handlers",
+        });
+      }
     }
   });
 

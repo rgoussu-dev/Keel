@@ -39,9 +39,11 @@
 
 import { databaseName, PERSISTENCE_DIALS_ID, sqlEngine } from './persistence-engine.js';
 import { TS_HTTP_BOOTSTRAP_ID } from './ts-http-bootstrap.js';
-import { tsLayout, type TsLayoutPaths } from './ts-module-layout.js';
+import { tsLayout, TS_MEDIATOR_ANCHOR, type TsLayoutPaths } from './ts-module-layout.js';
 import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
-import { eolAware, eolOf, withEol } from '../util.js';
+import { placeReadmeSection } from '../rank.js';
+import { codeOnly, eolAware, eolOf, withEol } from '../util.js';
+import { PathConflictError } from '../../contract/refusal.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
 import { persistenceDoc } from './persistence-doc.js';
 
@@ -112,16 +114,23 @@ const SERVER_ROUTE_ANCHOR = `    if (request.method !== 'GET' || url.pathname !=
  * whichever package publishes the contract face — a dedicated one
  * under `basic`, the context itself under the modulith — so the
  * anchor is resolved rather than spelled. Exported for the vertical
- * tests; throws when the anchors drifted.
+ * tests; a server lacking either anchor is refused as a file in the
+ * way, naming the one it lacks.
  */
 export function patchServerTs(layout: TsLayoutPaths): (existing: string) => string {
+  const target = `${layout.restSrc}/server.ts`;
   const importAnchor = `import { greetCommand, GREET_REJECTED } from '${layout.contractPkg}';`;
   return eolAware((existing) => {
     if (existing.includes(SERVER_ROUTE_GUARD)) return existing;
-    if (!existing.includes(importAnchor) || !existing.includes(SERVER_ROUTE_ANCHOR)) {
-      throw new Error(
-        `${TS_PERSISTENCE_ID}: server.ts has drifted from the walking-skeleton shape — route '/greetings' to handleGreetings (from './greetings.ts') manually`,
+    if (!existing.includes(importAnchor)) {
+      throw new PathConflictError(
+        target,
+        TS_PERSISTENCE_ID,
+        `import of greetCommand and GREET_REJECTED from '${layout.contractPkg}'`,
       );
+    }
+    if (!existing.includes(SERVER_ROUTE_ANCHOR)) {
+      throw new PathConflictError(target, TS_PERSISTENCE_ID, "check for the '/greet' route");
     }
     return existing
       .replace(importAnchor, `${importAnchor}\nimport { handleGreetings } from './greetings.ts';`)
@@ -138,33 +147,113 @@ ${SERVER_ROUTE_ANCHOR}`,
 
 const MAIN_WIRING_GUARD = 'createRecordGreetingHandler';
 
-const MEDIATOR_ANCHOR = 'const mediator = createRegistryMediator([createGreetHandler()]);';
-const MEDIATOR_REPLACEMENT = `const pool = createPgPool();
-const greetingLog = createPgGreetingLog(transactionalQueryable(pool));
-const mediator = createRegistryMediator([
-  createGreetHandler(),
-  createRecordGreetingHandler(greetingLog, systemClock, createPgUnitOfWork(pool)),
-  createListGreetingsHandler(greetingLog),
-]);`;
+const MEDIATOR_OPEN = 'const mediator = createRegistryMediator([';
+const PERSISTENCE_HANDLERS = [
+  'createRecordGreetingHandler(greetingLog, systemClock, createPgUnitOfWork(pool))',
+  'createListGreetingsHandler(greetingLog)',
+];
+
+/**
+ * The mediator the assembly builds, with the pool and the greeting log
+ * it now needs declared above it: the handlers already there, then the
+ * two greeting-log handlers. Over the walking skeleton's one-handler
+ * line this is the form persistence has always written.
+ */
+const wiredMediator = (handlers: readonly string[]): string =>
+  [
+    'const pool = createPgPool();',
+    'const greetingLog = createPgGreetingLog(transactionalQueryable(pool));',
+    MEDIATOR_OPEN,
+    ...[...handlers, ...PERSISTENCE_HANDLERS].map((handler) => `  ${handler},`),
+    ']);',
+  ].join('\n');
+
+/**
+ * Index of the bracket closing the one opened at `open`, counting all
+ * three kinds: the array holds factory calls, whose own parentheses
+ * nest inside it. Read over source {@link codeOnly} has blanked, so a
+ * bracket in a string or a comment is not counted.
+ */
+function closeOf(source: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    const c = source[i] as string;
+    if ('([{'.includes(c)) depth += 1;
+    else if (')]}'.includes(c)) {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Splits the mediator array on its top-level commas, a literal's aside. */
+function splitHandlers(list: string): readonly string[] {
+  const { code } = codeOnly(list);
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < code.length; i += 1) {
+    const c = code[i] as string;
+    if ('([{'.includes(c)) depth += 1;
+    else if (')]}'.includes(c)) depth -= 1;
+    else if (c === ',' && depth === 0) {
+      out.push(list.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(list.slice(start));
+  return out.map((item) => item.trim()).filter((item) => item.length > 0);
+}
+
+/**
+ * The assembly's mediator rebuilt with the greeting-log handlers after
+ * the ones it already registers; null when `main.ts` builds no
+ * `createRegistryMediator([…])` keel can read — none, or one with a
+ * comment in its array, which splitting on commas would re-emit as
+ * code.
+ */
+function widenMediator(source: string): string | null {
+  const { code } = codeOnly(source);
+  const at = code.indexOf(MEDIATOR_OPEN);
+  if (at === -1) return null;
+  const open = at + MEDIATOR_OPEN.length - 1;
+  const close = closeOf(code, open);
+  if (close === -1 || code[close + 1] !== ')') return null;
+  const list = source.slice(open + 1, close);
+  if (codeOnly(list).hasComment) return null;
+  const end = code[close + 2] === ';' ? close + 3 : close + 2;
+  return `${source.slice(0, at)}${wiredMediator(splitHandlers(list))}${source.slice(end)}`;
+}
 
 /**
  * Wires the real persistence adapters into the assembly point: the
  * pool, the SQL greeting log, the unit of work, and the two new
  * handlers on the mediator.
  *
- * The mediator line is the same under both layouts; the imports above
- * it are not, and that is the whole difference between them. Under
- * `basic` the assembly names four packages — the domain and three
- * `infrastructure/*` siblings. Under the modulith it names one, the
- * context, because everything it wires is published by that context's
- * facade and nothing else of it is reachable at all.
+ * The mediator is read as it is rather than matched as the walking
+ * skeleton wrote it: the peer context and `keel add module` each add
+ * a context's handler to the same array, and the greeting-log handlers
+ * join whatever is there. It is built the same way under both layouts;
+ * the imports above it are not, and that is the whole difference
+ * between them. Under `basic` the assembly names four packages — the
+ * domain and three `infrastructure/*` siblings. Under the modulith it
+ * names one, the context, because everything it wires is published by
+ * that context's facade and nothing else of it is reachable at all.
  *
- * Exported for the vertical tests; throws when the anchors drifted.
+ * Exported for the vertical tests; a `main.ts` lacking the import or
+ * the mediator is refused as a file in the way, naming the one it
+ * lacks.
  */
 export function patchMainTs(layout: TsLayoutPaths): (existing: string) => string {
+  const target = `${layout.restSrc}/main.ts`;
   const domainAnchor = `import { createGreetHandler } from '${layout.corePkg}';`;
   const basicAnchor = `import { createGreetHandler, createRegistryMediator } from '${layout.corePkg}';`;
   const anchor = layout.layout === 'modulith' ? domainAnchor : basicAnchor;
+  const anchorNamed =
+    layout.layout === 'modulith'
+      ? `import of createGreetHandler from '${layout.corePkg}'`
+      : `import of createGreetHandler and createRegistryMediator from '${layout.corePkg}'`;
   const replacement =
     layout.layout === 'modulith'
       ? `import {
@@ -192,12 +281,14 @@ import {
 } from '${layout.infraPkg('unit-of-work')}';`;
   return eolAware((existing) => {
     if (existing.includes(MAIN_WIRING_GUARD)) return existing;
-    if (!existing.includes(anchor) || !existing.includes(MEDIATOR_ANCHOR)) {
-      throw new Error(
-        `${TS_PERSISTENCE_ID}: main.ts has drifted from the walking-skeleton shape — wire createRecordGreetingHandler and createListGreetingsHandler into the mediator manually (pg pool + unit of work + greeting log)`,
-      );
+    if (!existing.includes(anchor)) {
+      throw new PathConflictError(target, TS_PERSISTENCE_ID, anchorNamed);
     }
-    return existing.replace(anchor, replacement).replace(MEDIATOR_ANCHOR, MEDIATOR_REPLACEMENT);
+    const wired = widenMediator(existing);
+    if (wired === null) {
+      throw new PathConflictError(target, TS_PERSISTENCE_ID, TS_MEDIATOR_ANCHOR);
+    }
+    return wired.replace(anchor, replacement);
   });
 }
 
@@ -344,7 +435,7 @@ export const tsPersistenceAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(layout)}`;
+            return placeReadmeSection(existing, readmeSection(layout), ctx.manifest.tags);
           }),
         },
       ],

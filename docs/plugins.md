@@ -398,7 +398,11 @@ if (!existing.includes('plugins {')) {
 ```
 
 The user then gets `keel.path-conflict` naming the file, in the
-sentence keel uses for its own. Unlike the helpers beside them these
+sentence keel uses for its own. Where the file has what your lines go
+inside, but already uses a name you would add something under — a
+parameter of that name — pass the name as a fourth argument instead
+(`new PathConflictError(path, id, undefined, 'clock')`), and the
+sentence says it is taken. Unlike the helpers beside them these
 are classes, and keel knows them by identity: a helper works as well
 bundled into the plugin, but these hold only when imported from the
 very copy of keel that runs it — a project that depends on keel and
@@ -406,6 +410,91 @@ runs that copy. A bundled copy is an `Error` of your own to keel,
 printed by the terminal as its message and answered by `keel ui` as a
 500; and where there is no keel to import at all — `keel new` into an
 empty directory — the import fails and the plugin does not load.
+
+### keel's sections in your README
+
+A `### ` section one of keel's verticals adds to the root `README.md`
+goes in keel's order, whatever order your stack lists its verticals in
+([cli.md](cli.md#keel-add)): the entrypoints, then the dev
+environment, monitoring and the dev container, then persistence, then
+the toolchain. On a stack tagged `arch.server-http` the dev
+container's section follows the dev environment's, as every one of
+keel's HTTP presets installs them; elsewhere it precedes it.
+
+keel reads as its sections only the `### ` headings after the README's
+last `## ` heading, so a README your bootstrap seeds needs a `## `
+heading for them to follow, as each of keel's seeds has. With none,
+keel's sections keep the order they arrive in, as before.
+
+A section your own vertical writes under a heading keel does not use
+goes wherever your patch puts it: keel passes it over when it places
+one of its own, and never moves it. keel knows its sections by their
+heading alone, whoever wrote them, so one of yours under a heading
+keel writes — `### cli`, `### rest`, `### http`, `### Dev environment`,
+`### Monitoring stack`, `### Observability`, `### Dev container`,
+`### Database`, `### Persistence` or `### Toolchain` — ranks as keel's
+own, and stands in for keel's section of that name, which is then not
+added.
+
+### keel's entries in your build files, and the dev container
+
+The entries keel's entrypoints write into the lists they share go in
+keel's order too, whatever order your stack lists its verticals in
+([cli.md](cli.md#keel-add)): the `include(…)` lines of
+`settings.gradle.kts` and the `<module>` entries of the root
+`pom.xml` — the seed's, then the CLI's, then REST's — and the root
+`package.json` scripts, by name, in the order keel's formatter sorts
+them into, whether or not your stack installs `code-style`. keel gives
+an entry of yours no rank of its own: an include or a module your
+vertical adds ranks after every entrypoint's, so an entrypoint's
+arriving later goes above it, and a script of yours ranks by its name
+as keel's do. Your entries go wherever your patch puts them, and keel
+never moves them.
+
+The dev environment's upgrade of an existing dev container reads the
+tags as the dev container's README section does. On a stack tagged
+`arch.server-http` that installs `dev-container` before `dev-env`, it
+writes the definition exactly as keel's HTTP presets render it
+attached — the Compose note above `"name"`, the docker feature last;
+elsewhere, the shape an extra dev environment has always written.
+
+### Growing a project of your stack
+
+`keel add entrypoint <cli|http>` grows a project into the preset that
+carries both entrypoints on its dials ([cli.md](cli.md#keel-add-entrypoint)),
+found on the stack finder's tree as `keel new` finds it. A family of
+yours grows when it registers that preset too — a CLI, an HTTP preset
+and the one carrying both, with the same build systems and module
+layouts — and when growing adds files and removes none: the other
+entrypoint's bootstrap newly matches, and nothing that matched stops
+matching. A project with no such preset on its dials is refused as
+`keel.uncoverable-entrypoint`, and one where the entrypoint would
+break a [conflict](#conflicts) a vertical of yours declares, as
+`keel.incompatible` — as `keel new` of the twin with that vertical is.
+Your adapters that matched before are not re-rendered, so one that
+reads the entrypoint tags inside `contribute()` writes its files for
+the project as it was; only its harness elements (skills, doc
+sections, hooks) are replayed on the grown tags, wherever the agent
+harness is installed — the ones that matched before of a vertical
+whose adapters only partly newly match included — and recorded where
+`keel new` of the twin records them. A modulith's peer context grows
+with it where it is wired into the assemblies by an adapter per
+entrypoint, as keel's Go, Rust and TypeScript families' are: in a
+vertical of yours the project has, a shell requiring the context's
+marker (`modules.peer-context`), and beside it one wiring adapter
+requiring the marker and `arch.cli`, another the marker and
+`arch.server-http`, each writing only that assembly's wiring — the
+new entrypoint's newly matches. A context `keel add module` adds
+(`modules.context`) is keel's alone: that command runs keel's own
+`bounded-context`, whose adapters cover keel's families, so it refuses
+a project of yours, and growing replays that same vertical for each
+context it added. Where no adapter wires a context in, growth is
+refused as `keel.contexts-need-rewiring`, naming it. Where a project
+of your family can grow, a vertical of yours that only the missing
+entrypoint stops, and that the grown project takes — read with what
+growing installs and the tags those promote — is refused carrying
+`keel add entrypoint <word>` as its action, as keel's own are
+([Refusals](composition.md#refusals)).
 
 ### What an adapter promotes, and what a vertical reads
 
@@ -515,7 +604,13 @@ const productGlueAdapter = {
   vertical then reads as already there, and `keel add` of it adds
   nothing rather than meeting your files as `keel.path-conflict`; in
   one whose stack is not listed it stays to add, and the product's
-  `keel new` report says so. A preset that installs that vertical in a
+  `keel new` report says so. At the product root, `keel add` of it is
+  refused naming the service that could still take it, until each
+  service that could has it; then it reads as there already — an Ok
+  naming the services, as `keel new --with` of it on the product sets
+  it aside — and a re-render of it at the root says, for each service,
+  whether it installed the vertical or has it from your glue
+  (`fromProduct`, in the refusal's data). A preset that installs that vertical in a
   monorepo service anyway (its `services[].extraVerticals`) would have
   two scopes write one file: `keel new` refuses it before it reports
   the plan, as `keel.cross-scope-write`, naming both adapters and where
@@ -571,8 +666,15 @@ loads there is no name to quote, so those messages name the path.
 | A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
 | A `placement` with no reason                | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                |
 | A question `shared` with anything else      | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …` |
+| A vertical id of `module` or `entrypoint`   | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`    |
 | An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
 | An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
+
+`keel add module <name>` and `keel add entrypoint <cli|http>` are
+commands of their own, read off the first word, so a vertical of
+either id could never be added with `keel add <id>`, though `keel new
+--with` could still name it; neither names a capability, so the two
+are reserved rather than left half-working.
 
 The dimension check is the static half of the resolver's. `coversFor`
 asks whether a dimension is covered _for a tag set_ and answers "no"

@@ -6,13 +6,15 @@
  * CLI half of the contract — that `keel add a b` is **one** dispatch
  * naming both, so the planner sees the set whole (a second dispatch
  * would install `a` before anyone asked what `b` needs), that
- * `--refresh` travels as a list, and that `module` stays a reserved
- * first word. And what a run that has nothing to do exits with: the
- * executable turns a thrown error into exit code 1, so an add of what
- * is already there — an empty plan, over the real engine — must
- * return, printing why. And that `keel add --list` is the project's
- * status — one dispatch of `keel.project-status` — printed as what
- * each add would do, so the list and the command cannot disagree.
+ * `--refresh` travels as a list, and that `module` and `entrypoint`
+ * stay reserved first words. And what a run that has nothing to do
+ * exits with: the executable turns a thrown error into exit code 1,
+ * so an add of what is already there — an empty plan, over the real
+ * engine — must return, printing why. And that `keel add --list` is
+ * the project's status — one dispatch of `keel.project-status` —
+ * printed as what each add would do, so the list and the command
+ * cannot disagree. And that a re-render refused at a product root
+ * sends the user only where one runs.
  */
 
 import os from 'node:os';
@@ -116,13 +118,89 @@ describe('keel add, as a command line', () => {
   });
 });
 
+describe('keel add entrypoint, as a command line', () => {
+  it("keeps 'entrypoint' as the first word that means an entrypoint, the word after it the domain's", async () => {
+    const dispatched = await run(['add', 'entrypoint', 'http', '--yes', '--dry-run']);
+    expect(dispatched).toEqual([
+      {
+        kind: 'keel.add-entrypoint',
+        intent: 'command',
+        cwd: '/tmp/demo',
+        entrypoint: 'http',
+        answers: {},
+        interactive: false,
+        dryRun: true,
+      },
+    ]);
+  });
+
+  it('carries --set answers as any add does', async () => {
+    const [command] = await run([
+      'add',
+      'entrypoint',
+      'http',
+      '--set',
+      'observability/monitoring-compose:stack=lgtm',
+    ]);
+    expect(command).toMatchObject({
+      answers: { 'observability/monitoring-compose': { stack: 'lgtm' } },
+      interactive: true,
+    });
+  });
+
+  it.each([
+    [['add', 'entrypoint'], /missing entrypoint/],
+    [['add', 'entrypoint', 'cli', 'http'], /takes one entrypoint, got 2: cli http/],
+    [['add', 'entrypoint', 'http', '--reapply'], /--reapply applies to verticals/],
+    [['add', 'entrypoint', 'http', '--refresh', 'ci'], /--refresh applies to verticals/],
+    [
+      ['add', 'entrypoint', 'http', '--consumes', 'greeting'],
+      /--consumes applies to 'keel add module'/,
+    ],
+  ])('refuses %j before dispatching', async (args, message) => {
+    const mediator = new RecordingMediator();
+    await expect(
+      buildProgram({
+        mediator,
+        logger: new FakeLogger(),
+        version: 'test',
+        availableStacks: [],
+        availableVerticals: [],
+        cwd: () => '/tmp/demo',
+        serveUi: () => {
+          throw new Error('unexpected UI start');
+        },
+      }).parseAsync([...args], { from: 'user' }),
+    ).rejects.toThrow(message);
+    expect(mediator.dispatched).toEqual([]);
+  });
+
+  it('names the third form where the target is missing, and in its help', async () => {
+    await expect(run(['add'])).rejects.toThrow(/'entrypoint <cli\|http>'/);
+    const add = buildProgram({
+      mediator: new RecordingMediator(),
+      logger: new FakeLogger(),
+      version: 'test',
+      availableStacks: [],
+      availableVerticals: [],
+      cwd: () => '/tmp/demo',
+      serveUi: () => {
+        throw new Error('unexpected UI start');
+      },
+    }).commands.find((command) => command.name() === 'add');
+    expect(add?.description()).toContain(
+      "the entrypoint a project lacks with 'keel add entrypoint <cli|http>'",
+    );
+  });
+});
+
 describe('keel add --list', () => {
   it('is one status dispatch for the directory it runs in, and nothing else', async () => {
     const dispatched = await run(['add', '--list']);
     expect(dispatched).toEqual([projectStatusQuery({ cwd: '/tmp/demo' })]);
   });
 
-  it('prints what keel add would do with each vertical here, refusals in their own words', async () => {
+  it('prints what keel add would do with each vertical here, and what an entrypoint lets in', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-list-'));
     try {
       const logger = new FakeLogger();
@@ -150,12 +228,22 @@ describe('keel add --list', () => {
       const printed = await list();
       const heading = (text: string): number => printed.indexOf(text);
       expect(heading('Ready to add here:')).toBeGreaterThanOrEqual(0);
-      expect(heading('Not for this project:')).toBeGreaterThan(heading('Ready to add here:'));
+      // What only the HTTP server stops is this project's, one command
+      // away — no longer "not for this project", which this CLI,
+      // scaffolded with no extras, has nothing under.
+      expect(heading("After 'keel add entrypoint http':")).toBeGreaterThan(
+        heading('Ready to add here:'),
+      );
+      expect(heading('Not for this project:')).toBe(-1);
       const line = (id: string): string | undefined =>
         printed.find((entry) => entry.trimStart().startsWith(`${id} `));
       expect(line('ci')).toContain('Continuous integration');
-      expect(line('observability')).toContain(
-        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      expect(line('observability')).toMatch(
+        /^ {2}observability +Observability, which comes with it — /,
+      );
+      expect(line('persistence')).toMatch(/^ {2}persistence +Persistence — SQL persistence/);
+      expect(line('gateway')).toMatch(
+        /^ {2}gateway +Service gateway, once 'keel link <path>' links a project it can wire — /,
       );
       expect(printed.at(-1)).toMatch(/^Installed: .*vcs.*--reapply' re-renders one$/);
       expect(logger.messages('warn')).toEqual([]);
@@ -283,7 +371,7 @@ describe('keel add --list', () => {
     }
   });
 
-  it('lists what is installed and not re-rendered by id apart, at a product root', async () => {
+  it('lists apart what a product root installed, what it does not re-render, and what its services have', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-list-'));
     try {
       const logger = new FakeLogger();
@@ -308,6 +396,16 @@ describe('keel add --list', () => {
       const printed = logger.messages('info');
       expect(printed.at(-2)).toBe("Installed: vcs — 'keel add <id> --reapply' re-renders one");
       expect(printed.at(-1)).toBe("Also installed, which 'keel add' does not re-render: fullstack");
+      // What its services have is no refusal of the root's, and nothing
+      // it installed: said apart, in the note the add answers with.
+      const there = printed.indexOf('In its services, nothing to add:');
+      expect(there).toBeGreaterThan(printed.indexOf('Not for this project:'));
+      expect(printed).toContain(
+        '  code-style        Code style is already there: backend/ and frontend/ have it',
+      );
+      expect(printed.slice(printed.indexOf('Not for this project:'), there).join('\n')).not.toMatch(
+        /code-style|containerization|agent-harness/,
+      );
 
       // One directory down, a service: what the product gives it is
       // said apart, each with where it comes from.
@@ -322,6 +420,45 @@ describe('keel add --list', () => {
         '  containerization  Container image is already there: the product root builds it for this service',
         '  vcs               Version control is already there: the product root has it, for the one repository its services share',
       ]);
+
+      // A product root from another harness generation: no `keel add`
+      // brings its harness forward, and the line says so — and what
+      // the refusals there say: one not for the root as the list says,
+      // one it or its services have already as nothing to run, any
+      // other naming the pin.
+      const file = path.join(projectScopeRoot(cwd), MANIFEST_FILENAME);
+      const { harnessGeneration: _dropped, ...unmarked } = JSON.parse(
+        await fs.readFile(file, 'utf8'),
+      ) as Record<string, unknown>;
+      await fs.writeFile(file, JSON.stringify(unmarked));
+      logger.entries.length = 0;
+      await program(mediator, logger, cwd).parseAsync(['add', '--list'], { from: 'user' });
+      expect(logger.messages('warn')).toEqual([
+        `this product root's harness carries no generation marker, and this keel writes generation ${String(HARNESS_GENERATION)} — no 'keel add' brings a product root's harness forward, and 'keel add' refuses everything here: what is not for this root as it says below, what it or its services have already as nothing to run, and anything else naming the keel that scaffolded it, to pin`,
+      ]);
+      const refusal = async (vertical: string) =>
+        expectErr(
+          await mediator.dispatch(
+            addVerticalCommand({
+              cwd,
+              verticals: [vertical],
+              answers: {},
+              interactive: false,
+              dryRun: true,
+            }),
+          ),
+        );
+      const theirs = await refusal('agent-harness');
+      expect(theirs.message).toContain("no 'keel add' brings it forward");
+      expect(theirs.message).toContain("its services have what 'keel add agent-harness' names");
+      expect((await refusal('vcs')).message).toContain(
+        "this root has what 'keel add vcs' names already, so there is nothing to run here",
+      );
+      expect((await refusal('dev-env')).message).toContain('pin keel@0.4.0-alpha');
+      const notHere = await refusal('persistence');
+      expect(notHere.code).toBe('keel.wrong-scope');
+      const row = logger.messages('info').find((line) => /^ {2}persistence /.test(line));
+      expect(row?.replace(/^ {2}persistence +/, '')).toBe(notHere.message);
     } finally {
       await fs.remove(cwd);
     }
@@ -366,6 +503,73 @@ function program(mediator: Mediator, logger: FakeLogger, cwd: string) {
     },
   });
 }
+
+describe('keel add --reapply, at a product root', () => {
+  /** The message `run` is refused with at the command line. */
+  const refusedWith = async (run: Promise<unknown>): Promise<string> => {
+    try {
+      await run;
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected the command line to be refused');
+  };
+
+  it('sends a re-render of what its services installed into each, and names none for the image the root builds', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-reapply-'));
+    try {
+      const logger = new FakeLogger();
+      const mediator = installMediator({
+        logger,
+        processes: new FakeProcessRunner(),
+        runDeferred: async () => {},
+      });
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'fullstack',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            layout: 'monorepo',
+          }),
+        ),
+      );
+      const keel = (dir: string, args: readonly string[]) =>
+        program(mediator, logger, dir).parseAsync([...args, '--yes', '--dry-run'], {
+          from: 'user',
+        });
+
+      // Each re-render the hint names is one that runs.
+      const style = await refusedWith(keel(cwd, ['add', 'code-style', '--reapply']));
+      const [, hint = ''] = style.split('\n  hint: ');
+      expect(hint).toBe(
+        "'cd backend && keel add code-style --reapply' or 'cd frontend && keel add code-style --reapply'",
+      );
+      const hinted = [...hint.matchAll(/'cd (\S+) && keel ([^']+)'/g)];
+      expect(hinted).toHaveLength(2);
+      for (const [, dir = '', args = ''] of hinted) {
+        await expect(keel(path.join(cwd, dir), args.split(' '))).resolves.toBeDefined();
+      }
+
+      // The image the root builds for them has no re-render to name,
+      // at the root or in a service.
+      expect(await refusedWith(keel(cwd, ['add', 'containerization', '--reapply']))).toBe(
+        'Container image is not installed at the product root, which builds it for backend/ and frontend/: nothing to re-render here',
+      );
+      expect(
+        await refusedWith(
+          keel(path.join(cwd, 'backend'), ['add', 'containerization', '--reapply']),
+        ),
+      ).toBe(
+        'Container image is not installed in this service — the product root builds it for this service: nothing to reapply here',
+      );
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+});
 
 describe('keel add, of what is there already', () => {
   it('returns — exit code 0 — printing the note that says why nothing changed', async () => {

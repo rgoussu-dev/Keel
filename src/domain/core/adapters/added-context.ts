@@ -1,6 +1,7 @@
 /**
- * The inputs `keel add module <name>` hands its adapters, and the tag
- * that selects them.
+ * The inputs `keel add module <name>` hands its adapters — and `keel
+ * add entrypoint` again, replaying the context — and the tag that
+ * selects them.
  *
  * **Why the answers channel rather than a new one.** An adapter reads
  * resolved values off the manifest snapshot through
@@ -9,13 +10,14 @@
  * how every downstream Go adapter learns the module path without
  * re-asking. `add module` needs exactly that shape: one set of values,
  * settled before resolution, read by whichever family's adapter fires.
- * Keying them under a single pseudo-adapter id means the handler seeds
+ * Keying them under a single pseudo-adapter id means a handler seeds
  * one record instead of one per family, and a family added later reads
  * the same key without the handler learning its name.
  *
- * **Both the answers and the tag are transient, and the handler
- * strips them.** They are install-time selectors, not facts about the
- * project: `modules.context` says "an add-module run is happening",
+ * **Both the answers and the tag are transient, and the handler that
+ * seeds them strips them.** They are install-time selectors, not facts
+ * about the project: `modules.context` says "a context's adapters are
+ * running" — an add-module run, or its replay as an entrypoint grows —
  * which stops being true the moment it finishes, and the name belongs
  * in {@link ManifestV2.modules} where it is a fact rather than in
  * `answers` where it would read as a default for the *next* context.
@@ -38,8 +40,10 @@ import { MODULITH_LAYOUT_TAG } from './module-layout.js';
 export const ADD_MODULE_INPUT_ID = 'keel.add-module';
 
 /**
- * Selects the context-shell adapters. Set for the duration of one
- * `keel add module` run and never persisted.
+ * Selects a context's adapters — its shell and, on a family that
+ * splits them, its wiring per entrypoint. Set for the duration of one
+ * `keel add module` run, or of `keel add entrypoint`'s replay of one,
+ * and never persisted.
  *
  * Its other job is to be the marker the front-door gate probes for:
  * a shell adapter requires it, so "is there an adapter for this
