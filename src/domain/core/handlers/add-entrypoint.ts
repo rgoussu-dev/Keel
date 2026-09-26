@@ -35,19 +35,28 @@
  *      run), and its refusals: no twin, a front end, adapters that
  *      would stop applying, a rule of a vertical the project has that
  *      the entrypoint breaks, and bounded contexts wired into the
- *      existing entrypoints alone.
+ *      existing entrypoints alone — then, off the files, a context the
+ *      manifest records consuming none that holds the gateway keel
+ *      writes for a consumer: one added before keel recorded what a
+ *      context consumes, which the replay would wire in standalone.
  *   2. **The grown manifest**: the entrypoint's tag and the twin's
  *      `projects` folded in before anything resolves.
  *   3. **One run**, in the twin's order: the verticals with adapters
  *      that newly match install those alone (`only`), in the `install`
  *      posture, so a file already there is refused as
- *      `keel.path-conflict`; the harness re-renders; the verticals the
+ *      `keel.path-conflict` — the peer context's wiring for the new
+ *      assembly among them; the harness re-renders; the verticals the
  *      project lacks install, closed over their prerequisites by the
  *      planner (`admit`) as any `keel add` is. No dev container is
  *      re-rendered: the dev environment's in-place upgrade writes the
- *      twin's definition on the grown tags. The run's harness buffer
- *      is this handler's to finalize: the verticals that did not run
- *      are replayed into it, and the generation restamped.
+ *      twin's definition on the grown tags. Then each context `keel
+ *      add module` added is wired into the new assembly, in the order
+ *      it was added — a context's wiring calls the wiring of the one
+ *      it consumes — by a run of `bounded-context` as that command ran
+ *      it, installing what newly matches (`GrowthPlan.modules`). The
+ *      run's harness buffer is this handler's to finalize: the
+ *      verticals that did not run are replayed into it, and the
+ *      generation restamped.
  *   4. **Settling**: every other vertical of the twin — but one placed
  *      at a repository root, whose actions set up a repository the
  *      project has — replays its adapters that matched before for
@@ -82,7 +91,7 @@ import type {
   PresetAnswers,
   RefreshProposal,
 } from '../../contract/commands.js';
-import type { Adapter, Vertical } from '../../contract/composition.js';
+import type { Adapter, Tree, Vertical } from '../../contract/composition.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import {
   effectiveTags,
@@ -94,13 +103,21 @@ import {
 } from '../../contract/manifest.js';
 import { NOT_INITIALISED_CODE, notInitialisedSentence } from '../../contract/nearby.js';
 import { runActions } from '../actions.js';
+import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
 import { withoutHarness } from '../dials.js';
 import { workingTreeDiffs } from '../diff.js';
-import { growthOf, type GrowthPlan, type GrowthRefusal } from '../growth.js';
+import { growthOf, type GrowthModule, type GrowthPlan, type GrowthRefusal } from '../growth.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import { retrofitHarness } from '../harness-retrofit.js';
-import { finalizeHarness, installVerticals } from '../install.js';
+import {
+  contributedPaths,
+  finalizeHarness,
+  installVertical,
+  installVerticals,
+  type InstallVerticalInputs,
+  type InstallVerticalResult,
+} from '../install.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
 import { rankedIndex } from '../rank.js';
@@ -115,6 +132,7 @@ import {
   relinkNote,
   uncoverableEntrypointSentence,
   unknownEntrypointSentence,
+  unrecordedConsumesSentence,
   WRONG_SCOPE_CODE,
 } from '../refusals.js';
 import { installedVertical } from '../registry.js';
@@ -135,6 +153,7 @@ import {
   strayAnswerRefusal,
   unusedAnswers,
 } from '../supplied-answers.js';
+import { boundedContextVertical } from '../verticals/bounded-context.js';
 import type { InstallDeps } from './deps.js';
 
 /** Executes {@link AddEntrypointCommand}s. */
@@ -188,6 +207,10 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
       });
     }
 
+    const tree = this.deps.trees(command.cwd);
+    const unrecorded = await this.unrecordedConsumer(stored, growth, tree, command.cwd);
+    if (unrecorded !== null) return err(unrecorded);
+
     const grown = grownManifest(stored, growth);
     const plan = this.planOf(stored, grown, growth);
     if (!plan.ok) return plan;
@@ -212,7 +235,6 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
     }
 
     const now = this.deps.clock.nowIso();
-    const tree = this.deps.trees(command.cwd);
     const owners = newOwnership();
     const harness: HarnessContribution[] = [];
     const harnessRuns = growth.rerender.length > 0;
@@ -240,6 +262,21 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
         apply: 'install',
         registry,
       });
+      result = await wireModules(result, growth.modules, {
+        vertical: boundedContextVertical,
+        tree,
+        owners,
+        harness,
+        mode: 'non-interactive',
+        prompt: this.deps.prompt,
+        logger: this.deps.logger,
+        cwd: command.cwd,
+        templates: this.deps.templates,
+        processes: this.deps.processes,
+        now: () => now,
+        apply: 'install',
+        registry,
+      });
       if (hasAnswers(command.answers)) {
         const stray = strayAnswerRefusal(
           command.answers,
@@ -256,12 +293,16 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
         // What ran put its declarations in the buffer as it installed
         // or re-rendered; the rest of the project is replayed into it.
         // A vertical that installed some of its adapters counts as run:
-        // the install replayed the ones it left out itself.
+        // the install replayed the ones it left out itself. So did each
+        // context's replay; the skeleton and the peer are
+        // `walking-skeleton`'s, never `bounded-context`'s — so the
+        // retrofit replays no context.
         await retrofitHarness({
           ...this.deps,
           manifest: {
             ...result.manifest,
             verticals: result.manifest.verticals.filter((v) => !ran.has(v.id)),
+            modules: [],
           },
           tree,
           owners,
@@ -403,11 +444,68 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
   }
 
   /**
+   * The refusal of a context growing would wire in as the manifest
+   * records it, consuming none, though `tree` holds the gateway keel
+   * writes for a context consuming an earlier one (roadmap R.3a,
+   * blocker 17): `consumes` has been recorded only since #164, and a
+   * context `keel add module --consumes` added before it reads as
+   * standalone. Its wiring into the new entrypoint would then call no
+   * gateway its constructor takes, and not build. The gateway is found
+   * by the paths `bounded-context` writes for the context consuming
+   * each context recorded before it with a seam, less those it writes
+   * for the context alone — the family's own reading of where a
+   * gateway goes, so no family's layout is known here. Null where
+   * every context growing wires in is as recorded.
+   */
+  private async unrecordedConsumer(
+    stored: ManifestV2,
+    growth: GrowthPlan,
+    tree: Tree,
+    cwd: string,
+  ): Promise<DomainError | null> {
+    const registry = this.deps.registry;
+    const pathsOf = (name: string, consumes: string | null) =>
+      contributedPaths({
+        vertical: boundedContextVertical,
+        manifest: {
+          ...stored,
+          tags: [...stored.tags, CONTEXT_TAG].sort(),
+          answers: { ...stored.answers, ...addModuleInputs({ name, consumes }) },
+        },
+        prompt: this.deps.prompt,
+        logger: this.deps.logger,
+        cwd,
+        templates: this.deps.templates,
+        processes: this.deps.processes,
+        registry,
+      });
+    const wired = new Set(growth.modules.map((module) => module.name));
+    const seams: string[] = [];
+    for (const module of stored.modules) {
+      if (wired.has(module.name) && module.consumes === undefined) {
+        const alone = new Set(await pathsOf(module.name, null));
+        for (const consumed of seams) {
+          const gateway = (await pathsOf(module.name, consumed)).filter((at) => !alone.has(at));
+          if (gateway.some((at) => tree.exists(at))) {
+            return new DomainError(
+              unrecordedConsumesSentence(growth.entrypoint, module.name, consumed),
+              'keel.contexts-need-rewiring',
+            );
+          }
+        }
+      }
+      if (module.seam) seams.push(module.name);
+    }
+    return null;
+  }
+
+  /**
    * The refusal where no keel project is, worded as `keel add` words
    * it — but inside a monorepo product, whose root and services both
    * refuse this command, it points at the services, and at a project
-   * growth refuses `word` on, and says why each refuses it too, rather
-   * than sending the user there to be refused.
+   * growth refuses `word` on, or its files do ({@link unrecordedConsumer}),
+   * and says why each refuses it too, rather than sending the user there
+   * to be refused.
    */
   private async notInitialised(
     scopeRoot: string,
@@ -419,19 +517,27 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
     const aboveInProduct =
       nearby.above !== null &&
       (await enclosingProduct(this.deps, path.join(cwd, nearby.above))) !== null;
-    const refusedAt = (named: string): string | null => {
-      const manifest = nearby.manifests.get(named) ?? null;
-      const service = (nearby.services ?? []).includes(named);
-      const root = (manifest?.services.length ?? 0) > 0;
-      const inProduct = named === nearby.above && aboveInProduct;
-      if (service || root || inProduct) return ENTRYPOINT_IN_PRODUCT_REASON;
-      const growth = manifest === null ? null : growthOf(this.deps.registry, manifest, word);
-      // Growth's sentences open with an entrypoint's label or the word,
-      // which go on from this one as they are.
-      return growth?.kind === 'refused'
-        ? growthRefusalError(this.deps.registry, growth.refusal).message
-        : null;
-    };
+    const inProduct = (named: string): boolean =>
+      (nearby.services ?? []).includes(named) ||
+      (nearby.manifests.get(named)?.services.length ?? 0) > 0 ||
+      (named === nearby.above && aboveInProduct);
+    // Read ahead, files included, since the sentence asks for each
+    // reason as it goes. Growth's sentences open with an entrypoint's
+    // label or the word, which go on from this one as they are.
+    const refusals = new Map<string, string>();
+    for (const [named, manifest] of nearby.manifests) {
+      if (manifest === null || inProduct(named)) continue;
+      const growth = growthOf(this.deps.registry, manifest, word);
+      if (growth.kind === 'refused') {
+        refusals.set(named, growthRefusalError(this.deps.registry, growth.refusal).message);
+      }
+      if (growth.kind !== 'grows') continue;
+      const at = path.join(cwd, named);
+      const unrecorded = await this.unrecordedConsumer(manifest, growth, this.deps.trees(at), at);
+      if (unrecorded !== null) refusals.set(named, unrecorded.message);
+    }
+    const refusedAt = (named: string): string | null =>
+      inProduct(named) ? ENTRYPOINT_IN_PRODUCT_REASON : (refusals.get(named) ?? null);
     return new DomainError(
       notInitialisedSentence(scopeRoot, nearby, line, 'keel new --stack=<id>', true, refusedAt),
       NOT_INITIALISED_CODE,
@@ -464,9 +570,11 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
  * entrypoint is there already — or its refusal: inside a monorepo
  * product; growth's own; the planner's, of what growth installs. The
  * harness generation is left out: it stops every brownfield command
- * alike, and a status reports it once. What `keel.project-status`
- * reports of each back entrypoint, as `./add-module.ts`'
- * `moduleRefusal` is of `keel add module`.
+ * alike, and a status reports it once. So are the files: a context
+ * holding a gateway its record does not name is refused by the command
+ * and its preview alone. What `keel.project-status` reports of each
+ * back entrypoint, as `./add-module.ts`' `moduleRefusal` is of `keel
+ * add module`.
  */
 export function entrypointReading(
   registry: Registry,
@@ -531,6 +639,49 @@ export function growthRefusalError(registry: Registry, refusal: GrowthRefusal): 
 function scopeRefusal(where: DirectoryScope): DomainError | null {
   const place = productPlaceOf(where);
   return place === null ? null : new DomainError(entrypointScopeSentence(place), WRONG_SCOPE_CODE);
+}
+
+/**
+ * `result`, a growing run, with each context `keel add module` added
+ * wired into the new assembly (`modules`, in the order the manifest
+ * records them: a context's wiring calls the wiring of the one it
+ * consumes) as that command ran it, now on the grown project: its
+ * vertical, `inputs.vertical`, with the context's marker and inputs
+ * seeded — what it consumes read off the record — installing only the
+ * adapters that newly match, and the inputs stripped after. Onto the
+ * run's tree, ownership and harness buffer, after every vertical the
+ * twin lists, where the twin's own history adds them.
+ */
+async function wireModules(
+  result: InstallVerticalResult,
+  modules: readonly GrowthModule[],
+  inputs: Omit<InstallVerticalInputs, 'manifest' | 'only' | 'supplied'>,
+): Promise<InstallVerticalResult> {
+  let manifest = result.manifest;
+  const actions = [...result.applyResult.actions];
+  const adapters = [...result.adapters];
+  for (const module of modules) {
+    const recorded = manifest.modules.find((each) => each.name === module.name);
+    const context = { name: module.name, consumes: recorded?.consumes ?? null };
+    const wired = await installVertical({
+      ...inputs,
+      manifest: {
+        ...manifest,
+        tags: [...manifest.tags, CONTEXT_TAG].sort(),
+        answers: { ...manifest.answers, ...addModuleInputs(context) },
+      },
+      only: new Set(module.adapters),
+    });
+    manifest = withoutAddModuleInputs(wired.manifest);
+    actions.push(...wired.applyResult.actions);
+    adapters.push(...wired.adapters);
+  }
+  return {
+    ...result,
+    manifest,
+    applyResult: { ...result.applyResult, actions },
+    adapters,
+  };
 }
 
 /** The project `stored` records, with the tags and `projects` `growth` folds in. */
@@ -653,7 +804,9 @@ function twinOrder(
   const tags = effectiveTags(manifest);
   const ranks = new Map<string, number>();
   verticals.forEach(({ id }, index) => {
-    const vertical = installedVertical(registry, id);
+    // The context vertical `keel add module` records runs after every
+    // other, as keel's own (`wireModules`); one a registry lists ranks nothing.
+    const vertical = id === boundedContextVertical.id ? null : installedVertical(registry, id);
     if (vertical === null) return;
     resolveVertical(vertical, tags, registry).forEach((adapter, position) => {
       if (!ranks.has(adapter.id)) ranks.set(adapter.id, index * 1_000 + position);

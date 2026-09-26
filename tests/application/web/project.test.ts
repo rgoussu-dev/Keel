@@ -252,7 +252,7 @@ describe('projectSummary', () => {
   });
 
   it('offers on the Adapters line only the entrypoint the command would add', async () => {
-    await scaffold('go-cli', { moduleLayout: 'modulith', withPeerContext: true });
+    await scaffold('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const reported = await status();
     const refused = expectErr(
       await mediator.dispatch(

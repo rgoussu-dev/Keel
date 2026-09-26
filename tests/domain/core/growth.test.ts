@@ -11,9 +11,13 @@
  * whichever it finds, an agent harness, and an observability and a dev
  * vertical only the HTTP presets carry, in that order; a front end
  * beside them. Each case varies that registry, or the manifest a
- * scaffold of one of them would have recorded.
+ * scaffold of one of them would have recorded. A context `keel add
+ * module` adds is wired in by keel's own `bounded-context`, the one
+ * that command runs, whose adapters cover keel's families alone: its
+ * replay is read on keel's Go presets, whose context adapters are split.
  *
- * **Factory.** `registryOf` over the family, as a plugin's source.
+ * **Factory.** `registryOf` over the family, as a plugin's source; the
+ * shipped registry for Go.
  *
  * **Port.** `growthOf`.
  */
@@ -34,8 +38,9 @@ import type { BuildSystemOption, Stack } from '../../../src/domain/contract/stac
 import { BASIC_LAYOUT, MODULITH_LAYOUT } from '../../../src/domain/core/adapters/module-layout.js';
 import { growthOf, grownScope, rerendersOf } from '../../../src/domain/core/growth.js';
 import { readiness } from '../../../src/domain/core/planner.js';
-import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
+import { pluginOrigin, registryOf, shippedRegistry } from '../../../src/domain/core/registry.js';
 import { projectScope } from '../../../src/domain/core/scope.js';
+import { STACKS } from '../../../src/domain/core/stacks.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
@@ -191,6 +196,7 @@ describe('growthOf', () => {
       projects: ['peer.api.rest'],
       adapters: [{ vertical: 'acme-skeleton', adapters: ['acme-skeleton/http'] }],
       verticals: ['acme-obs', 'acme-dev'],
+      modules: [],
       rerender: ['agent-harness'],
     });
   });
@@ -570,7 +576,7 @@ describe('growthOf', () => {
       });
     });
 
-    it('grows past an added context whose adapters an installed vertical wires in', () => {
+    it('is not lifted for an added context by an installed vertical, which keel add module never runs', () => {
       const contexts = vertical('acme-contexts', [
         adapter('acme-contexts', 'http', ['lang.acme', CONTEXT, 'arch.server-http']),
       ]);
@@ -580,47 +586,114 @@ describe('growthOf', () => {
         modules: [SKELETON, ORDERS],
       });
       expect(growthOf(family(undefined, [contexts]), manifest, 'http')).toMatchObject({
-        kind: 'grows',
-      });
-      expect(
-        growthOf(family(), { ...manifest, verticals: manifest.verticals.slice(0, 2) }, 'http'),
-      ).toMatchObject({
         kind: 'refused',
         refusal: { contexts: [{ name: 'orders', marker: CONTEXT }] },
       });
     });
 
-    it('grows past an added context that bounded-context wires in, installed or not', () => {
-      const contexts = (entrypoint: Tag) =>
-        vertical('bounded-context', [
-          adapter('bounded-context', 'acme', ['lang.acme', CONTEXT, entrypoint]),
-        ]);
-      const manifest = scaffoldOf(CLI, { layout: MODULITH, modules: [SKELETON, ORDERS] });
-      expect(
-        growthOf(family(undefined, [contexts('arch.server-http')]), manifest, 'http'),
-      ).toMatchObject({ kind: 'grows' });
-      expect(growthOf(family(undefined, [contexts('arch.cli')]), manifest, 'http')).toMatchObject({
+    it('is lifted by no bounded-context a registry lists, which keel add module never runs', () => {
+      const contexts = vertical('bounded-context', [
+        adapter('bounded-context', 'acme-http', ['lang.acme', CONTEXT, 'arch.server-http']),
+        adapter('bounded-context', 'acme-peer', ['lang.acme', PEER, 'arch.server-http']),
+      ]);
+      // Recorded among the project's verticals, as `keel add module` records it.
+      const manifest = scaffoldOf(CLI, {
+        layout: MODULITH,
+        tags: [PEER],
+        verticals: [...CLI.verticals.map(({ id }) => id), 'bounded-context'],
+        modules: [SKELETON, GUESTBOOK, ORDERS],
+      });
+      expect(growthOf(family(undefined, [contexts]), manifest, 'http')).toMatchObject({
         kind: 'refused',
-        refusal: { contexts: [{ name: 'orders', marker: CONTEXT }] },
+        refusal: {
+          contexts: [
+            { name: 'guestbook', marker: PEER },
+            { name: 'orders', marker: CONTEXT },
+          ],
+        },
       });
     });
 
     it('probes a context on what a linked sibling projects too', () => {
-      const wiring = vertical('bounded-context', [
-        adapter('bounded-context', 'acme-peer', [
-          'lang.acme',
-          PEER,
-          'arch.server-http',
-          'peer.ui.spa',
-        ]),
+      const wiring = vertical('acme-wiring', [
+        adapter('acme-wiring', 'peer', ['lang.acme', PEER, 'arch.server-http', 'peer.ui.spa']),
       ]);
-      const linked: ManifestV2 = { ...peered, peers: [{ ref: '../web', tags: ['peer.ui.spa'] }] };
+      const wired = {
+        ...peered,
+        verticals: [...peered.verticals, { id: 'acme-wiring', installedAt: 'then' }],
+      };
+      const linked: ManifestV2 = { ...wired, peers: [{ ref: '../web', tags: ['peer.ui.spa'] }] };
       expect(growthOf(family(undefined, [wiring]), linked, 'http')).toMatchObject({
         kind: 'grows',
       });
-      expect(growthOf(family(undefined, [wiring]), peered, 'http')).toMatchObject({
+      expect(growthOf(family(undefined, [wiring]), wired, 'http')).toMatchObject({
         kind: 'refused',
         refusal: { contexts: [{ name: 'guestbook', marker: PEER }] },
+      });
+    });
+
+    describe('added by keel add module, wired in by a replay of keel’s own bounded-context', () => {
+      const goCli = STACKS['go-cli']!;
+      const goHttp = STACKS['go-http']!;
+      /** Consumes `orders`, and sorts ahead of it. */
+      const BILLING: InstalledModule = {
+        name: 'billing',
+        installedAt: 'then',
+        seam: true,
+        consumes: 'orders',
+      };
+
+      it('replays each, in the order the manifest records them, installing what newly matches', () => {
+        const manifest = scaffoldOf(goCli, {
+          layout: MODULITH,
+          modules: [SKELETON, ORDERS, BILLING],
+        });
+        expect(growthOf(shippedRegistry, manifest, 'http')).toMatchObject({
+          kind: 'grows',
+          modules: [
+            { name: 'orders', adapters: ['bounded-context/go-context-http'] },
+            { name: 'billing', adapters: ['bounded-context/go-context-http'] },
+          ],
+        });
+        expect(
+          growthOf(
+            shippedRegistry,
+            scaffoldOf(goHttp, { layout: MODULITH, modules: [SKELETON, ORDERS] }),
+            'cli',
+          ),
+        ).toMatchObject({
+          kind: 'grows',
+          modules: [{ name: 'orders', adapters: ['bounded-context/go-context-cli'] }],
+        });
+      });
+
+      it('replays neither the skeleton nor the peer, which the skeleton’s own adapters wire', () => {
+        const manifest = scaffoldOf(goCli, {
+          layout: MODULITH,
+          tags: [PEER],
+          modules: [SKELETON, GUESTBOOK, ORDERS],
+        });
+        expect(growthOf(shippedRegistry, manifest, 'http')).toMatchObject({
+          kind: 'grows',
+          adapters: [
+            {
+              vertical: 'walking-skeleton',
+              adapters: [
+                'walking-skeleton/go-http-bootstrap',
+                'walking-skeleton/go-peer-context-http',
+              ],
+            },
+          ],
+          modules: [{ name: 'orders', adapters: ['bounded-context/go-context-http'] }],
+        });
+      });
+
+      it('replays none on a modulith holding the skeleton alone', () => {
+        const manifest = scaffoldOf(goCli, { layout: MODULITH, modules: [SKELETON] });
+        expect(growthOf(shippedRegistry, manifest, 'http')).toMatchObject({
+          kind: 'grows',
+          modules: [],
+        });
       });
     });
 

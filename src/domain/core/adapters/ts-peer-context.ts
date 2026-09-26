@@ -32,7 +32,7 @@
  *
  * **Two patches per assembly, and both are load-bearing.** Which
  * assemblies exist follows the arch tags (`tsAssemblies`), exactly as
- * the Rust and Go peer contexts decide it. Each assembly's manifest
+ * the Rust peer context decides it. Each assembly's manifest
  * gains the peer as a dependency, and its `main.ts` gains the wiring —
  * an unimported TypeScript module is never loaded, so without the
  * second patch the context would typecheck, lint, and run in nothing.

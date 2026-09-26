@@ -23,6 +23,10 @@
     "README.md": "3637e111e42ebb3876d0bd9b6b68b460124f0b8df315d5db78799e598ac5562f",
     ".devcontainer/devcontainer.json": "38479306f7af00fb34efb95bfe9f570d46f8685635497478dc3a3b35bf3304b5"
   },
+  "keel new --stack go-cli --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "3637e111e42ebb3876d0bd9b6b68b460124f0b8df315d5db78799e598ac5562f",
+    ".devcontainer/devcontainer.json": "38479306f7af00fb34efb95bfe9f570d46f8685635497478dc3a3b35bf3304b5"
+  },
   "keel new --stack go-cli --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "55f74989d084cfbf77ad829636cfbdf2c273febcc22892fb658d0781da94faa9",
     ".devcontainer/devcontainer.json": "631516897d0d900c5c98c3a4f5b73662ef26abeeb161dc9a355320968748bed9"
@@ -32,6 +36,10 @@
     ".devcontainer/devcontainer.json": "631516897d0d900c5c98c3a4f5b73662ef26abeeb161dc9a355320968748bed9"
   },
   "keel new --stack go-cli --module-layout modulith --with-peer-context": {
+    "README.md": "3637e111e42ebb3876d0bd9b6b68b460124f0b8df315d5db78799e598ac5562f",
+    ".devcontainer/devcontainer.json": "38479306f7af00fb34efb95bfe9f570d46f8685635497478dc3a3b35bf3304b5"
+  },
+  "keel new --stack go-cli --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "3637e111e42ebb3876d0bd9b6b68b460124f0b8df315d5db78799e598ac5562f",
     ".devcontainer/devcontainer.json": "38479306f7af00fb34efb95bfe9f570d46f8685635497478dc3a3b35bf3304b5"
   },
@@ -63,11 +71,19 @@
     "README.md": "88b8265a0278cc623104a25ee9c6f4cd291d952e1d5b37e45a09e9996f6c1b84",
     ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
   },
+  "keel new --stack go-cli-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "88b8265a0278cc623104a25ee9c6f4cd291d952e1d5b37e45a09e9996f6c1b84",
+    ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
+  },
   "keel new --stack go-cli-http --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "3b2db2bcf644a5927f0a8ac2a5b0753d364673cc10fd90c622ba8150b2532187",
     ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
   },
   "keel new --stack go-cli-http --module-layout modulith --with-peer-context": {
+    "README.md": "88b8265a0278cc623104a25ee9c6f4cd291d952e1d5b37e45a09e9996f6c1b84",
+    ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
+  },
+  "keel new --stack go-cli-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "88b8265a0278cc623104a25ee9c6f4cd291d952e1d5b37e45a09e9996f6c1b84",
     ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
   },
@@ -95,11 +111,19 @@
     "README.md": "9ec17e0343cec181364ca8b069004dc0e790107aefa319b78ecc5df20cd7796e",
     ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
   },
+  "keel new --stack go-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "9ec17e0343cec181364ca8b069004dc0e790107aefa319b78ecc5df20cd7796e",
+    ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
+  },
   "keel new --stack go-http --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "628f02827ad848cdf4d60db2d1a1cfd9d85bfd1763d97cc35c07dd73916b81ee",
     ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
   },
   "keel new --stack go-http --module-layout modulith --with-peer-context": {
+    "README.md": "9ec17e0343cec181364ca8b069004dc0e790107aefa319b78ecc5df20cd7796e",
+    ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
+  },
+  "keel new --stack go-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "9ec17e0343cec181364ca8b069004dc0e790107aefa319b78ecc5df20cd7796e",
     ".devcontainer/devcontainer.json": "81c9a33f535792a10a2b4a54e1bc18665fa1bb3241c70c70c8a3289b89b27f55"
   },
@@ -137,6 +161,11 @@
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
+  "keel new --stack micronaut-cli --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e67892ef12823424d2e999da15c2a3d4bc74a9b02302224041910cc5f10ebb62",
+    "settings.gradle.kts": "6ef28452c9ac389d2b89dd1afbecee63ecf821a89ab409906d0be92a77de9543",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "44e847383afb562bcf8e78e57dc857ad95a8f35edb8303c196520b00e8c23683",
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
@@ -150,6 +179,11 @@
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "e67892ef12823424d2e999da15c2a3d4bc74a9b02302224041910cc5f10ebb62",
     "settings.gradle.kts": "0d8ef9c5d13fe67a420bf28f464d4db978a33b6f6cc95c5ba65461e5e92a2e49",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
+  "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e67892ef12823424d2e999da15c2a3d4bc74a9b02302224041910cc5f10ebb62",
+    "settings.gradle.kts": "c959cc3991f53d59beca3412f14e764d75ce33c573d504059afe6608ce62748b",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -182,6 +216,11 @@
     "pom.xml": "24efa3203bef2d79324442fa181470f1c7214a0a5bd01c9a963fd0623ce95052",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
+  "keel new --stack micronaut-cli --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "1df2ba6cac4df6f761fedfdb15121af4c227c396cb89c34669c0b59cd022d9de",
+    "pom.xml": "45cdc36b1670bf0f2adc2c384f0944b745a59264140823c440e5d4108b02064d",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "be213d20b4aa7b4bf67f156ded128de57665c90b4c18910283ccd1ada1d95dc2",
     "pom.xml": "24efa3203bef2d79324442fa181470f1c7214a0a5bd01c9a963fd0623ce95052",
@@ -195,6 +234,11 @@
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "1df2ba6cac4df6f761fedfdb15121af4c227c396cb89c34669c0b59cd022d9de",
     "pom.xml": "e2d1318f57c7015aa12d90f57948e0779532ed5551572649663396571136b8e3",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
+  "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "1df2ba6cac4df6f761fedfdb15121af4c227c396cb89c34669c0b59cd022d9de",
+    "pom.xml": "305c665e5e212a0afbb61e84fc6ff7cf93f0da43577258bb17ef0bac8f521046",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -237,6 +281,11 @@
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
+  "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e67892ef12823424d2e999da15c2a3d4bc74a9b02302224041910cc5f10ebb62",
+    "settings.gradle.kts": "6ef28452c9ac389d2b89dd1afbecee63ecf821a89ab409906d0be92a77de9543",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "44e847383afb562bcf8e78e57dc857ad95a8f35edb8303c196520b00e8c23683",
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
@@ -250,6 +299,11 @@
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "e67892ef12823424d2e999da15c2a3d4bc74a9b02302224041910cc5f10ebb62",
     "settings.gradle.kts": "0d8ef9c5d13fe67a420bf28f464d4db978a33b6f6cc95c5ba65461e5e92a2e49",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
+  "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e67892ef12823424d2e999da15c2a3d4bc74a9b02302224041910cc5f10ebb62",
+    "settings.gradle.kts": "c959cc3991f53d59beca3412f14e764d75ce33c573d504059afe6608ce62748b",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -282,6 +336,11 @@
     "pom.xml": "e21e53d7090491e8460c3f665edd270dd33263fd5ec607cabb83dbd962071130",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
+  "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "1df2ba6cac4df6f761fedfdb15121af4c227c396cb89c34669c0b59cd022d9de",
+    "pom.xml": "ff1d4c53c77dc92a3e5adaf159a422b1859eb0fb3cec443de86b7dfc231565fb",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "be213d20b4aa7b4bf67f156ded128de57665c90b4c18910283ccd1ada1d95dc2",
     "pom.xml": "e21e53d7090491e8460c3f665edd270dd33263fd5ec607cabb83dbd962071130",
@@ -295,6 +354,11 @@
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "1df2ba6cac4df6f761fedfdb15121af4c227c396cb89c34669c0b59cd022d9de",
     "pom.xml": "56fa97521905285d9c3bf29ddd08e5ec6b28b5d369bec5920b8e3dc6f81ae085",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
+  "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "1df2ba6cac4df6f761fedfdb15121af4c227c396cb89c34669c0b59cd022d9de",
+    "pom.xml": "e7198e42c9200f9514214bf33f3b04d8d89fde2f2a420c285358c6dc33bd2c58",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -327,6 +391,11 @@
     "settings.gradle.kts": "735bf636d825f103a2811e3ddd7f38734a01f589109ff57264227fe0f8cc79b4",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack micronaut-cli-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d2a797a92bbabbeda2fecfdc3e26764c6ff67d371082aa81f5299ad914acf2b6",
+    "settings.gradle.kts": "99b3dff8acde4bcdf1ee627933390dd88a21ef18db05f535dc47ebed68e26df5",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack micronaut-cli-rest --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "66edd0daa97e7bfba40ffba4a7f141f5732e8230c1a57f4a379ecce49667b455",
     "settings.gradle.kts": "75730be8d6ff9b6b0f2884100a256fba215c809d1c94b566263da266529898fe",
@@ -335,6 +404,11 @@
   "keel new --stack micronaut-cli-rest --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "d2a797a92bbabbeda2fecfdc3e26764c6ff67d371082aa81f5299ad914acf2b6",
     "settings.gradle.kts": "c9013917e6c530121ee3b07b3b972256918f81cde3bf10dba9f92c8e9cac2eb0",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack micronaut-cli-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d2a797a92bbabbeda2fecfdc3e26764c6ff67d371082aa81f5299ad914acf2b6",
+    "settings.gradle.kts": "b9451d3e1f9479e76a24d795fec1ea736c495863dcef230d2989a6315ff12737",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack micronaut-cli-rest --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -357,6 +431,11 @@
     "pom.xml": "7add06f8f97f44e159cabcb75f9e4fe0e688295c4ca638a969f9015e6a77296b",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack micronaut-cli-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "61a79050d60a05720a0488350c42f3321ef84d6c333ed987f701c5474c9d598d",
+    "pom.xml": "433c8557c49a0e4ad323366a9beebbe0c948e194fb6b293d7f978d7695cd1459",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack micronaut-cli-rest --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "d35b5c4dfa485eb7b3f05ca12a23e050ef84a82adb5d7c689ac5af3e224d2564",
     "pom.xml": "2725a0deb9bc0b16aff26b2e058c2337d59c308d15a1e5feb5cecc838194e62c",
@@ -365,6 +444,11 @@
   "keel new --stack micronaut-cli-rest --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "61a79050d60a05720a0488350c42f3321ef84d6c333ed987f701c5474c9d598d",
     "pom.xml": "059fddf2e6654df7acb8f89280e1e72ae4433fc02bf9664bf1e93912fbd5486f",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack micronaut-cli-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "61a79050d60a05720a0488350c42f3321ef84d6c333ed987f701c5474c9d598d",
+    "pom.xml": "1889d5e4ef46e4e0b38fb32484a26458b63f5b308f984d7856ac1677f6c652fd",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack micronaut-cli-rest --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -392,6 +476,11 @@
     "settings.gradle.kts": "735bf636d825f103a2811e3ddd7f38734a01f589109ff57264227fe0f8cc79b4",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d2a797a92bbabbeda2fecfdc3e26764c6ff67d371082aa81f5299ad914acf2b6",
+    "settings.gradle.kts": "99b3dff8acde4bcdf1ee627933390dd88a21ef18db05f535dc47ebed68e26df5",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "66edd0daa97e7bfba40ffba4a7f141f5732e8230c1a57f4a379ecce49667b455",
     "settings.gradle.kts": "75730be8d6ff9b6b0f2884100a256fba215c809d1c94b566263da266529898fe",
@@ -400,6 +489,11 @@
   "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "d2a797a92bbabbeda2fecfdc3e26764c6ff67d371082aa81f5299ad914acf2b6",
     "settings.gradle.kts": "c9013917e6c530121ee3b07b3b972256918f81cde3bf10dba9f92c8e9cac2eb0",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d2a797a92bbabbeda2fecfdc3e26764c6ff67d371082aa81f5299ad914acf2b6",
+    "settings.gradle.kts": "b9451d3e1f9479e76a24d795fec1ea736c495863dcef230d2989a6315ff12737",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -422,6 +516,11 @@
     "pom.xml": "26440c4308354ad52cc3fb2bda04d7b84745a479c0410842ced90a3fc779213c",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack micronaut-cli-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "61a79050d60a05720a0488350c42f3321ef84d6c333ed987f701c5474c9d598d",
+    "pom.xml": "5aea5b3779f2f3ccbfc7912a1eab3d8996f15ebf5a4a880f75dbdd2f0ccc271e",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack micronaut-cli-rest-kotlin --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "d35b5c4dfa485eb7b3f05ca12a23e050ef84a82adb5d7c689ac5af3e224d2564",
     "pom.xml": "4db74c4c83778fdbccd042506b74021bf60abc8418f25f8dce115391e3762745",
@@ -430,6 +529,11 @@
   "keel new --stack micronaut-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "61a79050d60a05720a0488350c42f3321ef84d6c333ed987f701c5474c9d598d",
     "pom.xml": "a27f3092dfb5de1a73aaf0a5b435e2d30e89965a2a9a7b1f24aa6f856ab32105",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack micronaut-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "61a79050d60a05720a0488350c42f3321ef84d6c333ed987f701c5474c9d598d",
+    "pom.xml": "7cb7a0c16fb183d78acf0d541e4258dd6167e8b915382c962465b45f49e33788",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack micronaut-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -457,6 +561,11 @@
     "settings.gradle.kts": "95b6b46502e14ad451cbc7b8ad8eb7004010a28258c8e3af9db061bf038a1405",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack micronaut-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "0223cec236cb2b8c65ffc8e7b501d117e68a92dd63b2bac39a84fb3f61d05c4b",
+    "settings.gradle.kts": "1da6cba82264084f9241a9220c398235e8973c19f820815efd4074a5ce8b39fb",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "666017d545483a65ad15d19b646747154a47e1599f7d87ec12199c65132c8127",
     "settings.gradle.kts": "f832cb232ca0a862ddab50e76b524acd8330dffc5d53b44d30e7d6409700d3c0",
@@ -465,6 +574,11 @@
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "0223cec236cb2b8c65ffc8e7b501d117e68a92dd63b2bac39a84fb3f61d05c4b",
     "settings.gradle.kts": "b4b0c33595fbf2a4913f60c2ccb8152e2f499ddd8ba8dd09de83c7bb00b7c987",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "0223cec236cb2b8c65ffc8e7b501d117e68a92dd63b2bac39a84fb3f61d05c4b",
+    "settings.gradle.kts": "d629bf6d9bba13db9658f1290a7f06b3a668d03f6367d10e665e6e58f09c8ef2",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -487,6 +601,11 @@
     "pom.xml": "586737e9172c19179b153fdeeb4708b0d293ec96bcf6c24fc206d639c0188cca",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack micronaut-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "09170a4a080feba764ba87eb67072a491ef406a9a4da275122575681d484f459",
+    "pom.xml": "4f78b124b9e1793108a033560a9afc77826d9698bb0f0373f1f5507090171e0f",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "70aab6a1a2e53cbeb652f39a20d31e2c43f1b26352e9dee2e15d3b96f814ae84",
     "pom.xml": "1012b7cfef0858ae9fed1cac9f20d8a9dc9a50106858ed2cf1810cb8ee0f14f6",
@@ -495,6 +614,11 @@
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "09170a4a080feba764ba87eb67072a491ef406a9a4da275122575681d484f459",
     "pom.xml": "0b25f3283002f26a468bd01e136942de03668e1aaae666d786d1d57794439592",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "09170a4a080feba764ba87eb67072a491ef406a9a4da275122575681d484f459",
+    "pom.xml": "424df85742263393f5dfdcbc2a44b17b2c460aad7101a9252bd50ae14b1d312c",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -522,6 +646,11 @@
     "settings.gradle.kts": "95b6b46502e14ad451cbc7b8ad8eb7004010a28258c8e3af9db061bf038a1405",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "0223cec236cb2b8c65ffc8e7b501d117e68a92dd63b2bac39a84fb3f61d05c4b",
+    "settings.gradle.kts": "1da6cba82264084f9241a9220c398235e8973c19f820815efd4074a5ce8b39fb",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "666017d545483a65ad15d19b646747154a47e1599f7d87ec12199c65132c8127",
     "settings.gradle.kts": "f832cb232ca0a862ddab50e76b524acd8330dffc5d53b44d30e7d6409700d3c0",
@@ -530,6 +659,11 @@
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "0223cec236cb2b8c65ffc8e7b501d117e68a92dd63b2bac39a84fb3f61d05c4b",
     "settings.gradle.kts": "b4b0c33595fbf2a4913f60c2ccb8152e2f499ddd8ba8dd09de83c7bb00b7c987",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "0223cec236cb2b8c65ffc8e7b501d117e68a92dd63b2bac39a84fb3f61d05c4b",
+    "settings.gradle.kts": "d629bf6d9bba13db9658f1290a7f06b3a668d03f6367d10e665e6e58f09c8ef2",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -552,6 +686,11 @@
     "pom.xml": "28359f9ffb18f5442c5f05fcb9bd2ebba1737babf1d8827fb4ee44aa14e9b688",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "09170a4a080feba764ba87eb67072a491ef406a9a4da275122575681d484f459",
+    "pom.xml": "4b5d73d2479ff1d755af1694a6460abe06d4383ab32fb90369d113e9b578eeaa",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "70aab6a1a2e53cbeb652f39a20d31e2c43f1b26352e9dee2e15d3b96f814ae84",
     "pom.xml": "d14cb6e8a34b8484090ea5a681937f3daeb0c9cd1f4a2d500f792ab66998ca61",
@@ -560,6 +699,11 @@
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "09170a4a080feba764ba87eb67072a491ef406a9a4da275122575681d484f459",
     "pom.xml": "2e2b4b59f40d69d655eed4d23e6267d4597c0aadbb3873b432bc4dcbe42d224a",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "09170a4a080feba764ba87eb67072a491ef406a9a4da275122575681d484f459",
+    "pom.xml": "31de65b7456b6b73e1f195ca4f31c649e763e78afa8750153586b77076fded81",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -597,6 +741,11 @@
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
+  "keel new --stack quarkus-cli --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "8b002cfc04ee18e0560dfbaa8cb645fd6f634963d4de1313156f76031bb15f51",
+    "settings.gradle.kts": "6ef28452c9ac389d2b89dd1afbecee63ecf821a89ab409906d0be92a77de9543",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with ci,dev-env,distribution,toolchain": {
     "README.md": "dc5e5088bbd5dba209e3c4b3d45e9f0a852606dfcc6539877f4527232f364542",
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
@@ -610,6 +759,11 @@
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "8b002cfc04ee18e0560dfbaa8cb645fd6f634963d4de1313156f76031bb15f51",
     "settings.gradle.kts": "0d8ef9c5d13fe67a420bf28f464d4db978a33b6f6cc95c5ba65461e5e92a2e49",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
+  "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "8b002cfc04ee18e0560dfbaa8cb645fd6f634963d4de1313156f76031bb15f51",
+    "settings.gradle.kts": "c959cc3991f53d59beca3412f14e764d75ce33c573d504059afe6608ce62748b",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context --with ci,dev-env,distribution,toolchain": {
@@ -642,6 +796,11 @@
     "pom.xml": "882a7efb724f941a39d1cfe6e78bbbfbac52452dd389ae002c5e6028f2683817",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
+  "keel new --stack quarkus-cli --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "92d84ba24e8b3487de0ef4a0874f6c080957633e04f2f836d03c913489aabada",
+    "pom.xml": "25f3991e6e7547cda0f3fe842017d055481e0896b9954db7c7e3992c740d0671",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "8b71b1e717ddeab9bf18ca5b0f9aa2f6d000570af2e27c0ac517a0bb4667efe4",
     "pom.xml": "882a7efb724f941a39d1cfe6e78bbbfbac52452dd389ae002c5e6028f2683817",
@@ -655,6 +814,11 @@
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "92d84ba24e8b3487de0ef4a0874f6c080957633e04f2f836d03c913489aabada",
     "pom.xml": "c840c2d9cc673f0bfea433584112ceacad0cc5561403f9ca52540c27c8d5476a",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
+  "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "92d84ba24e8b3487de0ef4a0874f6c080957633e04f2f836d03c913489aabada",
+    "pom.xml": "1732ed41d06d5c5bde320034a2571d9a1b2d9f6fdfe35cf1ca0c490d02730228",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -697,6 +861,11 @@
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
+  "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "8b002cfc04ee18e0560dfbaa8cb645fd6f634963d4de1313156f76031bb15f51",
+    "settings.gradle.kts": "6ef28452c9ac389d2b89dd1afbecee63ecf821a89ab409906d0be92a77de9543",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with ci,dev-env,distribution,toolchain": {
     "README.md": "dc5e5088bbd5dba209e3c4b3d45e9f0a852606dfcc6539877f4527232f364542",
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
@@ -710,6 +879,11 @@
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "8b002cfc04ee18e0560dfbaa8cb645fd6f634963d4de1313156f76031bb15f51",
     "settings.gradle.kts": "0d8ef9c5d13fe67a420bf28f464d4db978a33b6f6cc95c5ba65461e5e92a2e49",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
+  "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "8b002cfc04ee18e0560dfbaa8cb645fd6f634963d4de1313156f76031bb15f51",
+    "settings.gradle.kts": "c959cc3991f53d59beca3412f14e764d75ce33c573d504059afe6608ce62748b",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,dev-env,distribution,toolchain": {
@@ -742,6 +916,11 @@
     "pom.xml": "f5f55d478159288ec17c2bd2a3a8877976b707f3830b1067095bcf5fb7cf11f5",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
+  "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "92d84ba24e8b3487de0ef4a0874f6c080957633e04f2f836d03c913489aabada",
+    "pom.xml": "1d736e1a3eb1d4886a7aa8afa65be15b12110322885681d9289e2cbd7c1e34b6",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "8b71b1e717ddeab9bf18ca5b0f9aa2f6d000570af2e27c0ac517a0bb4667efe4",
     "pom.xml": "f5f55d478159288ec17c2bd2a3a8877976b707f3830b1067095bcf5fb7cf11f5",
@@ -755,6 +934,11 @@
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "92d84ba24e8b3487de0ef4a0874f6c080957633e04f2f836d03c913489aabada",
     "pom.xml": "357c03cede23e1a8748bbc684962324b5aa5b37ed3d7239e8c1eecad6ec442f5",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
+  "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "92d84ba24e8b3487de0ef4a0874f6c080957633e04f2f836d03c913489aabada",
+    "pom.xml": "2139a1f583381a512cc38f31e70a40313c11b8ca01da902caac232486ab05acd",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -787,6 +971,11 @@
     "settings.gradle.kts": "735bf636d825f103a2811e3ddd7f38734a01f589109ff57264227fe0f8cc79b4",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack quarkus-cli-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "b834183baa0361c02583cf7a52228a4ecf946d58b427f4ec72f948c61171c543",
+    "settings.gradle.kts": "99b3dff8acde4bcdf1ee627933390dd88a21ef18db05f535dc47ebed68e26df5",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack quarkus-cli-rest --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "55a5311439e2ec3c913dee99982a52e6c7845c847b53829a81667573b6298a23",
     "settings.gradle.kts": "e9b613a0ddf48305cc84a0110a4736bf8828a0aa986ed70d54a6cef17e303593",
@@ -795,6 +984,11 @@
   "keel new --stack quarkus-cli-rest --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "b834183baa0361c02583cf7a52228a4ecf946d58b427f4ec72f948c61171c543",
     "settings.gradle.kts": "c9013917e6c530121ee3b07b3b972256918f81cde3bf10dba9f92c8e9cac2eb0",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack quarkus-cli-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "b834183baa0361c02583cf7a52228a4ecf946d58b427f4ec72f948c61171c543",
+    "settings.gradle.kts": "b9451d3e1f9479e76a24d795fec1ea736c495863dcef230d2989a6315ff12737",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack quarkus-cli-rest --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -817,6 +1011,11 @@
     "pom.xml": "a3b6ce87c983b924fc75958bc8a771603d399207242d419eb081c96461322601",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack quarkus-cli-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e338f579df22c0e7d2c2fedaadc3e06ecc9da787b7e18688c04464070f92086f",
+    "pom.xml": "9770c55375b4d0910176620af923f98a67316220d8217fb949ad4d6b8964254a",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack quarkus-cli-rest --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "c481f16aa518baf725fec892b77e9f628f2b778f46ee27b516c6c72d6531e38f",
     "pom.xml": "6f7fbd35b807a1e8acb3d09cb54739e2255b585df747ad6bdf6a3adfe9d34813",
@@ -825,6 +1024,11 @@
   "keel new --stack quarkus-cli-rest --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "e338f579df22c0e7d2c2fedaadc3e06ecc9da787b7e18688c04464070f92086f",
     "pom.xml": "04ec9284fae230bdae65d3170a90cf1c45eb053fd61cb47b607a1041df07d0b9",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack quarkus-cli-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e338f579df22c0e7d2c2fedaadc3e06ecc9da787b7e18688c04464070f92086f",
+    "pom.xml": "978ea5e4690c3de0f422c329d07abde5ef631d5f8e4eebffb1e47cac8d0081dc",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack quarkus-cli-rest --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -852,6 +1056,11 @@
     "settings.gradle.kts": "735bf636d825f103a2811e3ddd7f38734a01f589109ff57264227fe0f8cc79b4",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "b834183baa0361c02583cf7a52228a4ecf946d58b427f4ec72f948c61171c543",
+    "settings.gradle.kts": "99b3dff8acde4bcdf1ee627933390dd88a21ef18db05f535dc47ebed68e26df5",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "55a5311439e2ec3c913dee99982a52e6c7845c847b53829a81667573b6298a23",
     "settings.gradle.kts": "e9b613a0ddf48305cc84a0110a4736bf8828a0aa986ed70d54a6cef17e303593",
@@ -860,6 +1069,11 @@
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "b834183baa0361c02583cf7a52228a4ecf946d58b427f4ec72f948c61171c543",
     "settings.gradle.kts": "c9013917e6c530121ee3b07b3b972256918f81cde3bf10dba9f92c8e9cac2eb0",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "b834183baa0361c02583cf7a52228a4ecf946d58b427f4ec72f948c61171c543",
+    "settings.gradle.kts": "b9451d3e1f9479e76a24d795fec1ea736c495863dcef230d2989a6315ff12737",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -882,6 +1096,11 @@
     "pom.xml": "f81524b54289135b824341dc281aaa8b461a1e2ed269c909f401ae08dc189b4c",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack quarkus-cli-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e338f579df22c0e7d2c2fedaadc3e06ecc9da787b7e18688c04464070f92086f",
+    "pom.xml": "ab0bd7a8f4de4f1be6f9ba9189702699fa8e470fae83e72d344974971d5794bd",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack quarkus-cli-rest-kotlin --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "c481f16aa518baf725fec892b77e9f628f2b778f46ee27b516c6c72d6531e38f",
     "pom.xml": "d034a46ea96b22bc49e10d03ebfa6474ee49b1f587474750c1b5ec51cbcb8657",
@@ -890,6 +1109,11 @@
   "keel new --stack quarkus-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "e338f579df22c0e7d2c2fedaadc3e06ecc9da787b7e18688c04464070f92086f",
     "pom.xml": "c2fb67ec01b302bdd337b57975827ea7b1ee23a4d29c66fabe934c90ef6333be",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack quarkus-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "e338f579df22c0e7d2c2fedaadc3e06ecc9da787b7e18688c04464070f92086f",
+    "pom.xml": "af1486a10dbc0bf6d8e416d1b4400a6c318e2e0492d34ee83237dba359098f69",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack quarkus-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -917,6 +1141,11 @@
     "settings.gradle.kts": "95b6b46502e14ad451cbc7b8ad8eb7004010a28258c8e3af9db061bf038a1405",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack quarkus-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "915616968deeb7848b40557c058b83d1c6157d16f74eeb5ebb25c2ffabaef372",
+    "settings.gradle.kts": "1da6cba82264084f9241a9220c398235e8973c19f820815efd4074a5ce8b39fb",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "c342a488c3de4de4f787ec953db551b7e748945bc8559400ef83397aa90a5781",
     "settings.gradle.kts": "c434540312e41fc370aa1f4efd9f634da5018b13faa04374468c190fe36778e2",
@@ -925,6 +1154,11 @@
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "915616968deeb7848b40557c058b83d1c6157d16f74eeb5ebb25c2ffabaef372",
     "settings.gradle.kts": "b4b0c33595fbf2a4913f60c2ccb8152e2f499ddd8ba8dd09de83c7bb00b7c987",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "915616968deeb7848b40557c058b83d1c6157d16f74eeb5ebb25c2ffabaef372",
+    "settings.gradle.kts": "d629bf6d9bba13db9658f1290a7f06b3a668d03f6367d10e665e6e58f09c8ef2",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -947,6 +1181,11 @@
     "pom.xml": "40a046873d981dd6296a659f86247cf7ec3eaba0e04923dbb8053cb77b068891",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack quarkus-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "3cb7249dcc139ae60690c55d361273e69306e324f364a3ee55e11c02f65ca5e4",
+    "pom.xml": "2a5d4c5f8ab58bab3492b47de25781baa56fb9b03c6b8130cdeb2e510b73ffa6",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "469486442dae3a1d30a0573a142f7d79e9608355e6112827908cc238731d67ef",
     "pom.xml": "a2432a8780a725829f788e924afd9cd1af6d387863191d0b2bd3aa8151267dc1",
@@ -955,6 +1194,11 @@
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "3cb7249dcc139ae60690c55d361273e69306e324f364a3ee55e11c02f65ca5e4",
     "pom.xml": "95ead95e971bf48169655f1eb7315eff56fde1c8b5c223a9f82cd233b6ad4c53",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "3cb7249dcc139ae60690c55d361273e69306e324f364a3ee55e11c02f65ca5e4",
+    "pom.xml": "65c893ecc35de55cf81fa77e4e337f1538b49e2355d4d17bd5ce81078bd87907",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -982,6 +1226,11 @@
     "settings.gradle.kts": "95b6b46502e14ad451cbc7b8ad8eb7004010a28258c8e3af9db061bf038a1405",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "915616968deeb7848b40557c058b83d1c6157d16f74eeb5ebb25c2ffabaef372",
+    "settings.gradle.kts": "1da6cba82264084f9241a9220c398235e8973c19f820815efd4074a5ce8b39fb",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "c342a488c3de4de4f787ec953db551b7e748945bc8559400ef83397aa90a5781",
     "settings.gradle.kts": "c434540312e41fc370aa1f4efd9f634da5018b13faa04374468c190fe36778e2",
@@ -990,6 +1239,11 @@
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "915616968deeb7848b40557c058b83d1c6157d16f74eeb5ebb25c2ffabaef372",
     "settings.gradle.kts": "b4b0c33595fbf2a4913f60c2ccb8152e2f499ddd8ba8dd09de83c7bb00b7c987",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "915616968deeb7848b40557c058b83d1c6157d16f74eeb5ebb25c2ffabaef372",
+    "settings.gradle.kts": "d629bf6d9bba13db9658f1290a7f06b3a668d03f6367d10e665e6e58f09c8ef2",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1012,6 +1266,11 @@
     "pom.xml": "2602067ee982c834a8345f94a3f6862e1de61ca30b3cc0f6169266652f03af50",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "3cb7249dcc139ae60690c55d361273e69306e324f364a3ee55e11c02f65ca5e4",
+    "pom.xml": "7ee55a984652a5e0ab1a2e691f53ead6889ef7e7b7b569cbc32711e6523f7df3",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "469486442dae3a1d30a0573a142f7d79e9608355e6112827908cc238731d67ef",
     "pom.xml": "570c569696ae8bd0682393e21bda1fb6c97c375144b580b01b44a5baa2c769c3",
@@ -1020,6 +1279,11 @@
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "3cb7249dcc139ae60690c55d361273e69306e324f364a3ee55e11c02f65ca5e4",
     "pom.xml": "a1bdd38ae58e1508bb431959a6b2eba81a0161e48c7a2da45632f0dc75b486ca",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "3cb7249dcc139ae60690c55d361273e69306e324f364a3ee55e11c02f65ca5e4",
+    "pom.xml": "d96643e87131e945f47ca1797f75ba17bea7090c5a8e1a350b7d601d0c1501c1",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1057,6 +1321,11 @@
     "Cargo.toml": "7dbaed2adb3857b2c956a5ed22bff7cd53c9669f0a980d4abc9f23519bb3414b",
     ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
   },
+  "keel new --stack rust-cli --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
+    "Cargo.toml": "5acdce70ecac7722bcadcf3e948b030b152de502352662715269e6c5388e3876",
+    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
+  },
   "keel new --stack rust-cli --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "a2e2c4c28a893c1704bc46506a200d0b706ad8da6497f343ef079e544d03ec1f",
     "Cargo.toml": "7dbaed2adb3857b2c956a5ed22bff7cd53c9669f0a980d4abc9f23519bb3414b",
@@ -1070,6 +1339,11 @@
   "keel new --stack rust-cli --module-layout modulith --with-peer-context": {
     "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
     "Cargo.toml": "3fbadc6ebee684b45ff8637a78934fc9e925b3b7d85b15cad098d8c88fc99172",
+    ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
+  },
+  "keel new --stack rust-cli --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "09682258a9b3b8763603dfb1b1ba03843814085774f00c2eca8e0fc89b774f57",
+    "Cargo.toml": "f84a3903e798854f0feb9f5db0d25e1f95cba15f9f940f8606231023967d7ea4",
     ".devcontainer/devcontainer.json": "7b15542dad53b4049d13c7457d366612be9910cd5652b55411d48c724a57b9ad"
   },
   "keel new --stack rust-cli --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -1107,6 +1381,11 @@
     "Cargo.toml": "789b6fe5c0350f79daec10571d4e71e6bee06b05ab949329861986b8e2507596",
     ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
   },
+  "keel new --stack rust-cli-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
+    "Cargo.toml": "6a757d4e2faf1f77bdd377a36f68864af22d5143329c1a30dcdc57453d5cf78e",
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+  },
   "keel new --stack rust-cli-http --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "45bc002a2e86d62e3088beacbda52ba5fedfd6e56ef87f6ae381e75dc7537149",
     "Cargo.toml": "2c0e72b51a179b92a97e02dddbfac91a930640947b218ee09ee93ea347cb139b",
@@ -1115,6 +1394,11 @@
   "keel new --stack rust-cli-http --module-layout modulith --with-peer-context": {
     "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
     "Cargo.toml": "3a56e847369b7e5b211e253114fb1c9e90fbb8c34779ece5b329e2fc9155c541",
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+  },
+  "keel new --stack rust-cli-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "86473187aa8aa004558c7ededd2aba9df1ce2a5fe55b03c89f66298d0ea10dea",
+    "Cargo.toml": "f610afa6cb356ed7040592475964aa6f96996b798d14658ffbd284411e983a6a",
     ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
   },
   "keel new --stack rust-cli-http --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1147,6 +1431,11 @@
     "Cargo.toml": "ac529b8132c6e41a9fea350859d6ec51022090151a0bcca6bccb35952cdec9b7",
     ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
   },
+  "keel new --stack rust-http --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
+    "Cargo.toml": "c124c5b1d32d64d1894aa8e8c791e186039477b8c3d6c3982f32fb3b21c15247",
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+  },
   "keel new --stack rust-http --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "b909a57e3fc7ef98986e35978ba79ffe14cfeb6aa16fc079f4fe6fe55e3bb5a9",
     "Cargo.toml": "4c000ae79b6480d5e62fe134b6661b9684cf852727aeef916187414a7c10af23",
@@ -1155,6 +1444,11 @@
   "keel new --stack rust-http --module-layout modulith --with-peer-context": {
     "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
     "Cargo.toml": "7d07cad4deacca4750f1d3c95824ec0f518a6b526372e18b23fc05a2a11fa942",
+    ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
+  },
+  "keel new --stack rust-http --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "32dea95c62e0b9472337109d9bad450fafec627ddf1a6c0bc9d6b5fad090f533",
+    "Cargo.toml": "431e00f8e3e4a9fa5f946cc9ad992ea0da460cb652f6126cf6dbe636d281717c",
     ".devcontainer/devcontainer.json": "47d9ffa4943acf59444c61d28cc086f041e39e379d1fab7f64147cbe1594d2c4"
   },
   "keel new --stack rust-http --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1192,6 +1486,11 @@
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
+  "keel new --stack spring-cli --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "fe7dc6785a4c116b0fecd52af45f75487852f8fdc263207f94e45fda3d65b84d",
+    "settings.gradle.kts": "6ef28452c9ac389d2b89dd1afbecee63ecf821a89ab409906d0be92a77de9543",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "ef47c1f4378b5a6232dfd0184c7f8f783c4bd754e1f0d30b791cd3c8b963059b",
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
@@ -1205,6 +1504,11 @@
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "fe7dc6785a4c116b0fecd52af45f75487852f8fdc263207f94e45fda3d65b84d",
     "settings.gradle.kts": "7d8274caf0e76ebb01e85fd5ca81437cbe204eedaf8f63c0447f769a51729134",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
+  "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "fe7dc6785a4c116b0fecd52af45f75487852f8fdc263207f94e45fda3d65b84d",
+    "settings.gradle.kts": "629e4e760e840c1a6840f8038e2f5677953bbd105b947231e875d6454b974fcb",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -1237,6 +1541,11 @@
     "pom.xml": "f4cea8829521b882d834ad15b25cfb39954903adc1705e9d5349522b0a8c4c8c",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
+  "keel new --stack spring-cli --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "cc3521779f96a4510a25c7d4c5109a212911c2a3ee76210e819aab70d7b10d5c",
+    "pom.xml": "eb8a23f05238642cabf2e5fe38f133f42a50875964e22c412f3767d567a07971",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "099f2ff00fb6338d45bd52bc546a9b02e2404b058c1be1020b4a3cdb3f9f9813",
     "pom.xml": "f4cea8829521b882d834ad15b25cfb39954903adc1705e9d5349522b0a8c4c8c",
@@ -1250,6 +1559,11 @@
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "cc3521779f96a4510a25c7d4c5109a212911c2a3ee76210e819aab70d7b10d5c",
     "pom.xml": "16cc09fd93b294b4bc566548f6e36fdc046f0e084a91cc93dcb948f437ff1038",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
+  "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "cc3521779f96a4510a25c7d4c5109a212911c2a3ee76210e819aab70d7b10d5c",
+    "pom.xml": "794ac0cb0a9c9103cf17b82f08c8a97948ae955dd8571008fa7e9c97147266b4",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -1292,6 +1606,11 @@
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
+  "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "fe7dc6785a4c116b0fecd52af45f75487852f8fdc263207f94e45fda3d65b84d",
+    "settings.gradle.kts": "6ef28452c9ac389d2b89dd1afbecee63ecf821a89ab409906d0be92a77de9543",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "ef47c1f4378b5a6232dfd0184c7f8f783c4bd754e1f0d30b791cd3c8b963059b",
     "settings.gradle.kts": "f30f0d20384b53bef24ef04e875ce0592cf89d27edddd32851b1b2f4b0261512",
@@ -1305,6 +1624,11 @@
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "fe7dc6785a4c116b0fecd52af45f75487852f8fdc263207f94e45fda3d65b84d",
     "settings.gradle.kts": "7d8274caf0e76ebb01e85fd5ca81437cbe204eedaf8f63c0447f769a51729134",
+    ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
+  },
+  "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "fe7dc6785a4c116b0fecd52af45f75487852f8fdc263207f94e45fda3d65b84d",
+    "settings.gradle.kts": "629e4e760e840c1a6840f8038e2f5677953bbd105b947231e875d6454b974fcb",
     ".devcontainer/devcontainer.json": "d1a499c225fe23bf92513f8f7169e65eef56ba9dfad0b63f51548cfd73050c07"
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -1337,6 +1661,11 @@
     "pom.xml": "58d729b10b3be43c341634343d3d2293cbac295bd9ce9c070b6f11eb72c724ae",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
+  "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "cc3521779f96a4510a25c7d4c5109a212911c2a3ee76210e819aab70d7b10d5c",
+    "pom.xml": "8f4b6d21718bdb411931eb3fbb6306aade4af74a22d747049264841c2fd0f1c3",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "099f2ff00fb6338d45bd52bc546a9b02e2404b058c1be1020b4a3cdb3f9f9813",
     "pom.xml": "58d729b10b3be43c341634343d3d2293cbac295bd9ce9c070b6f11eb72c724ae",
@@ -1350,6 +1679,11 @@
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "cc3521779f96a4510a25c7d4c5109a212911c2a3ee76210e819aab70d7b10d5c",
     "pom.xml": "b6bc88ed067acc4230f3b5c417be84c6760bacb53128a87abef11282925529f4",
+    ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
+  },
+  "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "cc3521779f96a4510a25c7d4c5109a212911c2a3ee76210e819aab70d7b10d5c",
+    "pom.xml": "a757ef84f12a411f643bc7cb93522c73c7b144b3e2a76c8c318965252acfecc6",
     ".devcontainer/devcontainer.json": "b4376983a19e2e48bbb6a6ce8fd17e9f4a6923a3f36552ad454a05a954b83914"
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,dev-env,toolchain": {
@@ -1382,6 +1716,11 @@
     "settings.gradle.kts": "735bf636d825f103a2811e3ddd7f38734a01f589109ff57264227fe0f8cc79b4",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack spring-cli-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "6f7a1b49dde89ecbfbb1f2e00f78fe4820f2a0b293f81b8870d4798dabafab56",
+    "settings.gradle.kts": "99b3dff8acde4bcdf1ee627933390dd88a21ef18db05f535dc47ebed68e26df5",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack spring-cli-rest --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "812d9286bc48ec478f888de1db2f16ef6d2a88dc30b5aa5e732a09898bc0790b",
     "settings.gradle.kts": "dffdfd215f4cbdb3a2164c5cdfb747dbcfd77981ad6ecaba19d7e94a60c0940e",
@@ -1390,6 +1729,11 @@
   "keel new --stack spring-cli-rest --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "6f7a1b49dde89ecbfbb1f2e00f78fe4820f2a0b293f81b8870d4798dabafab56",
     "settings.gradle.kts": "849a2a43393a50fbb62afc03c4a0709e234fcb18be1c96deb5e20ee43af32493",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack spring-cli-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "6f7a1b49dde89ecbfbb1f2e00f78fe4820f2a0b293f81b8870d4798dabafab56",
+    "settings.gradle.kts": "fd991fee2d7e364a926749a87a08260e0849dc2ec59c073d016c25a66e225907",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack spring-cli-rest --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1412,6 +1756,11 @@
     "pom.xml": "b3154829ff3f9e5fae8313615bc80e43ddb1c656a6e3ab16b2cc1420b5cb613a",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack spring-cli-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d3f41ff0ada1525dce3d2bd96e81f4320337edadf82ad1e1fdf1b16e46601a85",
+    "pom.xml": "8d5d033f5499aa911c7acaf0e18adf5a81d7121a9c1d60ff82517eeadd472051",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack spring-cli-rest --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "ee549e52c9794b9e1a1dcb6ad3c841e93fac9c6df435a02d0717984dfc0698dc",
     "pom.xml": "d462f9b58cafd798d57910a7003be060570f1d264c4c3051bfbe80e4ac6f318d",
@@ -1420,6 +1769,11 @@
   "keel new --stack spring-cli-rest --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "d3f41ff0ada1525dce3d2bd96e81f4320337edadf82ad1e1fdf1b16e46601a85",
     "pom.xml": "1dc79cf9031b1e80e70d6c9b40ed4afe36525990feb3d95800d0896d47dfc4dc",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack spring-cli-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d3f41ff0ada1525dce3d2bd96e81f4320337edadf82ad1e1fdf1b16e46601a85",
+    "pom.xml": "d719c3eecc787ba55efebdec82ce09e16eb6b875cdaf54e18be657aa4726e281",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack spring-cli-rest --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1447,6 +1801,11 @@
     "settings.gradle.kts": "735bf636d825f103a2811e3ddd7f38734a01f589109ff57264227fe0f8cc79b4",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "6f7a1b49dde89ecbfbb1f2e00f78fe4820f2a0b293f81b8870d4798dabafab56",
+    "settings.gradle.kts": "99b3dff8acde4bcdf1ee627933390dd88a21ef18db05f535dc47ebed68e26df5",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "812d9286bc48ec478f888de1db2f16ef6d2a88dc30b5aa5e732a09898bc0790b",
     "settings.gradle.kts": "dffdfd215f4cbdb3a2164c5cdfb747dbcfd77981ad6ecaba19d7e94a60c0940e",
@@ -1455,6 +1814,11 @@
   "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "6f7a1b49dde89ecbfbb1f2e00f78fe4820f2a0b293f81b8870d4798dabafab56",
     "settings.gradle.kts": "849a2a43393a50fbb62afc03c4a0709e234fcb18be1c96deb5e20ee43af32493",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "6f7a1b49dde89ecbfbb1f2e00f78fe4820f2a0b293f81b8870d4798dabafab56",
+    "settings.gradle.kts": "fd991fee2d7e364a926749a87a08260e0849dc2ec59c073d016c25a66e225907",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1477,6 +1841,11 @@
     "pom.xml": "494a7b24f9841c444ab64194a26ff5a17b16ce515dd5a423ccd5bc1d54c26f58",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack spring-cli-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d3f41ff0ada1525dce3d2bd96e81f4320337edadf82ad1e1fdf1b16e46601a85",
+    "pom.xml": "f973f5874afc7c7187ab3b408c93a83401032591e193d4303bff87c1dfb7e8ef",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack spring-cli-rest-kotlin --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "ee549e52c9794b9e1a1dcb6ad3c841e93fac9c6df435a02d0717984dfc0698dc",
     "pom.xml": "d1a267702dd55d4ea8c8a28c3942e71ebfdeda8ce7f3e7c2c09fbdd48392818e",
@@ -1485,6 +1854,11 @@
   "keel new --stack spring-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "d3f41ff0ada1525dce3d2bd96e81f4320337edadf82ad1e1fdf1b16e46601a85",
     "pom.xml": "15d39c251e48c44b00679c25f9dda8f8e19608c8ffd8040cbc1f5ee7dd60cfd8",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack spring-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "d3f41ff0ada1525dce3d2bd96e81f4320337edadf82ad1e1fdf1b16e46601a85",
+    "pom.xml": "9b1bd59fbfd233f2b0680aa52952d5d180a08a1148f0922df89d1bd9ffb7b9a9",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack spring-cli-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1512,6 +1886,11 @@
     "settings.gradle.kts": "95b6b46502e14ad451cbc7b8ad8eb7004010a28258c8e3af9db061bf038a1405",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack spring-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "830db25b523012203480d40beae6533419937045045541b0c310d38814e86ce5",
+    "settings.gradle.kts": "1da6cba82264084f9241a9220c398235e8973c19f820815efd4074a5ce8b39fb",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "4d5ddcd4ff7a1662305ea6c5590ecc3caf4177968396d052d0723cce8b7d45b0",
     "settings.gradle.kts": "74985f5020f09edb1cd5de2c3ff1f37180e07ae5f7002ed18889c984da3dc96a",
@@ -1520,6 +1899,11 @@
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "830db25b523012203480d40beae6533419937045045541b0c310d38814e86ce5",
     "settings.gradle.kts": "652ec12a539ca3158a5f87fb23f2bc4c9bff2f17f98313415c71240d83f7f768",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "830db25b523012203480d40beae6533419937045045541b0c310d38814e86ce5",
+    "settings.gradle.kts": "0cbf56e270196c532927d43b3b955d36954472db6bccb1c8cb0244492b076893",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1542,6 +1926,11 @@
     "pom.xml": "0341e0b444e95e139d9ea3d76a76a7997361a0a3a2f3ae3d195dd7567eaa3aa6",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack spring-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "2bc9423246b766e351d219f16ffedfa2d2f598961d55619a932edaeb0b09c9fa",
+    "pom.xml": "1a63524c81e7d0757b5e2262aa5cc634f45413c5f60a5ddf4f5563d533f3e8b8",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "dcad89385ed95b62169847174744beffb0b51912ed6a6e6098fabcaef3e16fd5",
     "pom.xml": "cb8ebf038ece5e0c8d91582308d8f31f064647abb013b9ddf9e2d1efad6ab4d9",
@@ -1550,6 +1939,11 @@
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "2bc9423246b766e351d219f16ffedfa2d2f598961d55619a932edaeb0b09c9fa",
     "pom.xml": "a2d6ee4a8c6807045c293b51c77b5b18b554648fb6ce82937d743148cf60f0d0",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "2bc9423246b766e351d219f16ffedfa2d2f598961d55619a932edaeb0b09c9fa",
+    "pom.xml": "e75192a85838c7321204c5751a2a0d83bbc30ee669db3aad0d54a7d6f154e23f",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1577,6 +1971,11 @@
     "settings.gradle.kts": "95b6b46502e14ad451cbc7b8ad8eb7004010a28258c8e3af9db061bf038a1405",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
+  "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "830db25b523012203480d40beae6533419937045045541b0c310d38814e86ce5",
+    "settings.gradle.kts": "1da6cba82264084f9241a9220c398235e8973c19f820815efd4074a5ce8b39fb",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "4d5ddcd4ff7a1662305ea6c5590ecc3caf4177968396d052d0723cce8b7d45b0",
     "settings.gradle.kts": "74985f5020f09edb1cd5de2c3ff1f37180e07ae5f7002ed18889c984da3dc96a",
@@ -1585,6 +1984,11 @@
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context": {
     "README.md": "830db25b523012203480d40beae6533419937045045541b0c310d38814e86ce5",
     "settings.gradle.kts": "652ec12a539ca3158a5f87fb23f2bc4c9bff2f17f98313415c71240d83f7f768",
+    ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
+  },
+  "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "830db25b523012203480d40beae6533419937045045541b0c310d38814e86ce5",
+    "settings.gradle.kts": "0cbf56e270196c532927d43b3b955d36954472db6bccb1c8cb0244492b076893",
     ".devcontainer/devcontainer.json": "2d27038449f6160582c5538f4b9116a6a644b02083c736c93b35c906f6454bec"
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1607,6 +2011,11 @@
     "pom.xml": "e09ce2c26831fc0a0901dde193501b1e15862c3aa570b0e83577d6c47894fe41",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
+  "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "2bc9423246b766e351d219f16ffedfa2d2f598961d55619a932edaeb0b09c9fa",
+    "pom.xml": "6a8a3c9ea4dc6217df8dd0c517b6f72da7402e3a080bb6fabed8236f63427c1a",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "dcad89385ed95b62169847174744beffb0b51912ed6a6e6098fabcaef3e16fd5",
     "pom.xml": "0a7061015ff18cecca95b5eeb4880b07ff4ca9b452357a4460748f1cce4dafbb",
@@ -1615,6 +2024,11 @@
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context": {
     "README.md": "2bc9423246b766e351d219f16ffedfa2d2f598961d55619a932edaeb0b09c9fa",
     "pom.xml": "b8cbd171c5a2a121f3da29e0d6e4a983ac368e43fcd1d4feac9c679ed3f56896",
+    ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
+  },
+  "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "2bc9423246b766e351d219f16ffedfa2d2f598961d55619a932edaeb0b09c9fa",
+    "pom.xml": "8cc3e304a91f89cd0dd6d93c9628b9005c59bf3cd36d2ec006857407e864ac77",
     ".devcontainer/devcontainer.json": "47c7dc283f157c790b2e373fbb7cf2268f35e0b6dc28e923a7730fd633940d2f"
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --with ci,containerization,persistence,distribution,iac,toolchain": {
@@ -1652,6 +2066,11 @@
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
     ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
   },
+  "keel new --stack ts-cli --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
+    "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+  },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "4cfacdd888880683c2652e6d3b49ad8e41c19612851a44b5ebba057ce0e71083",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
@@ -1663,6 +2082,11 @@
     ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
   },
   "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context": {
+    "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
+    "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+  },
+  "keel new --stack ts-cli --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "bcb8ab0a2ed2822f2e8422e8ac419a06a869b096f26753178015cd203909b6a2",
     "package.json": "3ef000e4516232d25db922bcc0bcab50d556be2f19057c70ce8b9991368175c0",
     ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
@@ -1697,6 +2121,11 @@
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
     ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
   },
+  "keel new --stack ts-cli --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
+    "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+  },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with ci,dev-env,toolchain": {
     "README.md": "f2b56bc2b70241996b21526038d7e51fd971406e18866f2db8017d3502eecd08",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
@@ -1708,6 +2137,11 @@
     ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
   },
   "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context": {
+    "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
+    "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+  },
+  "keel new --stack ts-cli --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "5a4f48749baaddf503743abc36a10bc4cc42d0db7ac847ac2d71e83a7205c849",
     "package.json": "030465001834b6e4874d7804da2b2a38b63fdd40e856479c9e367d8c7d02ae72",
     ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
@@ -1747,12 +2181,22 @@
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
     ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
   },
+  "keel new --stack ts-cli-http --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
+    "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+  },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "ac60cbadc7c4978bb567ca9672479b9640a7f0f57b91cf9625fc18acf2296945",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
     ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with-peer-context": {
+    "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
+    "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+  },
+  "keel new --stack ts-cli-http --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "7f8d07fb1f5e0c4e2c7b02df3b018b510928529006cee0cbfeaece3447d152ac",
     "package.json": "ee6604fa526c356967a1be6423056e2149318a2b40e0d943a62c485a6437af8f",
     ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
@@ -1777,12 +2221,22 @@
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
     ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
   },
+  "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
+    "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+  },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "8b7c0db78b6fb446659f432f07a7c693d63e30f3b87a488dd6d60de6d3b287e6",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
     ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
   },
   "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with-peer-context": {
+    "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
+    "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+  },
+  "keel new --stack ts-cli-http --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "c24e89c4873edd0fbc8aa41ac8841bf50a518dfa6ebbf97622c19db0a465300b",
     "package.json": "fb0268ed5810cb106b8b9be34b089b055ad529e7e4d00ee49eb17db998fc0b27",
     ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
@@ -1817,12 +2271,22 @@
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
     ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
   },
+  "keel new --stack ts-http --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
+    "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+  },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "4f4565e3a456f6df7729466e7ef2b0e7bb86b54cbe5c3ffb081cd7d042ce6ffc",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
     ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
   },
   "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context": {
+    "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
+    "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
+    ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
+  },
+  "keel new --stack ts-http --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "3820aef3ec799550558346f82b7c3510424b8a2c82bed61a2241a21afb45cee2",
     "package.json": "fcfd0e7bc987fc1498dfe5f8eb32462d5d5b4690b450a6e6332e001cce18cabd",
     ".devcontainer/devcontainer.json": "28487268a1d49732ad5f26fe7202b011a1edbdd919d56f313be3536ecacb2ca4"
@@ -1847,12 +2311,22 @@
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
     ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
   },
+  "keel new --stack ts-http --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
+    "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+  },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with ci,containerization,persistence,distribution,iac,toolchain": {
     "README.md": "f342669b2b4b2ba0a22caf27aec83eb1c04a89b74f37b911da0db70cfb142294",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
     ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
   },
   "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context": {
+    "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
+    "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
+    ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
+  },
+  "keel new --stack ts-http --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "f79d806a237760ee2dcc130e07017039751b40889092a76313351e4ec4fa6055",
     "package.json": "74c7b3d398868666c0bd6f78ba47d1147f148fb8003c56168c54d90c6a3a3186",
     ".devcontainer/devcontainer.json": "5b223c4c83f2fe46e679d927930c12da7ddd2d55fe6506f83c3f382e00ae346e"
@@ -1892,6 +2366,11 @@
     "package.json": "409816a59d75136cdd02e0aaea690f03fbe1e5c407bd39a154d63530466b12a7",
     ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
   },
+  "keel new --stack web-components --build-system npm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "7d7a00d1362e7627e2ea0ffbeb32f0eec97cfbc5c277bac50e230f0c1026eada",
+    "package.json": "409816a59d75136cdd02e0aaea690f03fbe1e5c407bd39a154d63530466b12a7",
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+  },
   "keel new --stack web-components --build-system npm --module-layout modulith --with ci,containerization,dev-env,distribution,iac,toolchain": {
     "README.md": "a1e48143e68a302b1c40ff65cf50baae011cb0e8ebe50f2455e02c77b84bd3a8",
     "package.json": "409816a59d75136cdd02e0aaea690f03fbe1e5c407bd39a154d63530466b12a7",
@@ -1903,6 +2382,11 @@
     ".devcontainer/devcontainer.json": "69ad1e884580ec845bc387d739fd3d266c8b0be612fecd88b9e0363bb44edb4c"
   },
   "keel new --stack web-components --build-system npm --module-layout modulith --with-peer-context": {
+    "README.md": "7d7a00d1362e7627e2ea0ffbeb32f0eec97cfbc5c277bac50e230f0c1026eada",
+    "package.json": "409816a59d75136cdd02e0aaea690f03fbe1e5c407bd39a154d63530466b12a7",
+    ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
+  },
+  "keel new --stack web-components --build-system npm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "7d7a00d1362e7627e2ea0ffbeb32f0eec97cfbc5c277bac50e230f0c1026eada",
     "package.json": "409816a59d75136cdd02e0aaea690f03fbe1e5c407bd39a154d63530466b12a7",
     ".devcontainer/devcontainer.json": "ae2945a43551bb799a0539173ebc57c1b904af18a0a9c8b15c451cac8d4fcca8"
@@ -1937,6 +2421,11 @@
     "package.json": "39acb7dccb2745fe871867b7860c26e28b757b7c43f407872156ea795a074354",
     ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
   },
+  "keel new --stack web-components --build-system pnpm --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
+    "README.md": "95882be96f8bf05d17dc235a7d31c231a7d70226a6c25530e4e5fe37fd6ac11b",
+    "package.json": "39acb7dccb2745fe871867b7860c26e28b757b7c43f407872156ea795a074354",
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+  },
   "keel new --stack web-components --build-system pnpm --module-layout modulith --with ci,containerization,dev-env,distribution,iac,toolchain": {
     "README.md": "e286112a876be2e771fe796cb5f40d0b9fd23269441f048d7016001f42725fa1",
     "package.json": "39acb7dccb2745fe871867b7860c26e28b757b7c43f407872156ea795a074354",
@@ -1948,6 +2437,11 @@
     ".devcontainer/devcontainer.json": "f20fdccf041a65a3bb360f8ff3e5e620b8323f3445ff560fc25f5d9b135f1841"
   },
   "keel new --stack web-components --build-system pnpm --module-layout modulith --with-peer-context": {
+    "README.md": "95882be96f8bf05d17dc235a7d31c231a7d70226a6c25530e4e5fe37fd6ac11b",
+    "package.json": "39acb7dccb2745fe871867b7860c26e28b757b7c43f407872156ea795a074354",
+    ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"
+  },
+  "keel new --stack web-components --build-system pnpm --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders": {
     "README.md": "95882be96f8bf05d17dc235a7d31c231a7d70226a6c25530e4e5fe37fd6ac11b",
     "package.json": "39acb7dccb2745fe871867b7860c26e28b757b7c43f407872156ea795a074354",
     ".devcontainer/devcontainer.json": "ff17c208ef49404e8cdbb9b89a78f62d594e8d009653a102ef2ee079f0a32790"

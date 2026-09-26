@@ -1065,13 +1065,15 @@ the operator's machine would report it as a harness finding.
   adds or moves cells of `tests/domain/core/shared-files.golden.json`,
   the byte golden of the files several adapters write into
   (`README.md`, the build files, `devcontainer.json`), as does any
-  template or pin change that reaches one of those files. That golden
-  reads no other, so regenerate it on its own —
+  template or pin change that reaches one of those files — a bounded
+  context's registration in them included, which its module-history
+  cells pin. That golden reads no other, so regenerate it on its own —
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/shared-files.golden.test.ts`
   — and check that only the files you meant to change moved. A
   single-service stack, a dial, or an adapter keyed on an entrypoint
-  tag moves `tests/domain/core/growth.golden.json` too, what adding an
-  entrypoint reads on each preset; it reads no other golden —
+  tag — a context's wiring adapter included, which its module-history
+  cells read — moves `tests/domain/core/growth.golden.json` too, what
+  adding an entrypoint reads on each preset; it reads no other golden —
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/growth.golden.test.ts`
   — but the grid's growth axis reads it (I10 holds each grown cell to
   the refusal it records), so regenerate it before the grid.

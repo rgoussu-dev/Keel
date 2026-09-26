@@ -3,8 +3,8 @@
  * `keel add module <name>` emits under the TypeScript modulith
  * (`ts-http` and `ts-cli` alike), and the gateway `--consumes <other>`
  * adds to it. The wiring lands in every assembly the arch tags name
- * (`tsAssemblies`), exactly as the Rust and Go context adapters
- * decide it.
+ * (`tsAssemblies`), exactly as the Rust context adapters decide it —
+ * Go's pick theirs by predicate, one wiring adapter per entrypoint.
  *
  * **One workspace package, plus a `./service` export the peer context
  * has not got.** `tsLayout` rules that a bounded context is a single

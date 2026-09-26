@@ -1,6 +1,6 @@
 /**
- * `walking-skeleton/go-peer-context` adapter — scaffolds the **second
- * bounded context** under the Go modulith, opted into with
+ * `walking-skeleton/go-peer-context` and its wiring adapters — scaffold
+ * the **second bounded context** under the Go modulith, opted into with
  * `keel new --with-peer-context`.
  *
  * With one context the modulith's central claim — that contexts meet
@@ -30,10 +30,21 @@
  * scan the new package, because both languages can emit a context
  * that compiles and is wired into nothing. A file in a `cmd/`
  * directory joins that directory's package by existing, so there is
- * no declaration to forget and this adapter emits **no patch at
+ * no declaration to forget and these adapters emit **no patch at
  * all**. The equivalent Go mistake is landing the wiring somewhere
  * that is not the assembly, and that is what the emitted test and
  * `tests/e2e/modulith-go-peer-context.test.ts` assert instead.
+ *
+ * **A shell, and one wiring adapter per entrypoint.** The shell writes
+ * the context — its contract face and core, its facade, the gateway
+ * and `userside/signing` — none of which an entrypoint shapes;
+ * `go-peer-context-cli` and `go-peer-context-http` each write one
+ * assembly's `guestbook.go` and its test, and require that
+ * entrypoint's tag. A project carrying both matches both, so which
+ * assemblies the context is wired into is read off the predicates,
+ * never off the tags inside `contribute()`, and `keel add entrypoint`
+ * wires it into the new assembly by installing the one that newly
+ * matches (roadmap R.3a).
  *
  * Five packages, one more than the Rust peer's four: the context's
  * contract face and core, its facade, the gateway under `infra/`, and
@@ -49,9 +60,13 @@ import { GO_CLI_BOOTSTRAP_ID } from './go-cli-bootstrap.js';
 import { GO_HTTP_BOOTSTRAP_ID } from './go-http-bootstrap.js';
 import { goLayout, goPeerPackages, type GoLayoutPaths } from './go-module-layout.js';
 import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from './module-layout.js';
-import type { Adapter } from '../../contract/composition.js';
+import type { Adapter, ManifestV2, Tag } from '../../contract/composition.js';
 
 export const GO_PEER_CONTEXT_ID = 'walking-skeleton/go-peer-context';
+/** The adapter wiring the guestbook context into the CLI's assembly. */
+export const GO_PEER_CONTEXT_CLI_ID = 'walking-skeleton/go-peer-context-cli';
+/** The adapter wiring the guestbook context into the HTTP server's assembly. */
+export const GO_PEER_CONTEXT_HTTP_ID = 'walking-skeleton/go-peer-context-http';
 
 const TEMPLATE_ROOT = 'composition/walking-skeleton/go-peer-context/templates';
 
@@ -66,6 +81,7 @@ const TEMPLATE_ROOT = 'composition/walking-skeleton/go-peer-context/templates';
  */
 const SEAM_ALIAS = 'greetingservice';
 
+/** The shell: the guestbook context, its gateway and its driving adapter. */
 export const goPeerContextAdapter: Adapter = {
   id: GO_PEER_CONTEXT_ID,
   vertical: 'walking-skeleton',
@@ -73,21 +89,11 @@ export const goPeerContextAdapter: Adapter = {
   predicate: {
     requires: ['lang.go', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG],
   },
-  // Both entrypoints listed because either may be the one present,
-  // and a project carrying both needs its assemblies emitted before
-  // the wiring lands beside them.
-  after: [GO_BOOTSTRAP_ID, GO_CLI_BOOTSTRAP_ID, GO_HTTP_BOOTSTRAP_ID],
+  // The module path is the base bootstrap's answer.
+  after: [GO_BOOTSTRAP_ID],
   async contribute(ctx) {
-    const { modulePath } = goBootstrapAnswers(ctx.manifest, GO_PEER_CONTEXT_ID);
-    const layout = goLayout(ctx.manifest.tags, modulePath);
+    const { layout, seam } = peerOf(ctx.manifest, GO_PEER_CONTEXT_ID);
     const peer = goPeerPackages();
-    const seam = layout.service;
-    if (seam === null) {
-      throw new Error(
-        `${GO_PEER_CONTEXT_ID}: the greeting context has no peer seam under layout '${layout.layout}'`,
-      );
-    }
-
     const imports = (dirs: readonly string[]): string => importBlock(layout, seam, dirs);
     const rendered = await Promise.all([
       ctx.templates.render(`${TEMPLATE_ROOT}/context`, 'internal/modules', {
@@ -103,26 +109,77 @@ export const goPeerContextAdapter: Adapter = {
         sourceImports: imports([peer.domain, seam]),
         testImports: imports([peer.gateway, seam]),
       }),
-      ...assembliesOf(ctx.manifest.tags).map((typology) =>
-        ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dirOf(layout.main(typology)), {
-          facadePkg: layout.facadePkg,
-          peerFacadePkg: peer.facadePkg,
-          gatewayPkg: peer.gatewayPkg,
-          projectImports: imports([layout.facade, seam, peer.facade, peer.gateway, peer.userSide]),
-        }),
-      ),
     ]);
-
     return { files: rendered.flat() };
   },
 };
 
-/** Which assemblies this project has, from the stack's arch tags. */
-function assembliesOf(tags: readonly string[]): readonly string[] {
-  const typologies: string[] = [];
-  if (tags.includes('arch.cli')) typologies.push('cli');
-  if (tags.includes('arch.server-http')) typologies.push('http');
-  return typologies;
+/** Wires the guestbook context into the CLI's assembly, `cmd/cli`. */
+export const goPeerContextCliAdapter: Adapter = wiringAdapter(
+  GO_PEER_CONTEXT_CLI_ID,
+  'cli',
+  'arch.cli',
+  GO_CLI_BOOTSTRAP_ID,
+);
+
+/** Wires the guestbook context into the HTTP server's assembly, `cmd/http`. */
+export const goPeerContextHttpAdapter: Adapter = wiringAdapter(
+  GO_PEER_CONTEXT_HTTP_ID,
+  'http',
+  'arch.server-http',
+  GO_HTTP_BOOTSTRAP_ID,
+);
+
+/**
+ * The adapter that wires the guestbook context into the assembly of
+ * the deployment unit `unit` — `cmd/<unit>/guestbook.go` and its test
+ * — on a project carrying `entrypoint`, after the shell and that
+ * entrypoint's bootstrap, whose assembly it lands in.
+ */
+function wiringAdapter(id: string, unit: string, entrypoint: Tag, bootstrap: string): Adapter {
+  return {
+    id,
+    vertical: 'walking-skeleton',
+    covers: [],
+    predicate: {
+      requires: ['lang.go', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG, entrypoint],
+    },
+    after: [GO_PEER_CONTEXT_ID, bootstrap],
+    async contribute(ctx) {
+      const { layout, seam } = peerOf(ctx.manifest, id);
+      const peer = goPeerPackages();
+      return {
+        files: await ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dirOf(layout.main(unit)), {
+          facadePkg: layout.facadePkg,
+          peerFacadePkg: peer.facadePkg,
+          gatewayPkg: peer.gatewayPkg,
+          projectImports: importBlock(layout, seam, [
+            layout.facade,
+            seam,
+            peer.facade,
+            peer.gateway,
+            peer.userSide,
+          ]),
+        }),
+      };
+    },
+  };
+}
+
+/** The project's layout, and greeting's seam the guestbook reaches it through. */
+function peerOf(
+  manifest: ManifestV2,
+  requesterId: string,
+): { readonly layout: GoLayoutPaths; readonly seam: string } {
+  const { modulePath } = goBootstrapAnswers(manifest, requesterId);
+  const layout = goLayout(manifest.tags, modulePath);
+  const seam = layout.service;
+  if (seam === null) {
+    throw new Error(
+      `${requesterId}: the greeting context has no peer seam under layout '${layout.layout}'`,
+    );
+  }
+  return { layout, seam };
 }
 
 /** The directory holding a `cmd/<typology>/main.go`. */

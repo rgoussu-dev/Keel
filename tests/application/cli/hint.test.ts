@@ -20,7 +20,7 @@ import {
   type HintedCommand,
 } from '../../../src/application/cli/contract/hint.js';
 import { buildProgram } from '../../../src/application/cli/contract/program.js';
-import { newProjectCommand } from '../../../src/domain/contract/commands.js';
+import { addModuleCommand, newProjectCommand } from '../../../src/domain/contract/commands.js';
 import type { Refusal } from '../../../src/domain/contract/refusal.js';
 import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
@@ -523,8 +523,36 @@ describe('a refusal at the command line', () => {
     try {
       const { mediator, run } = program(cwd);
       // The peer context is wired into the CLI alone, and keel does not
-      // yet wire a context into a new entrypoint: growth refuses, so the
-      // refusal carries no action and the hint offers none.
+      // yet wire a JVM context into a new entrypoint: growth refuses, so
+      // the refusal carries no action and the hint offers none.
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'quarkus-cli',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            moduleLayout: 'modulith',
+            withPeerContext: true,
+          }),
+        ),
+      );
+      await expect(run(['add', 'persistence', '--yes', '--dry-run'])).rejects.toThrow(
+        "Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: quarkus-cli-rest carries both this project's entrypoints and persistence",
+      );
+      await expect(run(['add', 'gateway', '--yes', '--dry-run'])).rejects.toThrow(
+        /^Service gateway needs an entrypoint this project does not have: HTTP server — a REST endpoint$/,
+      );
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+
+  it('carries the action on a Go modulith whose contexts growing wires into the new entrypoint', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-hint-'));
+    try {
+      const { mediator, run } = program(cwd);
       expectOk(
         await mediator.dispatch(
           newProjectCommand({
@@ -538,11 +566,23 @@ describe('a refusal at the command line', () => {
           }),
         ),
       );
-      await expect(run(['add', 'persistence', '--yes', '--dry-run'])).rejects.toThrow(
-        "Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: go-cli-http carries both this project's entrypoints and persistence",
+      expectOk(
+        await mediator.dispatch(
+          addModuleCommand({
+            cwd,
+            module: 'orders',
+            consumes: 'greeting',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
       );
-      await expect(run(['add', 'gateway', '--yes', '--dry-run'])).rejects.toThrow(
-        /^Service gateway needs an entrypoint this project does not have: HTTP server — a REST endpoint$/,
+      await expect(run(['add', 'persistence', '--yes', '--dry-run'])).rejects.toThrow(
+        "Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: 'keel add entrypoint http', then 'keel add persistence'",
+      );
+      await expect(run(['add', 'observability', '--yes', '--dry-run'])).rejects.toThrow(
+        "Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: 'keel add entrypoint http' brings observability with it",
       );
     } finally {
       await fs.remove(cwd);

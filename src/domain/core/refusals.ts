@@ -869,8 +869,8 @@ export function incompatibleEntrypointSentence(
  * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
  * id) is refused with while bounded contexts the project has — `contexts`,
  * by name — are wired into its existing entrypoints alone, and nothing
- * keel has wires one into a new entrypoint yet. Names the contexts,
- * never the tags that select their adapters.
+ * keel has for this stack wires one into a new entrypoint yet. Names
+ * the contexts, never the tags that select their adapters.
  */
 export function contextsNeedRewiringSentence(
   entrypoint: string,
@@ -879,7 +879,24 @@ export function contextsNeedRewiringSentence(
   const noun = contexts.length === 1 ? 'bounded context' : 'bounded contexts';
   const verb = contexts.length === 1 ? 'is' : 'are';
   const named = listed(contexts.map((context) => `'${context}'`));
-  return `${entrypointOf(entrypoint).short} cannot be added here yet: this project's ${noun} ${named} ${verb} wired into its existing entrypoints, and keel does not yet wire a context into a new one`;
+  return `${entrypointOf(entrypoint).short} cannot be added here yet: this project's ${noun} ${named} ${verb} wired into its existing entrypoints, and keel does not yet wire this stack's contexts into a new one`;
+}
+
+/**
+ * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
+ * id) is refused with where the bounded context `context` holds the
+ * gateway keel writes for a context consuming `consumed`, and the
+ * project does not record that it consumes one: a context added by a
+ * keel that did not record it. Wired into the new entrypoint as the
+ * record reads, standalone, its wiring would not build; the record is
+ * the user's to complete, since the gateway alone does not prove it.
+ */
+export function unrecordedConsumesSentence(
+  entrypoint: string,
+  context: string,
+  consumed: string,
+): string {
+  return `${entrypointOf(entrypoint).short} cannot be added here: the bounded context '${context}' holds a gateway to '${consumed}', but this project's manifest, written by an older keel, does not record that it consumes it — wired into the new entrypoint as the manifest reads, it would not build; if '${context}' consumes '${consumed}', record "consumes": "${consumed}" on it among "modules" in .claude/.keel-manifest.json`;
 }
 
 /**

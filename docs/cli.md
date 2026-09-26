@@ -451,19 +451,21 @@ vertical the preset with both entrypoints comes with, and for a
 service gateway, which also needs a linked project, _"'keel add
 entrypoint http', then 'keel link <path>' a project it can wire, then
 'keel add gateway'"_. The action is offered only where
-[`keel add entrypoint`](#keel-add-entrypoint) would run and the grown
-project would take the vertical, or would once linked where a linked
-project is missing too — never in a monorepo product or on a front
-end. On a project growth refuses (a modulith whose contexts are wired
-into its one entrypoint, for now), or where growing would still leave
-the vertical refused (iac beside a distribution taken as an extra, which
-would need a re-render), the hint names the stack that carries both
-instead: _"go-cli-http carries both this project's entrypoints and
-persistence"_, or, for a vertical that stack comes with, _"…has this
-project's entrypoints and comes with observability"_. In a monorepo
-product's service, a vertical it cannot carry is refused naming another
-service of the product that can take it, or has it (_"Persistence has no
-adapter for this project's stack; backend/ can take it"_), read from the
+[`keel add entrypoint`](#keel-add-entrypoint) would run, as far as the
+manifest says (the command reads one refusal off the files), and the
+grown project would take the vertical, or would once linked where a
+linked project is missing too — never in a monorepo product or on a
+front end. On a project growth refuses (a modulith whose contexts are
+wired into its one entrypoint, on every family but Go for now), or
+where growing would still leave the vertical refused (iac beside a
+distribution taken as an extra, which would need a re-render), the
+hint names the stack that carries both instead: _"quarkus-cli-rest
+carries both this project's entrypoints and persistence"_, or, for a
+vertical that stack comes with, _"…has this project's entrypoints and
+comes with observability"_. In a monorepo product's service, a
+vertical it cannot carry is refused naming another service of the
+product that can take it, or has it (_"Persistence has no adapter for
+this project's stack; backend/ can take it"_), read from the
 product root's list of services — the card in `keel add --list`
 and the page say the same; a polyrepo service has no product root to
 read them from, and is refused as a project of its own. At the root of a
@@ -667,9 +669,10 @@ refused: _"this directory is inside the keel project at ../, which
 refuses 'keel add module' too, since a bounded context needs the
 modulith layout: …"_. `keel add entrypoint` does the same inside a
 monorepo product, whose services refuse it as its root does, and inside
-a project that refuses to grow — a modulith with a peer context: _"…
-which refuses 'keel add entrypoint http' too, since HTTP server cannot
-be added here yet: …"_.
+a project that refuses to grow — a JVM modulith with a peer context,
+say: _"… which refuses 'keel add entrypoint http' too, since HTTP
+server cannot be added here yet: …"_ — or one whose files refuse it
+(see [`keel add entrypoint`](#keel-add-entrypoint)).
 
 ### `--refresh`: what an add changes
 
@@ -976,6 +979,15 @@ spotless:apply` on Maven) formats the whole project, as the
   (`keel.frozen-answer`), as one for the entrypoint already there is.
   `--set` is held to the rules
   [`keel add`'s answers](#answers-stickiness-and---set) are.
+- **Its bounded contexts' wiring**, on a Go modulith: the peer context
+  `--with-peer-context` scaffolded, and each context
+  [`keel add module`](#keel-add-module) added, are wired into the new
+  assembly — `cmd/http/<context>.go` and its test, or `cmd/cli/` — as
+  the twin given the same `keel add module` history has them, in the
+  order they were added, a consumer's wiring calling the one it
+  consumes. The wiring already there is never read, and an edit to it
+  stays. On every other family such a modulith is refused, for now
+  (below).
 - **The agent harness, re-rendered** where the project has it: the
   runbook, the `run` skill, the layer docs and the lifecycle skill
   speak of the entrypoints, so they are rendered for both — reverting
@@ -1043,12 +1055,25 @@ already. It is refused, before a file moves, when:
   declares (`keel.incompatible`, the rule's own sentence and id), as
   `keel new` of the twin with that vertical is refused — no shipped
   rule mentions an entrypoint, but a plugin's may;
-- a bounded context other than the skeleton's — the peer context
-  `--with-peer-context` scaffolds, or one `keel add module` added — is
-  wired into the entrypoints already there (`keel.contexts-need-rewiring`,
-  naming the contexts): each chooses the assemblies it wires into when
-  it is rendered, and nothing keel has yet wires one into a new
-  entrypoint. A modulith with the skeleton's context alone grows.
+- on every family but Go, a bounded context other than the skeleton's
+  — the peer context `--with-peer-context` scaffolds, or one `keel add
+module` added — is wired into the entrypoints already there
+  (`keel.contexts-need-rewiring`, naming the contexts): each chooses
+  the assemblies it wires into when it is rendered, and keel does not
+  yet wire that family's contexts into a new entrypoint. A modulith
+  with the skeleton's context alone grows on every family;
+- a context the manifest records as consuming none holds the gateway
+  keel writes for one consuming another (`keel.contexts-need-rewiring`,
+  naming both): `keel add module --consumes` has recorded what a
+  context consumes only since #164, so one added before reads as
+  standalone, and its wiring in the new entrypoint would not build.
+  If it does consume that context, record it —
+  `"consumes": "<context>"` on its entry under `"modules"` in
+  `.claude/.keel-manifest.json` — and run the command again. This is
+  read off the files: the command's pointer from a directory below the
+  project names it, but `keel.project-status`, `keel ui` and a
+  refusal's action read no files, so they still offer the entrypoint
+  there, and its preview refuses it.
 
 A refusal that only this command would lift carries it as its
 action: `keel add observability` on a CLI project is refused in the
@@ -1074,7 +1099,11 @@ of the twin with the same extra; the grid's I10 covers no extras.
 
 Supported on every single-entrypoint backend preset: the twelve JVM
 stacks (Quarkus, Spring and Micronaut, in Java and Kotlin, CLI and
-REST), `go-cli`/`go-http`, `rust-cli`/`rust-http` and `ts-cli`/`ts-http`.
+REST), `go-cli`/`go-http`, `rust-cli`/`rust-http` and `ts-cli`/`ts-http`
+— on the modulith with bounded contexts beyond the skeleton's, Go's
+alone for now. The grid holds each modulith again after `keel add module
+orders --consumes greeting` and `keel add module shipping --consumes
+orders` to the twin given the same history.
 
 ## `keel link`
 

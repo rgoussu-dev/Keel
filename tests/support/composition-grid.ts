@@ -95,7 +95,7 @@ export const INVARIANTS = {
   I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
   I9: 'the same body previews and installs (dry run) alike: the same bytes, or the same refusal — the one the preview reports an unread answer with',
-  I10: 'keel new X then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) keel new of the twin leaves on the same dials — or is refused as growth reads it',
+  I10: 'keel new X, and on a modulith keel new X with a keel add module history, then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) that keel new of the twin, given the same history, leaves on the same dials — or is refused as growth reads it',
 } as const;
 
 /** One of {@link INVARIANTS}. */

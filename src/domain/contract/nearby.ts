@@ -48,12 +48,12 @@ export const NO_PROJECT_NEARBY: NearbyProjects = { above: null, below: [] };
  *
  * `refusedAt`, for a command a project can refuse as well (`keel add
  * module`, on a project that takes no bounded context; `keel add
- * entrypoint`, in a monorepo product or where growth refuses), is why
- * the project the sentence names by `named` (`..`, `../backend`,
- * `backend`) refuses it — null where it would not, or where that is
- * not known. Where every project the sentence points at refuses it,
- * for one reason, the sentence says so and why, rather than sending
- * the user there to be refused again.
+ * entrypoint`, in a monorepo product, or where growth or the project's
+ * files refuse), is why the project the sentence names by `named`
+ * (`..`, `../backend`, `backend`) refuses it — null where it would
+ * not, or where that is not known. Where every project the sentence
+ * points at refuses it, for one reason, the sentence says so and why,
+ * rather than sending the user there to be refused again.
  */
 export function notInitialisedSentence(
   scopeRoot: string,

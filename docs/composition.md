@@ -374,6 +374,22 @@ starts:
   reads the entrypoint tags inside `contribute()` — the runbook, the
   `run` skill, the layer docs — so nothing newly matches there, and
   `agent-harness` is re-rendered wherever it is installed.
+- **The bounded contexts.** A family whose context adapters are split
+  into a shell — the context's own packages, which no entrypoint
+  shapes — and one wiring adapter per entrypoint (Go's, since roadmap
+  R.3a) wires its contexts into the new assembly by what newly
+  matches. The peer context's wiring adapter is the installed
+  skeleton's, and installs with the bootstrap. A context
+  `keel add module` added matches neither before nor after — its
+  marker, `modules.context`, is set only while that command runs — so
+  each is wired in by a run of keel's `bounded-context` of its own, as
+  that command runs it: the marker and the context's inputs seeded,
+  what it consumes read off its `modules` record, only the adapters
+  that newly match installed, the inputs stripped after
+  (`GrowthPlan.modules`). They run after every vertical the twin
+  lists, where the twin's own history adds them, and in the order the
+  manifest records them: a context's wiring calls the wiring of the
+  one it consumes.
 - **Settling.** The actions that make a scaffold build (the JVM's
   build wrapper and formatter, `go mod tidy`, `pnpm install`, `cargo
 check`) belong to adapters that matched before, so every other
@@ -401,24 +417,38 @@ entrypoint's tag would break a [conflict](#conflicts) a vertical the
 project has declares (`keel.incompatible`, as `keel new` of the twin
 with that vertical is), and where a bounded context other than the
 skeleton's is wired into the existing entrypoints
-(`keel.contexts-need-rewiring`). That last is structural:
-a context adapter picks the assemblies it wires into inside
-`contribute()`, so growth refuses a context while no adapter that
-requires its marker (`modules.peer-context`, `modules.context`) also
-requires the new entrypoint's tag — a family that splits its context
-wiring per entrypoint lifts it for itself.
+(`keel.contexts-need-rewiring`). That last is structural: a family's
+context adapter that picks the assemblies it wires into inside
+`contribute()` matched before, and growing would leave the new
+assembly half-wired, so growth refuses a context while no adapter it
+runs that requires the context's marker also requires the new
+entrypoint's tag — for the peer (`modules.peer-context`), one of an
+installed vertical, which newly matches; for a context `keel add
+module` added (`modules.context`), one of keel's own
+`bounded-context`, the vertical that command runs, which the replay
+runs. A family that splits its context wiring per entrypoint lifts it
+for itself; Go's is split, every other family's still refused.
 `tests/domain/core/growth-render.test.ts` holds that reading to what
-the adapters render. Inside a monorepo product, at its root or in a
-service, growth is refused as `keel.wrong-scope`: the product records
-each service by its preset. A polyrepo service has no product root to
+the adapters render. One refusal reads the files, which `growthOf`
+does not: a context the manifest records consuming none, though it
+holds the gateway `bounded-context` writes for a consumer of a context
+recorded before it, is `keel.contexts-need-rewiring` too, naming both.
+`consumes` has been recorded only since #164, so a context `keel add
+module --consumes` added before reads as standalone, and its replayed
+wiring would not build; the gateway is found where the vertical's own
+render for that consumer puts it, so no family's layout is known to
+the handler. Inside a monorepo product, at its root or in a service,
+growth is refused as `keel.wrong-scope`: the product records each
+service by its preset. A polyrepo service has no product root to
 record it, and grows as a repository of its own.
 
 Every surface reads that one answer. `keel.project-status` reports each
 back entrypoint (`entrypoints`): whether the project has it, and what
 the command would install, or its refusal where it would refuse — the
 scope, then growth's own, then the planner's of what growth installs
-(`handlers/add-entrypoint.ts`' `entrypointReading`). And a vertical only
-the entrypoint stops is refused carrying the command as its action
+(`handlers/add-entrypoint.ts`' `entrypointReading`), but not the one
+the command reads off the files, above. And a vertical only the
+entrypoint stops is refused carrying the command as its action
 ([Refusals](#refusals), above), which the CLI's hint,
 `keel add --list` and `keel ui` offer.
 

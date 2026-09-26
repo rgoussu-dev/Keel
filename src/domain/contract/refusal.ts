@@ -155,13 +155,16 @@ export interface UnavailableRefusal {
    * The entrypoint whose addition lets the vertical install here —
    * `keel add entrypoint <word>` — where what stops it is that
    * entrypoint, alone or with a linked project ({@link missing}), that
-   * command would grow this project, and the project it leaves would
-   * take the vertical — or would once linked, where a linked project
-   * is missing too. Absent anywhere else: before `keel new` writes
-   * anything, where an entrypoint gap means choosing another preset;
-   * in a monorepo product, where keel adds no entrypoint yet; wherever
-   * growth itself is refused; and where the grown project would still
-   * refuse the vertical — a rule, a re-render.
+   * command would grow this project as its manifest records it, and
+   * the project it leaves would take the vertical — or would once
+   * linked, where a linked project is missing too. Absent anywhere
+   * else: before `keel new` writes anything, where an entrypoint gap
+   * means choosing another preset; in a monorepo product, where keel
+   * adds no entrypoint yet; wherever growth itself is refused; and
+   * where the grown project would still refuse the vertical — a rule,
+   * a re-render. Present where only the command's reading of the
+   * files refuses it: a bounded context holding a gateway its manifest
+   * record does not name.
    */
   readonly grow?: GrowAction;
 }

@@ -89,8 +89,10 @@ export function projectSummary(status) {
  * present: the word the command takes, the entrypoint's name and gloss
  * (its finder label, split where it is written `name — gloss`), the
  * command, and the sentence it would be refused with, or null where it
- * would run. Empty where the project has them all, and where the
- * status reports none — a directory that is no keel project.
+ * would run as far as the status reads, off the manifest: what the
+ * command reads off the files, its preview refuses. Empty where the
+ * project has them all, and where the status reports none — a
+ * directory that is no keel project.
  *
  * @param {{ entrypoints?: ReadonlyArray<EntrypointStatus> }|null} status the `/api/project` payload
  * @returns {EntrypointOffer[]}

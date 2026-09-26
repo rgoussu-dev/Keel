@@ -35,13 +35,13 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-async function scaffold(): Promise<void> {
+async function scaffold(stack = 'go-cli'): Promise<void> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
   expectOk(
     await mediator.dispatch(
       newProjectCommand({
         cwd,
-        stack: 'go-cli',
+        stack,
         answers: {},
         interactive: false,
         dryRun: false,
@@ -52,9 +52,10 @@ async function scaffold(): Promise<void> {
   );
 }
 
-async function addModule(module: string, consumes?: string): Promise<void> {
+/** `keel add module <module>`, consuming `consumes` where given: the adapters it ran, by id. */
+async function addModule(module: string, consumes?: string): Promise<readonly string[]> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
-  expectOk(
+  const report = expectOk(
     await mediator.dispatch(
       addModuleCommand({
         cwd,
@@ -66,11 +67,33 @@ async function addModule(module: string, consumes?: string): Promise<void> {
       }),
     ),
   );
+  return (report.resolvedAdapters ?? []).map((adapter) => adapter.id);
 }
 
 const read = (rel: string): Promise<string> => fs.readFile(path.join(cwd, rel), 'utf8');
 
 describe('the Go added context', () => {
+  it('is wired into each assembly by an adapter of its own, the same file in each', async () => {
+    await scaffold('go-cli-http');
+    expect(await addModule('ordering', 'greeting')).toEqual([
+      'bounded-context/go-context',
+      'bounded-context/go-context-cli',
+      'bounded-context/go-context-http',
+    ]);
+
+    expect(await read('cmd/http/ordering.go')).toBe(await read('cmd/cli/ordering.go'));
+    expect(await read('cmd/http/ordering_test.go')).toBe(await read('cmd/cli/ordering_test.go'));
+
+    await fs.emptyDir(cwd);
+    await scaffold();
+    expect(await addModule('ordering', 'greeting')).toEqual([
+      'bounded-context/go-context',
+      'bounded-context/go-context-cli',
+    ]);
+    expect(await fs.pathExists(path.join(cwd, 'cmd/cli/ordering.go'))).toBe(true);
+    expect(await fs.pathExists(path.join(cwd, 'cmd/http'))).toBe(false);
+  });
+
   it('puts the domain behind the context internal/, which is the wall', async () => {
     await scaffold();
     await addModule('ordering');

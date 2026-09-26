@@ -22,7 +22,11 @@ import { PEER_CONTEXT_NEEDS_MODULITH } from '../adapters/module-layout.js';
 import { goBootstrapAdapter } from '../adapters/go-bootstrap.js';
 import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
-import { goPeerContextAdapter } from '../adapters/go-peer-context.js';
+import {
+  goPeerContextAdapter,
+  goPeerContextCliAdapter,
+  goPeerContextHttpAdapter,
+} from '../adapters/go-peer-context.js';
 import { tsPeerContextAdapter } from '../adapters/ts-peer-context.js';
 import { wcPeerContextAdapter } from '../adapters/wc-peer-context.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
@@ -105,6 +109,8 @@ export const walkingSkeletonVertical: Vertical = {
     goCliBootstrapAdapter,
     goHttpBootstrapAdapter,
     goPeerContextAdapter,
+    goPeerContextCliAdapter,
+    goPeerContextHttpAdapter,
     tsPeerContextAdapter,
     wcPeerContextAdapter,
     goPortFakeAdapter,

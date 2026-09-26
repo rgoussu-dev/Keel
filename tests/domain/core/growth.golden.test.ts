@@ -13,7 +13,10 @@
  * with the agent harness left out wherever the reply lets it be, and
  * on each, every back-side entrypoint of `ENTRYPOINTS` the scaffold's
  * tags lack — the other one on a single-entrypoint backend, both on a
- * front end, none on a preset carrying both.
+ * front end, none on a preset carrying both. Every modulith setting is
+ * read again after the {@link moduleHistory} — `keel add module orders
+ * --consumes <skeleton>`, then `shipping --consumes orders` — whose
+ * contexts growing has to wire into the new assembly too (roadmap R.3).
  *
  * **Factory.** {@link installMediator} over the real templates, with a
  * fake process runner and no deferred action, as the composition grid
@@ -21,14 +24,17 @@
  * `ManifestStore` ports in place of the filesystem: each setting is
  * scaffolded by a real run, not a dry one, so `growthOf` reads the
  * manifest keel writes rather than one rebuilt here, and nothing
- * reaches the disk.
+ * reaches the disk. What a run commits stays in memory under its
+ * directory, where the next run's `Tree` finds it: a context's add
+ * patches the files the scaffold wrote.
  *
  * **Port.** `Mediator.dispatch` for the scaffolds, and `growthOf` over
  * the manifest read back through the `ManifestStore` port.
  *
  * `growth.golden.json` keys each cell by the command lines that make
  * it and records the twin, the adapters that newly match, the
- * verticals installed and the verticals re-rendered — or the refusal:
+ * verticals installed, the contexts `keel add module` added wired in
+ * and the verticals re-rendered — or the refusal:
  * its code, and why, which its sentence is to be worded from (R.2b).
  * `KEEL_UPDATE_GOLDEN=1` rewrites it for a deliberate change, reviewed
  * in the diff like any other golden — formatted as `prettier --check`
@@ -41,17 +47,24 @@ import { fileURLToPath } from 'node:url';
 import fs from 'fs-extra';
 import * as prettier from 'prettier';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { installCommandFor, type NewProjectTarget } from '../../../src/domain/contract/commands.js';
-import { projectScopeRoot } from '../../../src/domain/contract/manifest.js';
+import {
+  installCommandFor,
+  type InstallRun,
+  type NewProjectTarget,
+} from '../../../src/domain/contract/commands.js';
+import { projectScopeRoot, type ManifestV2 } from '../../../src/domain/contract/manifest.js';
+import type { Tree, TreeChange } from '../../../src/domain/contract/ports/tree.js';
 import {
   catalogQuery,
   dialsQuery,
+  projectStatusQuery,
   type DialOptions,
 } from '../../../src/domain/contract/queries.js';
 import {
   growthOf,
   type Growth,
   type GrowthContext,
+  type GrowthModule,
   type GrowthRefusal,
 } from '../../../src/domain/core/growth.js';
 import { shippedRegistry } from '../../../src/domain/core/registry.js';
@@ -60,7 +73,12 @@ import { FakeManifestStore } from '../../../src/infrastructure/manifest/fake.js'
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 import { FakeTree } from '../../../src/infrastructure/tree/fake.js';
 import { eachStack } from '../../support/composition-grid.js';
-import { harnessSettings, newCommandLine } from '../../support/dial-walk.js';
+import {
+  addModuleCommandLine,
+  harnessSettings,
+  moduleHistory,
+  newCommandLine,
+} from '../../support/dial-walk.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
 const GOLDEN = new URL('./growth.golden.json', import.meta.url);
@@ -82,6 +100,7 @@ type Cell =
       readonly twin: string;
       readonly adapters: readonly string[];
       readonly verticals: readonly string[];
+      readonly modules?: readonly GrowthModule[];
       readonly rerender: readonly string[];
     }
   | {
@@ -92,11 +111,13 @@ type Cell =
       readonly contexts?: readonly GrowthContext[];
     };
 
+/** What each directory holds once a run has committed it, by path from the directory. */
+const disk = new Map<string, Map<string, Buffer>>();
 const manifests = new FakeManifestStore();
 const mediator = installMediator({
   processes: new FakeProcessRunner(),
   runDeferred: async () => {},
-  trees: () => new FakeTree(),
+  trees: treeAt,
   manifests,
 });
 const cells = new Map<string, Cell>();
@@ -113,19 +134,27 @@ describe('growth: what adding an entrypoint reads, on every shipped preset', () 
     await eachStack(growing, async (stack) => {
       for (const target of await harnessSettings(dialsOf, stack.id)) {
         const cwd = path.join(SCRATCH, newCommandLine(target).replace(/\W+/g, '-'));
-        expectOk(
-          await mediator.dispatch(
-            installCommandFor(target, { cwd, answers: {}, interactive: false, dryRun: false }),
-          ),
+        expectOk(await mediator.dispatch(installCommandFor(target, run(cwd))));
+        const read = async (line: string): Promise<void> => {
+          const manifest = await manifestAt(cwd, line);
+          for (const entry of lacking(manifest.tags)) {
+            cells.set(
+              `${line} && keel add entrypoint ${entry.word}`,
+              cellOf(growthOf(shippedRegistry, manifest, entry.word)),
+            );
+          }
+        };
+        await read(newCommandLine(target));
+        if (target.moduleLayout !== 'modulith') continue;
+        const { canAddModule, modules } = expectOk(
+          await mediator.dispatch(projectStatusQuery({ cwd })),
         );
-        const manifest = await manifests.read(projectScopeRoot(cwd));
-        if (manifest === null) throw new Error(`${newCommandLine(target)}: no manifest written`);
-        for (const entry of lacking(manifest.tags)) {
-          cells.set(
-            `${newCommandLine(target)} && keel add entrypoint ${entry.word}`,
-            cellOf(growthOf(shippedRegistry, manifest, entry.word)),
-          );
-        }
+        const skeleton = modules[0]?.name;
+        if (!canAddModule || skeleton === undefined) continue;
+        const history = moduleHistory(skeleton);
+        for (const add of history)
+          expectOk(await mediator.dispatch(installCommandFor(add, run(cwd))));
+        await read([newCommandLine(target), ...history.map(addModuleCommandLine)].join(' && '));
       }
     });
     swept = true;
@@ -154,6 +183,47 @@ describe('growth: what adding an entrypoint reads, on every shipped preset', () 
   });
 });
 
+/**
+ * The shipped in-memory `Tree` fake over what one directory holds:
+ * seeded with what earlier runs there committed, and committing back
+ * into it.
+ */
+class DirectoryTree extends FakeTree {
+  constructor(private readonly files: Map<string, Buffer>) {
+    super();
+    for (const [file, content] of files) this.seed(file, content);
+  }
+
+  override async commit(): Promise<readonly TreeChange[]> {
+    const changes = await super.commit();
+    for (const change of changes) {
+      const bytes = this.read(change.path);
+      if (bytes === null) this.files.delete(change.path);
+      else this.files.set(change.path, bytes);
+    }
+    return changes;
+  }
+}
+
+/** A `Tree` over what `root` holds, which commits back into it. */
+function treeAt(root: string): Tree {
+  const files = disk.get(root) ?? new Map<string, Buffer>();
+  disk.set(root, files);
+  return new DirectoryTree(files);
+}
+
+/** A real run in `cwd`, answering every question its default. */
+function run(cwd: string): InstallRun {
+  return { cwd, answers: {}, interactive: false, dryRun: false };
+}
+
+/** The manifest the runs `line` spells left in `cwd`. */
+async function manifestAt(cwd: string, line: string): Promise<ManifestV2> {
+  const manifest = await manifests.read(projectScopeRoot(cwd));
+  if (manifest === null) throw new Error(`${line}: no manifest written`);
+  return manifest;
+}
+
 async function dialsOf(target: NewProjectTarget): Promise<DialOptions> {
   return expectOk(await mediator.dispatch(dialsQuery({ target })));
 }
@@ -166,6 +236,7 @@ function cellOf(growth: Growth): Cell {
         twin: growth.twin,
         adapters: growth.adapters.flatMap((vertical) => vertical.adapters),
         verticals: growth.verticals,
+        ...(growth.modules.length === 0 ? {} : { modules: growth.modules }),
         rerender: growth.rerender,
       };
     case 'refused':

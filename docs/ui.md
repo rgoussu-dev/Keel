@@ -221,11 +221,11 @@ Generate posts only what the ticks add — the delta — as `keel add`:
   `keel add <id>` would refuse it with, word for word. _Observability
   needs an entrypoint this project does not have: HTTP server — a REST
   endpoint_, on a project that cannot grow one — a modulith whose
-  contexts are wired into its one entrypoint, for now. Kept rather than
-  hidden, because an absent option answers "why can I not have
-  observability?" with nothing. In a monorepo service, a vertical
-  another service of the product can take, or has, names that service
-  there too: _…; backend/ can take it_.
+  contexts are wired into its one entrypoint, on every family but Go
+  for now. Kept rather than hidden, because an absent option answers
+  "why can I not have observability?" with nothing. In a monorepo
+  service, a vertical another service of the product can take, or has,
+  names that service there too: _…; backend/ can take it_.
 - **Belongs in a service** — at a composite product's root, an
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
   points the page at that directory and opens its Options; then what
@@ -258,17 +258,21 @@ never breaks inside.
 entrypoint, and disabled with the refusal `keel add entrypoint` would
 give where it would refuse — at a product root or in a monorepo
 service, on a front end, on a modulith whose contexts are wired into
-its one entrypoint. It is the run every **Add HTTP server** on the
-page starts: the entrypoint as a card, what the run installs with it —
-on a CLI, a dev environment and observability — and what it lets in
-after, a plan previewed as `keel add entrypoint http --yes`, what it
-asks on the Questions step — adding HTTP, the monitoring stack's shape;
-adding a CLI, nothing — and a review row, _Entrypoint HTTP server_, as
-a bounded context has its own. Generate grows the project into the
-preset with both entrypoints; the page then re-reads it, and what the
-server stopped is installed (what came with it), ready, ready once
-something else is, or — the service gateway — waiting only on
-`keel link`.
+its one entrypoint, on every family but Go for now. A context holding
+a gateway its manifest record does not name — one that
+`keel add module --consumes` added before keel recorded what a context
+consumes — is read off the files, which the status does not read:
+there the tab is enabled, and its preview and Generate refuse. It is
+the run every **Add HTTP server** on the page starts: the entrypoint
+as a card, what the run installs with it — on a CLI, a dev environment
+and observability — and what it lets in after, a plan previewed as
+`keel add entrypoint http --yes`, what it asks on the Questions step —
+adding HTTP, the monitoring stack's shape; adding a CLI, nothing — and
+a review row, _Entrypoint HTTP server_, as a bounded context has its
+own. Generate grows the project into the preset with both
+entrypoints; the page then re-reads it, and what the server stopped is
+installed (what came with it), ready, ready once something else is,
+or — the service gateway — waiting only on `keel link`.
 
 ## Finding a stack: the same drill-down, step for step
 

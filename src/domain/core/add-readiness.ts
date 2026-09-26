@@ -121,7 +121,8 @@ export function addReadiness(
  * carry the same. None inside a monorepo product, at its root or below
  * it, which the command refuses; none where growth refuses the
  * project, or the planner what growth installs. Never offered where
- * the command would refuse.
+ * the command would refuse, but for what it reads off the files: a
+ * context holding a gateway its manifest record does not name.
  */
 export function addScopeOf(
   registry: Registry,

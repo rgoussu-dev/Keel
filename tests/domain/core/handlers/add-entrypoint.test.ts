@@ -24,6 +24,7 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   addEntrypointCommand,
+  addModuleCommand,
   linkPeerCommand,
   newProjectCommand,
   type AddEntrypointCommand,
@@ -719,6 +720,223 @@ describe('keel add entrypoint', () => {
   });
 });
 
+describe('keel add entrypoint on a modulith with bounded contexts', () => {
+  /** `keel add module <name>` in `at`, consuming `consumes` where given. */
+  async function addModule(name: string, consumes?: string, at: string = cwd): Promise<void> {
+    expectOk(
+      await mediator().dispatch(
+        addModuleCommand({
+          cwd: at,
+          module: name,
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          ...(consumes === undefined ? {} : { consumes }),
+        }),
+      ),
+    );
+  }
+
+  it('wires the peer and each context keel add module added into the new assembly, as the twin with that history has them', async () => {
+    const dials = { moduleLayout: 'modulith', withPeerContext: true } as const;
+    await scaffold('go-cli', dials);
+    await addModule('orders', 'greeting');
+    await addModule('shipping', 'orders');
+    const modules = (await manifestAt()).modules;
+    const twin = path.join(root, 'twin');
+    await fs.ensureDir(twin);
+    await scaffold('go-cli-http', dials, twin);
+    await addModule('orders', 'greeting', twin);
+    await addModule('shipping', 'orders', twin);
+
+    const report = expectOk(await grow('http'));
+
+    for (const context of ['guestbook', 'orders', 'shipping']) {
+      for (const file of [`cmd/http/${context}.go`, `cmd/http/${context}_test.go`]) {
+        expect(report.changes).toContainEqual({ kind: 'create', path: file });
+      }
+    }
+    // The consumer reaches what it consumes through that one's wiring, beside it.
+    expect(await fs.readFile(path.join(cwd, 'cmd/http/shipping.go'), 'utf8')).toContain(
+      'ordersgateway.New(wireOrdersService())',
+    );
+    expect((report.resolvedAdapters ?? []).map((adapter) => adapter.id)).toEqual(
+      expect.arrayContaining([
+        'walking-skeleton/go-peer-context-http',
+        'bounded-context/go-context-http',
+      ]),
+    );
+    const manifest = await manifestAt();
+    expect(manifest.modules).toEqual(modules);
+    expect(manifest.tags).not.toContain('modules.context');
+    expect(Object.keys(manifest.answers)).not.toContain('keel.add-module');
+    expect(await digests(cwd)).toEqual(await digests(twin));
+  });
+
+  it('never reads the wiring of the entrypoints there: an edited one stays', async () => {
+    await scaffold('go-http', { moduleLayout: 'modulith' });
+    await addModule('billing');
+    const wiring = path.join(cwd, 'cmd/http/billing.go');
+    const edited = `${await fs.readFile(wiring, 'utf8')}// the user's own line\n`;
+    await fs.writeFile(wiring, edited);
+
+    const report = expectOk(await grow('cli'));
+
+    expect(await fs.readFile(wiring, 'utf8')).toBe(edited);
+    expect(report.changes.map((change) => change.path)).not.toContain('cmd/http/billing.go');
+    // A context consuming none is wired in standalone, as its add wired it.
+    expect(report.changes).toContainEqual({ kind: 'create', path: 'cmd/cli/billing.go' });
+    expect(await fs.readFile(path.join(cwd, 'cmd/cli/billing.go'), 'utf8')).toContain(
+      'return billingservice.New(billing.NewBilling())',
+    );
+  });
+
+  it('wires each context by keel’s own bounded-context, the one keel add module ran, whatever a registry lists, as the status offers it', async () => {
+    const listed = acmeVertical('bounded-context', [
+      acmeAdapter('bounded-context', 'acme-context', ['lang.acme', 'modules.context'], () => ({
+        files: [{ path: 'acme.txt', content: 'acme\n' }],
+      })),
+    ]);
+    for (const agentHarness of [true, false]) {
+      const grown = path.join(root, `grown-${agentHarness}`);
+      const twin = path.join(root, `twin-${agentHarness}`);
+      registry = shippedRegistry;
+      for (const [at, stack] of [
+        [grown, 'go-cli'],
+        [twin, 'go-cli-http'],
+      ] as const) {
+        await fs.ensureDir(at);
+        await scaffold(stack, { moduleLayout: 'modulith', agentHarness }, at);
+        await addModule('orders', 'greeting', at);
+      }
+      // `keel add module` recorded `bounded-context` among the verticals,
+      // an id that now names the plugin's.
+      registry = registryOf([shippedSource, { origin: pluginOrigin('acme'), verticals: [listed] }]);
+      const status = expectOk(await mediator().dispatch(projectStatusQuery({ cwd: grown })));
+      expect(status.entrypoints?.find((entry) => entry.word === 'http')?.refusal).toBeUndefined();
+
+      const report = expectOk(await grow('http', { cwd: grown }));
+
+      expect(report.changes).toContainEqual({ kind: 'create', path: 'cmd/http/orders.go' });
+      expect(await digests(grown)).toEqual(await digests(twin));
+    }
+  });
+
+  it('refuses a context the manifest records consuming none whose gateway keel wrote is there, naming it, as its preview does', async () => {
+    await scaffold('go-cli', { moduleLayout: 'modulith' });
+    await addModule('orders', 'greeting');
+    // As a keel before #164 recorded it: nothing says what it consumes.
+    const stored = await manifestAt();
+    await fsManifestStore.write(projectScopeRoot(cwd), {
+      ...stored,
+      modules: stored.modules.map(({ consumes: _, ...module }) => module),
+    });
+    const manifest = await manifestBytes();
+
+    const error = expectErr(await grow('http'));
+
+    expect(error.code).toBe('keel.contexts-need-rewiring');
+    expect(error.message).toBe(
+      `HTTP server cannot be added here: the bounded context 'orders' holds a gateway to 'greeting', but this project's manifest, written by an older keel, does not record that it consumes it — wired into the new entrypoint as the manifest reads, it would not build; if 'orders' consumes 'greeting', record "consumes": "greeting" on it among "modules" in .claude/.keel-manifest.json`,
+    );
+    expect(error.message).not.toMatch(/arch\.|modules\.context|lang\./);
+    expect(await manifestBytes()).toBe(manifest);
+    expect(await fs.pathExists(path.join(cwd, 'cmd/http'))).toBe(false);
+    const preview = expectErr(
+      await mediator().dispatch(
+        previewQuery({ cwd, target: { kind: 'add-entrypoint', entrypoint: 'http' }, answers: {} }),
+      ),
+    );
+    expect([preview.code, preview.message]).toEqual([error.code, error.message]);
+    // Below it, the command points there as a project that refuses it too.
+    const notes = path.join(cwd, 'notes');
+    await fs.ensureDir(notes);
+    const below = expectErr(await grow('http', { cwd: notes }));
+    expect(below.message).toBe(
+      `no project initialised at ${projectScopeRoot(notes)} — this directory is inside the keel project at ../, which refuses 'keel add entrypoint http' too, since ${error.message}`,
+    );
+
+    // Recorded, as the refusal says, it grows.
+    await fsManifestStore.write(projectScopeRoot(cwd), stored);
+    expectOk(await grow('http'));
+    expect(await fs.readFile(path.join(cwd, 'cmd/http/orders.go'), 'utf8')).toContain(
+      'greetinggateway.New(',
+    );
+  });
+
+  it('refuses it where any file of that gateway is left: its test deleted, the gateway kept', async () => {
+    await scaffold('go-cli', { moduleLayout: 'modulith' });
+    await addModule('orders', 'greeting');
+    const stored = await manifestAt();
+    await fsManifestStore.write(projectScopeRoot(cwd), {
+      ...stored,
+      modules: stored.modules.map(({ consumes: _, ...module }) => module),
+    });
+    const test = path.join(cwd, 'internal/modules/orders/infra/greetinggateway/gateway_test.go');
+    expect(await fs.pathExists(test)).toBe(true);
+    await fs.remove(test);
+    const manifest = await manifestBytes();
+
+    const error = expectErr(await grow('http'));
+
+    expect(error.code).toBe('keel.contexts-need-rewiring');
+    expect(error.message).toContain(
+      "the bounded context 'orders' holds a gateway to 'greeting', but this project's manifest",
+    );
+    expect(await manifestBytes()).toBe(manifest);
+    expect(await fs.pathExists(path.join(cwd, 'cmd/http'))).toBe(false);
+  });
+
+  it('reads the gateway of a consumer of a context keel add module added, not only of the skeleton', async () => {
+    await scaffold('go-cli', { moduleLayout: 'modulith' });
+    await addModule('orders', 'greeting');
+    await addModule('shipping', 'orders');
+    const stored = await manifestAt();
+    await fsManifestStore.write(projectScopeRoot(cwd), {
+      ...stored,
+      modules: stored.modules.map((module) => {
+        if (module.name !== 'shipping') return module;
+        const { consumes: _, ...unrecorded } = module;
+        return unrecorded;
+      }),
+    });
+    const manifest = await manifestBytes();
+
+    const error = expectErr(await grow('http'));
+
+    expect(error.code).toBe('keel.contexts-need-rewiring');
+    expect(error.message).toContain(
+      "the bounded context 'shipping' holds a gateway to 'orders', but this project's manifest",
+    );
+    expect(await manifestBytes()).toBe(manifest);
+    expect(await fs.pathExists(path.join(cwd, 'cmd/http'))).toBe(false);
+  });
+
+  it('reads no gateway of the peer, which its own adapters wire: a peer recorded consuming nothing grows', async () => {
+    await scaffold('go-cli', { moduleLayout: 'modulith', withPeerContext: true });
+    await addModule('orders', 'greeting');
+    const stored = await manifestAt();
+    // As a keel before #164 recorded the peer; its gateway to greeting is there.
+    await fsManifestStore.write(projectScopeRoot(cwd), {
+      ...stored,
+      modules: stored.modules.map((module) => {
+        if (module.name !== 'guestbook') return module;
+        const { consumes: _, ...unrecorded } = module;
+        return unrecorded;
+      }),
+    });
+    expect(
+      await fs.pathExists(path.join(cwd, 'internal/modules/guestbook/infra/greetinggateway')),
+    ).toBe(true);
+
+    const report = expectOk(await grow('http'));
+
+    for (const context of ['guestbook', 'orders']) {
+      expect(report.changes).toContainEqual({ kind: 'create', path: `cmd/http/${context}.go` });
+    }
+  });
+});
+
 describe('keel add entrypoint, refused', () => {
   it('outside a keel project', async () => {
     const error = expectErr(await grow('http'));
@@ -776,7 +994,7 @@ describe('keel add entrypoint, refused', () => {
   });
 
   it('below a project growth refuses, saying why; above projects one of which grows, pointing there', async () => {
-    await scaffold('go-cli', { moduleLayout: 'modulith', withPeerContext: true });
+    await scaffold('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const notes = path.join(cwd, 'notes');
     await fs.ensureDir(notes);
 
@@ -784,7 +1002,7 @@ describe('keel add entrypoint, refused', () => {
 
     expect(below.code).toBe('keel.not-initialised');
     expect(below.message).toBe(
-      `no project initialised at ${projectScopeRoot(notes)} — this directory is inside the keel project at ../, which refuses 'keel add entrypoint http' too, since HTTP server cannot be added here yet: this project's bounded context 'guestbook' is wired into its existing entrypoints, and keel does not yet wire a context into a new one`,
+      `no project initialised at ${projectScopeRoot(notes)} — this directory is inside the keel project at ../, which refuses 'keel add entrypoint http' too, since HTTP server cannot be added here yet: this project's bounded context 'guestbook' is wired into its existing entrypoints, and keel does not yet wire this stack's contexts into a new one`,
     );
 
     const product = path.join(root, 'product');
@@ -933,14 +1151,14 @@ describe('keel add entrypoint, refused', () => {
   });
 
   it('while a bounded context is wired into the entrypoints there alone, naming it and no tag', async () => {
-    await scaffold('go-cli', { moduleLayout: 'modulith', withPeerContext: true });
+    await scaffold('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const manifest = await manifestBytes();
 
     const error = expectErr(await grow('http'));
 
     expect(error.code).toBe('keel.contexts-need-rewiring');
     expect(error.message).toBe(
-      "HTTP server cannot be added here yet: this project's bounded context 'guestbook' is wired into its existing entrypoints, and keel does not yet wire a context into a new one",
+      "HTTP server cannot be added here yet: this project's bounded context 'guestbook' is wired into its existing entrypoints, and keel does not yet wire this stack's contexts into a new one",
     );
     expect(await manifestBytes()).toBe(manifest);
   });
@@ -1033,7 +1251,7 @@ describe('growthRefusalError', () => {
       ],
       [
         'keel.contexts-need-rewiring',
-        "CLI cannot be added here yet: this project's bounded contexts 'guestbook' and 'orders' are wired into its existing entrypoints, and keel does not yet wire a context into a new one",
+        "CLI cannot be added here yet: this project's bounded contexts 'guestbook' and 'orders' are wired into its existing entrypoints, and keel does not yet wire this stack's contexts into a new one",
       ],
     ]);
     for (const error of cases) expect(error.message).not.toMatch(/arch\.|modules\.|\/go-/);

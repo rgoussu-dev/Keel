@@ -27,7 +27,7 @@
  */
 
 import { settle, withServiceBuild } from '../../assets/web/src/target.js';
-import type { NewProjectTarget } from '../../src/domain/contract/commands.js';
+import type { AddModuleTarget, NewProjectTarget } from '../../src/domain/contract/commands.js';
 import type { DialOptions, VerticalOption } from '../../src/domain/contract/queries.js';
 
 /**
@@ -113,6 +113,29 @@ export function newCommandLine(target: NewProjectTarget): string {
     target.withPeerContext === true ? ' --with-peer-context' : '',
     target.agentHarness === false ? ' --no-agent-harness' : '',
   ].join('');
+}
+
+/**
+ * The bounded contexts a modulith is given before it is read with a
+ * history of its own — `orders` consuming the skeleton's context
+ * (`skeleton`), then `shipping` consuming `orders` — as the `keel add
+ * module` targets that add them, in order. A chain, so each context's
+ * wiring calls the wiring of the one it consumes, which is what growing
+ * an entrypoint has to replay in that order (roadmap R.3). What the
+ * shared-file byte golden, the growth golden and the composition grid's
+ * growth axis each add to every modulith setting.
+ */
+export function moduleHistory(skeleton: string): readonly AddModuleTarget[] {
+  return [
+    { kind: 'add-module', module: 'orders', consumes: skeleton },
+    { kind: 'add-module', module: 'shipping', consumes: 'orders' },
+  ];
+}
+
+/** An `add-module` target as the command line that runs it, spelled as {@link newCommandLine} is. */
+export function addModuleCommandLine(target: AddModuleTarget): string {
+  const consumes = target.consumes === undefined ? '' : ` --consumes ${target.consumes}`;
+  return `keel add module ${target.module}${consumes}`;
 }
 
 /** What `<keel-app>` stores between transitions. */

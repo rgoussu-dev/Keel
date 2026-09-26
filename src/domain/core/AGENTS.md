@@ -192,22 +192,43 @@ reads a tag to say it. `growth.ts` reads it with one entrypoint more:
 the preset a project would be with it is its **twin**, what adding
 that entrypoint must leave byte for byte, and `growthOf` is the one
 reading of what that adds, or why it cannot. Its refusal of a bounded
-context is structural — no adapter requiring the context's marker also
-requires the entrypoint's tag — and `tests/domain/core/growth-render.test.ts`
-holds it to what the adapters render: an adapter that matched before
-the entrypoint and renders otherwise after it must be one growth
-re-renders or one whose context it refuses. `handlers/add-entrypoint.ts`
-runs that reading and nothing else: it installs only the adapters that
-newly match (`installVerticals`' `only`), replays the twin's other
-verticals for their deferred actions alone (`actionsOnly`), and records
-what is new where the twin records it — so the grid can hold the grown
-project to the twin byte for byte, manifest included (I10). A vertical
-installed in part counts as run, so no harness replay reaches the
-adapters it leaves out: the install replays their harness elements into
-the buffer itself. The handler realizes the buffer in the twin's order,
-and places a harness entry it records anew by that realization
-(`finalizeHarness`' `realized`, which counts a directory pointer the
-pass kept where it would have written it), as the twin records it.
+context is structural — no adapter growing runs requires the context's
+marker and the entrypoint's tag: for the peer, an installed vertical's,
+which newly matches; for a context `keel add module` added, one of
+keel's own `bounded-context` — the vertical that command runs, never a
+registry's — which growing replays — and
+`tests/domain/core/growth-render.test.ts` holds it to what the adapters
+render: an adapter that matched before the entrypoint and renders
+otherwise after it must be one growth re-renders or one whose context
+it refuses. A family lifts it by splitting its context adapters into a
+shell and one wiring adapter per entrypoint, each writing only its
+assembly's files — Go's since R.3a. `handlers/add-entrypoint.ts` runs
+that reading and nothing else: it installs only the adapters that
+newly match (`installVerticals`' `only`), wires each added context into
+the new assembly by a run of `bounded-context` of its own
+(`GrowthPlan.modules`, in recorded order, after every vertical the twin
+lists, as `keel add module` ran it), replays the twin's other verticals
+for their deferred actions alone (`actionsOnly`), and records what is
+new where the twin records it — so the grid can hold the grown project
+to the twin byte for byte, manifest included (I10), with and without a
+module history. What a manifest cannot say it reads off the files: a
+context recorded consuming none that holds the gateway its vertical
+writes for a consumer (a `--consumes` from before #164 recorded it) is
+refused, the gateway found where `install.ts`' `contributedPaths` says
+the vertical's own render puts it — no family's layout in the handler.
+The command's pointer from below a project reads it too; the status
+and a refusal's action read no files, so they offer the entrypoint
+there. A vertical installed in part counts as run, so no harness
+replay reaches the adapters it leaves out: the install replays their
+harness elements into the buffer itself. So does each context's
+replay, and the skeleton and the peer are `walking-skeleton`'s, so the
+run's retrofit replays no context — nor does the twin's order rank a
+`bounded-context` row — and a registry's is read nowhere in the run,
+as `growthOf` reads none. The handler realizes the
+buffer in the twin's order, and places a harness entry it records anew
+by that realization (`finalizeHarness`' `realized`, which counts a
+directory pointer the pass kept where it would have written it), as
+the twin records it.
 A rule the entrypoint's tag breaks is `growthOf`'s to refuse
 (`keel.incompatible`): `installVerticals` takes every rule the manifest
 it is handed breaks as standing, and the handler hands it the grown

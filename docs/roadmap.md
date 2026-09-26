@@ -4665,7 +4665,9 @@ named.
   same tree, manifest and queued actions (less `vcs`'s) as `keel new`
   of the twin, or else be refused under its golden code. It starts
   with 128 `ok` cells and 64 refused ones, and R.3 turns the refused
-  cells to `ok`.
+  cells to `ok`. R.3a adds a module-history axis, each modulith cell
+  again after two `keel add module` runs: 128 more cells, Go's 8 `ok`
+  with it, which the other R.3 steps turn to `ok` too.
 - **The weekly sweep (Q3.4), which R reads as it lands.** Its
   `arrival` suite already shows this epic's first problem from the
   other side (Q3.4's finding 4): a README section lands in arrival
@@ -6597,7 +6599,7 @@ without the peer, after `keel add module orders --consumes greeting`
 and `keel add module shipping --consumes orders`, grown and compared
 with the twin that has the same history.
 
-#### R.3a — Go, and the context replay (M)
+#### R.3a — Go, and the context replay (M) ✅
 
 **The split.**
 
@@ -6627,6 +6629,289 @@ another context's wiring function, naming the module (blocker 17).
 
 **Holds green:** `add-module-go`, `modulith-go-*`, the R.1a golden, the
 render guard (Go's adapters no longer differ), and I10.
+
+**Landed as the machinery first, then Go's split**, and the goldens
+moved only where Go's contexts now grow.
+
+- **The module histories, recorded before any code moved.**
+  `support/dial-walk.ts` gains `moduleHistory`, `keel add module orders
+--consumes <skeleton>` and then `shipping --consumes orders`, with the
+  skeleton read off `keel.project-status`'s first module, and
+  `addModuleCommandLine`, which spells the three suites' keys. Each
+  suite gives every modulith setting it walks that history wherever the
+  status allows a context (`canAddModule`, every single-service preset):
+  - `shared-files.golden.test.ts` records 100 cells, every modulith
+    setting of the 28 single-service presets with no extras. The
+    scaffold and the first add are written, and the last add is a dry
+    run. The golden went from 398 cells and 1,167 hashes to 498 and
+    1,461, and no cell moved. A history's `README.md`,
+    `devcontainer.json` and root `package.json` hash as its scaffold's
+    do; its contexts register in `settings.gradle.kts` (36 cells),
+    `pom.xml` (36) and `Cargo.toml` (6), which R.3b and R.3d must leave
+    as they are. Go's contexts write none of the six files.
+  - `growth.golden.test.ts` reads growth again after the history: 144
+    cells, so 216 became 360. Its in-memory `Tree` now keeps what a run
+    commits, per directory, since a context's add patches the
+    scaffold's files. On the code before the split, the 128 backend
+    ones were all `keel.contexts-need-rewiring`, and `web-components`'
+    16 `keel.uncoverable-entrypoint`.
+  - I10 grows each modulith setting a second time, after the history,
+    and holds it to the twin given the same history: 128 cells, and
+    396 new verdicts, 1,100 in all. The grown run's queue is held to
+    the one the twin's `keel new` queued, less version control's: each
+    context's add queued its own when it ran, on either side.
+- **The reading.** `GrowthPlan.modules` lists the contexts `keel add
+module` added, in recorded order, each with the adapters of
+  `bounded-context` that the grown tags newly match with the
+  `modules.context` marker on. That vertical is keel's own, the one
+  `keel add module` runs, whatever a registry lists. The structural
+  refusal now reads the adapters growing runs (both below).
+- **The replay**, `wireModules` in `handlers/add-entrypoint.ts`. After
+  the run's last vertical, which is where the twin's own history adds
+  them, each context is replayed in recorded order. The vertical runs
+  with the marker and the context's inputs seeded, what it consumes
+  read off its record, and only the adapters `modules` names (`only`),
+  onto the run's tree, ownership and harness buffer. The inputs are
+  then stripped (`withoutAddModuleInputs`). The harness retrofit
+  replays no context: the replay put the harness elements of what it
+  left out into the buffer itself, as a vertical that ran does, and the
+  skeleton and the peer are `walking-skeleton`'s, never
+  `bounded-context`'s.
+- **The old-manifest refusal** (blocker 17), `unrecordedConsumer`. A
+  context growing wires in whose record names nothing it consumes is
+  checked against the paths `bounded-context` writes for it consuming
+  each context recorded before it with a seam, less the paths it
+  writes for it alone. If any of those is on disk, the gateway is
+  there, and growth is refused as `keel.contexts-need-rewiring`, naming
+  both contexts (`refusals.ts`' `unrecordedConsumesSentence`), before
+  anything is written. The paths come from `install.ts`'s new
+  `contributedPaths`, which contributes each adapter from what the
+  manifest records, as the `actionsOnly` replay does (both now share
+  `recordedContribution`), so the handler knows no family's layout.
+- **Go's split.** `go-context.ts` is now three adapters. The shell,
+  `bounded-context/go-context`, writes the context's packages and,
+  under `--consumes`, its gateway. `go-context-cli` and
+  `go-context-http` each require the marker and their entrypoint's tag,
+  and each writes `cmd/<unit>/<context>.go` and its test, after the
+  shell and that entrypoint's bootstrap. `go-peer-context.ts` is split
+  the same way: the shell keeps the context, its gateway and
+  `userside/signing`, and `go-peer-context-cli` and `-http` each write
+  `cmd/<unit>/guestbook.go` and its test. The template variables are
+  defined once for all three (`contextOf`, `peerOf`), and both copies
+  of `assembliesOf` are gone.
+
+The goldens moved as the step's text says, and nothing else did:
+
+- `growth.golden.json`: Go's 4 plain peer cells (`go-cli` and
+  `go-http`, harness on and off) went from
+  `keel.contexts-need-rewiring` to growing, newly matching the peer's
+  wiring adapter beside the bootstrap. Of the 144 history cells added,
+  Go's 8 grow, each recording `modules`: `orders` and `shipping`, each
+  wired by `bounded-context/go-context-http` (or `-cli`). On the code
+  before the split they read refused, as the other 136 still do.
+- The grid's `growth.golden.json`: 12 verdicts moved to `ok`, Go's
+  four peer grows and their eight default I9 bodies. Of the new
+  verdicts, 36 are `ok`: Go's 8 history grows, their 24 I9 bodies, and
+  the peer cells' 4 answered ones. I10 now grows 132 of the 192 plain
+  cells, with the 60 refused being every peer setting off Go, and 8 of
+  the 128 histories, all Go's.
+- `shared-files.golden.json` was recorded before the split and passed
+  unchanged after it.
+- The greenfield, brownfield, composite and planner-readiness goldens
+  and the docs matrix regenerate byte-identical. The known files are as
+  they were: brownfield's `{"I5": {}}`, and `{}` for the others.
+
+**The proof.**
+
+- **I10.** It holds Go's 4 peer cells and 8 history cells to their
+  twins byte for byte, manifest included. With the replay switched
+  off, I10 failed on exactly the 8 history cells.
+- **The render guard** passes, with Go's peer and context adapters
+  rendering the same both ways.
+- **No greenfield byte moved.** HEAD's code and this step's each
+  scaffolded every Go preset on both layouts, with and without the
+  peer context and the agent harness, and each modulith again after
+  the history: 30 settings and 1,601 files, byte-identical, manifests
+  included.
+- **The e2e suites.** `add-module-go`, `modulith-go-cli`,
+  `modulith-go-http`, `modulith-go-peer-context`,
+  `modulith-go-persistence` and `modulith-go-persistence-liquibase`
+  pass: 9 tests.
+- **On disk**, with the real deferred actions and Go 1.24:
+  - `go-cli` on the modulith, with the peer context and the history,
+    grew HTTP. `go vet` and `go build` passed, and `go test ./...` passed
+    in 17 packages, among them `cmd/http`'s four wiring tests (the
+    guestbook's two, `orders`', and `shipping`'s through `orders`'
+    wiring). The CLI greeted. The HTTP unit answered `/greet` with 200
+    and a correlation id, and a blank name with 400, and both health
+    probes answered 200. Nothing under `cmd/cli/` changed.
+  - `go-cli` on the modulith with `orders` alone grew HTTP, with 11
+    packages passing.
+  - `go-http` with the peer context and the history grew the CLI, with
+    17 packages passing, and the CLI greeted.
+  - A manifest with `orders`' `consumes` removed is refused as above.
+    A build of the same keel without the check grew that project, and
+    `go vet ./cmd/http` then failed: _not enough arguments in call to
+    orders.NewOrders_.
+
+**The tests.**
+
+- `growth.test.ts` goes from 35 to 38 cases. A replay reads each added
+  context in recorded order, not by name, on either entrypoint, and
+  reads neither the skeleton nor the peer, and none on a skeleton-only
+  modulith — on keel's Go presets, since only keel's families have
+  adapters in keel's `bounded-context`. An installed vertical's adapter
+  lifts no added context, and a `bounded-context` a registry lists
+  lifts neither the peer nor an added context, recorded among the
+  verticals as `keel add module` records it. The linked-sibling case
+  now wires through an installed vertical.
+- `add-entrypoint.test.ts` goes from 33 to 40:
+  - a Go peer modulith with the history, grown and equal to its twin
+    byte for byte, its `modules` record kept and no marker or input
+    left behind;
+  - an edited `cmd/http/billing.go` kept, while a standalone context is
+    wired into `cmd/cli/` standalone;
+  - a Go modulith with `orders` grown, with the agent harness and
+    without it, where a registry lists a `bounded-context` of its own:
+    the status offers HTTP, and the project grows equal to its twin. It
+    fails where the twin's order, the retrofit or the replay reads the
+    registry's;
+  - the old-manifest refusal, its preview alike, the command's pointer
+    from a directory below the project, and the growth once `consumes`
+    is recorded again, as the refusal says. It fails with the check
+    switched off;
+  - the same refusal where the gateway's test was deleted and the
+    gateway kept. It fails where the check needs every file of the
+    gateway;
+  - the same refusal of `shipping`, whose gateway reaches `orders`, a
+    context `keel add module` added rather than the skeleton. It fails
+    where the check reads the first seam alone;
+  - a peer context recorded consuming nothing, as a keel before #164
+    recorded it, beside `orders`: it grows, since its gateway is where
+    `bounded-context` would put one and `walking-skeleton` wires it. It
+    fails where the check reads every context, not only those the
+    replay wires.
+- `project-status.test.ts` offers HTTP on a Go peer modulith with an
+  added context, with the action on its cards.
+- `hint.test.ts` has that project's hints carry the action.
+- `go-context.test.ts` and `walking-skeleton-go-modulith.test.ts` hold
+  the split: the adapters each resolves, one wiring adapter per
+  entrypoint, each writing the same file into its own assembly.
+
+Which order the handler replays the contexts in is not observable on
+Go: each wiring file is written whole, every context resolves the same
+adapter, and none queues an action or declares a harness element.
+`growth.test.ts` holds the order `growthOf` lists them in; R.3b's
+`[dependencies]` and `mod` patches are the first bytes it moves.
+
+The cases that held growth's refusal on a Go peer modulith (the
+handler's two, the status's, the hint's and `project.test.ts`') now
+scaffold `quarkus-cli`, which R.3d lifts last.
+
+**The cost.** Measured alone, the growth axis takes about 38 s (it was
+25 s), the grid about 43 s wall (it was 30 s), the shared-file golden
+26 s (15 s) and the growth golden 12 s (7 s). The module histories
+take about 13 s of the axis, a `keel add module` about 100 ms. A
+trial that copied each scaffold rather than rendering it again saved
+a second, and was not kept. The full CI-mode run took 162 s, against
+150 s for HEAD's code on the same machine.
+
+`docs/cli.md` (`keel add entrypoint`, and the refusal section's
+examples), `docs/composition.md` (Growing an entrypoint),
+`docs/plugins.md`, `docs/stacks/go.md`, `docs/ui.md`,
+`docs/development.md`, the README, `tests/AGENTS.md`,
+`src/domain/core/AGENTS.md` and `src/domain/contract/AGENTS.md` say
+what changed, and so do
+`EntrypointStatus`' `installs` and `refusal` docs and
+`entrypointReading`'s, which read no files. R.2b's CHANGELOG entry under
+_Added_ now says what Go's moduliths do, and R.2c's under _Changed_
+narrows its "for now". The old-manifest refusal has no entry: `keel
+add module` is unreleased too, so only a build of keel from between it
+and #164 leaves a project that reaches it.
+
+Beyond the text above:
+
+- **The refusal reads what growing runs.** R.2a probed a context's
+  marker over every installed vertical and `bounded-context` alike.
+  Now that growing runs something for each context, the probe reads
+  exactly that. For the peer, which newly matches in an installed
+  vertical, it reads the installed verticals' adapters. For an added
+  context, which the replay reaches, it reads keel's `bounded-context`
+  (below). An installed vertical's adapter requiring `modules.context`
+  never runs, since `keel add module` runs `bounded-context` alone,
+  and `bounded-context`'s adapter requiring `modules.peer-context`
+  never runs for the peer. Counting either would grow a half-wired
+  assembly. No shipped cell moved. `growth.test.ts` rewrote the case
+  that held the looser reading, and its linked-sibling case.
+- **Blocker 17 is read off the gateway, not the wiring.** The text
+  refuses a module whose CLI wiring calls another context's wiring
+  function. The existing wiring is the user's to edit, and the call
+  differs by family (Go's `wire<X>Service()`, Rust's
+  `crate::<x>::wire_service()`, TypeScript's
+  `create<X>ContextService()`). A consumer of the skeleton calls its
+  facade, not a wiring function, and would not build either. The
+  gateway `keel add module --consumes` writes is found where the
+  family's own render puts it, which covers every consumer and every
+  family R.3b to R.3d splits, and ignores what the user did to the
+  wiring. The sentence names the context the gateway reaches and says
+  how to record it in the manifest, as `recordedAnswerSentence` says
+  how to remove an answer an older keel recorded there. Its code is
+  `keel.contexts-need-rewiring`: it is a context the command cannot
+  rewire.
+- **The status offers what the file check refuses.** `keel.project-status`
+  reads no files (`ProjectStatusDeps` has no `Tree`), so on such a
+  project it offers the entrypoint, and so does a vertical's refusal
+  whose action it is (`addScopeOf`, which reads what the status
+  reads). The command and its preview refuse it, and so does the
+  command's pointer from a directory below the project, which reads
+  the files of each project it names. That is the same arrangement
+  `keel add module` has with a composition root it cannot read. Only
+  a project a keel from before #164 gave a `--consumes` context, and
+  that `keel add agent-harness` has since restamped, reaches it.
+- **The histories' actions.** The text holds a grown project's queue to
+  the twin's. With a history, the twin's last run is its last `keel add
+module`, so I10 compares the grown run with the twin's `keel new`.
+  Each context queued what it needed when it was added, on both sides,
+  and the settling replay covers the rest. A wiring adapter queues
+  nothing on Go, and no context is replayed for its actions alone: the
+  context vertical is no vertical of the twin (DR5).
+- **The shells' `after`.** The peer's shell ran after all three
+  bootstraps, for the wiring it wrote in each assembly. It now runs
+  after the base bootstrap alone, whose module path it reads, and each
+  wiring adapter runs after the shell and its entrypoint's bootstrap.
+  The context's shell lists none: in `bounded-context` a bootstrap is
+  never there. No byte moved, since Go's contexts write whole files and
+  record no answer.
+- **Keel's own `bounded-context`, never a registry's.** R.2a's probe
+  read a `bounded-context` the registry lists ahead of keel's, as the
+  harness retrofit has since #164. `keel add module` runs keel's own
+  alone, so a registry's would have the replay run adapters that
+  command never ran, and a plugin registering the id would refuse
+  keel's own Go contexts. The probe and the replay read keel's. Since
+  `keel add module` records `bounded-context` among the project's
+  verticals, growth leaves that row out of the installed verticals it
+  reads, so a listed one neither lifts the peer nor runs beside the new
+  bootstrap, and `growth.test.ts` holds that it lifts nothing on a
+  manifest recording it. The command reads it nowhere either: the
+  twin's order ranks no adapter of that row, and the run's harness
+  retrofit replays no context (above), so the status and the command
+  agree. A plugin family's added contexts do not arise: `keel add module`
+  refuses its projects. The retrofit's reading elsewhere is left as it
+  was: its suite puts keel's own adapters there, with harness elements
+  added.
+- **The sentence.** `contextsNeedRewiringSentence` said "keel does not
+  yet wire a context into a new one", which is untrue on Go. It now
+  says "this stack's contexts".
+- **`web-components`' histories** are in the growth golden, refused as
+  a front end, as its plain cells are. I10 grows backends alone.
+- **The weekly sweep was not run.** Growth is no axis of it, and the
+  step names no finding.
+
+Not done here: Rust, TypeScript and the JVM (R.3b to R.3d), whose peer
+and history cells stay refused; a status that reads the old-manifest
+case; and an e2e suite of a grown Go modulith. There is none for
+`go-cli-http` on the modulith, so growth leaves those cells as covered
+as `keel new` does, and the proof on disk stands in.
 
 #### R.3b — Rust (S)
 
@@ -6800,6 +7085,9 @@ agent-harness --reapply`.
   appears. Taken in R.2a: `growthOf` refuses a context while no adapter
   requiring its marker also requires the entrypoint's tag, and
   `growth-render.test.ts` holds that reading to the renders both ways.
+  R.3a narrowed it to the adapters growing runs: the installed
+  verticals' for the peer, the replayed `bounded-context`'s for an
+  added context.
 
 - **DR7 — The word.** `keel add entrypoint cli|http`, with the word
   carried by `ENTRYPOINTS`. `server-http` is also accepted, since the

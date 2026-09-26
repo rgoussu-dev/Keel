@@ -10,8 +10,12 @@
  * entrypoint, grown into its combination of that and another), every
  * setting of each from `keel.dials` — build system, module layout, the
  * peer context where the modulith offers it, and each again with the
- * agent harness left out — and no extras. A cell's key is the command
- * lines that make it, spelled as the growth golden spells them
+ * agent harness left out — and no extras. Every modulith setting is
+ * grown again after a module history (`moduleHistory`: `keel add module
+ * orders --consumes <skeleton>`, then `shipping --consumes orders`),
+ * and held to the twin given the same history (roadmap R.3): its
+ * contexts are wired into the new assembly too. A cell's key is the
+ * command lines that make it, spelled as the growth golden spells them
  * (`../growth.golden.json`, R.2a's record of what `growthOf` reads).
  *
  * What it holds:
@@ -19,9 +23,11 @@
  *   - **Growing writes the twin's bytes** (I10): the scaffold, grown
  *     for real, holds every file `keel new` of the twin holds, byte for
  *     byte — `.claude/.keel-manifest.json` among them, the pinned clock
- *     making its timestamps equal — and queues the twin's deferred
- *     actions in its order, less those that set up the repository
- *     (version control's): the project has one. Or it is refused —
+ *     making its timestamps equal — and queues the deferred actions
+ *     `keel new` of the twin queues, in its order, less those that set
+ *     up the repository (version control's): the project has one. A
+ *     context the history added queued what it needed when it was
+ *     added, on either side. Or it is refused —
  *     and either way the command answers as growth reads the cell:
  *     grown into the twin it names, or refused under the code it
  *     records.
@@ -39,9 +45,11 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import fs from 'fs-extra';
 import { describe } from 'vitest';
+import type { DeferredAction } from '../../../../src/domain/contract/composition.js';
 import {
   installCommandFor,
   type AddEntrypointTarget,
+  type AddModuleTarget,
   type InstallRun,
   type NewProjectTarget,
 } from '../../../../src/domain/contract/commands.js';
@@ -49,6 +57,7 @@ import {
   catalogQuery,
   dialsQuery,
   previewQuery,
+  projectStatusQuery,
   type StackFinder,
 } from '../../../../src/domain/contract/queries.js';
 import { shippedRegistry } from '../../../../src/domain/core/registry.js';
@@ -61,7 +70,12 @@ import {
   sweepGrid,
   type Grid,
 } from '../../../support/composition-grid.js';
-import { harnessSettings, newCommandLine } from '../../../support/dial-walk.js';
+import {
+  addModuleCommandLine,
+  harnessSettings,
+  moduleHistory,
+  newCommandLine,
+} from '../../../support/dial-walk.js';
 
 /** R.2a's reading of every cell: the twin it grows into, or the code it is refused under. */
 const reading = JSON.parse(
@@ -102,44 +116,90 @@ describe('composition grid: growth', () => {
       await eachStack(growingOf(finder), async ({ stack, grows }) => {
         for (const target of await harnessSettings(dials, stack)) {
           for (const { word, twin } of grows) {
-            const cell = `${newCommandLine(target)} && keel add entrypoint ${word}`;
             const cwd = await grid.scratch();
             await grid.read(installCommandFor(target, runIn(cwd)));
-            const grow: AddEntrypointTarget = { kind: 'add-entrypoint', entrypoint: word };
-            await holdParity(grid, `answers:${cell}#default`, grow, {}, cwd);
-            // Answered from the record: the default body's preview is swept.
-            const asked = await grid.cell(
-              `answers:${cell}#default`,
-              previewQuery({ cwd, target: grow, answers: {} }),
-            );
-            const bodies = answerBodies(shippedRegistry, asked.value?.questions ?? []);
-            const answered = bodies.filter(({ answers }) => Object.keys(answers).length > 0);
-            for (const body of answered) {
-              await holdParity(grid, `answers:${cell}#${body.name}`, grow, body.answers, cwd);
-            }
-
-            const outcome = await grid.cell(`grow:${cell}`, installCommandFor(grow, runIn(cwd)));
-            const read = reading[cell];
-            if (outcome.verdict !== OK) {
-              if (read?.refused !== outcome.verdict) grid.violate('I10', cell);
-              continue;
-            }
-            if (twin === null || read?.twin !== twin) {
-              grid.violate('I10', cell);
-              continue;
-            }
-            const setting = { ...target, stack: twin };
-            const key = JSON.stringify(setting);
-            const expected = twins.get(key) ?? scaffold(grid, setting);
-            twins.set(key, expected);
-            const grown = await snapshotOf(grid, cwd, false);
-            if (!sameSnapshot(grown, await expected)) grid.violate('I10', cell);
+            await growCell(grid, twins, { target, history: [], word, twin, cwd });
+            if (target.moduleLayout !== 'modulith') continue;
+            const given = await grid.scratch();
+            await grid.read(installCommandFor(target, runIn(given)));
+            const history = await historyOf(grid, given);
+            if (history === null) continue;
+            for (const add of history) await grid.read(installCommandFor(add, runIn(given)));
+            await growCell(grid, twins, { target, history, word, twin, cwd: given });
           }
         }
       });
     },
   });
 });
+
+/** One cell: a setting, the module history given it, and the entrypoint it grows. */
+interface Growth {
+  readonly target: NewProjectTarget;
+  readonly history: readonly AddModuleTarget[];
+  readonly word: string;
+  /** The preset carrying both, or null where the finder lists none. */
+  readonly twin: string | null;
+  /** Where the setting was scaffolded and given its history. */
+  readonly cwd: string;
+}
+
+/**
+ * The {@link moduleHistory} the modulith in `cwd` can be given — null
+ * where it takes no bounded context — read off its status, which names
+ * its skeleton's context first.
+ */
+async function historyOf(grid: Grid, cwd: string): Promise<readonly AddModuleTarget[] | null> {
+  const { canAddModule, modules } = await grid.read(projectStatusQuery({ cwd }));
+  const skeleton = modules[0]?.name;
+  return canAddModule && skeleton !== undefined ? moduleHistory(skeleton) : null;
+}
+
+/**
+ * Holds I9 and I10 over one cell: its add previewed as it installs,
+ * then grown for real and held to its twin given the same history —
+ * or refused as growth reads it.
+ */
+async function growCell(
+  grid: Grid,
+  twins: Map<string, Promise<Snapshot>>,
+  { target, history, word, twin, cwd }: Growth,
+): Promise<void> {
+  const cell = [
+    newCommandLine(target),
+    ...history.map(addModuleCommandLine),
+    `keel add entrypoint ${word}`,
+  ].join(' && ');
+  const grow: AddEntrypointTarget = { kind: 'add-entrypoint', entrypoint: word };
+  await holdParity(grid, `answers:${cell}#default`, grow, {}, cwd);
+  // Answered from the record: the default body's preview is swept.
+  const asked = await grid.cell(
+    `answers:${cell}#default`,
+    previewQuery({ cwd, target: grow, answers: {} }),
+  );
+  const bodies = answerBodies(shippedRegistry, asked.value?.questions ?? []);
+  const answered = bodies.filter(({ answers }) => Object.keys(answers).length > 0);
+  for (const body of answered) {
+    await holdParity(grid, `answers:${cell}#${body.name}`, grow, body.answers, cwd);
+  }
+
+  const outcome = await grid.cell(`grow:${cell}`, installCommandFor(grow, runIn(cwd)));
+  const read = reading[cell];
+  if (outcome.verdict !== OK) {
+    if (read?.refused !== outcome.verdict) grid.violate('I10', cell);
+    return;
+  }
+  if (twin === null || read?.twin !== twin) {
+    grid.violate('I10', cell);
+    return;
+  }
+  const setting = { ...target, stack: twin };
+  const key = JSON.stringify([setting, history]);
+  const expected = twins.get(key) ?? scaffold(grid, setting, history);
+  twins.set(key, expected);
+  const grown = await snapshotOf(cwd, grid.queued(cwd), false);
+  if (!sameSnapshot(grown, await expected)) grid.violate('I10', cell);
+}
 
 /**
  * The presets the finder lists with a single back entrypoint, each with
@@ -171,19 +231,32 @@ function growingOf(finder: StackFinder): readonly Growing[] {
     });
 }
 
-/** `keel new` of `setting` in a directory of its own, as I10 compares it. */
-async function scaffold(grid: Grid, setting: NewProjectTarget): Promise<Snapshot> {
+/**
+ * `keel new` of `setting` in a directory of its own, then `history`, as
+ * I10 compares it: the actions are the ones `keel new` queued.
+ */
+async function scaffold(
+  grid: Grid,
+  setting: NewProjectTarget,
+  history: readonly AddModuleTarget[],
+): Promise<Snapshot> {
   const cwd = await grid.scratch();
   await grid.read(installCommandFor(setting, runIn(cwd)));
-  return snapshotOf(grid, cwd, true);
+  const queued = grid.queued(cwd);
+  for (const add of history) await grid.read(installCommandFor(add, runIn(cwd)));
+  return snapshotOf(cwd, queued, true);
 }
 
 /**
  * The project in `cwd` as I10 compares it: every file's digest, by path
- * from `cwd`, and the actions its last run queued — less the
- * repository setup, where `twin` says the run was `keel new`'s.
+ * from `cwd`, and the descriptions of `queued` — less the repository
+ * setup, where `twin` says they are `keel new`'s.
  */
-async function snapshotOf(grid: Grid, cwd: string, twin: boolean): Promise<Snapshot> {
+async function snapshotOf(
+  cwd: string,
+  queued: readonly DeferredAction[],
+  twin: boolean,
+): Promise<Snapshot> {
   const files = new Map<string, string>();
   const walk = async (directory: string): Promise<void> => {
     for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
@@ -198,8 +271,7 @@ async function snapshotOf(grid: Grid, cwd: string, twin: boolean): Promise<Snaps
     }
   };
   await walk(cwd);
-  const actions = grid
-    .queued(cwd)
+  const actions = queued
     .filter((action) => !twin || !REPOSITORY_SETUP.has(action.id))
     .map((action) => action.description);
   return { files, actions };

@@ -80,6 +80,7 @@ import { resolveVertical } from './resolver.js';
 import type {
   Adapter,
   Conflict,
+  Contribution,
   DeferredAction,
   InstalledVertical,
   ManifestEntry,
@@ -348,7 +349,8 @@ function namesOf(inputs: InstallVerticalsInputs): RefusalNames {
 /**
  * Installs one vertical against `inputs.manifest` and `inputs.tree` —
  * the step {@link installVerticals} repeats, and what the harness
- * replay and `keel add module` run on their own.
+ * replay, `keel add module` and `keel add entrypoint`'s replay of each
+ * added context run on their own.
  */
 export async function installVertical(
   inputs: InstallVerticalInputs,
@@ -371,23 +373,7 @@ export async function installVertical(
     const installs =
       inputs.only === undefined ? inputs.actionsOnly !== true : inputs.only.has(adapter.id);
     if (!installs) {
-      const resolution = await resolveAdapterAnswers(
-        adapter,
-        memoryOf(running, {}, adapter, tags).answers,
-        'non-interactive',
-        inputs.prompt,
-        tags,
-        true,
-      );
-      const contribution = await adapter.contribute(
-        makeCtx(adapter, resolution.answers, {
-          manifest: running,
-          logger: inputs.logger,
-          cwd: inputs.cwd,
-          templates: inputs.templates,
-          processes: inputs.processes,
-        }),
-      );
+      const contribution = await recordedContribution(adapter, running, inputs);
       if (inputs.only !== undefined) {
         // The vertical counts as run, so no harness replay reaches this
         // adapter: its elements are replayed into the buffer here, as
@@ -475,6 +461,57 @@ export async function installVertical(
     adapters: installed,
     reads,
   };
+}
+
+/**
+ * The paths the adapters `vertical` resolves to on `manifest` would
+ * write whole, each contributed from what the manifest records and
+ * asking nothing — as {@link InstallVerticalInputs.actionsOnly} replays
+ * one — with nothing applied, recorded or collected. What a reading of
+ * a project's files needs to know of an install: where it would write.
+ */
+export async function contributedPaths(
+  inputs: Pick<
+    InstallVerticalInputs,
+    'vertical' | 'manifest' | 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes' | 'registry'
+  >,
+): Promise<readonly string[]> {
+  const tags = effectiveTags(inputs.manifest);
+  const paths: string[] = [];
+  for (const adapter of resolveVertical(inputs.vertical, tags, inputs.registry)) {
+    const contribution = await recordedContribution(adapter, inputs.manifest, inputs);
+    paths.push(...(contribution.files ?? []).map((file) => file.path));
+  }
+  return paths;
+}
+
+/**
+ * `adapter`'s contribution on `manifest`, its questions answered from
+ * what the manifest records, or their defaults, asking nothing.
+ */
+async function recordedContribution(
+  adapter: Adapter,
+  manifest: ManifestV2,
+  inputs: Pick<InstallVerticalInputs, 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes'>,
+): Promise<Contribution> {
+  const tags = effectiveTags(manifest);
+  const resolution = await resolveAdapterAnswers(
+    adapter,
+    memoryOf(manifest, {}, adapter, tags).answers,
+    'non-interactive',
+    inputs.prompt,
+    tags,
+    true,
+  );
+  return adapter.contribute(
+    makeCtx(adapter, resolution.answers, {
+      manifest,
+      logger: inputs.logger,
+      cwd: inputs.cwd,
+      templates: inputs.templates,
+      processes: inputs.processes,
+    }),
+  );
 }
 
 /**

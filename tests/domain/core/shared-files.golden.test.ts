@@ -32,6 +32,12 @@
  * Learning where Liquibase is offered takes a preview, and a preview on
  * every setting adds about a quarter to the suite's time.
  *
+ * And on every modulith setting that takes a bounded context, with no
+ * extras, the {@link moduleHistory} after the scaffold — `keel add module
+ * orders --consumes <skeleton>`, then `shipping --consumes orders` —
+ * whose contexts register themselves in the build files (roadmap R.3,
+ * which splits the context adapters and holds these cells as it does).
+ *
  * The agent harness is left on throughout: it writes none of these
  * files, and left out, every cell hashes the same.
  *
@@ -41,9 +47,10 @@
  * `agent-harness.golden.test.ts` pin — and its Tree factory watched, so
  * a dry run can be read back. Every cell is a dry run, read through the
  * Tree that staged it, but for the opening scaffold `keel add dev-env`
- * runs on, which is written for real so the add has a project on disk
- * to read: a real run commits those same bytes, and writing a whole
- * project to disk for each cell costs the suite half as much again.
+ * runs on, and a module history's scaffold and every add but its last,
+ * which are written for real so the add has a project on disk to read:
+ * a real run commits those same bytes, and writing a whole project to
+ * disk for each cell costs the suite half as much again.
  *
  * **Port.** `Mediator.dispatch`.
  *
@@ -70,6 +77,7 @@ import {
   catalogQuery,
   dialsQuery,
   previewQuery,
+  projectStatusQuery,
   type DialOptions,
 } from '../../../src/domain/contract/queries.js';
 import {
@@ -79,7 +87,12 @@ import {
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 import { fsTreeFactory } from '../../../src/infrastructure/tree/fs-tree.js';
 import { eachStack } from '../../support/composition-grid.js';
-import { offeredAsExtra, walkDials } from '../../support/dial-walk.js';
+import {
+  addModuleCommandLine,
+  moduleHistory,
+  offeredAsExtra,
+  walkDials,
+} from '../../support/dial-walk.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
 /** The files R.1 ranks entries in, each at the project's root. */
@@ -184,6 +197,7 @@ describe('shared files: every writer, byte for byte', () => {
         if (menu.includes(DEV_ENV)) {
           await record([await snapped(target, [DEV_ENV])], await scratch(), { dryRun: true });
         }
+        if (target.moduleLayout === 'modulith') await recordHistory(target);
       }
     });
     swept = true;
@@ -263,6 +277,28 @@ async function liquibaseAnswers(
   });
 }
 
+/**
+ * Scaffolds `target` for real and, where it takes a bounded context,
+ * gives it the {@link moduleHistory}, recording the cell its last add
+ * makes as a dry run — the adds before it write, so the next reads them.
+ */
+async function recordHistory(target: NewProjectTarget): Promise<void> {
+  const cwd = await scratch();
+  const run = { cwd, answers: {}, interactive: false, dryRun: false };
+  expectOk(await mediator.dispatch(installCommandFor(target, run)));
+  const status = expectOk(await mediator.dispatch(projectStatusQuery({ cwd })));
+  const skeleton = status.modules[0]?.name;
+  if (!status.canAddModule || skeleton === undefined) return;
+  const history = moduleHistory(skeleton);
+  for (const [index, add] of history.entries()) {
+    if (index === history.length - 1) {
+      await record([target, ...history.slice(0, index), add], cwd, { dryRun: true });
+    } else {
+      expectOk(await mediator.dispatch(installCommandFor(add, run)));
+    }
+  }
+}
+
 async function scratch(): Promise<string> {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-shared-files-'));
   scratches.push(directory);
@@ -323,6 +359,7 @@ function cellOf(targets: readonly InstallTarget[], answers: Answers): string {
   );
   const commands = targets.map((target) => {
     if (target.kind === 'add-vertical') return `keel add ${target.verticals.join(' ')}`;
+    if (target.kind === 'add-module') return addModuleCommandLine(target);
     if (target.kind !== 'new-project') throw new Error(`no cell is made by '${target.kind}'`);
     const extras = target.extraVerticals ?? [];
     return [

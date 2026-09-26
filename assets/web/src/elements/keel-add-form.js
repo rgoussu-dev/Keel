@@ -59,9 +59,12 @@
  * the flat layout, a product root — rather than missing, which said
  * nothing about why. `keel add entrypoint`'s is there wherever the
  * project lacks a back entrypoint, disabled with its reason where the
- * command would refuse — a front end, a product, contexts wired into
- * the one entrypoint — and previewed and reviewed as a context is.
- * Every **Add HTTP server** on the page is that tab's target.
+ * project status says the command would refuse — a front end, a
+ * product, contexts wired into the one entrypoint on a family whose
+ * contexts cannot grow yet — and previewed and reviewed as a context
+ * is. Where only the command reads the refusal off the files, the tab
+ * is enabled and its preview refuses. Every **Add HTTP server** on the
+ * page is that tab's target.
  *
  * A project written by another harness generation says so once, at
  * the top of Options (`../project.js`), rather than on every card it

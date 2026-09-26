@@ -496,8 +496,34 @@ describe('the entrypoints', () => {
     );
   });
 
-  it('says why where growth is refused, and offers it on no card', async () => {
+  it('offers the entrypoint a Go modulith lacks, its contexts wired in, as the way in on each card it stops', async () => {
     await scaffoldAs('go-cli', { moduleLayout: 'modulith', withPeerContext: true });
+    expectOk(
+      await mediator.dispatch(
+        addModuleCommand({
+          cwd,
+          module: 'orders',
+          consumes: 'greeting',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    const reported = await status();
+    expect(reported.entrypoints?.[1]).toEqual({
+      word: 'http',
+      label: HTTP,
+      present: false,
+      installs: ['dev-env', 'observability'],
+    });
+    expect(growthOf(reported, 'observability')).toEqual({ entrypoint: 'http', comes: true });
+    expect(growthOf(reported, 'persistence')).toEqual({ entrypoint: 'http', comes: false });
+    expectOk(await grow('http'));
+  });
+
+  it('says why where growth is refused, and offers it on no card', async () => {
+    await scaffoldAs('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const reported = await status();
     const refused = expectErr(await grow('http'));
     expect(refused.code).toBe('keel.contexts-need-rewiring');

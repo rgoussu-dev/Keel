@@ -26,16 +26,23 @@
  * tree, one with no language or no entrypoint — has no twin, and is
  * refused.
  *
- * **The refusal is structural.** A bounded context other than the
- * skeleton — the peer context, and each context `keel add module`
- * added — wires itself into the assemblies it finds, reading the
- * entrypoint tags inside `contribute()`. Growth installs only what
- * newly matches, and such an adapter matched before, so the new
- * assembly would come out half-wired. It is refused while no adapter
- * requiring the context's marker also requires the new entrypoint's
- * tag, read off the adapter set the way `emitsFor` reads it: a family
- * that splits its context adapter into one wiring adapter per
- * entrypoint lifts the refusal for itself, with no edit here.
+ * **Bounded contexts are wired in by what growing runs.** A bounded
+ * context other than the skeleton — the peer context, and each context
+ * `keel add module` added — is wired into each assembly by an adapter
+ * of its own, and the new assembly needs its wiring too. The peer's
+ * wiring adapter is the installed skeleton's, so it newly matches and
+ * installs with the bootstrap. An added context's matches neither
+ * before nor after — its marker is set only while `keel add module`
+ * runs — so growing replays `bounded-context` for each, keel's own, as
+ * that command runs it, installing what newly matches
+ * ({@link GrowthModule}). A family whose context adapter reads the
+ * entrypoint tags inside `contribute()` instead would leave the new
+ * assembly half-wired, since that adapter matched before: growth is
+ * refused while no adapter it runs requires the context's marker and
+ * the new entrypoint's tag, read off the adapter set the way `emitsFor`
+ * reads it. A family that splits its context adapter into a shell and
+ * one wiring adapter per entrypoint lifts the refusal for itself, with
+ * no edit here.
  * `tests/domain/core/growth-render.test.ts` holds that reading to what
  * the adapters render.
  *
@@ -78,6 +85,21 @@ export interface GrowthAdapters {
 export interface GrowthContext {
   readonly name: string;
   readonly marker: Tag;
+}
+
+/**
+ * A context `keel add module` added, as growing wires it into the new
+ * assembly: a run of keel's own `bounded-context` — the vertical that
+ * command runs, whatever a registry lists — with the context's marker
+ * and its inputs, as that command ran it, installing only the adapters
+ * of it the grown tags newly match — on a family that splits its
+ * context adapter, the new entrypoint's wiring adapter.
+ */
+export interface GrowthModule {
+  /** The context's name, as the manifest records it. */
+  readonly name: string;
+  /** The adapters that install, by id, in declaration order. */
+  readonly adapters: readonly string[];
 }
 
 /**
@@ -144,6 +166,13 @@ export interface GrowthPlan {
    */
   readonly verticals: readonly string[];
   /**
+   * The contexts `keel add module` added, in the order the manifest
+   * records them — a context's wiring calls the wiring of the one it
+   * consumes — each wired into the new assembly after every vertical
+   * the twin lists, where the twin's own history adds them.
+   */
+  readonly modules: readonly GrowthModule[];
+  /**
    * Installed verticals re-rendered whole: the agent harness, wherever
    * it is installed ({@link rerendersOf}).
    */
@@ -194,7 +223,11 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
   const twin = twinOf(registry, identity(tags), tags, has.has(HARNESS));
   if (twin === null) return uncoverable('no-twin');
 
-  const installed = manifest.verticals.flatMap(({ id }) => installedVertical(registry, id) ?? []);
+  // `keel add module` records the context vertical and runs keel's
+  // own, so one a registry lists is none of what growing reads or runs.
+  const installed = manifest.verticals
+    .filter(({ id }) => id !== boundedContextVertical.id)
+    .flatMap(({ id }) => installedVertical(registry, id) ?? []);
   const before = new Set(effectiveTags(manifest));
   const after = new Set(effectiveTags({ ...manifest, tags }));
   const newly: GrowthAdapters[] = [];
@@ -211,10 +244,19 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
   const rules = wouldViolate(conflictsOf(installed), before, [entry.tag]);
   if (rules.length > 0) return refused({ code: 'keel.incompatible', entrypoint: entry.id, rules });
 
-  const contexts = unwired(registry, installed, manifest, entry.tag, [...after]);
+  const contexts = unwired(installed, manifest, entry.tag, [...after]);
   if (contexts.length > 0) {
     return refused({ code: 'keel.contexts-need-rewiring', entrypoint: entry.id, contexts });
   }
+  // What a context's own add ran, on the tags before and after: the
+  // same for every context, since only the marker selects them.
+  const wired = matchingIds(boundedContextVertical, new Set([...before, CONTEXT_TAG]));
+  const wiring = matchingIds(boundedContextVertical, new Set([...after, CONTEXT_TAG])).filter(
+    (id) => !wired.includes(id),
+  );
+  const modules = contextsOf(manifest)
+    .filter(({ marker }) => marker === CONTEXT_TAG)
+    .map(({ name }) => ({ name, adapters: wiring }));
   // The agent harness is a dial: a project scaffolded without it is
   // the twin scaffolded without it.
   const dialed = has.has(HARNESS) ? twin : withoutHarness(twin);
@@ -226,6 +268,7 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
     projects: [...(twin.projects ?? [])],
     adapters: newly,
     verticals: dialed.verticals.map(({ id }) => id).filter((id) => !has.has(id)),
+    modules,
     rerender: rerendersOf(manifest),
   };
 }
@@ -353,29 +396,32 @@ function scaffoldsAs(
 }
 
 /**
- * The bounded contexts no adapter would wire into the new entrypoint's
- * assembly: each context the project records after the skeleton — the
- * peer by its persisted marker, every other by the one `keel add
- * module` selects its adapters with — whose marker no adapter of the
- * installed verticals or of `bounded-context` requires together with
- * `tag`, on the grown tags and what a linked sibling projects.
+ * The bounded contexts no adapter growing runs would wire into the new
+ * entrypoint's assembly: each context the project records after the
+ * skeleton whose marker no such adapter requires together with `tag`,
+ * on the grown tags and what a linked sibling projects. The peer, by
+ * its persisted marker, is wired by what newly matches in the installed
+ * verticals; every other context, by the one `keel add module` selects
+ * its adapters with, by the replay of keel's `bounded-context`, the
+ * vertical that command runs.
  */
 function unwired(
-  registry: Registry,
   installed: readonly Vertical[],
   manifest: ManifestV2,
   tag: Tag,
   grown: readonly Tag[],
 ): readonly GrowthContext[] {
-  const wiring = [...installed, registry.vertical('bounded-context') ?? boundedContextVertical].map(
-    (vertical) => ({
-      ...vertical,
-      adapters: vertical.adapters.filter((adapter) =>
-        (adapter.predicate.requires ?? []).includes(tag),
-      ),
-    }),
+  const narrowed = (vertical: Vertical): Vertical => ({
+    ...vertical,
+    adapters: vertical.adapters.filter((adapter) =>
+      (adapter.predicate.requires ?? []).includes(tag),
+    ),
+  });
+  const peers = installed.map(narrowed);
+  const added = [narrowed(boundedContextVertical)];
+  return contextsOf(manifest).filter(
+    ({ marker }) => !emitsFor(marker === PEER_CONTEXT_TAG ? peers : added, marker, grown),
   );
-  return contextsOf(manifest).filter(({ marker }) => !emitsFor(wiring, marker, grown));
 }
 
 /**

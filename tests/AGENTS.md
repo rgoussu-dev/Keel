@@ -124,20 +124,26 @@ parallel:
   module layout, the peer context, each again with the agent harness
   left out: `support/dial-walk.ts`'s `harnessSettings`), with no
   extras, grown for real by `keel add entrypoint` with each entrypoint
-  its framework offers and it lacks — 192 cells, 96 each way. Each is
-  held to its twin, the preset carrying both, scaffolded by `keel new`
-  on the same dials: every file byte for byte, the manifest included
-  (the pinned clock makes its timestamps equal), and the deferred
-  actions' descriptions in order, less the twin's repository setup
-  (version control's: `git init`, the hooks path — read off `vcs`
-  itself, not the handler's own rule of what settles) — or refused,
-  under the code `domain/core/growth.golden.json` (R.2a's record of
-  `growthOf`) reads for the cell (I10, over the actions the
+  its framework offers and it lacks — 192 cells, 96 each way — and
+  every modulith setting again after a module history
+  (`support/dial-walk.ts`'s `moduleHistory`: `keel add module orders
+--consumes greeting`, then `shipping --consumes orders`), 128 more.
+  Each is held to its twin, the preset carrying both, scaffolded by
+  `keel new` on the same dials and given the same history: every file
+  byte for byte, the manifest included (the pinned clock makes its
+  timestamps equal), and the deferred actions' descriptions in order —
+  the grown run's against the twin's `keel new`, less its repository
+  setup (version control's: `git init`, the hooks path — read off
+  `vcs` itself, not the handler's own rule of what settles) — or
+  refused, under the code `domain/core/growth.golden.json` (R.2a's
+  record of `growthOf`) reads for the cell (I10, over the actions the
   grid's deferred runner records, `Grid.queued`). The add also
   previews as it installs on the scaffold (I9, over no answers and
-  over the monitoring stack answered away from its default). 128 cells
-  grow and 64 are refused as `keel.contexts-need-rewiring` — every
-  setting with the peer context — until epic R's R.3 lifts them.
+  over the monitoring stack answered away from its default). Of the
+  192, 132 grow and 60 are refused as `keel.contexts-need-rewiring` —
+  every setting with the peer context but Go's; of the 128 with a
+  history, Go's 8 grow and 120 are refused — until epic R's R.3 lifts
+  them family by family (Go's with R.3a).
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
@@ -176,12 +182,13 @@ the record can only shrink. Beside each suite:
   composite goldens (`generated-docs.test.ts`, above), so a change that
   moves a verdict regenerates the docs last, after the grid.
 
-About 30 s wall on its own, growth and greenfield the longest: growth
-about 21 s alone and 27 s beside the others (256 real scaffolds —
-192 cells and 64 twins, one per setting, which both directions share —
-192 real adds and 512 dry-run dispatches for I9), greenfield ~23 s, of
-which I8's orderings are about 3.5 s and I9's bodies — some 260
-whole-menu dispatches — about 14 s.
+About 43 s wall on its own, growth and greenfield the longest: growth
+about 38 s alone (390 real scaffolds — 320 cells and 70 twins, one per
+setting and history, which both directions share — 264 real `keel add
+module` runs, 320 real adds and 780 dry-run dispatches for I9; the
+module histories are about 13 s of it), greenfield ~23 s, of which
+I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
+dispatches — about 14 s.
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and
@@ -270,10 +277,15 @@ dev-env is an extra (every CLI and SPA preset), the whole menu with
 Liquibase chosen wherever the preview offers it (the one writer of
 these files no default answer reaches), and the whole menu over a
 README of the user's whose `### Toolchain` and `### Dev container`
-headings sit above keel's part. Roadmap epic R moves those writers
-from appending to a ranked place (`src/domain/core/rank.ts`: the README
-sections since R.1a, the build-file lists with R.1b), with ranks chosen
-to reproduce the order a scaffold already has. This golden landed
+headings sit above keel's part. And on every modulith setting, with no
+extras, it records the module history (`support/dial-walk.ts`'s
+`moduleHistory`: `keel add module orders --consumes greeting`, then
+`shipping --consumes orders`), whose contexts register themselves in
+the build files — 100 cells, which R.3 holds as it splits the context
+adapters. Roadmap epic R moves those writers from appending to a
+ranked place (`src/domain/core/rank.ts`: the README sections since
+R.1a, the build-file lists with R.1b), with ranks chosen to reproduce
+the order a scaffold already has. This golden landed
 before any of that code, and it holds R.1 to leaving every cell
 byte-identical: a cell a rank moves is a rank that moved a scaffold,
 fixed in the rank, never regenerated away. On every one of its cells
@@ -289,10 +301,11 @@ dev container's attach on an HTTP project, which every preset
 installs with its dev environment
 (`domain/core/verticals/dev-container.test.ts`).
 Every cell is a dry run, read back through the Tree that staged it,
-except the ten scaffolds `keel add dev-env` runs on, which are written
-for real so the add has a project on disk; a real run adds only the
-commit. The agent harness is left on: it writes none of these files,
-and leaving it out moves no cell. A failure names the cell, as the
+except the ten scaffolds `keel add dev-env` runs on, and each module
+history's scaffold and first add, which are written for real so the
+next add has a project on disk; a real run adds only the commit. The
+agent harness is left on: it writes none of these files, and leaving
+it out moves no cell. A failure names the cell, as the
 command line that makes it, and the file. A new single-service preset,
 dial or extra adds or moves cells here as well as in the grid, as does
 any template or pin change that reaches one of these files, and the
@@ -306,11 +319,15 @@ the grid.
 records `growthOf` (`src/domain/core/growth.ts`), what `keel add
 entrypoint` would do, for every single-service preset on every dial
 setting `keel.dials` offers it — each again with the agent harness left
-out — and each back entrypoint the scaffold lacks: the twin, the
-adapters that newly match, the verticals installed and re-rendered, or
-the refusal's code and why. Each setting is a real run, not a dry one, into
-the shipped in-memory `Tree` and `ManifestStore` fakes, so the reading
-is of the manifest keel writes; a record, like the planner's readiness
+out, and each modulith setting again after the module history — and
+each back entrypoint the scaffold lacks: the twin, the adapters that
+newly match, the verticals installed, the contexts `keel add module`
+added wired in by their replay, and the verticals re-rendered, or the
+refusal's code and why. Each setting is a real run, not a dry one, into
+the shipped in-memory `Tree` and `ManifestStore` fakes — a `Tree`
+seeded with what earlier runs in its directory committed, since a
+context's add patches the scaffold's files — so the reading is of the
+manifest keel writes; a record, like the planner's readiness
 golden, that the command's own change is reviewed against.
 `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/growth.golden.test.ts`
 rewrites it, through prettier, since its cells hold lists `JSON.stringify`
@@ -322,10 +339,14 @@ context, and after `keel add module`, every adapter that matches both
 without and with the missing entrypoint is rendered both ways, and one
 that renders otherwise must be one growth re-renders or one whose
 context it refuses — and each refusal and re-render must rest on such
-an adapter. Today those are exactly the family kits, the peer-context
-adapters and the context adapters. Both run their scaffolds in a
-`beforeAll`, so mutation testing leaves them out; `domain/core/growth.test.ts`
-holds each rule of the reading on a fixture family.
+an adapter. Today those are exactly the family kits, and the
+peer-context and context adapters of every family but Go, whose are
+split into a shell and one wiring adapter per entrypoint (R.3a). Both
+run their scaffolds in a `beforeAll`, so mutation testing leaves them
+out; `domain/core/growth.test.ts` holds each rule of the reading on a
+fixture family, and the replay of `keel add module`'s contexts on
+keel's Go presets, since that command runs keel's own
+`bounded-context` alone.
 
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial

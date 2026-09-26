@@ -905,7 +905,9 @@ export interface EntrypointStatus {
    * has and the project lacks — a dev environment and observability
    * where a CLI grows its server — after the prerequisites the planner
    * adds for them. Absent where the entrypoint is {@link present}, and
-   * where the command would be refused.
+   * where the command would be refused for a reason {@link refusal}
+   * gives — not for what only the command and its preview read off the
+   * files.
    */
   readonly installs?: readonly string[];
   /**
@@ -915,7 +917,10 @@ export interface EntrypointStatus {
    * is this project with it, bounded contexts wired into the existing
    * entrypoints alone); or the planner's, of what growing installs —
    * the refusal its front door gives. Absent where the command would
-   * run, and where the entrypoint is {@link present}.
+   * run, and where the entrypoint is {@link present}. What the
+   * command reads off the files is not here: a bounded context holding
+   * a gateway its manifest record does not name is refused by the
+   * command and its preview alone.
    */
   readonly refusal?: RefusalDescriptor;
 }
