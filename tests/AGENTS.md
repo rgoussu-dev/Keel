@@ -269,6 +269,31 @@ It reads no other golden, so the order does not matter. Its installs
 run in a `beforeAll`, so mutation testing leaves it out, as it does
 the grid.
 
+**The growth golden and its render guard.** `domain/core/growth.golden.json`
+records `growthOf` (`src/domain/core/growth.ts`), what `keel add
+entrypoint` would do, for every single-service preset on every dial
+setting `keel.dials` offers it — each again with the agent harness left
+out — and each back entrypoint the scaffold lacks: the twin, the
+adapters that newly match, the verticals installed and re-rendered, or
+the refusal's code and why. Each setting is a real run, not a dry one, into
+the shipped in-memory `Tree` and `ManifestStore` fakes, so the reading
+is of the manifest keel writes; a record, like the planner's readiness
+golden, that the command's own change is reviewed against.
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/growth.golden.test.ts`
+rewrites it, through prettier, since its cells hold lists `JSON.stringify`
+lays out otherwise and `pnpm lint` checks it; it reads no other golden.
+`domain/core/growth-render.test.ts`
+holds growth's structural refusal to what the adapters render: on every
+single-entrypoint backend preset, under each layout, with the peer
+context, and after `keel add module`, every adapter that matches both
+without and with the missing entrypoint is rendered both ways, and one
+that renders otherwise must be one growth re-renders or one whose
+context it refuses — and each refusal and re-render must rest on such
+an adapter. Today those are exactly the family kits, the peer-context
+adapters and the context adapters. Both run their scaffolds in a
+`beforeAll`, so mutation testing leaves them out; `domain/core/growth.test.ts`
+holds each rule of the reading on a fixture family.
+
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial
 menu, the extras list, a brownfield card — dispatches `keel.preview` (or

@@ -5329,7 +5329,7 @@ refusal.
 
 ### R.2 — the command
 
-#### R.2a — The growth reading, with no caller yet (M)
+#### R.2a — The growth reading, with no caller yet (M) ✅
 
 `src/domain/core/growth.ts` is pure, as `planner.ts` is.
 `growthOf(registry, manifest, entrypoint)` answers, before anything
@@ -5500,6 +5500,150 @@ row it changes reads as an edit until a run next writes that document.
 Recording it means the sync writing the manifest, which is for
 whatever first reads these hashes (L's merge base).
 
+**Landed second: the reading**, and no existing golden moved.
+`src/domain/core/growth.ts` holds it, pure.
+
+- **`growthOf(registry, manifest, word)`** answers `grows` with a
+  `GrowthPlan` (the entrypoint's id, the twin, the grown tags sorted as
+  `foldTags` sorts them, the twin's `projects`, the adapters newly
+  matching per installed vertical, the verticals to install and the
+  ones re-rendered), or `present`, or `refused` with a `GrowthRefusal`.
+  The refusal carries the code the command will refuse under, and no
+  sentence: `keel.unknown-entrypoint`, `keel.uncoverable-entrypoint`
+  (for a front end, for no twin, or for adapters that would stop
+  matching, which it names), or `keel.contexts-need-rewiring` (the
+  contexts, each with its marker).
+- **The twin** is `axesOf` over the grown tags less `acquirableIn`'s,
+  then `pathFor` among the single-service presets that `keel new`
+  makes the grown project of on its dials (below). The rest are left
+  out before placing, so neither a product nor a preset with a tag of
+  its own sitting at the twin's node can hide it, whichever sorts
+  first. A project the drill-down cannot place itself, with no
+  language or no entrypoint, is refused as `no-twin` before a twin is
+  looked for.
+- **Newly matching** is `planner.ts`'s `matchingIds` before and after,
+  exported for it.
+- **The contexts** are probed with `emitsFor`, over the installed
+  verticals and `bounded-context`, each narrowed to the adapters that
+  require the new entrypoint's tag, on the grown tags and what a
+  linked sibling projects.
+- **`rerendersOf`** names `agent-harness` wherever it is installed.
+- **The words.** `ENTRYPOINTS` gains `word` (`cli`, `http`, `spa`), and
+  `entrypointNamed` takes the word or the id.
+
+The growth golden is `tests/domain/core/growth.golden.test.ts` with
+`growth.golden.json`, 216 cells. They are every single-service preset
+lacking a back entrypoint, on each dial setting `walkDials` reaches,
+each again with the agent harness left out, times each back entrypoint
+the scaffold lacks:
+
+- **128 grow**, each with exactly one adapter newly matching, the other
+  entrypoint's bootstrap. The 64 that add HTTP install `dev-env` and
+  `observability`; the 64 that add the CLI install nothing. The 64
+  with the harness re-render it.
+- **64 are refused** as `keel.contexts-need-rewiring`: every setting
+  with the peer context, both ways, with and without the harness.
+  These are the 128 and 64 that R.2b's I10 starts from.
+- **24 are refused** as `keel.uncoverable-entrypoint`: `web-components`,
+  both words, on its six settings with and without the harness.
+
+A refused cell records why as well as its code: `front-end` on the
+24, and on the 64 the context, `guestbook` by `modules.peer-context`.
+
+Each setting is a real run into the shipped in-memory `Tree` and
+`ManifestStore` fakes, so the reading is of the manifest keel writes.
+The suite takes about 6 s on its own; written to disk, it took 10 s.
+
+The render guard, `growth-render.test.ts`, renders 72 cells: the 18
+single-entrypoint backend presets on their opening build system,
+under the basic layout, the modulith, the modulith with the peer
+context, and the modulith after a real `keel add module orders`. What
+renders otherwise is exactly what the text expected:
+
+- the four family kits, on every cell but the added context's, where
+  only `bounded-context` is rendered;
+- each family's peer-context adapter, on every peer cell;
+- each family's context adapter, on every added-context cell.
+
+Nothing else differs. With the refusal switched off, the guard failed
+naming the 36 peer and added-context cells. With the skeleton counted
+as a context, it failed naming 36 others, the 18 plain moduliths and
+the 18 with the peer, whose `modules.context` refusal no adapter
+rendered there backs. It takes about 6.5 s on its own, on disk.
+`growth.test.ts` holds each rule on a fixture family in 28 cases, and
+`stack-wizard.test.ts` holds the words. Mutation testing leaves out
+both suites that run in a `beforeAll`, as it does the shared-file
+golden. `tests/AGENTS.md`, `src/domain/core/AGENTS.md` and
+`docs/development.md` record the golden and the guard. The greenfield,
+brownfield, composite and planner-readiness goldens and the docs
+matrix regenerate byte-identical, and the known files stay as they
+were. No template changed, so no e2e suite was run. The reading has no
+caller yet, so it has no CHANGELOG entry.
+
+Beyond the text above:
+
+- **The gate's first answers too.** `growthOf` takes the word and also
+  answers the two gates before its refusals: a word naming no
+  entrypoint, and one the project has already. The command, its
+  preview, the status and the refusal builder then read one function
+  for all of them. R.2b's handler keeps the scope and generation gates.
+- **The harness is a dial.** The text installs the twin's verticals
+  minus the installed ones. On a project scaffolded with
+  `--no-agent-harness` that list includes `agent-harness`, which the
+  twin on those dials would not have. `verticals` now leaves the
+  harness out wherever the project has none, and the golden's cells
+  without the harness hold it.
+- **The twin is the preset on the project's dials.** The text checks
+  that the twin's own tags are a subset of the grown set. A preset
+  keeps its dials, the build system and the module layout, out of its
+  own tags, so that check never saw them. A plugin family whose CLI
+  offers a build system or layout that its CLI + HTTP preset does not
+  would have grown into a preset `keel new` refuses on those dials. A
+  candidate now counts only if one setting of its build system and
+  module layout that its rules admit seeds only tags the grown project
+  carries, and every tag of the grown project's identity. The peer
+  context's marker must be on a setting that offers the peer. Where
+  the project has no harness, the candidate must be one that
+  `keel new --no-agent-harness` accepts. The same rule refuses a twin
+  lacking a tag the project carries, as the text's refuses one
+  carrying a tag it lacks. Every shipped trio has the same dials, so
+  no cell moved; `growth.test.ts` holds each clause.
+- **A front end** is the entrypoint `spa`, or a project whose shape
+  the drill-down reads as anything but a backend.
+- **An adapter that would stop matching** is refused as
+  `keel.uncoverable-entrypoint`, naming the adapters. None does on a
+  shipped cell.
+- **Which marker a context is probed by.** The text probes
+  `modules.context` once for each module recorded after the skeleton.
+  The peer is recorded after the skeleton too, so it would have been
+  probed under both markers. It is now probed only under
+  `modules.peer-context`: the peer is the module recorded without a
+  seam while that marker is on. A manifest carrying the marker with no
+  such record names `guestbook`. The probe reads the registry's
+  `bounded-context`, or keel's own where the registry lists none, as
+  the shipped one does not, the way the harness retrofit does.
+  `growth.test.ts` holds that an adapter of a listed `bounded-context`
+  lifts the refusal. Keel's own has no adapter that could yet, so
+  nothing holds that fallback until R.3a's module-history axis of I10
+  reaches it.
+- **A refused cell says why.** The text records the refusal code. A
+  cell also records the reason, the adapters a drop names, or the
+  contexts, which R.2b's sentence is to be worded from, so a reading
+  whose reason moves moves a cell rather than only `growth.test.ts`.
+- **Peer links.** Growth reads the tags a `keel link`ed sibling
+  projects, before and after, as the planner does; `growth.test.ts`
+  holds it. What the grown project's new `projects` mean for that
+  sibling, which never received them, is R.2b's to settle.
+- **The guard's exemptions are read, not listed.** "A family kit" is
+  an adapter of a vertical growth re-renders (`rerendersOf`). "One the
+  refusal refuses" is an adapter requiring a refused context's marker.
+  The guard also checks the converse: each refused context, and each
+  re-rendered vertical, rests on an adapter that renders otherwise.
+  Each patch is compared by what it makes of the scaffold's file (or
+  of its seed), and every other declaration as data.
+
+Not done here: every caller, which R.2b and R.2c add.
+
 #### R.2b — `keel add entrypoint <cli|http>` (L)
 
 **Contract.**
@@ -5595,6 +5739,12 @@ an identity tag, and no vertical may promote one
 
 - `attachDevContainerToDevEnv`'s drift `Error` becomes a
   `path-conflict` refusal of `.devcontainer/devcontainer.json`.
+- **A linked project.** Adding HTTP gives the project the twin's
+  `projects` (`peer.api.rest`), which a sibling it was `keel link`ed
+  to never received: that sibling's `peers` row still records what the
+  project projected before. The handler settles which it does, and a
+  handler test holds it: re-project onto the sibling as `keel link`
+  does, refuse, or note that `keel link` is to be run again (R.2a).
 - **CLI:** `ENTRYPOINT_TARGET` sits beside `MODULE_TARGET` in
   `program.ts`. It takes exactly one argument and refuses `--reapply`,
   `--refresh` and `--consumes`. The help text and the missing-target
@@ -5624,8 +5774,10 @@ compares against `keel new` of the twin on the same dials:
 - the descriptions of the queued actions, minus `vcs`'s;
 - I9 (`holdParity`).
 
-`growth.golden.json` records 128 `ok` cells, and 64 peer-context cells
-refused with `keel.contexts-need-rewiring`.
+`growth.golden.json`'s 192 backend cells are I10's: the 128 that grow,
+which I10 holds `ok`, and the 64 refused with
+`keel.contexts-need-rewiring`. Its 24 `web-components` cells stay
+refused as a front end.
 
 **Handler tests** (`add-entrypoint.test.ts`) cover:
 
@@ -5794,7 +5946,9 @@ with the twin that has the same history.
 **Shared machinery that lands here:**
 
 - the module replay in `add-entrypoint.ts`;
-- the module-history axis;
+- the module-history axis. It is the first check of the `bounded-context`
+  growth probes: the shipped registry lists none, so `growthOf` reads
+  keel's own, which no test reaches before this (R.2a);
 - the R.1a golden's module-history cells.
 
 The machinery comes first so that it is isolated where the family
@@ -5968,7 +6122,9 @@ agent-harness --reapply`.
     render every adapter twice on each call.
 
   **Recommend (a).** (c) becomes the right move if a second reader
-  appears.
+  appears. Taken in R.2a: `growthOf` refuses a context while no adapter
+  requiring its marker also requires the entrypoint's tag, and
+  `growth-render.test.ts` holds that reading to the renders both ways.
 
 - **DR7 — The word.** `keel add entrypoint cli|http`, with the word
   carried by `ENTRYPOINTS`. `server-http` is also accepted, since the
@@ -5976,7 +6132,10 @@ agent-harness --reapply`.
   `entrypoint` and `module` become reserved first words, and the
   registry refuses both as vertical ids. A `--entrypoint` flag on the
   vertical form was rejected: it could not combine with
-  `--reapply` or `--refresh`.
+  `--reapply` or `--refresh`. The word landed in R.2a: `ENTRYPOINTS`
+  carries it, `entrypointNamed` takes it or the id, and `growthOf`
+  reads `spa` as `keel.uncoverable-entrypoint`. The reserved first
+  words are R.2b's.
 - **DR8 — I10 is hard from R.2b**, with no allowance: every cell is
   either `ok` or its golden refusal.
 

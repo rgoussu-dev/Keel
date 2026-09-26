@@ -344,8 +344,12 @@ export function reachableAdapters(
   );
 }
 
-/** The ids of `vertical`'s adapters whose predicate `tags` matches, in declaration order. */
-function matchingIds(vertical: Vertical, tags: ReadonlySet<Tag>): readonly string[] {
+/**
+ * The ids of `vertical`'s adapters whose predicate `tags` matches, in
+ * declaration order — read before and after a change of tags, by
+ * {@link refreshProposals} and by growth (`./growth.ts`).
+ */
+export function matchingIds(vertical: Vertical, tags: ReadonlySet<Tag>): readonly string[] {
   return vertical.adapters
     .filter((adapter) => matches(adapter.predicate, tags))
     .map((adapter) => adapter.id);

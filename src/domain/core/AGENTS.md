@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `dials`, `answers`,
+`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
@@ -187,7 +187,16 @@ The tree reads backwards too: `profile.ts` places a scaffolded project
 on it from its manifest's tags (`axesOf`, the reading a preset is
 placed by), so `keel.project-status` says what a project is in the
 wizard's words — the page's read-only Project step — and no front end
-reads a tag to say it. See `docs/cli.md` → Finding a stack.
+reads a tag to say it. `growth.ts` reads it with one entrypoint more:
+the preset a project would be with it is its **twin**, what adding
+that entrypoint must leave byte for byte, and `growthOf` is the one
+reading of what that adds, or why it cannot. Its refusal of a bounded
+context is structural — no adapter requiring the context's marker also
+requires the entrypoint's tag — and `tests/domain/core/growth-render.test.ts`
+holds it to what the adapters render: an adapter that matched before
+the entrypoint and renders otherwise after it must be one growth
+re-renders or one whose context it refuses. See `docs/cli.md` →
+Finding a stack.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other
